@@ -17,7 +17,7 @@
       (fmt, clippy, test).
 - [x] **frontend-scaffold** — Svelte 5 + Vite + TypeScript skeleton in
       `frontend/`, Vitest component-test setup, lint/format config, CI job.
-- [ ] **server-scaffold** — `server/` axum crate: health endpoint, static
+- [x] **server-scaffold** — `server/` axum crate: health endpoint, static
       serving of the frontend build, one integration test. *(needs:
       workspace)*
 
@@ -43,6 +43,8 @@
 - [ ] **server-protocol** — axum: REST endpoints for queries/commands +
       WebSocket state-change stream, speaking the core protocol.
       *(needs: server-scaffold, core-subscriptions)*
+- [ ] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the
+      axum server. *(needs: server-scaffold)*
 - [ ] **frontend-protocol** — TypeScript protocol types, WebSocket client,
       Svelte store bridging core state into components.
       *(needs: frontend-scaffold, server-protocol)*

@@ -1,1 +1,11 @@
+# Rust
 /target
+
+# Node
+node_modules
+
+# SvelteKit / Vite build output
+/frontend/.svelte-kit
+/frontend/build
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*

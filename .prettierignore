@@ -1,0 +1,10 @@
+# Package manager lockfiles
+pnpm-lock.yaml
+
+# Build artifacts
+**/.svelte-kit/
+**/build/
+/target/
+
+# Not managed by Prettier
+*.md

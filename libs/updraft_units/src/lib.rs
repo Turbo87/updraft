@@ -13,4 +13,7 @@
 //! pressure, mass, temperature, etc. will be added when features need
 //! them.
 
+mod length;
 mod macros;
+
+pub use length::Length;

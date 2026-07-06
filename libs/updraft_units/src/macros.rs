@@ -1,10 +1,6 @@
 /// Implements the operations shared by all quantity newtypes: the `ZERO`
 /// constant, addition and subtraction of same-typed quantities, negation,
 /// scaling by `f64`, the dimensionless ratio of two quantities, and `abs`.
-#[expect(
-    unused_macros,
-    reason = "first used by the quantity types added in the following commits"
-)]
 macro_rules! impl_quantity_ops {
     ($quantity:ty) => {
         impl std::ops::Add for $quantity {
@@ -88,19 +84,11 @@ macro_rules! impl_quantity_ops {
     };
 }
 
-#[expect(
-    unused_imports,
-    reason = "first used by the quantity types added in the following commits"
-)]
 pub(crate) use impl_quantity_ops;
 
 /// Implements `Debug` for a quantity as its inner SI value followed by a
 /// fixed unit suffix (e.g. `1234.5 m`). The formatter is forwarded, so a
 /// precision such as `{:.1?}` is honored.
-#[expect(
-    unused_macros,
-    reason = "first used by the quantity types added in the following commits"
-)]
 macro_rules! impl_debug_with_unit {
     ($quantity:ty, $unit:literal) => {
         impl std::fmt::Debug for $quantity {
@@ -112,8 +100,4 @@ macro_rules! impl_debug_with_unit {
     };
 }
 
-#[expect(
-    unused_imports,
-    reason = "first used by the quantity types added in the following commits"
-)]
 pub(crate) use impl_debug_with_unit;

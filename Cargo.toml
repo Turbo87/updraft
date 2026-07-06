@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["core"]
+members = ["core", "server"]
 
 [workspace.lints.rust]
 future_incompatible = "warn"

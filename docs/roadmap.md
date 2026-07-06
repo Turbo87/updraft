@@ -12,7 +12,7 @@
 
 ## Scaffolding
 
-- [ ] **workspace** — Cargo workspace with empty `core/` crate,
+- [x] **workspace** — Cargo workspace with empty `core/` crate,
       rustfmt/clippy config, MIT/Apache-2.0 license files, CI workflow
       (fmt, clippy, test).
 - [ ] **frontend-scaffold** — Svelte 5 + Vite + TypeScript skeleton in

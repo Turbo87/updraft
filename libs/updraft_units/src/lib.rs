@@ -13,9 +13,11 @@
 //! pressure, mass, temperature, etc. will be added when features need
 //! them.
 
+mod angle;
 mod length;
 mod macros;
 mod speed;
 
+pub use angle::Angle;
 pub use length::Length;
 pub use speed::Speed;

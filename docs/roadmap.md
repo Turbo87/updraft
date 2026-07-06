@@ -23,7 +23,7 @@
 
 ## Core skeleton
 
-- [ ] **units** — custom newtype quantities (length/altitude, speed, vertical
+- [x] **units** — custom newtype quantities (length/altitude, speed, vertical
       speed, angle to start; pressure, mass, temperature added when features
       need them), conversions, and unit-system formatting. Start minimal and
       grow. *(needs: workspace)*

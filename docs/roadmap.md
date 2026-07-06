@@ -15,7 +15,7 @@
 - [x] **workspace** — Cargo workspace with empty `core/` crate,
       rustfmt/clippy config, MIT/Apache-2.0 license files, CI workflow
       (fmt, clippy, test).
-- [ ] **frontend-scaffold** — Svelte 5 + Vite + TypeScript skeleton in
+- [x] **frontend-scaffold** — Svelte 5 + Vite + TypeScript skeleton in
       `frontend/`, Vitest component-test setup, lint/format config, CI job.
 - [ ] **server-scaffold** — `server/` axum crate: health endpoint, static
       serving of the frontend build, one integration test. *(needs:

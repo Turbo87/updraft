@@ -173,6 +173,7 @@ working webview again, like a fresh cold start does.
 ### Full `tauri info` output
 
 ```text
+
 [✔] Environment
     - OS: Mac OS 15.7.4 arm64 (X64)
     ✔ Xcode Command Line Tools: installed

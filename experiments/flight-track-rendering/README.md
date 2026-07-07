@@ -74,11 +74,16 @@ The same suite on a real GPU with a 120 Hz display (frame floor ≈ 8 ms):
 | geojson-chunked-static-live | 348 | **9.8 / 8.7** | 119.9 | 119.8 | **119.7** | 308 | 35.2 |
 | geojson-feature-state | 349 | 65.2 / 66.9 | 120.0 | 119.7 | 108.0 | **17** | 73.0 |
 | custom-webgl-layer | 338 | **8.3 / 9.2** | 120.0 | 119.7 | **119.7** | **8** | 41.2 |
-| deckgl-line-layer | 322 | 8.3 | | | | | |
+| deckgl-line-layer | 319 | **8.3 / 9.0** | 120.0 | 119.7 | **119.7** | **8** | **21.8** |
 
-(The deck.gl table row was cut off in the captured output; its logged append
-average was 8.3 ms — the software-GL frame-rate collapse in the container
-run does not occur on real hardware.)
+(The deck.gl row comes from a second local run of the subset
+updatedata/custom/deckgl; the other two approaches reproduced their numbers
+above within noise. The software-GL frame-rate collapse deck.gl showed in
+the container run does not occur on real hardware — there it matches the
+custom layer on every metric and has the lowest heap of all approaches,
+including an 8 ms recolor. Its 284 ms container append cost also vanishes
+on a fast CPU. The remaining argument against it is purely the dependency:
+a second rendering framework for something ~200 lines of WebGL cover.)
 
 This confirms the container run's ordering while compressing the gaps:
 
@@ -180,11 +185,14 @@ globe projection would need the v5 `shaderData` variant of the API.
 
 `deck.MapboxOverlay({ interleaved: true })` with an instanced `LineLayer`
 (one instance per segment, `getColor` per instance). Appending means handing
-deck a new data array, which regenerates all instance attributes (~284 ms;
-deck's binary-attribute mode could fix that, at which point you've written
-approach #7 with a 1 MB dependency). Rendered at 4–5 fps under SwiftShader —
-that part is an artifact of software GL — but nothing here beats the custom
-layer, and it drags in a second rendering framework.
+deck a new data array, which regenerates all instance attributes — ~284 ms
+in the software-GL container, but negligible on a fast CPU: the local run
+puts deck.gl at the frame floor on every metric with the lowest heap of all
+approaches. The 4–5 fps container frame rates are purely a SwiftShader
+artifact. On real hardware it's a genuine contender; the argument against
+it is the dependency weight (a second rendering framework) for something
+~200 lines of custom WebGL cover, plus untested behavior on the weak mobile
+GPUs the container run approximates.
 
 ## Considered but not implemented
 

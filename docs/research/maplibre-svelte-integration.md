@@ -308,6 +308,105 @@ Residual risks to accept and monitor:
   objects small (they are, per layer) and keep bulk data out of `$state`,
   which the design already mandates.
 
+## Appendix: Lessons from svelte-maplibre-gl's Playwright e2e suite
+
+svelte-maplibre-gl added a Playwright e2e suite in May 2026 (v2.0 hardening).
+Examined at commit `32031f4` (2026-07-06). It is small (~10 specs, ~300
+lines) but directly relevant to Updraft's planned e2e harness
+([design/testing.md](../design/testing.md)), because it is a working example
+of testing real MapLibre WebGL rendering headlessly in GitHub Actions CI.
+
+### What they do
+
+**Headless WebGL needs zero special configuration.** The Playwright config is
+five lines — build + `vite preview` as `webServer`, a `testMatch` glob,
+nothing else. No SwiftShader flags, no `--use-gl`, no xvfb, no llvmpipe
+setup; plain `playwright install --with-deps chromium` on `ubuntu-latest`.
+Default headless Chromium's built-in software GL renders MapLibre well enough
+that `queryRenderedFeatures()` returns correct results in CI. This settles
+testing.md's open question ("headless MapLibre requires software GL …
+validated when the e2e harness is established") in the best possible way:
+there is nothing to validate beyond using stock Playwright Chromium.
+
+**Assert on map state, not pixels.** There is no screenshot or visual
+regression testing anywhere. Tests assert semantic map state instead:
+`map.getStyle().layers` id ordering (layer z-order and `beforeId`
+resolution), `map.getLayer(id).minzoom/maxzoom`,
+`map.queryRenderedFeatures({ layers: [...] }).length` (is anything actually
+rendered from this layer at this zoom), and — since MapLibre renders markers,
+popups, and controls as DOM — ordinary Playwright locators and class
+assertions for those. This style is fast, robust across GL rasterization
+differences, and maps directly onto Updraft assertions like "the airspace
+layer renders features at this altitude filter" or "the ownship marker moved
+east".
+
+**Test hooks on `window`.** Every test fixture page exposes the map and
+scenario-specific mutators globally in an `$effect`:
+`window.__map = map`, `window.__setStyleVariant = (v) => { variant = v }`.
+Specs drive Svelte state via `page.evaluate(() => window.__setStyleVariant('b'))`
+and synchronize via `page.waitForFunction()` over map-derived predicates
+(e.g. "style contains layer X", "queryRenderedFeatures returns 0"). This is
+the concrete shape of Updraft's planned `testMode`: expose `__map` (and
+sim-control hooks) when the flag is set, and make tests await explicit map
+state rather than time.
+
+**Fully synthetic, network-free fixtures.** Fixture pages use inline
+`{ version: 8, sources: {}, layers: [...] }` styles built from invisible
+`background` layers (opacity 0 / `visibility: none`) as ordering anchors,
+`data:` URL tile endpoints for raster/vector sources, and single-point
+GeoJSON. Tests are deterministic and run offline. Only the separate
+examples smoke test touches real tile servers, and it deliberately counts
+only *page errors*, not failed tile requests. For Updraft: e2e styles and a
+small committed PMTiles fixture should be served by the simulation-profile
+`updraft-server`, never fetched from the internet in CI.
+
+**A regression test per bug, as a named route.** Each fixture lives in the
+app itself under `/test/<case>/` (e.g. `/test/style-swap-layer-order/`),
+one page per historical bug, with a comment referencing the issue. The
+`/test/` routes ship in the site build; Updraft can gate equivalents behind
+`testMode` or a dev-only route group.
+
+**Universal error invariant + auto-discovered smoke sweep.** Every spec
+collects `page.on('pageerror')` and asserts the list is empty at the end — a
+cheap catch-all that turns any uncaught exception into a test failure. A
+smoke suite enumerates all example directories from the filesystem at
+collection time and visits each page in parallel. The Updraft equivalent: a
+smoke test over every route/dialog of the SPA with the pageerror invariant,
+independent of feature-specific tests.
+
+**CI tracks upstream MapLibre pre-releases without blocking PRs.** The
+workflow runs a two-leg matrix: the pinned ("catalog") maplibre-gl version
+as a required check, plus a `continue-on-error` leg that overrides
+maplibre-gl to `next` (or any dist-tag via `workflow_dispatch` input) using
+a script that temporarily rewrites the pnpm workspace override and restores
+it afterwards. A weekly cron runs the `next` leg even without repo changes,
+so new MapLibre pre-releases are exercised within a week. With maplibre v6
+imminent, this pattern is worth copying wholesale — it gives early warning
+of breakage in our layer stack while keeping PR CI green and pinned.
+Smaller touches: Playwright browser binaries cached keyed on the lockfile,
+and e2e runs against the production build (`build` + `preview`), not the
+dev server — which matches our adapter-static SPA reality.
+
+### What they don't do (also informative)
+
+- **No unit tests for wrapper behavior.** Vitest is configured but contains
+  a single demo spec; all real confidence comes from browser e2e. The
+  implicit lesson: MapLibre behavior is not meaningfully testable in
+  jsdom/happy-dom — don't budget for map unit tests, go straight to a real
+  browser. (Updraft's frontend already runs Vitest in real-browser mode via
+  `vitest-browser-svelte`, so component-level map tests could use that layer
+  too; the pyramid in testing.md is consistent with this.)
+- **A few `waitForTimeout()` sleeps remain** (50–500 ms for microtask
+  flushes and `{#key}` re-render loops) — the one flaky-prone spot in an
+  otherwise signal-driven suite. Updraft's planned explicit "map idle" /
+  "data version N rendered" signals are strictly better; adopt their
+  `waitForFunction`-on-map-state style and avoid the sleeps.
+- **No test of high-frequency data updates** (nothing exercises `setData`
+  at rate) and no camera-animation determinism handling — their reactive
+  camera is already animation-free (`jumpTo`), which is exactly why
+  Updraft's `testMode` should keep animations disabled rather than trying
+  to await easing.
+
 ## Sources
 
 - svelte-maplibre-gl: [GitHub][mierune-gh] · [docs][mierune-docs] ·

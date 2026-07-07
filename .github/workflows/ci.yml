@@ -48,6 +48,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @updraft/frontend exec playwright install --with-deps chromium
       - run: pnpm lint
-      - run: pnpm check
       - run: pnpm build
+      - run: pnpm check
       - run: pnpm test

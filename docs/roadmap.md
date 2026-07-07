@@ -311,7 +311,7 @@
 - [ ] **themes** — day/night/high-contrast modes, sunlight-readability
       contrast targets validated outdoors, auto-brightness hooks.
       *(needs: frontend-scaffold)*
-- [ ] **i18n** — localization scaffolding (Paraglide JS) + German
+- [x] **i18n** — localization scaffolding (Paraglide JS) + German
       translation; land before untranslated strings accumulate.
       *(needs: frontend-scaffold)*
 - [ ] **disclaimer** — first-run "not a certified navigation source"

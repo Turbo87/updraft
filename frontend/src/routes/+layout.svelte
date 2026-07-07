@@ -1,7 +1,12 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	let { children } = $props();
+
+	$effect(() => {
+		document.documentElement.lang = getLocale();
+	});
 </script>
 
 <svelte:head>

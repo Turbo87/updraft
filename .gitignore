@@ -9,3 +9,6 @@ node_modules
 /frontend/build
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Paraglide (generated i18n code)
+/frontend/src/lib/paraglide

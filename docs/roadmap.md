@@ -58,7 +58,7 @@
       state stream, bulk data), `Host` allowlist, `Origin` validation on
       stream upgrades, strict CORS, password gate for non-loopback binding.
       *(needs: server-protocol)*
-- [ ] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the
+- [x] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the
       axum server. *(needs: server-scaffold)*
 - [ ] **frontend-protocol** — TypeScript protocol types (generated from the
       Rust types, committed, with a CI drift check), state-stream client, Svelte

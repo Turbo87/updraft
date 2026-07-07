@@ -33,9 +33,13 @@ and the user swipes the app away from recents, then relaunches it:
    resume is silently dropped. App-level `RunEvent::Resumed` only fires
    from `NewEvents(StartCause::Poll)`, which never happens here.
 
-The webview shows plain white and JS never executes (zero console output),
-which matches the reports above (whether you see `__TAURI_INVOKE_KEY__`
-noise or nothing seems to depend on timing, the cause is the same).
+The webview shows plain white and JS never executes (zero console output).
+That differs from the `__TAURI_INVOKE_KEY__` errors quoted above, which
+came from wry's process-wide statics in pre-leak-fix versions (see
+lucasfernog's comments). On current versions no webview is created at all,
+so there is nothing left to log. The surface symptom changed along the way,
+but the scenario is the same: a process that outlives its activity does not
+get a working webview back.
 
 ## Minimal reproduction
 
@@ -154,18 +158,29 @@ if matches!(e, Event::Resumed) {
 }
 ```
 
-Second, re-create the window when resumed with no webviews. In the repro's
-`run` closure:
+(To try this against the published release, copy `tauri-runtime-wry` 2.11.4
+out of the cargo registry, add the three lines at the top of the arm, and
+point a `[patch.crates-io]` entry at the copy. The `dev` branch has the
+identical code in this arm.)
+
+Second, re-create the window when resumed with no webviews. The repro's
+`run` closure from above becomes:
 
 ```rust
-tauri::RunEvent::Resumed => {
-    use tauri::Manager;
-    if app.webview_windows().is_empty() {
-        tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
-            .build()
-            .expect("failed to recreate webview window");
-    }
-}
+        .run(|app, event| match event {
+            tauri::RunEvent::ExitRequested { api, .. } => {
+                api.prevent_exit();
+            }
+            tauri::RunEvent::Resumed => {
+                use tauri::Manager;
+                if app.webview_windows().is_empty() {
+                    tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
+                        .build()
+                        .expect("failed to recreate webview window");
+                }
+            }
+            _ => {}
+        });
 ```
 
 The builder claims the relaunched activity through the existing

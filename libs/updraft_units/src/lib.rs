@@ -15,5 +15,7 @@
 
 mod length;
 mod macros;
+mod speed;
 
 pub use length::Length;
+pub use speed::Speed;

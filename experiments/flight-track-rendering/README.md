@@ -61,6 +61,37 @@ software-rendering one frame; on real GPUs the absolute numbers improve
 across the board, but the CPU-side costs that separate the approaches
 (worker re-tiling, structured-clone transfer, attribute regeneration) stay.
 
+### Local run on real hardware
+
+The same suite on a real GPU with a 120 Hz display (frame floor ≈ 8 ms):
+
+| approach | init (ms) | append latency avg/p95 (ms) | pan fps | zoom fps | fps @appends | recolor (ms) | heap (MB) |
+|---|---|---|---|---|---|---|---|
+| geojson-segments-precolored | 341 | 67.6 / 75.0 | 120.0 | 119.7 | 105.8 | 75 | 50.1 |
+| geojson-segments-data-driven | 343 | 68.2 / 75.1 | 119.9 | 119.8 | 106.2 | 309 | 37.5 |
+| geojson-segments-updatedata | 346 | **8.9 / 16.5** | 120.1 | 119.8 | **119.7** | 317 | 55.7 |
+| geojson-line-gradient | 321 | 276.4 / 325.6 | 120.0 | 119.7 | 119.5 | 309 | 63.8 |
+| geojson-chunked-static-live | 348 | **9.8 / 8.7** | 119.9 | 119.8 | **119.7** | 308 | 35.2 |
+| geojson-feature-state | 349 | 65.2 / 66.9 | 120.0 | 119.7 | 108.0 | **17** | 73.0 |
+| custom-webgl-layer | 338 | **8.3 / 9.2** | 120.0 | 119.7 | **119.7** | **8** | 41.2 |
+| deckgl-line-layer | 322 | 8.3 | | | | | |
+
+(The deck.gl table row was cut off in the captured output; its logged append
+average was 8.3 ms — the software-GL frame-rate collapse in the container
+run does not occur on real hardware.)
+
+This confirms the container run's ordering while compressing the gaps:
+
+- Every approach that avoids full `setData` appends at the **single-frame
+  floor** (~8–10 ms). Full `setData` costs ~67 ms per fix and drops a 120 Hz
+  animation to ~106 fps while fixes stream in — usable, but wasteful.
+- `line-gradient`'s 276 ms append latency persists on real hardware; it is
+  CPU-bound (gradient-expression rebuild + `lineMetrics` re-parse), so a GPU
+  doesn't help. Confirmed the wrong tool for a live track.
+- Steady-state rendering of 18 k segments is free on a real GPU (120 fps
+  everywhere) — the differentiators are append cost and **recolor**: custom
+  WebGL 8 ms, feature-state 17 ms, everything else ~310 ms.
+
 ## The approaches
 
 ### 1. `geojson-segments-precolored`
@@ -172,22 +203,27 @@ layer, and it drags in a second rendering framework.
 
 ## Conclusions
 
-1. **For the live flight track, a custom WebGL layer (#7) is the clear
-   winner** — constant-time appends into pre-allocated GPU buffers, free
-   altitude↔vario switching via a second color buffer, half the memory, and
-   the best frame rates. A 1 Hz fix stream costs ~0.1 ms of main-thread work
-   per update. It fits the architecture doc's plan too: the frontend can
-   fill the buffers straight from a compact binary fix stream without ever
-   materializing GeoJSON.
-2. **If we want to stay on plain maplibre layers** (styling, interaction and
-   projection support for free), use **per-segment features with
-   data-driven paint + `updateData()` appends (#3)**: ~4× cheaper appends
-   than naïve `setData` and no measurable frame-rate hit while fixes stream
-   in. Give every feature an `id` from day one.
-3. Avoid `line-gradient` for this use case (append cost *and* color
-   fidelity), and don't bother with the two-source chunking workaround now
-   that `updateData()` exists.
-4. Per-segment 2-point features are ~18 k features for a 5 h flight and the
+1. **On real hardware the pragmatic choice is per-segment features with
+   data-driven paint + `updateData()` appends (#3)**: appends land at the
+   single-frame floor just like the custom layer, and we keep maplibre
+   styling, hit-testing and projection support for free. Give every feature
+   an `id` from day one — `updateData()` silently rejects the diff
+   otherwise.
+2. **The custom WebGL layer (#7) remains the performance ceiling** — it
+   wins where the maplibre approaches still lose: recolor (8 ms vs ~310 ms),
+   memory (typed arrays instead of feature + tile objects), and headroom on
+   weak mobile GPUs (the container's software-GL run is a decent proxy for
+   how the gaps widen on slow hardware, which matters for the Tauri
+   mobile targets). It also fits the architecture doc's plan: buffers can
+   be filled straight from a compact binary fix stream without ever
+   materializing GeoJSON. Worth it if/when instant palette switching or
+   low-end devices become requirements, not before.
+3. Avoid `line-gradient` for this use case: worst append cost on both fast
+   and slow hardware (it's CPU-bound) *and* lossy colors. Don't bother with
+   the two-source chunking workaround now that `updateData()` exists.
+4. If recoloring ever needs to be instant while staying on plain maplibre
+   layers, combine #3 with feature-state colors (17 ms recolor).
+5. Per-segment 2-point features are ~18 k features for a 5 h flight and the
    GeoJSON approaches hold up fine at that size; for showing many stored
    flights at once, move to server-side tiles instead of stretching the
    client-side approaches.

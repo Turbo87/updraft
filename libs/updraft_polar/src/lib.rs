@@ -7,10 +7,13 @@
 //! for wing loading (ballast) and bug contamination ([`GlidePolar`]),
 //! and derives the values a glide computer needs: minimum sink, best
 //! glide, MacCready speed to fly, and the classic MacCready
-//! cross-country speed.
+//! cross-country speed. A built-in library of 200+ glider polars ships
+//! as [`POLAR_STORE`].
 
 mod coefficients;
 mod glide_polar;
+mod store;
 
 pub use coefficients::PolarCoefficients;
 pub use glide_polar::GlidePolar;
+pub use store::{POLAR_STORE, PolarStoreEntry};

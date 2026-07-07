@@ -1,0 +1,16 @@
+{
+	"name": "@updraft/experiment-flight-track-rendering",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"bench": "node run-bench.mjs"
+	},
+	"dependencies": {
+		"deck.gl": "^9.1.0",
+		"maplibre-gl": "^5.9.0"
+	},
+	"devDependencies": {
+		"playwright": "^1.60.0"
+	}
+}

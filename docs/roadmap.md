@@ -45,18 +45,23 @@
       *(needs: server-scaffold, core-subscriptions)*
 - [ ] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the
       axum server. *(needs: server-scaffold)*
-- [ ] **frontend-protocol** — TypeScript protocol types, WebSocket client,
-      Svelte store bridging core state into components.
+- [ ] **frontend-protocol** — TypeScript protocol types (generated from the
+      Rust types, committed, with a CI drift check), WebSocket client, Svelte
+      store bridging core state into components.
       *(needs: frontend-scaffold, server-protocol)*
 - [ ] **frontend-map** — maplibre-gl map page with basemap style and an
-      own-position symbol driven by core state; manual pan/zoom.
-      *(needs: frontend-protocol)*
+      own-position symbol driven by core state; manual pan/zoom. Bulk geodata
+      (tiles, overlays) is served as map sources by URL reference, never
+      pushed through the message channel. *(needs: frontend-protocol)*
 - [ ] **tauri-scaffold** — Tauri shell (desktop first) embedding the core
       in-process, IPC bridge exposing the same protocol as the server.
       *(needs: frontend-protocol)*
 - [ ] **e2e-scaffold** — Playwright suite booting server + frontend,
-      scripting position commands, asserting the map shows them. This is
-      the walking skeleton milestone. *(needs: frontend-map)*
+      scripting position commands, asserting the map shows them. Establishes
+      the CI rendering harness: software GL (SwiftShader/llvmpipe) for
+      headless MapLibre and a `testMode` flag disabling map animation so
+      tests await explicit "map idle" / "data version rendered" signals. This
+      is the walking skeleton milestone. *(needs: frontend-map)*
 
 ## Sensor input & replay
 
@@ -65,8 +70,11 @@
 - [ ] **nmea-airdata** — vendor sentences for baro altitude, IAS/TAS, TE
       vario (LXWP0, PGRMZ, POV, …). *(needs: nmea)*
 - [ ] **io-adapters** — adapter trait for byte-stream devices, TCP
-      client/server adapter, fake adapter for tests; wire NMEA input into
-      core position state. *(needs: nmea, core-time)*
+      client/server adapter, fake adapter for tests; framer + dispatcher
+      routing each sentence to the parsers that claim it (multiple parsers
+      per stream), with promiscuous identification mode and capability
+      tagging; wire NMEA input into core position state.
+      *(needs: nmea, core-time)*
 - [ ] **gps-status** — fix quality, satellite info, positioning-source
       selection/fallback in state; status indicator in the UI.
       *(needs: io-adapters)*
@@ -74,7 +82,9 @@
       extensions. *(needs: units, geo)*
 - [ ] **replay** — replay engine feeding core from IGC/NMEA files with
       variable speed; used for simulation mode, demo mode, and as the e2e
-      fixture mechanism. *(needs: igc-read, io-adapters)*
+      fixture mechanism. Recorded input logs include async worker results so
+      replay re-injects them rather than recomputing, keeping it deterministic
+      regardless of scheduling. *(needs: igc-read, io-adapters)*
 - [ ] **flight-modes** — takeoff/landing detection, cruise/circling
       detection, flight timer; mode exposed in state and shown in UI.
       *(needs: io-adapters)*
@@ -237,8 +247,9 @@
 ## Logging & recording
 
 - [ ] **igc-write** — IGC recording: headers, B-records, pre-takeoff
-      buffer, auto start/stop, interval control. *(needs: igc-read,
-      flight-modes)*
+      buffer, auto start/stop, interval control. Crash-safe: incremental
+      flush-per-batch writes plus state snapshots so an interrupted flight
+      resumes logging on restart. *(needs: igc-read, flight-modes)*
 - [ ] **g-record** — tamper-evident G-record signing and validation.
       *(needs: igc-write)*
 - [ ] **markers-pev** — manual/automatic markers and pilot events (1 Hz

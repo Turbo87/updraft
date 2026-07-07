@@ -12,3 +12,5 @@
 //! The set of quantities is intentionally minimal (length, speed, angle);
 //! pressure, mass, temperature, etc. will be added when features need
 //! them.
+
+mod macros;

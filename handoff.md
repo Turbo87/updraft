@@ -11,10 +11,13 @@ Session context from 2026-07-07. Read together with
 - **Q2 root cause is fully understood and a fix is validated end-to-end.**
   Tobi chose **option 2**: upstream the fix into Tauri itself so Android
   apps get webview re-creation for free.
-- Next concrete step: post the issue comment (draft below in
-  `tauri-11609-comment.md`) to get tauri#11609 re-opened and maintainer
-  buy-in on default-on vs config flag. Then implement on a fork of
-  tauri `dev`.
+- Next concrete step: file a new tauri issue referencing #11609 as
+  possibly related (draft in `tauri-android-relaunch-issue.md`, bug
+  report template format) and get maintainer buy-in on default-on vs
+  config flag. Then implement on a fork of tauri `dev`. A new issue was
+  chosen over a re-open ask because only maintainers can re-open, the
+  old title describes the already-fixed leak, and FabianLars asked for
+  a fresh reproduction.
 
 ## The root cause chain (Q2, blank webview on relaunch)
 
@@ -94,14 +97,16 @@ architecture).
 
 ## Plan (agreed with Tobi, in order)
 
-1. Post issue comment, get re-open + direction (default-on vs config flag).
-   Draft ready in `tauri-11609-comment.md`, including a standalone minimal
-   reproduction (vanilla template + ~30-line keep-alive FGS + prevent_exit,
-   no plugin machinery). Every step of that repro was executed and verified
-   on the API 34 emulator on 2026-07-07: bug (blank webview on relaunch,
-   template UI fine on fresh launch) and fix (relaunch renders the full UI,
-   `greet` invoke round-trip works in the recreated webview). Posting is
-   Tobi's action.
+1. File the new issue, get direction (default-on vs config flag).
+   Draft ready in `tauri-android-relaunch-issue.md`, including a standalone
+   minimal reproduction (vanilla template + ~30-line keep-alive FGS +
+   prevent_exit, no plugin machinery). The full repro and fix were
+   independently re-verified on 2026-07-07 by an agent that only knew the
+   draft text, on factory-wiped API 34 and API 35 emulators: bug (blank
+   webview on relaunch, 0 webview views in `dumpsys activity top`, same
+   pid, fresh launch fine) and fix (relaunch renders the full UI, `greet`
+   invoke round-trip works in the recreated webview). Posting is Tobi's
+   action.
 2. Implement both pieces on a fork branched from `dev`.
 3. Validate: apply the same diffs to vendored release crates via
    `[patch.crates-io]` in the spike app (avoids dev-workspace version

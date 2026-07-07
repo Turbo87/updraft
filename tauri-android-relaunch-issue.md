@@ -1,13 +1,35 @@
-# Draft comment for tauri-apps/tauri#11609 (ask to re-open)
+# Draft new issue for tauri-apps/tauri
+
+Fields follow the bug report template. Suggested title:
+
+> [bug] Android: blank webview when relaunching the app after task removal
+> while a foreground service keeps the process alive
 
 ---
 
-I can still reproduce this on current versions (tauri 2.11.5, tao 0.35.3,
-wry 0.55.1) and I believe I found the actual root cause, so I'd like to ask
-for this to be re-opened. Minimal standalone reproduction below, verified
-on Android 14 and 15 emulator images.
+### Describe the bug
 
-## Root cause
+When a foreground service keeps the app process alive and the user swipes
+the app away from recents and then relaunches it from the launcher, the
+relaunched activity stays a plain white screen. No webview is created, JS
+never executes (zero console output). A second relaunch does not recover,
+only killing the process does. The Rust side keeps running fine the whole
+time.
+
+Reproduced with current versions (tauri 2.11.5, tao 0.35.3, wry 0.55.1) on
+Android 14 and 15 emulator images. Minimal standalone reproduction below.
+
+Possibly related: #11609 reported this scenario (foreground service keeps
+the process alive, app unusable on next launch). The activity memory leak
+from that issue was fixed and the issue was closed after the original
+reproduction disappeared, but the relaunch case itself is still broken.
+The `__TAURI_INVOKE_KEY__` errors quoted there came from wry's
+process-wide statics in pre-leak-fix versions. On current versions no
+webview is created at all, so there is nothing left to log. The surface
+symptom changed along the way, but the scenario is the same: a process
+that outlives its activity does not get a working webview back.
+
+#### Root cause
 
 Three layers are involved when a foreground service keeps the process alive
 and the user swipes the app away from recents, then relaunches it:
@@ -16,7 +38,8 @@ and the user swipes the app away from recents, then relaunches it:
    the last activity closes the webview window and Tauri's default
    exit-on-last-window-close makes tao's Android `EventLoop::run` call
    `std::process::exit(0)`, killing the FGS with it. An app can prevent
-   that with `RunEvent::ExitRequested` + `api.prevent_exit()` (used below).
+   that with `RunEvent::ExitRequested` + `api.prevent_exit()` (used in the
+   reproduction below).
 2. tao maps one Android Activity to one tao `Window`
    (`WindowId == ActivityId`), and `Window::new` binds to the "next
    available activity" via `ndk_glue::next_available_activity()`. wry can
@@ -33,15 +56,7 @@ and the user swipes the app away from recents, then relaunches it:
    resume is silently dropped. App-level `RunEvent::Resumed` only fires
    from `NewEvents(StartCause::Poll)`, which never happens here.
 
-The webview shows plain white and JS never executes (zero console output).
-That differs from the `__TAURI_INVOKE_KEY__` errors quoted above, which
-came from wry's process-wide statics in pre-leak-fix versions (see
-lucasfernog's comments). On current versions no webview is created at all,
-so there is nothing left to log. The surface symptom changed along the way,
-but the scenario is the same: a process that outlives its activity does not
-get a working webview back.
-
-## Minimal reproduction
+### Reproduction
 
 ```sh
 npm create tauri-app@latest tauri-11609-repro -- --template vanilla-ts \
@@ -143,11 +158,64 @@ adb shell pidof com.example.repro                        # still alive
 adb shell am start -n com.example.repro/.MainActivity   # relaunch
 ```
 
+(The swipe coordinates fit the 1080x2400 pixel_7 emulator image, on other
+devices dismiss the recents card manually.)
+
 Result: blank white screen, no webview content, no JS execution. A second
 relaunch does not recover, only killing the process does. The Rust side
 keeps running fine the whole time.
 
-## Fix, validated end-to-end
+### Expected behavior
+
+Relaunching the app while the FGS-pinned process is still alive shows a
+working webview again, like a fresh cold start does.
+
+### Full `tauri info` output
+
+```text
+[✔] Environment
+    - OS: Mac OS 15.7.4 arm64 (X64)
+    ✔ Xcode Command Line Tools: installed
+    ✔ Xcode: 26.3
+    ✔ rustc: 1.96.0 (ac68faa20 2026-05-25)
+    ✔ cargo: 1.96.0 (30a34c682 2026-05-25)
+    ✔ rustup: 1.29.0 (28d1352db 2026-03-05)
+    ✔ Rust toolchain: stable-aarch64-apple-darwin (default)
+    - node: 24.11.1
+    - pnpm: 11.2.2
+    - yarn: 1.22.22
+    - npm: 11.6.2
+    - bun: 1.2.17
+
+[-] Packages
+    - tauri 🦀: 2.11.5
+    - tauri-build 🦀: 2.6.3
+    - wry 🦀: 0.55.1
+    - tao 🦀: 0.35.3
+    - tauri-cli 🦀: 2.11.4
+    - @tauri-apps/api  ⱼₛ: 2.11.1
+    - @tauri-apps/cli  ⱼₛ: 2.11.4
+
+[-] Plugins
+    - tauri-plugin-opener 🦀: 2.5.4
+    - @tauri-apps/plugin-opener  ⱼₛ: 2.5.4
+
+[-] App
+    - build-type: bundle
+    - CSP: unset
+    - frontendDist: ../dist
+    - devUrl: http://localhost:1420/
+    - bundler: Vite
+```
+
+### Stack trace
+
+Nothing is logged when the blank activity comes up. That is part of the
+problem, the resume is silently dropped (see root cause above).
+
+### Additional context
+
+#### Fix, validated end-to-end
 
 Two parts. First, surface the resume to the app in `tauri-runtime-wry`
 (in the mobile `Resumed`/`Suspended` arm):
@@ -190,7 +258,7 @@ round-trips work (verified with the template's `greet` command), and in a
 larger app I verified a foreground-service `Channel` stream staying
 gap-free across three swipe-away/relaunch cycles in a single process.
 
-## Proposal
+#### Proposal
 
 Part two shouldn't be every app's problem. Tauri core could do it: on
 Android, when `Resumed` arrives and no webviews exist, re-run the same

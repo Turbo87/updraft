@@ -3,7 +3,9 @@
 - **AAT**: Assigned Area Task (competition task type with area turnpoints).
 - **AGL**: height Above Ground Level.
 - **BLE**: Bluetooth Low Energy.
+- **Client**: a frontend connected to the core (local Tauri webview, browser, or secondary client on another phone/tablet). Never a connected instrument.
 - **CUP**: SeeYou waypoint/task file format.
+- **Device**: a connected instrument (GPS, vario, FLARM). Never a phone/tablet running the app, which is a client.
 - **FLARM**: collision-warning system ubiquitous in European gliding.
 - **FL (Flight Level)**: pressure altitude in hundreds of feet referenced to 1013.25 hPa.
 - **IGC file**: FAI-standardized flight log format.

@@ -369,7 +369,7 @@
       background execution, keep-awake. *(needs: tauri-scaffold)*
 - [ ] **sim-mode** — on-device simulation mode (fly without GPS) built on
       the replay/command infrastructure. *(needs: replay)*
-- [ ] **secondary-devices** — primary/secondary operation: auth, roles &
+- [ ] **secondary-clients** — primary/secondary operation: auth, roles &
       permissions for remote frontends, repeater display mode. *(needs:
       server-protocol, settings-persistence)*
 - [ ] **audio-alerts** — sound/voice alert playback for traffic and
@@ -381,6 +381,6 @@
 - [ ] **radio** — radio frequency management via drivers. *(needs: vendor-protocols)*
 - [ ] **xpdr** — transponder control via drivers. *(needs: vendor-protocols)*
 - [ ] **two-seat** — front/rear cockpit sync of MC/ballast/target/wind.
-      *(needs: secondary-devices, vendor-protocols)*
+      *(needs: secondary-clients, vendor-protocols)*
 - [ ] **physiological** — heart rate / SpO₂ sensor input. *(needs:
       bluetooth-adapters)*

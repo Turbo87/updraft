@@ -1,9 +1,11 @@
 <script lang="ts">
 	import Brand from '$lib/Brand.svelte';
+	import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
 </script>
 
 <main>
 	<Brand />
+	<LocaleSwitcher />
 </main>
 
 <style>

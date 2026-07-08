@@ -8,3 +8,8 @@ pnpm-lock.yaml
 
 # Not managed by Prettier
 *.md
+
+# Paraglide (generated i18n code + inlang project metadata)
+/frontend/src/lib/paraglide/
+/frontend/project.inlang/*
+!/frontend/project.inlang/settings.json

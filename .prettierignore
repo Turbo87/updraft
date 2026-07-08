@@ -6,6 +6,9 @@ pnpm-lock.yaml
 **/build/
 /target/
 
+# Generated map spritesheet (built by updraft_sprites, must stay byte-exact)
+/frontend/static/sprites/
+
 # Not managed by Prettier
 *.md
 

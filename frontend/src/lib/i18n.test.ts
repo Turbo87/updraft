@@ -9,7 +9,7 @@ describe('i18n', () => {
 	});
 
 	it('translates messages per locale', () => {
-		expect(m.brand_tagline({}, { locale: 'en' })).toBe('Soaring flight computer');
-		expect(m.brand_tagline({}, { locale: 'de' })).toBe('Segelflugrechner');
+		expect(m.language_label({}, { locale: 'en' })).toBe('Language');
+		expect(m.language_label({}, { locale: 'de' })).toBe('Sprache');
 	});
 });

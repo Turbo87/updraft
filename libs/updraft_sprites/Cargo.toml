@@ -1,0 +1,16 @@
+[package]
+name = "updraft_sprites"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = "=1.0.103"
+spreet = { version = "=0.13.1", default-features = false }
+
+[dev-dependencies]
+tempfile = "=3.27.0"

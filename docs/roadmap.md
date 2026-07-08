@@ -31,8 +31,12 @@
       speed, angle to start; pressure, mass, temperature added when features
       need them), conversions, and unit-system formatting. Start minimal and
       grow. *(needs: workspace)*
-- [ ] **geo** — lat/lon types, WGS84 distance/bearing/destination-point,
-      bounding boxes, coordinate parsing/formatting. *(needs: units)*
+- [x] **geo** — lat/lon types, WGS84 distance/bearing/destination-point
+      (via `geographiclib-rs`) with a haversine fast path, bounding boxes
+      with antimeridian handling, `geo-types` interop behind a feature.
+      Coordinate parsing/formatting is out of scope: each data-format
+      crate parses its own wire format, display formatting is a UI
+      concern. *(needs: units)*
 - [ ] **core-state** — the central state struct, `Command`/`Query`/`Event`
       enums, `apply()` entry point, prioritized + coalescing input channel,
       serde serialization of the protocol. *(needs: units)*

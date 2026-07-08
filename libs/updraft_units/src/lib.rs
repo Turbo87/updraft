@@ -12,6 +12,13 @@
 //! The set of quantities is intentionally minimal (length, speed, angle);
 //! pressure, mass, temperature, etc. will be added when features need
 //! them.
+//!
+//! With the `approx` feature, the quantity types implement the `approx`
+//! crate's `AbsDiffEq` and `RelativeEq` traits, comparing the underlying
+//! SI values with an `f64` tolerance. This is meant for approximate
+//! equality assertions in tests (`assert_abs_diff_eq!`,
+//! `assert_relative_eq!`), where floating point math makes exact
+//! comparisons too strict.
 
 mod angle;
 mod length;

@@ -40,9 +40,11 @@ impl Angle {
     pub fn normalized(self) -> Self {
         // `rem_euclid` can round up to exactly `TAU` for tiny negative
         // inputs (the true remainder is below `TAU`'s ULP), which would
-        // escape the half-open range; clamp that back to zero.
+        // escape the half-open range; clamp that back to zero. The
+        // comparison is written so that NaN passes through instead of
+        // being clamped.
         let radians = self.0.rem_euclid(TAU);
-        Self(if radians < TAU { radians } else { 0. })
+        Self(if radians == TAU { 0. } else { radians })
     }
 
     /// Normalizes into the signed range `(-π, π]` (i.e. `(-180°, 180°]`),
@@ -62,6 +64,10 @@ impl Angle {
 
     pub fn sin_cos(self) -> (f64, f64) {
         self.0.sin_cos()
+    }
+
+    pub fn is_nan(self) -> bool {
+        self.0.is_nan()
     }
 }
 
@@ -137,6 +143,14 @@ mod tests {
             Angle::from_radians(0.5).normalized_signed(),
             Angle::from_radians(0.5)
         );
+    }
+
+    #[test]
+    fn normalization_preserves_nan() {
+        // A NaN angle (e.g. from a geodesic solve on garbage input) must
+        // stay detectable instead of turning into a valid angle.
+        assert!(Angle::from_radians(f64::NAN).normalized().is_nan());
+        assert!(Angle::from_radians(f64::NAN).normalized_signed().is_nan());
     }
 
     #[test]

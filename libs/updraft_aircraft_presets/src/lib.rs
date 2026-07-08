@@ -24,14 +24,16 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     /// Every wingspan configuration in the catalogue that carries a
-    /// polar, paired with its base model name for diagnostics.
+    /// polar, paired with its variant name for diagnostics and lookup.
     fn polars() -> impl Iterator<Item = (&'static str, Polar)> {
         PRESETS
             .iter()
-            .flat_map(|preset| {
-                preset
-                    .wingspans()
-                    .map(move |leaf| (preset.name, leaf.polar))
+            .flat_map(|preset| preset.variants.iter())
+            .flat_map(|variant| {
+                variant
+                    .wingspans
+                    .iter()
+                    .map(move |leaf| (variant.name, leaf.polar))
             })
             .filter_map(|(name, polar)| polar.map(|polar| (name, polar)))
     }

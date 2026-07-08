@@ -28,6 +28,7 @@
 mod datetime;
 mod error;
 mod fields;
+mod flarm;
 mod framer;
 mod scalars;
 mod sentences;
@@ -35,9 +36,11 @@ mod sentences;
 pub use datetime::{Date, Time};
 pub use error::ParseError;
 pub use fields::Fields;
+pub use flarm::AlarmLevel;
 pub use framer::{Sentence, checksum};
 pub use sentences::gga::{FixQuality, Gga};
 pub use sentences::gsa::{FixType, Gsa, SelectionMode};
+pub use sentences::pflau::{AlarmType, GpsStatus, Pflau};
 pub use sentences::pgrmz::Pgrmz;
 pub use sentences::rmc::{Rmc, RmcStatus};
 
@@ -58,6 +61,8 @@ pub enum ParseResult {
     Gsa(Gsa),
     /// A Garmin `PGRMZ` altitude sentence.
     Pgrmz(Pgrmz),
+    /// A FLARM `PFLAU` status sentence.
+    Pflau(Pflau),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -91,6 +96,7 @@ fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
 
     Ok(match address {
         "PGRMZ" => ParseResult::Pgrmz(sentences::pgrmz::parse(sentence.fields())?),
+        "PFLAU" => ParseResult::Pflau(sentences::pflau::parse(sentence.fields())?),
         _ => ParseResult::Unsupported,
     })
 }

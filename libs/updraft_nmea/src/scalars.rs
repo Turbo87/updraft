@@ -38,6 +38,11 @@ pub(crate) fn opt_u8(field: &str) -> Result<Option<u8>, ParseError> {
     opt(field, u8)
 }
 
+/// Parse a hexadecimal field, e.g. a FLARM 24-bit device id.
+pub(crate) fn hex_u32(field: &str) -> Result<u32, ParseError> {
+    u32::from_str_radix(field, 16).map_err(|_| ParseError::InvalidNumber)
+}
+
 /// Parse one `ddmm.mmmm`/`dddmm.mmmm` magnitude plus its hemisphere letter
 /// into a signed [`Angle`]. `degree_digits` is 2 for latitude, 3 for
 /// longitude.

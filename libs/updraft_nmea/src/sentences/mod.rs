@@ -5,5 +5,6 @@
 
 pub(crate) mod gga;
 pub(crate) mod gsa;
+pub(crate) mod pflau;
 pub(crate) mod pgrmz;
 pub(crate) mod rmc;

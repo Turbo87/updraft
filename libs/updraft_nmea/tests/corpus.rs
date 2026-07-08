@@ -14,6 +14,7 @@ fn variant_name(result: &ParseResult) -> &'static str {
         ParseResult::Rmc(_) => "Rmc",
         ParseResult::Gsa(_) => "Gsa",
         ParseResult::Pgrmz(_) => "Pgrmz",
+        ParseResult::Pflau(_) => "Pflau",
         ParseResult::Unsupported => "Unsupported",
         _ => "Other",
     }

@@ -1,29 +1,29 @@
 {
-	"name": "updraft",
-	"private": true,
-	"type": "module",
-	"packageManager": "pnpm@11.10.0",
-	"engines": {
-		"node": ">=22"
-	},
-	"scripts": {
-		"dev": "pnpm --filter @updraft/frontend dev",
-		"build": "pnpm --filter @updraft/frontend build",
-		"check": "pnpm -r check",
-		"test": "pnpm -r test",
-		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
-	},
-	"devDependencies": {
-		"@eslint/js": "10.0.1",
-		"eslint": "10.6.0",
-		"eslint-config-prettier": "10.1.8",
-		"eslint-plugin-svelte": "3.20.0",
-		"globals": "17.7.0",
-		"prettier": "3.9.4",
-		"prettier-plugin-svelte": "4.1.1",
-		"svelte": "5.56.4",
-		"typescript": "6.0.3",
-		"typescript-eslint": "8.62.1"
-	}
+  "name": "updraft",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.10.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @updraft/frontend dev",
+    "build": "pnpm --filter @updraft/frontend build",
+    "check": "pnpm -r check",
+    "test": "pnpm -r test",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.6.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-svelte": "3.20.0",
+    "globals": "17.7.0",
+    "prettier": "3.9.4",
+    "prettier-plugin-svelte": "4.1.1",
+    "svelte": "5.56.4",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.62.1"
+  }
 }

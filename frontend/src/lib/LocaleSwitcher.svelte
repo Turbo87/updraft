@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
+  import { m } from '$lib/paraglide/messages.js';
+  import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 </script>
 
 <nav>
-	{m.language_label()}:
-	{#each locales as locale (locale)}
-		<button type="button" disabled={locale === getLocale()} onclick={() => setLocale(locale)}>
-			{locale.toUpperCase()}
-		</button>
-	{/each}
+  {m.language_label()}:
+  {#each locales as locale (locale)}
+    <button type="button" disabled={locale === getLocale()} onclick={() => setLocale(locale)}>
+      {locale.toUpperCase()}
+    </button>
+  {/each}
 </nav>

@@ -1,4 +1,4 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"language_label": "Language"
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "language_label": "Language"
 }

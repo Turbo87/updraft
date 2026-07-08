@@ -1,13 +1,13 @@
 {
-	$schema: 'https://docs.renovatebot.com/renovate-schema.json',
-	extends: [
-		'config:best-practices',
-		':pinAllExceptPeerDependencies',
-		':maintainLockFilesWeekly',
-		':prConcurrentLimitNone',
-		':prHourlyLimitNone',
-		':semanticCommitsDisabled',
-		':automergeLinters',
-		':automergeTesters'
-	]
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:best-practices',
+    ':pinAllExceptPeerDependencies',
+    ':maintainLockFilesWeekly',
+    ':prConcurrentLimitNone',
+    ':prHourlyLimitNone',
+    ':semanticCommitsDisabled',
+    ':automergeLinters',
+    ':automergeTesters',
+  ],
 }

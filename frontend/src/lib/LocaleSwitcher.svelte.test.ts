@@ -5,18 +5,18 @@ import { localStorageKey } from '$lib/paraglide/runtime.js';
 import LocaleSwitcher from './LocaleSwitcher.svelte';
 
 describe('LocaleSwitcher.svelte', () => {
-	beforeEach(() => {
-		localStorage.setItem(localStorageKey, 'en');
-	});
+  beforeEach(() => {
+    localStorage.setItem(localStorageKey, 'en');
+  });
 
-	afterEach(() => {
-		localStorage.removeItem(localStorageKey);
-	});
+  afterEach(() => {
+    localStorage.removeItem(localStorageKey);
+  });
 
-	it('renders a button per locale, with the active one disabled', async () => {
-		render(LocaleSwitcher);
+  it('renders a button per locale, with the active one disabled', async () => {
+    render(LocaleSwitcher);
 
-		await expect.element(page.getByRole('button', { name: 'EN' })).toBeDisabled();
-		await expect.element(page.getByRole('button', { name: 'DE' })).toBeEnabled();
-	});
+    await expect.element(page.getByRole('button', { name: 'EN' })).toBeDisabled();
+    await expect.element(page.getByRole('button', { name: 'DE' })).toBeEnabled();
+  });
 });

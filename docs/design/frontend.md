@@ -17,7 +17,7 @@ differs per build (see *State Model* below).
 
 - **SvelteKit** with `adapter-static`
 - **Svelte 5** runes
-- **MapLibre GL JS** for the map
+- **MapLibre GL JS** for the map, integrated via **svelte-maplibre-gl**
 - **Paraglide JS** for i18n (see *i18n* below)
 - **UnoCSS** for icons, undecided for CSS
 
@@ -52,6 +52,14 @@ One fullscreen MapLibre instance is the app's centerpiece. Layers, bottom-up:
 
 Bulk geodata (tiles, overlays) arrives as map sources by URL reference, never
 through the message channel (see [core.md](core.md)).
+
+The map is integrated via
+[svelte-maplibre-gl](https://github.com/MIERUNE/svelte-maplibre-gl):
+declarative source/layer components for the stack above, with the raw map
+and sources reachable through `bind:map`/`bind:source` for the hot path.
+`<MapLibre>` must set `autoloadGlobalCss={false}` and import the MapLibre
+CSS locally, because the default loads it from a CDN at runtime, which
+violates offline-first.
 
 ## Interaction Model
 

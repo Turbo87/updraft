@@ -1,0 +1,17 @@
+[package]
+name = "updraft_aircraft_presets"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.96.1"
+license = "MIT OR Apache-2.0"
+
+[lints]
+workspace = true
+
+[dependencies]
+updraft_polar = { path = "../updraft_polar" }
+updraft_units = { path = "../updraft_units" }
+
+[dev-dependencies]
+approx = "=0.6.0-rc2"
+updraft_units = { path = "../updraft_units", features = ["approx"] }

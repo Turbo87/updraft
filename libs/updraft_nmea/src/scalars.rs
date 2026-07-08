@@ -30,6 +30,10 @@ pub(crate) fn u8(field: &str) -> Result<u8, ParseError> {
     field.parse().map_err(|_| ParseError::InvalidNumber)
 }
 
+pub(crate) fn u32(field: &str) -> Result<u32, ParseError> {
+    field.parse().map_err(|_| ParseError::InvalidNumber)
+}
+
 pub(crate) fn opt_f64(field: &str) -> Result<Option<f64>, ParseError> {
     opt(field, f64)
 }

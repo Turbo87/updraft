@@ -41,6 +41,7 @@ pub use framer::{Sentence, checksum};
 pub use sentences::gga::{FixQuality, Gga};
 pub use sentences::gsa::{FixType, Gsa, SelectionMode};
 pub use sentences::pcaib::Pcaib;
+pub use sentences::pcaid::Pcaid;
 pub use sentences::pflaa::{AircraftType, IdType, Pflaa};
 pub use sentences::pflau::{AlarmType, GpsStatus, Pflau};
 pub use sentences::pgrmz::Pgrmz;
@@ -69,6 +70,8 @@ pub enum ParseResult {
     Pflaa(Pflaa),
     /// A Cambridge `$PCAIB` destination-navpoint sentence.
     Pcaib(Pcaib),
+    /// A Cambridge `$PCAID` instrument-data sentence.
+    Pcaid(Pcaid),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -105,6 +108,7 @@ fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
         "PFLAU" => ParseResult::Pflau(sentences::pflau::parse(sentence.fields())?),
         "PFLAA" => ParseResult::Pflaa(sentences::pflaa::parse(sentence.fields())?),
         "PCAIB" => ParseResult::Pcaib(sentences::pcaib::parse(sentence.fields())?),
+        "PCAID" => ParseResult::Pcaid(sentences::pcaid::parse(sentence.fields())?),
         _ => ParseResult::Unsupported,
     })
 }

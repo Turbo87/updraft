@@ -32,11 +32,12 @@ mod framer;
 mod scalars;
 mod sentences;
 
-pub use datetime::Time;
+pub use datetime::{Date, Time};
 pub use error::ParseError;
 pub use fields::Fields;
 pub use framer::{Sentence, checksum};
 pub use sentences::gga::{FixQuality, Gga};
+pub use sentences::rmc::{Rmc, RmcStatus};
 
 /// The result of interpreting one framed, checksum-valid NMEA sentence.
 ///
@@ -49,6 +50,8 @@ pub use sentences::gga::{FixQuality, Gga};
 pub enum ParseResult {
     /// A `GGA` fix-data sentence.
     Gga(Gga),
+    /// An `RMC` recommended-minimum sentence.
+    Rmc(Rmc),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -74,6 +77,7 @@ fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
     if let Some(formatter) = gnss_formatter(address) {
         return Ok(match formatter {
             "GGA" => ParseResult::Gga(sentences::gga::parse(sentence.fields())?),
+            "RMC" => ParseResult::Rmc(sentences::rmc::parse(sentence.fields())?),
             _ => ParseResult::Unsupported,
         });
     }

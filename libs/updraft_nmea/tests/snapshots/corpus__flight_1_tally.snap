@@ -1,0 +1,7 @@
+---
+source: libs/updraft_nmea/tests/corpus.rs
+expression: tally
+---
+{
+    "Unsupported": 4245,
+}

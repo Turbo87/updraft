@@ -9,9 +9,9 @@
 //! output; user-facing formatting with configurable display units is a UI
 //! concern and comes later with the `units-settings` roadmap step.
 //!
-//! The set of quantities is intentionally minimal (length, speed, angle);
-//! pressure, mass, temperature, etc. will be added when features need
-//! them.
+//! The set of quantities is intentionally minimal (length, speed, angle,
+//! mass, area); pressure, temperature, etc. will be added when features
+//! need them.
 //!
 //! With the `approx` feature, the quantity types implement the `approx`
 //! crate's `AbsDiffEq` and `RelativeEq` traits, comparing the underlying
@@ -21,10 +21,14 @@
 //! comparisons too strict.
 
 mod angle;
+mod area;
 mod length;
 mod macros;
+mod mass;
 mod speed;
 
 pub use angle::Angle;
+pub use area::Area;
 pub use length::Length;
+pub use mass::Mass;
 pub use speed::Speed;

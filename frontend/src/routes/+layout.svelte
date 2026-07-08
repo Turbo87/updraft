@@ -14,3 +14,11 @@
 </svelte:head>
 
 {@render children()}
+
+<style>
+	:global(html),
+	:global(body) {
+		margin: 0;
+		height: 100%;
+	}
+</style>

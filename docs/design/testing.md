@@ -16,4 +16,4 @@ The same replay machinery ships to users: IGC replay mode and a simple simulator
 
 ## CI
 
-GitHub Actions: Rust tests + clippy, frontend check/lint, Playwright suite, contract-drift check, release builds per platform.
+GitHub Actions: Rust tests + clippy, frontend check/lint, Playwright suite, contract-drift check, release builds per platform. The workflows themselves are audited by [zizmor](https://docs.zizmor.sh/).

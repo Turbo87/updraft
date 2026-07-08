@@ -34,8 +34,11 @@ the field can be turned into a replayable test case.
    Since the axum-served system and the Tauri app share the frontend, the
    core, and the message protocol, these tests cover the vast majority of
    shipping behavior without requiring native automation on five platforms.
-   **WebGL in CI:** headless MapLibre requires software GL (SwiftShader in
-   Chromium / llvmpipe), validated when the e2e harness is established. The
+   **WebGL in CI:** stock headless Playwright Chromium renders MapLibre via
+   its built-in software GL with no special setup. Map
+   assertions target map state (`getStyle`, `getLayer`,
+   `queryRenderedFeatures`) rather than pixels, so they hold across GL
+   rasterizers. Screenshot comparison stays optional polish. The
    frontend exposes a `testMode` flag that disables map easing/animations and
    other nondeterminism sources, and tests await explicit "map idle" / "data
    version N rendered" signals rather than timeouts.

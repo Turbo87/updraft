@@ -5,6 +5,7 @@ expression: tally
 {
     "Gga": 466,
     "Gsa": 469,
+    "Pgrmz": 467,
     "Rmc": 466,
-    "Unsupported": 2844,
+    "Unsupported": 2377,
 }

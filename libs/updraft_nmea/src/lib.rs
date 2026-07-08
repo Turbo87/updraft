@@ -38,6 +38,7 @@ pub use fields::Fields;
 pub use framer::{Sentence, checksum};
 pub use sentences::gga::{FixQuality, Gga};
 pub use sentences::gsa::{FixType, Gsa, SelectionMode};
+pub use sentences::pgrmz::Pgrmz;
 pub use sentences::rmc::{Rmc, RmcStatus};
 
 /// The result of interpreting one framed, checksum-valid NMEA sentence.
@@ -55,6 +56,8 @@ pub enum ParseResult {
     Rmc(Rmc),
     /// A `GSA` DOP-and-active-satellites sentence.
     Gsa(Gsa),
+    /// A Garmin `PGRMZ` altitude sentence.
+    Pgrmz(Pgrmz),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -86,7 +89,10 @@ fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
         });
     }
 
-    Ok(ParseResult::Unsupported)
+    Ok(match address {
+        "PGRMZ" => ParseResult::Pgrmz(sentences::pgrmz::parse(sentence.fields())?),
+        _ => ParseResult::Unsupported,
+    })
 }
 
 /// For a standard GNSS address (`GPGGA`, `GNRMC`, …) return the

@@ -56,7 +56,9 @@ pub enum FixType {
 }
 
 impl FixType {
-    fn parse(field: &str) -> Result<Self, ParseError> {
+    /// Parse a `1`/`2`/`3` fix-dimension code. Shared with `PGRMZ`, whose
+    /// third field uses the same encoding.
+    pub(crate) fn parse(field: &str) -> Result<Self, ParseError> {
         match field {
             "1" => Ok(Self::NoFix),
             "2" => Ok(Self::TwoDimensional),

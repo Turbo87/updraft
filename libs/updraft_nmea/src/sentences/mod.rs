@@ -5,4 +5,5 @@
 
 pub(crate) mod gga;
 pub(crate) mod gsa;
+pub(crate) mod pgrmz;
 pub(crate) mod rmc;

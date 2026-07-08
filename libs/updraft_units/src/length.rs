@@ -9,6 +9,7 @@ pub(crate) const METERS_PER_STATUTE_MILE: f64 = 1609.344;
 ///
 /// Used for distances, altitudes, and heights alike.
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
+#[cfg_attr(any(test, feature = "approx"), derive(approx::RelativeEq))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Length(f64);
 

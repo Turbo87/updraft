@@ -16,6 +16,7 @@ const MPS_PER_FPM: f64 = METERS_PER_FOOT / 60.;
 /// climbing. Which unit a value is displayed in is a presentation concern
 /// for the frontend, so a single type serves both.
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
+#[cfg_attr(any(test, feature = "approx"), derive(approx::RelativeEq))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Speed(f64);
 
@@ -67,6 +68,7 @@ impl_debug_with_unit!(Speed, " m/s");
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn conversions() {
@@ -89,7 +91,7 @@ mod tests {
         );
 
         let knots = Speed::from_meters_per_second(10.).as_knots();
-        assert!((knots - 36000. / 1852.).abs() < 1e-12);
+        assert_relative_eq!(knots, 36000. / 1852.);
     }
 
     #[test]

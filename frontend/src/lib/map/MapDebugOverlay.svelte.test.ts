@@ -7,7 +7,7 @@ describe('MapDebugOverlay.svelte', () => {
   it('is hidden until the D key is pressed, then toggles off again', async () => {
     render(MapDebugOverlay, { map: undefined });
 
-    const zoom = page.getByText('Zoom');
+    let zoom = page.getByText('Zoom');
     await expect.element(zoom).not.toBeInTheDocument();
 
     await userEvent.keyboard('d');
@@ -22,7 +22,7 @@ describe('MapDebugOverlay.svelte', () => {
 
     await userEvent.keyboard('d');
 
-    const checkbox = page.getByRole('checkbox', { name: 'Tile boundaries' });
+    let checkbox = page.getByRole('checkbox', { name: 'Tile boundaries' });
     await expect.element(checkbox).not.toBeChecked();
     await checkbox.click();
     await expect.element(checkbox).toBeChecked();

@@ -25,7 +25,7 @@ describe('LocaleSwitcher.svelte', () => {
 
     await expect.element(page.getByText('Language')).toBeInTheDocument();
 
-    const nav = document.querySelector('nav')!;
+    let nav = document.querySelector('nav')!;
     nav.dataset.reloadCanary = 'alive';
 
     await page.getByRole('button', { name: 'DE' }).click();
@@ -36,7 +36,7 @@ describe('LocaleSwitcher.svelte', () => {
     await expect.element(page.getByRole('button', { name: 'EN' })).toBeEnabled();
 
     // ...on the original, un-reloaded document: same node, marker intact.
-    const nav2 = document.querySelector('nav')!;
+    let nav2 = document.querySelector('nav')!;
     expect(nav2).toBe(nav);
     expect(nav2.dataset.reloadCanary).toBe('alive');
   });

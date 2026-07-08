@@ -900,6 +900,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "updraft_polar"
+version = "0.0.0"
+dependencies = [
+ "approx 0.6.0-rc2",
+ "updraft_units",
+]
+
+[[package]]
 name = "updraft_server"
 version = "0.0.0"
 dependencies = [

@@ -2,6 +2,8 @@
 
 - **AAT**: Assigned Area Task (competition task type with area turnpoints).
 - **AGL**: height Above Ground Level.
+- **Aircraft preset**: a read-only, built-in catalogue entry for an aircraft type (polar, masses, wingspans, handicap). Not a device config.
+- **Aircraft profile**: a specific user aircraft (registration, callsign) created from a preset or from scratch, with per-field overrides. Only one active at a time.
 - **BLE**: Bluetooth Low Energy.
 - **Client**: a frontend connected to the core (local Tauri webview, browser, or secondary client on another phone/tablet). Never a connected instrument.
 - **CUP**: SeeYou waypoint/task file format.

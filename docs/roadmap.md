@@ -138,7 +138,7 @@
 - [ ] **datafield-pages** — multiple data-field pages/layouts, per-flight-mode auto switching, bottom nav-box bar. _(needs: datafields-v1, flight-modes)_
 - [ ] **units-settings** — per-quantity unit configuration UI wired through all displayed values. _(needs: datafields-v1)_
 - [ ] **settings-persistence** — configuration profiles (per pilot/per aircraft), settings persistence adapter, profile switching. _(needs: core-state)_
-- [ ] **aircraft-profiles** — plane profiles: polar selection, custom coefficients, ballast/weights, registration/comp ID. _(needs: settings-persistence, glide-settings)_
+- [ ] **aircraft-profiles** — move the built-in catalogue out of the polar store into `updraft_aircraft_presets` (aircraft presets); aircraft profiles created from a preset or from scratch, with per-field overrides, ballast/weights, and registration/comp ID. _(needs: settings-persistence, glide-settings)_
 - [ ] **themes** — day/night/high-contrast modes, sunlight-readability contrast targets validated outdoors, auto-brightness hooks. _(needs: frontend-scaffold)_
 - [x] **i18n** — localization scaffolding (Paraglide JS) + German translation; land before untranslated strings accumulate. _(needs: frontend-scaffold)_
 - [ ] **disclaimer** — first-run "not a certified navigation source" dialog and about-screen text. _(needs: frontend-scaffold)_

@@ -56,6 +56,7 @@ The exact crate/package layout may evolve, but the dependency direction is fixed
 - [simulator.md](simulator.md): simulator mode and IGC replay
 - [traffic.md](traffic.md): FLARM and OGN traffic handling, merging, and warnings
 - [data.md](data.md): offline data (basemap, terrain, aviation data), storage layout, and crash-safe persistence
+- [aircraft.md](aircraft.md): aircraft profiles and built-in presets
 - [multi-client.md](multi-client.md): primary/secondary operation
 - [testing.md](testing.md): test strategy, simulation, and CI
 - [devmode.md](devmode.md): hidden developer mode and debugging options

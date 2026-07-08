@@ -25,6 +25,7 @@ In a later phase we will support in-app downloads from e.g. openAIP with update 
 ├── airspace/
 ├── waypoints/
 ├── tasks/
+├── aircraft/
 ├── flights/     # IGC logs
 ├── state/       # in-flight resume snapshots (active task, logging status)
 ├── captures/    # raw NMEA captures + replay input recordings (opt-in)
@@ -33,7 +34,7 @@ In a later phase we will support in-app downloads from e.g. openAIP with update 
 
 Note that CUP files contain waypoints and (optionally) tasks too. These files should be supported in `waypoints/` and `tasks/` directories.
 
-Glider polars ship built-in as embedded data, with user overrides in `config/`.
+Aircraft presets (glide polars plus mass, wingspan, and related data) ship built-in as embedded data; user aircraft profiles live in `aircraft/`.
 
 ## Crash-Safe Persistence
 

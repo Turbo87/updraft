@@ -2,6 +2,7 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
   import type { Map } from 'maplibre-gl';
   import { MapLibre } from 'svelte-maplibre-gl';
+  import MapDebugOverlay from './MapDebugOverlay.svelte';
   import Ownship from './Ownship.svelte';
   import type { OwnshipPosition } from './ownship';
 
@@ -18,16 +19,27 @@
   }
 </script>
 
-<MapLibre
-  inlineStyle="height: 100%; width: 100%"
-  style="https://tiles.openfreemap.org/styles/positron"
-  autoloadGlobalCss={false}
-  bind:map
-  onload={loadSprites}
-  center={[ownship.longitude, ownship.latitude]}
-  zoom={11}
->
-  {#if spritesLoaded}
-    <Ownship position={ownship} />
-  {/if}
-</MapLibre>
+<div class="map-container">
+  <MapLibre
+    inlineStyle="height: 100%; width: 100%"
+    style="https://tiles.openfreemap.org/styles/positron"
+    autoloadGlobalCss={false}
+    bind:map
+    onload={loadSprites}
+    center={[ownship.longitude, ownship.latitude]}
+    zoom={11}
+  >
+    {#if spritesLoaded}
+      <Ownship position={ownship} />
+    {/if}
+  </MapLibre>
+  <MapDebugOverlay {map} />
+</div>
+
+<style>
+  .map-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+</style>

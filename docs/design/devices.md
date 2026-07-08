@@ -36,20 +36,21 @@ Internal sensors stay active by default even while external devices provide the 
 
 ## Parser Stack
 
-The parsing of external data (NMEA sentences, vendor protocols, file formats) lives in pure functions (bytes in, messages out) that are trivially unit-testable, separate from the transport that carried the bytes.
+The parsing of external data (NMEA sentences, vendor protocols, file formats) lives in pure functions (bytes in, typed values out) that are trivially unit-testable, separate from the transport that carried the bytes.
 
-A connection carries one stream, processed by:
+Two pure pieces make up the NMEA library (`updraft_nmea`):
 
-- a **framer** that splits bytes into sentences or frames (NMEA lines first, including line records that don't start with `$` such as the Cambridge CAI302's `!w` vario records, extensible to binary frames), feeding
-- a **dispatcher** that routes each sentence to whichever registered parsers claim it:
-  - `$G?XXX` → generic NMEA (routed by the three-letter sentence formatter, accepting any GNSS talker ID; the nonstandard `$BD` BeiDou talker is treated as an alias)
-  - `$PGRMZ` → Garmin
-  - `$PFLA*` → FLARM
-  - `$LXWP*` → LXNav
-  - `$PLXV*` → LXNav (settings read/write, declarations, log transfer)
-  - unknown sentences → counted and logged
+- a **framer** that splits a byte buffer into sentences and verifies the NMEA checksum (NMEA lines first, including line records that don't start with `$` such as the Cambridge CAI302's `!w` vario records, extensible to binary frames), and
+- a **single parse entry point**, `parse(sentence) -> ParseResult` — deliberately *not* a registry of parsers. `ParseResult` is one enum covering every sentence family the crate recognizes:
+  - standard GNSS `GGA` / `RMC` / `GSA` (routed by the three-letter sentence formatter, accepting any GNSS talker ID; the nonstandard `$BD` BeiDou talker is treated as an alias)
+  - FLARM `PFLAU` / `PFLAA`
+  - Garmin `$PGRMZ`
+  - LXNav `$LXWP*` and `$PLXV*` (settings read/write, declarations, log transfer)
+  - an `Unsupported` variant for a well-formed, checksum-valid sentence the crate does not model
 
-A device such as an LX9000 that emits NMEA, `$PGRMZ`, FLARM pass-through, and both LXNav families on one port simply has the corresponding parsers active on that one stream, all feeding the core.
+Internally each sentence is its own pure function so it can be unit-tested and fuzzed in isolation; `parse` is a thin router over them. A device such as an LX9000 that emits NMEA, `$PGRMZ`, FLARM pass-through, and both LXNav families on one port is handled by this one function — each line simply returns whichever `ParseResult` variant it matched, so no per-stream parser wiring is needed.
+
+Routing, identification, and capability tagging are a **device-layer concern, not a parser-crate one**, and land with `io-adapters`. That layer feeds transport bytes through the framer, calls `parse`, routes the resulting typed values into the core, and derives capability tags ("GPS source", "FLARM traffic") from which `ParseResult` variants a stream actually produces. It can start as a plain `match`; a runtime parser registry is introduced only if pluggability — third-party or user-configurable parsers competing for the same bytes — ever proves necessary, which the current device set does not require.
 
 Some operations switch a device out of NMEA entirely: a driver can claim the stream for an **exclusive binary session** for the duration of an operation such as a flight-log download (FLARM's binary IGC protocol being the canonical case), after which normal framing and dispatch resume.
 

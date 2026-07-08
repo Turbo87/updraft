@@ -34,9 +34,9 @@
 
 ## Sensor input & replay
 
-- [ ] **nmea** — `libs/updraft_nmea`: sentence framing, checksum, GGA/RMC/GSA parsing into typed structs. _(needs: units, geo)_
-- [ ] **nmea-airdata** — vendor sentences for baro altitude, IAS/TAS, TE vario (LXWP0, PGRMZ, POV, …). _(needs: nmea)_
-- [ ] **io-adapters** — adapter trait for byte-stream devices, TCP client/server and UDP adapters, fake adapter for tests; framer + dispatcher routing each sentence to the parsers that claim it (multiple parsers per stream), with promiscuous identification mode, driver probe queries, and capability tagging; wire NMEA input into core position state. _(needs: nmea, core-time)_
+- [ ] **nmea** — `libs/updraft_nmea`: sentence framing, checksum, and a single `parse(sentence) -> ParseResult` entry point (no dispatcher — see [design/devices.md](design/devices.md)); GGA/RMC/GSA parsing into typed structs. FLARM (PFLAA/PFLAU) and vendor air-data extend the same `ParseResult` enum (see nmea-airdata and flarm). _(needs: units, geo)_
+- [ ] **nmea-airdata** — vendor air-data sentences for baro altitude, IAS/TAS, TE vario (LXWP0, PGRMZ, POV, …), added as further `ParseResult` variants in `updraft_nmea`. _(needs: nmea)_
+- [ ] **io-adapters** — adapter trait for byte-stream devices, TCP client/server and UDP adapters, fake adapter for tests; feeds transport bytes through the `updraft_nmea` framer and `parse`, routes the resulting typed values into the core, and derives capability tags from the `ParseResult` variants seen (a plain `match` to start; a parser registry only if runtime pluggability is ever needed), with promiscuous identification mode and driver probe queries; wire NMEA input into core position state. _(needs: nmea, core-time)_
 - [ ] **gps-status** — fix quality, satellite info, positioning-source selection/fallback in state; status indicator in the UI. _(needs: io-adapters)_
 - [ ] **igc-read** — `libs/updraft_igc`: parser for A/H/B/E/L records and extensions. _(needs: units, geo)_
 - [ ] **replay** — replay engine feeding the core typed messages from IGC files at variable speed, bypassing the parser stack (byte-capture replay is a devmode tool); used for simulator mode, demo mode, and as the e2e fixture mechanism, migrating the e2e suite from scripted commands to replay fixtures. Input-log replay records external I/O results verbatim but recomputes pure worker results and injects them at their recorded position. _(needs: igc-read, core-time)_
@@ -113,7 +113,7 @@
 
 ## Traffic
 
-- [ ] **flarm** — `libs/updraft_flarm`: PFLAA/PFLAU parsing, alarm levels, FLARM configuration sentences. _(needs: nmea)_
+- [ ] **flarm** — PFLAA/PFLAU parsing lands in `updraft_nmea` alongside the other sentence families; this step layers on the higher-level concerns: alarm-level semantics and FLARM configuration sentences (`$PFLAC`). _(needs: nmea)_
 - [ ] **traffic-store** — traffic targets in core: aging, threat levels, relative geometry. _(needs: flarm, core-time)_
 - [ ] **traffic-on-map** — traffic symbols, threat colouring, labels, short track trails. _(needs: traffic-store, frontend-map)_
 - [ ] **radar-view** — dedicated FLARM radar page (relative-position rose). _(needs: traffic-store)_

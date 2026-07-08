@@ -1,6 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages.js';
-  import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
+  import { getLocale, locales } from '$lib/paraglide/runtime.js';
+  import { setLocale } from '$lib/i18n.svelte.js';
 </script>
 
 <nav>

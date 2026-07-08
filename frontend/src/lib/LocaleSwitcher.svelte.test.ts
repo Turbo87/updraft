@@ -19,4 +19,25 @@ describe('LocaleSwitcher.svelte', () => {
     await expect.element(page.getByRole('button', { name: 'EN' })).toBeDisabled();
     await expect.element(page.getByRole('button', { name: 'DE' })).toBeEnabled();
   });
+
+  it('switches the translated strings in place without a page reload', async () => {
+    render(LocaleSwitcher);
+
+    await expect.element(page.getByText('Language')).toBeInTheDocument();
+
+    const nav = document.querySelector('nav')!;
+    nav.dataset.reloadCanary = 'alive';
+
+    await page.getByRole('button', { name: 'DE' }).click();
+
+    // Strings re-render reactively and the active button flips...
+    await expect.element(page.getByText('Sprache')).toBeInTheDocument();
+    await expect.element(page.getByRole('button', { name: 'DE' })).toBeDisabled();
+    await expect.element(page.getByRole('button', { name: 'EN' })).toBeEnabled();
+
+    // ...on the original, un-reloaded document: same node, marker intact.
+    const nav2 = document.querySelector('nav')!;
+    expect(nav2).toBe(nav);
+    expect(nav2.dataset.reloadCanary).toBe('alive');
+  });
 });

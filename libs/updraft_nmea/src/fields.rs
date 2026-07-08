@@ -16,6 +16,14 @@ impl<'a> Fields<'a> {
         }
     }
 
+    /// The next field, treating a missing field (an exhausted sentence) as
+    /// a [`ParseError::MissingField`]. Used by the sentence parsers for
+    /// fields the layout requires to be present, even if empty.
+    pub(crate) fn next_required(&mut self) -> Result<&'a str, crate::error::ParseError> {
+        self.next_field()
+            .ok_or(crate::error::ParseError::MissingField)
+    }
+
     /// The next raw field, or `None` when no fields remain.
     pub fn next_field(&mut self) -> Option<&'a str> {
         let remainder = self.remainder?;

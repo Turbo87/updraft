@@ -25,13 +25,18 @@
 //! property-based no-panic checks with snapshot tests over a corpus of
 //! recorded device captures.
 
+mod datetime;
 mod error;
 mod fields;
 mod framer;
+mod scalars;
+mod sentences;
 
+pub use datetime::Time;
 pub use error::ParseError;
 pub use fields::Fields;
 pub use framer::{Sentence, checksum};
+pub use sentences::gga::{FixQuality, Gga};
 
 /// The result of interpreting one framed, checksum-valid NMEA sentence.
 ///
@@ -42,6 +47,8 @@ pub use framer::{Sentence, checksum};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum ParseResult {
+    /// A `GGA` fix-data sentence.
+    Gga(Gga),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -61,6 +68,24 @@ pub fn parse(line: &str) -> Result<ParseResult, ParseError> {
 /// Route a framed sentence to its per-sentence parser. As sentence
 /// families are implemented, each gains an arm here; everything else falls
 /// through to [`ParseResult::Unsupported`].
-fn route(_sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
+fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
+    let address = sentence.address();
+
+    if let Some(formatter) = gnss_formatter(address) {
+        return Ok(match formatter {
+            "GGA" => ParseResult::Gga(sentences::gga::parse(sentence.fields())?),
+            _ => ParseResult::Unsupported,
+        });
+    }
+
     Ok(ParseResult::Unsupported)
+}
+
+/// For a standard GNSS address (`GPGGA`, `GNRMC`, …) return the
+/// three-letter sentence formatter, accepting any GNSS talker ID plus the
+/// nonstandard `BD` `BeiDou` talker (treated as an alias). Returns `None`
+/// for proprietary or non-GNSS addresses.
+fn gnss_formatter(address: &str) -> Option<&str> {
+    let (talker, formatter) = address.split_at_checked(2)?;
+    (formatter.len() == 3 && (talker.starts_with('G') || talker == "BD")).then_some(formatter)
 }

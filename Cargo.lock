@@ -1720,9 +1720,12 @@ dependencies = [
 name = "updraft_nmea"
 version = "0.0.0"
 dependencies = [
+ "approx 0.6.0-rc2",
  "insta",
  "proptest",
  "serde",
+ "updraft_geo",
+ "updraft_units",
 ]
 
 [[package]]

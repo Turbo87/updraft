@@ -9,11 +9,16 @@ license = "MIT OR Apache-2.0"
 workspace = true
 
 [features]
-serde = ["dep:serde"]
+serde = ["dep:serde", "updraft_geo/serde", "updraft_units/serde"]
 
 [dependencies]
 serde = { version = "=1.0.228", features = ["derive"], optional = true }
+updraft_geo = { path = "../updraft_geo" }
+updraft_units = { path = "../updraft_units" }
 
 [dev-dependencies]
+approx = "=0.6.0-rc2"
 insta = "=1.48.0"
 proptest = "=1.11.0"
+updraft_geo = { path = "../updraft_geo", features = ["approx"] }
+updraft_units = { path = "../updraft_units", features = ["approx"] }

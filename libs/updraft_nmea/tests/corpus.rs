@@ -10,6 +10,7 @@ use updraft_nmea::ParseResult;
 
 fn variant_name(result: &ParseResult) -> &'static str {
     match result {
+        ParseResult::Gga(_) => "Gga",
         ParseResult::Unsupported => "Unsupported",
         _ => "Other",
     }

@@ -12,6 +12,7 @@
 ## Feature inventory
 
 **Status legend:**
+
 - `●` **full** — present and works as a first-class capability
 - `◐` **partial** — present but limited, awkward, or incomplete
 - `○` **absent** — not present
@@ -20,6 +21,7 @@
 <!-- Fill each item in the form: "`status` Feature: Notes". Append the notes after a colon, or leave it off when there's nothing to add. -->
 
 ### Map display & interaction
+
 - `?` Vector / topographic map rendering
 - `?` Terrain shading / elevation
 - `?` Map orientation (track / north / target up)
@@ -33,6 +35,7 @@
 - `?` "What's here" query
 
 ### Waypoints & navigation
+
 - `?` Waypoint database
 - `?` Landable vs non-landable distinction
 - `?` Nearest (waypoint / landable / airfield)
@@ -41,6 +44,7 @@
 - `?` Alternates / safety-landing selection
 
 ### Cross-country tasks
+
 - `?` Racing tasks
 - `?` Assign Area Tasks (AAT)
 - `?` Cross-country task types (FAI triangle, out-and-return, DMSt, etc.)
@@ -52,6 +56,7 @@
 - `?` Task import / export / declaration to logger
 
 ### Glide computer
+
 - `?` Flight modes + auto display switching (cruise/circling/final)
 - `?` MacCready setting (manual)
 - `?` Auto MacCready (modes)
@@ -64,6 +69,7 @@
 - `?` Optimal cruise track
 
 ### Atmosphere & instruments
+
 - `?` Variometer display
 - `?` Average climb
 - `?` Audio variometer
@@ -75,18 +81,21 @@
 - `?` Convection forecast (cloud base etc.)
 
 ### Weather
+
 - `?` METAR / TAF
 - `?` Forecast overlays (SkySight / TopMeteo / RASP)
 - `?` Wind aloft / weather-station data
 - `?` In-flight weather updates
 
 ### Airspace
+
 - `?` Airspace display (classes, filtering)
 - `?` Proximity / incursion warnings + acknowledgement
 - `?` Airspace query / details
 - `?` NOTAM handling
 
 ### Traffic & collision awareness (FLARM)
+
 - `?` FLARM Traffic on map
 - `?` OGN Traffic on map
 - `?` FLARM and OGN Traffic deduplication
@@ -98,6 +107,7 @@
 - `?` Team flying / buddy codes
 
 ### Avionics & airframe
+
 - `?` Battery / voltage monitoring
 - `?` GPS status / connection / altitude source
 - `?` Engine / powered flight (ENL, MoP, engine hours)
@@ -107,6 +117,7 @@
 - `?` Multiple external devices / slave mode
 
 ### Data fields (InfoBox system)
+
 - `?` Configurable data-field grid
 - `?` Multiple data-field pages / layouts
 - `?` Per-flight-mode auto layout
@@ -117,6 +128,7 @@
 - `?` Touch / gesture interaction with data fields
 
 ### Analysis & review
+
 - `?` Barograph / altitude trace
 - `?` Climb history / thermal analysis
 - `?` Wind analysis
@@ -126,15 +138,18 @@
 - `?` Airspace cross-section
 
 ### Contest / WeGlide optimization (live)
+
 - `?` Live WeGlide optimization in-flight
 - `?` Flight trace maintenance
 - `?` Live scoring / achieved distance
 
 ### Live tracking
+
 - `?` Live tracking upload (OGN / SkyLines / cloud)
 - `?` Retrieve / crew comms / position sharing
 
 ### Instrument & device connectivity (I/O)
+
 - `?` Bluetooth
 - `?` BLE
 - `?` Serial
@@ -146,6 +161,7 @@
 - `?` Vendor protocols (LXNav / FLARM / …)
 
 ### Data & file management
+
 - `?` Waypoint files (CUP / …)
 - `?` Airspace files (OpenAir / CUB / …)
 - `?` Terrain / topology / map data
@@ -154,12 +170,14 @@
 - `?` Handicap / polar lists
 
 ### Logging & recording
+
 - `?` IGC flight log recording
 - `?` Approved / signed logger (badge / record)
 - `?` Flight replay
 - `?` Pilot events / markers logging
 
 ### Configuration & UI
+
 - `?` Configuration profiles (per user / per aircraft / global)
 - `?` Screen layout / data-field geometry
 - `?` Day / night / high-contrast modes

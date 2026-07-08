@@ -14,12 +14,14 @@
 ## Feature inventory
 
 **Status legend:**
+
 - `●` **full** — present and works as a first-class capability
 - `◐` **partial** — present but limited, awkward, or incomplete
 - `○` **absent** — not present
 - `?` **unknown** — could not be determined from available sources
 
 ### Map display & interaction
+
 - `●` Vector / topographic map rendering: MapLibre GL + Protomaps vector base with airports, airspace, landout fields, peaks, water, places.
 - `●` Terrain shading / elevation: hypsometric shaded relief + contour lines (major/minor) with labels + mountain peaks, from WeGlide terrain data.
 - `◐` Map orientation (track / north / target up): only **North-up** and **Heading-up**. No target-up.
@@ -33,6 +35,7 @@
 - `●` "What's here" query: tap opens panels for airspace ("Airspaces here"), airport, waypoint, thermal, and aircraft.
 
 ### Waypoints & navigation
+
 - `●` Waypoint database: server-provided waypoints/airports with search.
 - `●` Landable vs non-landable distinction: dedicated outlanding-field layer (green/yellow/red quality) separate from airports and waypoints.
 - `○` Nearest (waypoint / landable / airfield): no "nearest" function.
@@ -41,6 +44,7 @@
 - `○` Alternates / safety-landing selection: no alternate or safety-landing logic (no glide computer).
 
 ### Cross-country tasks
+
 - `◐` Racing tasks: racing-style task kinds are displayed, but there is no in-flight racing task computer.
 - `◐` Assign Area Tasks (AAT): the AA/AAT kind is recognized and drawn, but no AAT area optimization/calculator.
 - `●` Cross-country task types: task kinds cover DMSt, FAI, Triangle, Out & Return, Multi Triangle, Multi Rectangle, Rectangle, 3 TP, Goal, Grand Prix, Poland, US, UK, Free (display level).
@@ -52,6 +56,7 @@
 - `◐` Task import / export / declaration to logger: import from WeGlide/SoaringSpot and **declaration to the internal recorder** ("Task declared" / "Failed to declare task"); no export to an external logger.
 
 ### Glide computer
+
 - `○` Flight modes + auto display switching (cruise/circling/final): no cruise/circling/final display modes (an internal thermal-detection state exists for thermal detection only).
 - `○` MacCready setting (manual): none.
 - `○` Auto MacCready (modes): none.
@@ -60,10 +65,11 @@
 - `○` Speed to fly / speed command / risk factor: none.
 - `○` Safety heights / safety MacCready: none.
 - `○` Final glide calculator (wind, altitude required): none.
-- `○` Task speed estimation: none (average speed is shown for *tracked* gliders — see 3.12 — not a task calc).
+- `○` Task speed estimation: none (average speed is shown for _tracked_ gliders — see 3.12 — not a task calc).
 - `○` Optimal cruise track: none.
 
 ### Atmosphere & instruments
+
 - `◐` Variometer display: a "Vario (10s)" value (10-second averaged climb) is shown for own ship and live aircraft, derived from GPS/barometer; no needle/gauge instrument.
 - `●` Average climb: averaged climb is a first-class value (thermal "average", Vario 10s).
 - `○` Audio variometer: none (no tone/beep).
@@ -75,18 +81,21 @@
 - `●` Convection forecast (cloud base etc.): SkySight `Cloudbase`, `Thermals`, `Height of Thermals`, `Vertical Airspeed`, `XC Speed`, `Convergence`, `Wave`.
 
 ### Weather
+
 - `○` METAR / TAF: none.
 - `●` Forecast overlays (SkySight / TopMeteo / RASP): deep **SkySight** integration (convergence, XC speed, wave, cloudbase, thermals, height of thermals, vertical airspeed), gated behind a subscription tier.
 - `◐` Wind aloft / weather-station data: SkySight forecast winds selectable by altitude band; no live station data.
 - `●` In-flight weather updates: live weather satellite (with "Sat image updated" toast), rain radar (RainViewer + SkySight rain), and live thermals/hotspots refresh in flight.
 
 ### Airspace
+
 - `●` Airspace display (classes, filtering): classes A/B/C/D, control zone, danger, restricted, gliding, mandatory zone, FIS, special — with per-class styling and an altitude-band filter.
 - `◐` Proximity / incursion warnings + acknowledgement: "Airspace Crossings" scans the track for violations ("Scanning for airspace violations…"); this is crossing detection/review rather than a real-time proximity alert with acknowledge.
 - `●` Airspace query / details: an airspace panel + "Airspaces here" + airspace information ("may contain errors" disclaimer).
 - `○` NOTAM handling: none.
 
 ### Traffic & collision awareness (FLARM)
+
 - `○` FLARM Traffic on map: no FLARM device link possible (no BT/BLE).
 - `●` OGN Traffic on map: live traffic of other gliders from WeGlide live / OGN network.
 - `○` FLARM and OGN Traffic deduplication: n/a (no FLARM source).
@@ -98,6 +107,7 @@
 - `◐` Team flying / buddy codes: aircraft can be **marked/unmarked** and live-tracking filtered by airport, but there are no FLARM buddy codes.
 
 ### Avionics & airframe
+
 - `○` Battery / voltage monitoring: none.
 - `◐` GPS status / connection / altitude source: geolocation status/error handling and dual altitude source (GPS + barometer pressure altitude); no satellite-level GPS status.
 - `●` Engine / powered flight (ENL, MoP, engine hours): **ENL (engine-noise-level) recording via the microphone** ("Record ENL"), written into the IGC.
@@ -107,6 +117,7 @@
 - `○` Multiple external devices / slave mode: none.
 
 ### Data fields (InfoBox system)
+
 - `○` Configurable data-field grid: no InfoBox system; the UI is map-centric with fixed pills and slide-up cards.
 - `○` Multiple data-field pages / layouts: none.
 - `○` Per-flight-mode auto layout: none.
@@ -117,24 +128,28 @@
 - `◐` Touch / gesture interaction with data fields: pills and slide-ups are tappable, but there is no data-field grid to interact with.
 
 ### Analysis & review
+
 - `○` Barograph / altitude trace: none.
 - `○` Climb history / thermal analysis: none in-app.
 - `○` Wind analysis: none.
 - `○` Glide polar analysis: none.
 - `○` Task analysis: none in-app.
 - `◐` OLC / contest analysis: the post-flight analysis view shows takeoff/landing/duration/date + airspace crossings; full scoring/optimization happens after upload to WeGlide, not on-device.
-- `○` Airspace cross-section: a crossings *list* exists, but no vertical cross-section view.
+- `○` Airspace cross-section: a crossings _list_ exists, but no vertical cross-section view.
 
 ### Contest / WeGlide optimization (live)
+
 - `◐` Live WeGlide optimization in-flight: live tracked gliders show "XC Distanz" and a ranking; the optimization itself is server-side.
 - `●` Flight trace maintenance: continuous track recording and live-track maintenance.
 - `●` Live scoring / achieved distance: achieved XC distance and live ranking are displayed.
 
 ### Live tracking
+
 - `●` Live tracking upload (OGN / SkyLines / cloud): own position published to WeGlide live tracking (+ OGN); LiveConnect improves position data and makes the pilot appear by name for ~18 h.
 - `◐` Retrieve / crew comms / position sharing: system share plus live view of others and "mark aircraft"; no dedicated retrieve/crew-chat feature.
 
 ### Instrument & device connectivity (I/O)
+
 - `○` Bluetooth: not present.
 - `○` BLE: not present.
 - `○` Serial: not present.
@@ -146,6 +161,7 @@
 - `○` Vendor protocols (LXNav / FLARM / …): none.
 
 ### Data & file management
+
 - `○` Waypoint files (CUP / …): waypoints come from the WeGlide server; no CUP import.
 - `○` Airspace files (OpenAir / CUB / …): airspace comes from the server (openAIP-sourced); no OpenAir import.
 - `●` Terrain / topology / map data: server vector tiles (Protomaps) + terrain/hypsometric, cached client-side.
@@ -154,12 +170,14 @@
 - `○` Handicap / polar lists: none.
 
 ### Logging & recording
+
 - `●` IGC flight log recording: records IGC from internal GPS + barometer (+ optional ENL); sessions and a logbook are kept locally.
 - `◐` Approved / signed logger (badge / record): the IGC is **cryptographically signed** (ECDSA) and backed by device attestation for WeGlide's own verification — but it is **not an FAI-approved flight recorder** for badges/records.
 - `○` Flight replay: recorded flights are viewable on a map (static track), but there is no time-based replay.
 - `○` Pilot events / markers logging: no PEV/marker logging into the IGC.
 
 ### Configuration & UI
+
 - `○` Configuration profiles (per user / per aircraft / global): single account, no profiles.
 - `○` Screen layout / data-field geometry: fixed map-centric layout (pills + slide-ups); only layer visibility and font size are adjustable.
 - `◐` Day / night / high-contrast modes: the app ships a dark UI theme; no explicit user day/night map toggle observed.

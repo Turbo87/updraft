@@ -4,7 +4,7 @@
 
 - **Version(s) examined:** Firmware 9.5, manual Rev #59
 - **Date(s) examined:** January 2025 (manual publication)
-- **Platform(s):** Dedicated avionics hardware. Main display unit runs Linux (explicitly *not* Windows CE) on an ARM processor; paired with a separate vario sensor unit (V8 / V80 / V9, ARM Cortex-M4). Not a phone/tablet app. Family spans LX9000/9050/9070 (large-screen, portrait or landscape, optional multitouch) and LX8030/8040 (smaller, landscape only).
+- **Platform(s):** Dedicated avionics hardware. Main display unit runs Linux (explicitly _not_ Windows CE) on an ARM processor; paired with a separate vario sensor unit (V8 / V80 / V9, ARM Cortex-M4). Not a phone/tablet app. Family spans LX9000/9050/9070 (large-screen, portrait or landscape, optional multitouch) and LX8030/8040 (smaller, landscape only).
 - **License:** Proprietary commercial firmware bundled with the hardware. Feature tiers (AHRS, HAWK, Club options) are unlocked via paid activation codes tied to the unit serial number.
 - **Offline behavior:** Fully self-contained for all core soaring functions. Worldwide terrain/vector maps, airspace and airport databases are pre-loaded and the internal IGC recorder, glide computer, FLARM, tasks and statistics need no connectivity. Internet (via an optional Wi-Fi module + phone hotspot) is only needed for live/forecast weather, cloud storage/sync, NOTAMs, SeeYou Cloud maps and firmware/database downloads. Weather is cached (≈500 km live radius, whole-sector forecast) so it remains usable after signal loss.
 - **Configuration model:** Rich. Pilot/location **profiles** (`.lxprofile`) hold navpage layout + device settings; can be pin-locked, admin-locked (club mode disables individual menus per user), synced via LXNAV Connect. **Polar & Glider** data (up to 3 gliders, incl. weight & balance / CG) is stored separately on the device, not in the profile. Desktop customisation via **LX Styler**; layouts built from navboxes + graphical symbols. Two-seat front/rear units exchange selected data over an RS485 bus.
@@ -12,12 +12,14 @@
 ## Feature inventory
 
 **Status legend:**
+
 - `●` **full** — present and works as a first-class capability
 - `◐` **partial** — present but limited, awkward, or incomplete
 - `○` **absent** — not present
 - `?` **unknown** — could not be determined from available sources
 
 ### Map display & interaction
+
 - `●` Vector / topographic map rendering: OSM-derived worldwide vector data — elevation contours, water bodies, roads/highways, railways, cities; per-element zoom/width/colour. Database not user-editable.
 - `●` Terrain shading / elevation: full DEM with optional shadows, 3 detail levels + off, and many colour schemes (Mountain, Flatland, ICAO, Cliffs/Google-like, Atlas/Imhof, Grayscale, OSM, Himalaya, Zebra, plus a **Relative** altitude-reachability scheme). Optional HGL high-resolution elevation add-on.
 - `●` Map orientation (track / north / target up): fixed N/E/S/W plus Track-up, Heading-up (compass or wind-derived) and Goal-up; configured separately for straight vs. circling.
@@ -31,6 +33,7 @@
 - `●` "What's here" query: PAN + INFO cycles waypoint / airspace / raw-position info at the cursor, with GOTO or airspace dismiss/frequency shortcuts.
 
 ### Waypoints & navigation
+
 - `●` Waypoint database: unlimited waypoints; CUP, CUPX (with images), and Cambridge/WinPilot DAT (converted to CUP). Multiple files active at once.
 - `●` Landable vs non-landable distinction: landable types recognised; min runway length/width filter marks unusable strips with a red cross; near-mode landables list.
 - `●` Nearest (waypoint / landable / airfield): Near mode lists landables/airports, default-sorted by arrival altitude, sortable, GOTO direct.
@@ -39,6 +42,7 @@
 - `●` Alternates / safety-landing selection: near-mode landables plus a favourites list that also includes take-off point and soaring-start ("where to finish" for OLC).
 
 ### Cross-country tasks
+
 - `●` Racing tasks: full, with start-arm, gate intervals, max start altitude/speed, event-start procedure.
 - `●` Assign Area Tasks (AAT): full — large zones with geometry, task time, AAT isolines (speed/Δtime/distance), optimal-track arrow, move-point-inside-area, min/max task distance navboxes.
 - `●` Cross-country task types (FAI triangle, out-and-return, DMSt, etc.): tasks are built as arbitrary point sequences; a real-time **FAI-triangle assistant** and OLC/FAI optimisation cover free-flight XC. DMSt/handicap-distance scoring not called out by name.
@@ -50,9 +54,10 @@
 - `●` Task import / export / declaration to logger: load from CUP/CUPX and from SoaringSpot; auto-declared in the IGC file at take-off; declaration push to a connected LX/Nano and optionally to external FLARM.
 
 ### Glide computer
+
 - `●` Flight modes + auto display switching (cruise/circling/final): Auto-SC changeover by GPS-circling, g-load, IAS threshold, external switch or flap sensor; automatic thermal page; final-glide symbol always shown.
 - `●` MacCready setting (manual): full, with wing-loading and resulting L/D shown.
-- `◐` Auto MacCready (modes): the Mc dialogue *suggests* a value from the last four thermals, and ETA methods can use vario-based climb; there is no fully automatic self-setting Mc.
+- `◐` Auto MacCready (modes): the Mc dialogue _suggests_ a value from the last four thermals, and ETA methods can use vario-based climb; there is no fully automatic self-setting Mc.
 - `●` Glide polar (library + custom): large predefined glider list plus custom a/b/c quadratic coefficients (LX-Polar helper), reference weight/wing area.
 - `●` Ballast / bugs / weight setup: ballast as load or water litres (incl. tail water), measured water dump countdown, bugs as % L/D degradation.
 - `●` Speed to fly / speed command / risk factor: STF value, reqSTF ("arrive at target at chosen altitude"), speed-to-fly audio and airspeed-tape marker. No XCSoar-style "risk factor" parameter.
@@ -62,6 +67,7 @@
 - `●` Optimal cruise track: AAT optimal-track arrow and "Show optimal track" indicator.
 
 ### Atmosphere & instruments
+
 - `●` Variometer display: needle-type vario indicator, vario tape and configurable vario meter symbol (vario/netto/relative/STF).
 - `●` Average climb: configurable integrator (default 20 s), thermal average, red-diamond average on the indicator.
 - `●` Audio variometer: extensive — multiple vario/SC audio modes, tunable frequencies at −100/0/+100 %, dead-band, equalizer, HAWK vs TE audio source.
@@ -73,20 +79,23 @@
 - `◐` Convection forecast (cloud base etc.): not modelled onboard, but available via SkySight/TopMeteo layers (Cu cloud base, thermal height/depth, etc.) and a Potential-Temperature navbox as a trigger aid; requires a weather subscription.
 
 ### Weather
+
 - `●` METAR / TAF: target-parsed METAR and TAF navboxes; meteogram for airports with a valid ICAO sign.
 - `●` Forecast overlays (SkySight / TopMeteo / RASP): SkySight and TopMeteo forecast + satellite layers (RASP not supported); opacity, animation history-span, forecast-time offset.
 - `●` Wind aloft / weather-station data: wind-aloft layers from SkySight/TopMeteo at multiple levels; live wind navbox.
 - `●` In-flight weather updates: live satellite, forecast and rain-radar over the map via Wi-Fi + hotspot; rain radar needs no third-party login.
 
 ### Airspace
+
 - `●` Airspace display (classes, filtering): per-type colour/width/transparency/zoom, "show only airspace below X", hide GPS-AeroData, show-inactive toggle; separate map vs. side-view styling.
 - `●` Proximity / incursion warnings + acknowledgement: two-stage projected warnings (orange near, red imminent) with horizontal/vertical buffers; dismiss for minutes / today / quit, confirm-dismiss, reset-all.
 - `●` Airspace query / details: vicinity list with vertical/horizontal distances and upper/lower limits, per-zone enable/disable (OFF today / OFF hh:mm / always), edit type/class/limits, name filter, side-view cross-section.
 - `●` NOTAM handling: via GPS AeroData subscription — view/manage/filter NOTAMs (trigger / FIR-wide / aerodrome), sourced from Eurocontrol + national AIPs.
 
 ### Traffic & collision awareness (FLARM)
+
 - `●` FLARM Traffic on map: internal or external FLARM; above/below/near colouring, labels, tracked paths, PCAS non-directional circles.
-- `○` OGN Traffic on map: device *transmits* to the OGN network (toggle "No tracking") but does not receive/display OGN traffic.
+- `○` OGN Traffic on map: device _transmits_ to the OGN network (toggle "No tracking") but does not receive/display OGN traffic.
 - `○` FLARM and OGN Traffic deduplication: n/a — no OGN traffic ingestion (duplicate removal exists only for waypoint-vs-database points, not traffic).
 - `●` FLARM radar view: dedicated FLARM-radar symbol and navpage, plus split map+list view; ADS-B shown too.
 - `◐` FLARM traffic dead reckoning: lost targets keep blinking for a configurable timeout (default 120 s) before removal; no explicit onboard dead-reckoning projection described.
@@ -96,6 +105,7 @@
 - `●` Team flying / buddy codes: encrypted Team code (SeeYou-compatible) for position sharing, favourite targets, and one "active" target driving team navboxes.
 
 ### Avionics & airframe
+
 - `●` Battery / voltage monitoring: battery-type profiles (Lead/LiFe/LiPo/custom) with warnings and voltage offset; optional LXDAQ+ per-cell battery monitor (SOC, current, temp, remaining/charge time).
 - `●` GPS status / connection / altitude source: GPS status page, satellite sky-view, single shared GPS receiver; selectable pressure-altitude source (IGC sensor vs. pitot-static vario sensor).
 - `●` Engine / powered flight (ENL, MoP, engine hours): built-in ENL sensor + optional MOP box for jets, engine threshold/total-time, fuel-burn model, e-Glide energy reference voltage, "high ENL starts logger".
@@ -105,6 +115,7 @@
 - `●` Multiple external devices / slave mode: RS485 bus with splitters — rear/front repeater (…D units), secondary indicators (I8/I9/I80), remote sticks, compass, MOP, bridges, Wi-Fi, external FLARM.
 
 ### Data fields (InfoBox system)
+
 - `●` Configurable data-field grid: navboxes with editable title/value/unit, global or per-box styling; ~150 defined types.
 - `●` Multiple data-field pages / layouts: multiple navpages per mode (APT/WPT/TSK each have several), fully layout-editable.
 - `◐` Per-flight-mode auto layout: a dedicated thermal page auto-activates on circling; cruise/final navpages don't auto-swap by mode otherwise.
@@ -115,6 +126,7 @@
 - `◐` Touch / gesture interaction with data fields: multitouch is an option on LX90xx (config, task, pan, wind-draw); direct per-navbox touch editing in flight isn't emphasised, and LX80xx has no touch.
 
 ### Analysis & review
+
 - `●` Barograph / altitude trace: logbook replay shows flown path + barogram, zoom/scrub through the flight.
 - `●` Climb history / thermal analysis: thermal graph and in-flight thermal/leg statistics (average vario, overfly factor, leg efficiency).
 - `●` Wind analysis: wind-profile symbol/dialogue by altitude layer.
@@ -124,15 +136,18 @@
 - `●` Airspace cross-section: side-view symbol renders terrain + airspace toward the goal.
 
 ### Contest / WeGlide optimization (live)
+
 - `●` Live WeGlide optimization in-flight: real-time distance optimisation to OLC or FAI rules onboard (3-point FAI free / 5-point OLC), incl. FAI-triangle assistant — not WeGlide-branded specifically.
 - `●` Flight trace maintenance: optimisation and trace maintained continuously during flight; reset-on-engine-run option.
 - `●` Live scoring / achieved distance: optimised distance, optimised speed/XC-speed, largest-triangle and OLC statistics updated live.
 
 ### Live tracking
-- `◐` Live tracking upload (OGN / SkyLines / cloud): only indirectly — the FLARM transmitter makes the glider visible on OGN ground stations (unless "No tracking" is set). No SkyLines client; LXNAV Connect uploads the IGC *after landing*, not a live position stream.
+
+- `◐` Live tracking upload (OGN / SkyLines / cloud): only indirectly — the FLARM transmitter makes the glider visible on OGN ground stations (unless "No tracking" is set). No SkyLines client; LXNAV Connect uploads the IGC _after landing_, not a live position stream.
 - `◐` Retrieve / crew comms / position sharing: Team-code position sharing (voice-relayed, encrypted) and send-target-to-rear-seat; no dedicated crew retrieve/messaging channel.
 
 ### Instrument & device connectivity (I/O)
+
 - `○` Bluetooth: not present.
 - `○` BLE: not present.
 - `●` Serial: RS232 (NMEA/PDA/Condor) and the LXNAV RS485 device bus.
@@ -144,6 +159,7 @@
 - `●` Vendor protocols (LXNav / FLARM / …): native LXNAV RS485 bus, FLARM, vario units, plus radio/XPDR vendor bridges (KRT2/Trig/Becker/ATR833/ACD57).
 
 ### Data & file management
+
 - `●` Waypoint files (CUP / …): SeeYou CUP, CUPX (with images/passwords), Cambridge/WinPilot DAT.
 - `●` Airspace files (OpenAir / CUB / …): user airspace as CUB (all types) plus LXNAV's free worldwide ASAPT airspace database; OpenAir not named explicitly.
 - `●` Terrain / topology / map data: pre-loaded worldwide vector + DEM; optional HGL high-res elevation; raster CMR (SeeYou) and QMP (Ifos, serial-locked) scanned maps; SeeYou Cloud tile maps.
@@ -152,12 +168,14 @@
 - `◐` Handicap / polar lists: extensive predefined polar library; no DAeC/index handicap list surfaced in the manual.
 
 ### Logging & recording
+
 - `●` IGC flight log recording: built-in recorder, selectable interval, logs wind/speed/vertical-speed by default, optional FLARM-data and flap logging.
 - `●` Approved / signed logger (badge / record): high-level IGC approval with digital+mechanical security ("Calculating security" on landing); valid for records/badges.
 - `●` Flight replay: logbook VIEW replays map + barogram with statistics/optimisation/task overlays.
 - `●` Pilot events / markers logging: PEV via EVENT (1 Hz burst), MARK waypoints.
 
 ### Configuration & UI
+
 - `●` Configuration profiles (per user / per aircraft / global): pilot/location profiles, pin-lockable and admin-lockable (club mode), cloud-syncable; polar/glider kept separately per device.
 - `●` Screen layout / data-field geometry: full navpage editor on-device and via LX Styler (navboxes + symbols, colours, fonts, page count/modes, memory presets MEM1/MEM2).
 - `●` Day / night / high-contrast modes: night mode + auto-brightness (ambient light sensor) and high/low-contrast terrain schemes.

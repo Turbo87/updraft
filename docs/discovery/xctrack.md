@@ -5,19 +5,21 @@
 - **Version(s) examined:** ~0.9.7.6 (config dump `versionCode 90760`) cross-referenced with documentation for the 0.9.8–0.9.13 beta line (SkySight, SafeSky/EC, obstacle warnings, multi-sensor fallback). "Pro" is the same binary with paid features unlocked.
 - **Date(s) examined:** 2026-07-06
 - **Platform(s):** Android only (5.0+; legacy builds to 2.2). No iOS/desktop. Ships pre-installed on AIR³ hardware.
-- **License:** Proprietary / closed-source freeware. The **main app source is not published** — only the *competition/task interface* spec, the *XCTrackOpenData* NMEA spec, the public issue tracker (`gitlab.com/xcontest-public/xctrack-public`, issues only), and community translations are public. Pro is a paid unlock. This analysis is therefore based on the public format specs, real exported `.xcfg`/`.xctsk` files, the third-party layout-editor's embedded widget catalog, and the official + AIR³ documentation — **not** on primary source code.
+- **License:** Proprietary / closed-source freeware. The **main app source is not published** — only the _competition/task interface_ spec, the _XCTrackOpenData_ NMEA spec, the public issue tracker (`gitlab.com/xcontest-public/xctrack-public`, issues only), and community translations are public. Pro is a paid unlock. This analysis is therefore based on the public format specs, real exported `.xcfg`/`.xctsk` files, the third-party layout-editor's embedded widget catalog, and the official + AIR³ documentation — **not** on primary source code.
 - **Offline behavior:** Core flying works fully offline — vector/terrain maps, OpenAir airspace, task navigation, vario, wind computation, IGC logging, and FANET/FLARM traffic (via radio module) need no connectivity. Internet is required only for: XContest livetracking + messaging, SkySight overlays, rain radar, thermal-map (kk7) download, web airspace updates, one-click XContest upload/auto-claim, and the GPS week-rollover time fix.
 - **Configuration model:** JSON `.xcfg` config files (import/export, QR share, community library) holding per-orientation page lists, each with widgets carrying absolute grid geometry (`X1/Y1/X2/Y2` in 1/10000 units), UUID, theme and per-widget options. Layered on top: four "pilot profiles" (Kiss/Easy/Expert/Paramotor), global preferences (units, themes, key bindings, sensors), and per-widget theme overrides. Highly configurable, multi-page, portrait+landscape.
 
 ## Feature inventory
 
 **Status legend:**
+
 - `●` **full** — present and works as a first-class capability
 - `◐` **partial** — present but limited, awkward, or incomplete
 - `○` **absent** — not present
 - `?` **unknown** — could not be determined from available sources
 
 ### Map display & interaction
+
 - `●` Vector / topographic map rendering: Mapsforge-compatible road maps + custom XML render themes (Clearpilot, XContest style, etc.).
 - `●` Terrain shading / elevation: separate terrain/elevation data used for relief and AGL; missing tiles render in page background color.
 - `●` Map orientation (track / north / target up): North, Bearing (track), Heading, Navigation-target, Downwind, and Travel-direction up — all selectable.
@@ -25,12 +27,13 @@
 - `●` Manual pan & zoom: pinch-zoom, dedicated pan mode (swipe up on map), zoom +/- widgets and volume-key zoom.
 - `●` Snail trail / flight trail: own tracklog drawn with configurable custom color.
 - `●` Glide range ("reachability") line: "Mark glide distance" draws a solid circle (from real glide ratio) and a dotted/empty circle (from configured glide ratio + trim speed + computed wind); also rendered as glide lines in the side view.
-- `◐` Thermal markers on map: thermal *overlay* from thermal.kk7.ch (historical hotspots) and the thermal-assistant bubble view; no evidence of persistent own-climb thermal pins on the main map.
+- `◐` Thermal markers on map: thermal _overlay_ from thermal.kk7.ch (historical hotspots) and the thermal-assistant bubble view; no evidence of persistent own-climb thermal pins on the main map.
 - `◐` Markers / pilot events on map: other live/FANET/FLARM pilots shown with labels; no clear user-placed event marker on the map beyond creating waypoints.
 - `◐` Waypoint & landable symbology / labels: waypoints from files shown with names/labels (size configurable). No strong landable-vs-non-landable symbology (PG waypoint model).
 - `◐` "What's here" query: long-click in pan mode → navigate-to point, create waypoint, or select an airspace zone to read/change its status. Functions as a context query rather than a generic "what's here" readout.
 
 ### Waypoints & navigation
+
 - `●` Waypoint database: waypoint files in all major formats (CUP etc.), managed via a waypoint manager; can add waypoints in-flight.
 - `◐` Landable vs non-landable distinction: not a first-class concept in the PG waypoint model; not documented.
 - `?` Nearest (waypoint / landable / airfield): a dedicated "nearest landable/airfield" function is not documented; navigation is task/waypoint-driven.
@@ -39,6 +42,7 @@
 - `○` Alternates / safety-landing selection: not present.
 
 ### Cross-country tasks
+
 - `●` Racing tasks: SSS type RACE with time gates; full PG race support.
 - `◐` Assign Area Tasks (AAT): no gliding-style AAT. All turnpoints are cylinders and the route is optimized through them, which covers PG "area"-style needs, but there is no AAT min-time construct.
 - `●` Cross-country task types (FAI triangle, out-and-return, DMSt, etc.): live FAI-triangle assistant and XContest free/triangle optimization; classic multi-TP tasks.
@@ -46,10 +50,11 @@
 - `●` Task manager (build / edit): full turnpoint/edit screen with task board showing min distance and distance-through-centers.
 - `●` Task calculator (in-flight required speeds etc.): speed-to-start, time-to-start, %-of-speed-section, glide/altitude/distance to goal & ESS.
 - `●` In-flight task edit: turnpoints and waypoints editable during flight; can insert new organizer waypoints.
-- `◐` FAI badge / record support: FAI *assistant* for triangles and XContest record/claim workflow; not an IGC-approved recorder for CIVL record levels (see 3.16).
+- `◐` FAI badge / record support: FAI _assistant_ for triangles and XContest record/claim workflow; not an IGC-approved recorder for CIVL record levels (see 3.16).
 - `●` Task import / export / declaration to logger: `.xctsk` files, QR code, NFC, email, WhatsApp; QR-compressed variant. Declaration to an external approved logger is out of scope (phone is the recorder).
 
 ### Glide computer
+
 - `◐` Flight modes + auto display switching (cruise/circling/final): automatic actions switch pages (e.g. to thermal assistant on circling and back). No explicit cruise/final-glide "mode" state machine as in glider computers.
 - `○` MacCready setting (manual): not present (PG model; uses trim speed + glide ratio instead).
 - `○` Auto MacCready (modes): not present.
@@ -62,6 +67,7 @@
 - `●` Optimal cruise track: XContest live optimization computes the optimized point/route; "navigate to optimized point" is the default target.
 
 ### Atmosphere & instruments
+
 - `●` Variometer display: numeric vario, text vario, and a colored lift/sink bar column.
 - `●` Average climb: configurable averaging interval (often set to half/one turn) as an integrator vario.
 - `●` Audio variometer: acoustic vario with configurable/custom sounds, dynamic tones, and a weak-lift ("sniffer") double-beep; mute widget.
@@ -73,18 +79,21 @@
 - `◐` Convection forecast (cloud base etc.): via SkySight overlays (Cu cloudbase, thermal strength, etc.) when logged in; not an internal model.
 
 ### Weather
+
 - `◐` METAR / TAF: QNH can be pulled from METAR (or a weather station); no full METAR/TAF text display.
 - `●` Forecast overlays (SkySight / TopMeteo / RASP): SkySight integration — thermal strength, Cu cloudbase, XC speed, convergence, thermal wind layers with opacity and forecast-time (now → +4h) selection. (SkySight only, not TopMeteo/RASP.)
 - `◐` Wind aloft / weather-station data: SkySight forecast wind barbs on the map; QNH from a weather station. No numeric multi-level wind-aloft table.
 - `◐` In-flight weather updates: live rain-radar overlay and (with connectivity) SkySight; otherwise pre-downloaded.
 
 ### Airspace
+
 - `●` Airspace display (classes, filtering): OpenAir files plus automatic web airspace from airspace.xcontest.org (per-country), with temporary activations. Rendered on all map widgets.
 - `●` Proximity / incursion warnings + acknowledgement: airspace-proximity widget with distance to nearest zone; restricted (red) vs warning (orange) handling; per-zone status can be changed (auto/active) and acknowledged; configurable postponing of high-floor zones and split display; option to force GPS altitude for infringement checks.
 - `●` Airspace query / details: long-click a zone to review details / change status.
-- `◐` NOTAM handling: temporary airspace *activations* are supported via the web airspace source; no general NOTAM feed/parser.
+- `◐` NOTAM handling: temporary airspace _activations_ are supported via the web airspace source; no general NOTAM feed/parser.
 
 ### Traffic & collision awareness (FLARM)
+
 - `●` FLARM Traffic on map: parses FLARM `$PFLAA`; shows other aircraft from an internal (AIR³+) or external FANET/FLARM module.
 - `●` OGN Traffic on map: OGN and other live networks appear (natively via XContest livetracking; broader networks via XC Guide TCP feed).
 - `◐` FLARM and OGN Traffic deduplication: an "EC ID" pairing table merges FLARM/FANET/livetracking identities to a single username (auto or manual); effectively dedups per-pilot but is identity-centric rather than track-fusion.
@@ -96,6 +105,7 @@
 - `◐` Team flying / buddy codes: select pilots to display and message them via livetracking; buddy-style tracking of chosen FANET/FLARM IDs. No numeric FLARM "team code" scheme.
 
 ### Avionics & airframe
+
 - `●` Battery / voltage monitoring: device battery in the status line / battery widget.
 - `●` GPS status / connection / altitude source: GPS status widget/status-line; selectable internal/external GPS and baro source (with a source-switch widget).
 - `○` Engine / powered flight (ENL, MoP, engine hours): a Paramotor pilot profile exists, but no ENL/MoP/engine-hour instrumentation.
@@ -105,6 +115,7 @@
 - `●` Multiple external devices / slave mode: multi-sensor connectivity with automatic fallback; NMEA output can drive other devices; ActiveLook AR glasses supported as a display slave.
 
 ### Data fields (InfoBox system)
+
 - `●` Configurable data-field grid: free-placement widgets with per-widget geometry, border, background transparency, title, and theme.
 - `●` Multiple data-field pages / layouts: unlimited pages per orientation; separate portrait/landscape layouts.
 - `◐` Per-flight-mode auto layout: pages can be restricted to specific navigation types and auto-switched (e.g. thermal-assistant page on circling); not a full per-mode InfoBox auto-swap.
@@ -115,6 +126,7 @@
 - `●` Touch / gesture interaction with data fields: touchable action widgets (zoom, nav, camera, phone, brightness, vario mute), swipe menu, key bindings.
 
 ### Analysis & review
+
 - `◐` Barograph / altitude trace: in-flight altitude-statistics and vertical-graph widgets; no dedicated post-flight barograph screen (post-flight analysis lives on XContest).
 - `◐` Climb history / thermal analysis: thermal-strength statistics graph in-flight.
 - `◐` Wind analysis: wind strength/direction statistics graph.
@@ -124,15 +136,18 @@
 - `●` Airspace cross-section: side-view widget gives a 3-D/vertical understanding of airspace ahead, with glide lines.
 
 ### Contest / WeGlide optimization (live)
-- `●` Live WeGlide optimization in-flight: live *XContest* optimization in-flight (FAI sectors, free/triangle). XContest, not WeGlide specifically.
+
+- `●` Live WeGlide optimization in-flight: live _XContest_ optimization in-flight (FAI sectors, free/triangle). XContest, not WeGlide specifically.
 - `●` Flight trace maintenance: maintains the optimized trace/route continuously during flight.
 - `●` Live scoring / achieved distance: flown-XC-distance, unfinished-triangle, and average-XC-speed widgets.
 
 ### Live tracking
+
 - `●` Live tracking upload (OGN / SkyLines / cloud): native XContest livetracking (position every ~60 s, ~100 KB/h); OGN, Livetrack24, SkyLines, XC Globe and others via XC Guide; SafeSky electronic conspicuity.
 - `●` Retrieve / crew comms / position sharing: see other live pilots (with altitude/AGL/site/distance), select whom to display, and send/receive text messages; auto position-sharing enabled after detected take-off; optional auto flight-claim after landing.
 
 ### Instrument & device connectivity (I/O)
+
 - `●` Bluetooth: classic BT sensor support.
 - `●` BLE: BLE with service/characteristic discovery for many PG varios (XCTracer, BlueFly, Skydrop, LeBip, Vector, MipFly, etc.).
 - `◐` Serial: no native RS-232; reachable only via USB-serial adapters / device-specific links.
@@ -144,6 +159,7 @@
 - `●` Vendor protocols (LXNav / FLARM / …): FLARM + FANET + many PG-vario BLE profiles. PG-centric; LXNav/gliding avionics protocols not targeted.
 
 ### Data & file management
+
 - `●` Waypoint files (CUP / …): all major waypoint formats.
 - `◐` Airspace files (OpenAir / CUB / …): OpenAir files + web source. No CUB/other binary formats noted.
 - `●` Terrain / topology / map data: Mapsforge road maps + terrain/elevation; custom render themes.
@@ -152,12 +168,14 @@
 - `○` Handicap / polar lists: not present.
 
 ### Logging & recording
+
 - `●` IGC flight log recording: records IGC.
 - `◐` Approved / signed logger (badge / record): produces IGC accepted by XContest; using an external GPS/baro, or the GPS-week-rollover time fix, makes the log non-FAI-CIVL-compliant (not eligible for top-level comps/records). Not on the IGC-approved recorder list.
 - `●` Flight replay: tracklogs can be replayed (up to ~3× for the smart-position logic to behave).
 - `?` Pilot events / markers logging: dedicated IGC pilot-event marker not documented (camera/phone action widgets exist but aren't log markers).
 
 ### Configuration & UI
+
 - `●` Configuration profiles (per user / per aircraft / global): `.xcfg` config files (import/export, QR, community library) + four pilot profiles (Kiss/Easy/Expert/Paramotor).
 - `●` Screen layout / data-field geometry: absolute grid geometry per widget; multi-page, dual-orientation; visual community editor exists (3rd-party).
 - `●` Day / night / high-contrast modes: five themes including Black (power-saving), White (map readability) and eInk; per-widget theme override.

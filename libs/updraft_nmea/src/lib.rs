@@ -37,6 +37,7 @@ pub use error::ParseError;
 pub use fields::Fields;
 pub use framer::{Sentence, checksum};
 pub use sentences::gga::{FixQuality, Gga};
+pub use sentences::gsa::{FixType, Gsa, SelectionMode};
 pub use sentences::rmc::{Rmc, RmcStatus};
 
 /// The result of interpreting one framed, checksum-valid NMEA sentence.
@@ -52,6 +53,8 @@ pub enum ParseResult {
     Gga(Gga),
     /// An `RMC` recommended-minimum sentence.
     Rmc(Rmc),
+    /// A `GSA` DOP-and-active-satellites sentence.
+    Gsa(Gsa),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -78,6 +81,7 @@ fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
         return Ok(match formatter {
             "GGA" => ParseResult::Gga(sentences::gga::parse(sentence.fields())?),
             "RMC" => ParseResult::Rmc(sentences::rmc::parse(sentence.fields())?),
+            "GSA" => ParseResult::Gsa(sentences::gsa::parse(sentence.fields())?),
             _ => ParseResult::Unsupported,
         });
     }

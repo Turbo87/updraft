@@ -4,4 +4,5 @@
 //! [`Fields`]: crate::Fields
 
 pub(crate) mod gga;
+pub(crate) mod gsa;
 pub(crate) mod rmc;

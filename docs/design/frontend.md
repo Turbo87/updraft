@@ -17,7 +17,8 @@ differs per build (see *State Model* below).
 
 - **SvelteKit** with `adapter-static`
 - **Svelte 5** runes
-- **MapLibre GL JS** for the map
+- **MapLibre GL JS** for the map, integrated via **svelte-maplibre-gl**
+  (see [decision 0001](../decisions/0001-svelte-maplibre-gl.md))
 - **Paraglide JS** for i18n (see *i18n* below)
 - **UnoCSS** for icons, undecided for CSS
 
@@ -36,7 +37,10 @@ with generated types. Optimistic UI only where harmless (e.g. settings toggles).
 
 **Hot path exception:** ownship position updates bypass Svelte reactivity and
 write straight to the map at frame rate. Reactivity is for UI chrome, not the
-10 Hz path.
+10 Hz path. Concretely: the topic decoder holds the live source objects
+(`bind:source`) and calls `setData()` — or `updateData()` for keyed partial
+diffs of the traffic collection — directly, keeping the data itself out of
+`$state`.
 
 ## Map
 
@@ -52,6 +56,26 @@ One fullscreen MapLibre instance is the app's centerpiece. Layers, bottom-up:
 
 Bulk geodata (tiles, overlays) arrives as map sources by URL reference, never
 through the message channel (see [core.md](core.md)).
+
+The stack is expressed as sibling svelte-maplibre-gl source/layer components
+in markup order, with runes driving `filter` and `paint` — altitude-band
+airspace filtering and traffic threat colouring are `$derived` expressions,
+applied by the wrapper as key-level `setFilter`/`setPaintProperty` diffs.
+Day/night basemap switching uses the wrapper's `setStyle` handling, which
+re-merges our overlay layers into the new base style. Integration
+ground rules:
+
+- `autoloadGlobalCss={false}` on `<MapLibre>`, with the MapLibre CSS
+  imported locally — the default fetches CSS from a CDN at runtime, which
+  violates offline-first.
+- The `pmtiles://` protocol comes from `@svelte-maplibre-gl/pmtiles` (or a
+  manual `addProtocol` at module scope).
+- maplibre-gl stays pinned to 5.x until v6 is stable and the wrapper
+  declares stable support; a CI canary tracks upstream pre-releases (see
+  [testing.md](testing.md)).
+- Camera movements we trigger programmatically use `jumpTo`-style bindings
+  (animation-free) so `testMode` stays deterministic; cosmetic easing is
+  opt-in and disabled under `testMode`.
 
 ## Interaction Model
 

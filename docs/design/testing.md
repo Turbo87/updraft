@@ -34,11 +34,40 @@ the field can be turned into a replayable test case.
    Since the axum-served system and the Tauri app share the frontend, the
    core, and the message protocol, these tests cover the vast majority of
    shipping behavior without requiring native automation on five platforms.
-   **WebGL in CI:** headless MapLibre requires software GL (SwiftShader in
-   Chromium / llvmpipe), validated when the e2e harness is established. The
-   frontend exposes a `testMode` flag that disables map easing/animations and
-   other nondeterminism sources, and tests await explicit "map idle" / "data
-   version N rendered" signals rather than timeouts.
+   **WebGL in CI:** stock headless Playwright Chromium renders MapLibre via
+   its built-in software GL with zero special configuration — no flags, no
+   xvfb (validated upstream by svelte-maplibre-gl's own e2e suite, which
+   runs `queryRenderedFeatures` assertions on plain `ubuntu-latest`). We
+   still confirm this in our own harness, but no dedicated GL setup is
+   planned. The frontend exposes a `testMode` flag that disables map
+   easing/animations and other nondeterminism sources, and tests await
+   explicit "map idle" / "data version N rendered" signals rather than
+   timeouts.
+
+   Conventions for the map e2e layer (patterns adopted from
+   svelte-maplibre-gl's suite, see
+   [research/maplibre-svelte-integration.md](../research/maplibre-svelte-integration.md)):
+
+   - **Assert on map state, not pixels.** `map.getStyle().layers` ordering,
+     `getLayer()` properties, and `queryRenderedFeatures()` counts express
+     "the airspace layer shows features under this filter" robustly across
+     GL rasterizers; markers/popups/controls are DOM and use ordinary
+     locators. Screenshot comparison stays optional polish, not the
+     foundation.
+   - **`testMode` exposes test hooks**: `window.__map` plus
+     scenario-specific setters, so specs drive state via `page.evaluate()`
+     and synchronize with `page.waitForFunction()` over map-derived
+     predicates — never `waitForTimeout()` sleeps.
+   - **Fixtures are network-free.** Test styles, tiles (small committed
+     PMTiles extracts), and datasets are served by the simulation-profile
+     `updraft-server`; CI never fetches from the internet.
+   - **Every spec asserts an empty `pageerror` list**, and a smoke suite
+     visits every route/dialog with only that invariant — a cheap catch-all
+     for uncaught exceptions.
+   - **A non-blocking CI canary** (weekly cron + manual dispatch,
+     `continue-on-error`) runs the e2e suite with maplibre-gl overridden to
+     `next`, so upstream breakage — MapLibre v6 is imminent — surfaces
+     within a week without blocking PRs on pre-release churn.
 5. **Thin Tauri smoke tests.** The shell is kept so thin that a small
    manual/emulator checklist (plugin permissions, foreground-service
    lifecycle) suffices. Everything above it is already covered.

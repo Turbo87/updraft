@@ -113,4 +113,7 @@ forking. Own crates live in `libs/updraft_<name>` directories.
 
 Each document carries its own open questions inline. Cross-cutting phasing
 lives in [roadmap.md](../roadmap.md), terminology in
-[glossary.md](../glossary.md).
+[glossary.md](../glossary.md). Recorded technology decisions (with the
+alternatives that were discarded) live in
+[../decisions/](../decisions/README.md), supporting research in
+[../research/](../research/).

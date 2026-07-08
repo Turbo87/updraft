@@ -68,10 +68,15 @@
       Rust types, committed, with a CI drift check), state-stream client, Svelte
       store bridging core state into components.
       *(needs: frontend-scaffold, server-protocol)*
-- [ ] **frontend-map** — maplibre-gl map page with basemap style and an
-      own-position symbol driven by core state; manual pan/zoom. Bulk geodata
-      (tiles, overlays) is served as map sources by URL reference, never
-      pushed through the message channel. *(needs: frontend-protocol)*
+- [ ] **frontend-map** — map page built on svelte-maplibre-gl
+      ([decision 0001](decisions/0001-svelte-maplibre-gl.md)): basemap style
+      and an own-position symbol driven by core state; manual pan/zoom.
+      Wires the integration ground rules: `autoloadGlobalCss={false}` with
+      local MapLibre CSS, `pmtiles://` protocol registration, maplibre-gl
+      pinned to 5.x, ownship updates via `bind:source` bypassing `$state`.
+      Bulk geodata (tiles, overlays) is served as map sources by URL
+      reference, never pushed through the message channel.
+      *(needs: frontend-protocol)*
 - [ ] **tauri-scaffold** — Tauri shell (desktop first) embedding the core
       in-process, IPC bridge exposing the same protocol as the server.
       *(needs: frontend-protocol)*
@@ -81,10 +86,18 @@
       *(needs: server-protocol, tauri-scaffold)*
 - [ ] **e2e-scaffold** — Playwright suite booting server + frontend,
       scripting position commands, asserting the map shows them. Establishes
-      the CI rendering harness: software GL (SwiftShader/llvmpipe) for
-      headless MapLibre and a `testMode` flag disabling map animation so
-      tests await explicit "map idle" / "data version rendered" signals. This
-      is the walking skeleton milestone. *(needs: frontend-map)*
+      the CI rendering harness: stock headless Chromium (its built-in
+      software GL renders MapLibre with no special setup) and a `testMode`
+      flag that disables map animation and exposes `window.__map` test
+      hooks, so tests assert on map state (`getStyle`, `getLayer`,
+      `queryRenderedFeatures`) and await explicit "map idle" / "data version
+      rendered" signals via `waitForFunction` — no screenshots, no sleeps,
+      no network (fixtures served by the simulation profile). This is the
+      walking skeleton milestone. *(needs: frontend-map)*
+- [ ] **maplibre-canary** — non-blocking CI leg (weekly cron + manual
+      dispatch, `continue-on-error`) running check + e2e with maplibre-gl
+      overridden to the `next` dist-tag, for early warning on MapLibre v6.
+      *(needs: e2e-scaffold)*
 
 ## Sensor input & replay
 

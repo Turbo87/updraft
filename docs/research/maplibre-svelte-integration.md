@@ -1,6 +1,9 @@
 # Research: MapLibre GL JS Integration in a Svelte 5 Application
 
 > **Status:** research note supporting the `frontend-map` roadmap milestone.
+> Outcome recorded in
+> [decision 0001](../decisions/0001-svelte-maplibre-gl.md) (svelte-maplibre-gl
+> accepted).
 > Investigated 2026-07-07. Versions cited are current as of that date:
 > maplibre-gl **5.24.0** (v6 in pre-release, `6.0.0-20`), Svelte **5.56**,
 > svelte-maplibre-gl **2.1.0**, svelte-maplibre **1.3.0**.

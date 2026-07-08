@@ -26,7 +26,7 @@
 - [ ] **server-auth** — session token required on all routes (commands, state stream, bulk data), `Host` allowlist, `Origin` validation on stream upgrades, strict CORS, password gate for non-loopback binding. _(needs: server-protocol)_
 - [x] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the axum server. _(needs: server-scaffold)_
 - [ ] **frontend-protocol** — TypeScript protocol types (generated from the Rust types, committed, with a CI drift check), state-stream client, Svelte store bridging core state into components. _(needs: frontend-scaffold, server-protocol)_
-- [ ] **frontend-map** — maplibre-gl map page with interim online basemap (OpenFreeMap, replaced by offline packs in basemap-packs), own-position symbol at a fixed placeholder position, manual pan/zoom. _(needs: frontend-scaffold)_
+- [x] **frontend-map** — maplibre-gl map page with interim online basemap (OpenFreeMap, replaced by offline packs in basemap-packs), own-position symbol at a fixed placeholder position, manual pan/zoom. _(needs: frontend-scaffold)_
 - [ ] **map-position** — own-position symbol driven by core state. Bulk geodata (tiles, overlays) is served as map sources by URL reference, never pushed through the message channel. _(needs: frontend-map, frontend-protocol)_
 - [ ] **tauri-scaffold** — Tauri shell (desktop first) embedding the core in-process, IPC bridge exposing the same protocol as the server. _(needs: frontend-protocol)_
 - [ ] **bulk-data** — bulk geodata serving: native HTTP routes in the server and `updraft://` URI scheme in the Tauri shell, streaming tiles/GeoJSON as version-counted resources referenced by URL. _(needs: server-protocol, tauri-scaffold)_

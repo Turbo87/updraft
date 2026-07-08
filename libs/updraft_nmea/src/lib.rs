@@ -38,6 +38,7 @@ pub use error::ParseError;
 pub use fields::Fields;
 pub use flarm::AlarmLevel;
 pub use framer::{Sentence, checksum};
+pub use sentences::cai_w::CaiW;
 pub use sentences::gga::{FixQuality, Gga};
 pub use sentences::gsa::{FixType, Gsa, SelectionMode};
 pub use sentences::pcaib::Pcaib;
@@ -72,6 +73,8 @@ pub enum ParseResult {
     Pcaib(Pcaib),
     /// A Cambridge `$PCAID` instrument-data sentence.
     Pcaid(Pcaid),
+    /// A Cambridge CAI302 `!w` air-data record.
+    CaiW(CaiW),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -109,6 +112,7 @@ fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
         "PFLAA" => ParseResult::Pflaa(sentences::pflaa::parse(sentence.fields())?),
         "PCAIB" => ParseResult::Pcaib(sentences::pcaib::parse(sentence.fields())?),
         "PCAID" => ParseResult::Pcaid(sentences::pcaid::parse(sentence.fields())?),
+        "w" => ParseResult::CaiW(sentences::cai_w::parse(sentence.fields())?),
         _ => ParseResult::Unsupported,
     })
 }

@@ -45,6 +45,7 @@ Two pure pieces make up the NMEA library (`updraft_nmea`):
   - standard GNSS `GGA` / `RMC` / `GSA` (routed by the three-letter sentence formatter, accepting any GNSS talker ID; the nonstandard `$BD` BeiDou talker is treated as an alias)
   - FLARM `PFLAU` / `PFLAA`
   - Garmin `$PGRMZ`
+  - Cambridge `$PCAID` / `$PCAIB` and the `!w` CAI302 air-data record
   - LXNav `$LXWP*` and `$PLXV*` (settings read/write, declarations, log transfer)
   - an `Unsupported` variant for a well-formed, checksum-valid sentence the crate does not model
 

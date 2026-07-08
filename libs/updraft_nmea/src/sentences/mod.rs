@@ -3,6 +3,7 @@
 //!
 //! [`Fields`]: crate::Fields
 
+pub(crate) mod cai_w;
 pub(crate) mod gga;
 pub(crate) mod gsa;
 pub(crate) mod pcaib;

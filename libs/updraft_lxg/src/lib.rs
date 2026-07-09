@@ -7,22 +7,27 @@
 //! The crate has two layers:
 //!
 //! * [`Glider`] — a high-level, named view (name, polar, masses, arms,
-//!   speeds, flaps, ballast). This is what you usually want when reading a
-//!   preset. It is a lossy projection: unknown fields and exact on-wire
-//!   types are dropped.
+//!   speeds, flaps, ballast) that both reads
+//!   ([`from_bytes`](Glider::from_bytes)) and writes
+//!   ([`to_bytes`](Glider::to_bytes)). This is what you usually want. It is
+//!   a lossy projection: reading drops unknown fields and exact on-wire
+//!   types, and writing emits a canonical, normalized file.
 //! * [`LxgFile`] / [`Section`] / [`Value`] — the faithful low-level
 //!   representation, keyed by the device's raw config-register ids. Decode
-//!   then encode reproduces a device-written file byte-for-byte, so this is
-//!   the layer to use for editing and writing.
+//!   then encode reproduces a device-written file byte-for-byte, so reach
+//!   for this layer when you must preserve every field of a specific file.
 //!
 //! ```no_run
 //! use updraft_lxg::Glider;
 //!
-//! let glider = Glider::from_bytes(&std::fs::read("glider.lxg")?)?;
+//! let mut glider = Glider::from_bytes(&std::fs::read("glider.lxg")?)?;
 //! println!("{:?}: a={:?}", glider.name, glider.polar.a);
 //! for flap in &glider.flaps {
 //!     println!("  flap {} up to {:?} m/s", flap.label, flap.max_speed);
 //! }
+//!
+//! glider.masses.empty = Some(352.0);
+//! std::fs::write("glider.lxg", glider.to_bytes())?;
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!

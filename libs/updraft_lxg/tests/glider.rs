@@ -1,6 +1,6 @@
-//! High-level [`Glider`] extraction from a real preset.
+//! High-level [`Glider`] extraction from, and encoding to, a real preset.
 
-use updraft_lxg::Glider;
+use updraft_lxg::{Arms, Ballast, Flap, Glider, Masses, Polar, Speeds};
 
 const DG800B: &[u8] = include_bytes!("fixtures/dg-800b.lxg");
 
@@ -60,6 +60,77 @@ fn flaps_pair_labels_with_speeds() {
     assert_eq!(labels, ["+8", "+5", "0", "-5", "-10", "-14"]);
     // First flap position tops out at 76 km/h -> ~21.1 m/s.
     close(g.flaps[0].max_speed, 76.0 / 3.6);
+}
+
+#[test]
+fn writing_a_read_glider_round_trips() {
+    // Read a real preset into the high-level view, write it back out, and
+    // read it again: the high-level view survives a write/read cycle.
+    let original = Glider::from_bytes(DG800B).unwrap();
+    let reparsed = Glider::from_bytes(&original.to_bytes()).unwrap();
+    assert_eq!(original, reparsed);
+}
+
+#[test]
+fn building_a_glider_from_scratch_round_trips() {
+    let glider = Glider {
+        name: Some("Test Ship".to_owned()),
+        description: None,
+        competition_class: Some(2),
+        polar: Polar {
+            a: Some(1.0),
+            b: Some(-2.0),
+            c: Some(1.5),
+            wing_area_m2: Some(10.5),
+            reference_load_kg_m2: Some(35.0),
+        },
+        masses: Masses {
+            empty: Some(250.0),
+            reference: Some(300.0),
+            max: Some(525.0),
+            max_water_main: Some(150.0),
+            ..Masses::default()
+        },
+        arms: Arms {
+            empty: Some(600.0),
+            pilot: Some(-500.0),
+            ..Arms::default()
+        },
+        speeds: Speeds {
+            stall: Some(20.0),
+            never_exceed: Some(75.0),
+            ..Speeds::default()
+        },
+        flaps: vec![
+            Flap {
+                label: "+8".to_owned(),
+                max_speed: Some(25.0),
+            },
+            Flap {
+                label: "0".to_owned(),
+                max_speed: Some(40.0),
+            },
+        ],
+        ballast: Ballast {
+            wing_litres: vec![100.0, 30.0],
+            tail_dump_rate: Some(0.5),
+            ..Ballast::default()
+        },
+    };
+    let reparsed = Glider::from_bytes(&glider.to_bytes()).unwrap();
+    assert_eq!(glider, reparsed);
+}
+
+#[test]
+fn edited_glider_reflects_the_change() {
+    let mut glider = Glider::from_bytes(DG800B).unwrap();
+    glider.masses.empty = Some(360.0);
+    glider.polar.a = Some(1.10);
+
+    let reparsed = Glider::from_bytes(&glider.to_bytes()).unwrap();
+    assert_eq!(reparsed.masses.empty, Some(360.0));
+    assert!((reparsed.polar.a.unwrap() - 1.10).abs() < 1e-6);
+    assert_eq!(reparsed.name.as_deref(), Some("DG-800B"));
 }
 
 #[test]

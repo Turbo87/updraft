@@ -29,7 +29,7 @@ In a later phase we will support in-app downloads from e.g. openAIP with update 
 ├── flights/     # IGC logs
 ├── state/       # in-flight resume snapshots (active task, logging status)
 ├── captures/    # raw NMEA captures + replay input recordings (opt-in)
-└── config/      # settings, device profiles, UI state
+└── config/      # settings, device profiles, client UI preferences
 ```
 
 Note that CUP files contain waypoints and (optionally) tasks too. These files should be supported in `waypoints/` and `tasks/` directories.
@@ -40,11 +40,13 @@ Aircraft presets (glide polars plus mass, wingspan, and related data) ship built
 
 A mid-flight crash or OS process kill must not lose the flight:
 
-- IGC logs are written incrementally and flushed per fix batch (append + flush).
-- The core snapshots in-flight state periodically. Snapshot writes are atomic (write-temp + rename).
-- On startup the app detects an interrupted flight and resumes logging automatically.
+- The flight module produces ordered IGC bytes and tracks their sequence. A native `FlightLogWriter` appends them without blocking the application loop.
+- Resumable flight state is a versioned snapshot with a checksum, active dataset identities, and the last durable flight-log sequence.
+- Snapshot writes use atomic replacement. The required durability points are explicit rather than implied by every ordinary flush.
+- On startup the runtime loads the latest valid snapshot, reconciles it with the existing IGC file, and resumes logging before accepting live inputs.
 
 ## Open Questions
 
 - **Exact terrain tile format:** decision criteria: one file per region, decodable in Rust without GDAL, ~30–90 m resolution, MapLibre-compatible.
 - **PMTiles vs MBTiles** for packs: depends on the tiling toolchain and the Rust crate ecosystem.
+- **Durability policy:** which transitions require an `fsync`-equivalent operation on Android, iOS, and desktop filesystems.

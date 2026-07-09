@@ -1,109 +1,155 @@
 # The Rust Core
 
-The core is a plain Rust library (no UI, no networking assumptions) that owns all application state and computation. It is a single-owner state machine. This document covers the core itself and the message protocol through which everything else interacts with it.
+Updraft is a native Rust modular monolith. One `App` owns the authoritative flight and domain state, while coarse domain modules own their own rules and storage. Tauri embeds the app directly in-process, and the axum server hosts the same Rust interface. The core has no UI, transport, or networking assumptions.
 
-## State
+The architecture is deliberately ordinary: one process, one owner, direct typed method calls, and explicit native side effects. It does not use internal services, actors, an event bus, event sourcing, or a plugin framework.
 
-One state struct owns everything the application knows: current fix, sensor values (vario, airspeed, altitude sources), the traffic table, loaded airspace/waypoint/terrain datasets, the active task, computed values (wind, MacCready, final glide), settings, and device connection states. It is mutated **only** by the core's own update loop, with no shared mutable state across threads.
+## State Ownership
 
-## Inputs
+Rust owns state that must agree across every client:
 
-Everything enters as messages on a single channel:
+- selected sensor values and flight state,
+- aircraft, task, and navigation state,
+- traffic and warnings,
+- device connections and source selection,
+- flight logging state,
+- domain settings,
+- active dataset identities and indexes.
 
-- parsed device sentences (from connection threads, see [devices.md](devices.md)),
-- user commands (from the transport layer),
-- timer ticks,
-- completed async computation results (see _Computation Pipeline_ below).
+Clients own presentation state such as the map viewport, open dialogs, selected panels, animations, and per-client layout. A secondary client observes the same authoritative flight state without sharing its presentation state with the primary.
 
-Device connections run on their own threads/tasks and are dumb pipes: bytes in, parsed messages out, onto the channel. The core is therefore a **pure function of its input sequence**: record the input stream and any bug is replayable deterministically. This is the foundation of the testing story (see [testing.md](testing.md)).
+Large imported datasets are managed by the data module. `App` holds identifiers and loaded indexes rather than embedding source files or map resources in the transactional state.
 
-The channel is not a plain FIFO. User commands are prioritized ahead of sensor traffic, so an acknowledgement never queues behind a burst of fixes, and producers coalesce messages that supersede each other (a newer update for the same traffic target replaces a queued older one). Recording for replay captures messages as the core dequeues them, so the recorded sequence is exactly what the core saw.
+## Module Shape
 
-## Time Is an Input
+The initial modules are intentionally coarse and may be adjusted as features reveal better boundaries:
 
-The core never reads the wall clock directly. Time is injected via a `Clock` trait and advances via messages. Replay at 100x real time is a unit-test primitive, not a special mode. Tests should be able to run a "four-hour flight" in seconds.
+```text
+core/src/
+├── app.rs
+├── flight/
+├── navigation/
+├── traffic/
+├── devices/
+├── data/
+└── protocol/
+```
 
-**Clock vs. GPS time.** The injected clock drives scheduling only (timers, debouncing, warning lookahead). It is never conflated with fix timestamps: IGC records and all flight data use GPS time carried in the fixes themselves. Replay therefore reproduces original GPS timestamps regardless of playback speed.
+- **Flight** owns selected sensor values, flight-mode detection, aircraft state, warnings, and logging decisions.
+- **Navigation** owns waypoints, tasks, final glide, reachability, and airspace evaluation.
+- **Traffic** owns FLARM and OGN targets, source merging, aging, and relayed collision alarms.
+- **Devices** owns connection state, capability detection, source priority, normalization, and outbound device commands.
+- **Data** owns imported datasets, terrain access, dataset storage, and versioned map resources.
 
-## Computation Pipeline
+`App` coordinates operations that cross these boundaries with direct method calls. There is no internal message bus. Shared crates are limited to stable primitives and reusable parsers such as units, coordinates, polars, NMEA, CUP, and OpenAir. Domain modules remain in the core crate until an independently reusable library or strict dependency boundary justifies another crate.
 
-After each batch of input messages the core runs a staged pipeline whose stages update at different cadences:
+## Application Interface
 
-- **Every fix**: ground speed, track, GPS/pressure altitude fusion, AGL lookup
-- **Every vario update**: speed-to-fly
-- **~1 Hz** (rate-limited, always against the newest fix): airspace-proximity lookahead, nearest-waypoint ranking, final glide
-- **Debounced / async**: glide-reach polygon, task optimization, wind-estimation refinement
+The application has a small Rust interface:
 
-Expensive, CPU-bound stages run on a rayon worker pool and must never block the state machine. I/O-bound work from the outside world, such as pulling OGN traffic, is handled by async tokio tasks in the adapter layer. A worker posts its result back **as another input message**. Staleness is judged per worker kind, not by a global input counter: a slow worker always finishes several inputs behind the current state, so its result is discarded only when an input that actually invalidates it arrived in the meantime (for the reach polygon: position moved beyond a threshold, or the MacCready/wind/task inputs changed).
+```rust
+impl App {
+    pub fn handle(&mut self, input: Input) -> Update;
+    pub fn query(&self, query: Query) -> QueryResult;
+    pub fn snapshot(&self) -> Snapshot;
+}
 
-**Warnings are synchronous.** Warning generation (computed airspace proximity, relayed FLARM collision alarms, see [traffic.md](traffic.md)) runs inside the update loop, never on the async worker path.
+pub struct Update {
+    pub changes: Vec<Change>,
+    pub effects: Vec<Effect>,
+}
+```
 
-## Determinism & Replay
+Commands, queries, changes, and effects are grouped by domain rather than collected into one flat list. The grouping keeps the public surface discoverable while preserving one entry point for hosts.
 
-Recording and replaying an input sequence reproduces the exact same state evolution, which is the foundation for simulation mode, IGC replay, demo mode, and regression testing alike. Worker results posted back as inputs make this subtle, and the rule is: **record only what is genuinely nondeterministic.**
+## Inputs and Runtime
 
-- **External I/O results** (OGN responses, weather fetches) are recorded verbatim. They come from outside and are inputs like any other.
-- **Pure CPU worker results** (reach polygon, task optimization, wind refinement) are recorded only as a completion marker: which worker finished, and where in the input sequence its result landed. Replay recomputes the payload and injects it at the recorded position, so the state evolution keeps its original ordering while the log stays proportional to the flight instead of being dominated by derived geometry. It also means every replayed test exercises the worker code, not just an opt-in verification mode.
+One `CoreRuntime` owns `App` and handles inputs sequentially in FIFO order. Inputs are:
 
-This requires the workers themselves to be deterministic:
+- user commands,
+- normalized sensor observations,
+- monotonic time advancement,
+- results of completion-sensitive native effects.
 
-- **Parallel map, sequential fold.** rayon's `collect` preserves index order, so the parallel phase is fine, but float accumulation must happen sequentially in a fixed order. Never `par_iter().sum()` or `.reduce()` over floats in a worker whose output must replay identically.
-- **No iteration-order-dependent output.** Anything that influences a result uses ordered maps or a fixed hasher. `HashMap` iteration order varies between process runs and would silently break replay.
+Device parsers and platform sensors normalize their output before it reaches `App`. An observation carries its source, monotonic observation time, domain value, quality, and GPS timestamp where applicable. Vendor wire messages remain in the device layer and optional raw captures.
 
-**Timers are core state.** Debounce and scheduling timers live in the core as a priority queue of (deadline, timer id), armed by the update loop and drained deterministically as the injected clock advances, with a fixed tie-break against same-tick inputs. Adapters only ever deliver clock advancement, in production from a real ticking source and in replay from the recorded timeline. There is no second scheduler implementation that replay has to keep in lockstep.
+There is no general priority or coalescing scheduler. Commands, GPS fixes used for logging, warning transitions, and device-state changes are lossless. A specific high-rate replaceable input may gain a bounded policy only after measurement demonstrates a need for one.
 
-**Resume is a new baseline.** After a mid-flight restart the core seeds its state from a snapshot (see _Snapshots & Resume_ below), so replay tooling supports "seed from snapshot X, then replay the log from position N" as a first-class mode alongside replay-from-empty. When input recording is enabled it is written incrementally like the IGC log, so a crash leaves behind exactly the artifact needed to reproduce it.
+## Time
 
-## Outputs
+Time advances through inputs containing a monotonic timestamp. `App` never reads a wall clock or a `Clock` trait. Production adapters create time inputs from the system clock, while tests and replay provide them directly.
 
-After each update cycle, the core publishes state changes to named topics. Subscribers receive only the topics they subscribed to, so UIs can render reactively instead of polling and IPC traffic stays minimal by construction. **Every topic delivers its current state immediately on subscribe**, so a late or reconnecting subscriber never needs history: reconnect is just resubscribe. There is no replay buffer and no generic diff/patch format (JSON Patch and friends buy nothing at these payload sizes).
+GPS time remains part of position observations. It is used for flight records and is never conflated with monotonic scheduling time.
 
-Topics come in four kinds:
+## Changes and Native Effects
 
-- **Last-value** (`position`, `wind`, `mac-cready`, `final-glide`, `vario`): each message is the complete current value and replaces the previous one.
-- **Keyed collection** (`traffic`, `devices`): upserts and removals keyed by a stable ID (FLARM/OGN target, device), preceded by a full snapshot on subscribe.
-- **Events plus active set** (`airspace-warnings`): edge-triggered events (raised, escalated, cleared, acknowledged), because audio and banners fire on transitions, plus the currently active set on subscribe.
-- **Reference** (`reach`, `track`): a version counter and a URL, with the payload fetched through the bulk geodata path (see below).
+Handling an input returns client-visible changes and native effects. Changes describe observable state and are safe to replace with a fresh snapshot. Effects request interaction with the outside world, for example:
 
-Further topics (`task`, `logger`, `settings`, …) follow the same taxonomy. The native audio adapter is an in-process subscriber to the warning topics, wired up when the core is embedded, so warnings sound regardless of transport or webview state (see [tauri.md](tauri.md)).
+```rust
+Effect::PlayWarning(...)
+Effect::WriteFlightLog(...)
+Effect::SaveSnapshot(...)
+Effect::FetchOgnTraffic(...)
+Effect::SendToDevice(...)
+```
 
-## The Message Protocol
+The runtime executes effects with concrete Rust adapters. This is a small `match`, not a generic effect framework. Completion-sensitive operations return a typed result as another input. Fire-and-observe operations such as audio do not travel through UI subscriptions.
 
-The core is interacted with through a small, well-defined surface:
+The flight module owns when logging starts, which IGC records are produced, their ordering, and resume state. An ordered native `FlightLogWriter` owns file creation, append, flush, durability, and filesystem errors. It remains independent of the webview and transport.
 
-- **Requests** are a single request/response mechanism. Every request returns a result or a typed error. _Commands_ are the mutating requests (`SetMacCready`, `AdvanceTaskTurnpoint`, `AcknowledgeAirspaceWarning`, …), _queries_ the read-only ones (either full snapshots or scoped selections, e.g. `query_at(lon, lat, radius)` for the map's "What's here?" interaction). A command is not fire-and-forget: loading a file can fail, a setting can be out of range, and the caller needs to know.
-- **Subscriptions** deliver per-topic state-change notifications (see _Outputs_ above).
+## Computation
 
-Commands and queries share one mechanism, one error type, and one correlation scheme, but every request type is tagged as mutating or read-only, because three things depend on the distinction:
+Cheap derived values and warnings are computed synchronously after relevant inputs. This keeps ordering and warning latency visible in the normal control flow. The runtime measures handler duration and queue depth.
 
-1. **Replay:** commands are inputs and enter the recorded input log. Queries never mutate and are never recorded.
-2. **Permissions:** client roles are checked per mutating request (see [multi-client.md](multi-client.md)).
-3. **Transport mapping:** queries map to GET and are freely retryable. Commands map to POST and carry a client-generated request ID, so a retried command is applied at most once.
+Background work is introduced per calculation only when profiling shows that synchronous execution threatens the input loop. A background job captures its domain inputs and a generation ID. Its result is accepted only if that generation remains current. There is no general staged pipeline or worker protocol.
 
-Errors are one shared type with stable, machine-readable codes so the frontend can localize and match on them, generated to TypeScript like every other protocol type.
+## Determinism and Replay
 
-The protocol is **transport-agnostic**: the same messages flow over Tauri IPC, WebSocket/SSE, or a direct function call in a unit test. Feature code never needs to know which transport is in use. On stream transports, responses carry the request ID they answer, so completion order does not matter (Tauri's `invoke` correlates natively).
+Diagnostic recording captures normalized inputs after transport parsing and results returned by completion-sensitive effects. Replay disables live adapters and feeds the recorded sequence through `App::handle()` with recorded monotonic and GPS times.
 
-### Encoding
+If a calculation later moves to a background worker, its returned payload is recorded. Replaying recorded results is simpler and more portable than requiring byte-identical floating-point recomputation across platforms.
 
-The encoding is chosen per interaction by shape and frequency, while the contract stays transport-agnostic.
+Replay is separate from persistence. Production state is restored from snapshots and flight logs, not by replaying every command ever issued.
 
-**Requests** are low-frequency and latency-insensitive (load a file, change a setting, connect a device, "what's at this point?"). These use plain JSON, defined as Rust types with `serde`. The matching TypeScript types are **generated via `ts-rs`**, so the two sides cannot drift. Generated types are committed, and CI fails if a regeneration would change them (golden-file check).
+## Queries and State Streams
 
-**Subscription streams** are per-topic. Plain JSON is the starting point for every topic. The topic abstraction allows choosing a different encoding per topic later without touching consumers, for example a compact binary frame for a high-rate stream such as the live vario signal.
+Queries read authoritative state without changing it. Hosts route queries through the owning runtime so no concurrent mutable access is exposed.
 
-## The Bulk Geodata Path
+A client state stream begins with a `Snapshot` and then delivers FIFO-ordered batches of `Change` values. Subscription creation and snapshot capture happen together inside the runtime loop, so no update can fall between them. A reconnecting client starts again with a fresh snapshot. There is no replay buffer or global application revision.
 
-**Bulk geodata never travels through the message channel.** Pushing map tiles, airspace geometry, the glide-reach polygon, or the flight track through IPC and into MapLibre is the biggest serialization trap, so the core exposes that data as ordinary HTTP-style resources in _both_ hosts: native routes in the axum server, and a custom URI scheme (`updraft://tiles/…`, `updraft://geojson/…`) in the Tauri shell that streams raw bytes without JSON encoding. MapLibre consumes these as normal sources (vector/PMTiles basemap and terrain, GeoJSON overlays).
+Bulk resources carry their own revisions because clients and hosts need them for cache invalidation.
 
-For this geodata the frontend therefore only ever handles **references**: source URLs plus version counters. When the reach polygon is recomputed, the core bumps a version on the `reach` topic and the frontend calls `source.setData(url)`. No geometry crosses the message channel.
+## Protocol and Hosts
 
-## Snapshots & Resume
+The Rust interface is transport-agnostic. Tauri invokes it directly in-process. The axum host maps HTTP requests and an ordered state stream onto the same commands, queries, snapshots, and changes. Tauri does not start a hidden HTTP server.
 
-The core persists flight-critical state continuously: periodic snapshots of in-flight state (active task, logging status, device configuration) with atomic writes, alongside incremental IGC logging. On startup the core detects an interrupted flight and resumes logging automatically. Storage details live in [data.md](data.md).
+Commands that may be retried carry transport-level client and request IDs. Deduplication belongs to the host because its lifetime and persistence policy depend on the transport. Authentication, remote-client roles, CORS, and origin validation also remain host responsibilities.
 
-Snapshot and IGC writes never run inline on the update loop: a dedicated I/O thread performs them and posts completion or failure back as an input message, so a slow flash write can never stall the warning pipeline.
+Rust protocol types use `serde`, with matching TypeScript types generated through `ts-rs`. Generated files are committed, and CI fails if regeneration changes them unexpectedly. JSON is the starting encoding. A high-rate stream may gain a dedicated binary representation only after measurement justifies it.
+
+Long-running operations return an operation ID and publish progress or completion changes instead of holding a transport request open indefinitely.
+
+## Bulk Geodata
+
+Bulk geodata never travels through JSON messages. The data module exposes opaque resource references:
+
+```rust
+pub struct ResourceRef {
+    pub id: ResourceId,
+    pub revision: ResourceRevision,
+    pub media_type: MediaType,
+}
+```
+
+The axum host resolves a resource ID to an authenticated HTTP route. The Tauri host resolves it to an `updraft://` URI. A resource revision is immutable and is published only after its bytes are available. MapLibre consumes the resolved URL as a normal vector-tile, raster-tile, or GeoJSON source.
+
+## Snapshots and Resume
+
+Configuration and resumable flight state are ordinary versioned documents, not an event store. A flight snapshot contains only durable in-flight state plus the active dataset identities and the last durable flight-log sequence. The runtime writes snapshots atomically through a native effect.
+
+On startup, the runtime loads the latest valid snapshot and reconciles it with the existing IGC file before accepting live inputs. Imported datasets remain separate files and are reopened by identifier.
 
 ## Open Questions
 
-- **Track resource updates:** how the ever-growing own-track resource is served without refetching the full history on every change (bounded tail refetch, appendable format, …).
+- **Track resource updates:** how the ever-growing own-track resource is served without refetching its full history on every change.
+- **Durability policy:** which snapshot and IGC transitions require an `fsync`-equivalent operation on each supported platform.

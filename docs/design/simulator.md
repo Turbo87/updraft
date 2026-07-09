@@ -1,10 +1,10 @@
 # Simulator & Replay
 
-Simulator and replay are the third data source category next to external devices and internal sensors (see [devices.md](devices.md)). While simulator or replay mode is active, the other two source categories are disabled: the core receives positions, altitudes, and vario values exclusively from the simulator.
+Simulator and replay are the third data source category next to external devices and internal sensors (see [devices.md](devices.md)). While simulator or replay mode is active, the other two source categories are disabled: `App` receives positions, altitudes, and vario values exclusively from the simulator.
 
-Both modes produce typed messages directly onto the core's input channel, like internal sensors do. No device protocol is involved, so the parser is bypassed. (Replaying recorded raw device bytes through the real parser is a separate developer tool, see [devmode.md](devmode.md); deterministic input-sequence replay for debugging is covered in [core.md](core.md).)
+Both modes produce normalized observations through the same application input path as internal sensors. No device protocol is involved, so the parser is bypassed. Replaying recorded raw device bytes through the real parser is a separate developer tool (see [devmode.md](devmode.md)), while deterministic application-input replay is covered in [core.md](core.md).
 
-Activating simulator or replay mode sets a flag in the core and frontend that disables functionality which must not run against simulated data: the IGC file writer, but also live weather and OGN data loading/display.
+Activating simulator or replay mode sets application and client flags that disable functionality which must not run against simulated data, including IGC writes and live weather or OGN loading.
 
 ## Simulator Mode
 

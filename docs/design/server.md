@@ -1,19 +1,19 @@
 # The axum Server
 
-The `updraft-server` binary exposes the same Rust core over HTTP:
+The `updraft-server` binary hosts `CoreRuntime` and exposes its application interface over HTTP:
 
 - **REST** for request/response interactions (queries, one-shot commands, file management),
-- a **server-push stream** for continuous state-change notifications.
+- a **server-push stream** that starts with a snapshot and then delivers ordered change batches.
 
 It can run **headless**, driven purely over its HTTP API with no user interface of its own. In this mode the system is inspected and controlled entirely through those transports, which suits machine-to-machine integration and automated testing.
 
 It can also optionally serve the frontend's static assets, so any browser becomes its display. A soaring computer on a Raspberry-Pi-class device in the panel can run this way, and during development it is the fastest loop: run the server, open the frontend in a browser, no native build required. It is also the Playwright test target (see [testing.md](testing.md)).
 
-Crucially, the Tauri IPC bridge and the axum server are two thin transports around the _same_ core API. Feature code never needs to know which one is in use.
+Crucially, the Tauri IPC bridge and the axum server are two thin hosts around the same Rust interface. Feature code never needs to know which one is in use, and Tauri does not start a hidden HTTP server.
 
 ## Bulk Data Routes
 
-The server exposes the bulk geodata path (tiles, GeoJSON overlays) as native HTTP routes, per [core.md](core.md). These routes are part of the authenticated surface, see below.
+The server resolves opaque resource IDs from the data module to HTTP routes for tiles and GeoJSON overlays, per [core.md](core.md). These routes are part of the authenticated surface, see below.
 
 ## Security Model
 

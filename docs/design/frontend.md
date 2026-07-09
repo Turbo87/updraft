@@ -1,8 +1,8 @@
 # The Frontend
 
-The UI is a single **SvelteKit** application built as a pure SPA (`adapter-static`, no SSR), served by Tauri's asset handler or by `updraft-server`. It contains presentation logic only: it renders state received from the core and translates user interactions into commands. It does not compute domain values itself, unless strictly required for performance reasons. The number shown in a data field is computed in the core, so it is identical on every platform and every connected device.
+The UI is a single **SvelteKit** application built as a pure SPA (`adapter-static`, no SSR), served by Tauri's asset handler or by `updraft-server`. It contains presentation logic only: it renders application state and translates user interactions into commands. It does not compute domain values itself, unless strictly required for performance reasons. The number shown in a data field is computed in Rust, so it is identical on every platform and every connected device.
 
-Because the frontend speaks only the core's message protocol, the same codebase runs inside the Tauri shell, served by the axum server, or against a mocked message layer in component tests. Only the transport binding differs per build (see _State Model_ below).
+Because the frontend speaks only the application protocol, the same codebase runs inside the Tauri shell, served by the axum server, or against a fake client in component tests. Only the host binding differs per build (see _State Model_ below).
 
 ## Stack
 
@@ -14,9 +14,9 @@ Because the frontend speaks only the core's message protocol, the same codebase 
 
 ## State Model
 
-A single `UpdraftClient` TypeScript interface abstracts the transport (Tauri IPC or HTTP/stream). The implementation is selected at **build time** (e.g. via an environment variable in the Vite config), so each build contains exactly one transport and the other is tree-shaken away.
+A single `UpdraftClient` TypeScript interface abstracts the host binding (Tauri IPC or HTTP plus state stream). The implementation is selected at **build time**, so each build contains exactly one binding and the other is tree-shaken away.
 
-On top of it, thin reactive stores: each subscription topic becomes a rune-backed store (`$state` updated by the topic decoder), and components consume them declaratively. No component ever talks to a transport directly, so the whole UI is testable against a fake client. Commands are async functions with generated types. Optimistic UI only where harmless (e.g. settings toggles).
+The state stream begins with a complete snapshot and then carries ordered change batches. Thin rune-backed stores apply those changes, and components consume them declaratively. No component talks to a host binding directly, so the whole UI is testable against a fake client. Commands are async functions with generated types. Optimistic UI is limited to harmless interactions such as settings toggles.
 
 **Hot path exception:** ownship position updates bypass Svelte reactivity and write straight to the map at frame rate. Reactivity is for UI chrome, not the 10 Hz path.
 
@@ -32,7 +32,7 @@ One fullscreen MapLibre instance is the app's centerpiece. Layers, bottom-up:
 6. traffic symbols
 7. ownship symbol
 
-Bulk geodata (tiles, overlays) arrives as map sources by URL reference, never through the message channel (see [core.md](core.md)).
+Bulk geodata arrives as opaque resource references. `UpdraftClient` resolves them to host-specific map-source URLs, and the geometry never enters JSON state messages (see [core.md](core.md)).
 
 The map is integrated via [svelte-maplibre-gl](https://github.com/MIERUNE/svelte-maplibre-gl): declarative source/layer components for the stack above, with the raw map and sources reachable through `bind:map`/`bind:source` for the hot path. `<MapLibre>` must set `autoloadGlobalCss={false}` and import the MapLibre CSS locally, because the default loads it from a CDN at runtime, which violates offline-first.
 
@@ -40,7 +40,7 @@ Each source lives in one component with its layer(s) nested inside it. This keep
 
 ## Interaction Model
 
-- **Tap on map opens a "What's here?" dialog:** a list of everything at or near the tap point (touch radius in px, converted to meters). Stacked airspaces with altitude bands, nearby waypoints/airfields, traffic, task points. Tapping an entry opens a detail dialog (airspace limits/class, airfield frequencies/runways/elevation, …). Hit-testing runs **Rust-side** via `query_at`, so results are consistent with the core's data rather than MapLibre's rendered-feature state. List items keep updating in real time. For example, a traffic symbol may be rotating, or distance values in the description may update.
+- **Tap on map opens a "What's here?" dialog:** a list of everything at or near the tap point (touch radius in px, converted to meters). Stacked airspaces with altitude bands, nearby waypoints/airfields, traffic, task points. Tapping an entry opens a detail dialog (airspace limits/class, airfield frequencies/runways/elevation, …). Hit-testing runs **Rust-side** via `query_at`, so results are consistent with authoritative data rather than MapLibre's rendered-feature state. List items keep updating in real time. For example, a traffic symbol may be rotating, or distance values in the description may update.
 - **Dialogs, not bottom sheets.** Every secondary surface is a dialog: a centered modal on large screens, automatically fullscreen on small screens, from one responsive component with a consistent header (title + back/close).
 - **A structured settings tree.** Settings form a nested hierarchy (Flight / Map / Airspace / Devices / Units / System …), LX-9000-style. Fullscreen pages with back navigation on mobile, master-detail on wide screens. Search across all settings from the top level.
 - **Map behavior modes:** north-up and track-up orientation, auto-zoom (context-dependent zoom, e.g. zoom in while circling). The map is always freely pannable. Panning away from ownship shows a "return to position" button and snaps back on tap.

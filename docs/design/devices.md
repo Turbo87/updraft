@@ -2,7 +2,7 @@
 
 All device I/O (serial, Bluetooth, BLE, TCP/UDP) sits behind Rust traits. Production code plugs in real adapters. Tests plug in fakes.
 
-Sensor data reaches the core from three source categories:
+Sensor observations reach the application from three source categories:
 
 - **external devices**, connected through transports (this document),
 - **internal sensors** of the phone/tablet (this document),
@@ -24,11 +24,11 @@ A **transport** is a byte stream in/out. Implementations:
 
 Serial transports carry a per-connection baud configuration.
 
-The platform-specific sides (Bluetooth plugins, foreground service) live in the Tauri shell (see [tauri.md](tauri.md)), but they all feed the core through this same abstraction. The core never knows whether an NMEA stream came from SPP, BLE, TCP, a serial port, or a replay file.
+The platform-specific sides (Bluetooth plugins, foreground service) live in the Tauri shell (see [tauri.md](tauri.md)), but they all feed the devices module through the same abstraction. Other domain modules never know whether an observation originated from SPP, BLE, TCP, serial, or replay.
 
 ## Internal Sensors
 
-Internal sensors (GPS, pressure sensor) skip the transport and parser machinery entirely: they produce typed messages directly onto the core's input channel. In the source priority they always rank below external devices. The platform-specific wiring lives in the Tauri shell (see [tauri.md](tauri.md)).
+Internal sensors (GPS, pressure sensor) skip the transport and parser machinery entirely. They produce the same normalized observations as external-device adapters. In the source priority they always rank below external devices. The platform-specific wiring lives in the Tauri shell (see [tauri.md](tauri.md)).
 
 A vario derived from the internal pressure sensor is not compensated for airspeed changes (no total-energy compensation), so it can only ever serve as a backup for a real vario device.
 
@@ -53,11 +53,13 @@ Framing is boundary-based (start marker to terminator), which is what makes `Inc
 
 The parsers are **hand-rolled**, not built on a parser-combinator or regex library. NMEA is flat and line-oriented, so the genuinely non-trivial parts (streaming framing, resync, failure tallying) are owned directly regardless of tooling, while field parsing is plain delimiter splitting into typed quantities. Hand-rolling keeps a zero-dependency, easily-fuzzed crate on the untrusted-input boundary. The binary GDL90 framing may revisit this when it lands.
 
-### Wire messages and core input
+### Wire messages and application observations
 
 Parser output is **wire-faithful**: one typed message per sentence, every wire field represented and parsed into typed quantities (via `updraft_units`), but with no device-specific fix-ups. A device that reports LX wind with a flipped direction is parsed verbatim; the correction is a per-device config flag applied _downstream_ of the parser, never inside it. This keeps the parser a pure, losslessly-testable function.
 
-Between the parser and the core's input channel, parsed messages are normalised and per-device corrections applied, then delivered as the typed messages the core consumes (the same channel internal sensors and replay feed). Multi-device merging and source priority operate on a per-category view ("position", "pressure altitude", "traffic", …), so they never need to know which framing or vendor produced a value. Whether the core consumes a distinct vendor-agnostic semantic message set or the wire-faithful messages more directly is an [open question](#open-questions).
+Between the parser and `App`, the devices module applies per-device corrections and converts wire messages into vendor-agnostic observations. An observation carries its source, monotonic observation time, semantic value, quality, and GPS timestamp where applicable. Multi-device merging and source priority operate on categories such as position, pressure altitude, vario, and traffic, so flight and navigation code never need to know which framing or vendor produced a value.
+
+Wire-faithful values remain available inside the devices module for capability detection, device personalities, diagnostics, and optional raw captures. Vendor-specific shapes do not enter the flight, navigation, or traffic modules.
 
 Some operations switch a device out of normal parsing entirely: a driver can claim the stream for an **exclusive binary session** for the duration of an operation such as a flight-log download (FLARM's binary IGC protocol being the canonical case), after which normal framing and parsing resume. This mode is part of the target design; because the parser is called rather than owning the connection, the connection simply stops feeding the parser and routes raw bytes to the session for its duration. The detailed protocol is deferred.
 
@@ -98,10 +100,6 @@ What persists per device is deliberately slim: the transport configuration (Blue
 A **device config** is a named, saveable snapshot of the whole setup: the device entries and their priority order. Loading a device config replaces the entire current list. An aircraft config can reference a device config, so switching aircraft automatically connects to that aircraft's panel. A config doesn't have to be attached to an aircraft: a pilot who carries an LX Nano across gliders saves a device config for it and loads it manually.
 
 The devices screen manages all of this: connection status per device, priority reordering, manual overrides, and config save/load.
-
-## Open Questions
-
-- **Core input shape.** Whether the core consumes a distinct vendor-agnostic semantic message set (clean, but potentially hides detail the core wants) or the wire-faithful typed messages more directly (richer, but the core learns vendor shapes), or a middle ground that is semantic yet carries provenance, is undecided.
 
 ## Testing
 

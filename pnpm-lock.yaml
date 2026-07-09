@@ -45,6 +45,18 @@ importers:
         specifier: 8.63.0
         version: 8.63.0(eslint@10.6.0)(typescript@6.0.3)
 
+  e2e:
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.2
+        version: 24.13.2
+      playwright:
+        specifier: 1.61.1
+        version: 1.61.1
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   frontend:
     devDependencies:
       '@inlang/paraglide-js':

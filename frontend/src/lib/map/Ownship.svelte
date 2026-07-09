@@ -8,6 +8,7 @@
 
 <GeoJSONSource id="ownship" maxzoom={24} data={ownshipFeature(position)}>
   <SymbolLayer
+    id="ownship-symbol"
     layout={{
       'icon-image': 'updraft-sdf:glider',
       'icon-rotation-alignment': 'map',

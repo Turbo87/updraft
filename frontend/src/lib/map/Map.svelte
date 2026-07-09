@@ -1,6 +1,6 @@
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css';
-  import type { Map } from 'maplibre-gl';
+  import type { Map, StyleSpecification } from 'maplibre-gl';
   import { MapLibre } from 'svelte-maplibre-gl';
   import type { OwnshipPosition } from '$lib/protocol/generated/OwnshipPosition';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
@@ -8,6 +8,20 @@
 
   let { position }: { position: OwnshipPosition | null } = $props();
 
+  let testMode = new URLSearchParams(window.location.search).has('testMode');
+  let minimalStyle = {
+    version: 8,
+    sources: {},
+    layers: [
+      {
+        id: 'background',
+        type: 'background',
+        paint: { 'background-color': '#eef2f7' },
+      },
+    ],
+  } satisfies StyleSpecification;
+  let mapStyle = testMode ? minimalStyle : 'https://tiles.openfreemap.org/styles/positron';
+  let mapOptions = { ...(testMode && { fadeDuration: 0 }) };
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
   let center = $derived<[number, number]>(
@@ -18,12 +32,24 @@
     await map?.addSprite('updraft-sdf', `${window.location.origin}/sprites/updraft-sdf`);
     spritesLoaded = true;
   }
+
+  $effect(() => {
+    if (!testMode || !map) {
+      return;
+    }
+
+    window.updraftTest = { map };
+    return () => {
+      delete window.updraftTest;
+    };
+  });
 </script>
 
 <div class="map-container">
   <MapLibre
     inlineStyle="height: 100%; width: 100%"
-    style="https://tiles.openfreemap.org/styles/positron"
+    style={mapStyle}
+    {...mapOptions}
     autoloadGlobalCss={false}
     bind:map
     onload={loadSprites}

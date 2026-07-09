@@ -7,6 +7,8 @@ node_modules
 # SvelteKit / Vite build output
 /frontend/.svelte-kit
 /frontend/build
+/e2e/playwright-report
+/e2e/test-results
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 

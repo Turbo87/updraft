@@ -12,3 +12,6 @@ vite.config.ts.timestamp-*
 
 # Paraglide (generated i18n code)
 /frontend/src/lib/paraglide
+
+# Tauri
+/tauri/gen/schemas

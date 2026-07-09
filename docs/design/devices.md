@@ -46,7 +46,7 @@ Two pure pieces make up the NMEA library (`updraft_nmea`):
   - FLARM `PFLAU` / `PFLAA`
   - Garmin `$PGRMZ`
   - Cambridge `$PCAID` / `$PCAIB` and the `!w` CAI302 air-data record
-  - LXNav `$LXWP*` and `$PLXV*` (settings read/write, declarations, log transfer)
+  - LXNav `$LXWP0`–`$LXWP3` (telemetry, device info, settings); the bidirectional `$PLXV*` protocol (settings read/write, declarations, log transfer) lands with the vendor-protocols step
   - an `Unsupported` variant for a well-formed, checksum-valid sentence the crate does not model
 
 Internally each sentence is its own pure function so it can be unit-tested and fuzzed in isolation; `parse` is a thin router over them. A device such as an LX9000 that emits NMEA, `$PGRMZ`, FLARM pass-through, and both LXNav families on one port is handled by this one function — each line simply returns whichever `ParseResult` variant it matched, so no per-stream parser wiring is needed.

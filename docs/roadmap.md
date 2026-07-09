@@ -15,6 +15,7 @@
 
 - [x] **units** — custom newtype quantities (length/altitude, speed, vertical speed, angle to start; pressure, mass, temperature added when features need them), conversions, and unit-system formatting. Start minimal and grow. _(needs: workspace)_
 - [x] **geo** — lat/lon types, WGS84 distance/bearing/destination-point (via `geographiclib-rs`) with a haversine fast path, bounding boxes with antimeridian handling, `geo-types` interop behind a feature. Coordinate parsing/formatting is out of scope: each data-format crate parses its own wire format, display formatting is a UI concern. _(needs: units)_
+- [x] **egm96** — `libs/updraft_egm96`: EGM96 geoid undulation lookup (`separation`, ellipsoidal↔MSL helpers) via a bilinear 1° grid downsampled from the official 15′ `WW15MGH` source, with a feature-gated `downsample` generator and golden test. Used to convert bare-ellipsoidal GNSS altitude to MSL (and back for IGC). _(needs: geo)_
 - [ ] **core-state** — the central state struct, `Command`/`Query`/`Event` enums, `apply()` entry point, prioritized + coalescing input channel, serde serialization of the protocol. _(needs: units)_
 - [ ] **core-time** — time as an input: clock/tick commands, deterministic timer queue, simulated-time test helpers, monotonic flight-time tracking. _(needs: core-state)_
 - [ ] **core-subscriptions** — state-change notifications via named topics (last-value, keyed collection, events plus active set, reference) so UIs can subscribe to slices instead of full snapshots. _(needs: core-state)_

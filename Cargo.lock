@@ -4683,6 +4683,15 @@ name = "updraft_core"
 version = "0.0.0"
 
 [[package]]
+name = "updraft_egm96"
+version = "0.0.0"
+dependencies = [
+ "approx 0.6.0-rc2",
+ "updraft_geo",
+ "updraft_units",
+]
+
+[[package]]
 name = "updraft_geo"
 version = "0.0.0"
 dependencies = [

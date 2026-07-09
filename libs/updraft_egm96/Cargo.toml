@@ -1,0 +1,26 @@
+[package]
+name = "updraft_egm96"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[lints]
+workspace = true
+
+[features]
+# Build-time grid generation (`gen` module + `downsample` bin + golden
+# test). Excluded from the default build so downstream crates compile only
+# the runtime lookup API. CI enables it via `--all-features`.
+gen = []
+
+[dependencies]
+updraft_geo = { path = "../updraft_geo" }
+updraft_units = { path = "../updraft_units" }
+
+[dev-dependencies]
+approx = { version = "=0.6.0-rc2", features = ["derive"] }
+updraft_units = { path = "../updraft_units", features = ["approx"] }
+
+[[bin]]
+name = "downsample"
+required-features = ["gen"]

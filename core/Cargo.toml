@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 workspace = true
 
 [dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
 tokio = { version = "=1.52.3", features = ["macros", "rt", "sync", "time"] }
-updraft_geo = { path = "../libs/updraft_geo" }
-updraft_units = { path = "../libs/updraft_units" }
+updraft_geo = { path = "../libs/updraft_geo", features = ["serde"] }
+updraft_units = { path = "../libs/updraft_units", features = ["serde"] }

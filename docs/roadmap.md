@@ -23,7 +23,7 @@
 
 ## Transports & walking skeleton
 
-- [ ] **server-protocol**: axum REST endpoints for queries and commands plus a snapshot-first ordered state stream, speaking the application protocol. _(needs: server-scaffold, core-runtime)_
+- [ ] **server-protocol**: axum REST endpoints for queries and commands plus a snapshot-first ordered SSE state stream, speaking the application protocol. _(needs: server-scaffold, core-runtime)_
 - [ ] **server-auth** — session token required on all routes (commands, state stream, bulk data), `Host` allowlist, `Origin` validation on stream upgrades, strict CORS, password gate for non-loopback binding. _(needs: server-protocol)_
 - [x] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the axum server. _(needs: server-scaffold)_
 - [ ] **frontend-protocol**: generated TypeScript protocol types, state-stream client, and Svelte stores that apply the initial snapshot and ordered change batches. Committed generated types carry a CI drift check. _(needs: frontend-scaffold, server-protocol)_

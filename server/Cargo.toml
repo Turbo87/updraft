@@ -11,8 +11,13 @@ workspace = true
 anyhow = "=1.0.103"
 axum = "=0.8.9"
 clap = { version = "=4.6.1", features = ["derive", "env"] }
+futures-util = "=0.3.32"
+serde = { version = "=1.0.228", features = ["derive"] }
 tokio = { version = "=1.52.3", features = ["rt-multi-thread", "net", "macros", "signal"] }
 tower-http = { version = "=0.7.0", features = ["fs"] }
+updraft_core = { path = "../core" }
+updraft_geo = { path = "../libs/updraft_geo" }
+updraft_units = { path = "../libs/updraft_units" }
 
 [dev-dependencies]
 http-body-util = "=0.1.3"

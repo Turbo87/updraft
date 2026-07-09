@@ -3,7 +3,7 @@
 The `updraft-server` binary hosts `CoreRuntime` and exposes its application interface over HTTP:
 
 - **REST** for request/response interactions (queries, one-shot commands, file management),
-- a **server-push stream** that starts with a snapshot and then delivers ordered change batches.
+- an **SSE state stream** that starts with a snapshot and then delivers ordered change batches.
 
 It can run **headless**, driven purely over its HTTP API with no user interface of its own. In this mode the system is inspected and controlled entirely through those transports, which suits machine-to-machine integration and automated testing.
 
@@ -25,7 +25,3 @@ Loopback is _not_ inherently safe: any website the user visits can fire requests
 - require a session token on **all** routes: commands, the state stream, and the bulk data endpoints (`/tiles` and `/geojson` leak position and track). The served frontend receives the token at page load.
 
 Binding to a non-loopback address additionally requires a configured password (login yields a session token). The server refuses to start non-loopback without one.
-
-## Open Questions
-
-- **WebSocket vs SSE** for the state-change stream: to be decided by whichever works best in practice.

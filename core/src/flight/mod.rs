@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use serde::Serialize;
 use updraft_geo::LatLon;
 use updraft_units::Angle;
 
@@ -70,7 +71,7 @@ impl PositionObservation {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct OwnshipPosition {
     location: LatLon,
     track: Option<Angle>,
@@ -87,7 +88,8 @@ pub enum FlightInput {
     PositionObserved(PositionObservation),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FlightChange {
     PositionChanged(OwnshipPosition),
 }

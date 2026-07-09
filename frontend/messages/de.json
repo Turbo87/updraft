@@ -1,4 +1,25 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
-  "language_label": "Sprache"
+  "language_label": "Sprache",
+  "settings_title": "Einstellungen",
+  "map_title": "Karte",
+  "units_title": "Einheiten",
+  "orientation_title": "Ausrichtung",
+  "about_title": "Über",
+  "whats_here_title": "Was ist hier?",
+  "error_title": "Etwas ist schiefgelaufen",
+  "error_unknown_feature": "Unbekanntes Objekt",
+  "dialog_back": "Zurück",
+  "dialog_close": "Schließen",
+  "settings_airspace_labels": "Luftraum-Beschriftungen anzeigen",
+  "orientation_north_up": "Norden oben",
+  "orientation_track_up": "Kurs oben",
+  "units_metric": "Metrisch (km/h)",
+  "units_imperial": "Imperial (mph)",
+  "about_disclaimer": "Keine zertifizierte Navigationsquelle. Immer mit offiziellen Karten und zugelassenen Instrumenten abgleichen.",
+  "whats_here_empty": "Nichts hier.",
+  "feature_kind_airspace": "Luftraum",
+  "feature_kind_airfield": "Flugplatz",
+  "feature_kind_waypoint": "Wegpunkt",
+  "feature_kind_traffic": "Verkehr"
 }

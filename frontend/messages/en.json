@@ -1,4 +1,25 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
-  "language_label": "Language"
+  "language_label": "Language",
+  "settings_title": "Settings",
+  "map_title": "Map",
+  "units_title": "Units",
+  "orientation_title": "Orientation",
+  "about_title": "About",
+  "whats_here_title": "What's here?",
+  "error_title": "Something went wrong",
+  "error_unknown_feature": "Unknown feature",
+  "dialog_back": "Back",
+  "dialog_close": "Close",
+  "settings_airspace_labels": "Show airspace labels",
+  "orientation_north_up": "North up",
+  "orientation_track_up": "Track up",
+  "units_metric": "Metric (km/h)",
+  "units_imperial": "Imperial (mph)",
+  "about_disclaimer": "Not a certified navigation source. Always cross-check with official charts and approved instruments.",
+  "whats_here_empty": "Nothing here.",
+  "feature_kind_airspace": "Airspace",
+  "feature_kind_airfield": "Airfield",
+  "feature_kind_waypoint": "Waypoint",
+  "feature_kind_traffic": "Traffic"
 }

@@ -1,6 +1,9 @@
 # Package manager lockfiles
 pnpm-lock.yaml
 
+# Package manager store
+/.pnpm-store/
+
 # Build artifacts
 **/.svelte-kit/
 **/build/
@@ -16,3 +19,6 @@ pnpm-lock.yaml
 /frontend/src/lib/paraglide/
 /frontend/project.inlang/*
 !/frontend/project.inlang/settings.json
+
+# Rust protocol bindings
+/frontend/src/lib/protocol/generated/

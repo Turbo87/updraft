@@ -1,7 +1,10 @@
 model = "Silent2 elec."
+seats = 1
 
-[[preset]]
-variant = "Silent2 elec."
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Silent2 elec."
 wing_area = 9.0
 reference_mass = 297.0
 polar_coefficients = { a = 1.94, b = -3.55, c = 2.41 }

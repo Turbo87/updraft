@@ -2,35 +2,35 @@ model = "ASW 22"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASW 22"
-id = "ASW 22 22m"
+[[wingspan]]
+span = 22.0
+dmst_index = 119.0
+
+[[wingspan.variant]]
+name = "ASW 22"
 propulsion = "pure"
-wingspan = 22.0
 wing_area = 14.9
 reference_mass = 480.0
 polar_coefficients = { a = 1.48, b = -2.39, c = 1.44 }
 empty_mass = 400.0
 max_takeoff_mass = 750.0
 weglide_id = 418
-dmst_index = 119.0
 
-[[preset]]
-variant = "ASW 22"
-id = "ASW 22 24m"
+[[wingspan]]
+span = 24.0
+dmst_index = 121.0
+
+[[wingspan.variant]]
+name = "ASW 22"
 propulsion = "pure"
-wingspan = 24.0
 wing_area = 15.5
 reference_mass = 500.0
 polar_coefficients = { a = 1.29, b = -1.81, c = 1.05 }
 empty_mass = 410.0
 max_takeoff_mass = 650.0
 weglide_id = 407
-dmst_index = 121.0
 
-[[preset]]
-variant = "ASW 22E"
+[[wingspan.variant]]
+name = "ASW 22E"
 propulsion = "self_launch"
-wingspan = 24.0
 weglide_id = 408
-dmst_index = 121.0

@@ -2,8 +2,10 @@ model = "G 102 Astir CS Top"
 manufacturer = "Grob Aircraft"
 seats = 1
 
-[[preset]]
-variant = "G 102 Astir CS Top"
+[[wingspan]]
+dmst_index = 94.0
+
+[[wingspan.variant]]
+name = "G 102 Astir CS Top"
 propulsion = "sustainer"
 weglide_id = 165
-dmst_index = 94.0

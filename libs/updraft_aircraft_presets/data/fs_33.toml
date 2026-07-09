@@ -2,8 +2,10 @@ model = "fs 33"
 manufacturer = "Akaflieg Stuttgart"
 seats = 2
 
-[[preset]]
-variant = "fs 33"
+[[wingspan]]
+dmst_index = 109.0
+
+[[wingspan.variant]]
+name = "fs 33"
 propulsion = "pure"
 weglide_id = 350
-dmst_index = 109.0

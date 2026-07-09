@@ -1,7 +1,10 @@
 model = "Moswey III"
+seats = 1
 
-[[preset]]
-variant = "Moswey III"
+[[wingspan]]
+dmst_index = 66.0
+
+[[wingspan.variant]]
+name = "Moswey III"
 propulsion = "pure"
 weglide_id = 707
-dmst_index = 66.0

@@ -2,8 +2,10 @@ model = "Falkon"
 manufacturer = "Streifeneder"
 seats = 1
 
-[[preset]]
-variant = "Falkon"
+[[wingspan]]
+dmst_index = 103.0
+
+[[wingspan.variant]]
+name = "Falkon"
 propulsion = "pure"
 weglide_id = 253
-dmst_index = 103.0

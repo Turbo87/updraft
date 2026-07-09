@@ -2,8 +2,10 @@ model = "K 8"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "K 8"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "K 8"
 propulsion = "pure"
 weglide_id = 240
-dmst_index = 76.0

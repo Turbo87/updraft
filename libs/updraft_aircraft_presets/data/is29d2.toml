@@ -1,7 +1,10 @@
 model = "IS29D2"
+seats = 1
 
-[[preset]]
-variant = "IS29D2"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "IS29D2"
 wing_area = 10.4
 reference_mass = 354.0
 polar_coefficients = { a = 1.81, b = -2.31, c = 1.29 }

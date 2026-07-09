@@ -1,14 +1,15 @@
 model = "Panjo"
 seats = 1
 
-[[preset]]
-variant = "Panjo V1"
-propulsion = "pure"
-weglide_id = 148
+[[wingspan]]
 dmst_index = 98.0
 
-[[preset]]
-variant = "Panjo V2"
+[[wingspan.variant]]
+name = "Panjo V1"
+propulsion = "pure"
+weglide_id = 148
+
+[[wingspan.variant]]
+name = "Panjo V2"
 propulsion = "pure"
 weglide_id = 149
-dmst_index = 98.0

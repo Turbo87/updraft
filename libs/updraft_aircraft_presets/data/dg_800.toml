@@ -2,103 +2,88 @@ model = "DG 800"
 manufacturer = "DG Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "DG 800A/B"
-id = "DG 800A/B 15m"
+[[wingspan]]
+span = 15.0
+
+[[wingspan.variant]]
+name = "DG 800A/B"
 propulsion = "self_launch"
-wingspan = 15.0
 weglide_id = 21
 dmst_index = 113.0
 
-[[preset]]
-variant = "DG 800A/B"
-id = "DG 800A/B 18m"
+[[wingspan.variant]]
+name = "DG 800LA"
 propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 77
-dmst_index = 119.0
-
-[[preset]]
-variant = "DG 800LA"
-id = "DG 800LA 15m"
-propulsion = "self_launch"
-wingspan = 15.0
 weglide_id = 590
 dmst_index = 112.0
 
-[[preset]]
-variant = "DG 800LA"
-id = "DG 800LA 18m"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 591
-dmst_index = 118.0
-
-[[preset]]
-variant = "DG 800S"
-id = "DG 800S 15m"
+[[wingspan.variant]]
+name = "DG 800S"
 propulsion = "pure"
-wingspan = 15.0
 weglide_id = 22
 dmst_index = 113.0
 
-[[preset]]
-variant = "DG 800S"
-id = "DG 800S 18m"
-propulsion = "pure"
-wingspan = 18.0
-weglide_id = 78
-dmst_index = 119.0
-
-[[preset]]
-variant = "DG 808C"
+[[wingspan.variant]]
+name = "DG 808C"
 propulsion = "self_launch"
-wingspan = 15.0
 weglide_id = 23
 dmst_index = 113.0
 
-[[preset]]
-variant = "DG 808C Classic"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 592
-dmst_index = 119.0
-
-[[preset]]
-variant = "DG 808C Competition"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 79
-dmst_index = 120.0
-
-[[preset]]
-variant = "DG 808S"
-id = "DG 808S 15m"
+[[wingspan.variant]]
+name = "DG 808S"
 propulsion = "pure"
-wingspan = 15.0
 weglide_id = 589
 dmst_index = 113.0
 
-[[preset]]
-variant = "DG 808S"
-id = "DG 808S 18m"
-propulsion = "pure"
-wingspan = 18.0
-weglide_id = 593
-dmst_index = 120.0
-
-[[preset]]
-variant = "DG800/15m"
-wingspan = 15.0
+[[wingspan.variant]]
+name = "DG800/15m"
 wing_area = 10.68
 reference_mass = 395.0
 polar_coefficients = { a = 0.92, b = -1.11, c = 0.81 }
 empty_mass = 323.0
 max_takeoff_mass = 525.0
 
-[[preset]]
-variant = "DG800/18m"
-wingspan = 18.0
+[[wingspan]]
+span = 18.0
+
+[[wingspan.variant]]
+name = "DG 800A/B"
+propulsion = "self_launch"
+weglide_id = 77
+dmst_index = 119.0
+
+[[wingspan.variant]]
+name = "DG 800LA"
+propulsion = "self_launch"
+weglide_id = 591
+dmst_index = 118.0
+
+[[wingspan.variant]]
+name = "DG 800S"
+propulsion = "pure"
+weglide_id = 78
+dmst_index = 119.0
+
+[[wingspan.variant]]
+name = "DG 808C Classic"
+propulsion = "self_launch"
+weglide_id = 592
+dmst_index = 119.0
+
+[[wingspan.variant]]
+name = "DG 808C Competition"
+propulsion = "self_launch"
+weglide_id = 79
+dmst_index = 120.0
+
+[[wingspan.variant]]
+name = "DG 808S"
+propulsion = "pure"
+weglide_id = 593
+dmst_index = 120.0
+
+[[wingspan.variant]]
+name = "DG800/18m"
 wing_area = 11.81
 reference_mass = 402.0
 polar_coefficients = { a = 1.05, b = -1.42, c = 0.93 }

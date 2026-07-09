@@ -2,49 +2,44 @@ model = "ASW 28"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASW 28"
-propulsion = "pure"
-weglide_id = 447
+[[wingspan]]
 dmst_index = 108.0
 
-[[preset]]
-variant = "ASW 28"
-id = "ASW 28 18m"
+[[wingspan.variant]]
+name = "ASW 28"
 propulsion = "pure"
-wingspan = 18.0
+weglide_id = 447
+
+[[wingspan.variant]]
+name = "ASW 28 B"
+propulsion = "pure"
+weglide_id = 663
+
+[[wingspan.variant]]
+name = "ASW 28 E"
+propulsion = "sustainer"
+weglide_id = 448
+
+[[wingspan]]
+span = 18.0
+dmst_index = 114.0
+
+[[wingspan.variant]]
+name = "ASW 28"
+propulsion = "pure"
 wing_area = 11.88
 reference_mass = 345.0
 polar_coefficients = { a = 1.72, b = -2.73, c = 1.58 }
 empty_mass = 270.0
 max_takeoff_mass = 575.0
 weglide_id = 106
-dmst_index = 114.0
 
-[[preset]]
-variant = "ASW 28 B"
+[[wingspan.variant]]
+name = "ASW 28 B"
 propulsion = "pure"
-weglide_id = 663
-dmst_index = 108.0
-
-[[preset]]
-variant = "ASW 28 B"
-id = "ASW 28 B 18m"
-propulsion = "pure"
-wingspan = 18.0
 weglide_id = 662
-dmst_index = 114.0
 
-[[preset]]
-variant = "ASW 28 E"
+[[wingspan.variant]]
+name = "ASW 28 E"
 propulsion = "sustainer"
-weglide_id = 448
-dmst_index = 108.0
-
-[[preset]]
-variant = "ASW 28 E"
-id = "ASW 28 E 18m"
-propulsion = "sustainer"
-wingspan = 18.0
 weglide_id = 107
-dmst_index = 114.0

@@ -1,7 +1,10 @@
 model = "Astir CS"
+seats = 1
 
-[[preset]]
-variant = "Astir CS"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Astir CS"
 wing_area = 12.4
 reference_mass = 372.0
 polar_coefficients = { a = 2.04, b = -3.09, c = 1.86 }

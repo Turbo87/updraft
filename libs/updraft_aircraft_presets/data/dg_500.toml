@@ -2,58 +2,50 @@ model = "DG 500"
 manufacturer = "DG Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "DG 500"
-id = "DG 500 20m"
+[[wingspan]]
+span = 20.0
+dmst_index = 104.0
+
+[[wingspan.variant]]
+name = "DG 500"
 propulsion = "pure"
-wingspan = 20.0
 wing_area = 17.6
 reference_mass = 528.0
 polar_coefficients = { a = 1.47, b = -2.35, c = 1.51 }
 empty_mass = 440.0
 max_takeoff_mass = 750.0
 weglide_id = 361
-dmst_index = 104.0
 
-[[preset]]
-variant = "DG 500"
-id = "DG 500 22m"
+[[wingspan.variant]]
+name = "DG 500M"
+propulsion = "self_launch"
+weglide_id = 362
+
+[[wingspan]]
+span = 22.0
+dmst_index = 110.0
+
+[[wingspan.variant]]
+name = "DG 500"
 propulsion = "pure"
-wingspan = 22.0
 wing_area = 18.29
 reference_mass = 530.0
 polar_coefficients = { a = 2.06, b = -3.38, c = 1.93 }
 empty_mass = 445.0
 max_takeoff_mass = 750.0
 weglide_id = 439
-dmst_index = 110.0
 
-[[preset]]
-variant = "DG 500M"
-id = "DG 500M 20m"
+[[wingspan.variant]]
+name = "DG 500M"
 propulsion = "self_launch"
-wingspan = 20.0
-weglide_id = 362
-dmst_index = 104.0
-
-[[preset]]
-variant = "DG 500M"
-id = "DG 500M 22m"
-propulsion = "self_launch"
-wingspan = 22.0
 weglide_id = 440
-dmst_index = 110.0
 
-[[preset]]
-variant = "DG 505"
+[[wingspan.variant]]
+name = "DG 505"
 propulsion = "pure"
-wingspan = 22.0
 weglide_id = 441
-dmst_index = 110.0
 
-[[preset]]
-variant = "DG 505M"
+[[wingspan.variant]]
+name = "DG 505M"
 propulsion = "self_launch"
-wingspan = 22.0
 weglide_id = 442
-dmst_index = 110.0

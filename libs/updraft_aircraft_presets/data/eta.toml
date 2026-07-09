@@ -2,8 +2,10 @@ model = "Eta"
 manufacturer = "ETA Aircraft"
 seats = 2
 
-[[preset]]
-variant = "Eta"
+[[wingspan]]
+dmst_index = 127.0
+
+[[wingspan.variant]]
+name = "Eta"
 propulsion = "self_launch"
 weglide_id = 373
-dmst_index = 127.0

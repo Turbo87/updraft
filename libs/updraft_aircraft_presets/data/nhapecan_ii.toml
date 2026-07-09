@@ -1,7 +1,10 @@
 model = "Nhapecan II"
+seats = 1
 
-[[preset]]
-variant = "Nhapecan II"
+[[wingspan]]
+dmst_index = 78.0
+
+[[wingspan.variant]]
+name = "Nhapecan II"
 propulsion = "pure"
 weglide_id = 729
-dmst_index = 78.0

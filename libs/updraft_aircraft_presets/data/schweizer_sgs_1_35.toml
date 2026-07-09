@@ -2,20 +2,22 @@ model = "Schweizer SGS 1-35"
 manufacturer = "Schweizer"
 seats = 1
 
-[[preset]]
-variant = "Schweizer SGS 1-35"
+[[wingspan]]
+dmst_index = 93.0
+
+[[wingspan.variant]]
+name = "Schweizer SGS 1-35"
 propulsion = "pure"
 weglide_id = 651
 dmst_index = 99.0
 
-[[preset]]
-variant = "Schweizer SGS 1-35A"
+[[wingspan.variant]]
+name = "Schweizer SGS 1-35A"
 propulsion = "pure"
 weglide_id = 653
 dmst_index = 102.0
 
-[[preset]]
-variant = "Schweizer SGS 1-35C"
+[[wingspan.variant]]
+name = "Schweizer SGS 1-35C"
 propulsion = "pure"
 weglide_id = 652
-dmst_index = 93.0

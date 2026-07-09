@@ -2,14 +2,15 @@ model = "Diana 3"
 manufacturer = "Avionic"
 seats = 1
 
-[[preset]]
-variant = "Diana 3"
-propulsion = "pure"
-weglide_id = 594
+[[wingspan]]
 dmst_index = 122.0
 
-[[preset]]
-variant = "Diana 3 FES"
+[[wingspan.variant]]
+name = "Diana 3"
+propulsion = "pure"
+weglide_id = 594
+
+[[wingspan.variant]]
+name = "Diana 3 FES"
 propulsion = "electric_sustainer"
 weglide_id = 595
-dmst_index = 122.0

@@ -1,7 +1,10 @@
 model = "DG1001M"
+seats = 1
 
-[[preset]]
-variant = "DG1001M"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "DG1001M"
 wing_area = 17.53
 reference_mass = 750.0
 polar_coefficients = { a = 2.01, b = -4.16, c = 2.79 }

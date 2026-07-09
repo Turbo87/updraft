@@ -2,8 +2,10 @@ model = "Franklin PS-2"
 manufacturer = "Franklin"
 seats = 1
 
-[[preset]]
-variant = "Franklin PS-2"
+[[wingspan]]
+dmst_index = 50.0
+
+[[wingspan.variant]]
+name = "Franklin PS-2"
 propulsion = "pure"
 weglide_id = 659
-dmst_index = 50.0

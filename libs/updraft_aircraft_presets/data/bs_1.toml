@@ -2,8 +2,10 @@ model = "BS-1"
 manufacturer = "Glasflügel"
 seats = 1
 
-[[preset]]
-variant = "BS-1"
+[[wingspan]]
+dmst_index = 108.0
+
+[[wingspan.variant]]
+name = "BS-1"
 propulsion = "pure"
 weglide_id = 128
-dmst_index = 108.0

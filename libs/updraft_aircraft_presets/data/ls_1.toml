@@ -2,40 +2,42 @@ model = "LS 1"
 manufacturer = "Rolladen-Schneider"
 seats = 1
 
-[[preset]]
-variant = "LS 1"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "LS 1"
 wing_area = 9.74
 reference_mass = 292.0
 polar_coefficients = { a = 1.81, b = -2.61, c = 1.57 }
 empty_mass = 230.0
 max_takeoff_mass = 390.0
 
-[[preset]]
-variant = "LS 1-0"
+[[wingspan.variant]]
+name = "LS 1-0"
 propulsion = "pure"
 weglide_id = 145
 dmst_index = 98.0
 
-[[preset]]
-variant = "LS 1-c"
+[[wingspan.variant]]
+name = "LS 1-c"
 propulsion = "pure"
 weglide_id = 146
 dmst_index = 98.0
 
-[[preset]]
-variant = "LS 1-c neo"
+[[wingspan.variant]]
+name = "LS 1-c neo"
 propulsion = "pure"
 weglide_id = 631
 dmst_index = 99.0
 
-[[preset]]
-variant = "LS 1-d"
+[[wingspan.variant]]
+name = "LS 1-d"
 propulsion = "pure"
 weglide_id = 147
 dmst_index = 98.0
 
-[[preset]]
-variant = "LS 1-d neo"
+[[wingspan.variant]]
+name = "LS 1-d neo"
 propulsion = "pure"
 weglide_id = 627
 dmst_index = 99.0

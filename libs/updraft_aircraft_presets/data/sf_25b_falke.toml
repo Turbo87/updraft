@@ -2,8 +2,10 @@ model = "SF 25B Falke"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "SF 25B Falke"
+[[wingspan]]
+dmst_index = 65.0
+
+[[wingspan.variant]]
+name = "SF 25B Falke"
 propulsion = "self_launch"
 weglide_id = 331
-dmst_index = 65.0

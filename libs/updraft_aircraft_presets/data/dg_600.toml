@@ -2,65 +2,64 @@ model = "DG 600"
 manufacturer = "DG Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "DG 600"
-propulsion = "pure"
-weglide_id = 35
+[[wingspan]]
 dmst_index = 110.0
 
-[[preset]]
-variant = "DG 600"
-id = "DG 600 17m"
+[[wingspan.variant]]
+name = "DG 600"
 propulsion = "pure"
-wingspan = 17.0
+weglide_id = 35
+
+[[wingspan.variant]]
+name = "DG 600M"
+propulsion = "self_launch"
+weglide_id = 36
+
+[[wingspan]]
+span = 15.0
+
+[[wingspan.variant]]
+name = "DG600/15m"
+wing_area = 10.95
+reference_mass = 339.0
+polar_coefficients = { a = 1.31, b = -2.09, c = 1.38 }
+empty_mass = 257.0
+max_takeoff_mass = 525.0
+
+[[wingspan]]
+span = 17.0
+dmst_index = 113.0
+
+[[wingspan.variant]]
+name = "DG 600"
+propulsion = "pure"
 wing_area = 11.59
 reference_mass = 336.0
 polar_coefficients = { a = 1.64, b = -2.47, c = 1.43 }
 empty_mass = 260.0
 max_takeoff_mass = 525.0
 weglide_id = 114
-dmst_index = 113.0
 
-[[preset]]
-variant = "DG 600"
-id = "DG 600 18m"
+[[wingspan.variant]]
+name = "DG 600M"
+propulsion = "self_launch"
+weglide_id = 115
+
+[[wingspan]]
+span = 18.0
+dmst_index = 116.0
+
+[[wingspan.variant]]
+name = "DG 600"
 propulsion = "pure"
-wingspan = 18.0
 wing_area = 11.81
 reference_mass = 366.0
 polar_coefficients = { a = 1.64, b = -2.47, c = 1.43 }
 empty_mass = 262.0
 max_takeoff_mass = 480.0
 weglide_id = 100
-dmst_index = 116.0
 
-[[preset]]
-variant = "DG 600M"
+[[wingspan.variant]]
+name = "DG 600M"
 propulsion = "self_launch"
-weglide_id = 36
-dmst_index = 110.0
-
-[[preset]]
-variant = "DG 600M"
-id = "DG 600M 17m"
-propulsion = "self_launch"
-wingspan = 17.0
-weglide_id = 115
-dmst_index = 113.0
-
-[[preset]]
-variant = "DG 600M"
-id = "DG 600M 18m"
-propulsion = "self_launch"
-wingspan = 18.0
 weglide_id = 101
-dmst_index = 116.0
-
-[[preset]]
-variant = "DG600/15m"
-wingspan = 15.0
-wing_area = 10.95
-reference_mass = 339.0
-polar_coefficients = { a = 1.31, b = -2.09, c = 1.38 }
-empty_mass = 257.0
-max_takeoff_mass = 525.0

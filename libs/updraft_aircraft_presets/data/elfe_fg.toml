@@ -2,8 +2,10 @@ model = "Elfe FG"
 manufacturer = "Neukom"
 seats = 1
 
-[[preset]]
-variant = "Elfe FG"
+[[wingspan]]
+dmst_index = 94.0
+
+[[wingspan.variant]]
+name = "Elfe FG"
 propulsion = "pure"
 weglide_id = 166
-dmst_index = 94.0

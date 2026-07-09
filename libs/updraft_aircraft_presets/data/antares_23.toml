@@ -2,8 +2,11 @@ model = "Antares 23"
 manufacturer = "Lange Aviation"
 seats = 1
 
-[[preset]]
-variant = "Antares 23E"
+[[wingspan]]
+dmst_index = 126.0
+
+[[wingspan.variant]]
+name = "Antares 23E"
 propulsion = "self_launch"
 wing_area = 14.75
 reference_mass = 560.0
@@ -11,10 +14,9 @@ polar_coefficients = { a = 0.74, b = -1.26, c = 1.0 }
 empty_mass = 510.0
 max_takeoff_mass = 850.0
 weglide_id = 389
-dmst_index = 126.0
 
-[[preset]]
-variant = "Antares 23T"
+[[wingspan.variant]]
+name = "Antares 23T"
 propulsion = "sustainer"
 wing_area = 14.75
 reference_mass = 500.0
@@ -22,4 +24,3 @@ polar_coefficients = { a = 0.9, b = -1.29, c = 0.86 }
 empty_mass = 510.0
 max_takeoff_mass = 850.0
 weglide_id = 390
-dmst_index = 126.0

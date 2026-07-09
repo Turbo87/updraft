@@ -1,7 +1,10 @@
 model = "Ventus 2CXM"
+seats = 1
 
-[[preset]]
-variant = "Ventus 2CXM"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Ventus 2CXM"
 wing_area = 11.03
 reference_mass = 430.0
 polar_coefficients = { a = 1.7, b = -2.98, c = 1.86 }

@@ -2,8 +2,10 @@ model = "Apis WR"
 manufacturer = "Pipistrel"
 seats = 1
 
-[[preset]]
-variant = "Apis WR"
+[[wingspan]]
+dmst_index = 93.0
+
+[[wingspan.variant]]
+name = "Apis WR"
 propulsion = "pure"
 weglide_id = 172
-dmst_index = 93.0

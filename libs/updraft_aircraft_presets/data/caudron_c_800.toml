@@ -1,7 +1,10 @@
 model = "Caudron C.800"
+seats = 1
 
-[[preset]]
-variant = "Caudron C.800"
+[[wingspan]]
+dmst_index = 68.0
+
+[[wingspan.variant]]
+name = "Caudron C.800"
 propulsion = "pure"
 weglide_id = 699
-dmst_index = 68.0

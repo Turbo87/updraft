@@ -1,7 +1,10 @@
 model = "Piccolo B"
+seats = 1
 
-[[preset]]
-variant = "Piccolo B"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Piccolo B"
 wing_area = 10.6
 reference_mass = 297.0
 polar_coefficients = { a = 5.57, b = -7.4, c = 3.37 }

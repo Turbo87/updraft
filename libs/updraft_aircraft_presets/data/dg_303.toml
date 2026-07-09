@@ -2,8 +2,10 @@ model = "DG 303"
 manufacturer = "DG Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "DG 303"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "DG 303"
 propulsion = "pure"
 weglide_id = 477
-dmst_index = 105.0

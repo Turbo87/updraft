@@ -2,8 +2,10 @@ model = "SB 12"
 manufacturer = "Akaflieg Braunschweig"
 seats = 1
 
-[[preset]]
-variant = "SB 12"
+[[wingspan]]
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "SB 12"
 propulsion = "pure"
 weglide_id = 260
-dmst_index = 100.0

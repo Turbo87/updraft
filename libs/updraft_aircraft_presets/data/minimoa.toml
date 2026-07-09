@@ -2,8 +2,10 @@ model = "Minimoa"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Minimoa"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "Minimoa"
 propulsion = "pure"
 weglide_id = 241
-dmst_index = 76.0

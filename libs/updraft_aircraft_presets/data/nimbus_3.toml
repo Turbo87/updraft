@@ -2,8 +2,10 @@ model = "Nimbus 3"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Nimbus 3"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Nimbus 3"
 propulsion = "pure"
 wing_area = 16.7
 reference_mass = 685.0
@@ -11,49 +13,44 @@ polar_coefficients = { a = 0.9, b = -1.15, c = 0.76 }
 empty_mass = 396.0
 max_takeoff_mass = 700.0
 
-[[preset]]
-variant = "Nimbus 3"
-id = "Nimbus 3 22.9m"
-propulsion = "pure"
-wingspan = 22.9
-weglide_id = 422
+[[wingspan]]
+span = 22.9
 dmst_index = 119.0
 
-[[preset]]
-variant = "Nimbus 3"
-id = "Nimbus 3 24.5m"
+[[wingspan.variant]]
+name = "Nimbus 3"
 propulsion = "pure"
-wingspan = 24.5
+weglide_id = 422
+
+[[wingspan]]
+span = 24.5
+dmst_index = 121.0
+
+[[wingspan.variant]]
+name = "Nimbus 3"
+propulsion = "pure"
 weglide_id = 409
-dmst_index = 121.0
 
-[[preset]]
-variant = "Nimbus 3"
-id = "Nimbus 3 25.5m"
-propulsion = "pure"
-wingspan = 25.5
-weglide_id = 402
-dmst_index = 122.0
-
-[[preset]]
-variant = "Nimbus 3M"
-propulsion = "self_launch"
-wingspan = 25.5
-weglide_id = 403
-dmst_index = 122.0
-
-[[preset]]
-variant = "Nimbus 3T"
-id = "Nimbus 3T 24.5m"
+[[wingspan.variant]]
+name = "Nimbus 3T"
 propulsion = "sustainer"
-wingspan = 24.5
 weglide_id = 410
-dmst_index = 121.0
 
-[[preset]]
-variant = "Nimbus 3T"
-id = "Nimbus 3T 25.5m"
-propulsion = "sustainer"
-wingspan = 25.5
-weglide_id = 404
+[[wingspan]]
+span = 25.5
 dmst_index = 122.0
+
+[[wingspan.variant]]
+name = "Nimbus 3"
+propulsion = "pure"
+weglide_id = 402
+
+[[wingspan.variant]]
+name = "Nimbus 3M"
+propulsion = "self_launch"
+weglide_id = 403
+
+[[wingspan.variant]]
+name = "Nimbus 3T"
+propulsion = "sustainer"
+weglide_id = 404

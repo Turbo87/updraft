@@ -1,7 +1,10 @@
 model = "Castel C-310P"
+seats = 1
 
-[[preset]]
-variant = "Castel C-310P"
+[[wingspan]]
+dmst_index = 70.0
+
+[[wingspan.variant]]
+name = "Castel C-310P"
 propulsion = "pure"
 weglide_id = 700
-dmst_index = 70.0

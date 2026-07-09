@@ -1,7 +1,10 @@
 model = "Phoenix U15"
+seats = 1
 
-[[preset]]
-variant = "Phoenix U15"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Phoenix U15"
 wing_area = 12.36
 reference_mass = 420.0
 polar_coefficients = { a = 2.99, b = -4.77, c = 2.66 }

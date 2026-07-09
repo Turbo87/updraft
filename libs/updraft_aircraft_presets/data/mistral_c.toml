@@ -2,8 +2,10 @@ model = "Mistral C"
 manufacturer = "Mistral-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "Mistral C"
+[[wingspan]]
+dmst_index = 96.0
+
+[[wingspan.variant]]
+name = "Mistral C"
 propulsion = "pure"
 weglide_id = 160
-dmst_index = 96.0

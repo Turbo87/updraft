@@ -1,12 +1,15 @@
 //! Turns the per-base-model TOML files in `data/` into a `const PRESETS`
 //! catalogue at build time.
 //!
-//! Each file describes one base model and holds a flat list of `[[preset]]`
-//! entries, one per (variant, wingspan) leaf. An entry may `inherits_from`
-//! an earlier entry in the same file to copy its fields and override a few
-//! (the classic "same airframe, different engine" case). We resolve that
-//! inheritance, group the entries into the base -> variant -> wingspan tree,
-//! and emit fully-qualified `const` code into `$OUT_DIR/catalogue.rs`.
+//! Each file describes one base model whose variants are grouped by
+//! wingspan. A `[[wingspan]]` block fixes the span (and the `DMSt`
+//! handicap that the span's variants share), and each
+//! `[[wingspan.variant]]` under it is one build/propulsion variant at that
+//! span. A variant that appears in several blocks (e.g. removable tips) is
+//! reassembled into one `Variant` with several wingspan leaves. A variant
+//! may `inherits_from` another in the same block to copy its fields (the
+//! "same airframe, different engine" case). We emit fully-qualified
+//! `const` code into `$OUT_DIR/catalogue.rs`.
 
 use std::path::Path;
 use std::{env, fmt::Write as _, fs};
@@ -14,8 +17,8 @@ use std::{env, fmt::Write as _, fs};
 use serde::{Deserialize, de};
 
 /// A float field that also accepts a TOML integer literal, so hand-written
-/// data can say `wingspan = 18` or `a = 1` (as in the schema examples)
-/// rather than being forced to `18.0` / `1.0`.
+/// data can say `span = 18` or `a = 1` (as in the schema examples) rather
+/// than being forced to `18.0` / `1.0`.
 #[derive(Clone, Copy)]
 struct F64(f64);
 
@@ -48,19 +51,29 @@ struct PresetFile {
     manufacturer: Option<String>,
     /// Seat count for the whole model; the seat count does not vary
     /// between variants.
-    seats: Option<u8>,
+    seats: u8,
     #[serde(default)]
-    preset: Vec<Entry>,
+    wingspan: Vec<Block>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Block {
+    /// Wingspan in metres, shared by every variant in the block. Absent
+    /// for fixed-span gliders that don't quote one.
+    span: Option<F64>,
+    /// Handicap shared by the block's variants; a variant may override it.
+    dmst_index: Option<F64>,
+    #[serde(default)]
+    variant: Vec<Entry>,
 }
 
 #[derive(Deserialize, Clone, Default)]
 #[serde(deny_unknown_fields)]
 struct Entry {
-    id: Option<String>,
+    name: Option<String>,
     inherits_from: Option<String>,
-    variant: Option<String>,
     propulsion: Option<String>,
-    wingspan: Option<F64>,
     wing_area: Option<F64>,
     reference_mass: Option<F64>,
     polar_coefficients: Option<Coeffs>,
@@ -70,6 +83,7 @@ struct Entry {
     vne: Option<F64>,
     stall_speed: Option<F64>,
     weglide_id: Option<u32>,
+    /// Overrides the block's `dmst_index` for this variant.
     dmst_index: Option<F64>,
 }
 
@@ -82,19 +96,14 @@ struct Coeffs {
 }
 
 impl Entry {
-    fn id(&self) -> &str {
-        self.id.as_deref().or(self.variant.as_deref()).unwrap_or("")
-    }
-
     /// Fills every unset field of `self` from `parent`. The identity
-    /// fields (`variant`, `id`, `inherits_from`) are never inherited.
+    /// fields (`name`, `inherits_from`) are never inherited.
     fn inherit(&mut self, parent: &Entry) {
         macro_rules! fill {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = parent.$f.clone(); } )* };
         }
         fill!(
             propulsion,
-            wingspan,
             wing_area,
             reference_mass,
             polar_coefficients,
@@ -107,6 +116,28 @@ impl Entry {
             dmst_index
         );
     }
+}
+
+/// One wingspan configuration (leaf) after grouping and inheritance.
+struct Leaf {
+    wingspan: Option<f64>,
+    wing_area: Option<f64>,
+    coefficients: Option<(f64, f64, f64)>,
+    reference_mass: Option<f64>,
+    empty_mass: Option<f64>,
+    max_takeoff_mass: Option<f64>,
+    water_ballast_capacity: Option<f64>,
+    vne: Option<f64>,
+    stall_speed: Option<f64>,
+    weglide_id: Option<u32>,
+    dmst_index: Option<f64>,
+}
+
+/// A variant accumulated across the blocks it appears in.
+struct Variant {
+    name: String,
+    propulsion: Option<String>,
+    leaves: Vec<Leaf>,
 }
 
 fn main() {
@@ -148,59 +179,86 @@ fn main() {
 
 /// Renders one file into a single `AircraftPreset { ... },` line.
 fn render_base(file: &PresetFile, path: &Path) -> String {
-    // Resolve inheritance in declaration order.
-    let mut resolved: Vec<Entry> = Vec::new();
-    for entry in &file.preset {
-        let mut entry = entry.clone();
-        if let Some(parent_id) = entry.inherits_from.clone() {
-            let parent = resolved
-                .iter()
-                .find(|e| e.id() == parent_id)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "{}: inherits_from = {parent_id:?} not found earlier",
-                        path.display()
-                    )
-                })
-                .clone();
-            entry.inherit(&parent);
+    let mut variants: Vec<Variant> = Vec::new();
+
+    for block in &file.wingspan {
+        // Resolve inheritance within the block, in declaration order.
+        let mut resolved: Vec<Entry> = Vec::new();
+        for entry in &block.variant {
+            let mut entry = entry.clone();
+            if let Some(parent_name) = entry.inherits_from.clone() {
+                let parent = resolved
+                    .iter()
+                    .find(|e| e.name.as_deref() == Some(parent_name.as_str()))
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "{}: inherits_from = {parent_name:?} not found earlier in the block",
+                            path.display()
+                        )
+                    })
+                    .clone();
+                entry.inherit(&parent);
+            }
+            resolved.push(entry);
         }
-        assert!(
-            entry.variant.is_some(),
-            "{}: a preset entry is missing `variant`",
-            path.display()
-        );
-        resolved.push(entry);
+
+        for entry in resolved {
+            let name = entry.name.clone().unwrap_or_else(|| {
+                panic!("{}: a wingspan variant is missing `name`", path.display())
+            });
+            let leaf = Leaf {
+                wingspan: block.span.map(|v| v.0),
+                wing_area: entry.wing_area.map(|v| v.0),
+                coefficients: entry.polar_coefficients.map(|c| (c.a.0, c.b.0, c.c.0)),
+                reference_mass: entry.reference_mass.map(|v| v.0),
+                empty_mass: entry.empty_mass.map(|v| v.0),
+                max_takeoff_mass: entry.max_takeoff_mass.map(|v| v.0),
+                water_ballast_capacity: entry.water_ballast_capacity.map(|v| v.0),
+                vne: entry.vne.map(|v| v.0),
+                stall_speed: entry.stall_speed.map(|v| v.0),
+                weglide_id: entry.weglide_id,
+                // A variant's own handicap wins over the block default.
+                dmst_index: entry.dmst_index.or(block.dmst_index).map(|v| v.0),
+            };
+            if entry.coefficients_without_mass() {
+                panic!(
+                    "{}: variant {name:?} has polar_coefficients but no reference_mass",
+                    path.display()
+                );
+            }
+            match variants.iter_mut().find(|v| v.name == name) {
+                Some(v) => {
+                    if v.propulsion.is_none() {
+                        v.propulsion = entry.propulsion.clone();
+                    }
+                    v.leaves.push(leaf);
+                }
+                None => variants.push(Variant {
+                    name,
+                    propulsion: entry.propulsion.clone(),
+                    leaves: vec![leaf],
+                }),
+            }
+        }
     }
 
-    // Group into variants (in first-seen order), each variant into wingspan
-    // leaves.
-    let mut variants: Vec<(String, Vec<Entry>)> = Vec::new();
-    for entry in resolved {
-        let name = entry.variant.clone().unwrap();
-        match variants.iter_mut().find(|(n, _)| *n == name) {
-            Some((_, leaves)) => leaves.push(entry),
-            None => variants.push((name, vec![entry])),
-        }
-    }
-    variants.sort_by(|a, b| a.0.cmp(&b.0));
+    variants.sort_by(|a, b| a.name.cmp(&b.name));
 
     let mut vs = String::new();
-    for (name, mut leaves) in variants {
-        leaves.sort_by(|a, b| {
-            let (av, bv) = (a.wingspan.map(|v| v.0), b.wingspan.map(|v| v.0));
+    for variant in &mut variants {
+        variant.leaves.sort_by(|a, b| {
+            let (av, bv) = (a.wingspan, b.wingspan);
             av.partial_cmp(&bv).unwrap_or(std::cmp::Ordering::Equal)
         });
-        let propulsion = leaves.iter().find_map(|e| e.propulsion.clone());
         let mut ws = String::new();
-        for leaf in &leaves {
-            write!(ws, "{}, ", render_leaf(leaf, path)).unwrap();
+        for leaf in &variant.leaves {
+            write!(ws, "{}, ", render_leaf(leaf)).unwrap();
         }
         write!(
             vs,
             "crate::Variant {{ name: {}, propulsion: {}, wingspans: &[{}] }}, ",
-            rust_str(&name),
-            opt_propulsion(propulsion.as_deref(), path),
+            rust_str(&variant.name),
+            opt_propulsion(variant.propulsion.as_deref(), path),
             ws.trim_end(),
         )
         .unwrap();
@@ -210,47 +268,46 @@ fn render_base(file: &PresetFile, path: &Path) -> String {
         "    crate::AircraftPreset {{ name: {}, manufacturer: {}, seats: {}, variants: &[{}] }},\n",
         rust_str(&file.model),
         opt(file.manufacturer.as_ref().map(|m| rust_str(m))),
-        opt(file.seats.map(|s| s.to_string())),
+        file.seats,
         vs.trim_end(),
     )
 }
 
-fn render_leaf(e: &Entry, path: &Path) -> String {
-    let polar = match (&e.polar_coefficients, e.reference_mass) {
-        (Some(c), Some(ref_mass)) => format!(
+impl Entry {
+    fn coefficients_without_mass(&self) -> bool {
+        self.polar_coefficients.is_some() && self.reference_mass.is_none()
+    }
+}
+
+fn render_leaf(leaf: &Leaf) -> String {
+    let polar = match (leaf.coefficients, leaf.reference_mass) {
+        (Some((a, b, c)), Some(ref_mass)) => format!(
             "Some(crate::Polar::new(({}, {}, {}), {}))",
-            f(c.a.0),
-            f(c.b.0),
-            f(c.c.0),
-            mass(ref_mass.0)
+            f(a),
+            f(b),
+            f(c),
+            mass(ref_mass)
         ),
-        (Some(_), None) => {
-            panic!(
-                "{}: variant {:?} has polar_coefficients but no reference_mass",
-                path.display(),
-                e.variant
-            )
-        }
-        (None, _) => "None".to_string(),
+        _ => "None".to_string(),
     };
     format!(
         "crate::WingspanConfig {{ wingspan: {}, wing_area: {}, polar: {}, empty_mass: {}, \
          max_takeoff_mass: {}, water_ballast_capacity: {}, vne: {}, stall_speed: {}, \
          flap_speeds: &[], cg_limits: None, weglide_id: {}, fallback_handicap: {} }}",
-        opt(e
+        opt(leaf
             .wingspan
-            .map(|v| format!("updraft_units::Length::from_meters({})", f(v.0)))),
-        opt(e
+            .map(|v| format!("updraft_units::Length::from_meters({})", f(v)))),
+        opt(leaf
             .wing_area
-            .map(|v| format!("updraft_units::Area::from_square_meters({})", f(v.0)))),
+            .map(|v| format!("updraft_units::Area::from_square_meters({})", f(v)))),
         polar,
-        opt(e.empty_mass.map(|v| mass(v.0))),
-        opt(e.max_takeoff_mass.map(|v| mass(v.0))),
-        opt(e.water_ballast_capacity.map(|v| mass(v.0))),
-        opt(e.vne.map(|v| speed(v.0))),
-        opt(e.stall_speed.map(|v| speed(v.0))),
-        opt(e.weglide_id.map(|v| v.to_string())),
-        opt(e.dmst_index.map(|v| f(v.0))),
+        opt(leaf.empty_mass.map(mass)),
+        opt(leaf.max_takeoff_mass.map(mass)),
+        opt(leaf.water_ballast_capacity.map(mass)),
+        opt(leaf.vne.map(speed)),
+        opt(leaf.stall_speed.map(speed)),
+        opt(leaf.weglide_id.map(|v| v.to_string())),
+        opt(leaf.dmst_index.map(f)),
     )
 }
 

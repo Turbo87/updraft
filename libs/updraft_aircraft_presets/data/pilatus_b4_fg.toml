@@ -2,8 +2,10 @@ model = "Pilatus B4 FG"
 manufacturer = "Pilatus"
 seats = 1
 
-[[preset]]
-variant = "Pilatus B4 FG"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "Pilatus B4 FG"
 propulsion = "pure"
 weglide_id = 195
-dmst_index = 86.0

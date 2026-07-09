@@ -1,7 +1,10 @@
 model = "SNC-34 Alliance"
+seats = 1
 
-[[preset]]
-variant = "SNC-34 Alliance"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "SNC-34 Alliance"
 propulsion = "pure"
 weglide_id = 702
-dmst_index = 86.0

@@ -1,7 +1,10 @@
 model = "Neiva B Monitor"
+seats = 1
 
-[[preset]]
-variant = "Neiva B Monitor"
+[[wingspan]]
+dmst_index = 55.0
+
+[[wingspan.variant]]
+name = "Neiva B Monitor"
 propulsion = "pure"
 weglide_id = 731
-dmst_index = 55.0

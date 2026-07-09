@@ -2,8 +2,11 @@ model = "ASK 16"
 manufacturer = "Alexander Schleicher"
 seats = 2
 
-[[preset]]
-variant = "ASK 16"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "ASK 16"
 propulsion = "self_launch"
 wing_area = 19.0
 reference_mass = 700.0
@@ -11,4 +14,3 @@ polar_coefficients = { a = 3.08, b = -4.83, c = 2.89 }
 empty_mass = 530.0
 max_takeoff_mass = 750.0
 weglide_id = 310
-dmst_index = 76.0

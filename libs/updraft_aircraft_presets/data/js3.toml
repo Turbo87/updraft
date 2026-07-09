@@ -2,60 +2,50 @@ model = "JS3"
 manufacturer = "Jonker Sailplanes"
 seats = 1
 
-[[preset]]
-variant = "JS3"
-id = "JS3 15m"
+[[wingspan]]
+span = 15.0
+dmst_index = 116.0
+
+[[wingspan.variant]]
+name = "JS3"
 propulsion = "pure"
-wingspan = 15.0
 wing_area = 8.8
 reference_mass = 450.0
 polar_coefficients = { a = 0.98, b = -1.85, c = 1.47 }
 empty_mass = 280.0
 max_takeoff_mass = 525.0
 weglide_id = 2
-dmst_index = 116.0
 
-[[preset]]
-variant = "JS3"
-id = "JS3 18m"
+[[wingspan.variant]]
+name = "JS3 RES"
+propulsion = "self_launch"
+weglide_id = 3
+
+[[wingspan.variant]]
+name = "JS3 TJ"
+propulsion = "sustainer"
+weglide_id = 4
+
+[[wingspan]]
+span = 18.0
+dmst_index = 122.0
+
+[[wingspan.variant]]
+name = "JS3"
 propulsion = "pure"
-wingspan = 18.0
 wing_area = 9.9
 reference_mass = 500.0
 polar_coefficients = { a = 0.92, b = -1.66, c = 1.27 }
 empty_mass = 290.0
 max_takeoff_mass = 600.0
 weglide_id = 63
-dmst_index = 122.0
 
-[[preset]]
-variant = "JS3 RES"
-id = "JS3 RES 15m"
+[[wingspan.variant]]
+name = "JS3 RES"
 propulsion = "self_launch"
-wingspan = 15.0
-weglide_id = 3
-dmst_index = 116.0
-
-[[preset]]
-variant = "JS3 RES"
-id = "JS3 RES 18m"
-propulsion = "self_launch"
-wingspan = 18.0
 weglide_id = 64
-dmst_index = 122.0
 
-[[preset]]
-variant = "JS3 TJ"
-id = "JS3 TJ 15m"
+[[wingspan.variant]]
+name = "JS3 TJ"
 propulsion = "sustainer"
-wingspan = 15.0
-weglide_id = 4
-dmst_index = 116.0
-
-[[preset]]
-variant = "JS3 TJ"
-id = "JS3 TJ 18m"
-propulsion = "sustainer"
-wingspan = 18.0
 weglide_id = 65
-dmst_index = 122.0

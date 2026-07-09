@@ -1,7 +1,10 @@
 model = "Mistral"
+seats = 1
 
-[[preset]]
-variant = "Mistral"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Mistral"
 wing_area = 10.9
 reference_mass = 327.0
 polar_coefficients = { a = 2.14, b = -2.98, c = 2.03 }

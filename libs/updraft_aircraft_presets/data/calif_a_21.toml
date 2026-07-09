@@ -2,14 +2,15 @@ model = "Calif A 21"
 manufacturer = "Caproni"
 seats = 2
 
-[[preset]]
-variant = "Calif A 21"
-propulsion = "pure"
-weglide_id = 351
+[[wingspan]]
 dmst_index = 108.0
 
-[[preset]]
-variant = "Calif A 21 SJ"
+[[wingspan.variant]]
+name = "Calif A 21"
+propulsion = "pure"
+weglide_id = 351
+
+[[wingspan.variant]]
+name = "Calif A 21 SJ"
 propulsion = "sustainer"
 weglide_id = 352
-dmst_index = 108.0

@@ -2,9 +2,11 @@ model = "Janus"
 manufacturer = "Schempp-Hirth"
 seats = 2
 
-[[preset]]
-variant = "Janus"
-propulsion = "pure"
-wingspan = 18.2
-weglide_id = 364
+[[wingspan]]
+span = 18.2
 dmst_index = 102.0
+
+[[wingspan.variant]]
+name = "Janus"
+propulsion = "pure"
+weglide_id = 364

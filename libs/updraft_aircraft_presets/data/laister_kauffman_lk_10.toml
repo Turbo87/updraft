@@ -2,8 +2,10 @@ model = "Laister-Kauffman LK-10"
 manufacturer = "Laister-Kauffman"
 seats = 1
 
-[[preset]]
-variant = "Laister-Kauffman LK-10"
+[[wingspan]]
+dmst_index = 61.0
+
+[[wingspan.variant]]
+name = "Laister-Kauffman LK-10"
 propulsion = "pure"
 weglide_id = 674
-dmst_index = 61.0

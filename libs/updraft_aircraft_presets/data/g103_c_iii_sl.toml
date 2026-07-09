@@ -1,7 +1,10 @@
 model = "G103 C III SL"
+seats = 1
 
-[[preset]]
-variant = "G103 C III SL"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "G103 C III SL"
 wing_area = 17.52
 reference_mass = 579.0
 polar_coefficients = { a = 2.54, b = -4.64, c = 2.8 }

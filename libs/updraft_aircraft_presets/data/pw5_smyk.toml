@@ -1,7 +1,10 @@
 model = "PW5 Smyk"
+seats = 1
 
-[[preset]]
-variant = "PW5 Smyk"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "PW5 Smyk"
 wing_area = 10.2
 reference_mass = 296.0
 polar_coefficients = { a = 2.51, b = -3.22, c = 1.68 }

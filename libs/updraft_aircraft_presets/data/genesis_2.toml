@@ -1,7 +1,10 @@
 model = "Genesis 2"
+seats = 1
 
-[[preset]]
-variant = "Genesis 2"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Genesis 2"
 wing_area = 11.25
 reference_mass = 337.0
 polar_coefficients = { a = 1.37, b = -1.98, c = 1.25 }

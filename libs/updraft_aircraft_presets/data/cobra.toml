@@ -1,7 +1,10 @@
 model = "Cobra"
+seats = 1
 
-[[preset]]
-variant = "Cobra"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Cobra"
 wing_area = 11.6
 reference_mass = 348.0
 polar_coefficients = { a = 2.08, b = -3.41, c = 2.07 }

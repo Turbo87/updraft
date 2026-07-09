@@ -1,7 +1,10 @@
 model = "Mg 23 SL"
+seats = 1
 
-[[preset]]
-variant = "Mg 23 SL"
+[[wingspan]]
+dmst_index = 85.0
+
+[[wingspan.variant]]
+name = "Mg 23 SL"
 propulsion = "pure"
 weglide_id = 738
-dmst_index = 85.0

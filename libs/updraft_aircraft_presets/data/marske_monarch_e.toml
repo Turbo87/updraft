@@ -1,7 +1,10 @@
 model = "Marske Monarch E"
+seats = 1
 
-[[preset]]
-variant = "Marske Monarch E"
+[[wingspan]]
+dmst_index = 53.0
+
+[[wingspan.variant]]
+name = "Marske Monarch E"
 propulsion = "pure"
 weglide_id = 693
-dmst_index = 53.0

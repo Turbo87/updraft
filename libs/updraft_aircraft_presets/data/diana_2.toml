@@ -1,7 +1,10 @@
 model = "Diana-2"
+seats = 1
 
-[[preset]]
-variant = "Diana-2"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Diana-2"
 wing_area = 8.66
 reference_mass = 242.0
 polar_coefficients = { a = 1.57, b = -2.32, c = 1.33 }

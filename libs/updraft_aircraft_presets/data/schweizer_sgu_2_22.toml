@@ -2,8 +2,10 @@ model = "Schweizer SGU 2-22"
 manufacturer = "Schweizer"
 seats = 2
 
-[[preset]]
-variant = "Schweizer SGU 2-22"
+[[wingspan]]
+dmst_index = 50.0
+
+[[wingspan.variant]]
+name = "Schweizer SGU 2-22"
 propulsion = "pure"
 weglide_id = 656
-dmst_index = 50.0

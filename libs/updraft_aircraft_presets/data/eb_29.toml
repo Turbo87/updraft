@@ -2,41 +2,16 @@ model = "EB 29"
 manufacturer = "Binder"
 seats = 1
 
-[[preset]]
-variant = "EB 29"
-propulsion = "self_launch"
-weglide_id = 369
+[[wingspan]]
 dmst_index = 128.0
 
-[[preset]]
-variant = "EB 29/25.3m"
-wingspan = 25.3
-wing_area = 16.5
-reference_mass = 700.0
-polar_coefficients = { a = 0.55, b = -0.63, c = 0.54 }
-empty_mass = 580.0
-max_takeoff_mass = 900.0
+[[wingspan.variant]]
+name = "EB 29"
+propulsion = "self_launch"
+weglide_id = 369
 
-[[preset]]
-variant = "EB 29/28.3m"
-wingspan = 28.3
-wing_area = 15.4
-reference_mass = 700.0
-polar_coefficients = { a = 0.62, b = -0.74, c = 0.55 }
-empty_mass = 580.0
-max_takeoff_mass = 900.0
-
-[[preset]]
-variant = "EB 29/29.3m"
-wingspan = 29.3
-wing_area = 16.8
-reference_mass = 700.0
-polar_coefficients = { a = 0.56, b = -0.59, c = 0.47 }
-empty_mass = 580.0
-max_takeoff_mass = 900.0
-
-[[preset]]
-variant = "EB 29R"
+[[wingspan.variant]]
+name = "EB 29R"
 propulsion = "self_launch"
 wing_area = 14.9
 reference_mass = 700.0
@@ -45,3 +20,36 @@ empty_mass = 614.0
 max_takeoff_mass = 850.0
 weglide_id = 372
 dmst_index = 129.0
+
+[[wingspan]]
+span = 25.3
+
+[[wingspan.variant]]
+name = "EB 29/25.3m"
+wing_area = 16.5
+reference_mass = 700.0
+polar_coefficients = { a = 0.55, b = -0.63, c = 0.54 }
+empty_mass = 580.0
+max_takeoff_mass = 900.0
+
+[[wingspan]]
+span = 28.3
+
+[[wingspan.variant]]
+name = "EB 29/28.3m"
+wing_area = 15.4
+reference_mass = 700.0
+polar_coefficients = { a = 0.62, b = -0.74, c = 0.55 }
+empty_mass = 580.0
+max_takeoff_mass = 900.0
+
+[[wingspan]]
+span = 29.3
+
+[[wingspan.variant]]
+name = "EB 29/29.3m"
+wing_area = 16.8
+reference_mass = 700.0
+polar_coefficients = { a = 0.56, b = -0.59, c = 0.47 }
+empty_mass = 580.0
+max_takeoff_mass = 900.0

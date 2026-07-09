@@ -2,8 +2,11 @@ model = "ASW 22 BL"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASW 22 BL"
+[[wingspan]]
+dmst_index = 124.0
+
+[[wingspan.variant]]
+name = "ASW 22 BL"
 propulsion = "pure"
 wing_area = 16.67
 reference_mass = 500.0
@@ -11,10 +14,9 @@ polar_coefficients = { a = 1.31, b = -1.86, c = 1.05 }
 empty_mass = 459.0
 max_takeoff_mass = 750.0
 weglide_id = 376
-dmst_index = 124.0
 
-[[preset]]
-variant = "ASW 22 BLE"
+[[wingspan.variant]]
+name = "ASW 22 BLE"
 propulsion = "self_launch"
 wing_area = 16.31
 reference_mass = 555.0
@@ -22,4 +24,3 @@ polar_coefficients = { a = 1.09, b = -1.58, c = 0.96 }
 empty_mass = 550.0
 max_takeoff_mass = 810.0
 weglide_id = 377
-dmst_index = 124.0

@@ -1,7 +1,10 @@
 model = "Super Floater"
+seats = 1
 
-[[preset]]
-variant = "Super Floater"
+[[wingspan]]
+dmst_index = 45.0
+
+[[wingspan.variant]]
+name = "Super Floater"
 propulsion = "pure"
 weglide_id = 694
-dmst_index = 45.0

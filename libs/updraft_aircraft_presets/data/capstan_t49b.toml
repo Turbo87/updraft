@@ -1,7 +1,10 @@
 model = "Capstan T49B"
+seats = 1
 
-[[preset]]
-variant = "Capstan T49B"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Capstan T49B"
 wing_area = 20.43
 reference_mass = 566.0
 polar_coefficients = { a = 2.97, b = -3.59, c = 1.71 }

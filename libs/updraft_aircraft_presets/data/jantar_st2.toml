@@ -1,7 +1,10 @@
 model = "Jantar St2"
+seats = 1
 
-[[preset]]
-variant = "Jantar St2"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Jantar St2"
 wing_area = 10.66
 reference_mass = 320.0
 polar_coefficients = { a = 2.42, b = -3.85, c = 2.18 }

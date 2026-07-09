@@ -2,8 +2,10 @@ model = "PZL KR-03A Puchatek"
 manufacturer = "PZL Krosno"
 seats = 2
 
-[[preset]]
-variant = "PZL KR-03A Puchatek"
+[[wingspan]]
+dmst_index = 75.0
+
+[[wingspan.variant]]
+name = "PZL KR-03A Puchatek"
 propulsion = "pure"
 weglide_id = 317
-dmst_index = 75.0

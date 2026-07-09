@@ -2,8 +2,10 @@ model = "Kiwi"
 manufacturer = "Valentin Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "Kiwi"
+[[wingspan]]
+dmst_index = 92.0
+
+[[wingspan.variant]]
+name = "Kiwi"
 propulsion = "self_launch"
 weglide_id = 177
-dmst_index = 92.0

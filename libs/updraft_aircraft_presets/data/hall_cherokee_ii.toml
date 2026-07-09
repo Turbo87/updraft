@@ -1,7 +1,10 @@
 model = "Hall Cherokee II"
+seats = 1
 
-[[preset]]
-variant = "Hall Cherokee II"
+[[wingspan]]
+dmst_index = 65.0
+
+[[wingspan.variant]]
+name = "Hall Cherokee II"
 propulsion = "pure"
 weglide_id = 709
-dmst_index = 65.0

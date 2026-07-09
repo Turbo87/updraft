@@ -2,8 +2,10 @@ model = "HpH 304 TS Twin Shark"
 manufacturer = "HpH Sailplanes"
 seats = 2
 
-[[preset]]
-variant = "HpH 304 TS Twin Shark"
+[[wingspan]]
+dmst_index = 119.0
+
+[[wingspan.variant]]
+name = "HpH 304 TS Twin Shark"
 propulsion = "self_launch"
 weglide_id = 341
-dmst_index = 119.0

@@ -1,7 +1,10 @@
 model = "HpH 304c"
+seats = 1
 
-[[preset]]
-variant = "HpH 304c"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "HpH 304c"
 wing_area = 9.9
 reference_mass = 350.0
 polar_coefficients = { a = 2.36, b = -3.81, c = 2.14 }

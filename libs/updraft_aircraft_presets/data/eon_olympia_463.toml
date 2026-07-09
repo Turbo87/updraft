@@ -1,7 +1,10 @@
 model = "EoN Olympia 463"
+seats = 1
 
-[[preset]]
-variant = "EoN Olympia 463"
+[[wingspan]]
+dmst_index = 85.0
+
+[[wingspan.variant]]
+name = "EoN Olympia 463"
 propulsion = "pure"
 weglide_id = 718
-dmst_index = 85.0

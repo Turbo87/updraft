@@ -2,8 +2,10 @@ model = "WLM-1"
 manufacturer = "Weber-Landholf-Münch"
 seats = 1
 
-[[preset]]
-variant = "WLM-1"
+[[wingspan]]
+dmst_index = 64.0
+
+[[wingspan.variant]]
+name = "WLM-1"
 propulsion = "pure"
 weglide_id = 681
-dmst_index = 64.0

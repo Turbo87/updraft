@@ -1,7 +1,10 @@
 model = "GP 15 SE Jeta"
+seats = 1
 
-[[preset]]
-variant = "GP 15 SE Jeta"
+[[wingspan]]
+dmst_index = 116.0
+
+[[wingspan.variant]]
+name = "GP 15 SE Jeta"
 propulsion = "electric_sustainer"
 weglide_id = 719
-dmst_index = 116.0

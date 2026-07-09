@@ -2,8 +2,10 @@ model = "L-13SE Vivat"
 manufacturer = "LET"
 seats = 2
 
-[[preset]]
-variant = "L-13SE Vivat"
+[[wingspan]]
+dmst_index = 74.0
+
+[[wingspan.variant]]
+name = "L-13SE Vivat"
 propulsion = "self_launch"
 weglide_id = 685
-dmst_index = 74.0

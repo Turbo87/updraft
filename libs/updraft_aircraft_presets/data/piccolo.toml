@@ -2,8 +2,10 @@ model = "Piccolo"
 manufacturer = "Technoflug"
 seats = 1
 
-[[preset]]
-variant = "Piccolo"
+[[wingspan]]
+dmst_index = 68.0
+
+[[wingspan.variant]]
+name = "Piccolo"
 propulsion = "self_launch"
 weglide_id = 245
-dmst_index = 68.0

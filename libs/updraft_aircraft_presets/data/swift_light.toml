@@ -2,14 +2,15 @@ model = "Swift-Light"
 manufacturer = "Aériane"
 seats = 1
 
-[[preset]]
-variant = "Swift-Light"
-propulsion = "pure"
-weglide_id = 634
+[[wingspan]]
 dmst_index = 76.0
 
-[[preset]]
-variant = "Swift-Light E"
+[[wingspan.variant]]
+name = "Swift-Light"
+propulsion = "pure"
+weglide_id = 634
+
+[[wingspan.variant]]
+name = "Swift-Light E"
 propulsion = "electric_sustainer"
 weglide_id = 633
-dmst_index = 76.0

@@ -1,7 +1,10 @@
 model = "SVC Mačka"
+seats = 1
 
-[[preset]]
-variant = "SVC Mačka"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "SVC Mačka"
 propulsion = "pure"
 weglide_id = 745
-dmst_index = 54.0

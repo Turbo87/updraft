@@ -2,8 +2,10 @@ model = "SZD-9 Bocian"
 manufacturer = "PZL Bielsko"
 seats = 2
 
-[[preset]]
-variant = "SZD-9 Bocian"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "SZD-9 Bocian"
 propulsion = "pure"
 weglide_id = 312
-dmst_index = 76.0

@@ -2,18 +2,20 @@ model = "ASW 20 Top"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASW 20 Top"
-id = "ASW 20 Top 15m"
-propulsion = "self_launch"
-wingspan = 15.0
-weglide_id = 45
+[[wingspan]]
+span = 15.0
 dmst_index = 108.0
 
-[[preset]]
-variant = "ASW 20 Top"
-id = "ASW 20 Top 16.6m"
+[[wingspan.variant]]
+name = "ASW 20 Top"
 propulsion = "self_launch"
-wingspan = 16.6
-weglide_id = 122
+weglide_id = 45
+
+[[wingspan]]
+span = 16.6
 dmst_index = 110.0
+
+[[wingspan.variant]]
+name = "ASW 20 Top"
+propulsion = "self_launch"
+weglide_id = 122

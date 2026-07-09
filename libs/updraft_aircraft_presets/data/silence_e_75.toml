@@ -1,8 +1,10 @@
 model = "Silence E 75"
 seats = 2
 
-[[preset]]
-variant = "Silence E 75"
+[[wingspan]]
+dmst_index = 98.0
+
+[[wingspan.variant]]
+name = "Silence E 75"
 propulsion = "self_launch"
 weglide_id = 287
-dmst_index = 98.0

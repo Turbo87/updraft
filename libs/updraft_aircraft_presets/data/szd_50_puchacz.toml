@@ -2,8 +2,10 @@ model = "SZD-50 Puchacz"
 manufacturer = "PZL Bielsko"
 seats = 2
 
-[[preset]]
-variant = "SZD-50 Puchacz"
+[[wingspan]]
+dmst_index = 84.0
+
+[[wingspan.variant]]
+name = "SZD-50 Puchacz"
 propulsion = "pure"
 weglide_id = 300
-dmst_index = 84.0

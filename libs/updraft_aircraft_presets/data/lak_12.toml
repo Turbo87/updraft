@@ -2,8 +2,10 @@ model = "LAK-12"
 manufacturer = "Sportinė Aviacija"
 seats = 1
 
-[[preset]]
-variant = "LAK-12"
+[[wingspan]]
+dmst_index = 114.0
+
+[[wingspan.variant]]
+name = "LAK-12"
 propulsion = "pure"
 weglide_id = 429
-dmst_index = 114.0

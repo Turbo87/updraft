@@ -2,8 +2,11 @@ model = "ASH 26"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASH 26"
+[[wingspan]]
+dmst_index = 119.0
+
+[[wingspan.variant]]
+name = "ASH 26"
 propulsion = "pure"
 wing_area = 11.68
 reference_mass = 420.0
@@ -11,10 +14,9 @@ polar_coefficients = { a = 1.05, b = -1.42, c = 0.93 }
 empty_mass = 270.0
 max_takeoff_mass = 525.0
 weglide_id = 91
-dmst_index = 119.0
 
-[[preset]]
-variant = "ASH 26 E"
+[[wingspan.variant]]
+name = "ASH 26 E"
 propulsion = "self_launch"
 wing_area = 11.68
 reference_mass = 397.0
@@ -22,4 +24,3 @@ polar_coefficients = { a = 1.46, b = -2.53, c = 1.64 }
 empty_mass = 360.0
 max_takeoff_mass = 525.0
 weglide_id = 92
-dmst_index = 119.0

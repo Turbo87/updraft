@@ -2,8 +2,10 @@ model = "Condor 4"
 manufacturer = "Alexander Schleicher"
 seats = 2
 
-[[preset]]
-variant = "Condor 4"
+[[wingspan]]
+dmst_index = 80.0
+
+[[wingspan.variant]]
+name = "Condor 4"
 propulsion = "pure"
 weglide_id = 302
-dmst_index = 80.0

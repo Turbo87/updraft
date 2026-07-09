@@ -2,72 +2,54 @@ model = "Ventus 3"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Ventus 3"
-id = "Ventus 3 15m"
+[[wingspan]]
+span = 15.0
+dmst_index = 116.0
+
+[[wingspan.variant]]
+name = "Ventus 3"
 propulsion = "pure"
-wingspan = 15.0
 weglide_id = 5
-dmst_index = 116.0
 
-[[preset]]
-variant = "Ventus 3"
-id = "Ventus 3 18m"
-propulsion = "pure"
-wingspan = 18.0
-weglide_id = 66
-dmst_index = 122.0
-
-[[preset]]
-variant = "Ventus 3E"
+[[wingspan.variant]]
+name = "Ventus 3F"
 propulsion = "electric_sustainer"
-wingspan = 18.0
-weglide_id = 660
-dmst_index = 122.0
-
-[[preset]]
-variant = "Ventus 3F"
-id = "Ventus 3F 15m"
-propulsion = "electric_sustainer"
-wingspan = 15.0
 weglide_id = 6
-dmst_index = 116.0
 
-[[preset]]
-variant = "Ventus 3F"
-id = "Ventus 3F 18m"
-propulsion = "electric_sustainer"
-wingspan = 18.0
-weglide_id = 67
-dmst_index = 122.0
-
-[[preset]]
-variant = "Ventus 3M"
-id = "Ventus 3M 15m"
+[[wingspan.variant]]
+name = "Ventus 3M"
 propulsion = "self_launch"
-wingspan = 15.0
-dmst_index = 116.0
 
-[[preset]]
-variant = "Ventus 3M"
-id = "Ventus 3M 18m"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 68
-dmst_index = 122.0
-
-[[preset]]
-variant = "Ventus 3T"
-id = "Ventus 3T 15m"
+[[wingspan.variant]]
+name = "Ventus 3T"
 propulsion = "sustainer"
-wingspan = 15.0
 weglide_id = 8
-dmst_index = 116.0
 
-[[preset]]
-variant = "Ventus 3T"
-id = "Ventus 3T 18m"
-propulsion = "sustainer"
-wingspan = 18.0
-weglide_id = 69
+[[wingspan]]
+span = 18.0
 dmst_index = 122.0
+
+[[wingspan.variant]]
+name = "Ventus 3"
+propulsion = "pure"
+weglide_id = 66
+
+[[wingspan.variant]]
+name = "Ventus 3E"
+propulsion = "electric_sustainer"
+weglide_id = 660
+
+[[wingspan.variant]]
+name = "Ventus 3F"
+propulsion = "electric_sustainer"
+weglide_id = 67
+
+[[wingspan.variant]]
+name = "Ventus 3M"
+propulsion = "self_launch"
+weglide_id = 68
+
+[[wingspan.variant]]
+name = "Ventus 3T"
+propulsion = "sustainer"
+weglide_id = 69

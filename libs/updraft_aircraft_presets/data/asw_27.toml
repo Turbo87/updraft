@@ -2,14 +2,15 @@ model = "ASW 27"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASW 27"
-propulsion = "pure"
-weglide_id = 12
+[[wingspan]]
 dmst_index = 114.0
 
-[[preset]]
-variant = "ASW 27-J"
+[[wingspan.variant]]
+name = "ASW 27"
+propulsion = "pure"
+weglide_id = 12
+
+[[wingspan.variant]]
+name = "ASW 27-J"
 propulsion = "sustainer"
 weglide_id = 569
-dmst_index = 114.0

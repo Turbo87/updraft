@@ -1,7 +1,10 @@
 model = "Reiher"
+seats = 1
 
-[[preset]]
-variant = "Reiher"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Reiher"
 wing_area = 19.0
 reference_mass = 420.0
 polar_coefficients = { a = 3.37, b = -3.51, c = 1.42 }

@@ -1,7 +1,10 @@
 model = "Discus 2bFES"
+seats = 1
 
-[[preset]]
-variant = "Discus 2bFES"
+[[wingspan]]
+dmst_index = 108.0
+
+[[wingspan.variant]]
+name = "Discus 2bFES"
 propulsion = "electric_sustainer"
 weglide_id = 453
-dmst_index = 108.0

@@ -2,26 +2,27 @@ model = "Schweizer SGS 1-23"
 manufacturer = "Schweizer Aircraft"
 seats = 1
 
-[[preset]]
-variant = "Schweizer SGS 1-23"
+[[wingspan]]
+dmst_index = 77.0
+
+[[wingspan.variant]]
+name = "Schweizer SGS 1-23"
 propulsion = "pure"
 weglide_id = 676
 dmst_index = 68.0
 
-[[preset]]
-variant = "Schweizer SGS 1-23D"
+[[wingspan.variant]]
+name = "Schweizer SGS 1-23D"
 propulsion = "pure"
 weglide_id = 677
-dmst_index = 77.0
 
-[[preset]]
-variant = "Schweizer SGS 1-23G"
+[[wingspan.variant]]
+name = "Schweizer SGS 1-23G"
 propulsion = "pure"
 weglide_id = 678
-dmst_index = 77.0
 
-[[preset]]
-variant = "Schweizer SGS 1-23H"
+[[wingspan.variant]]
+name = "Schweizer SGS 1-23H"
 propulsion = "pure"
 weglide_id = 679
 dmst_index = 81.0

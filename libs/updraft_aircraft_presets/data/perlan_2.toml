@@ -2,8 +2,10 @@ model = "Perlan 2"
 manufacturer = "Perlan Project"
 seats = 2
 
-[[preset]]
-variant = "Perlan 2"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "Perlan 2"
 propulsion = "pure"
 weglide_id = 641
-dmst_index = 105.0

@@ -2,9 +2,11 @@ model = "SZD-54-2 Perkoz WL"
 manufacturer = "Allstar PZL Glider"
 seats = 2
 
-[[preset]]
-variant = "SZD-54-2 Perkoz WL"
-propulsion = "pure"
-wingspan = 20.0
-weglide_id = 365
+[[wingspan]]
+span = 20.0
 dmst_index = 102.0
+
+[[wingspan.variant]]
+name = "SZD-54-2 Perkoz WL"
+propulsion = "pure"
+weglide_id = 365

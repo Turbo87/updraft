@@ -2,8 +2,10 @@ model = "K 10"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "K 10"
+[[wingspan]]
+dmst_index = 85.0
+
+[[wingspan.variant]]
+name = "K 10"
 propulsion = "pure"
 weglide_id = 212
-dmst_index = 85.0

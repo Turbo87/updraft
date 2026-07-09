@@ -2,8 +2,10 @@ model = "AFH 22"
 manufacturer = "Akaflieg Hannover"
 seats = 2
 
-[[preset]]
-variant = "AFH 22"
+[[wingspan]]
+dmst_index = 98.0
+
+[[wingspan.variant]]
+name = "AFH 22"
 propulsion = "pure"
 weglide_id = 283
-dmst_index = 98.0

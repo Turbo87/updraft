@@ -2,14 +2,16 @@ model = "SZD-48-3 Jantar Std. 3"
 manufacturer = "PZL Bielsko"
 seats = 1
 
-[[preset]]
-variant = "SZD-48-3 Jantar Std. 3"
-propulsion = "pure"
-weglide_id = 519
+[[wingspan]]
 dmst_index = 100.0
 
-[[preset]]
-variant = "SZD-48-3 Jantar Std. 3 WL"
+[[wingspan.variant]]
+name = "SZD-48-3 Jantar Std. 3"
+propulsion = "pure"
+weglide_id = 519
+
+[[wingspan.variant]]
+name = "SZD-48-3 Jantar Std. 3 WL"
 propulsion = "pure"
 weglide_id = 520
 dmst_index = 101.0

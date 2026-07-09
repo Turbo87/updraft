@@ -2,20 +2,20 @@ model = "Janus C FG"
 manufacturer = "Schempp-Hirth"
 seats = 2
 
-[[preset]]
-variant = "Janus C FG"
+[[wingspan]]
+dmst_index = 106.0
+
+[[wingspan.variant]]
+name = "Janus C FG"
 propulsion = "pure"
 weglide_id = 357
-dmst_index = 106.0
 
-[[preset]]
-variant = "Janus CM FG"
+[[wingspan.variant]]
+name = "Janus CM FG"
 propulsion = "self_launch"
 weglide_id = 358
-dmst_index = 106.0
 
-[[preset]]
-variant = "Janus CT FG"
+[[wingspan.variant]]
+name = "Janus CT FG"
 propulsion = "sustainer"
 weglide_id = 359
-dmst_index = 106.0

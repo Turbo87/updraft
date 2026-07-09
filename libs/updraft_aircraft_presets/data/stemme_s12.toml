@@ -2,8 +2,10 @@ model = "Stemme S12"
 manufacturer = "Stemme"
 seats = 2
 
-[[preset]]
-variant = "Stemme S12"
+[[wingspan]]
+dmst_index = 114.0
+
+[[wingspan.variant]]
+name = "Stemme S12"
 propulsion = "self_launch"
 weglide_id = 534
-dmst_index = 114.0

@@ -2,22 +2,25 @@ model = "Std. Cirrus"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Std. Cirrus"
-propulsion = "pure"
-weglide_id = 134
+[[wingspan]]
 dmst_index = 99.0
 
-[[preset]]
-variant = "Std. Cirrus"
-id = "Std. Cirrus 16m"
+[[wingspan.variant]]
+name = "Std. Cirrus"
 propulsion = "pure"
-wingspan = 16.0
-weglide_id = 276
-dmst_index = 100.0
+weglide_id = 134
 
-[[preset]]
-variant = "Std. Cirrus WL"
+[[wingspan.variant]]
+name = "Std. Cirrus WL"
 propulsion = "pure"
 weglide_id = 277
 dmst_index = 100.0
+
+[[wingspan]]
+span = 16.0
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "Std. Cirrus"
+propulsion = "pure"
+weglide_id = 276

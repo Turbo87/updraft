@@ -2,9 +2,11 @@ model = "Cirrus B"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Cirrus B"
-propulsion = "pure"
-wingspan = 18.34
-weglide_id = 257
+[[wingspan]]
+span = 18.34
 dmst_index = 102.0
+
+[[wingspan.variant]]
+name = "Cirrus B"
+propulsion = "pure"
+weglide_id = 257

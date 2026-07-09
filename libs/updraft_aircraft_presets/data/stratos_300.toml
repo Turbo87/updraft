@@ -2,8 +2,10 @@ model = "Stratos 300"
 manufacturer = "HFL Leichtflugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "Stratos 300"
+[[wingspan]]
+dmst_index = 64.0
+
+[[wingspan.variant]]
+name = "Stratos 300"
 propulsion = "sustainer"
 weglide_id = 630
-dmst_index = 64.0

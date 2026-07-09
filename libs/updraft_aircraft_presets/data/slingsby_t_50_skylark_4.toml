@@ -2,8 +2,10 @@ model = "Slingsby T.50 Skylark 4"
 manufacturer = "Slingsby"
 seats = 1
 
-[[preset]]
-variant = "Slingsby T.50 Skylark 4"
+[[wingspan]]
+dmst_index = 84.0
+
+[[wingspan.variant]]
+name = "Slingsby T.50 Skylark 4"
 propulsion = "pure"
 weglide_id = 540
-dmst_index = 84.0

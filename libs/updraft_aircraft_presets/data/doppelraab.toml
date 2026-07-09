@@ -2,8 +2,10 @@ model = "Doppelraab"
 manufacturer = "Raab"
 seats = 2
 
-[[preset]]
-variant = "Doppelraab"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Doppelraab"
 propulsion = "pure"
 weglide_id = 568
-dmst_index = 54.0

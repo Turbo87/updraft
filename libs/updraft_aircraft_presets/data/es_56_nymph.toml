@@ -2,8 +2,10 @@ model = "ES-56 Nymph"
 manufacturer = "Edmund Schneider"
 seats = 1
 
-[[preset]]
-variant = "ES-56 Nymph"
+[[wingspan]]
+dmst_index = 65.0
+
+[[wingspan.variant]]
+name = "ES-56 Nymph"
 propulsion = "pure"
 weglide_id = 597
-dmst_index = 65.0

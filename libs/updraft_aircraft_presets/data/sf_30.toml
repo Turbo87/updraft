@@ -2,8 +2,10 @@ model = "SF 30"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "SF 30"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "SF 30"
 propulsion = "pure"
 weglide_id = 201
-dmst_index = 86.0

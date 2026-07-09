@@ -2,8 +2,10 @@ model = "SF 36"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "SF 36"
+[[wingspan]]
+dmst_index = 74.0
+
+[[wingspan.variant]]
+name = "SF 36"
 propulsion = "self_launch"
 weglide_id = 533
-dmst_index = 74.0

@@ -2,8 +2,10 @@ model = "Samburo AVo68-R"
 manufacturer = "M&D Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "Samburo AVo68-R"
+[[wingspan]]
+dmst_index = 67.0
+
+[[wingspan.variant]]
+name = "Samburo AVo68-R"
 propulsion = "self_launch"
 weglide_id = 330
-dmst_index = 67.0

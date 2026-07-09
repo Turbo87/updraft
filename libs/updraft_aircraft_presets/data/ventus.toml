@@ -2,79 +2,67 @@ model = "Ventus"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Ventus"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Ventus"
 wing_area = 9.51
 reference_mass = 314.0
 polar_coefficients = { a = 1.21, b = -1.78, c = 1.2 }
 empty_mass = 235.0
 max_takeoff_mass = 525.0
 
-[[preset]]
-variant = "Ventus a"
-id = "Ventus a 15m"
+[[wingspan]]
+span = 15.0
+dmst_index = 110.0
+
+[[wingspan.variant]]
+name = "Ventus a"
 propulsion = "pure"
-wingspan = 15.0
 weglide_id = 40
 dmst_index = 111.0
 
-[[preset]]
-variant = "Ventus a"
-id = "Ventus a 16.6m"
+[[wingspan.variant]]
+name = "Ventus b"
 propulsion = "pure"
-wingspan = 16.6
+weglide_id = 41
+
+[[wingspan.variant]]
+name = "Ventus bT"
+propulsion = "sustainer"
+weglide_id = 42
+
+[[wingspan.variant]]
+name = "Ventus c"
+propulsion = "pure"
+weglide_id = 680
+
+[[wingspan.variant]]
+name = "Ventus cM"
+propulsion = "self_launch"
+weglide_id = 43
+
+[[wingspan.variant]]
+name = "Ventus cT"
+propulsion = "sustainer"
+weglide_id = 44
+
+[[wingspan]]
+span = 16.6
+dmst_index = 113.0
+
+[[wingspan.variant]]
+name = "Ventus a"
+propulsion = "pure"
 weglide_id = 116
 dmst_index = 114.0
 
-[[preset]]
-variant = "Ventus b"
-id = "Ventus b 15m"
+[[wingspan.variant]]
+name = "Ventus b"
 propulsion = "pure"
-wingspan = 15.0
-weglide_id = 41
-dmst_index = 110.0
-
-[[preset]]
-variant = "Ventus b"
-id = "Ventus b 16.6m"
-propulsion = "pure"
-wingspan = 16.6
 weglide_id = 117
-dmst_index = 113.0
 
-[[preset]]
-variant = "Ventus bT"
-id = "Ventus bT 15m"
+[[wingspan.variant]]
+name = "Ventus bT"
 propulsion = "sustainer"
-wingspan = 15.0
-weglide_id = 42
-dmst_index = 110.0
-
-[[preset]]
-variant = "Ventus bT"
-id = "Ventus bT 16.6m"
-propulsion = "sustainer"
-wingspan = 16.6
 weglide_id = 118
-dmst_index = 113.0
-
-[[preset]]
-variant = "Ventus c"
-propulsion = "pure"
-wingspan = 15.0
-weglide_id = 680
-dmst_index = 110.0
-
-[[preset]]
-variant = "Ventus cM"
-propulsion = "self_launch"
-wingspan = 15.0
-weglide_id = 43
-dmst_index = 110.0
-
-[[preset]]
-variant = "Ventus cT"
-propulsion = "sustainer"
-wingspan = 15.0
-weglide_id = 44
-dmst_index = 110.0

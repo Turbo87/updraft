@@ -2,8 +2,10 @@ model = "Phöbus B"
 manufacturer = "Bölkow"
 seats = 1
 
-[[preset]]
-variant = "Phöbus B"
+[[wingspan]]
+dmst_index = 96.0
+
+[[wingspan.variant]]
+name = "Phöbus B"
 propulsion = "pure"
 weglide_id = 161
-dmst_index = 96.0

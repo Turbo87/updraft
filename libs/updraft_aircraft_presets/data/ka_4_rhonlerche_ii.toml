@@ -2,8 +2,10 @@ model = "Ka 4 Rhönlerche II"
 manufacturer = "Alexander Schleicher"
 seats = 2
 
-[[preset]]
-variant = "Ka 4 Rhönlerche II"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Ka 4 Rhönlerche II"
 propulsion = "pure"
 weglide_id = 332
-dmst_index = 54.0

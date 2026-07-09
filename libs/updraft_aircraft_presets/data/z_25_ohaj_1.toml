@@ -1,7 +1,10 @@
 model = "Z-25 Šohaj 1"
+seats = 1
 
-[[preset]]
-variant = "Z-25 Šohaj 1"
+[[wingspan]]
+dmst_index = 80.0
+
+[[wingspan.variant]]
+name = "Z-25 Šohaj 1"
 propulsion = "pure"
 weglide_id = 741
-dmst_index = 80.0

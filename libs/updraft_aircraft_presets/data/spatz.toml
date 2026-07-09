@@ -2,9 +2,11 @@ model = "Spatz"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "Spatz"
-propulsion = "pure"
-wingspan = 13.0
-weglide_id = 244
+[[wingspan]]
+span = 13.0
 dmst_index = 74.0
+
+[[wingspan.variant]]
+name = "Spatz"
+propulsion = "pure"
+weglide_id = 244

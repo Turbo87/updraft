@@ -2,94 +2,73 @@ model = "Ventus 2c"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Ventus 2c"
-id = "Ventus 2c 15m"
+[[wingspan]]
+span = 15.0
+dmst_index = 114.0
+
+[[wingspan.variant]]
+name = "Ventus 2c"
 propulsion = "pure"
-wingspan = 15.0
 weglide_id = 18
-dmst_index = 114.0
 
-[[preset]]
-variant = "Ventus 2c"
-id = "Ventus 2c 18m"
-propulsion = "pure"
-wingspan = 18.0
-weglide_id = 88
-dmst_index = 120.0
-
-[[preset]]
-variant = "Ventus 2cM"
-id = "Ventus 2cM 15m"
+[[wingspan.variant]]
+name = "Ventus 2cM"
 propulsion = "self_launch"
-wingspan = 15.0
 weglide_id = 19
-dmst_index = 114.0
 
-[[preset]]
-variant = "Ventus 2cM"
-id = "Ventus 2cM 18m"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 89
-dmst_index = 120.0
-
-[[preset]]
-variant = "Ventus 2cT"
-id = "Ventus 2cT 15m"
+[[wingspan.variant]]
+name = "Ventus 2cT"
 propulsion = "sustainer"
-wingspan = 15.0
 weglide_id = 20
-dmst_index = 114.0
 
-[[preset]]
-variant = "Ventus 2cT"
-id = "Ventus 2cT 18m"
-propulsion = "sustainer"
-wingspan = 18.0
-weglide_id = 90
-dmst_index = 120.0
-
-[[preset]]
-variant = "Ventus 2cx"
+[[wingspan.variant]]
+name = "Ventus 2cxa"
 propulsion = "pure"
-wingspan = 18.0
-weglide_id = 490
-dmst_index = 120.0
-
-[[preset]]
-variant = "Ventus 2cxM"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 492
-dmst_index = 120.0
-
-[[preset]]
-variant = "Ventus 2cxT"
-propulsion = "sustainer"
-wingspan = 18.0
-weglide_id = 491
-dmst_index = 120.0
-
-[[preset]]
-variant = "Ventus 2cxa"
-id = "Ventus 2cxa 15m"
-propulsion = "pure"
-wingspan = 15.0
 weglide_id = 583
 dmst_index = 115.0
 
-[[preset]]
-variant = "Ventus 2cxa"
-id = "Ventus 2cxa 18m"
+[[wingspan]]
+span = 18.0
+dmst_index = 120.0
+
+[[wingspan.variant]]
+name = "Ventus 2c"
 propulsion = "pure"
-wingspan = 18.0
+weglide_id = 88
+
+[[wingspan.variant]]
+name = "Ventus 2cM"
+propulsion = "self_launch"
+weglide_id = 89
+
+[[wingspan.variant]]
+name = "Ventus 2cT"
+propulsion = "sustainer"
+weglide_id = 90
+
+[[wingspan.variant]]
+name = "Ventus 2cx"
+propulsion = "pure"
+weglide_id = 490
+
+[[wingspan.variant]]
+name = "Ventus 2cxM"
+propulsion = "self_launch"
+weglide_id = 492
+
+[[wingspan.variant]]
+name = "Ventus 2cxT"
+propulsion = "sustainer"
+weglide_id = 491
+
+[[wingspan.variant]]
+name = "Ventus 2cxa"
+propulsion = "pure"
 weglide_id = 582
 dmst_index = 121.0
 
-[[preset]]
-variant = "Ventus 2cxa FES"
+[[wingspan.variant]]
+name = "Ventus 2cxa FES"
 propulsion = "electric_sustainer"
-wingspan = 18.0
 weglide_id = 548
 dmst_index = 121.0

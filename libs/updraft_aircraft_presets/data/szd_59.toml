@@ -2,16 +2,17 @@ model = "SZD-59"
 manufacturer = "Allstar PZL Glider"
 seats = 1
 
-[[preset]]
-variant = "SZD-59"
-propulsion = "pure"
-wingspan = 15.0
-weglide_id = 613
+[[wingspan]]
+span = 15.0
 dmst_index = 100.0
 
-[[preset]]
-variant = "SZD-59 WL"
+[[wingspan.variant]]
+name = "SZD-59"
 propulsion = "pure"
-wingspan = 15.0
+weglide_id = 613
+
+[[wingspan.variant]]
+name = "SZD-59 WL"
+propulsion = "pure"
 weglide_id = 262
 dmst_index = 101.0

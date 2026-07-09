@@ -2,8 +2,10 @@ model = "Slingsby T.13 Petrel"
 manufacturer = "Slingsby"
 seats = 1
 
-[[preset]]
-variant = "Slingsby T.13 Petrel"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "Slingsby T.13 Petrel"
 propulsion = "pure"
 weglide_id = 671
-dmst_index = 76.0

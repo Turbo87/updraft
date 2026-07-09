@@ -2,14 +2,15 @@ model = "Phöbus B3/C"
 manufacturer = "Bölkow"
 seats = 1
 
-[[preset]]
-variant = "Phöbus B3"
-propulsion = "pure"
-weglide_id = 272
+[[wingspan]]
 dmst_index = 100.0
 
-[[preset]]
-variant = "Phöbus C"
+[[wingspan.variant]]
+name = "Phöbus B3"
+propulsion = "pure"
+weglide_id = 272
+
+[[wingspan.variant]]
+name = "Phöbus C"
 propulsion = "pure"
 weglide_id = 273
-dmst_index = 100.0

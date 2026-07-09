@@ -2,8 +2,11 @@ model = "LS 7"
 manufacturer = "Rolladen-Schneider"
 seats = 1
 
-[[preset]]
-variant = "LS 7"
+[[wingspan]]
+dmst_index = 106.0
+
+[[wingspan.variant]]
+name = "LS 7"
 propulsion = "pure"
 wing_area = 9.74
 reference_mass = 292.0
@@ -11,16 +14,15 @@ polar_coefficients = { a = 1.78, b = -3.03, c = 1.93 }
 empty_mass = 235.0
 max_takeoff_mass = 541.0
 weglide_id = 472
-dmst_index = 106.0
 
-[[preset]]
-variant = "LS 7 WL"
+[[wingspan.variant]]
+name = "LS 7 WL"
 propulsion = "pure"
 weglide_id = 473
 dmst_index = 107.0
 
-[[preset]]
-variant = "LS 7 neo"
+[[wingspan.variant]]
+name = "LS 7 neo"
 propulsion = "pure"
 weglide_id = 474
 dmst_index = 108.0

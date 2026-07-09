@@ -2,14 +2,15 @@ model = "Duo Discus X"
 manufacturer = "Schempp-Hirth"
 seats = 2
 
-[[preset]]
-variant = "Duo Discus X"
-propulsion = "pure"
-weglide_id = 510
+[[wingspan]]
 dmst_index = 113.0
 
-[[preset]]
-variant = "Duo Discus XT"
+[[wingspan.variant]]
+name = "Duo Discus X"
+propulsion = "pure"
+weglide_id = 510
+
+[[wingspan.variant]]
+name = "Duo Discus XT"
 propulsion = "sustainer"
 weglide_id = 511
-dmst_index = 113.0

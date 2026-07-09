@@ -2,18 +2,20 @@ model = "ASH 31 Mi"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASH 31 Mi"
-id = "ASH 31 Mi 18m"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 74
+[[wingspan]]
+span = 18.0
 dmst_index = 120.0
 
-[[preset]]
-variant = "ASH 31 Mi"
-id = "ASH 31 Mi 21m"
+[[wingspan.variant]]
+name = "ASH 31 Mi"
 propulsion = "self_launch"
-wingspan = 21.0
-weglide_id = 406
+weglide_id = 74
+
+[[wingspan]]
+span = 21.0
 dmst_index = 124.0
+
+[[wingspan.variant]]
+name = "ASH 31 Mi"
+propulsion = "self_launch"
+weglide_id = 406

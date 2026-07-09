@@ -1,7 +1,10 @@
 model = "LF-109 Pionýr"
+seats = 1
 
-[[preset]]
-variant = "LF-109 Pionýr"
+[[wingspan]]
+dmst_index = 70.0
+
+[[wingspan.variant]]
+name = "LF-109 Pionýr"
 propulsion = "pure"
 weglide_id = 724
-dmst_index = 70.0

@@ -2,14 +2,16 @@ model = "Ka 2"
 manufacturer = "Alexander Schleicher"
 seats = 2
 
-[[preset]]
-variant = "Ka 2"
-propulsion = "pure"
-weglide_id = 314
+[[wingspan]]
 dmst_index = 76.0
 
-[[preset]]
-variant = "Ka 2 b"
+[[wingspan.variant]]
+name = "Ka 2"
+propulsion = "pure"
+weglide_id = 314
+
+[[wingspan.variant]]
+name = "Ka 2 b"
 propulsion = "pure"
 weglide_id = 567
 dmst_index = 78.0

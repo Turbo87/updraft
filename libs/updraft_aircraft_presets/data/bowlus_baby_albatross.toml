@@ -2,8 +2,10 @@ model = "Bowlus Baby Albatross"
 manufacturer = "Hawley Bowlus"
 seats = 1
 
-[[preset]]
-variant = "Bowlus Baby Albatross"
+[[wingspan]]
+dmst_index = 51.0
+
+[[wingspan.variant]]
+name = "Bowlus Baby Albatross"
 propulsion = "pure"
 weglide_id = 667
-dmst_index = 51.0

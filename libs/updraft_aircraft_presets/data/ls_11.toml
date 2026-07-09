@@ -2,8 +2,10 @@ model = "LS 11"
 manufacturer = "Rolladen-Schneider"
 seats = 2
 
-[[preset]]
-variant = "LS 11"
+[[wingspan]]
+dmst_index = 113.0
+
+[[wingspan.variant]]
+name = "LS 11"
 propulsion = "pure"
 weglide_id = 344
-dmst_index = 113.0

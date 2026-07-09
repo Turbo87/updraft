@@ -1,7 +1,10 @@
 model = "SG 38"
+seats = 1
 
-[[preset]]
-variant = "SG 38"
+[[wingspan]]
+dmst_index = 22.0
+
+[[wingspan.variant]]
+name = "SG 38"
 propulsion = "pure"
 weglide_id = 689
-dmst_index = 22.0

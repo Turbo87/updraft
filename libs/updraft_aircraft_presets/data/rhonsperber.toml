@@ -2,8 +2,10 @@ model = "Rhönsperber"
 manufacturer = "DFS"
 seats = 1
 
-[[preset]]
-variant = "Rhönsperber"
+[[wingspan]]
+dmst_index = 62.0
+
+[[wingspan.variant]]
+name = "Rhönsperber"
 propulsion = "pure"
 weglide_id = 248
-dmst_index = 62.0

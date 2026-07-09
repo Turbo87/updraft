@@ -1,7 +1,10 @@
 model = "UFM-13"
+seats = 1
 
-[[preset]]
-variant = "UFM-13"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "UFM-13"
 wing_area = 12.2
 reference_mass = 350.0
 polar_coefficients = { a = 3.61, b = -5.09, c = 2.86 }

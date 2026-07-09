@@ -2,8 +2,10 @@ model = "B12"
 manufacturer = "Akaflieg Berlin"
 seats = 2
 
-[[preset]]
-variant = "B12"
+[[wingspan]]
+dmst_index = 106.0
+
+[[wingspan.variant]]
+name = "B12"
 propulsion = "pure"
 weglide_id = 353
-dmst_index = 106.0

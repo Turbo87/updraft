@@ -2,14 +2,16 @@ model = "Briegleb BG-12"
 manufacturer = "Briegleb"
 seats = 1
 
-[[preset]]
-variant = "Briegleb BG-12"
-propulsion = "pure"
-weglide_id = 647
+[[wingspan]]
 dmst_index = 81.0
 
-[[preset]]
-variant = "Briegleb BG-12/16"
+[[wingspan.variant]]
+name = "Briegleb BG-12"
+propulsion = "pure"
+weglide_id = 647
+
+[[wingspan.variant]]
+name = "Briegleb BG-12/16"
 propulsion = "pure"
 weglide_id = 648
 dmst_index = 85.0

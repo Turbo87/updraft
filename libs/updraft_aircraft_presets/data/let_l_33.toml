@@ -1,7 +1,10 @@
 model = "Let L-33"
+seats = 1
 
-[[preset]]
-variant = "Let L-33"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "Let L-33"
 propulsion = "pure"
 weglide_id = 722
-dmst_index = 86.0

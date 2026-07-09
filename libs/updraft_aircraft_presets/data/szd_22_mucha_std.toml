@@ -2,8 +2,10 @@ model = "SZD-22 Mucha Std."
 manufacturer = "PZL Bielsko"
 seats = 1
 
-[[preset]]
-variant = "SZD-22-Mucha Std."
+[[wingspan]]
+dmst_index = 82.0
+
+[[wingspan.variant]]
+name = "SZD-22-Mucha Std."
 propulsion = "pure"
 weglide_id = 229
-dmst_index = 82.0

@@ -2,8 +2,10 @@ model = "AK-5"
 manufacturer = "Akaflieg Karlsruhe"
 seats = 1
 
-[[preset]]
-variant = "AK-5"
+[[wingspan]]
+dmst_index = 102.0
+
+[[wingspan.variant]]
+name = "AK-5"
 propulsion = "pure"
 weglide_id = 256
-dmst_index = 102.0

@@ -1,7 +1,10 @@
 model = "2G"
+seats = 1
 
-[[preset]]
-variant = "2G"
+[[wingspan]]
+dmst_index = 47.0
+
+[[wingspan.variant]]
+name = "2G"
 propulsion = "pure"
 weglide_id = 748
-dmst_index = 47.0

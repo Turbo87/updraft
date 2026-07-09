@@ -1,8 +1,10 @@
 model = "Delphin 1"
 seats = 1
 
-[[preset]]
-variant = "Delphin 1"
+[[wingspan]]
+dmst_index = 98.0
+
+[[wingspan.variant]]
+name = "Delphin 1"
 propulsion = "pure"
 weglide_id = 144
-dmst_index = 98.0

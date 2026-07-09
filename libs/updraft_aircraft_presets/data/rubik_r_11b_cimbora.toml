@@ -1,7 +1,10 @@
 model = "Rubik R-11b Cimbora"
+seats = 1
 
-[[preset]]
-variant = "Rubik R-11b Cimbora"
+[[wingspan]]
+dmst_index = 62.0
+
+[[wingspan.variant]]
+name = "Rubik R-11b Cimbora"
 propulsion = "pure"
 weglide_id = 747
-dmst_index = 62.0

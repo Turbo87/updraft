@@ -2,8 +2,10 @@ model = "Nixus"
 manufacturer = "Nixus Project"
 seats = 2
 
-[[preset]]
-variant = "Nixus"
+[[wingspan]]
+dmst_index = 126.0
+
+[[wingspan.variant]]
+name = "Nixus"
 propulsion = "self_launch"
 weglide_id = 606
-dmst_index = 126.0

@@ -2,8 +2,10 @@ model = "PW 5"
 manufacturer = "PZL Świdnik"
 seats = 1
 
-[[preset]]
-variant = "PW 5"
+[[wingspan]]
+dmst_index = 85.0
+
+[[wingspan.variant]]
+name = "PW 5"
 propulsion = "pure"
 weglide_id = 213
-dmst_index = 85.0

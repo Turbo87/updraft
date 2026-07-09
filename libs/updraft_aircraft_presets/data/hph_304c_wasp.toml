@@ -2,8 +2,10 @@ model = "HpH 304C Wasp"
 manufacturer = "HpH Sailplanes"
 seats = 1
 
-[[preset]]
-variant = "HpH 304C Wasp"
+[[wingspan]]
+dmst_index = 104.0
+
+[[wingspan.variant]]
+name = "HpH 304C Wasp"
 propulsion = "pure"
 weglide_id = 482
-dmst_index = 104.0

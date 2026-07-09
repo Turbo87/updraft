@@ -1,7 +1,10 @@
 model = "TST 14 Bonus"
+seats = 1
 
-[[preset]]
-variant = "TST 14 Bonus"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "TST 14 Bonus"
 wing_area = 12.01
 reference_mass = 467.0
 polar_coefficients = { a = 2.2, b = -3.65, c = 2.26 }

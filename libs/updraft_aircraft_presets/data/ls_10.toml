@@ -2,34 +2,30 @@ model = "LS 10"
 manufacturer = "Rolladen-Schneider"
 seats = 1
 
-[[preset]]
-variant = "LS 10"
-id = "LS 10 15m"
+[[wingspan]]
+span = 15.0
+dmst_index = 113.0
+
+[[wingspan.variant]]
+name = "LS 10"
 propulsion = "pure"
-wingspan = 15.0
 weglide_id = 29
-dmst_index = 113.0
 
-[[preset]]
-variant = "LS 10"
-id = "LS 10 18m"
-propulsion = "pure"
-wingspan = 18.0
-weglide_id = 85
-dmst_index = 119.0
-
-[[preset]]
-variant = "LS 10-st"
-id = "LS 10-st 15m"
+[[wingspan.variant]]
+name = "LS 10-st"
 propulsion = "sustainer"
-wingspan = 15.0
 weglide_id = 30
-dmst_index = 113.0
 
-[[preset]]
-variant = "LS 10-st"
-id = "LS 10-st 18m"
-propulsion = "sustainer"
-wingspan = 18.0
-weglide_id = 86
+[[wingspan]]
+span = 18.0
 dmst_index = 119.0
+
+[[wingspan.variant]]
+name = "LS 10"
+propulsion = "pure"
+weglide_id = 85
+
+[[wingspan.variant]]
+name = "LS 10-st"
+propulsion = "sustainer"
+weglide_id = 86

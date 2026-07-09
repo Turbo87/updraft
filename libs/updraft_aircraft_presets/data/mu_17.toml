@@ -2,8 +2,10 @@ model = "Mü 17"
 manufacturer = "Akaflieg München"
 seats = 1
 
-[[preset]]
-variant = "Mü 17"
+[[wingspan]]
+dmst_index = 64.0
+
+[[wingspan.variant]]
+name = "Mü 17"
 propulsion = "pure"
 weglide_id = 610
-dmst_index = 64.0

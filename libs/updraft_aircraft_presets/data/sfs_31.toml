@@ -2,8 +2,10 @@ model = "SFS 31"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "SFS 31"
+[[wingspan]]
+dmst_index = 82.0
+
+[[wingspan.variant]]
+name = "SFS 31"
 propulsion = "self_launch"
 weglide_id = 228
-dmst_index = 82.0

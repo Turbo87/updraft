@@ -2,8 +2,10 @@ model = "Vuk-T"
 manufacturer = "Jastreb"
 seats = 1
 
-[[preset]]
-variant = "Vuk-T"
+[[wingspan]]
+dmst_index = 98.0
+
+[[wingspan.variant]]
+name = "Vuk-T"
 propulsion = "pure"
 weglide_id = 643
-dmst_index = 98.0

@@ -2,8 +2,10 @@ model = "AN 66B"
 manufacturer = "Neukom"
 seats = 1
 
-[[preset]]
-variant = "AN 66B"
+[[wingspan]]
+dmst_index = 108.0
+
+[[wingspan.variant]]
+name = "AN 66B"
 propulsion = "pure"
 weglide_id = 658
-dmst_index = 108.0

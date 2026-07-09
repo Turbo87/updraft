@@ -1,6 +1,9 @@
 model = "AMT-200 Super Ximango"
+seats = 1
 
-[[preset]]
-variant = "AMT-200 Super Ximango"
-weglide_id = 696
+[[wingspan]]
 dmst_index = 70.0
+
+[[wingspan.variant]]
+name = "AMT-200 Super Ximango"
+weglide_id = 696

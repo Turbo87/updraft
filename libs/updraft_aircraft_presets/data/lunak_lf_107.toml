@@ -2,8 +2,10 @@ model = "Lunak LF 107"
 manufacturer = "Rudý Letov"
 seats = 1
 
-[[preset]]
-variant = "Lunak LF 107"
+[[wingspan]]
+dmst_index = 78.0
+
+[[wingspan.variant]]
+name = "Lunak LF 107"
 propulsion = "pure"
 weglide_id = 236
-dmst_index = 78.0

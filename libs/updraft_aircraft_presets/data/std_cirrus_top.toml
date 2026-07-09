@@ -2,8 +2,10 @@ model = "Std. Cirrus Top"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Std. Cirrus Top"
+[[wingspan]]
+dmst_index = 98.0
+
+[[wingspan.variant]]
+name = "Std. Cirrus Top"
 propulsion = "pure"
 weglide_id = 150
-dmst_index = 98.0

@@ -2,8 +2,10 @@ model = "LS 5"
 manufacturer = "Rolladen-Schneider"
 seats = 1
 
-[[preset]]
-variant = "LS 5"
+[[wingspan]]
+dmst_index = 118.0
+
+[[wingspan.variant]]
+name = "LS 5"
 propulsion = "pure"
 weglide_id = 424
-dmst_index = 118.0

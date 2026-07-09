@@ -2,20 +2,20 @@ model = "Zugvogel"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "Zugvogel I"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "Zugvogel I"
 propulsion = "pure"
 weglide_id = 208
-dmst_index = 86.0
 
-[[preset]]
-variant = "Zugvogel II"
+[[wingspan.variant]]
+name = "Zugvogel II"
 propulsion = "pure"
 weglide_id = 209
-dmst_index = 86.0
 
-[[preset]]
-variant = "Zugvogel IV"
+[[wingspan.variant]]
+name = "Zugvogel IV"
 propulsion = "pure"
 weglide_id = 210
-dmst_index = 86.0

@@ -2,8 +2,10 @@ model = "Diamant 16.5"
 manufacturer = "FFA"
 seats = 1
 
-[[preset]]
-variant = "Diamant 16.5"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "Diamant 16.5"
 propulsion = "pure"
 weglide_id = 635
-dmst_index = 105.0

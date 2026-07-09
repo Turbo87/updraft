@@ -2,16 +2,19 @@ model = "H-101 Salto"
 manufacturer = "Glasflügel"
 seats = 1
 
-[[preset]]
-variant = "H-101 Salto"
-propulsion = "pure"
-weglide_id = 186
+[[wingspan]]
 dmst_index = 88.0
 
-[[preset]]
-variant = "H-101 Salto"
-id = "H-101 Salto 15.5m"
+[[wingspan.variant]]
+name = "H-101 Salto"
 propulsion = "pure"
-wingspan = 15.5
-weglide_id = 157
+weglide_id = 186
+
+[[wingspan]]
+span = 15.5
 dmst_index = 96.0
+
+[[wingspan.variant]]
+name = "H-101 Salto"
+propulsion = "pure"
+weglide_id = 157

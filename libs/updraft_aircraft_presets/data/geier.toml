@@ -2,8 +2,10 @@ model = "Geier"
 manufacturer = "Allgaier"
 seats = 1
 
-[[preset]]
-variant = "Geier"
+[[wingspan]]
+dmst_index = 88.0
+
+[[wingspan.variant]]
+name = "Geier"
 propulsion = "pure"
 weglide_id = 185
-dmst_index = 88.0

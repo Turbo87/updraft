@@ -2,8 +2,10 @@ model = "Lehrmeister FES-530"
 manufacturer = "Lommatzsch"
 seats = 2
 
-[[preset]]
-variant = "Lehrmeister FES-530"
+[[wingspan]]
+dmst_index = 74.0
+
+[[wingspan.variant]]
+name = "Lehrmeister FES-530"
 propulsion = "pure"
 weglide_id = 661
-dmst_index = 74.0

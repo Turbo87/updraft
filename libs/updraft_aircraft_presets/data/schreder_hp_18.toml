@@ -2,8 +2,10 @@ model = "Schreder HP-18"
 manufacturer = "Richard Schreder"
 seats = 1
 
-[[preset]]
-variant = "Schreder HP-18"
+[[wingspan]]
+dmst_index = 101.0
+
+[[wingspan.variant]]
+name = "Schreder HP-18"
 propulsion = "pure"
 weglide_id = 657
-dmst_index = 101.0

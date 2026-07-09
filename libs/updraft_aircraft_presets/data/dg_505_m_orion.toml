@@ -2,9 +2,11 @@ model = "DG 505 M Orion"
 manufacturer = "DG Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "DG 505 M Orion"
-propulsion = "pure"
-wingspan = 20.0
-weglide_id = 363
+[[wingspan]]
+span = 20.0
 dmst_index = 104.0
+
+[[wingspan.variant]]
+name = "DG 505 M Orion"
+propulsion = "pure"
+weglide_id = 363

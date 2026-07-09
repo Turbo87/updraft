@@ -2,8 +2,10 @@ model = "Quintus"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Quintus"
+[[wingspan]]
+dmst_index = 126.0
+
+[[wingspan.variant]]
+name = "Quintus"
 propulsion = "self_launch"
 weglide_id = 394
-dmst_index = 126.0

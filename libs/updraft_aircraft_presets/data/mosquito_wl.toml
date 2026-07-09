@@ -1,7 +1,10 @@
 model = "Mosquito WL"
+seats = 1
 
-[[preset]]
-variant = "Mosquito WL"
+[[wingspan]]
+dmst_index = 108.0
+
+[[wingspan.variant]]
+name = "Mosquito WL"
 propulsion = "pure"
 weglide_id = 697
-dmst_index = 108.0

@@ -1,7 +1,10 @@
 model = "Carbon Dragon"
+seats = 1
 
-[[preset]]
-variant = "Carbon Dragon"
+[[wingspan]]
+dmst_index = 59.0
+
+[[wingspan.variant]]
+name = "Carbon Dragon"
 propulsion = "pure"
 weglide_id = 743
-dmst_index = 59.0

@@ -2,28 +2,30 @@ model = "AS 34 Me"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "AS 34 Me"
-id = "AS 34 Me 15m"
+[[wingspan]]
+span = 15.0
+dmst_index = 108.0
+
+[[wingspan.variant]]
+name = "AS 34 Me"
 propulsion = "electric_sustainer"
-wingspan = 15.0
 wing_area = 10.5
 reference_mass = 450.0
 polar_coefficients = { a = 1.515, b = -2.99, c = 2.18 }
 empty_mass = 290.0
 max_takeoff_mass = 525.0
 weglide_id = 504
-dmst_index = 108.0
 
-[[preset]]
-variant = "AS 34 Me"
-id = "AS 34 Me 18m"
+[[wingspan]]
+span = 18.0
+dmst_index = 114.0
+
+[[wingspan.variant]]
+name = "AS 34 Me"
 propulsion = "electric_sustainer"
-wingspan = 18.0
 wing_area = 11.88
 reference_mass = 480.0
 polar_coefficients = { a = 1.46, b = -2.66, c = 1.79 }
 empty_mass = 300.0
 max_takeoff_mass = 575.0
 weglide_id = 505
-dmst_index = 114.0

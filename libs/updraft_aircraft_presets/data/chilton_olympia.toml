@@ -1,7 +1,10 @@
 model = "Chilton Olympia"
+seats = 1
 
-[[preset]]
-variant = "Chilton Olympia"
+[[wingspan]]
+dmst_index = 64.0
+
+[[wingspan.variant]]
+name = "Chilton Olympia"
 propulsion = "pure"
 weglide_id = 695
-dmst_index = 64.0

@@ -2,8 +2,10 @@ model = "ASW 19 Club"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASW 19 Club"
+[[wingspan]]
+dmst_index = 98.0
+
+[[wingspan.variant]]
+name = "ASW 19 Club"
 propulsion = "pure"
 weglide_id = 136
-dmst_index = 98.0

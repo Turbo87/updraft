@@ -2,8 +2,11 @@ model = "Taurus"
 manufacturer = "Pipistrel"
 seats = 2
 
-[[preset]]
-variant = "Taurus"
+[[wingspan]]
+dmst_index = 99.0
+
+[[wingspan.variant]]
+name = "Taurus"
 propulsion = "self_launch"
 wing_area = 12.33
 reference_mass = 358.0
@@ -11,4 +14,3 @@ polar_coefficients = { a = 2.24, b = -4.31, c = 2.78 }
 empty_mass = 285.0
 max_takeoff_mass = 472.0
 weglide_id = 280
-dmst_index = 99.0

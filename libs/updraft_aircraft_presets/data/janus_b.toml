@@ -1,7 +1,10 @@
 model = "Janus B"
+seats = 1
 
-[[preset]]
-variant = "Janus B"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Janus B"
 wing_area = 16.6
 reference_mass = 498.0
 polar_coefficients = { a = 1.58, b = -2.44, c = 1.57 }

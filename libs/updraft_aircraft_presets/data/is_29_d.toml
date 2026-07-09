@@ -2,8 +2,10 @@ model = "IS 29 D"
 manufacturer = "ICA"
 seats = 1
 
-[[preset]]
-variant = "IS 29 D"
+[[wingspan]]
+dmst_index = 96.0
+
+[[wingspan.variant]]
+name = "IS 29 D"
 propulsion = "pure"
 weglide_id = 158
-dmst_index = 96.0

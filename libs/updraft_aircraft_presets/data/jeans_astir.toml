@@ -1,7 +1,10 @@
 model = "Jeans Astir"
+seats = 1
 
-[[preset]]
-variant = "Jeans Astir"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Jeans Astir"
 wing_area = 12.4
 reference_mass = 372.0
 polar_coefficients = { a = 1.78, b = -2.41, c = 1.51 }

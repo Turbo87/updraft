@@ -2,8 +2,11 @@ model = "ASH 25 >="
 manufacturer = "Alexander Schleicher"
 seats = 2
 
-[[preset]]
-variant = "ASH 25 >="
+[[wingspan]]
+dmst_index = 122.0
+
+[[wingspan.variant]]
+name = "ASH 25 >="
 propulsion = "pure"
 wing_area = 16.31
 reference_mass = 685.0
@@ -11,18 +14,9 @@ polar_coefficients = { a = 1.05, b = -1.69, c = 1.11 }
 empty_mass = 470.0
 max_takeoff_mass = 750.0
 weglide_id = 395
-dmst_index = 122.0
 
-[[preset]]
-variant = "ASH 25 >="
-id = "ASH 25 >= 26m"
-propulsion = "pure"
-wingspan = 26.0
-weglide_id = 382
-dmst_index = 123.0
-
-[[preset]]
-variant = "ASH 25 E >="
+[[wingspan.variant]]
+name = "ASH 25 E >="
 propulsion = "sustainer"
 wing_area = 16.5
 reference_mass = 693.0
@@ -30,33 +24,32 @@ polar_coefficients = { a = 1.05, b = -1.69, c = 1.11 }
 empty_mass = 478.0
 max_takeoff_mass = 750.0
 weglide_id = 396
-dmst_index = 122.0
 
-[[preset]]
-variant = "ASH 25 E >="
-id = "ASH 25 E >= 26m"
-propulsion = "sustainer"
-wingspan = 26.0
-weglide_id = 383
-dmst_index = 123.0
-
-[[preset]]
-variant = "ASH 25 M >="
+[[wingspan.variant]]
+name = "ASH 25 M >="
 propulsion = "self_launch"
 weglide_id = 397
-dmst_index = 122.0
 
-[[preset]]
-variant = "ASH 25 M >="
-id = "ASH 25 M >= 26m"
+[[wingspan]]
+span = 26.0
+dmst_index = 123.0
+
+[[wingspan.variant]]
+name = "ASH 25 >="
+propulsion = "pure"
+weglide_id = 382
+
+[[wingspan.variant]]
+name = "ASH 25 E >="
+propulsion = "sustainer"
+weglide_id = 383
+
+[[wingspan.variant]]
+name = "ASH 25 M >="
 propulsion = "self_launch"
-wingspan = 26.0
 weglide_id = 385
-dmst_index = 123.0
 
-[[preset]]
-variant = "ASH 25 Mi >="
+[[wingspan.variant]]
+name = "ASH 25 Mi >="
 propulsion = "self_launch"
-wingspan = 26.0
 weglide_id = 386
-dmst_index = 123.0

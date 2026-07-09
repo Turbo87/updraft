@@ -2,8 +2,10 @@ model = "LCF 2"
 manufacturer = "LCF"
 seats = 1
 
-[[preset]]
-variant = "LCF 2"
+[[wingspan]]
+dmst_index = 80.0
+
+[[wingspan.variant]]
+name = "LCF 2"
 propulsion = "pure"
 weglide_id = 232
-dmst_index = 80.0

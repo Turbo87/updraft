@@ -2,24 +2,30 @@ model = "Cirrus"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Cirrus"
-propulsion = "pure"
-weglide_id = 264
+[[wingspan]]
 dmst_index = 100.0
 
-[[preset]]
-variant = "Cirrus 18m"
-wingspan = 18.0
+[[wingspan.variant]]
+name = "Cirrus"
+propulsion = "pure"
+weglide_id = 264
+
+[[wingspan]]
+span = 17.74
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "Cirrus VTC"
+propulsion = "pure"
+weglide_id = 265
+
+[[wingspan]]
+span = 18.0
+
+[[wingspan.variant]]
+name = "Cirrus 18m"
 wing_area = 12.6
 reference_mass = 378.0
 polar_coefficients = { a = 2.3, b = -3.46, c = 1.9 }
 empty_mass = 276.0
 max_takeoff_mass = 400.0
-
-[[preset]]
-variant = "Cirrus VTC"
-propulsion = "pure"
-wingspan = 17.74
-weglide_id = 265
-dmst_index = 100.0

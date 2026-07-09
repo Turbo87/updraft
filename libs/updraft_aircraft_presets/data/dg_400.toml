@@ -2,8 +2,11 @@ model = "DG 400"
 manufacturer = "DG Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "DG 400"
+[[wingspan]]
+dmst_index = 107.0
+
+[[wingspan.variant]]
+name = "DG 400"
 propulsion = "self_launch"
 wing_area = 10.0
 reference_mass = 390.0
@@ -11,17 +14,17 @@ polar_coefficients = { a = 1.13, b = -1.84, c = 1.4 }
 empty_mass = 306.0
 max_takeoff_mass = 480.0
 weglide_id = 49
-dmst_index = 107.0
 
-[[preset]]
-variant = "DG 400"
-id = "DG 400 17m"
+[[wingspan]]
+span = 17.0
+dmst_index = 109.0
+
+[[wingspan.variant]]
+name = "DG 400"
 propulsion = "self_launch"
-wingspan = 17.0
 wing_area = 10.6
 reference_mass = 392.0
 polar_coefficients = { a = 1.58, b = -2.72, c = 1.78 }
 empty_mass = 310.0
 max_takeoff_mass = 460.0
 weglide_id = 125
-dmst_index = 109.0

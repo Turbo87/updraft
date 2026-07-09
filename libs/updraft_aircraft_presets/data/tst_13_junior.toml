@@ -1,6 +1,9 @@
 model = "TST-13 Junior"
+seats = 1
 
-[[preset]]
-variant = "TST-13 Junior"
-weglide_id = 716
+[[wingspan]]
 dmst_index = 78.0
+
+[[wingspan.variant]]
+name = "TST-13 Junior"
+weglide_id = 716

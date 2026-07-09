@@ -2,8 +2,11 @@ model = "DG 300"
 manufacturer = "DG Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "DG 300"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "DG 300"
 propulsion = "pure"
 wing_area = 10.27
 reference_mass = 308.0
@@ -13,14 +16,12 @@ max_takeoff_mass = 450.0
 weglide_id = 481
 dmst_index = 104.0
 
-[[preset]]
-variant = "DG 300 WL"
+[[wingspan.variant]]
+name = "DG 300 WL"
 propulsion = "pure"
 weglide_id = 476
-dmst_index = 105.0
 
-[[preset]]
-variant = "DG 300G WL"
+[[wingspan.variant]]
+name = "DG 300G WL"
 propulsion = "sustainer"
 weglide_id = 575
-dmst_index = 105.0

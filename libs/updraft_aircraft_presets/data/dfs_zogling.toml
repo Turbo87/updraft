@@ -1,7 +1,10 @@
 model = "DFS Zögling"
+seats = 1
 
-[[preset]]
-variant = "DFS Zögling"
+[[wingspan]]
+dmst_index = 25.0
+
+[[wingspan.variant]]
+name = "DFS Zögling"
 propulsion = "pure"
 weglide_id = 688
-dmst_index = 25.0

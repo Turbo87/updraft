@@ -54,6 +54,18 @@ mod tests {
     }
 
     #[test]
+    fn every_preset_has_a_plausible_seat_count() {
+        for preset in PRESETS {
+            assert!(
+                (1..=2).contains(&preset.seats),
+                "{}: implausible seat count {}",
+                preset.name,
+                preset.seats
+            );
+        }
+    }
+
+    #[test]
     fn every_preset_has_a_variant_with_a_wingspan() {
         for preset in PRESETS {
             assert!(!preset.variants.is_empty(), "{}: no variants", preset.name);

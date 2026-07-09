@@ -1,7 +1,10 @@
 model = "Breguet 904 S"
+seats = 1
 
-[[preset]]
-variant = "Breguet 904 S"
+[[wingspan]]
+dmst_index = 88.0
+
+[[wingspan.variant]]
+name = "Breguet 904 S"
 propulsion = "pure"
 weglide_id = 710
-dmst_index = 88.0

@@ -2,8 +2,10 @@ model = "Sagitta"
 manufacturer = "N.V. Vliegtuigbouw"
 seats = 1
 
-[[preset]]
-variant = "Sagitta"
+[[wingspan]]
+dmst_index = 82.0
+
+[[wingspan.variant]]
+name = "Sagitta"
 propulsion = "pure"
 weglide_id = 230
-dmst_index = 82.0

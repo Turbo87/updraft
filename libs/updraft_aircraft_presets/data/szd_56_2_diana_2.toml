@@ -2,14 +2,15 @@ model = "SZD-56-2 Diana 2"
 manufacturer = "Avionic"
 seats = 1
 
-[[preset]]
-variant = "SZD-56-2 Diana 2"
-propulsion = "pure"
-weglide_id = 1
+[[wingspan]]
 dmst_index = 116.0
 
-[[preset]]
-variant = "SZD-56-2 Diana 2 FES"
+[[wingspan.variant]]
+name = "SZD-56-2 Diana 2"
+propulsion = "pure"
+weglide_id = 1
+
+[[wingspan.variant]]
+name = "SZD-56-2 Diana 2 FES"
 propulsion = "electric_sustainer"
 weglide_id = 484
-dmst_index = 116.0

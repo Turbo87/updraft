@@ -2,8 +2,10 @@ model = "Slingsby T.34 Sky"
 manufacturer = "Slingsby"
 seats = 1
 
-[[preset]]
-variant = "Slingsby T.34 Sky"
+[[wingspan]]
+dmst_index = 60.0
+
+[[wingspan.variant]]
+name = "Slingsby T.34 Sky"
 propulsion = "pure"
 weglide_id = 537
-dmst_index = 60.0

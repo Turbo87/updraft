@@ -1,7 +1,10 @@
 model = "VSO-10C RG"
+seats = 1
 
-[[preset]]
-variant = "VSO-10C RG"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "VSO-10C RG"
 wing_area = 12.0
 reference_mass = 347.0
 polar_coefficients = { a = 3.17, b = -5.42, c = 3.1 }

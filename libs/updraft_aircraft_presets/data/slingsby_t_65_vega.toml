@@ -2,8 +2,10 @@ model = "Slingsby T.65 Vega"
 manufacturer = "Slingsby"
 seats = 1
 
-[[preset]]
-variant = "Slingsby T.65 Vega"
+[[wingspan]]
+dmst_index = 102.0
+
+[[wingspan.variant]]
+name = "Slingsby T.65 Vega"
 propulsion = "pure"
 weglide_id = 546
-dmst_index = 102.0

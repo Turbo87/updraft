@@ -2,8 +2,11 @@ model = "Nimbus 4D"
 manufacturer = "Schempp-Hirth"
 seats = 2
 
-[[preset]]
-variant = "Nimbus 4D"
+[[wingspan]]
+dmst_index = 123.0
+
+[[wingspan.variant]]
+name = "Nimbus 4D"
 propulsion = "pure"
 wing_area = 17.96
 reference_mass = 754.0
@@ -11,21 +14,18 @@ polar_coefficients = { a = 1.05, b = -1.69, c = 1.11 }
 empty_mass = 515.0
 max_takeoff_mass = 750.0
 weglide_id = 391
-dmst_index = 123.0
 
-[[preset]]
-variant = "Nimbus 4DM"
+[[wingspan.variant]]
+name = "Nimbus 4DM"
 inherits_from = "Nimbus 4D"
 propulsion = "self_launch"
 empty_mass = 595.0
 max_takeoff_mass = 820.0
 weglide_id = 392
-dmst_index = 123.0
 
-[[preset]]
-variant = "Nimbus 4DT"
+[[wingspan.variant]]
+name = "Nimbus 4DT"
 inherits_from = "Nimbus 4D"
 propulsion = "sustainer"
 max_takeoff_mass = 820.0
 weglide_id = 393
-dmst_index = 123.0

@@ -1,7 +1,10 @@
 model = "AC 4C Russia"
+seats = 1
 
-[[preset]]
-variant = "AC 4C Russia"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "AC 4C Russia"
 wing_area = 7.7
 reference_mass = 254.0
 polar_coefficients = { a = 2.07, b = -2.98, c = 1.73 }

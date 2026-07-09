@@ -1,7 +1,10 @@
 model = "Phoebus A"
+seats = 1
 
-[[preset]]
-variant = "Phoebus A"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Phoebus A"
 wing_area = 13.16
 reference_mass = 395.0
 polar_coefficients = { a = 1.28, b = -1.43, c = 1.35 }

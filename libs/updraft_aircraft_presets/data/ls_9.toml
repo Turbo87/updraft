@@ -2,8 +2,10 @@ model = "LS 9"
 manufacturer = "Rolladen-Schneider"
 seats = 1
 
-[[preset]]
-variant = "LS 9"
+[[wingspan]]
+dmst_index = 117.0
+
+[[wingspan.variant]]
+name = "LS 9"
 propulsion = "self_launch"
 weglide_id = 99
-dmst_index = 117.0

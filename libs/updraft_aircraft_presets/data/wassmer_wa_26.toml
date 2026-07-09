@@ -2,8 +2,10 @@ model = "Wassmer WA-26"
 manufacturer = "Wassmer Aviation"
 seats = 1
 
-[[preset]]
-variant = "Wassmer WA-26"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "Wassmer WA-26"
 propulsion = "pure"
 weglide_id = 665
-dmst_index = 86.0

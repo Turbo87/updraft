@@ -1,7 +1,10 @@
 model = "Twin Ast.3"
+seats = 1
 
-[[preset]]
-variant = "Twin Ast.3"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Twin Ast.3"
 wing_area = 17.5
 reference_mass = 525.0
 polar_coefficients = { a = 1.92, b = -2.75, c = 1.6 }

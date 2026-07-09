@@ -1,7 +1,10 @@
 model = "CARMAM JP 15-36"
+seats = 1
 
-[[preset]]
-variant = "CARMAM JP 15-36"
+[[wingspan]]
+dmst_index = 96.0
+
+[[wingspan.variant]]
+name = "CARMAM JP 15-36"
 propulsion = "pure"
 weglide_id = 712
-dmst_index = 96.0

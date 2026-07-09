@@ -2,8 +2,11 @@ model = "ASW 15"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASW 15"
+[[wingspan]]
+dmst_index = 97.0
+
+[[wingspan.variant]]
+name = "ASW 15"
 propulsion = "pure"
 wing_area = 11.0
 reference_mass = 330.0
@@ -11,16 +14,14 @@ polar_coefficients = { a = 2.04, b = -2.9, c = 1.66 }
 empty_mass = 230.0
 max_takeoff_mass = 408.0
 weglide_id = 135
-dmst_index = 97.0
 
-[[preset]]
-variant = "ASW 15 B"
+[[wingspan.variant]]
+name = "ASW 15 B"
 propulsion = "pure"
 weglide_id = 513
-dmst_index = 97.0
 
-[[preset]]
-variant = "ASW 15 WL"
+[[wingspan.variant]]
+name = "ASW 15 WL"
 propulsion = "pure"
 weglide_id = 515
 dmst_index = 98.0

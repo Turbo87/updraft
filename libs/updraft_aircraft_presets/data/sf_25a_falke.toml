@@ -1,6 +1,9 @@
 model = "SF 25A Falke"
+seats = 1
 
-[[preset]]
-variant = "SF 25A Falke"
-weglide_id = 717
+[[wingspan]]
 dmst_index = 60.0
+
+[[wingspan.variant]]
+name = "SF 25A Falke"
+weglide_id = 717

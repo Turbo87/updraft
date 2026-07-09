@@ -1,7 +1,10 @@
 model = "ASW 20C"
+seats = 1
 
-[[preset]]
-variant = "ASW 20C"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "ASW 20C"
 wing_area = 10.5
 reference_mass = 315.0
 polar_coefficients = { a = 1.02, b = -1.26, c = 0.91 }

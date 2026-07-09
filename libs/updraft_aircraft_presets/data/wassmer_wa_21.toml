@@ -1,7 +1,10 @@
 model = "Wassmer WA-21"
+seats = 1
 
-[[preset]]
-variant = "Wassmer WA-21"
+[[wingspan]]
+dmst_index = 74.0
+
+[[wingspan.variant]]
+name = "Wassmer WA-21"
 propulsion = "pure"
 weglide_id = 711
-dmst_index = 74.0

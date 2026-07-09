@@ -2,8 +2,10 @@ model = "Specht"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "Specht"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Specht"
 propulsion = "pure"
 weglide_id = 333
-dmst_index = 54.0

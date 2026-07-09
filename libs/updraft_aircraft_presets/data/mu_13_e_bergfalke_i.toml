@@ -2,8 +2,10 @@ model = "Mü 13 E Bergfalke I"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "Mü 13 E Bergfalke I"
+[[wingspan]]
+dmst_index = 65.0
+
+[[wingspan.variant]]
+name = "Mü 13 E Bergfalke I"
 propulsion = "pure"
 weglide_id = 683
-dmst_index = 65.0

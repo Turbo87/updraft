@@ -2,16 +2,17 @@ model = "DG 1000 FG"
 manufacturer = "DG Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "DG 1000 FG"
-propulsion = "pure"
-wingspan = 18.0
-weglide_id = 360
+[[wingspan]]
+span = 18.0
 dmst_index = 104.0
 
-[[preset]]
-variant = "DG 1000 neo FG"
+[[wingspan.variant]]
+name = "DG 1000 FG"
 propulsion = "pure"
-wingspan = 18.0
+weglide_id = 360
+
+[[wingspan.variant]]
+name = "DG 1000 neo FG"
+propulsion = "pure"
 weglide_id = 609
 dmst_index = 105.0

@@ -1,8 +1,11 @@
 model = "ASH 31/18m"
+seats = 1
 
-[[preset]]
-variant = "ASH 31/18m"
-wingspan = 18.0
+[[wingspan]]
+span = 18.0
+
+[[wingspan.variant]]
+name = "ASH 31/18m"
 wing_area = 11.9
 reference_mass = 513.0
 polar_coefficients = { a = 0.98, b = -1.45, c = 1.0 }

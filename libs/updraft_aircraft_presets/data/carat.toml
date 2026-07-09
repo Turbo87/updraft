@@ -2,8 +2,11 @@ model = "Carat"
 manufacturer = "AMS-Flight"
 seats = 1
 
-[[preset]]
-variant = "Carat"
+[[wingspan]]
+dmst_index = 93.0
+
+[[wingspan.variant]]
+name = "Carat"
 propulsion = "self_launch"
 wing_area = 10.58
 reference_mass = 423.0
@@ -11,4 +14,3 @@ polar_coefficients = { a = 2.33, b = -4.1, c = 2.6 }
 empty_mass = 341.0
 max_takeoff_mass = 490.0
 weglide_id = 174
-dmst_index = 93.0

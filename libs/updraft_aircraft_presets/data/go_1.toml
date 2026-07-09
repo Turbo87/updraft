@@ -1,7 +1,10 @@
 model = "Gö-1"
+seats = 1
 
-[[preset]]
-variant = "Gö-1"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Gö-1"
 propulsion = "pure"
 weglide_id = 734
-dmst_index = 54.0

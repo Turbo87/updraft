@@ -2,21 +2,24 @@ model = "Elfe"
 manufacturer = "Neukom"
 seats = 1
 
-[[preset]]
-variant = "Elfe"
-propulsion = "pure"
-wingspan = 17.0
-weglide_id = 268
-dmst_index = 100.0
+[[wingspan]]
+dmst_index = 96.0
 
-[[preset]]
-variant = "Elfe S3"
+[[wingspan.variant]]
+name = "Elfe S3"
 propulsion = "pure"
 weglide_id = 155
-dmst_index = 96.0
 
-[[preset]]
-variant = "Elfe S4"
+[[wingspan.variant]]
+name = "Elfe S4"
 propulsion = "pure"
 weglide_id = 156
-dmst_index = 96.0
+
+[[wingspan]]
+span = 17.0
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "Elfe"
+propulsion = "pure"
+weglide_id = 268

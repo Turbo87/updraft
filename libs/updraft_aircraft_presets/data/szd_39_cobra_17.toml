@@ -2,8 +2,10 @@ model = "SZD-39 Cobra 17"
 manufacturer = "PZL Bielsko"
 seats = 1
 
-[[preset]]
-variant = "SZD-39 Cobra 17"
+[[wingspan]]
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "SZD-39 Cobra 17"
 propulsion = "pure"
 weglide_id = 132
-dmst_index = 100.0

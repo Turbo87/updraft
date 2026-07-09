@@ -2,18 +2,20 @@ model = "JS2"
 manufacturer = "Jonker Sailplanes"
 seats = 1
 
-[[preset]]
-variant = "JS2"
-id = "JS2 18m"
-propulsion = "self_launch"
-wingspan = 18.0
-weglide_id = 619
+[[wingspan]]
+span = 18.0
 dmst_index = 121.0
 
-[[preset]]
-variant = "JS2"
-id = "JS2 21m"
+[[wingspan.variant]]
+name = "JS2"
 propulsion = "self_launch"
-wingspan = 21.0
-weglide_id = 618
+weglide_id = 619
+
+[[wingspan]]
+span = 21.0
 dmst_index = 126.0
+
+[[wingspan.variant]]
+name = "JS2"
+propulsion = "self_launch"
+weglide_id = 618

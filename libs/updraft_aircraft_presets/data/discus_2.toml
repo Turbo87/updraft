@@ -2,54 +2,54 @@ model = "Discus 2"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Discus 2"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Discus 2"
 wing_area = 10.16
 reference_mass = 335.0
 polar_coefficients = { a = 2.14, b = -3.87, c = 2.38 }
 empty_mass = 235.0
 max_takeoff_mass = 525.0
 
-[[preset]]
-variant = "Discus 2T"
+[[wingspan.variant]]
+name = "Discus 2T"
 propulsion = "sustainer"
 weglide_id = 450
 dmst_index = 108.0
 
-[[preset]]
-variant = "Discus 2a"
+[[wingspan.variant]]
+name = "Discus 2a"
 propulsion = "pure"
 weglide_id = 451
 dmst_index = 109.0
 
-[[preset]]
-variant = "Discus 2b"
+[[wingspan.variant]]
+name = "Discus 2b"
 propulsion = "pure"
 weglide_id = 452
 dmst_index = 108.0
 
-[[preset]]
-variant = "Discus 2c"
-propulsion = "pure"
-wingspan = 15.0
-weglide_id = 454
+[[wingspan]]
+span = 15.0
 dmst_index = 108.0
 
-[[preset]]
-variant = "Discus 2cFES"
+[[wingspan.variant]]
+name = "Discus 2c"
+propulsion = "pure"
+weglide_id = 454
+
+[[wingspan.variant]]
+name = "Discus 2cFES"
 propulsion = "electric_sustainer"
-wingspan = 15.0
 wing_area = 10.16
 reference_mass = 335.0
 polar_coefficients = { a = 2.14, b = -3.87, c = 2.38 }
 empty_mass = 335.0
 max_takeoff_mass = 525.0
 weglide_id = 455
-dmst_index = 108.0
 
-[[preset]]
-variant = "Discus 2cT"
+[[wingspan.variant]]
+name = "Discus 2cT"
 propulsion = "sustainer"
-wingspan = 15.0
 weglide_id = 456
-dmst_index = 108.0

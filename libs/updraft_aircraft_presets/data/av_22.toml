@@ -1,7 +1,10 @@
 model = "AV.22"
+seats = 1
 
-[[preset]]
-variant = "AV.22"
+[[wingspan]]
+dmst_index = 74.0
+
+[[wingspan.variant]]
+name = "AV.22"
 propulsion = "pure"
 weglide_id = 690
-dmst_index = 74.0

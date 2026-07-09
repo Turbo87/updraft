@@ -2,8 +2,10 @@ model = "NimEta"
 manufacturer = "ETA Aircraft"
 seats = 1
 
-[[preset]]
-variant = "NimEta X"
+[[wingspan]]
+dmst_index = 128.0
+
+[[wingspan.variant]]
+name = "NimEta X"
 propulsion = "self_launch"
 weglide_id = 374
-dmst_index = 128.0

@@ -2,8 +2,10 @@ model = "FK-3"
 manufacturer = "VFW-Fokker"
 seats = 1
 
-[[preset]]
-variant = "FK-3"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "FK-3"
 propulsion = "pure"
 weglide_id = 632
-dmst_index = 105.0

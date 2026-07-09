@@ -2,8 +2,10 @@ model = "CVT M-200"
 manufacturer = "Morelli"
 seats = 2
 
-[[preset]]
-variant = "CVT M-200"
+[[wingspan]]
+dmst_index = 79.0
+
+[[wingspan.variant]]
+name = "CVT M-200"
 propulsion = "pure"
 weglide_id = 649
-dmst_index = 79.0

@@ -1,7 +1,10 @@
 model = "GP14 SE VELO"
+seats = 1
 
-[[preset]]
-variant = "GP14 SE VELO"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "GP14 SE VELO"
 wing_area = 7.0
 reference_mass = 245.0
 polar_coefficients = { a = 1.24, b = -1.51, c = 0.92 }

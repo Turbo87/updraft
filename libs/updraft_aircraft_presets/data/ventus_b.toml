@@ -1,16 +1,21 @@
 model = "Ventus B"
+seats = 1
 
-[[preset]]
-variant = "Ventus B"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Ventus B"
 wing_area = 9.51
 reference_mass = 333.0
 polar_coefficients = { a = 1.63, b = -2.68, c = 1.69 }
 empty_mass = 225.0
 max_takeoff_mass = 525.0
 
-[[preset]]
-variant = "VentusB/16m"
-wingspan = 16.0
+[[wingspan]]
+span = 16.0
+
+[[wingspan.variant]]
+name = "VentusB/16m"
 wing_area = 10.0
 reference_mass = 330.0
 polar_coefficients = { a = 1.29, b = -1.89, c = 1.2 }

@@ -2,8 +2,10 @@ model = "Lambada UFM-13"
 manufacturer = "Urban Air"
 seats = 2
 
-[[preset]]
-variant = "Lambada UFM-13"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "Lambada UFM-13"
 propulsion = "self_launch"
 weglide_id = 227
-dmst_index = 76.0

@@ -2,8 +2,10 @@ model = "MDM-1 Fox"
 manufacturer = "ZRPSL"
 seats = 2
 
-[[preset]]
-variant = "MDM-1 Fox"
+[[wingspan]]
+dmst_index = 72.0
+
+[[wingspan.variant]]
+name = "MDM-1 Fox"
 propulsion = "pure"
 weglide_id = 322
-dmst_index = 72.0

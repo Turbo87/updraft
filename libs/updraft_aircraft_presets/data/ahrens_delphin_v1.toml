@@ -2,8 +2,10 @@ model = "Ahrens Delphin V1"
 manufacturer = "Arthur Ahrens"
 seats = 1
 
-[[preset]]
-variant = "Ahrens Delphin V1"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "Ahrens Delphin V1"
 propulsion = "pure"
 weglide_id = 238
-dmst_index = 76.0

@@ -2,8 +2,10 @@ model = "C-201 Marianne"
 manufacturer = "Centrair"
 seats = 2
 
-[[preset]]
-variant = "C-201B Marianne"
+[[wingspan]]
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "C-201B Marianne"
 propulsion = "pure"
 weglide_id = 605
-dmst_index = 100.0

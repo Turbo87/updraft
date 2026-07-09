@@ -2,8 +2,10 @@ model = "SparrowHawk"
 manufacturer = "Windward Performance"
 seats = 1
 
-[[preset]]
-variant = "SparrowHawk"
+[[wingspan]]
+dmst_index = 85.0
+
+[[wingspan.variant]]
+name = "SparrowHawk"
 propulsion = "pure"
 weglide_id = 603
-dmst_index = 85.0

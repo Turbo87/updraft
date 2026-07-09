@@ -2,34 +2,30 @@ model = "LAK-20"
 manufacturer = "Sportinė Aviacija"
 seats = 1
 
-[[preset]]
-variant = "LAK-20M"
-id = "LAK-20M 23m"
+[[wingspan]]
+span = 23.0
+dmst_index = 120.0
+
+[[wingspan.variant]]
+name = "LAK-20M"
 propulsion = "self_launch"
-wingspan = 23.0
 weglide_id = 412
-dmst_index = 120.0
 
-[[preset]]
-variant = "LAK-20M"
-id = "LAK-20M 26m"
-propulsion = "self_launch"
-wingspan = 26.0
-weglide_id = 400
-dmst_index = 122.0
-
-[[preset]]
-variant = "LAK-20T"
-id = "LAK-20T 23m"
+[[wingspan.variant]]
+name = "LAK-20T"
 propulsion = "sustainer"
-wingspan = 23.0
 weglide_id = 413
-dmst_index = 120.0
 
-[[preset]]
-variant = "LAK-20T"
-id = "LAK-20T 26m"
-propulsion = "sustainer"
-wingspan = 26.0
-weglide_id = 401
+[[wingspan]]
+span = 26.0
 dmst_index = 122.0
+
+[[wingspan.variant]]
+name = "LAK-20M"
+propulsion = "self_launch"
+weglide_id = 400
+
+[[wingspan.variant]]
+name = "LAK-20T"
+propulsion = "sustainer"
+weglide_id = 401

@@ -1,8 +1,10 @@
 model = "Solo L 33"
 seats = 1
 
-[[preset]]
-variant = "Solo L 33"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "Solo L 33"
 propulsion = "pure"
 weglide_id = 204
-dmst_index = 86.0

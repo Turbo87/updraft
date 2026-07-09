@@ -2,8 +2,10 @@ model = "L-Spatz"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "L-Spatz"
+[[wingspan]]
+dmst_index = 78.0
+
+[[wingspan.variant]]
+name = "L-Spatz"
 propulsion = "pure"
 weglide_id = 235
-dmst_index = 78.0

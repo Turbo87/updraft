@@ -1,7 +1,10 @@
 model = "LAK17B FES"
+seats = 1
 
-[[preset]]
-variant = "LAK17B FES"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "LAK17B FES"
 wing_area = 10.32
 reference_mass = 490.0
 polar_coefficients = { a = 0.99, b = -1.65, c = 1.25 }

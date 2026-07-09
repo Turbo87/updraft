@@ -2,8 +2,10 @@ model = "RF-5B"
 manufacturer = "Fournier"
 seats = 2
 
-[[preset]]
-variant = "RF-5B"
+[[wingspan]]
+dmst_index = 78.0
+
+[[wingspan.variant]]
+name = "RF-5B"
 propulsion = "self_launch"
 weglide_id = 572
-dmst_index = 78.0

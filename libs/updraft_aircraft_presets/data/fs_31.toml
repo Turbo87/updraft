@@ -2,8 +2,10 @@ model = "fs 31"
 manufacturer = "Akaflieg Stuttgart"
 seats = 2
 
-[[preset]]
-variant = "fs 31"
+[[wingspan]]
+dmst_index = 99.0
+
+[[wingspan.variant]]
+name = "fs 31"
 propulsion = "pure"
 weglide_id = 282
-dmst_index = 99.0

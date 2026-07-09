@@ -2,8 +2,10 @@ model = "SZD-52 Krokus"
 manufacturer = "PZL Bielsko"
 seats = 1
 
-[[preset]]
-variant = "SZD-52 Krokus"
+[[wingspan]]
+dmst_index = 102.0
+
+[[wingspan.variant]]
+name = "SZD-52 Krokus"
 propulsion = "pure"
 weglide_id = 669
-dmst_index = 102.0

@@ -1,7 +1,10 @@
 model = "H205"
+seats = 1
 
-[[preset]]
-variant = "H205"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "H205"
 wing_area = 9.8
 reference_mass = 294.0
 polar_coefficients = { a = 1.78, b = -2.13, c = 1.2 }

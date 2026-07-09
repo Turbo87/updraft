@@ -1,6 +1,9 @@
 model = "Sonex Xenos"
+seats = 1
 
-[[preset]]
-variant = "Sonex Xenos"
-weglide_id = 687
+[[wingspan]]
 dmst_index = 70.0
+
+[[wingspan.variant]]
+name = "Sonex Xenos"
+weglide_id = 687

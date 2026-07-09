@@ -2,8 +2,10 @@ model = "SZD-45 Ogar"
 manufacturer = "PZL Bielsko"
 seats = 2
 
-[[preset]]
-variant = "SZD-45 Ogar"
+[[wingspan]]
+dmst_index = 76.0
+
+[[wingspan.variant]]
+name = "SZD-45 Ogar"
 propulsion = "self_launch"
 weglide_id = 316
-dmst_index = 76.0

@@ -2,121 +2,100 @@ model = "DG 1000"
 manufacturer = "DG Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "DG 1000E neo"
-id = "DG 1000E neo 18m"
+[[wingspan]]
+span = 18.0
+
+[[wingspan.variant]]
+name = "DG 1000E neo"
 propulsion = "electric_sustainer"
-wingspan = 18.0
 weglide_id = 551
 dmst_index = 107.0
 
-[[preset]]
-variant = "DG 1000E neo"
-id = "DG 1000E neo 20m"
-propulsion = "electric_sustainer"
-wingspan = 20.0
-weglide_id = 550
-dmst_index = 112.0
-
-[[preset]]
-variant = "DG 1000M"
-id = "DG 1000M 18m"
+[[wingspan.variant]]
+name = "DG 1000M"
 propulsion = "self_launch"
-wingspan = 18.0
 weglide_id = 354
 dmst_index = 106.0
 
-[[preset]]
-variant = "DG 1000M"
-id = "DG 1000M 20m"
-propulsion = "self_launch"
-wingspan = 20.0
-weglide_id = 345
-dmst_index = 111.0
-
-[[preset]]
-variant = "DG 1000M neo"
-propulsion = "self_launch"
-wingspan = 20.0
-weglide_id = 584
-dmst_index = 112.0
-
-[[preset]]
-variant = "DG 1000S"
-id = "DG 1000S 18m"
+[[wingspan.variant]]
+name = "DG 1000S"
 propulsion = "pure"
-wingspan = 18.0
 weglide_id = 355
 dmst_index = 106.0
 
-[[preset]]
-variant = "DG 1000S"
-id = "DG 1000S 20m"
+[[wingspan.variant]]
+name = "DG 1000S neo"
 propulsion = "pure"
-wingspan = 20.0
-weglide_id = 346
-dmst_index = 111.0
-
-[[preset]]
-variant = "DG 1000S neo"
-id = "DG 1000S neo 18m"
-propulsion = "pure"
-wingspan = 18.0
 weglide_id = 607
 dmst_index = 107.0
 
-[[preset]]
-variant = "DG 1000S neo"
-id = "DG 1000S neo 20m"
-propulsion = "pure"
-wingspan = 20.0
-weglide_id = 585
-dmst_index = 112.0
-
-[[preset]]
-variant = "DG 1000T"
-id = "DG 1000T 18m"
+[[wingspan.variant]]
+name = "DG 1000T"
 propulsion = "sustainer"
-wingspan = 18.0
 weglide_id = 356
 dmst_index = 106.0
 
-[[preset]]
-variant = "DG 1000T"
-id = "DG 1000T 20m"
+[[wingspan.variant]]
+name = "DG 1000T neo"
 propulsion = "sustainer"
-wingspan = 20.0
-weglide_id = 347
-dmst_index = 111.0
-
-[[preset]]
-variant = "DG 1000T neo"
-id = "DG 1000T neo 18m"
-propulsion = "sustainer"
-wingspan = 18.0
 weglide_id = 608
 dmst_index = 107.0
 
-[[preset]]
-variant = "DG 1000T neo"
-id = "DG 1000T neo 20m"
-propulsion = "sustainer"
-wingspan = 20.0
-weglide_id = 586
-dmst_index = 112.0
-
-[[preset]]
-variant = "DG1000/18m"
-wingspan = 18.0
+[[wingspan.variant]]
+name = "DG1000/18m"
 wing_area = 16.72
 reference_mass = 492.0
 polar_coefficients = { a = 2.51, b = -4.3, c = 2.48 }
 empty_mass = 411.0
 max_takeoff_mass = 750.0
 
-[[preset]]
-variant = "DG1000/20m"
-wingspan = 20.0
+[[wingspan]]
+span = 20.0
+
+[[wingspan.variant]]
+name = "DG 1000E neo"
+propulsion = "electric_sustainer"
+weglide_id = 550
+dmst_index = 112.0
+
+[[wingspan.variant]]
+name = "DG 1000M"
+propulsion = "self_launch"
+weglide_id = 345
+dmst_index = 111.0
+
+[[wingspan.variant]]
+name = "DG 1000M neo"
+propulsion = "self_launch"
+weglide_id = 584
+dmst_index = 112.0
+
+[[wingspan.variant]]
+name = "DG 1000S"
+propulsion = "pure"
+weglide_id = 346
+dmst_index = 111.0
+
+[[wingspan.variant]]
+name = "DG 1000S neo"
+propulsion = "pure"
+weglide_id = 585
+dmst_index = 112.0
+
+[[wingspan.variant]]
+name = "DG 1000T"
+propulsion = "sustainer"
+weglide_id = 347
+dmst_index = 111.0
+
+[[wingspan.variant]]
+name = "DG 1000T neo"
+propulsion = "sustainer"
+weglide_id = 586
+dmst_index = 112.0
+
+[[wingspan.variant]]
+name = "DG1000/20m"
 wing_area = 17.53
 reference_mass = 494.0
 polar_coefficients = { a = 2.66, b = -4.52, c = 2.45 }

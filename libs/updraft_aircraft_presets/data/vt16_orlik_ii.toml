@@ -1,7 +1,10 @@
 model = "VT16 Orlik II"
+seats = 1
 
-[[preset]]
-variant = "VT16 Orlik II"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "VT16 Orlik II"
 wing_area = 12.8
 reference_mass = 335.0
 polar_coefficients = { a = 2.51, b = -3.11, c = 1.61 }

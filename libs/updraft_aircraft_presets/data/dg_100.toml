@@ -2,8 +2,11 @@ model = "DG 100"
 manufacturer = "DG Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "DG 100"
+[[wingspan]]
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "DG 100"
 propulsion = "pure"
 wing_area = 11.0
 reference_mass = 308.0
@@ -11,4 +14,3 @@ polar_coefficients = { a = 1.94, b = -2.9, c = 1.69 }
 empty_mass = 235.0
 max_takeoff_mass = 418.0
 weglide_id = 267
-dmst_index = 100.0

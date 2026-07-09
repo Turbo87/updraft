@@ -2,8 +2,10 @@ model = "PIK-30"
 manufacturer = "Eiri-Avion"
 seats = 1
 
-[[preset]]
-variant = "PIK-30"
+[[wingspan]]
+dmst_index = 107.0
+
+[[wingspan.variant]]
+name = "PIK-30"
 propulsion = "sustainer"
 weglide_id = 624
-dmst_index = 107.0

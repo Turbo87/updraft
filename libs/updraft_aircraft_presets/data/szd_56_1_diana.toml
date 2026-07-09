@@ -2,8 +2,10 @@ model = "SZD-56-1 Diana"
 manufacturer = "PZL Bielsko"
 seats = 1
 
-[[preset]]
-variant = "SZD-56-1 Diana"
+[[wingspan]]
+dmst_index = 112.0
+
+[[wingspan.variant]]
+name = "SZD-56-1 Diana"
 propulsion = "pure"
 weglide_id = 31
-dmst_index = 112.0

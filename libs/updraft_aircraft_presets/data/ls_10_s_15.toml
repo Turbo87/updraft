@@ -1,8 +1,11 @@
 model = "LS 10-s-15"
+seats = 1
 
-[[preset]]
-variant = "LS 10-s-15"
-wingspan = 15.0
+[[wingspan]]
+span = 15.0
+
+[[wingspan.variant]]
+name = "LS 10-s-15"
 wing_area = 10.4
 reference_mass = 374.0
 polar_coefficients = { a = 1.44, b = -2.35, c = 1.55 }

@@ -2,8 +2,10 @@ model = "Song"
 manufacturer = "Gramex"
 seats = 1
 
-[[preset]]
-variant = "Song"
+[[wingspan]]
+dmst_index = 65.0
+
+[[wingspan.variant]]
+name = "Song"
 propulsion = "self_launch"
 weglide_id = 246
-dmst_index = 65.0

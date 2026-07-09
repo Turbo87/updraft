@@ -1,8 +1,10 @@
 model = "M-25"
 seats = 1
 
-[[preset]]
-variant = "M-25"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "M-25"
 propulsion = "pure"
 weglide_id = 194
-dmst_index = 86.0

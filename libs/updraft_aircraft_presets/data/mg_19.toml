@@ -2,8 +2,10 @@ model = "Mg 19"
 manufacturer = "Oberlerchner"
 seats = 2
 
-[[preset]]
-variant = "Mg 19"
+[[wingspan]]
+dmst_index = 77.0
+
+[[wingspan.variant]]
+name = "Mg 19"
 propulsion = "pure"
 weglide_id = 642
-dmst_index = 77.0

@@ -2,8 +2,10 @@ model = "Schweizer SGS 2-33"
 manufacturer = "Schweizer Aircraft"
 seats = 2
 
-[[preset]]
-variant = "Schweizer SGS 2-33"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Schweizer SGS 2-33"
 propulsion = "pure"
 weglide_id = 560
-dmst_index = 54.0

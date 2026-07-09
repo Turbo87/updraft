@@ -2,8 +2,10 @@ model = "CB-15 Crystal"
 manufacturer = "Brondel"
 seats = 1
 
-[[preset]]
-variant = "CB-15 Crystal"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "CB-15 Crystal"
 propulsion = "pure"
 weglide_id = 601
-dmst_index = 105.0

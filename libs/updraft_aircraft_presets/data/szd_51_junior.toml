@@ -2,8 +2,10 @@ model = "SZD-51 Junior"
 manufacturer = "Allstar PZL Glider"
 seats = 1
 
-[[preset]]
-variant = "SZD-51 Junior"
+[[wingspan]]
+dmst_index = 90.0
+
+[[wingspan.variant]]
+name = "SZD-51 Junior"
 propulsion = "pure"
 weglide_id = 181
-dmst_index = 90.0

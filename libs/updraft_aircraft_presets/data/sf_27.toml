@@ -2,20 +2,22 @@ model = "SF 27"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "SF 27 A"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "SF 27 A"
 propulsion = "pure"
 weglide_id = 199
 dmst_index = 86.0
 
-[[preset]]
-variant = "SF 27 MA"
+[[wingspan.variant]]
+name = "SF 27 MA"
 propulsion = "self_launch"
 weglide_id = 200
 dmst_index = 86.0
 
-[[preset]]
-variant = "SF27"
+[[wingspan.variant]]
+name = "SF27"
 wing_area = 13.0
 reference_mass = 390.0
 polar_coefficients = { a = 3.64, b = -5.72, c = 2.89 }

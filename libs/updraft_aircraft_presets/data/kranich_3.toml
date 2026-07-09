@@ -2,8 +2,10 @@ model = "Kranich 3"
 manufacturer = "DFS"
 seats = 2
 
-[[preset]]
-variant = "Kranich 3"
+[[wingspan]]
+dmst_index = 80.0
+
+[[wingspan.variant]]
+name = "Kranich 3"
 propulsion = "pure"
 weglide_id = 303
-dmst_index = 80.0

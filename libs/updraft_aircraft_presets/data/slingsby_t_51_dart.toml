@@ -2,8 +2,10 @@ model = "Slingsby T.51 Dart"
 manufacturer = "Slingsby"
 seats = 1
 
-[[preset]]
-variant = "Slingsby T.51 Dart"
+[[wingspan]]
+dmst_index = 82.0
+
+[[wingspan.variant]]
+name = "Slingsby T.51 Dart"
 propulsion = "pure"
 weglide_id = 542
-dmst_index = 82.0

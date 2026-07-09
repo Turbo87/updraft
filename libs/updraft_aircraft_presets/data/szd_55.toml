@@ -1,7 +1,10 @@
 model = "SZD 55"
+seats = 1
 
-[[preset]]
-variant = "SZD 55"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "SZD 55"
 wing_area = 9.6
 reference_mass = 288.0
 polar_coefficients = { a = 1.58, b = -2.46, c = 1.54 }

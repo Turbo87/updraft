@@ -2,86 +2,70 @@ model = "ASG 29"
 manufacturer = "Alexander Schleicher"
 seats = 1
 
-[[preset]]
-variant = "ASG 29"
-id = "ASG 29 15m"
+[[wingspan]]
+span = 15.0
+dmst_index = 114.0
+
+[[wingspan.variant]]
+name = "ASG 29"
 propulsion = "pure"
-wingspan = 15.0
 wing_area = 9.2
 reference_mass = 322.0
 polar_coefficients = { a = 1.48, b = -2.4, c = 1.54 }
 empty_mass = 270.0
 max_takeoff_mass = 550.0
 weglide_id = 9
-dmst_index = 114.0
 
-[[preset]]
-variant = "ASG 29"
-id = "ASG 29 18m"
-propulsion = "pure"
-wingspan = 18.0
-wing_area = 10.5
-reference_mass = 388.0
-polar_coefficients = { a = 1.33, b = -2.03, c = 1.24 }
-empty_mass = 280.0
-max_takeoff_mass = 600.0
-weglide_id = 70
-dmst_index = 121.0
-
-[[preset]]
-variant = "ASG 29 E"
-id = "ASG 29 E 15m"
+[[wingspan.variant]]
+name = "ASG 29 E"
 propulsion = "sustainer"
-wingspan = 15.0
 wing_area = 9.2
 reference_mass = 350.0
 polar_coefficients = { a = 1.35, b = -2.4, c = 1.69 }
 empty_mass = 295.0
 max_takeoff_mass = 550.0
 weglide_id = 10
-dmst_index = 114.0
 
-[[preset]]
-variant = "ASG 29 E"
-id = "ASG 29 E 18m"
+[[wingspan.variant]]
+name = "ASG 29 Es"
 propulsion = "sustainer"
-wingspan = 18.0
+weglide_id = 11
+
+[[wingspan.variant]]
+name = "ASG 29 RES"
+propulsion = "electric_sustainer"
+weglide_id = 554
+
+[[wingspan]]
+span = 18.0
+dmst_index = 121.0
+
+[[wingspan.variant]]
+name = "ASG 29"
+propulsion = "pure"
+wing_area = 10.5
+reference_mass = 388.0
+polar_coefficients = { a = 1.33, b = -2.03, c = 1.24 }
+empty_mass = 280.0
+max_takeoff_mass = 600.0
+weglide_id = 70
+
+[[wingspan.variant]]
+name = "ASG 29 E"
+propulsion = "sustainer"
 wing_area = 10.5
 reference_mass = 409.0
 polar_coefficients = { a = 1.31, b = -2.07, c = 1.29 }
 empty_mass = 325.0
 max_takeoff_mass = 600.0
 weglide_id = 71
-dmst_index = 121.0
 
-[[preset]]
-variant = "ASG 29 Es"
-id = "ASG 29 Es 15m"
+[[wingspan.variant]]
+name = "ASG 29 Es"
 propulsion = "sustainer"
-wingspan = 15.0
-weglide_id = 11
-dmst_index = 114.0
-
-[[preset]]
-variant = "ASG 29 Es"
-id = "ASG 29 Es 18m"
-propulsion = "sustainer"
-wingspan = 18.0
 weglide_id = 72
-dmst_index = 121.0
 
-[[preset]]
-variant = "ASG 29 RES"
-id = "ASG 29 RES 15m"
+[[wingspan.variant]]
+name = "ASG 29 RES"
 propulsion = "electric_sustainer"
-wingspan = 15.0
-weglide_id = 554
-dmst_index = 114.0
-
-[[preset]]
-variant = "ASG 29 RES"
-id = "ASG 29 RES 18m"
-propulsion = "electric_sustainer"
-wingspan = 18.0
 weglide_id = 555
-dmst_index = 121.0

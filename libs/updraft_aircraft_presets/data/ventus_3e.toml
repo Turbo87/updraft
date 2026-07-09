@@ -1,8 +1,11 @@
 model = "Ventus 3E"
+seats = 1
 
-[[preset]]
-variant = "Ventus 3E"
-propulsion = "electric_sustainer"
-wingspan = 15.0
-weglide_id = 691
+[[wingspan]]
+span = 15.0
 dmst_index = 116.0
+
+[[wingspan.variant]]
+name = "Ventus 3E"
+propulsion = "electric_sustainer"
+weglide_id = 691

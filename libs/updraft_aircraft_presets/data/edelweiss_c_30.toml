@@ -1,7 +1,10 @@
 model = "Edelweiss C.30"
+seats = 1
 
-[[preset]]
-variant = "Edelweiss C.30"
+[[wingspan]]
+dmst_index = 90.0
+
+[[wingspan.variant]]
+name = "Edelweiss C.30"
 propulsion = "pure"
 weglide_id = 714
-dmst_index = 90.0

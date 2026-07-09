@@ -1,8 +1,11 @@
 model = "Albastar AS"
+seats = 1
 
-[[preset]]
-variant = "Albastar AS"
-propulsion = "electric_sustainer"
-wingspan = 15.0
-weglide_id = 732
+[[wingspan]]
+span = 15.0
 dmst_index = 98.0
+
+[[wingspan.variant]]
+name = "Albastar AS"
+propulsion = "electric_sustainer"
+weglide_id = 732

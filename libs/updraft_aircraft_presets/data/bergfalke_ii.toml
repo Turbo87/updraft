@@ -2,8 +2,10 @@ model = "Bergfalke II"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 2
 
-[[preset]]
-variant = "Bergfalke II"
+[[wingspan]]
+dmst_index = 74.0
+
+[[wingspan.variant]]
+name = "Bergfalke II"
 propulsion = "pure"
 weglide_id = 318
-dmst_index = 74.0

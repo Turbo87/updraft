@@ -1,7 +1,10 @@
 model = "G102 club"
+seats = 1
 
-[[preset]]
-variant = "G102 club"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "G102 club"
 wing_area = 12.4
 reference_mass = 372.0
 polar_coefficients = { a = 1.69, b = -2.03, c = 1.22 }

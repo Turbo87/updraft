@@ -1,7 +1,10 @@
 model = "SGS 1-26"
+seats = 1
 
-[[preset]]
-variant = "SGS 1-26"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "SGS 1-26"
 wing_area = 14.8
 reference_mass = 444.0
 polar_coefficients = { a = 3.45, b = -3.87, c = 1.9 }

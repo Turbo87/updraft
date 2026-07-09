@@ -2,8 +2,10 @@ model = "Std. Austria"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Std. Austria"
+[[wingspan]]
+dmst_index = 86.0
+
+[[wingspan.variant]]
+name = "Std. Austria"
 propulsion = "pure"
 weglide_id = 205
-dmst_index = 86.0

@@ -2,8 +2,10 @@ model = "Club Libelle"
 manufacturer = "Glasflügel"
 seats = 1
 
-[[preset]]
-variant = "Club Libelle"
+[[wingspan]]
+dmst_index = 96.0
+
+[[wingspan.variant]]
+name = "Club Libelle"
 propulsion = "pure"
 weglide_id = 154
-dmst_index = 96.0

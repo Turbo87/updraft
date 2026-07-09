@@ -2,8 +2,10 @@ model = "Ventus 2 cxa"
 manufacturer = "Schempp-Hirth"
 seats = 1
 
-[[preset]]
-variant = "Ventus 2 cxa"
+[[wingspan]]
+dmst_index = 121.0
+
+[[wingspan.variant]]
+name = "Ventus 2 cxa"
 propulsion = "pure"
 weglide_id = 73
-dmst_index = 121.0

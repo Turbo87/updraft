@@ -2,8 +2,10 @@ model = "Swift S-1"
 manufacturer = "ZRPSL"
 seats = 1
 
-[[preset]]
-variant = "Swift S-1"
+[[wingspan]]
+dmst_index = 77.0
+
+[[wingspan.variant]]
+name = "Swift S-1"
 propulsion = "pure"
 weglide_id = 237
-dmst_index = 77.0

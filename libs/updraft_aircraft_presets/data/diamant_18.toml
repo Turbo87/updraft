@@ -2,8 +2,10 @@ model = "Diamant 18"
 manufacturer = "FFA"
 seats = 1
 
-[[preset]]
-variant = "Diamant 18"
+[[wingspan]]
+dmst_index = 108.0
+
+[[wingspan.variant]]
+name = "Diamant 18"
 propulsion = "pure"
 weglide_id = 130
-dmst_index = 108.0

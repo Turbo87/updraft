@@ -1,7 +1,10 @@
 model = "VMA.200 Milan"
+seats = 1
 
-[[preset]]
-variant = "VMA.200 Milan"
+[[wingspan]]
+dmst_index = 80.0
+
+[[wingspan.variant]]
+name = "VMA.200 Milan"
 propulsion = "pure"
 weglide_id = 704
-dmst_index = 80.0

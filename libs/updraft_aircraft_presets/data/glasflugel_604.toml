@@ -2,16 +2,19 @@ model = "Glasflügel 604"
 manufacturer = "Glasflügel"
 seats = 1
 
-[[preset]]
-variant = "Glasflügel 604"
-propulsion = "pure"
-weglide_id = 427
+[[wingspan]]
 dmst_index = 114.0
 
-[[preset]]
-variant = "Glasflügel 604"
-id = "Glasflügel 604 24m"
+[[wingspan.variant]]
+name = "Glasflügel 604"
 propulsion = "pure"
-wingspan = 24.0
-weglide_id = 423
+weglide_id = 427
+
+[[wingspan]]
+span = 24.0
 dmst_index = 118.0
+
+[[wingspan.variant]]
+name = "Glasflügel 604"
+propulsion = "pure"
+weglide_id = 423

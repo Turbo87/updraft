@@ -2,8 +2,10 @@ model = "G 104 Speed Astir 2"
 manufacturer = "Grob Aircraft"
 seats = 1
 
-[[preset]]
-variant = "G 104 Speed Astir 2"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "G 104 Speed Astir 2"
 propulsion = "pure"
 weglide_id = 55
-dmst_index = 105.0

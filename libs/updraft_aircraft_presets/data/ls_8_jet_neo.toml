@@ -1,6 +1,9 @@
 model = "LS 8 Jet neo"
+seats = 1
 
-[[preset]]
-variant = "LS 8 Jet neo"
-weglide_id = 736
+[[wingspan]]
 dmst_index = 109.0
+
+[[wingspan.variant]]
+name = "LS 8 Jet neo"
+weglide_id = 736

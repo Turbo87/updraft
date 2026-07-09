@@ -1,7 +1,10 @@
 model = "Marske Pioneer III"
+seats = 1
 
-[[preset]]
-variant = "Marske Pioneer III"
+[[wingspan]]
+dmst_index = 105.0
+
+[[wingspan.variant]]
+name = "Marske Pioneer III"
 propulsion = "pure"
 weglide_id = 708
-dmst_index = 105.0

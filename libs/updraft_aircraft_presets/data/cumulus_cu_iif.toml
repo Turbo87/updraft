@@ -2,8 +2,10 @@ model = "Cumulus CU IIf"
 manufacturer = "Gerhard Reinhard"
 seats = 1
 
-[[preset]]
-variant = "Cumulus CU IIf"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Cumulus CU IIf"
 propulsion = "pure"
 weglide_id = 602
-dmst_index = 54.0

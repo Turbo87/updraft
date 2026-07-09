@@ -2,8 +2,10 @@ model = "Gö-4"
 manufacturer = "Schempp-Hirth"
 seats = 2
 
-[[preset]]
-variant = "Gö-4"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Gö-4"
 propulsion = "pure"
 weglide_id = 684
-dmst_index = 54.0

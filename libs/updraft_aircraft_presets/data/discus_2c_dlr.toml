@@ -1,8 +1,11 @@
 model = "Discus 2c DLR"
+seats = 1
 
-[[preset]]
-variant = "Discus 2c DLR"
-propulsion = "pure"
-wingspan = 18.0
-weglide_id = 725
+[[wingspan]]
+span = 18.0
 dmst_index = 114.0
+
+[[wingspan.variant]]
+name = "Discus 2c DLR"
+propulsion = "pure"
+weglide_id = 725

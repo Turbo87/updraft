@@ -1,7 +1,10 @@
 model = "Woodstock One"
+seats = 1
 
-[[preset]]
-variant = "Woodstock One"
+[[wingspan]]
+dmst_index = 64.0
+
+[[wingspan.variant]]
+name = "Woodstock One"
 propulsion = "pure"
 weglide_id = 742
-dmst_index = 64.0

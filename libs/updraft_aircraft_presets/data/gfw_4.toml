@@ -1,7 +1,10 @@
 model = "GFW 4"
+seats = 1
 
-[[preset]]
-variant = "GFW 4"
+[[wingspan]]
+dmst_index = 87.0
+
+[[wingspan.variant]]
+name = "GFW 4"
 propulsion = "electric_sustainer"
 weglide_id = 723
-dmst_index = 87.0

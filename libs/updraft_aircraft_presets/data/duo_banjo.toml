@@ -2,8 +2,10 @@ model = "Duo Banjo"
 manufacturer = "ProFe"
 seats = 2
 
-[[preset]]
-variant = "Duo Banjo"
+[[wingspan]]
+dmst_index = 80.0
+
+[[wingspan.variant]]
+name = "Duo Banjo"
 propulsion = "pure"
 weglide_id = 231
-dmst_index = 80.0

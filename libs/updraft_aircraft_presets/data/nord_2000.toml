@@ -1,7 +1,10 @@
 model = "Nord 2000"
+seats = 1
 
-[[preset]]
-variant = "Nord 2000"
+[[wingspan]]
+dmst_index = 64.0
+
+[[wingspan.variant]]
+name = "Nord 2000"
 propulsion = "pure"
 weglide_id = 703
-dmst_index = 64.0

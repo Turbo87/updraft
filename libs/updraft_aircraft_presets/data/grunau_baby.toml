@@ -2,8 +2,10 @@ model = "Grunau Baby"
 manufacturer = "Schneider"
 seats = 1
 
-[[preset]]
-variant = "Grunau Baby"
+[[wingspan]]
+dmst_index = 54.0
+
+[[wingspan.variant]]
+name = "Grunau Baby"
 propulsion = "pure"
 weglide_id = 250
-dmst_index = 54.0

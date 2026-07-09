@@ -1,7 +1,10 @@
 model = "Blanik L23"
+seats = 1
 
-[[preset]]
-variant = "Blanik L23"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Blanik L23"
 wing_area = 19.2
 reference_mass = 491.0
 polar_coefficients = { a = 2.45, b = -3.14, c = 1.75 }

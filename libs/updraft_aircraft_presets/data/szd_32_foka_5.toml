@@ -2,8 +2,10 @@ model = "SZD-32 Foka 5"
 manufacturer = "PZL Bielsko"
 seats = 1
 
-[[preset]]
-variant = "SZD-32 Foka 5"
+[[wingspan]]
+dmst_index = 88.0
+
+[[wingspan.variant]]
+name = "SZD-32 Foka 5"
 propulsion = "pure"
 weglide_id = 516
-dmst_index = 88.0

@@ -1,7 +1,10 @@
 model = "Puchacz"
+seats = 1
 
-[[preset]]
-variant = "Puchacz"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Puchacz"
 wing_area = 18.16
 reference_mass = 545.0
 polar_coefficients = { a = 2.08, b = -2.5, c = 1.42 }

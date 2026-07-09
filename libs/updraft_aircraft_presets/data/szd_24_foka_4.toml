@@ -2,8 +2,10 @@ model = "SZD-24 Foka 4"
 manufacturer = "PZL Bielsko"
 seats = 1
 
-[[preset]]
-variant = "SZD-24 Foka 4"
+[[wingspan]]
+dmst_index = 88.0
+
+[[wingspan.variant]]
+name = "SZD-24 Foka 4"
 propulsion = "pure"
 weglide_id = 190
-dmst_index = 88.0

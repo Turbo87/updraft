@@ -1,7 +1,10 @@
 model = "Pirat"
+seats = 1
 
-[[preset]]
-variant = "Pirat"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Pirat"
 wing_area = 13.8
 reference_mass = 414.0
 polar_coefficients = { a = 2.29, b = -2.62, c = 1.36 }

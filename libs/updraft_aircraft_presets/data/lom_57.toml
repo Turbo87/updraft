@@ -2,14 +2,15 @@ model = "LOM 57"
 manufacturer = "VEB Lommatzsch"
 seats = 1
 
-[[preset]]
-variant = "LOM 57"
-propulsion = "pure"
-weglide_id = 225
+[[wingspan]]
 dmst_index = 82.0
 
-[[preset]]
-variant = "LOM 57/1"
+[[wingspan.variant]]
+name = "LOM 57"
+propulsion = "pure"
+weglide_id = 225
+
+[[wingspan.variant]]
+name = "LOM 57/1"
 propulsion = "pure"
 weglide_id = 226
-dmst_index = 82.0

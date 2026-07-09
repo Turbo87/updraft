@@ -2,20 +2,21 @@ model = "LS 1-e/f"
 manufacturer = "Rolladen-Schneider"
 seats = 1
 
-[[preset]]
-variant = "LS 1-e"
+[[wingspan]]
+dmst_index = 100.0
+
+[[wingspan.variant]]
+name = "LS 1-e"
 propulsion = "pure"
 weglide_id = 270
-dmst_index = 100.0
 
-[[preset]]
-variant = "LS 1-f"
+[[wingspan.variant]]
+name = "LS 1-f"
 propulsion = "pure"
 weglide_id = 271
-dmst_index = 100.0
 
-[[preset]]
-variant = "LS 1-f neo"
+[[wingspan.variant]]
+name = "LS 1-f neo"
 propulsion = "pure"
 weglide_id = 507
 dmst_index = 101.0

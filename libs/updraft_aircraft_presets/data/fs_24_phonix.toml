@@ -2,8 +2,10 @@ model = "fs 24 Phönix"
 manufacturer = "Akaflieg Stuttgart"
 seats = 1
 
-[[preset]]
-variant = "fs 24 Phönix"
+[[wingspan]]
+dmst_index = 92.0
+
+[[wingspan.variant]]
+name = "fs 24 Phönix"
 propulsion = "pure"
 weglide_id = 178
-dmst_index = 92.0

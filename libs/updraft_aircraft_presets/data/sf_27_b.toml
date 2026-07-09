@@ -2,8 +2,10 @@ model = "SF 27 B"
 manufacturer = "Scheibe-Flugzeugbau"
 seats = 1
 
-[[preset]]
-variant = "SF 27 B"
+[[wingspan]]
+dmst_index = 88.0
+
+[[wingspan.variant]]
+name = "SF 27 B"
 propulsion = "pure"
 weglide_id = 189
-dmst_index = 88.0

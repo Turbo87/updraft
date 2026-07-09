@@ -2,8 +2,11 @@ model = "Mosquito"
 manufacturer = "Glasflügel"
 seats = 1
 
-[[preset]]
-variant = "Mosquito"
+[[wingspan]]
+dmst_index = 107.0
+
+[[wingspan.variant]]
+name = "Mosquito"
 propulsion = "pure"
 wing_area = 9.85
 reference_mass = 335.0
@@ -11,12 +14,12 @@ polar_coefficients = { a = 1.13, b = -1.28, c = 0.83 }
 empty_mass = 235.0
 max_takeoff_mass = 450.0
 weglide_id = 53
-dmst_index = 107.0
 
-[[preset]]
-variant = "Mosquito"
-id = "Mosquito 17m"
-propulsion = "pure"
-wingspan = 17.0
-weglide_id = 127
+[[wingspan]]
+span = 17.0
 dmst_index = 109.0
+
+[[wingspan.variant]]
+name = "Mosquito"
+propulsion = "pure"
+weglide_id = 127

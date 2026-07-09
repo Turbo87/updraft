@@ -2,8 +2,10 @@ model = "G 109 B"
 manufacturer = "Grob Aircraft"
 seats = 2
 
-[[preset]]
-variant = "G 109 B"
+[[wingspan]]
+dmst_index = 72.0
+
+[[wingspan.variant]]
+name = "G 109 B"
 propulsion = "self_launch"
 weglide_id = 321
-dmst_index = 72.0

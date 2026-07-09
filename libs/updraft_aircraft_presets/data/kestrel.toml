@@ -2,8 +2,10 @@ model = "Kestrel"
 manufacturer = "Glasflügel"
 seats = 1
 
-[[preset]]
-variant = "Kestrel"
+[[wingspan]]
+
+[[wingspan.variant]]
+name = "Kestrel"
 propulsion = "pure"
 wing_area = 11.6
 reference_mass = 340.0
@@ -11,45 +13,44 @@ polar_coefficients = { a = 1.66, b = -2.73, c = 1.72 }
 empty_mass = 260.0
 max_takeoff_mass = 400.0
 
-[[preset]]
-variant = "Kestrel"
-id = "Kestrel 17m"
+[[wingspan]]
+span = 17.0
+dmst_index = 110.0
+
+[[wingspan.variant]]
+name = "Kestrel"
 propulsion = "pure"
-wingspan = 17.0
 wing_area = 11.6
 reference_mass = 383.0
 polar_coefficients = { a = 1.56, b = -2.53, c = 1.61 }
 empty_mass = 260.0
 max_takeoff_mass = 400.0
 weglide_id = 123
-dmst_index = 110.0
 
-[[preset]]
-variant = "Kestrel"
-id = "Kestrel 19m"
+[[wingspan.variant]]
+name = "Slingsby T.59 Kestrel"
 propulsion = "pure"
-wingspan = 19.0
-weglide_id = 437
+weglide_id = 521
+
+[[wingspan]]
+span = 19.0
 dmst_index = 112.0
 
-[[preset]]
-variant = "Kestrel"
-id = "Kestrel 22m"
+[[wingspan.variant]]
+name = "Kestrel"
 propulsion = "pure"
-wingspan = 22.0
-weglide_id = 428
+weglide_id = 437
+
+[[wingspan.variant]]
+name = "Slingsby T.59D Kestrel"
+propulsion = "pure"
+weglide_id = 522
+
+[[wingspan]]
+span = 22.0
 dmst_index = 114.0
 
-[[preset]]
-variant = "Slingsby T.59 Kestrel"
+[[wingspan.variant]]
+name = "Kestrel"
 propulsion = "pure"
-wingspan = 17.0
-weglide_id = 521
-dmst_index = 110.0
-
-[[preset]]
-variant = "Slingsby T.59D Kestrel"
-propulsion = "pure"
-wingspan = 19.0
-weglide_id = 522
-dmst_index = 112.0
+weglide_id = 428

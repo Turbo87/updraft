@@ -42,6 +42,7 @@ pub use sentences::cai_w::CaiW;
 pub use sentences::gga::{FixQuality, Gga};
 pub use sentences::gsa::{FixType, Gsa, SelectionMode};
 pub use sentences::lxwp0::Lxwp0;
+pub use sentences::lxwp1::Lxwp1;
 pub use sentences::pcaib::Pcaib;
 pub use sentences::pcaid::Pcaid;
 pub use sentences::pflaa::{AircraftType, IdType, Pflaa};
@@ -78,6 +79,8 @@ pub enum ParseResult {
     CaiW(CaiW),
     /// An `LXNav` `$LXWP0` air-data sentence.
     Lxwp0(Lxwp0),
+    /// An `LXNav` `$LXWP1` device-info sentence.
+    Lxwp1(Lxwp1),
     /// A well-formed, checksum-valid sentence whose type the crate does
     /// not (yet) model.
     Unsupported,
@@ -117,6 +120,7 @@ fn route(sentence: &Sentence<'_>) -> Result<ParseResult, ParseError> {
         "PCAID" => ParseResult::Pcaid(sentences::pcaid::parse(sentence.fields())?),
         "w" => ParseResult::CaiW(sentences::cai_w::parse(sentence.fields())?),
         "LXWP0" => ParseResult::Lxwp0(sentences::lxwp0::parse(sentence.fields())?),
+        "LXWP1" => ParseResult::Lxwp1(sentences::lxwp1::parse(sentence.fields())?),
         _ => ParseResult::Unsupported,
     })
 }

@@ -50,11 +50,18 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_1_8
+        // Keep the Kotlin JVM target in sync with the Java compile target
+        // (compileOptions above) so the Java/Kotlin JVM-target consistency
+        // check passes.
+        jvmTarget = JvmTarget.JVM_11
     }
 }
 

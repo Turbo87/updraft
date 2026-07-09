@@ -23,3 +23,9 @@ pub struct Update {
     pub changes: Vec<Change>,
     pub effects: Vec<Effect>,
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StateMessage {
+    Snapshot(Snapshot),
+    Changes(Vec<Change>),
+}

@@ -1,10 +1,5 @@
 import type * as GeoJSON from 'geojson';
-
-export interface OwnshipPosition {
-  longitude: number;
-  latitude: number;
-  track?: number;
-}
+import type { OwnshipPosition } from '$lib/protocol/generated/OwnshipPosition';
 
 /** Builds the GeoJSON point feature that positions the ownship symbol. */
 export function ownshipFeature(position: OwnshipPosition): GeoJSON.Feature<GeoJSON.Point> {
@@ -12,7 +7,7 @@ export function ownshipFeature(position: OwnshipPosition): GeoJSON.Feature<GeoJS
     type: 'Feature',
     geometry: {
       type: 'Point',
-      coordinates: [position.longitude, position.latitude],
+      coordinates: [position.location.longitude, position.location.latitude],
     },
     properties: {
       track: position.track ?? 0,

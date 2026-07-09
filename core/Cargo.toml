@@ -10,5 +10,6 @@ workspace = true
 [dependencies]
 serde = { version = "=1.0.228", features = ["derive"] }
 tokio = { version = "=1.52.3", features = ["macros", "rt", "sync", "time"] }
+ts-rs = "=12.0.1"
 updraft_geo = { path = "../libs/updraft_geo", features = ["serde"] }
 updraft_units = { path = "../libs/updraft_units", features = ["serde"] }

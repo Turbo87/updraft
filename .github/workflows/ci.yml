@@ -33,6 +33,7 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --exclude updraft_tauri --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --exclude updraft_tauri --all-features
+      - run: git diff --exit-code -- frontend/src/lib/protocol/generated
       - run: cargo doc --workspace --exclude updraft_tauri --no-deps --all-features
 
   frontend:

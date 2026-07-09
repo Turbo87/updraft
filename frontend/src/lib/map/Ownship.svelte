@@ -1,6 +1,7 @@
 <script lang="ts">
   import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
-  import { ownshipFeature, type OwnshipPosition } from './ownship';
+  import type { OwnshipPosition } from '$lib/protocol/generated/OwnshipPosition';
+  import { ownshipFeature } from './ownship';
 
   let { position }: { position: OwnshipPosition } = $props();
 </script>

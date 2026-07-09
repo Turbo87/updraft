@@ -1,4 +1,5 @@
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::{FlightChange, FlightInput, OwnshipPosition};
 
@@ -7,8 +8,9 @@ pub enum Input {
     Flight(FlightInput),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum Change {
     Flight(FlightChange),
 }
@@ -16,7 +18,8 @@ pub enum Change {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {}
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, TS)]
+#[ts(export)]
 pub struct Snapshot {
     pub position: Option<OwnshipPosition>,
 }

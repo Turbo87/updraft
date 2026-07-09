@@ -1,9 +1,9 @@
 model = "G 102 Astir CS Jeans"
 manufacturer = "Grob Aircraft"
+seats = 1
 
 [[preset]]
 variant = "G 102 Astir CS Jeans"
 propulsion = "pure"
-seats = 1
 weglide_id = 173
 dmst_index = 93.0

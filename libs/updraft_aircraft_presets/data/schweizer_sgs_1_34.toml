@@ -1,9 +1,9 @@
 model = "Schweizer SGS 1-34"
 manufacturer = "Schweizer Aircraft"
+seats = 1
 
 [[preset]]
 variant = "Schweizer SGS 1-34"
 propulsion = "pure"
-seats = 1
 weglide_id = 557
 dmst_index = 85.0

@@ -1,9 +1,9 @@
 model = "Apis WR"
 manufacturer = "Pipistrel"
+seats = 1
 
 [[preset]]
 variant = "Apis WR"
 propulsion = "pure"
-seats = 1
 weglide_id = 172
 dmst_index = 93.0

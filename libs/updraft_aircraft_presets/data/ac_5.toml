@@ -1,23 +1,21 @@
 model = "AC-5"
 manufacturer = "Aviastroitel"
+seats = 1
 
 [[preset]]
 variant = "AC-5K"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 637
 dmst_index = 84.0
 
 [[preset]]
 variant = "AC-5M"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 636
 dmst_index = 84.0
 
 [[preset]]
 variant = "AC-5Me"
 propulsion = "electric_sustainer"
-seats = 1
 weglide_id = 638
 dmst_index = 84.0

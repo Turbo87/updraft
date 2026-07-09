@@ -1,9 +1,9 @@
 model = "Stemme S12"
 manufacturer = "Stemme"
+seats = 2
 
 [[preset]]
 variant = "Stemme S12"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 534
 dmst_index = 114.0

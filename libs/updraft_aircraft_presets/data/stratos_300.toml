@@ -1,9 +1,9 @@
 model = "Stratos 300"
 manufacturer = "HFL Leichtflugzeugbau"
+seats = 1
 
 [[preset]]
 variant = "Stratos 300"
 propulsion = "sustainer"
-seats = 1
 weglide_id = 630
 dmst_index = 64.0

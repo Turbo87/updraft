@@ -1,9 +1,9 @@
 model = "D 38"
 manufacturer = "Akaflieg Darmstadt"
+seats = 1
 
 [[preset]]
 variant = "D 38"
 propulsion = "pure"
-seats = 1
 weglide_id = 142
 dmst_index = 97.0

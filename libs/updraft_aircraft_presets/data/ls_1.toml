@@ -1,5 +1,6 @@
 model = "LS 1"
 manufacturer = "Rolladen-Schneider"
+seats = 1
 
 [[preset]]
 variant = "LS 1"
@@ -12,34 +13,29 @@ max_takeoff_mass = 390.0
 [[preset]]
 variant = "LS 1-0"
 propulsion = "pure"
-seats = 1
 weglide_id = 145
 dmst_index = 98.0
 
 [[preset]]
 variant = "LS 1-c"
 propulsion = "pure"
-seats = 1
 weglide_id = 146
 dmst_index = 98.0
 
 [[preset]]
 variant = "LS 1-c neo"
 propulsion = "pure"
-seats = 1
 weglide_id = 631
 dmst_index = 99.0
 
 [[preset]]
 variant = "LS 1-d"
 propulsion = "pure"
-seats = 1
 weglide_id = 147
 dmst_index = 98.0
 
 [[preset]]
 variant = "LS 1-d neo"
 propulsion = "pure"
-seats = 1
 weglide_id = 627
 dmst_index = 99.0

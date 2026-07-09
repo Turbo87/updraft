@@ -1,9 +1,9 @@
 model = "Morelli M-100"
 manufacturer = "Morelli"
+seats = 1
 
 [[preset]]
 variant = "Morelli M-100"
 propulsion = "pure"
-seats = 1
 weglide_id = 650
 dmst_index = 79.0

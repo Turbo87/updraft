@@ -1,9 +1,9 @@
 model = "Zugvogel IIIb"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 1
 
 [[preset]]
 variant = "Zugvogel IIIb"
 propulsion = "pure"
-seats = 1
 weglide_id = 183
 dmst_index = 90.0

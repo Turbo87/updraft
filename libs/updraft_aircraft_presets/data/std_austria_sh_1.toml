@@ -1,9 +1,9 @@
 model = "Std. Austria SH 1"
 manufacturer = "Schempp-Hirth"
+seats = 1
 
 [[preset]]
 variant = "Std. Austria SH 1"
 propulsion = "pure"
-seats = 1
 weglide_id = 182
 dmst_index = 90.0

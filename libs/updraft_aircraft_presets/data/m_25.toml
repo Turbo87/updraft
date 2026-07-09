@@ -1,8 +1,8 @@
 model = "M-25"
+seats = 1
 
 [[preset]]
 variant = "M-25"
 propulsion = "pure"
-seats = 1
 weglide_id = 194
 dmst_index = 86.0

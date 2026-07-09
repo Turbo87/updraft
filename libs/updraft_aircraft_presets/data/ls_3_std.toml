@@ -1,9 +1,9 @@
 model = "LS 3 Std"
 manufacturer = "Rolladen-Schneider"
+seats = 1
 
 [[preset]]
 variant = "LS 3 Std"
 propulsion = "pure"
-seats = 1
 weglide_id = 254
 dmst_index = 103.0

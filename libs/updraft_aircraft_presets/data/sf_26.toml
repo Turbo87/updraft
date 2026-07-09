@@ -1,10 +1,10 @@
 model = "SF 26"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 1
 
 [[preset]]
 variant = "SF 26"
 propulsion = "pure"
-seats = 1
 wing_area = 12.3
 reference_mass = 369.0
 polar_coefficients = { a = 3.03, b = -4.57, c = 2.47 }

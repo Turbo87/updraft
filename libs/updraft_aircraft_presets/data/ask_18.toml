@@ -1,9 +1,9 @@
 model = "ASK 18"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "ASK 18"
 propulsion = "pure"
-seats = 1
 weglide_id = 184
 dmst_index = 88.0

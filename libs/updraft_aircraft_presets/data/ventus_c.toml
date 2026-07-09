@@ -1,10 +1,10 @@
 model = "Ventus c"
 manufacturer = "Schempp-Hirth"
+seats = 1
 
 [[preset]]
 variant = "Ventus c"
 propulsion = "pure"
-seats = 1
 wing_area = 9.5
 reference_mass = 332.0
 polar_coefficients = { a = 1.63, b = -2.68, c = 1.69 }
@@ -14,7 +14,6 @@ max_takeoff_mass = 525.0
 variant = "Ventus c"
 id = "Ventus c 17.6m"
 propulsion = "pure"
-seats = 1
 wingspan = 17.6
 weglide_id = 103
 dmst_index = 115.0
@@ -22,7 +21,6 @@ dmst_index = 115.0
 [[preset]]
 variant = "Ventus cM"
 propulsion = "self_launch"
-seats = 1
 wingspan = 17.6
 weglide_id = 104
 dmst_index = 115.0
@@ -30,7 +28,6 @@ dmst_index = 115.0
 [[preset]]
 variant = "Ventus cT"
 propulsion = "sustainer"
-seats = 1
 wingspan = 17.6
 weglide_id = 105
 dmst_index = 115.0

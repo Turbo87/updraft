@@ -1,9 +1,9 @@
 model = "AFH 24"
 manufacturer = "Akaflieg Hannover"
+seats = 1
 
 [[preset]]
 variant = "AFH 24"
 propulsion = "pure"
-seats = 1
 weglide_id = 480
 dmst_index = 104.0

@@ -1,9 +1,9 @@
 model = "KW-1"
 manufacturer = "IPE"
+seats = 1
 
 [[preset]]
 variant = "KW-1"
 propulsion = "pure"
-seats = 1
 weglide_id = 668
 dmst_index = 78.0

@@ -1,16 +1,15 @@
 model = "Stemme S10"
 manufacturer = "Stemme"
+seats = 2
 
 [[preset]]
 variant = "Stemme S10"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 443
 dmst_index = 110.0
 
 [[preset]]
 variant = "Stemme S10-VT"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 444
 dmst_index = 110.0

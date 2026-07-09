@@ -1,10 +1,10 @@
 model = "DG 400"
 manufacturer = "DG Flugzeugbau"
+seats = 1
 
 [[preset]]
 variant = "DG 400"
 propulsion = "self_launch"
-seats = 1
 wing_area = 10.0
 reference_mass = 390.0
 polar_coefficients = { a = 1.13, b = -1.84, c = 1.4 }
@@ -17,7 +17,6 @@ dmst_index = 107.0
 variant = "DG 400"
 id = "DG 400 17m"
 propulsion = "self_launch"
-seats = 1
 wingspan = 17.0
 wing_area = 10.6
 reference_mass = 392.0

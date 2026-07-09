@@ -1,9 +1,9 @@
 model = "Diamant 16.5"
 manufacturer = "FFA"
+seats = 1
 
 [[preset]]
 variant = "Diamant 16.5"
 propulsion = "pure"
-seats = 1
 weglide_id = 635
 dmst_index = 105.0

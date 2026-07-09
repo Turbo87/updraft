@@ -1,10 +1,10 @@
 model = "TST-10"
 manufacturer = "TeST Gliders"
+seats = 1
 
 [[preset]]
 variant = "TST-10 Atlas"
 propulsion = "pure"
-seats = 1
 wing_area = 9.85
 reference_mass = 300.0
 polar_coefficients = { a = 2.48, b = -3.73, c = 2.07 }
@@ -16,6 +16,5 @@ dmst_index = 94.0
 [[preset]]
 variant = "TST-10 Atlas M"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 170
 dmst_index = 94.0

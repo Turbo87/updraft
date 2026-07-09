@@ -19,6 +19,11 @@ pub struct AircraftPreset {
     pub name: &'static str,
     /// Manufacturer, where known, e.g. `"Alexander Schleicher"`.
     pub manufacturer: Option<&'static str>,
+    /// Number of seats, where known. A property of the base model: the
+    /// seat count does not vary between build/propulsion variants (a
+    /// two-seat airframe like the ASG 32 is a different base model from
+    /// any single-seater).
+    pub seats: Option<u8>,
     /// Build/propulsion variants of this base model. Always at least one.
     pub variants: &'static [Variant],
 }
@@ -34,8 +39,6 @@ pub struct Variant {
     pub name: &'static str,
     /// How the variant is propelled, where known.
     pub propulsion: Option<Propulsion>,
-    /// Number of seats, where known.
-    pub seats: Option<u8>,
     /// Wingspan configurations (the leaves of the tree). Always at least
     /// one; a fixed-span glider has exactly one and should not be shown a
     /// span picker.

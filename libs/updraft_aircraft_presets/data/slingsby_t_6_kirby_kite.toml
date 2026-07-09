@@ -1,9 +1,9 @@
 model = "Slingsby T.6 Kirby Kite"
 manufacturer = "Slingsby"
+seats = 1
 
 [[preset]]
 variant = "Slingsby T.6 Kirby Kite"
 propulsion = "pure"
-seats = 1
 weglide_id = 670
 dmst_index = 62.0

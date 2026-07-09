@@ -1,16 +1,15 @@
 model = "Alpin"
 manufacturer = "TeST Gliders"
+seats = 1
 
 [[preset]]
 variant = "Alpin"
 propulsion = "pure"
-seats = 1
 weglide_id = 214
 dmst_index = 84.0
 
 [[preset]]
 variant = "Alpin T"
 propulsion = "sustainer"
-seats = 1
 weglide_id = 215
 dmst_index = 84.0

@@ -1,16 +1,15 @@
 model = "G 102 Astir CS"
 manufacturer = "Grob Aircraft"
+seats = 1
 
 [[preset]]
 variant = "G 102 Astir CS"
 propulsion = "pure"
-seats = 1
 weglide_id = 152
 dmst_index = 96.0
 
 [[preset]]
 variant = "G 102 Astir CS 77"
 propulsion = "pure"
-seats = 1
 weglide_id = 153
 dmst_index = 96.0

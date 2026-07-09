@@ -1,10 +1,10 @@
 model = "Spatz"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 1
 
 [[preset]]
 variant = "Spatz"
 propulsion = "pure"
-seats = 1
 wingspan = 13.0
 weglide_id = 244
 dmst_index = 74.0

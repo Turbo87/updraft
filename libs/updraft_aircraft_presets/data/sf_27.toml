@@ -1,17 +1,16 @@
 model = "SF 27"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 1
 
 [[preset]]
 variant = "SF 27 A"
 propulsion = "pure"
-seats = 1
 weglide_id = 199
 dmst_index = 86.0
 
 [[preset]]
 variant = "SF 27 MA"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 200
 dmst_index = 86.0
 

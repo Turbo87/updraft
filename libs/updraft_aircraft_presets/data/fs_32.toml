@@ -1,9 +1,9 @@
 model = "fs 32"
 manufacturer = "Akaflieg Stuttgart"
+seats = 1
 
 [[preset]]
 variant = "fs 32"
 propulsion = "pure"
-seats = 1
 weglide_id = 47
 dmst_index = 108.0

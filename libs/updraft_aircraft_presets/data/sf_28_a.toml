@@ -1,9 +1,9 @@
 model = "SF 28 A"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 2
 
 [[preset]]
 variant = "SF 28 A"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 309
 dmst_index = 78.0

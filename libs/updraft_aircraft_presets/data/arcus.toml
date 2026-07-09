@@ -1,10 +1,10 @@
 model = "Arcus"
 manufacturer = "Schempp-Hirth"
+seats = 2
 
 [[preset]]
 variant = "Arcus"
 propulsion = "pure"
-seats = 2
 wing_area = 15.6
 reference_mass = 700.0
 polar_coefficients = { a = 0.91, b = -1.43, c = 1.12 }
@@ -16,14 +16,12 @@ dmst_index = 120.0
 [[preset]]
 variant = "Arcus E"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 338
 dmst_index = 120.0
 
 [[preset]]
 variant = "Arcus J"
 propulsion = "sustainer"
-seats = 2
 weglide_id = 616
 dmst_index = 120.0
 
@@ -31,7 +29,6 @@ dmst_index = 120.0
 variant = "Arcus M"
 inherits_from = "Arcus"
 propulsion = "self_launch"
-seats = 2
 empty_mass = 500.0
 max_takeoff_mass = 800.0
 weglide_id = 339
@@ -41,7 +38,6 @@ dmst_index = 120.0
 variant = "Arcus T"
 inherits_from = "Arcus"
 propulsion = "sustainer"
-seats = 2
 empty_mass = 470.0
 max_takeoff_mass = 800.0
 weglide_id = 340

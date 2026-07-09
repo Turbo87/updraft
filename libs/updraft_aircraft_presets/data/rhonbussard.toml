@@ -1,9 +1,9 @@
 model = "Rhönbussard"
 manufacturer = "DFS"
+seats = 1
 
 [[preset]]
 variant = "Rhönbussard"
 propulsion = "pure"
-seats = 1
 weglide_id = 249
 dmst_index = 60.0

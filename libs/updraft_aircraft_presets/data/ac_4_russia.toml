@@ -1,9 +1,9 @@
 model = "AC-4 Russia"
 manufacturer = "Aviastroitel"
+seats = 1
 
 [[preset]]
 variant = "AC-4 Russia"
 propulsion = "pure"
-seats = 1
 weglide_id = 531
 dmst_index = 84.0

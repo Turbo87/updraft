@@ -1,9 +1,9 @@
 model = "Slingsby T.13 Petrel"
 manufacturer = "Slingsby"
+seats = 1
 
 [[preset]]
 variant = "Slingsby T.13 Petrel"
 propulsion = "pure"
-seats = 1
 weglide_id = 671
 dmst_index = 76.0

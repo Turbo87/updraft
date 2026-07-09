@@ -1,9 +1,9 @@
 model = "Schweizer SGU 1-19"
 manufacturer = "Schweizer Aircraft"
+seats = 1
 
 [[preset]]
 variant = "Schweizer SGU 1-19"
 propulsion = "pure"
-seats = 1
 weglide_id = 673
 dmst_index = 54.0

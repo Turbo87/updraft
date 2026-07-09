@@ -1,11 +1,11 @@
 model = "DG 500"
 manufacturer = "DG Flugzeugbau"
+seats = 2
 
 [[preset]]
 variant = "DG 500"
 id = "DG 500 20m"
 propulsion = "pure"
-seats = 2
 wingspan = 20.0
 wing_area = 17.6
 reference_mass = 528.0
@@ -19,7 +19,6 @@ dmst_index = 104.0
 variant = "DG 500"
 id = "DG 500 22m"
 propulsion = "pure"
-seats = 2
 wingspan = 22.0
 wing_area = 18.29
 reference_mass = 530.0
@@ -33,7 +32,6 @@ dmst_index = 110.0
 variant = "DG 500M"
 id = "DG 500M 20m"
 propulsion = "self_launch"
-seats = 2
 wingspan = 20.0
 weglide_id = 362
 dmst_index = 104.0
@@ -42,7 +40,6 @@ dmst_index = 104.0
 variant = "DG 500M"
 id = "DG 500M 22m"
 propulsion = "self_launch"
-seats = 2
 wingspan = 22.0
 weglide_id = 440
 dmst_index = 110.0
@@ -50,7 +47,6 @@ dmst_index = 110.0
 [[preset]]
 variant = "DG 505"
 propulsion = "pure"
-seats = 2
 wingspan = 22.0
 weglide_id = 441
 dmst_index = 110.0
@@ -58,7 +54,6 @@ dmst_index = 110.0
 [[preset]]
 variant = "DG 505M"
 propulsion = "self_launch"
-seats = 2
 wingspan = 22.0
 weglide_id = 442
 dmst_index = 110.0

@@ -1,10 +1,10 @@
 model = "DG 600"
 manufacturer = "DG Flugzeugbau"
+seats = 1
 
 [[preset]]
 variant = "DG 600"
 propulsion = "pure"
-seats = 1
 weglide_id = 35
 dmst_index = 110.0
 
@@ -12,7 +12,6 @@ dmst_index = 110.0
 variant = "DG 600"
 id = "DG 600 17m"
 propulsion = "pure"
-seats = 1
 wingspan = 17.0
 wing_area = 11.59
 reference_mass = 336.0
@@ -26,7 +25,6 @@ dmst_index = 113.0
 variant = "DG 600"
 id = "DG 600 18m"
 propulsion = "pure"
-seats = 1
 wingspan = 18.0
 wing_area = 11.81
 reference_mass = 366.0
@@ -39,7 +37,6 @@ dmst_index = 116.0
 [[preset]]
 variant = "DG 600M"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 36
 dmst_index = 110.0
 
@@ -47,7 +44,6 @@ dmst_index = 110.0
 variant = "DG 600M"
 id = "DG 600M 17m"
 propulsion = "self_launch"
-seats = 1
 wingspan = 17.0
 weglide_id = 115
 dmst_index = 113.0
@@ -56,7 +52,6 @@ dmst_index = 113.0
 variant = "DG 600M"
 id = "DG 600M 18m"
 propulsion = "self_launch"
-seats = 1
 wingspan = 18.0
 weglide_id = 101
 dmst_index = 116.0

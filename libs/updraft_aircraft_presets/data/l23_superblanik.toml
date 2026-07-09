@@ -1,10 +1,10 @@
 model = "L23 SuperBlanik"
 manufacturer = "LET"
+seats = 2
 
 [[preset]]
 variant = "L23 SuperBlanik"
 propulsion = "pure"
-seats = 2
 weglide_id = 573
 dmst_index = 78.0
 
@@ -12,7 +12,6 @@ dmst_index = 78.0
 variant = "L23 SuperBlanik"
 id = "L23 SuperBlanik 18.2m"
 propulsion = "pure"
-seats = 2
 wingspan = 18.2
 weglide_id = 304
 dmst_index = 80.0

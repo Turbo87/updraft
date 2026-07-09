@@ -1,5 +1,6 @@
 model = "Discus"
 manufacturer = "Schempp-Hirth"
+seats = 1
 
 [[preset]]
 variant = "Discus"
@@ -12,55 +13,47 @@ max_takeoff_mass = 525.0
 [[preset]]
 variant = "Discus a"
 propulsion = "pure"
-seats = 1
 weglide_id = 467
 dmst_index = 107.0
 
 [[preset]]
 variant = "Discus a WL"
 propulsion = "pure"
-seats = 1
 weglide_id = 500
 dmst_index = 108.0
 
 [[preset]]
 variant = "Discus b"
 propulsion = "pure"
-seats = 1
 weglide_id = 468
 dmst_index = 106.0
 
 [[preset]]
 variant = "Discus b WL"
 propulsion = "pure"
-seats = 1
 weglide_id = 501
 dmst_index = 107.0
 
 [[preset]]
 variant = "Discus bM"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 469
 dmst_index = 106.0
 
 [[preset]]
 variant = "Discus bM WL"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 502
 dmst_index = 107.0
 
 [[preset]]
 variant = "Discus bT"
 propulsion = "sustainer"
-seats = 1
 weglide_id = 470
 dmst_index = 106.0
 
 [[preset]]
 variant = "Discus bT WL"
 propulsion = "sustainer"
-seats = 1
 weglide_id = 503
 dmst_index = 107.0

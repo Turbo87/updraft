@@ -1,9 +1,9 @@
 model = "AS 22-2"
 manufacturer = "Alexander Schleicher"
+seats = 2
 
 [[preset]]
 variant = "AS 22-2"
 propulsion = "pure"
-seats = 2
 weglide_id = 405
 dmst_index = 121.0

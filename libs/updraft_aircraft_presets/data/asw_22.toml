@@ -1,11 +1,11 @@
 model = "ASW 22"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "ASW 22"
 id = "ASW 22 22m"
 propulsion = "pure"
-seats = 1
 wingspan = 22.0
 wing_area = 14.9
 reference_mass = 480.0
@@ -19,7 +19,6 @@ dmst_index = 119.0
 variant = "ASW 22"
 id = "ASW 22 24m"
 propulsion = "pure"
-seats = 1
 wingspan = 24.0
 wing_area = 15.5
 reference_mass = 500.0
@@ -32,7 +31,6 @@ dmst_index = 121.0
 [[preset]]
 variant = "ASW 22E"
 propulsion = "self_launch"
-seats = 1
 wingspan = 24.0
 weglide_id = 408
 dmst_index = 121.0

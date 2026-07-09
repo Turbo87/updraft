@@ -1,9 +1,9 @@
 model = "Slingsby T.31 Tandem Tutor"
 manufacturer = "Slingsby"
+seats = 2
 
 [[preset]]
 variant = "Slingsby T.31 Tandem Tutor"
 propulsion = "pure"
-seats = 2
 weglide_id = 536
 dmst_index = 54.0

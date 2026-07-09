@@ -1,9 +1,9 @@
 model = "G 109"
 manufacturer = "Grob Aircraft"
+seats = 2
 
 [[preset]]
 variant = "G 109"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 325
 dmst_index = 68.0

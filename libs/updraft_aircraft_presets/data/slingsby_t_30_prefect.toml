@@ -1,9 +1,9 @@
 model = "Slingsby T.30 Prefect"
 manufacturer = "Slingsby"
+seats = 1
 
 [[preset]]
 variant = "Slingsby T.30 Prefect"
 propulsion = "pure"
-seats = 1
 weglide_id = 535
 dmst_index = 54.0

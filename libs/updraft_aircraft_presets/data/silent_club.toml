@@ -1,16 +1,15 @@
 model = "Silent Club"
 manufacturer = "Air Energy"
+seats = 1
 
 [[preset]]
 variant = "Silent Club"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 220
 dmst_index = 84.0
 
 [[preset]]
 variant = "Silent Club pure"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 221
 dmst_index = 84.0

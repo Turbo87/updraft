@@ -1,10 +1,10 @@
 model = "Duo Discus"
 manufacturer = "Schempp-Hirth"
+seats = 2
 
 [[preset]]
 variant = "Duo Discus"
 propulsion = "pure"
-seats = 2
 wing_area = 16.4
 reference_mass = 492.0
 polar_coefficients = { a = 1.75, b = -2.68, c = 1.54 }
@@ -16,20 +16,17 @@ dmst_index = 112.0
 [[preset]]
 variant = "Duo Discus T"
 propulsion = "sustainer"
-seats = 2
 weglide_id = 349
 dmst_index = 112.0
 
 [[preset]]
 variant = "Duo Discus T WL"
 propulsion = "sustainer"
-seats = 2
 weglide_id = 489
 dmst_index = 113.0
 
 [[preset]]
 variant = "Duo Discus WL"
 propulsion = "pure"
-seats = 2
 weglide_id = 488
 dmst_index = 113.0

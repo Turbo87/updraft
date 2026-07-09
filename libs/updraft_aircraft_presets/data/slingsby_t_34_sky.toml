@@ -1,9 +1,9 @@
 model = "Slingsby T.34 Sky"
 manufacturer = "Slingsby"
+seats = 1
 
 [[preset]]
 variant = "Slingsby T.34 Sky"
 propulsion = "pure"
-seats = 1
 weglide_id = 537
 dmst_index = 60.0

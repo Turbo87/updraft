@@ -1,9 +1,9 @@
 model = "Mü 31"
 manufacturer = "Akaflieg München"
+seats = 1
 
 [[preset]]
 variant = "Mü 31"
 propulsion = "pure"
-seats = 1
 weglide_id = 13
 dmst_index = 114.0

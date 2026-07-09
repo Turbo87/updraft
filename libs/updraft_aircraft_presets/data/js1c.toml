@@ -1,10 +1,10 @@
 model = "JS1C"
 manufacturer = "Jonker Sailplanes"
+seats = 1
 
 [[preset]]
 variant = "JS1C"
 propulsion = "pure"
-seats = 1
 wingspan = 21.0
 weglide_id = 398
 dmst_index = 126.0
@@ -12,7 +12,6 @@ dmst_index = 126.0
 [[preset]]
 variant = "JS1C TJ"
 propulsion = "sustainer"
-seats = 1
 wingspan = 21.0
 weglide_id = 399
 dmst_index = 126.0

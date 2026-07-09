@@ -1,9 +1,9 @@
 model = "Schweizer SGS 2-33"
 manufacturer = "Schweizer Aircraft"
+seats = 2
 
 [[preset]]
 variant = "Schweizer SGS 2-33"
 propulsion = "pure"
-seats = 2
 weglide_id = 560
 dmst_index = 54.0

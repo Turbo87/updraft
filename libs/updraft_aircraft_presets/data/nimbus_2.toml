@@ -1,10 +1,10 @@
 model = "Nimbus 2"
 manufacturer = "Schempp-Hirth"
+seats = 1
 
 [[preset]]
 variant = "Nimbus 2"
 propulsion = "pure"
-seats = 1
 wing_area = 14.39
 reference_mass = 432.0
 polar_coefficients = { a = 1.41, b = -2.1, c = 1.28 }
@@ -16,21 +16,18 @@ dmst_index = 114.0
 [[preset]]
 variant = "Nimbus 2M"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 431
 dmst_index = 114.0
 
 [[preset]]
 variant = "Nimbus 2b"
 propulsion = "pure"
-seats = 1
 weglide_id = 432
 dmst_index = 114.0
 
 [[preset]]
 variant = "Nimbus 2c"
 propulsion = "pure"
-seats = 1
 wing_area = 14.41
 reference_mass = 432.0
 polar_coefficients = { a = 1.5, b = -2.25, c = 1.34 }

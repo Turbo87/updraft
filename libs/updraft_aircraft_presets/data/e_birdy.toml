@@ -1,9 +1,9 @@
 model = "E-Birdy"
 manufacturer = "Klenhart Design"
+seats = 1
 
 [[preset]]
 variant = "E-Birdy"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 620
 dmst_index = 96.0

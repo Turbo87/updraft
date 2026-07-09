@@ -1,9 +1,9 @@
 model = "Condor 4"
 manufacturer = "Alexander Schleicher"
+seats = 2
 
 [[preset]]
 variant = "Condor 4"
 propulsion = "pure"
-seats = 2
 weglide_id = 302
 dmst_index = 80.0

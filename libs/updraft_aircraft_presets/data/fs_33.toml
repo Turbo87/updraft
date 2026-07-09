@@ -1,9 +1,9 @@
 model = "fs 33"
 manufacturer = "Akaflieg Stuttgart"
+seats = 2
 
 [[preset]]
 variant = "fs 33"
 propulsion = "pure"
-seats = 2
 weglide_id = 350
 dmst_index = 109.0

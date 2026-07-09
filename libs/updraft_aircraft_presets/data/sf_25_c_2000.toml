@@ -1,9 +1,9 @@
 model = "SF 25 C (2000)"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 2
 
 [[preset]]
 variant = "SF 25 C 2000"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 328
 dmst_index = 67.0

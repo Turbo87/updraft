@@ -1,17 +1,16 @@
 model = "EB 28"
 manufacturer = "Binder"
+seats = 2
 
 [[preset]]
 variant = "EB 28"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 378
 dmst_index = 125.0
 
 [[preset]]
 variant = "EB 28 edition"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 581
 dmst_index = 125.0
 

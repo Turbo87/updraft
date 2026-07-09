@@ -1,9 +1,9 @@
 model = "K 10"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "K 10"
 propulsion = "pure"
-seats = 1
 weglide_id = 212
 dmst_index = 85.0

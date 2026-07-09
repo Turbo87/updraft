@@ -1,16 +1,15 @@
 model = "SZD-48 Jantar Std. 2"
 manufacturer = "PZL Bielsko"
+seats = 1
 
 [[preset]]
 variant = "SZD-48 Jantar Std. 2"
 propulsion = "pure"
-seats = 1
 weglide_id = 278
 dmst_index = 100.0
 
 [[preset]]
 variant = "SZD-48 Jantar Std. 2 WL"
 propulsion = "pure"
-seats = 1
 weglide_id = 506
 dmst_index = 101.0

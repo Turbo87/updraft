@@ -1,9 +1,9 @@
 model = "AN 66B"
 manufacturer = "Neukom"
+seats = 1
 
 [[preset]]
 variant = "AN 66B"
 propulsion = "pure"
-seats = 1
 weglide_id = 658
 dmst_index = 108.0

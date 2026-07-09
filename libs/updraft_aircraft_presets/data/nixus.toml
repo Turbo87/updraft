@@ -1,9 +1,9 @@
 model = "Nixus"
 manufacturer = "Nixus Project"
+seats = 2
 
 [[preset]]
 variant = "Nixus"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 606
 dmst_index = 126.0

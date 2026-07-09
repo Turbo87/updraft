@@ -1,9 +1,9 @@
 model = "SZD-52 Krokus"
 manufacturer = "PZL Bielsko"
+seats = 1
 
 [[preset]]
 variant = "SZD-52 Krokus"
 propulsion = "pure"
-seats = 1
 weglide_id = 669
 dmst_index = 102.0

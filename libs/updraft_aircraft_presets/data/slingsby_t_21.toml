@@ -1,9 +1,9 @@
 model = "Slingsby T.21"
 manufacturer = "Slingsby"
+seats = 2
 
 [[preset]]
 variant = "Slingsby T.21"
 propulsion = "pure"
-seats = 2
 weglide_id = 523
 dmst_index = 54.0

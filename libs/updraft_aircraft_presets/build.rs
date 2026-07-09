@@ -46,6 +46,9 @@ impl<'de> Deserialize<'de> for F64 {
 struct PresetFile {
     model: String,
     manufacturer: Option<String>,
+    /// Seat count for the whole model; the seat count does not vary
+    /// between variants.
+    seats: Option<u8>,
     #[serde(default)]
     preset: Vec<Entry>,
 }
@@ -57,7 +60,6 @@ struct Entry {
     inherits_from: Option<String>,
     variant: Option<String>,
     propulsion: Option<String>,
-    seats: Option<u8>,
     wingspan: Option<F64>,
     wing_area: Option<F64>,
     reference_mass: Option<F64>,
@@ -92,7 +94,6 @@ impl Entry {
         }
         fill!(
             propulsion,
-            seats,
             wingspan,
             wing_area,
             reference_mass,
@@ -191,26 +192,25 @@ fn render_base(file: &PresetFile, path: &Path) -> String {
             av.partial_cmp(&bv).unwrap_or(std::cmp::Ordering::Equal)
         });
         let propulsion = leaves.iter().find_map(|e| e.propulsion.clone());
-        let seats = leaves.iter().find_map(|e| e.seats);
         let mut ws = String::new();
         for leaf in &leaves {
             write!(ws, "{}, ", render_leaf(leaf, path)).unwrap();
         }
         write!(
             vs,
-            "crate::Variant {{ name: {}, propulsion: {}, seats: {}, wingspans: &[{}] }}, ",
+            "crate::Variant {{ name: {}, propulsion: {}, wingspans: &[{}] }}, ",
             rust_str(&name),
             opt_propulsion(propulsion.as_deref(), path),
-            opt(seats.map(|s| s.to_string())),
             ws.trim_end(),
         )
         .unwrap();
     }
 
     format!(
-        "    crate::AircraftPreset {{ name: {}, manufacturer: {}, variants: &[{}] }},\n",
+        "    crate::AircraftPreset {{ name: {}, manufacturer: {}, seats: {}, variants: &[{}] }},\n",
         rust_str(&file.model),
         opt(file.manufacturer.as_ref().map(|m| rust_str(m))),
+        opt(file.seats.map(|s| s.to_string())),
         vs.trim_end(),
     )
 }

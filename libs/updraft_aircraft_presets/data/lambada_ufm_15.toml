@@ -1,9 +1,9 @@
 model = "Lambada UFM-15"
 manufacturer = "Urban Air"
+seats = 2
 
 [[preset]]
 variant = "Lambada UFM-15"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 217
 dmst_index = 78.0

@@ -1,9 +1,9 @@
 model = "Banjo"
 manufacturer = "ProFe"
+seats = 1
 
 [[preset]]
 variant = "Banjo"
 propulsion = "pure"
-seats = 1
 weglide_id = 239
 dmst_index = 76.0

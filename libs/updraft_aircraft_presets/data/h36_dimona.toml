@@ -1,9 +1,9 @@
 model = "H36 Dimona"
 manufacturer = "Diamond Aircraft"
+seats = 2
 
 [[preset]]
 variant = "H36 Dimona"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 326
 dmst_index = 68.0

@@ -1,9 +1,9 @@
 model = "Ka 6"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "Ka 6"
 propulsion = "pure"
-seats = 1
 weglide_id = 224
 dmst_index = 82.0

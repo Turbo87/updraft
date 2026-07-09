@@ -1,10 +1,10 @@
 model = "ASW 22 BL"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "ASW 22 BL"
 propulsion = "pure"
-seats = 1
 wing_area = 16.67
 reference_mass = 500.0
 polar_coefficients = { a = 1.31, b = -1.86, c = 1.05 }
@@ -16,7 +16,6 @@ dmst_index = 124.0
 [[preset]]
 variant = "ASW 22 BLE"
 propulsion = "self_launch"
-seats = 1
 wing_area = 16.31
 reference_mass = 555.0
 polar_coefficients = { a = 1.09, b = -1.58, c = 0.96 }

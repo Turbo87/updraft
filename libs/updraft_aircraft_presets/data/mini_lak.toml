@@ -1,16 +1,15 @@
 model = "mini LAK"
 manufacturer = "Sportinė Aviacija"
+seats = 1
 
 [[preset]]
 variant = "mini LAK"
 propulsion = "pure"
-seats = 1
 weglide_id = 532
 dmst_index = 103.0
 
 [[preset]]
 variant = "mini LAK-FES"
 propulsion = "electric_sustainer"
-seats = 1
 weglide_id = 255
 dmst_index = 103.0

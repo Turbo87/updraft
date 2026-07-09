@@ -1,9 +1,9 @@
 model = "IS 28 M"
 manufacturer = "ICA"
+seats = 2
 
 [[preset]]
 variant = "IS 28 M"
 propulsion = "pure"
-seats = 2
 weglide_id = 313
 dmst_index = 76.0

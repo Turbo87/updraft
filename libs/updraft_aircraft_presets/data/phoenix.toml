@@ -1,9 +1,9 @@
 model = "Phoenix"
 manufacturer = "Phoenix Air"
+seats = 2
 
 [[preset]]
 variant = "Phoenix"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 598
 dmst_index = 88.0

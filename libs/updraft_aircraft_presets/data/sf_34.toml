@@ -1,17 +1,16 @@
 model = "SF 34"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 2
 
 [[preset]]
 variant = "SF 34 FG"
 propulsion = "pure"
-seats = 2
 weglide_id = 298
 dmst_index = 86.0
 
 [[preset]]
 variant = "SF 34 RG"
 propulsion = "pure"
-seats = 2
 weglide_id = 571
 dmst_index = 87.0
 

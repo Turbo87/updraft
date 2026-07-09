@@ -1,10 +1,10 @@
 model = "ASW 19"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "ASW 19"
 propulsion = "pure"
-seats = 1
 wing_area = 11.0
 reference_mass = 330.0
 polar_coefficients = { a = 1.66, b = -2.36, c = 1.45 }
@@ -16,13 +16,11 @@ dmst_index = 100.0
 [[preset]]
 variant = "ASW 19 B"
 propulsion = "pure"
-seats = 1
 weglide_id = 514
 dmst_index = 100.0
 
 [[preset]]
 variant = "ASW 19 WL"
 propulsion = "pure"
-seats = 1
 weglide_id = 487
 dmst_index = 101.0

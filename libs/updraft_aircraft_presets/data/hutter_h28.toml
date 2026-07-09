@@ -1,9 +1,9 @@
 model = "Hütter H28"
 manufacturer = "Wolfgang Hütter"
+seats = 1
 
 [[preset]]
 variant = "Hütter H28"
 propulsion = "pure"
-seats = 1
 weglide_id = 596
 dmst_index = 67.0

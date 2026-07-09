@@ -1,10 +1,10 @@
 model = "ASH 26"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "ASH 26"
 propulsion = "pure"
-seats = 1
 wing_area = 11.68
 reference_mass = 420.0
 polar_coefficients = { a = 1.05, b = -1.42, c = 0.93 }
@@ -16,7 +16,6 @@ dmst_index = 119.0
 [[preset]]
 variant = "ASH 26 E"
 propulsion = "self_launch"
-seats = 1
 wing_area = 11.68
 reference_mass = 397.0
 polar_coefficients = { a = 1.46, b = -2.53, c = 1.64 }

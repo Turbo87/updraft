@@ -1,31 +1,28 @@
 model = "Ventus 2"
 manufacturer = "Schempp-Hirth"
+seats = 1
 
 [[preset]]
 variant = "Ventus 2a"
 propulsion = "pure"
-seats = 1
 weglide_id = 15
 dmst_index = 115.0
 
 [[preset]]
 variant = "Ventus 2ax"
 propulsion = "pure"
-seats = 1
 weglide_id = 16
 dmst_index = 115.0
 
 [[preset]]
 variant = "Ventus 2b"
 propulsion = "pure"
-seats = 1
 weglide_id = 17
 dmst_index = 114.0
 
 [[preset]]
 variant = "Ventus 2bx"
 propulsion = "pure"
-seats = 1
 weglide_id = 599
 dmst_index = 114.0
 

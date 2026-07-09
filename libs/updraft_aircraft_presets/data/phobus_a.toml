@@ -1,9 +1,9 @@
 model = "Phöbus A"
 manufacturer = "Bölkow"
+seats = 1
 
 [[preset]]
 variant = "Phöbus A"
 propulsion = "pure"
-seats = 1
 weglide_id = 167
 dmst_index = 94.0

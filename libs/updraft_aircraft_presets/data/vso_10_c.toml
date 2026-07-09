@@ -1,9 +1,9 @@
 model = "VSO-10 C"
 manufacturer = "VSO"
+seats = 1
 
 [[preset]]
 variant = "VSO-10 C"
 propulsion = "pure"
-seats = 1
 weglide_id = 171
 dmst_index = 94.0

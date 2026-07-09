@@ -1,0 +1,15 @@
+model = "EB 29D"
+manufacturer = "Binder"
+seats = 2
+
+[[preset]]
+variant = "EB 29D"
+propulsion = "self_launch"
+weglide_id = 370
+dmst_index = 127.0
+
+[[preset]]
+variant = "EB 29DR"
+propulsion = "self_launch"
+weglide_id = 371
+dmst_index = 129.0

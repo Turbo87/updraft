@@ -1,9 +1,9 @@
 model = "RF-5B"
 manufacturer = "Fournier"
+seats = 2
 
 [[preset]]
 variant = "RF-5B"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 572
 dmst_index = 78.0

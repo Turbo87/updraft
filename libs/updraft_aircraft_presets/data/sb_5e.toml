@@ -1,9 +1,9 @@
 model = "SB 5e"
 manufacturer = "Akaflieg Braunschweig"
+seats = 1
 
 [[preset]]
 variant = "SB 5e"
 propulsion = "pure"
-seats = 1
 weglide_id = 188
 dmst_index = 88.0

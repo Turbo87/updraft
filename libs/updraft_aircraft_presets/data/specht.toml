@@ -1,9 +1,9 @@
 model = "Specht"
 manufacturer = "Scheibe-Flugzeugbau"
+seats = 2
 
 [[preset]]
 variant = "Specht"
 propulsion = "pure"
-seats = 2
 weglide_id = 333
 dmst_index = 54.0

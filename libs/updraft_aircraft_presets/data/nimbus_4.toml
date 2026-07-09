@@ -1,10 +1,10 @@
 model = "Nimbus 4"
 manufacturer = "Schempp-Hirth"
+seats = 1
 
 [[preset]]
 variant = "Nimbus 4"
 propulsion = "pure"
-seats = 1
 wing_area = 17.86
 reference_mass = 732.0
 polar_coefficients = { a = 1.09, b = -1.58, c = 0.96 }
@@ -16,7 +16,6 @@ dmst_index = 124.0
 [[preset]]
 variant = "Nimbus 4M"
 propulsion = "self_launch"
-seats = 1
 wing_area = 17.8
 reference_mass = 605.0
 polar_coefficients = { a = 1.18, b = -1.75, c = 1.04 }
@@ -28,7 +27,6 @@ dmst_index = 124.0
 [[preset]]
 variant = "Nimbus 4T"
 propulsion = "sustainer"
-seats = 1
 wing_area = 17.86
 reference_mass = 607.0
 polar_coefficients = { a = 1.42, b = -2.4, c = 1.44 }

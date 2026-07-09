@@ -1,9 +1,9 @@
 model = "Pipistrel Sinus"
 manufacturer = "Pipistrel"
+seats = 2
 
 [[preset]]
 variant = "Pipistrel Sinus"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 306
 dmst_index = 78.0

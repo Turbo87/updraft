@@ -1,9 +1,9 @@
 model = "Slingsby T.43 Skylark 3"
 manufacturer = "Slingsby"
+seats = 1
 
 [[preset]]
 variant = "Slingsby T.43 Skylark 3"
 propulsion = "pure"
-seats = 1
 weglide_id = 538
 dmst_index = 77.0

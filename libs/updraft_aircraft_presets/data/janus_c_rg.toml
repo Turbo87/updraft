@@ -1,23 +1,21 @@
 model = "Janus C RG"
 manufacturer = "Schempp-Hirth"
+seats = 2
 
 [[preset]]
 variant = "Janus C RG"
 propulsion = "pure"
-seats = 2
 weglide_id = 525
 dmst_index = 108.0
 
 [[preset]]
 variant = "Janus CM RG"
 propulsion = "self_launch"
-seats = 2
 weglide_id = 526
 dmst_index = 108.0
 
 [[preset]]
 variant = "Janus CT RG"
 propulsion = "sustainer"
-seats = 2
 weglide_id = 527
 dmst_index = 108.0

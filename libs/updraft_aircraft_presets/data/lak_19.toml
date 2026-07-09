@@ -1,11 +1,11 @@
 model = "LAK-19"
 manufacturer = "Sportinė Aviacija"
+seats = 1
 
 [[preset]]
 variant = "LAK-19"
 id = "LAK-19 15m"
 propulsion = "pure"
-seats = 1
 wingspan = 15.0
 wing_area = 9.06
 reference_mass = 306.0
@@ -19,7 +19,6 @@ dmst_index = 108.0
 variant = "LAK-19"
 id = "LAK-19 18m"
 propulsion = "pure"
-seats = 1
 wingspan = 18.0
 wing_area = 9.8
 reference_mass = 310.0
@@ -33,7 +32,6 @@ dmst_index = 114.0
 variant = "LAK-19 T"
 id = "LAK-19 T 15m"
 propulsion = "sustainer"
-seats = 1
 wingspan = 15.0
 weglide_id = 566
 dmst_index = 108.0
@@ -42,7 +40,6 @@ dmst_index = 108.0
 variant = "LAK-19 T"
 id = "LAK-19 T 18m"
 propulsion = "sustainer"
-seats = 1
 wingspan = 18.0
 weglide_id = 565
 dmst_index = 114.0

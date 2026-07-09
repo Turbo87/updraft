@@ -1,9 +1,9 @@
 model = "Greif 2"
 manufacturer = "Heinkel Flugzeugwerke"
+seats = 1
 
 [[preset]]
 variant = "Greif 2"
 propulsion = "pure"
-seats = 1
 weglide_id = 193
 dmst_index = 86.0

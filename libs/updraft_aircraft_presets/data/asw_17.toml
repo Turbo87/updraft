@@ -1,10 +1,10 @@
 model = "ASW 17"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "ASW 17"
 propulsion = "pure"
-seats = 1
 wing_area = 14.8
 reference_mass = 444.0
 polar_coefficients = { a = 1.27, b = -1.94, c = 1.3 }

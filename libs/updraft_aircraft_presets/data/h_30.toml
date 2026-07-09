@@ -1,9 +1,9 @@
 model = "H 30"
 manufacturer = "Glasflügel"
+seats = 1
 
 [[preset]]
 variant = "H 30"
 propulsion = "pure"
-seats = 1
 weglide_id = 216
 dmst_index = 84.0

@@ -1,9 +1,9 @@
 model = "Kranich 3"
 manufacturer = "DFS"
+seats = 2
 
 [[preset]]
 variant = "Kranich 3"
 propulsion = "pure"
-seats = 2
 weglide_id = 303
 dmst_index = 80.0

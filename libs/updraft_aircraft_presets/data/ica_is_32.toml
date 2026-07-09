@@ -1,9 +1,9 @@
 model = "ICA IS-32"
 manufacturer = "ICA"
+seats = 2
 
 [[preset]]
 variant = "ICA IS-32"
 propulsion = "pure"
-seats = 2
 weglide_id = 666
 dmst_index = 107.0

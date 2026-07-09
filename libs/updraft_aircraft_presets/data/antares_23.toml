@@ -1,10 +1,10 @@
 model = "Antares 23"
 manufacturer = "Lange Aviation"
+seats = 1
 
 [[preset]]
 variant = "Antares 23E"
 propulsion = "self_launch"
-seats = 1
 wing_area = 14.75
 reference_mass = 560.0
 polar_coefficients = { a = 0.74, b = -1.26, c = 1.0 }
@@ -16,7 +16,6 @@ dmst_index = 126.0
 [[preset]]
 variant = "Antares 23T"
 propulsion = "sustainer"
-seats = 1
 wing_area = 14.75
 reference_mass = 500.0
 polar_coefficients = { a = 0.9, b = -1.29, c = 0.86 }

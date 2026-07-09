@@ -1,11 +1,11 @@
 model = "AS 34 Me"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "AS 34 Me"
 id = "AS 34 Me 15m"
 propulsion = "electric_sustainer"
-seats = 1
 wingspan = 15.0
 wing_area = 10.5
 reference_mass = 450.0
@@ -19,7 +19,6 @@ dmst_index = 108.0
 variant = "AS 34 Me"
 id = "AS 34 Me 18m"
 propulsion = "electric_sustainer"
-seats = 1
 wingspan = 18.0
 wing_area = 11.88
 reference_mass = 480.0

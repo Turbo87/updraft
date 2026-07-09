@@ -1,10 +1,10 @@
 model = "EB 29"
 manufacturer = "Binder"
+seats = 1
 
 [[preset]]
 variant = "EB 29"
 propulsion = "self_launch"
-seats = 1
 weglide_id = 369
 dmst_index = 128.0
 
@@ -36,23 +36,8 @@ empty_mass = 580.0
 max_takeoff_mass = 900.0
 
 [[preset]]
-variant = "EB 29D"
-propulsion = "self_launch"
-seats = 2
-weglide_id = 370
-dmst_index = 127.0
-
-[[preset]]
-variant = "EB 29DR"
-propulsion = "self_launch"
-seats = 2
-weglide_id = 371
-dmst_index = 129.0
-
-[[preset]]
 variant = "EB 29R"
 propulsion = "self_launch"
-seats = 1
 wing_area = 14.9
 reference_mass = 700.0
 polar_coefficients = { a = 0.63, b = -0.58, c = 0.42 }

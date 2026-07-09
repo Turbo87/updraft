@@ -1,10 +1,10 @@
 model = "ASW 28"
 manufacturer = "Alexander Schleicher"
+seats = 1
 
 [[preset]]
 variant = "ASW 28"
 propulsion = "pure"
-seats = 1
 weglide_id = 447
 dmst_index = 108.0
 
@@ -12,7 +12,6 @@ dmst_index = 108.0
 variant = "ASW 28"
 id = "ASW 28 18m"
 propulsion = "pure"
-seats = 1
 wingspan = 18.0
 wing_area = 11.88
 reference_mass = 345.0
@@ -25,7 +24,6 @@ dmst_index = 114.0
 [[preset]]
 variant = "ASW 28 B"
 propulsion = "pure"
-seats = 1
 weglide_id = 663
 dmst_index = 108.0
 
@@ -33,7 +31,6 @@ dmst_index = 108.0
 variant = "ASW 28 B"
 id = "ASW 28 B 18m"
 propulsion = "pure"
-seats = 1
 wingspan = 18.0
 weglide_id = 662
 dmst_index = 114.0
@@ -41,7 +38,6 @@ dmst_index = 114.0
 [[preset]]
 variant = "ASW 28 E"
 propulsion = "sustainer"
-seats = 1
 weglide_id = 448
 dmst_index = 108.0
 
@@ -49,7 +45,6 @@ dmst_index = 108.0
 variant = "ASW 28 E"
 id = "ASW 28 E 18m"
 propulsion = "sustainer"
-seats = 1
 wingspan = 18.0
 weglide_id = 107
 dmst_index = 114.0

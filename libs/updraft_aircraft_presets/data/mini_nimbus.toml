@@ -1,10 +1,10 @@
 model = "Mini Nimbus"
 manufacturer = "Schempp-Hirth"
+seats = 1
 
 [[preset]]
 variant = "Mini Nimbus"
 propulsion = "pure"
-seats = 1
 wing_area = 9.86
 reference_mass = 325.0
 polar_coefficients = { a = 1.24, b = -1.58, c = 1.03 }

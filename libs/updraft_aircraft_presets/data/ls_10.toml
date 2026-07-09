@@ -1,11 +1,11 @@
 model = "LS 10"
 manufacturer = "Rolladen-Schneider"
+seats = 1
 
 [[preset]]
 variant = "LS 10"
 id = "LS 10 15m"
 propulsion = "pure"
-seats = 1
 wingspan = 15.0
 weglide_id = 29
 dmst_index = 113.0
@@ -14,7 +14,6 @@ dmst_index = 113.0
 variant = "LS 10"
 id = "LS 10 18m"
 propulsion = "pure"
-seats = 1
 wingspan = 18.0
 weglide_id = 85
 dmst_index = 119.0
@@ -23,7 +22,6 @@ dmst_index = 119.0
 variant = "LS 10-st"
 id = "LS 10-st 15m"
 propulsion = "sustainer"
-seats = 1
 wingspan = 15.0
 weglide_id = 30
 dmst_index = 113.0
@@ -32,7 +30,6 @@ dmst_index = 113.0
 variant = "LS 10-st"
 id = "LS 10-st 18m"
 propulsion = "sustainer"
-seats = 1
 wingspan = 18.0
 weglide_id = 86
 dmst_index = 119.0

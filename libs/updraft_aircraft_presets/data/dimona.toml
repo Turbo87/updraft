@@ -1,10 +1,10 @@
 model = "Dimona"
 manufacturer = "Diamond Aircraft"
+seats = 2
 
 [[preset]]
 variant = "Dimona"
 propulsion = "self_launch"
-seats = 2
 wing_area = 15.24
 reference_mass = 457.0
 polar_coefficients = { a = 2.41, b = -3.7, c = 2.58 }

@@ -1,9 +1,9 @@
 model = "Wassmer WA-28"
 manufacturer = "Wassmer Aviation"
+seats = 1
 
 [[preset]]
 variant = "Wassmer WA-28"
 propulsion = "pure"
-seats = 1
 weglide_id = 664
 dmst_index = 86.0

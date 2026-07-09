@@ -1,9 +1,9 @@
 model = "CB-15 Crystal"
 manufacturer = "Brondel"
+seats = 1
 
 [[preset]]
 variant = "CB-15 Crystal"
 propulsion = "pure"
-seats = 1
 weglide_id = 601
 dmst_index = 105.0

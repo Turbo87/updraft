@@ -1,0 +1,139 @@
+---
+source: libs/updraft_lxg/tests/glider.rs
+expression: glider
+---
+Glider {
+    name: Some(
+        "DG-800B",
+    ),
+    description: None,
+    competition_class: Some(
+        4,
+    ),
+    polar: Polar {
+        a: Some(
+            1.0499999523162842,
+        ),
+        b: Some(
+            -1.4199999570846558,
+        ),
+        c: Some(
+            0.9300000071525574,
+        ),
+        wing_area_m2: Some(
+            11.8100004196167,
+        ),
+        reference_load_kg_m2: Some(
+            34.0,
+        ),
+    },
+    masses: Masses {
+        empty: Some(
+            352.0,
+        ),
+        reference: Some(
+            402.0,
+        ),
+        max: Some(
+            525.0,
+        ),
+        max_pilot: Some(
+            103.0,
+        ),
+        max_copilot: None,
+        max_water_main: Some(
+            100.0,
+        ),
+        max_water_tail: None,
+        max_water_tips: None,
+        max_fuel_main: Some(
+            15.854999542236328,
+        ),
+        max_fuel_aux: None,
+    },
+    arms: Arms {
+        empty: Some(
+            560.0,
+        ),
+        pilot: Some(
+            -550.0,
+        ),
+        copilot: None,
+        fuel_main: Some(
+            335.0,
+        ),
+        fuel_aux: None,
+        water_tail_fixed: None,
+        water_tail: None,
+        water_main: Some(
+            171.0,
+        ),
+        water_tips: None,
+    },
+    speeds: Speeds {
+        stall: Some(
+            16.94444465637207,
+        ),
+        stall_landing: Some(
+            25.0,
+        ),
+        flaps_extended: Some(
+            41.66666793823242,
+        ),
+        maneuvering: Some(
+            52.77777862548828,
+        ),
+        never_exceed: Some(
+            75.0,
+        ),
+        approach: Some(
+            29.16666603088379,
+        ),
+    },
+    flaps: [
+        Flap {
+            label: "+8",
+            max_speed: Some(
+                21.11111068725586,
+            ),
+        },
+        Flap {
+            label: "+5",
+            max_speed: Some(
+                23.88888931274414,
+            ),
+        },
+        Flap {
+            label: "0",
+            max_speed: Some(
+                26.38888931274414,
+            ),
+        },
+        Flap {
+            label: "-5",
+            max_speed: Some(
+                35.83333206176758,
+            ),
+        },
+        Flap {
+            label: "-10",
+            max_speed: Some(
+                42.5,
+            ),
+        },
+        Flap {
+            label: "-14",
+            max_speed: Some(
+                75.0,
+            ),
+        },
+    ],
+    ballast: Ballast {
+        wing_litres: [],
+        wing_dump_rates: [],
+        tail_dump_rate: Some(
+            0.5,
+        ),
+        tips_dump_rate: None,
+    },
+}

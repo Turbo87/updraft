@@ -197,7 +197,7 @@
 - [ ] **flarm-declaration** — FLARM task declaration _(needs: vendor-protocols, task-files)_
 - [ ] **lxnav-igc** — IGC file download from LXNav devices. _(needs: vendor-protocols)_
 - [ ] **flarm-igc** — IGC file download from FLARM devices (FLARM, LX) via exclusive binary session. _(needs: vendor-protocols)_
-- [ ] **tauri-android** — Android build target: buildable debug APK, emulator smoke-test, single-ABI CI build. _(needs: tauri-scaffold)_
+- [x] **tauri-android** — Android build target: buildable debug APK, emulator smoke-test, single-ABI CI build. _(needs: tauri-scaffold)_
 - [ ] **tauri-ios** — iOS build target. _(needs: tauri-scaffold)_
 - [ ] **keep-awake** — screen keep-awake while flying. _(needs: tauri-scaffold)_
 - [ ] **foreground-service** — location permission and background execution via an Android foreground service keeping the core alive off-screen. _(needs: tauri-android, internal-sensors)_

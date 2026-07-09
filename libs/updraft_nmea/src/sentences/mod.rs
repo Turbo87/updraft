@@ -6,6 +6,7 @@
 pub(crate) mod cai_w;
 pub(crate) mod gga;
 pub(crate) mod gsa;
+pub(crate) mod lxwp0;
 pub(crate) mod pcaib;
 pub(crate) mod pcaid;
 pub(crate) mod pflaa;

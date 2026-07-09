@@ -52,7 +52,7 @@ The exact crate/package layout may evolve, but the dependency direction is fixed
 - [server.md](server.md): the axum host, headless mode, and its security model
 - [tauri.md](tauri.md): the Tauri shell, mobile plugins, platform risks, and native safety constraints
 - [frontend.md](frontend.md): the SvelteKit app, map, interaction model, and platform behaviors
-- [devices.md](devices.md): device I/O, the parser stack, and auto-detection
+- [devices.md](devices.md): device I/O, parsing, and auto-detection
 - [simulator.md](simulator.md): simulator mode and IGC replay
 - [traffic.md](traffic.md): FLARM and OGN traffic handling, merging, and warnings
 - [data.md](data.md): offline data (basemap, terrain, aviation data), storage layout, and crash-safe persistence

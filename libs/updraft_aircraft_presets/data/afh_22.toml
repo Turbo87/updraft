@@ -1,0 +1,9 @@
+model = "AFH 22"
+manufacturer = "Akaflieg Hannover"
+
+[[preset]]
+variant = "AFH 22"
+propulsion = "pure"
+seats = 2
+weglide_id = 283
+dmst_index = 98.0

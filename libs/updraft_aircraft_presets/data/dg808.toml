@@ -1,0 +1,9 @@
+model = "DG808"
+
+[[preset]]
+variant = "DG808"
+wing_area = 11.81
+reference_mass = 402.0
+polar_coefficients = { a = 1.05, b = -1.42, c = 0.93 }
+empty_mass = 327.0
+max_takeoff_mass = 525.0

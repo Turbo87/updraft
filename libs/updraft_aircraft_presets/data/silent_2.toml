@@ -1,0 +1,9 @@
+model = "Silent 2"
+manufacturer = "Alisport"
+
+[[preset]]
+variant = "Silent 2"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 168
+dmst_index = 94.0

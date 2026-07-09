@@ -1,0 +1,9 @@
+model = "Pilatus B4 RG"
+manufacturer = "Pilatus"
+
+[[preset]]
+variant = "Pilatus B4 RG"
+propulsion = "pure"
+seats = 1
+weglide_id = 553
+dmst_index = 88.0

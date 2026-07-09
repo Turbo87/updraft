@@ -1,0 +1,14 @@
+model = "ASK 14"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASK 14"
+propulsion = "self_launch"
+seats = 1
+wing_area = 12.68
+reference_mass = 330.0
+polar_coefficients = { a = 2.86, b = -3.8, c = 2.03 }
+empty_mass = 245.0
+max_takeoff_mass = 360.0
+weglide_id = 223
+dmst_index = 82.0

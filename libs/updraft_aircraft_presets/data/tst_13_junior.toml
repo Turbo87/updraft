@@ -1,0 +1,6 @@
+model = "TST-13 Junior"
+
+[[preset]]
+variant = "TST-13 Junior"
+weglide_id = 716
+dmst_index = 78.0

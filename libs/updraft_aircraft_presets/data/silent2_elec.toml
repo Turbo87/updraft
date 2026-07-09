@@ -1,0 +1,9 @@
+model = "Silent2 elec."
+
+[[preset]]
+variant = "Silent2 elec."
+wing_area = 9.0
+reference_mass = 297.0
+polar_coefficients = { a = 1.94, b = -3.55, c = 2.41 }
+empty_mass = 220.0
+max_takeoff_mass = 300.0

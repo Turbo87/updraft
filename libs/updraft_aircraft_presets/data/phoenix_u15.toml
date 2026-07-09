@@ -1,0 +1,9 @@
+model = "Phoenix U15"
+
+[[preset]]
+variant = "Phoenix U15"
+wing_area = 12.36
+reference_mass = 420.0
+polar_coefficients = { a = 2.99, b = -4.77, c = 2.66 }
+empty_mass = 340.0
+max_takeoff_mass = 600.0

@@ -1,0 +1,23 @@
+model = "SB 5"
+manufacturer = "Akaflieg Braunschweig"
+
+[[preset]]
+variant = "SB 5a"
+propulsion = "pure"
+seats = 1
+weglide_id = 196
+dmst_index = 86.0
+
+[[preset]]
+variant = "SB 5b"
+propulsion = "pure"
+seats = 1
+weglide_id = 197
+dmst_index = 86.0
+
+[[preset]]
+variant = "SB 5c"
+propulsion = "pure"
+seats = 1
+weglide_id = 198
+dmst_index = 86.0

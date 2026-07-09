@@ -1,0 +1,9 @@
+model = "Bergfalke III"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "Bergfalke III"
+propulsion = "pure"
+seats = 2
+weglide_id = 311
+dmst_index = 76.0

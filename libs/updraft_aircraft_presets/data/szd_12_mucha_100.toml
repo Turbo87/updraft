@@ -1,0 +1,9 @@
+model = "SZD-12 Mucha 100"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-12 Mucha 100"
+propulsion = "pure"
+seats = 1
+weglide_id = 233
+dmst_index = 80.0

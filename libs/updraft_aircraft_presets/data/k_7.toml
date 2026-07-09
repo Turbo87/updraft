@@ -1,0 +1,9 @@
+model = "K 7"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "K 7"
+propulsion = "pure"
+seats = 2
+weglide_id = 509
+dmst_index = 78.0

@@ -1,0 +1,9 @@
+model = "SZD-24 Foka 4"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-24 Foka 4"
+propulsion = "pure"
+seats = 1
+weglide_id = 190
+dmst_index = 88.0

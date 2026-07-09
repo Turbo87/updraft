@@ -1,0 +1,9 @@
+model = "Schneider ES-60"
+manufacturer = "Edmund Schneider"
+
+[[preset]]
+variant = "Schneider ES-60"
+propulsion = "pure"
+seats = 1
+weglide_id = 686
+dmst_index = 79.0

@@ -1,0 +1,9 @@
+model = "DuckHawk"
+manufacturer = "Windward Performance"
+
+[[preset]]
+variant = "DuckHawk"
+propulsion = "pure"
+seats = 1
+weglide_id = 604
+dmst_index = 114.0

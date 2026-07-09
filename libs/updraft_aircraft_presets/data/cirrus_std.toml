@@ -1,0 +1,9 @@
+model = "Cirrus Std."
+
+[[preset]]
+variant = "Cirrus Std."
+wing_area = 10.0
+reference_mass = 300.0
+polar_coefficients = { a = 1.71, b = -2.43, c = 1.46 }
+empty_mass = 215.0
+max_takeoff_mass = 390.0

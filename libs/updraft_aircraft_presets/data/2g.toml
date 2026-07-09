@@ -1,0 +1,7 @@
+model = "2G"
+
+[[preset]]
+variant = "2G"
+propulsion = "pure"
+weglide_id = 748
+dmst_index = 47.0

@@ -1,0 +1,9 @@
+model = "PIK-30"
+manufacturer = "Eiri-Avion"
+
+[[preset]]
+variant = "PIK-30"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 624
+dmst_index = 107.0

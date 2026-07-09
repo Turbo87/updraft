@@ -1,0 +1,7 @@
+model = "Wassmer WA-30"
+
+[[preset]]
+variant = "Wassmer WA-30"
+propulsion = "pure"
+weglide_id = 721
+dmst_index = 72.0

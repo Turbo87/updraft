@@ -1,0 +1,9 @@
+model = "Duo Banjo"
+manufacturer = "ProFe"
+
+[[preset]]
+variant = "Duo Banjo"
+propulsion = "pure"
+seats = 2
+weglide_id = 231
+dmst_index = 80.0

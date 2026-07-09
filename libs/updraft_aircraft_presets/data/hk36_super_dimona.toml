@@ -1,0 +1,9 @@
+model = "HK36 Super Dimona"
+manufacturer = "Diamond Aircraft"
+
+[[preset]]
+variant = "HK36 Super Dimona"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 327
+dmst_index = 68.0

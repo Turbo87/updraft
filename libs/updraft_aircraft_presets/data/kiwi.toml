@@ -1,0 +1,9 @@
+model = "Kiwi"
+manufacturer = "Valentin Flugzeugbau"
+
+[[preset]]
+variant = "Kiwi"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 177
+dmst_index = 92.0

@@ -1,0 +1,9 @@
+model = "G103 C III SL"
+
+[[preset]]
+variant = "G103 C III SL"
+wing_area = 17.52
+reference_mass = 579.0
+polar_coefficients = { a = 2.54, b = -4.64, c = 2.8 }
+empty_mass = 500.0
+max_takeoff_mass = 710.0

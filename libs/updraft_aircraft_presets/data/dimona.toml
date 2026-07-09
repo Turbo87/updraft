@@ -1,0 +1,14 @@
+model = "Dimona"
+manufacturer = "Diamond Aircraft"
+
+[[preset]]
+variant = "Dimona"
+propulsion = "self_launch"
+seats = 2
+wing_area = 15.24
+reference_mass = 457.0
+polar_coefficients = { a = 2.41, b = -3.7, c = 2.58 }
+empty_mass = 497.0
+max_takeoff_mass = 740.0
+weglide_id = 324
+dmst_index = 68.0

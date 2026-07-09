@@ -1,0 +1,16 @@
+model = "Briegleb BG-12"
+manufacturer = "Briegleb"
+
+[[preset]]
+variant = "Briegleb BG-12"
+propulsion = "pure"
+seats = 1
+weglide_id = 647
+dmst_index = 81.0
+
+[[preset]]
+variant = "Briegleb BG-12/16"
+propulsion = "pure"
+seats = 1
+weglide_id = 648
+dmst_index = 85.0

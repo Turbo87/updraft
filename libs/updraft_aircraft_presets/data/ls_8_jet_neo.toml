@@ -1,0 +1,6 @@
+model = "LS 8 Jet neo"
+
+[[preset]]
+variant = "LS 8 Jet neo"
+weglide_id = 736
+dmst_index = 109.0

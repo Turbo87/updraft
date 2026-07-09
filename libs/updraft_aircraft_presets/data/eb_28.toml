@@ -1,0 +1,34 @@
+model = "EB 28"
+manufacturer = "Binder"
+
+[[preset]]
+variant = "EB 28"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 378
+dmst_index = 125.0
+
+[[preset]]
+variant = "EB 28 edition"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 581
+dmst_index = 125.0
+
+[[preset]]
+variant = "EB 28/25m"
+wingspan = 25.0
+wing_area = 15.4
+reference_mass = 616.0
+polar_coefficients = { a = 0.79, b = -0.97, c = 0.64 }
+empty_mass = 570.0
+max_takeoff_mass = 850.0
+
+[[preset]]
+variant = "EB 28/28m"
+wingspan = 28.0
+wing_area = 16.5
+reference_mass = 660.0
+polar_coefficients = { a = 0.63, b = -0.58, c = 0.42 }
+empty_mass = 570.0
+max_takeoff_mass = 850.0

@@ -1,0 +1,9 @@
+model = "Diana-2"
+
+[[preset]]
+variant = "Diana-2"
+wing_area = 8.66
+reference_mass = 242.0
+polar_coefficients = { a = 1.57, b = -2.32, c = 1.33 }
+empty_mass = 182.0
+max_takeoff_mass = 500.0

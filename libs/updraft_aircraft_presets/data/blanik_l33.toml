@@ -1,0 +1,9 @@
+model = "Blanik L33"
+
+[[preset]]
+variant = "Blanik L33"
+wing_area = 11.0
+reference_mass = 281.0
+polar_coefficients = { a = 2.45, b = -3.14, c = 1.75 }
+empty_mass = 215.0
+max_takeoff_mass = 340.0

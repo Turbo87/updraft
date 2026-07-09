@@ -1,0 +1,9 @@
+model = "SZD-39 Cobra 17"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-39 Cobra 17"
+propulsion = "pure"
+seats = 1
+weglide_id = 132
+dmst_index = 100.0

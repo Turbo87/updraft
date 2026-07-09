@@ -1,0 +1,49 @@
+model = "LS 6"
+manufacturer = "Rolladen-Schneider"
+
+[[preset]]
+variant = "LS 6"
+propulsion = "pure"
+seats = 1
+wing_area = 10.5
+reference_mass = 346.0
+polar_coefficients = { a = 1.3, b = -1.93, c = 1.31 }
+empty_mass = 250.0
+max_takeoff_mass = 525.0
+weglide_id = 32
+dmst_index = 111.0
+
+[[preset]]
+variant = "LS 6"
+id = "LS 6 17.5m"
+propulsion = "pure"
+seats = 1
+wingspan = 17.5
+weglide_id = 102
+dmst_index = 116.0
+
+[[preset]]
+variant = "LS 6"
+id = "LS 6 18m"
+propulsion = "pure"
+seats = 1
+wingspan = 18.0
+wing_area = 11.4
+reference_mass = 365.0
+polar_coefficients = { a = 1.05, b = -1.42, c = 0.93 }
+weglide_id = 98
+dmst_index = 117.0
+
+[[preset]]
+variant = "LS 6 WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 524
+dmst_index = 112.0
+
+[[preset]]
+variant = "LS 6 neo"
+propulsion = "pure"
+seats = 1
+weglide_id = 33
+dmst_index = 112.0

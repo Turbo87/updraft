@@ -1,0 +1,16 @@
+model = "LOM 57"
+manufacturer = "VEB Lommatzsch"
+
+[[preset]]
+variant = "LOM 57"
+propulsion = "pure"
+seats = 1
+weglide_id = 225
+dmst_index = 82.0
+
+[[preset]]
+variant = "LOM 57/1"
+propulsion = "pure"
+seats = 1
+weglide_id = 226
+dmst_index = 82.0

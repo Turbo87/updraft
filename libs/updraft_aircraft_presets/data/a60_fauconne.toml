@@ -1,0 +1,7 @@
+model = "A60 Fauconne"
+
+[[preset]]
+variant = "A60 Fauconne"
+propulsion = "pure"
+weglide_id = 701
+dmst_index = 78.0

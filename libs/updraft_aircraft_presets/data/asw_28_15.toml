@@ -1,0 +1,10 @@
+model = "ASW 28-15"
+
+[[preset]]
+variant = "ASW 28-15"
+wingspan = 2815.0
+wing_area = 10.5
+reference_mass = 325.0
+polar_coefficients = { a = 1.53, b = -2.3, c = 1.43 }
+empty_mass = 258.0
+max_takeoff_mass = 525.0

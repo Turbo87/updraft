@@ -1,0 +1,9 @@
+model = "Sagitta"
+manufacturer = "N.V. Vliegtuigbouw"
+
+[[preset]]
+variant = "Sagitta"
+propulsion = "pure"
+seats = 1
+weglide_id = 230
+dmst_index = 82.0

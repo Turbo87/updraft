@@ -1,0 +1,9 @@
+model = "Piccolo"
+manufacturer = "Technoflug"
+
+[[preset]]
+variant = "Piccolo"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 245
+dmst_index = 68.0

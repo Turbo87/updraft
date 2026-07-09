@@ -1,0 +1,7 @@
+model = "Mg 23 SL"
+
+[[preset]]
+variant = "Mg 23 SL"
+propulsion = "pure"
+weglide_id = 738
+dmst_index = 85.0

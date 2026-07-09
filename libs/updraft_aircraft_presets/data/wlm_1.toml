@@ -1,0 +1,9 @@
+model = "WLM-1"
+manufacturer = "Weber-Landholf-Münch"
+
+[[preset]]
+variant = "WLM-1"
+propulsion = "pure"
+seats = 1
+weglide_id = 681
+dmst_index = 64.0

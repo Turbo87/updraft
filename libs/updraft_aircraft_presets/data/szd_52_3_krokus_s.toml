@@ -1,0 +1,7 @@
+model = "SZD-52-3 Krokus S"
+
+[[preset]]
+variant = "SZD-52-3 Krokus S"
+propulsion = "pure"
+weglide_id = 698
+dmst_index = 100.0

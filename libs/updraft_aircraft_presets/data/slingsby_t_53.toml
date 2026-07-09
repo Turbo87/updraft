@@ -1,0 +1,9 @@
+model = "Slingsby T.53"
+manufacturer = "Slingsby"
+
+[[preset]]
+variant = "Slingsby T.53"
+propulsion = "pure"
+seats = 2
+weglide_id = 545
+dmst_index = 71.0

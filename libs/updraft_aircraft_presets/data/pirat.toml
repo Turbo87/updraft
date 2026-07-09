@@ -1,0 +1,9 @@
+model = "Pirat"
+
+[[preset]]
+variant = "Pirat"
+wing_area = 13.8
+reference_mass = 414.0
+polar_coefficients = { a = 2.29, b = -2.62, c = 1.36 }
+empty_mass = 260.0
+max_takeoff_mass = 370.0

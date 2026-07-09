@@ -1,0 +1,9 @@
+model = "Ka 4 Rhönlerche II"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "Ka 4 Rhönlerche II"
+propulsion = "pure"
+seats = 2
+weglide_id = 332
+dmst_index = 54.0

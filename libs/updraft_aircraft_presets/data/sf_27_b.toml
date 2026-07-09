@@ -1,0 +1,9 @@
+model = "SF 27 B"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "SF 27 B"
+propulsion = "pure"
+seats = 1
+weglide_id = 189
+dmst_index = 88.0

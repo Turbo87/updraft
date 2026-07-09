@@ -1,0 +1,9 @@
+model = "Genesis 2"
+
+[[preset]]
+variant = "Genesis 2"
+wing_area = 11.25
+reference_mass = 337.0
+polar_coefficients = { a = 1.37, b = -1.98, c = 1.25 }
+empty_mass = 240.0
+max_takeoff_mass = 525.0

@@ -1,0 +1,7 @@
+model = "DFS Zögling"
+
+[[preset]]
+variant = "DFS Zögling"
+propulsion = "pure"
+weglide_id = 688
+dmst_index = 25.0

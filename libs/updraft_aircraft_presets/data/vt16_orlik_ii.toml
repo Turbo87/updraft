@@ -1,0 +1,9 @@
+model = "VT16 Orlik II"
+
+[[preset]]
+variant = "VT16 Orlik II"
+wing_area = 12.8
+reference_mass = 335.0
+polar_coefficients = { a = 2.51, b = -3.11, c = 1.61 }
+empty_mass = 245.0
+max_takeoff_mass = 345.0

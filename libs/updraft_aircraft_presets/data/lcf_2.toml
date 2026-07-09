@@ -1,0 +1,9 @@
+model = "LCF 2"
+manufacturer = "LCF"
+
+[[preset]]
+variant = "LCF 2"
+propulsion = "pure"
+seats = 1
+weglide_id = 232
+dmst_index = 80.0

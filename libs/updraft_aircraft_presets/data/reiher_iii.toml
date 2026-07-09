@@ -1,0 +1,9 @@
+model = "Reiher III"
+manufacturer = "DFS"
+
+[[preset]]
+variant = "Reiher III"
+propulsion = "pure"
+seats = 1
+weglide_id = 639
+dmst_index = 80.0

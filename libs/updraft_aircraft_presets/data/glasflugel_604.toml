@@ -1,0 +1,18 @@
+model = "Glasflügel 604"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "Glasflügel 604"
+propulsion = "pure"
+seats = 1
+weglide_id = 427
+dmst_index = 114.0
+
+[[preset]]
+variant = "Glasflügel 604"
+id = "Glasflügel 604 24m"
+propulsion = "pure"
+seats = 1
+wingspan = 24.0
+weglide_id = 423
+dmst_index = 118.0

@@ -1,0 +1,60 @@
+model = "Discus 2"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Discus 2"
+wing_area = 10.16
+reference_mass = 335.0
+polar_coefficients = { a = 2.14, b = -3.87, c = 2.38 }
+empty_mass = 235.0
+max_takeoff_mass = 525.0
+
+[[preset]]
+variant = "Discus 2T"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 450
+dmst_index = 108.0
+
+[[preset]]
+variant = "Discus 2a"
+propulsion = "pure"
+seats = 1
+weglide_id = 451
+dmst_index = 109.0
+
+[[preset]]
+variant = "Discus 2b"
+propulsion = "pure"
+seats = 1
+weglide_id = 452
+dmst_index = 108.0
+
+[[preset]]
+variant = "Discus 2c"
+propulsion = "pure"
+seats = 1
+wingspan = 15.0
+weglide_id = 454
+dmst_index = 108.0
+
+[[preset]]
+variant = "Discus 2cFES"
+propulsion = "electric_sustainer"
+seats = 1
+wingspan = 15.0
+wing_area = 10.16
+reference_mass = 335.0
+polar_coefficients = { a = 2.14, b = -3.87, c = 2.38 }
+empty_mass = 335.0
+max_takeoff_mass = 525.0
+weglide_id = 455
+dmst_index = 108.0
+
+[[preset]]
+variant = "Discus 2cT"
+propulsion = "sustainer"
+seats = 1
+wingspan = 15.0
+weglide_id = 456
+dmst_index = 108.0

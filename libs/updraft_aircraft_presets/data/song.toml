@@ -1,0 +1,9 @@
+model = "Song"
+manufacturer = "Gramex"
+
+[[preset]]
+variant = "Song"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 246
+dmst_index = 65.0

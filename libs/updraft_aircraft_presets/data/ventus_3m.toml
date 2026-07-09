@@ -1,0 +1,9 @@
+model = "Ventus 3M"
+
+[[preset]]
+variant = "Ventus 3M"
+wing_area = 10.84
+reference_mass = 430.0
+polar_coefficients = { a = 1.7, b = -2.98, c = 1.86 }
+empty_mass = 417.0
+max_takeoff_mass = 600.0

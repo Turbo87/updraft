@@ -1,0 +1,16 @@
+model = "SunDancer"
+manufacturer = "Distar"
+
+[[preset]]
+variant = "SunDancer DF-13"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 645
+dmst_index = 76.0
+
+[[preset]]
+variant = "SunDancer DF-15"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 644
+dmst_index = 78.0

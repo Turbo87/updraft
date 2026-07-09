@@ -1,0 +1,9 @@
+model = "Pilatus B4"
+
+[[preset]]
+variant = "Pilatus B4"
+wing_area = 14.0
+reference_mass = 242.0
+polar_coefficients = { a = 2.34, b = -2.79, c = 1.56 }
+empty_mass = 320.0
+max_takeoff_mass = 350.0

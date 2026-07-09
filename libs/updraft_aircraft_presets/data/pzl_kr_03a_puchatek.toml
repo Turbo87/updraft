@@ -1,0 +1,9 @@
+model = "PZL KR-03A Puchatek"
+manufacturer = "PZL Krosno"
+
+[[preset]]
+variant = "PZL KR-03A Puchatek"
+propulsion = "pure"
+seats = 2
+weglide_id = 317
+dmst_index = 75.0

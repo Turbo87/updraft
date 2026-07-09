@@ -1,0 +1,7 @@
+model = "EoN Olympia 463"
+
+[[preset]]
+variant = "EoN Olympia 463"
+propulsion = "pure"
+weglide_id = 718
+dmst_index = 85.0

@@ -1,0 +1,10 @@
+model = "SZD 54-2-17.5"
+
+[[preset]]
+variant = "SZD 54-2-17.5"
+wingspan = 217.5
+wing_area = 16.36
+reference_mass = 437.0
+polar_coefficients = { a = 4.89, b = -8.41, c = 4.34 }
+empty_mass = 370.0
+max_takeoff_mass = 590.0

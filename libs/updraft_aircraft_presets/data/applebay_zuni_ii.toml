@@ -1,0 +1,9 @@
+model = "Applebay Zuni II"
+manufacturer = "Applebay Sailplanes"
+
+[[preset]]
+variant = "Applebay Zuni II"
+propulsion = "pure"
+seats = 1
+weglide_id = 600
+dmst_index = 105.0

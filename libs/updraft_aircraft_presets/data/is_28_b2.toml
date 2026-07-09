@@ -1,0 +1,14 @@
+model = "IS 28 B2"
+manufacturer = "ICA"
+
+[[preset]]
+variant = "IS 28 B2"
+propulsion = "pure"
+seats = 2
+wing_area = 18.24
+reference_mass = 620.0
+polar_coefficients = { a = 2.57, b = -4.24, c = 2.53 }
+empty_mass = 400.0
+max_takeoff_mass = 590.0
+weglide_id = 299
+dmst_index = 84.0

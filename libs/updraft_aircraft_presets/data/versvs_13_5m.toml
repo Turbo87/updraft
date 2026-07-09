@@ -1,0 +1,10 @@
+model = "VersVS 13.5m"
+
+[[preset]]
+variant = "VersVS 13.5m"
+wingspan = 13.5
+wing_area = 8.15
+reference_mass = 285.0
+polar_coefficients = { a = 2.34, b = -4.05, c = 2.32 }
+empty_mass = 200.0
+max_takeoff_mass = 350.0

@@ -1,0 +1,10 @@
+model = "Janus"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Janus"
+propulsion = "pure"
+seats = 2
+wingspan = 18.2
+weglide_id = 364
+dmst_index = 102.0

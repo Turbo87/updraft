@@ -1,0 +1,10 @@
+model = "Apis 13m"
+
+[[preset]]
+variant = "Apis 13m"
+wingspan = 13.0
+wing_area = 10.36
+reference_mass = 207.0
+polar_coefficients = { a = 1.71, b = -2.43, c = 1.46 }
+empty_mass = 135.0
+max_takeoff_mass = 245.0

@@ -1,0 +1,9 @@
+model = "DG 303"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 303"
+propulsion = "pure"
+seats = 1
+weglide_id = 477
+dmst_index = 105.0

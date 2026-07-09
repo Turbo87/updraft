@@ -1,0 +1,7 @@
+model = "CARMAM JP 15-36"
+
+[[preset]]
+variant = "CARMAM JP 15-36"
+propulsion = "pure"
+weglide_id = 712
+dmst_index = 96.0

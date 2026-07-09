@@ -1,0 +1,10 @@
+model = "SZD-59 Acro"
+manufacturer = "Allstar PZL Glider"
+
+[[preset]]
+variant = "SZD-59 Acro"
+propulsion = "pure"
+seats = 1
+wingspan = 13.2
+weglide_id = 274
+dmst_index = 93.0

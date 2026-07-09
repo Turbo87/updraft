@@ -1,0 +1,10 @@
+model = "LAK-13.5m FES"
+
+[[preset]]
+variant = "LAK-13.5m FES"
+wingspan = 13.5
+wing_area = 8.41
+reference_mass = 343.0
+polar_coefficients = { a = 1.33, b = -2.13, c = 1.52 }
+empty_mass = 235.0
+max_takeoff_mass = 350.0

@@ -1,0 +1,9 @@
+model = "SFS 31"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "SFS 31"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 228
+dmst_index = 82.0

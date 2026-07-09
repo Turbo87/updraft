@@ -1,0 +1,18 @@
+model = "Glasflügel 304"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "Glasflügel 304"
+propulsion = "pure"
+seats = 1
+weglide_id = 37
+dmst_index = 110.0
+
+[[preset]]
+variant = "Glasflügel 304"
+id = "Glasflügel 304 17m"
+propulsion = "pure"
+seats = 1
+wingspan = 17.0
+weglide_id = 120
+dmst_index = 112.0

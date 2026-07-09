@@ -1,0 +1,9 @@
+model = "Lehrmeister FES-530"
+manufacturer = "Lommatzsch"
+
+[[preset]]
+variant = "Lehrmeister FES-530"
+propulsion = "pure"
+seats = 2
+weglide_id = 661
+dmst_index = 74.0

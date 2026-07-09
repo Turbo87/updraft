@@ -1,0 +1,14 @@
+model = "ASW 17"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASW 17"
+propulsion = "pure"
+seats = 1
+wing_area = 14.8
+reference_mass = 444.0
+polar_coefficients = { a = 1.27, b = -1.94, c = 1.3 }
+empty_mass = 415.0
+max_takeoff_mass = 610.0
+weglide_id = 426
+dmst_index = 115.0

@@ -1,0 +1,9 @@
+model = "Archaeopteryx"
+manufacturer = "Ruppert Composite"
+
+[[preset]]
+variant = "Archaeopteryx"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 614
+dmst_index = 76.0

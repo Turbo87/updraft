@@ -1,0 +1,7 @@
+model = "VMA.200 Milan"
+
+[[preset]]
+variant = "VMA.200 Milan"
+propulsion = "pure"
+weglide_id = 704
+dmst_index = 80.0

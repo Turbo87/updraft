@@ -12,6 +12,10 @@ workspace = true
 updraft_polar = { path = "../updraft_polar" }
 updraft_units = { path = "../updraft_units" }
 
+[build-dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
+toml = "=0.9.8"
+
 [dev-dependencies]
 approx = "=0.6.0-rc2"
 updraft_units = { path = "../updraft_units", features = ["approx"] }

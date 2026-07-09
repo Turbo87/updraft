@@ -1,0 +1,14 @@
+model = "Pegase"
+manufacturer = "Centrair"
+
+[[preset]]
+variant = "Pegase"
+propulsion = "pure"
+seats = 1
+wing_area = 10.5
+reference_mass = 336.0
+polar_coefficients = { a = 1.86, b = -2.66, c = 1.52 }
+empty_mass = 251.0
+max_takeoff_mass = 455.0
+weglide_id = 259
+dmst_index = 102.0

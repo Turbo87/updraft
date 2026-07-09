@@ -1,0 +1,9 @@
+model = "Lambada UFM-13"
+manufacturer = "Urban Air"
+
+[[preset]]
+variant = "Lambada UFM-13"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 227
+dmst_index = 76.0

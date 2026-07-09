@@ -1,0 +1,9 @@
+model = "Astir CS"
+
+[[preset]]
+variant = "Astir CS"
+wing_area = 12.4
+reference_mass = 372.0
+polar_coefficients = { a = 2.04, b = -3.09, c = 1.86 }
+empty_mass = 255.0
+max_takeoff_mass = 450.0

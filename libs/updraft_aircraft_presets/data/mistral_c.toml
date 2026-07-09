@@ -1,0 +1,9 @@
+model = "Mistral C"
+manufacturer = "Mistral-Flugzeugbau"
+
+[[preset]]
+variant = "Mistral C"
+propulsion = "pure"
+seats = 1
+weglide_id = 160
+dmst_index = 96.0

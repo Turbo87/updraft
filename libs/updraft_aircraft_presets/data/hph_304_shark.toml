@@ -1,0 +1,30 @@
+model = "HpH 304 Shark"
+manufacturer = "HpH Sailplanes"
+
+[[preset]]
+variant = "HpH 304 ES Shark"
+propulsion = "electric_sustainer"
+seats = 1
+weglide_id = 80
+dmst_index = 119.0
+
+[[preset]]
+variant = "HpH 304 MS Shark"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 81
+dmst_index = 119.0
+
+[[preset]]
+variant = "HpH 304 S Shark"
+propulsion = "pure"
+seats = 1
+weglide_id = 82
+dmst_index = 119.0
+
+[[preset]]
+variant = "HpH 304 SJ Shark"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 83
+dmst_index = 119.0

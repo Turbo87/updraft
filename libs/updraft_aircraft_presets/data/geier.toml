@@ -1,0 +1,9 @@
+model = "Geier"
+manufacturer = "Allgaier"
+
+[[preset]]
+variant = "Geier"
+propulsion = "pure"
+seats = 1
+weglide_id = 185
+dmst_index = 88.0

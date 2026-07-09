@@ -1,0 +1,9 @@
+model = "LS 1cd"
+
+[[preset]]
+variant = "LS 1cd"
+wing_area = 9.75
+reference_mass = 292.0
+polar_coefficients = { a = 2.21, b = -3.08, c = 1.67 }
+empty_mass = 200.0
+max_takeoff_mass = 400.0

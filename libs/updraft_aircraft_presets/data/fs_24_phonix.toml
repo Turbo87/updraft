@@ -1,0 +1,9 @@
+model = "fs 24 Phönix"
+manufacturer = "Akaflieg Stuttgart"
+
+[[preset]]
+variant = "fs 24 Phönix"
+propulsion = "pure"
+seats = 1
+weglide_id = 178
+dmst_index = 92.0

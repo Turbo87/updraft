@@ -1,0 +1,16 @@
+model = "Swift-Light"
+manufacturer = "Aériane"
+
+[[preset]]
+variant = "Swift-Light"
+propulsion = "pure"
+seats = 1
+weglide_id = 634
+dmst_index = 76.0
+
+[[preset]]
+variant = "Swift-Light E"
+propulsion = "electric_sustainer"
+seats = 1
+weglide_id = 633
+dmst_index = 76.0

@@ -1,0 +1,9 @@
+model = "Genesis"
+manufacturer = "Sportinė Aviacija"
+
+[[preset]]
+variant = "Genesis"
+propulsion = "pure"
+seats = 1
+weglide_id = 471
+dmst_index = 107.0

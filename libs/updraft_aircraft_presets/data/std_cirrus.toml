@@ -1,0 +1,25 @@
+model = "Std. Cirrus"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Std. Cirrus"
+propulsion = "pure"
+seats = 1
+weglide_id = 134
+dmst_index = 99.0
+
+[[preset]]
+variant = "Std. Cirrus"
+id = "Std. Cirrus 16m"
+propulsion = "pure"
+seats = 1
+wingspan = 16.0
+weglide_id = 276
+dmst_index = 100.0
+
+[[preset]]
+variant = "Std. Cirrus WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 277
+dmst_index = 100.0

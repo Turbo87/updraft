@@ -1,0 +1,48 @@
+model = "LAK-19"
+manufacturer = "Sportinė Aviacija"
+
+[[preset]]
+variant = "LAK-19"
+id = "LAK-19 15m"
+propulsion = "pure"
+seats = 1
+wingspan = 15.0
+wing_area = 9.06
+reference_mass = 306.0
+polar_coefficients = { a = 1.62, b = -2.5, c = 1.52 }
+empty_mass = 235.0
+max_takeoff_mass = 480.0
+weglide_id = 457
+dmst_index = 108.0
+
+[[preset]]
+variant = "LAK-19"
+id = "LAK-19 18m"
+propulsion = "pure"
+seats = 1
+wingspan = 18.0
+wing_area = 9.8
+reference_mass = 310.0
+polar_coefficients = { a = 1.24, b = -1.61, c = 0.97 }
+empty_mass = 240.0
+max_takeoff_mass = 480.0
+weglide_id = 111
+dmst_index = 114.0
+
+[[preset]]
+variant = "LAK-19 T"
+id = "LAK-19 T 15m"
+propulsion = "sustainer"
+seats = 1
+wingspan = 15.0
+weglide_id = 566
+dmst_index = 108.0
+
+[[preset]]
+variant = "LAK-19 T"
+id = "LAK-19 T 18m"
+propulsion = "sustainer"
+seats = 1
+wingspan = 18.0
+weglide_id = 565
+dmst_index = 114.0

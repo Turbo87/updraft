@@ -1,0 +1,8 @@
+model = "Silence E 75"
+
+[[preset]]
+variant = "Silence E 75"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 287
+dmst_index = 98.0

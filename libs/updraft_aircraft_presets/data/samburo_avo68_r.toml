@@ -1,0 +1,9 @@
+model = "Samburo AVo68-R"
+manufacturer = "M&D Flugzeugbau"
+
+[[preset]]
+variant = "Samburo AVo68-R"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 330
+dmst_index = 67.0

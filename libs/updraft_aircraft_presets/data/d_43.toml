@@ -1,0 +1,10 @@
+model = "D 43"
+manufacturer = "Akaflieg Darmstadt"
+
+[[preset]]
+variant = "D 43"
+propulsion = "pure"
+seats = 2
+wingspan = 18.0
+weglide_id = 279
+dmst_index = 99.0

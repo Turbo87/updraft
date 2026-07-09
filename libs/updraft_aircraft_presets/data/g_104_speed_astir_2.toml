@@ -1,0 +1,9 @@
+model = "G 104 Speed Astir 2"
+manufacturer = "Grob Aircraft"
+
+[[preset]]
+variant = "G 104 Speed Astir 2"
+propulsion = "pure"
+seats = 1
+weglide_id = 55
+dmst_index = 105.0

@@ -1,0 +1,9 @@
+model = "LS 1-0 FG"
+manufacturer = "Rolladen-Schneider"
+
+[[preset]]
+variant = "LS 1-0 FG"
+propulsion = "pure"
+seats = 1
+weglide_id = 159
+dmst_index = 96.0

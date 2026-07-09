@@ -1,0 +1,9 @@
+model = "Quintus"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Quintus"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 394
+dmst_index = 126.0

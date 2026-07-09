@@ -1,0 +1,10 @@
+model = "LS 10-s-18"
+
+[[preset]]
+variant = "LS 10-s-18"
+wingspan = 18.0
+wing_area = 11.45
+reference_mass = 378.0
+polar_coefficients = { a = 1.45, b = -2.36, c = 1.49 }
+empty_mass = 295.0
+max_takeoff_mass = 600.0

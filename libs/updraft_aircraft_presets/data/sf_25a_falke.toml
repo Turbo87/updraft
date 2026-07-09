@@ -1,0 +1,6 @@
+model = "SF 25A Falke"
+
+[[preset]]
+variant = "SF 25A Falke"
+weglide_id = 717
+dmst_index = 60.0

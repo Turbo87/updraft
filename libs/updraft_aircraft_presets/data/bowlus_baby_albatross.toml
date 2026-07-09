@@ -1,0 +1,9 @@
+model = "Bowlus Baby Albatross"
+manufacturer = "Hawley Bowlus"
+
+[[preset]]
+variant = "Bowlus Baby Albatross"
+propulsion = "pure"
+seats = 1
+weglide_id = 667
+dmst_index = 51.0

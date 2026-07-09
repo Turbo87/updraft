@@ -1,0 +1,9 @@
+model = "Ventus 2 cxa"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Ventus 2 cxa"
+propulsion = "pure"
+seats = 1
+weglide_id = 73
+dmst_index = 121.0

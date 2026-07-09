@@ -1,0 +1,9 @@
+model = "Falkon"
+manufacturer = "Streifeneder"
+
+[[preset]]
+variant = "Falkon"
+propulsion = "pure"
+seats = 1
+weglide_id = 253
+dmst_index = 103.0

@@ -1,0 +1,16 @@
+model = "Phöbus B3/C"
+manufacturer = "Bölkow"
+
+[[preset]]
+variant = "Phöbus B3"
+propulsion = "pure"
+seats = 1
+weglide_id = 272
+dmst_index = 100.0
+
+[[preset]]
+variant = "Phöbus C"
+propulsion = "pure"
+seats = 1
+weglide_id = 273
+dmst_index = 100.0

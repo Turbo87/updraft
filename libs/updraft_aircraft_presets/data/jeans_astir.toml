@@ -1,0 +1,9 @@
+model = "Jeans Astir"
+
+[[preset]]
+variant = "Jeans Astir"
+wing_area = 12.4
+reference_mass = 372.0
+polar_coefficients = { a = 1.78, b = -2.41, c = 1.51 }
+empty_mass = 248.0
+max_takeoff_mass = 380.0

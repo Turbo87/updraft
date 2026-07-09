@@ -1,0 +1,28 @@
+model = "Hornet"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "Hornet"
+propulsion = "pure"
+seats = 1
+wing_area = 9.8
+reference_mass = 333.0
+polar_coefficients = { a = 1.7, b = -2.44, c = 1.47 }
+empty_mass = 227.0
+max_takeoff_mass = 420.0
+weglide_id = 269
+dmst_index = 100.0
+
+[[preset]]
+variant = "Hornet C"
+propulsion = "pure"
+seats = 1
+weglide_id = 617
+dmst_index = 100.0
+
+[[preset]]
+variant = "Hornet WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 261
+dmst_index = 101.0

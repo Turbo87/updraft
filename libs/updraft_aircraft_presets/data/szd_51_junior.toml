@@ -1,0 +1,9 @@
+model = "SZD-51 Junior"
+manufacturer = "Allstar PZL Glider"
+
+[[preset]]
+variant = "SZD-51 Junior"
+propulsion = "pure"
+seats = 1
+weglide_id = 181
+dmst_index = 90.0

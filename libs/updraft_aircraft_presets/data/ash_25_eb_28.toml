@@ -1,0 +1,9 @@
+model = "ASH 25 EB 28"
+manufacturer = "Binder"
+
+[[preset]]
+variant = "ASH 25 EB 28"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 384
+dmst_index = 123.0

@@ -1,0 +1,10 @@
+model = "DG 505 M Orion"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 505 M Orion"
+propulsion = "pure"
+seats = 2
+wingspan = 20.0
+weglide_id = 363
+dmst_index = 104.0

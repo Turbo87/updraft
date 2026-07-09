@@ -1,0 +1,9 @@
+model = "IS29D2"
+
+[[preset]]
+variant = "IS29D2"
+wing_area = 10.4
+reference_mass = 354.0
+polar_coefficients = { a = 1.81, b = -2.31, c = 1.29 }
+empty_mass = 240.0
+max_takeoff_mass = 360.0

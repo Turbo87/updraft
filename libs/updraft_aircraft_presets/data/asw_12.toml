@@ -1,0 +1,9 @@
+model = "ASW 12"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASW 12"
+propulsion = "pure"
+seats = 1
+weglide_id = 438
+dmst_index = 110.0

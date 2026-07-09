@@ -1,0 +1,9 @@
+model = "Gö-4"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Gö-4"
+propulsion = "pure"
+seats = 2
+weglide_id = 684
+dmst_index = 54.0

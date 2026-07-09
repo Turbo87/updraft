@@ -1,0 +1,14 @@
+model = "Ka 6 E"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "Ka 6 E"
+propulsion = "pure"
+seats = 1
+wing_area = 12.4
+reference_mass = 270.0
+polar_coefficients = { a = 2.96, b = -3.03, c = 1.35 }
+empty_mass = 190.0
+max_takeoff_mass = 300.0
+weglide_id = 211
+dmst_index = 85.0

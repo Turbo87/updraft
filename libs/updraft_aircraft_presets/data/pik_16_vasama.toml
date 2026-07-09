@@ -1,0 +1,9 @@
+model = "PIK-16 Vasama"
+manufacturer = "Lehtovaara"
+
+[[preset]]
+variant = "PIK-16 Vasama"
+propulsion = "pure"
+seats = 1
+weglide_id = 187
+dmst_index = 88.0

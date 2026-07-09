@@ -1,0 +1,7 @@
+model = "Marske Pioneer IV Prototype 15M"
+
+[[preset]]
+variant = "Marske Pioneer IV Prototype 15M"
+propulsion = "pure"
+weglide_id = 692
+dmst_index = 106.0

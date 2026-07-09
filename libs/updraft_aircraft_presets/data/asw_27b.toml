@@ -1,0 +1,9 @@
+model = "ASW 27B"
+
+[[preset]]
+variant = "ASW 27B"
+wing_area = 9.0
+reference_mass = 315.0
+polar_coefficients = { a = 1.48, b = -2.4, c = 1.54 }
+empty_mass = 245.0
+max_takeoff_mass = 500.0

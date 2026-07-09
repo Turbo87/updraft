@@ -1,0 +1,14 @@
+model = "Mini Nimbus"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Mini Nimbus"
+propulsion = "pure"
+seats = 1
+wing_area = 9.86
+reference_mass = 325.0
+polar_coefficients = { a = 1.24, b = -1.58, c = 1.03 }
+empty_mass = 235.0
+max_takeoff_mass = 450.0
+weglide_id = 52
+dmst_index = 107.0

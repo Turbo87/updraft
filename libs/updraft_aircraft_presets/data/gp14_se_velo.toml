@@ -1,0 +1,9 @@
+model = "GP14 SE VELO"
+
+[[preset]]
+variant = "GP14 SE VELO"
+wing_area = 7.0
+reference_mass = 245.0
+polar_coefficients = { a = 1.24, b = -1.51, c = 0.92 }
+empty_mass = 175.0
+max_takeoff_mass = 425.0

@@ -1,0 +1,9 @@
+model = "Schweizer SGS 1-36 Sprite"
+manufacturer = "Schweizer Aircraft"
+
+[[preset]]
+variant = "Schweizer SGS 1-36 Sprite"
+propulsion = "pure"
+seats = 1
+weglide_id = 558
+dmst_index = 76.0

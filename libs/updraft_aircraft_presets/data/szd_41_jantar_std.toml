@@ -1,0 +1,23 @@
+model = "SZD-41 Jantar Std."
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-41 Jantar Std."
+propulsion = "pure"
+seats = 1
+weglide_id = 517
+dmst_index = 100.0
+
+[[preset]]
+variant = "SZD-41 Jantar Std. T"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 528
+dmst_index = 100.0
+
+[[preset]]
+variant = "SZD-41 Jantar Std. WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 518
+dmst_index = 101.0

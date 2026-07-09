@@ -1,0 +1,9 @@
+model = "Mistral"
+
+[[preset]]
+variant = "Mistral"
+wing_area = 10.9
+reference_mass = 327.0
+polar_coefficients = { a = 2.14, b = -2.98, c = 2.03 }
+empty_mass = 235.0
+max_takeoff_mass = 350.0

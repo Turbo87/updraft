@@ -1,0 +1,16 @@
+model = "Silent AE-1"
+manufacturer = "Air Energy"
+
+[[preset]]
+variant = "Silent AE-1"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 218
+dmst_index = 84.0
+
+[[preset]]
+variant = "Silent AE-1 pure"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 219
+dmst_index = 84.0

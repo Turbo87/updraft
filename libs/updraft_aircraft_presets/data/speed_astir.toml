@@ -1,0 +1,9 @@
+model = "Speed Astir"
+
+[[preset]]
+variant = "Speed Astir"
+wing_area = 11.5
+reference_mass = 345.0
+polar_coefficients = { a = 1.37, b = -1.94, c = 1.31 }
+empty_mass = 265.0
+max_takeoff_mass = 515.0

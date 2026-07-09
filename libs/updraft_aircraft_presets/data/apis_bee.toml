@@ -1,0 +1,9 @@
+model = "Apis bee"
+
+[[preset]]
+variant = "Apis bee"
+wing_area = 12.24
+reference_mass = 318.0
+polar_coefficients = { a = 1.73, b = -2.8, c = 1.73 }
+empty_mass = 215.0
+max_takeoff_mass = 350.0

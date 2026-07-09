@@ -1,0 +1,9 @@
+model = "fs 25"
+manufacturer = "Akaflieg Stuttgart"
+
+[[preset]]
+variant = "fs 25"
+propulsion = "pure"
+seats = 1
+weglide_id = 179
+dmst_index = 92.0

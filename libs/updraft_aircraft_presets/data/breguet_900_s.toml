@@ -1,0 +1,7 @@
+model = "Breguet 900 S"
+
+[[preset]]
+variant = "Breguet 900 S"
+propulsion = "pure"
+weglide_id = 733
+dmst_index = 78.0

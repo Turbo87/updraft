@@ -1,0 +1,9 @@
+model = "Minimoa"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Minimoa"
+propulsion = "pure"
+seats = 1
+weglide_id = 241
+dmst_index = 76.0

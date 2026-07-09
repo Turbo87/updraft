@@ -1,0 +1,9 @@
+model = "D 36"
+manufacturer = "Akaflieg Darmstadt"
+
+[[preset]]
+variant = "D 36"
+propulsion = "pure"
+seats = 1
+weglide_id = 129
+dmst_index = 108.0

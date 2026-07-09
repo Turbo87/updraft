@@ -1,0 +1,9 @@
+model = "SF 25B Falke"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "SF 25B Falke"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 331
+dmst_index = 65.0

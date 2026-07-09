@@ -1,0 +1,7 @@
+model = "Let L-33"
+
+[[preset]]
+variant = "Let L-33"
+propulsion = "pure"
+weglide_id = 722
+dmst_index = 86.0

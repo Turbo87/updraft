@@ -1,0 +1,9 @@
+model = "AK-8"
+manufacturer = "Akaflieg Karlsruhe"
+
+[[preset]]
+variant = "AK-8"
+propulsion = "pure"
+seats = 1
+weglide_id = 462
+dmst_index = 107.0

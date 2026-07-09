@@ -1,0 +1,8 @@
+model = "Discus 2c DLR"
+
+[[preset]]
+variant = "Discus 2c DLR"
+propulsion = "pure"
+wingspan = 18.0
+weglide_id = 725
+dmst_index = 114.0

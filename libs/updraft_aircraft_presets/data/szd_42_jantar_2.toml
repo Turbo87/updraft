@@ -1,0 +1,16 @@
+model = "SZD-42 Jantar 2"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-42 Jantar 2"
+propulsion = "pure"
+seats = 1
+weglide_id = 434
+dmst_index = 113.0
+
+[[preset]]
+variant = "SZD-42-2 Jantar 2b"
+propulsion = "pure"
+seats = 1
+weglide_id = 435
+dmst_index = 113.0

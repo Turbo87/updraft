@@ -1,0 +1,7 @@
+model = "Carbon Dragon"
+
+[[preset]]
+variant = "Carbon Dragon"
+propulsion = "pure"
+weglide_id = 743
+dmst_index = 59.0

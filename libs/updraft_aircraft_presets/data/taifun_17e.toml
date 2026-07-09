@@ -1,0 +1,9 @@
+model = "Taifun 17e"
+manufacturer = "Valentin Flugzeugbau"
+
+[[preset]]
+variant = "Taifun 17e"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 323
+dmst_index = 70.0

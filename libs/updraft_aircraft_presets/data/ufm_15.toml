@@ -1,0 +1,10 @@
+model = "UFM-15"
+
+[[preset]]
+variant = "UFM-15"
+wingspan = 15.0
+wing_area = 12.9
+reference_mass = 450.0
+polar_coefficients = { a = 2.97, b = -4.29, c = 2.56 }
+empty_mass = 265.0
+max_takeoff_mass = 472.0

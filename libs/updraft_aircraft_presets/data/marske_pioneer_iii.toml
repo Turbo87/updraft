@@ -1,0 +1,7 @@
+model = "Marske Pioneer III"
+
+[[preset]]
+variant = "Marske Pioneer III"
+propulsion = "pure"
+weglide_id = 708
+dmst_index = 105.0

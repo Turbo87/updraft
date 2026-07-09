@@ -1,0 +1,15 @@
+model = "Ventus 2cxaT"
+
+[[preset]]
+variant = "Ventus 2cxaT"
+id = "Ventus 2cxaT 15m"
+wingspan = 15.0
+weglide_id = 706
+dmst_index = 115.0
+
+[[preset]]
+variant = "Ventus 2cxaT"
+id = "Ventus 2cxaT 18m"
+wingspan = 18.0
+weglide_id = 705
+dmst_index = 121.0

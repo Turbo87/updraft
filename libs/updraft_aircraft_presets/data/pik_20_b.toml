@@ -1,0 +1,9 @@
+model = "PIK-20 B"
+manufacturer = "Eiri-Avion"
+
+[[preset]]
+variant = "PIK-20 B"
+propulsion = "pure"
+seats = 1
+weglide_id = 58
+dmst_index = 102.0

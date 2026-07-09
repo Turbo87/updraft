@@ -1,0 +1,9 @@
+model = "Std. Austria"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Std. Austria"
+propulsion = "pure"
+seats = 1
+weglide_id = 205
+dmst_index = 86.0

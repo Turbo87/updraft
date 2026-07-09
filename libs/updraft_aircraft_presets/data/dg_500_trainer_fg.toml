@@ -1,0 +1,16 @@
+model = "DG 500 Trainer FG"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 500 Trainer FG"
+propulsion = "pure"
+seats = 2
+weglide_id = 284
+dmst_index = 98.0
+
+[[preset]]
+variant = "DG 505 Trainer FG"
+propulsion = "pure"
+seats = 2
+weglide_id = 285
+dmst_index = 98.0

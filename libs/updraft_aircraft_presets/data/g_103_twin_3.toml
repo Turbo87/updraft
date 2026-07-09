@@ -1,0 +1,38 @@
+model = "G 103 Twin 3"
+manufacturer = "Grob Aircraft"
+
+[[preset]]
+variant = "G 103 Twin 3"
+id = "G 103 Twin 3 18m"
+propulsion = "pure"
+seats = 2
+wingspan = 18.0
+weglide_id = 288
+dmst_index = 97.0
+
+[[preset]]
+variant = "G 103 Twin 3"
+id = "G 103 Twin 3 20m"
+propulsion = "pure"
+seats = 2
+wingspan = 20.0
+weglide_id = 281
+dmst_index = 99.0
+
+[[preset]]
+variant = "G 103 Twin 3 SL"
+id = "G 103 Twin 3 SL 18m"
+propulsion = "self_launch"
+seats = 2
+wingspan = 18.0
+weglide_id = 290
+dmst_index = 95.0
+
+[[preset]]
+variant = "G 103 Twin 3 SL"
+id = "G 103 Twin 3 SL 20m"
+propulsion = "self_launch"
+seats = 2
+wingspan = 20.0
+weglide_id = 580
+dmst_index = 97.0

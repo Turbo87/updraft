@@ -1,0 +1,9 @@
+model = "SZD-56-1 Diana"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-56-1 Diana"
+propulsion = "pure"
+seats = 1
+weglide_id = 31
+dmst_index = 112.0

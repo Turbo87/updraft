@@ -1,0 +1,26 @@
+model = "Antares 18"
+manufacturer = "Lange Aviation"
+
+[[preset]]
+variant = "Antares 18S"
+propulsion = "pure"
+seats = 1
+wing_area = 10.97
+reference_mass = 351.0
+polar_coefficients = { a = 2.06, b = -4.09, c = 2.57 }
+empty_mass = 280.0
+max_takeoff_mass = 600.0
+weglide_id = 75
+dmst_index = 120.0
+
+[[preset]]
+variant = "Antares 18T"
+propulsion = "sustainer"
+seats = 1
+wing_area = 10.97
+reference_mass = 395.0
+polar_coefficients = { a = 1.24, b = -1.96, c = 1.26 }
+empty_mass = 325.0
+max_takeoff_mass = 600.0
+weglide_id = 76
+dmst_index = 120.0

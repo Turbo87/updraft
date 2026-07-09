@@ -1,0 +1,9 @@
+model = "LAK17miniFES"
+
+[[preset]]
+variant = "LAK17miniFES"
+wing_area = 8.41
+reference_mass = 343.0
+polar_coefficients = { a = 1.83, b = -3.39, c = 2.26 }
+empty_mass = 213.0
+max_takeoff_mass = 350.0

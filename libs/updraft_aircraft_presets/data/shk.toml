@@ -1,0 +1,9 @@
+model = "SHK"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "SHK"
+propulsion = "pure"
+seats = 1
+weglide_id = 162
+dmst_index = 96.0

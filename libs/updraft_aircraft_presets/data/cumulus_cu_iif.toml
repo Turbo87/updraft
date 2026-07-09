@@ -1,0 +1,9 @@
+model = "Cumulus CU IIf"
+manufacturer = "Gerhard Reinhard"
+
+[[preset]]
+variant = "Cumulus CU IIf"
+propulsion = "pure"
+seats = 1
+weglide_id = 602
+dmst_index = 54.0

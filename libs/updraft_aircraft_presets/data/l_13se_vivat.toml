@@ -1,0 +1,9 @@
+model = "L-13SE Vivat"
+manufacturer = "LET"
+
+[[preset]]
+variant = "L-13SE Vivat"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 685
+dmst_index = 74.0

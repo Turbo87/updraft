@@ -1,0 +1,9 @@
+model = "AV.36"
+manufacturer = "Fauvel"
+
+[[preset]]
+variant = "AV.36"
+propulsion = "pure"
+seats = 1
+weglide_id = 242
+dmst_index = 74.0

@@ -1,0 +1,9 @@
+model = "G 102 Astir CS Top"
+manufacturer = "Grob Aircraft"
+
+[[preset]]
+variant = "G 102 Astir CS Top"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 165
+dmst_index = 94.0

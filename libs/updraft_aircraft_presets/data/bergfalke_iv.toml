@@ -1,0 +1,9 @@
+model = "Bergfalke IV"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "Bergfalke IV"
+propulsion = "pure"
+seats = 2
+weglide_id = 301
+dmst_index = 80.0

@@ -1,0 +1,9 @@
+model = "B12"
+manufacturer = "Akaflieg Berlin"
+
+[[preset]]
+variant = "B12"
+propulsion = "pure"
+seats = 2
+weglide_id = 353
+dmst_index = 106.0

@@ -1,0 +1,55 @@
+model = "ASW 28"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASW 28"
+propulsion = "pure"
+seats = 1
+weglide_id = 447
+dmst_index = 108.0
+
+[[preset]]
+variant = "ASW 28"
+id = "ASW 28 18m"
+propulsion = "pure"
+seats = 1
+wingspan = 18.0
+wing_area = 11.88
+reference_mass = 345.0
+polar_coefficients = { a = 1.72, b = -2.73, c = 1.58 }
+empty_mass = 270.0
+max_takeoff_mass = 575.0
+weglide_id = 106
+dmst_index = 114.0
+
+[[preset]]
+variant = "ASW 28 B"
+propulsion = "pure"
+seats = 1
+weglide_id = 663
+dmst_index = 108.0
+
+[[preset]]
+variant = "ASW 28 B"
+id = "ASW 28 B 18m"
+propulsion = "pure"
+seats = 1
+wingspan = 18.0
+weglide_id = 662
+dmst_index = 114.0
+
+[[preset]]
+variant = "ASW 28 E"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 448
+dmst_index = 108.0
+
+[[preset]]
+variant = "ASW 28 E"
+id = "ASW 28 E 18m"
+propulsion = "sustainer"
+seats = 1
+wingspan = 18.0
+weglide_id = 107
+dmst_index = 114.0

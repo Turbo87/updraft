@@ -1,0 +1,9 @@
+model = "SF 36"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "SF 36"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 533
+dmst_index = 74.0

@@ -1,0 +1,9 @@
+model = "UFM-13"
+
+[[preset]]
+variant = "UFM-13"
+wing_area = 12.2
+reference_mass = 350.0
+polar_coefficients = { a = 3.61, b = -5.09, c = 2.86 }
+empty_mass = 265.0
+max_takeoff_mass = 472.0

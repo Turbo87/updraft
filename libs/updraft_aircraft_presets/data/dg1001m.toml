@@ -1,0 +1,9 @@
+model = "DG1001M"
+
+[[preset]]
+variant = "DG1001M"
+wing_area = 17.53
+reference_mass = 750.0
+polar_coefficients = { a = 2.01, b = -4.16, c = 2.79 }
+empty_mass = 520.0
+max_takeoff_mass = 780.0

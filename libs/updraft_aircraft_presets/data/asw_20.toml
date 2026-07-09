@@ -1,0 +1,53 @@
+model = "ASW 20"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASW 20"
+propulsion = "pure"
+seats = 1
+wing_area = 10.5
+reference_mass = 315.0
+polar_coefficients = { a = 1.18, b = -1.53, c = 1.0 }
+empty_mass = 260.0
+max_takeoff_mass = 525.0
+weglide_id = 34
+dmst_index = 110.0
+
+[[preset]]
+variant = "ASW 20"
+id = "ASW 20 16.6m"
+propulsion = "pure"
+seats = 1
+wingspan = 16.6
+weglide_id = 119
+dmst_index = 112.0
+
+[[preset]]
+variant = "ASW 20 WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 512
+dmst_index = 111.0
+
+[[preset]]
+variant = "ASW 20-J"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 529
+dmst_index = 110.0
+
+[[preset]]
+variant = "ASW 20-J"
+id = "ASW 20-J 16.6m"
+propulsion = "sustainer"
+seats = 1
+wingspan = 16.6
+weglide_id = 564
+dmst_index = 112.0
+
+[[preset]]
+variant = "ASW 20-J WL"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 530
+dmst_index = 111.0

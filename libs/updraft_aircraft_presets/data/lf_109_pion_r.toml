@@ -1,0 +1,7 @@
+model = "LF-109 Pionýr"
+
+[[preset]]
+variant = "LF-109 Pionýr"
+propulsion = "pure"
+weglide_id = 724
+dmst_index = 70.0

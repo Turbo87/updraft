@@ -1,0 +1,16 @@
+model = "SZD-56-2 Diana 2"
+manufacturer = "Avionic"
+
+[[preset]]
+variant = "SZD-56-2 Diana 2"
+propulsion = "pure"
+seats = 1
+weglide_id = 1
+dmst_index = 116.0
+
+[[preset]]
+variant = "SZD-56-2 Diana 2 FES"
+propulsion = "electric_sustainer"
+seats = 1
+weglide_id = 484
+dmst_index = 116.0

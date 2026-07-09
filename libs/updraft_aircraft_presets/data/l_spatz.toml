@@ -1,0 +1,9 @@
+model = "L-Spatz"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "L-Spatz"
+propulsion = "pure"
+seats = 1
+weglide_id = 235
+dmst_index = 78.0

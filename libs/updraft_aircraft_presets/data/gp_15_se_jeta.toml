@@ -1,0 +1,7 @@
+model = "GP 15 SE Jeta"
+
+[[preset]]
+variant = "GP 15 SE Jeta"
+propulsion = "electric_sustainer"
+weglide_id = 719
+dmst_index = 116.0

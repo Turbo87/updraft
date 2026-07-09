@@ -1,0 +1,9 @@
+model = "Doppelraab"
+manufacturer = "Raab"
+
+[[preset]]
+variant = "Doppelraab"
+propulsion = "pure"
+seats = 2
+weglide_id = 568
+dmst_index = 54.0

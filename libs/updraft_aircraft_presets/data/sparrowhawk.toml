@@ -1,0 +1,9 @@
+model = "SparrowHawk"
+manufacturer = "Windward Performance"
+
+[[preset]]
+variant = "SparrowHawk"
+propulsion = "pure"
+seats = 1
+weglide_id = 603
+dmst_index = 85.0

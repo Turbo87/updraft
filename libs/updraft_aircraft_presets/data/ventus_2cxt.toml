@@ -1,0 +1,9 @@
+model = "Ventus 2CXT"
+
+[[preset]]
+variant = "Ventus 2CXT"
+wing_area = 11.03
+reference_mass = 455.0
+polar_coefficients = { a = 1.19, b = -1.78, c = 1.15 }
+empty_mass = 355.0
+max_takeoff_mass = 600.0

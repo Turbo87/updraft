@@ -1,0 +1,23 @@
+model = "DG 200"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 200"
+propulsion = "pure"
+seats = 1
+wing_area = 10.0
+reference_mass = 320.0
+polar_coefficients = { a = 1.15, b = -1.64, c = 1.17 }
+empty_mass = 238.0
+max_takeoff_mass = 450.0
+weglide_id = 48
+dmst_index = 107.0
+
+[[preset]]
+variant = "DG 200"
+id = "DG 200 17m"
+propulsion = "pure"
+seats = 1
+wingspan = 17.0
+weglide_id = 124
+dmst_index = 109.0

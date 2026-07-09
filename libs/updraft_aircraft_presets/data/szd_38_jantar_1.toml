@@ -1,0 +1,9 @@
+model = "SZD-38 Jantar 1"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-38 Jantar 1"
+propulsion = "pure"
+seats = 1
+weglide_id = 436
+dmst_index = 112.0

@@ -1,0 +1,9 @@
+model = "BS-1"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "BS-1"
+propulsion = "pure"
+seats = 1
+weglide_id = 128
+dmst_index = 108.0

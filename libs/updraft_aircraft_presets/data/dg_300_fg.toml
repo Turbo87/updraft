@@ -1,0 +1,9 @@
+model = "DG 300 FG"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 300 FG"
+propulsion = "pure"
+seats = 1
+weglide_id = 258
+dmst_index = 102.0

@@ -1,0 +1,14 @@
+model = "SF 26"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "SF 26"
+propulsion = "pure"
+seats = 1
+wing_area = 12.3
+reference_mass = 369.0
+polar_coefficients = { a = 3.03, b = -4.57, c = 2.47 }
+empty_mass = 190.0
+max_takeoff_mass = 310.0
+weglide_id = 222
+dmst_index = 83.0

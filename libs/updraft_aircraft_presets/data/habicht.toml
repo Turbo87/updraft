@@ -1,0 +1,9 @@
+model = "Habicht"
+manufacturer = "DFS"
+
+[[preset]]
+variant = "Habicht"
+propulsion = "pure"
+seats = 1
+weglide_id = 561
+dmst_index = 60.0

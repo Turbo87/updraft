@@ -1,0 +1,9 @@
+model = "DG500 TR"
+
+[[preset]]
+variant = "DG500 TR"
+wing_area = 16.6
+reference_mass = 465.0
+polar_coefficients = { a = 1.51, b = -2.44, c = 1.61 }
+empty_mass = 390.0
+max_takeoff_mass = 615.0

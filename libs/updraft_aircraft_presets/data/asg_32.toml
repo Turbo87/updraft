@@ -1,0 +1,28 @@
+model = "ASG 32"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASG 32"
+propulsion = "pure"
+seats = 2
+weglide_id = 334
+dmst_index = 120.0
+
+[[preset]]
+variant = "ASG 32 EL"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 335
+dmst_index = 120.0
+
+[[preset]]
+variant = "ASG 32 Mi"
+propulsion = "self_launch"
+seats = 2
+wing_area = 15.7
+reference_mass = 650.0
+polar_coefficients = { a = 1.25, b = -2.02, c = 1.38 }
+empty_mass = 545.0
+max_takeoff_mass = 850.0
+weglide_id = 336
+dmst_index = 120.0

@@ -1,0 +1,40 @@
+model = "LS 4"
+manufacturer = "Rolladen-Schneider"
+
+[[preset]]
+variant = "LS 4"
+propulsion = "pure"
+seats = 1
+wing_area = 10.5
+reference_mass = 315.0
+polar_coefficients = { a = 1.94, b = -3.35, c = 2.1 }
+weglide_id = 483
+dmst_index = 104.0
+
+[[preset]]
+variant = "LS 4 Jet"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 625
+dmst_index = 104.0
+
+[[preset]]
+variant = "LS 4 Jet neo"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 615
+dmst_index = 106.0
+
+[[preset]]
+variant = "LS 4 WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 478
+dmst_index = 105.0
+
+[[preset]]
+variant = "LS 4 neo"
+propulsion = "pure"
+seats = 1
+weglide_id = 479
+dmst_index = 106.0

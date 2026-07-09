@@ -1,0 +1,9 @@
+model = "S-10-VT"
+
+[[preset]]
+variant = "S-10-VT"
+wing_area = 18.7
+reference_mass = 711.0
+polar_coefficients = { a = 1.41, b = -2.25, c = 1.4 }
+empty_mass = 645.0
+max_takeoff_mass = 850.0

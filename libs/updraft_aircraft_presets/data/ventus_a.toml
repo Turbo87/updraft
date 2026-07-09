@@ -1,0 +1,16 @@
+model = "Ventus A"
+
+[[preset]]
+variant = "Ventus A"
+wing_area = 9.5
+reference_mass = 313.0
+polar_coefficients = { a = 1.39, b = -2.26, c = 1.51 }
+empty_mass = 214.0
+max_takeoff_mass = 525.0
+
+[[preset]]
+variant = "VentusA/16m"
+wingspan = 16.0
+wing_area = 10.0
+reference_mass = 330.0
+polar_coefficients = { a = 1.29, b = -1.89, c = 1.2 }

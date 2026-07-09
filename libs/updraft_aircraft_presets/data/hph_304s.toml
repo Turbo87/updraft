@@ -1,0 +1,9 @@
+model = "HpH 304S"
+
+[[preset]]
+variant = "HpH 304S"
+wing_area = 11.8
+reference_mass = 400.0
+polar_coefficients = { a = 1.97, b = -3.22, c = 1.78 }
+empty_mass = 310.0
+max_takeoff_mass = 600.0

@@ -1,0 +1,16 @@
+model = "SZD-55-1 Nexus"
+manufacturer = "Allstar PZL Glider"
+
+[[preset]]
+variant = "SZD-55-1 Nexus"
+propulsion = "pure"
+seats = 1
+weglide_id = 475
+dmst_index = 106.0
+
+[[preset]]
+variant = "SZD-55-2 Nexus-e-Motion"
+propulsion = "electric_sustainer"
+seats = 1
+weglide_id = 654
+dmst_index = 107.0

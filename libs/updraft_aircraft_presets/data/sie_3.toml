@@ -1,0 +1,9 @@
+model = "Sie-3"
+manufacturer = "Paul Siebert"
+
+[[preset]]
+variant = "Sie-3"
+propulsion = "pure"
+seats = 1
+weglide_id = 203
+dmst_index = 86.0

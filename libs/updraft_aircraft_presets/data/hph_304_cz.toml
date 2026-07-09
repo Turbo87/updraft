@@ -1,0 +1,23 @@
+model = "HpH 304 CZ"
+manufacturer = "HpH Sailplanes"
+
+[[preset]]
+variant = "HpH 304 CZ"
+propulsion = "pure"
+seats = 1
+wing_area = 9.88
+reference_mass = 356.0
+polar_coefficients = { a = 1.54, b = -2.42, c = 1.56 }
+empty_mass = 235.0
+max_takeoff_mass = 450.0
+weglide_id = 38
+dmst_index = 110.0
+
+[[preset]]
+variant = "HpH 304 CZ"
+id = "HpH 304 CZ 17.4m"
+propulsion = "pure"
+seats = 1
+wingspan = 17.4
+weglide_id = 121
+dmst_index = 112.0

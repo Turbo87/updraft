@@ -1,0 +1,14 @@
+model = "ASH 30 Mi"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASH 30 Mi"
+propulsion = "self_launch"
+seats = 2
+wing_area = 17.17
+reference_mass = 831.0
+polar_coefficients = { a = 0.81, b = -1.29, c = 0.96 }
+empty_mass = 630.0
+max_takeoff_mass = 850.0
+weglide_id = 375
+dmst_index = 124.0

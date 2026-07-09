@@ -1,0 +1,9 @@
+model = "D 40"
+manufacturer = "Akaflieg Darmstadt"
+
+[[preset]]
+variant = "D 40"
+propulsion = "pure"
+seats = 1
+weglide_id = 54
+dmst_index = 106.0

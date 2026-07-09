@@ -1,0 +1,10 @@
+model = "SZD-54-2 Perkoz WL"
+manufacturer = "Allstar PZL Glider"
+
+[[preset]]
+variant = "SZD-54-2 Perkoz WL"
+propulsion = "pure"
+seats = 2
+wingspan = 20.0
+weglide_id = 365
+dmst_index = 102.0

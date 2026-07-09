@@ -1,0 +1,7 @@
+model = "Woodstock One"
+
+[[preset]]
+variant = "Woodstock One"
+propulsion = "pure"
+weglide_id = 742
+dmst_index = 64.0

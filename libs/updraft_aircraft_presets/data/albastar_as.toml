@@ -1,0 +1,8 @@
+model = "Albastar AS"
+
+[[preset]]
+variant = "Albastar AS"
+propulsion = "electric_sustainer"
+wingspan = 15.0
+weglide_id = 732
+dmst_index = 98.0

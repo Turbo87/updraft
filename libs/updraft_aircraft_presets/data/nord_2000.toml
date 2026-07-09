@@ -1,0 +1,7 @@
+model = "Nord 2000"
+
+[[preset]]
+variant = "Nord 2000"
+propulsion = "pure"
+weglide_id = 703
+dmst_index = 64.0

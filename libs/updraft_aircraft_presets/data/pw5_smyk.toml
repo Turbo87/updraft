@@ -1,0 +1,9 @@
+model = "PW5 Smyk"
+
+[[preset]]
+variant = "PW5 Smyk"
+wing_area = 10.2
+reference_mass = 296.0
+polar_coefficients = { a = 2.51, b = -3.22, c = 1.68 }
+empty_mass = 190.0
+max_takeoff_mass = 300.0

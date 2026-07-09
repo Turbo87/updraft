@@ -1,0 +1,7 @@
+model = "AV.22"
+
+[[preset]]
+variant = "AV.22"
+propulsion = "pure"
+weglide_id = 690
+dmst_index = 74.0

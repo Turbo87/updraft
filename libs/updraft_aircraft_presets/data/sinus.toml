@@ -1,0 +1,9 @@
+model = "Sinus"
+
+[[preset]]
+variant = "Sinus"
+wing_area = 12.26
+reference_mass = 450.0
+polar_coefficients = { a = 2.48, b = -3.85, c = 2.38 }
+empty_mass = 280.0
+max_takeoff_mass = 450.0

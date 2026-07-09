@@ -1,0 +1,7 @@
+model = "Caudron C.800"
+
+[[preset]]
+variant = "Caudron C.800"
+propulsion = "pure"
+weglide_id = 699
+dmst_index = 68.0

@@ -1,0 +1,9 @@
+model = "Stratos 2e"
+manufacturer = "HFL Leichtflugzeugbau"
+
+[[preset]]
+variant = "Stratos 2e"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 247
+dmst_index = 64.0

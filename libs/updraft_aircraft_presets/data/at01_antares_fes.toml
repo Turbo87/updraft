@@ -1,0 +1,7 @@
+model = "AT01 (Antares FES)"
+
+[[preset]]
+variant = "AT01 (Antares FES)"
+propulsion = "electric_sustainer"
+weglide_id = 715
+dmst_index = 122.0

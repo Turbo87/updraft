@@ -1,0 +1,9 @@
+model = "RF 4"
+manufacturer = "Fournier"
+
+[[preset]]
+variant = "RF 4"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 243
+dmst_index = 74.0

@@ -1,0 +1,16 @@
+model = "Duo Discus X"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Duo Discus X"
+propulsion = "pure"
+seats = 2
+weglide_id = 510
+dmst_index = 113.0
+
+[[preset]]
+variant = "Duo Discus XT"
+propulsion = "sustainer"
+seats = 2
+weglide_id = 511
+dmst_index = 113.0

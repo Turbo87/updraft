@@ -1,0 +1,9 @@
+model = "Slingsby T.49 Capstan"
+manufacturer = "Slingsby"
+
+[[preset]]
+variant = "Slingsby T.49 Capstan"
+propulsion = "pure"
+seats = 1
+weglide_id = 539
+dmst_index = 60.0

@@ -1,0 +1,9 @@
+model = "Mü 26"
+manufacturer = "Akaflieg München"
+
+[[preset]]
+variant = "Mü 26"
+propulsion = "pure"
+seats = 1
+weglide_id = 131
+dmst_index = 102.0

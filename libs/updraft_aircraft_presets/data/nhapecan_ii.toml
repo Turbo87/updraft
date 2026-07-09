@@ -1,0 +1,7 @@
+model = "Nhapecan II"
+
+[[preset]]
+variant = "Nhapecan II"
+propulsion = "pure"
+weglide_id = 729
+dmst_index = 78.0

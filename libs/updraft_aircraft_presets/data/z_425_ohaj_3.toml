@@ -1,0 +1,7 @@
+model = "Z-425 Šohaj 3"
+
+[[preset]]
+variant = "Z-425 Šohaj 3"
+propulsion = "pure"
+weglide_id = 740
+dmst_index = 80.0

@@ -1,0 +1,9 @@
+model = "Perlan 2"
+manufacturer = "Perlan Project"
+
+[[preset]]
+variant = "Perlan 2"
+propulsion = "pure"
+seats = 2
+weglide_id = 641
+dmst_index = 105.0

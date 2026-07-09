@@ -1,0 +1,9 @@
+model = "DG 505 6 Orion"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 505 6 Orion"
+propulsion = "pure"
+seats = 2
+weglide_id = 367
+dmst_index = 100.0

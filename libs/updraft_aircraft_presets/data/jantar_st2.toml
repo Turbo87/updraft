@@ -1,0 +1,9 @@
+model = "Jantar St2"
+
+[[preset]]
+variant = "Jantar St2"
+wing_area = 10.66
+reference_mass = 320.0
+polar_coefficients = { a = 2.42, b = -3.85, c = 2.18 }
+empty_mass = 265.0
+max_takeoff_mass = 535.0

@@ -1,0 +1,9 @@
+model = "Janus C"
+
+[[preset]]
+variant = "Janus C"
+wing_area = 17.3
+reference_mass = 519.0
+polar_coefficients = { a = 1.62, b = -2.67, c = 1.72 }
+empty_mass = 365.0
+max_takeoff_mass = 700.0

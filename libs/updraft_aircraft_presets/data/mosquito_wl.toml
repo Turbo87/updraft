@@ -1,0 +1,7 @@
+model = "Mosquito WL"
+
+[[preset]]
+variant = "Mosquito WL"
+propulsion = "pure"
+weglide_id = 697
+dmst_index = 108.0

@@ -1,0 +1,73 @@
+model = "LS 8"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "LS 8"
+propulsion = "pure"
+seats = 1
+wing_area = 10.5
+reference_mass = 336.0
+polar_coefficients = { a = 2.14, b = -3.87, c = 2.38 }
+empty_mass = 265.0
+max_takeoff_mass = 525.0
+weglide_id = 458
+dmst_index = 108.0
+
+[[preset]]
+variant = "LS 8"
+id = "LS 8 18m"
+propulsion = "pure"
+seats = 1
+wingspan = 18.0
+wing_area = 11.4
+reference_mass = 342.0
+polar_coefficients = { a = 1.64, b = -2.47, c = 1.43 }
+empty_mass = 270.0
+max_takeoff_mass = 525.0
+weglide_id = 112
+dmst_index = 114.0
+
+[[preset]]
+variant = "LS 8 neo"
+propulsion = "pure"
+seats = 1
+weglide_id = 459
+dmst_index = 109.0
+
+[[preset]]
+variant = "LS 8T"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 460
+dmst_index = 108.0
+
+[[preset]]
+variant = "LS 8T"
+id = "LS 8T 18m"
+propulsion = "sustainer"
+seats = 1
+wingspan = 18.0
+weglide_id = 113
+dmst_index = 114.0
+
+[[preset]]
+variant = "LS 8T neo"
+propulsion = "sustainer"
+seats = 1
+weglide_id = 611
+dmst_index = 109.0
+
+[[preset]]
+variant = "LS 8e"
+propulsion = "electric_sustainer"
+seats = 1
+wingspan = 18.0
+weglide_id = 576
+dmst_index = 114.0
+
+[[preset]]
+variant = "LS 8e neo"
+propulsion = "electric_sustainer"
+seats = 1
+weglide_id = 461
+dmst_index = 109.0

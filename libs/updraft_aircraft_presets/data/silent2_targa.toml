@@ -1,0 +1,9 @@
+model = "Silent2 targa"
+
+[[preset]]
+variant = "Silent2 targa"
+wing_area = 8.9
+reference_mass = 302.0
+polar_coefficients = { a = 1.25, b = -1.46, c = 0.93 }
+empty_mass = 135.0
+max_takeoff_mass = 300.0

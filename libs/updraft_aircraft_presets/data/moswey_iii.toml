@@ -1,0 +1,7 @@
+model = "Moswey III"
+
+[[preset]]
+variant = "Moswey III"
+propulsion = "pure"
+weglide_id = 707
+dmst_index = 66.0

@@ -1,0 +1,7 @@
+model = "SZD-15 Sroka"
+
+[[preset]]
+variant = "SZD-15 Sroka"
+propulsion = "pure"
+weglide_id = 746
+dmst_index = 78.0

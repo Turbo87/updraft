@@ -1,0 +1,9 @@
+model = "S18 II"
+manufacturer = "Spalinger"
+
+[[preset]]
+variant = "S18 II"
+propulsion = "pure"
+seats = 1
+weglide_id = 626
+dmst_index = 62.0

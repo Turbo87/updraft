@@ -1,0 +1,10 @@
+model = "ASH 31/18m"
+
+[[preset]]
+variant = "ASH 31/18m"
+wingspan = 18.0
+wing_area = 11.9
+reference_mass = 513.0
+polar_coefficients = { a = 0.98, b = -1.45, c = 1.0 }
+empty_mass = 420.0
+max_takeoff_mass = 630.0

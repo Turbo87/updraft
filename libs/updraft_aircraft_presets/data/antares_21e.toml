@@ -1,0 +1,16 @@
+model = "Antares 21E"
+manufacturer = "Lange Aviation"
+
+[[preset]]
+variant = "Antares 20E/21"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 563
+dmst_index = 123.0
+
+[[preset]]
+variant = "Antares 21E"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 562
+dmst_index = 123.0

@@ -1,0 +1,9 @@
+model = "Grunau Baby"
+manufacturer = "Schneider"
+
+[[preset]]
+variant = "Grunau Baby"
+propulsion = "pure"
+seats = 1
+weglide_id = 250
+dmst_index = 54.0

@@ -1,0 +1,30 @@
+model = "Std. Libelle"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "Std. Libelle"
+propulsion = "pure"
+seats = 1
+wing_area = 9.8
+reference_mass = 294.0
+polar_coefficients = { a = 2.14, b = -3.0, c = 1.7 }
+empty_mass = 185.0
+max_takeoff_mass = 350.0
+weglide_id = 151
+dmst_index = 98.0
+
+[[preset]]
+variant = "Std. Libelle"
+id = "Std. Libelle 17m"
+propulsion = "pure"
+seats = 1
+wingspan = 17.0
+weglide_id = 133
+dmst_index = 100.0
+
+[[preset]]
+variant = "Std. Libelle WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 493
+dmst_index = 99.0

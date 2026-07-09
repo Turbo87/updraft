@@ -1,0 +1,9 @@
+model = "Rhönsperber"
+manufacturer = "DFS"
+
+[[preset]]
+variant = "Rhönsperber"
+propulsion = "pure"
+seats = 1
+weglide_id = 248
+dmst_index = 62.0

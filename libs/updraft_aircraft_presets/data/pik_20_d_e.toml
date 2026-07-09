@@ -1,0 +1,21 @@
+model = "PIK-20 D/E"
+manufacturer = "Eiri-Avion"
+
+[[preset]]
+variant = "PIK-20 D"
+propulsion = "pure"
+seats = 1
+weglide_id = 56
+dmst_index = 104.0
+
+[[preset]]
+variant = "PIK-20 E"
+propulsion = "self_launch"
+seats = 1
+wing_area = 10.0
+reference_mass = 400.0
+polar_coefficients = { a = 1.63, b = -2.98, c = 2.05 }
+empty_mass = 310.0
+max_takeoff_mass = 470.0
+weglide_id = 57
+dmst_index = 104.0

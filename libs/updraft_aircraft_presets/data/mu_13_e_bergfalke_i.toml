@@ -1,0 +1,9 @@
+model = "Mü 13 E Bergfalke I"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "Mü 13 E Bergfalke I"
+propulsion = "pure"
+seats = 2
+weglide_id = 683
+dmst_index = 65.0

@@ -1,0 +1,48 @@
+model = "Ventus 2"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Ventus 2a"
+propulsion = "pure"
+seats = 1
+weglide_id = 15
+dmst_index = 115.0
+
+[[preset]]
+variant = "Ventus 2ax"
+propulsion = "pure"
+seats = 1
+weglide_id = 16
+dmst_index = 115.0
+
+[[preset]]
+variant = "Ventus 2b"
+propulsion = "pure"
+seats = 1
+weglide_id = 17
+dmst_index = 114.0
+
+[[preset]]
+variant = "Ventus 2bx"
+propulsion = "pure"
+seats = 1
+weglide_id = 599
+dmst_index = 114.0
+
+[[preset]]
+variant = "Ventus2/15m"
+wingspan = 15.0
+wing_area = 9.67
+reference_mass = 338.0
+polar_coefficients = { a = 1.28, b = -2.21, c = 1.53 }
+empty_mass = 225.0
+max_takeoff_mass = 525.0
+
+[[preset]]
+variant = "Ventus2/18m"
+wingspan = 18.0
+wing_area = 11.03
+reference_mass = 375.0
+polar_coefficients = { a = 1.05, b = -1.42, c = 0.93 }
+empty_mass = 310.0
+max_takeoff_mass = 600.0

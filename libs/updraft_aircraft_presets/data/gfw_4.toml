@@ -1,0 +1,7 @@
+model = "GFW 4"
+
+[[preset]]
+variant = "GFW 4"
+propulsion = "electric_sustainer"
+weglide_id = 723
+dmst_index = 87.0

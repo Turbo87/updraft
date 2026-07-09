@@ -1,0 +1,49 @@
+model = "LS 3"
+manufacturer = "Rolladen-Schneider"
+
+[[preset]]
+variant = "LS 3"
+propulsion = "pure"
+seats = 1
+wing_area = 10.5
+reference_mass = 315.0
+polar_coefficients = { a = 1.61, b = -2.5, c = 1.6 }
+empty_mass = 263.0
+max_takeoff_mass = 471.0
+weglide_id = 50
+dmst_index = 107.0
+
+[[preset]]
+variant = "LS 3"
+id = "LS 3 17m"
+propulsion = "pure"
+seats = 1
+wingspan = 17.0
+wing_area = 10.5
+reference_mass = 364.0
+polar_coefficients = { a = 2.26, b = -3.79, c = 2.15 }
+empty_mass = 243.0
+max_takeoff_mass = 472.0
+weglide_id = 126
+dmst_index = 109.0
+
+[[preset]]
+variant = "LS 3 WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 508
+dmst_index = 108.0
+
+[[preset]]
+variant = "LS 3 neo"
+propulsion = "pure"
+seats = 1
+weglide_id = 640
+dmst_index = 109.0
+
+[[preset]]
+variant = "LS 3a"
+propulsion = "pure"
+seats = 1
+weglide_id = 51
+dmst_index = 107.0

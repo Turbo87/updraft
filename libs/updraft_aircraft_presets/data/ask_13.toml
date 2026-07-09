@@ -1,0 +1,14 @@
+model = "ASK 13"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASK 13"
+propulsion = "pure"
+seats = 2
+wing_area = 17.5
+reference_mass = 525.0
+polar_coefficients = { a = 3.02, b = -4.36, c = 2.38 }
+empty_mass = 290.0
+max_takeoff_mass = 480.0
+weglide_id = 305
+dmst_index = 79.0

@@ -1,0 +1,7 @@
+model = "HpH 304 TS Twin Shark FES"
+
+[[preset]]
+variant = "HpH 304 TS Twin Shark FES"
+propulsion = "electric_sustainer"
+weglide_id = 728
+dmst_index = 119.0

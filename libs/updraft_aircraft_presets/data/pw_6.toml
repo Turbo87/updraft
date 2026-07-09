@@ -1,0 +1,9 @@
+model = "PW 6"
+manufacturer = "PZL Świdnik"
+
+[[preset]]
+variant = "PW 6"
+propulsion = "pure"
+seats = 2
+weglide_id = 297
+dmst_index = 86.0

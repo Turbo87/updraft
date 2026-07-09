@@ -1,0 +1,9 @@
+model = "Puchacz"
+
+[[preset]]
+variant = "Puchacz"
+wing_area = 18.16
+reference_mass = 545.0
+polar_coefficients = { a = 2.08, b = -2.5, c = 1.42 }
+empty_mass = 368.0
+max_takeoff_mass = 570.0

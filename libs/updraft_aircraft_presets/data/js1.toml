@@ -1,0 +1,38 @@
+model = "JS1"
+manufacturer = "Jonker Sailplanes"
+
+[[preset]]
+variant = "JS-1-21m"
+wingspan = 21.0
+wing_area = 12.27
+reference_mass = 442.0
+polar_coefficients = { a = 1.32, b = -2.24, c = 1.39 }
+empty_mass = 320.0
+max_takeoff_mass = 720.0
+
+[[preset]]
+variant = "JS1"
+propulsion = "pure"
+seats = 1
+wing_area = 11.2
+reference_mass = 420.0
+polar_coefficients = { a = 1.42, b = -2.62, c = 1.73 }
+empty_mass = 320.0
+max_takeoff_mass = 600.0
+
+[[preset]]
+variant = "JS1"
+id = "JS1 18m"
+propulsion = "pure"
+seats = 1
+wingspan = 18.0
+weglide_id = 61
+dmst_index = 121.0
+
+[[preset]]
+variant = "JS1 TJ"
+propulsion = "sustainer"
+seats = 1
+wingspan = 18.0
+weglide_id = 62
+dmst_index = 121.0

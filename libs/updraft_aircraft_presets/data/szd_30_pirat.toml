@@ -1,0 +1,9 @@
+model = "SZD-30 Pirat"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-30 Pirat"
+propulsion = "pure"
+seats = 1
+weglide_id = 202
+dmst_index = 86.0

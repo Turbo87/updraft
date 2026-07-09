@@ -1,0 +1,9 @@
+model = "Schweizer SGS 1-26"
+manufacturer = "Schweizer Aircraft"
+
+[[preset]]
+variant = "Schweizer SGS 1-26"
+propulsion = "pure"
+seats = 1
+weglide_id = 556
+dmst_index = 63.0

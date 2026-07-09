@@ -1,0 +1,60 @@
+model = "Kestrel"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "Kestrel"
+propulsion = "pure"
+seats = 1
+wing_area = 11.6
+reference_mass = 340.0
+polar_coefficients = { a = 1.66, b = -2.73, c = 1.72 }
+empty_mass = 260.0
+max_takeoff_mass = 400.0
+
+[[preset]]
+variant = "Kestrel"
+id = "Kestrel 17m"
+propulsion = "pure"
+seats = 1
+wingspan = 17.0
+wing_area = 11.6
+reference_mass = 383.0
+polar_coefficients = { a = 1.56, b = -2.53, c = 1.61 }
+empty_mass = 260.0
+max_takeoff_mass = 400.0
+weglide_id = 123
+dmst_index = 110.0
+
+[[preset]]
+variant = "Kestrel"
+id = "Kestrel 19m"
+propulsion = "pure"
+seats = 1
+wingspan = 19.0
+weglide_id = 437
+dmst_index = 112.0
+
+[[preset]]
+variant = "Kestrel"
+id = "Kestrel 22m"
+propulsion = "pure"
+seats = 1
+wingspan = 22.0
+weglide_id = 428
+dmst_index = 114.0
+
+[[preset]]
+variant = "Slingsby T.59 Kestrel"
+propulsion = "pure"
+seats = 1
+wingspan = 17.0
+weglide_id = 521
+dmst_index = 110.0
+
+[[preset]]
+variant = "Slingsby T.59D Kestrel"
+propulsion = "pure"
+seats = 1
+wingspan = 19.0
+weglide_id = 522
+dmst_index = 112.0

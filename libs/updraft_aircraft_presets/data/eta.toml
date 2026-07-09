@@ -1,0 +1,9 @@
+model = "Eta"
+manufacturer = "ETA Aircraft"
+
+[[preset]]
+variant = "Eta"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 373
+dmst_index = 127.0

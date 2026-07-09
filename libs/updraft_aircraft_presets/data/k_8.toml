@@ -1,0 +1,9 @@
+model = "K 8"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "K 8"
+propulsion = "pure"
+seats = 1
+weglide_id = 240
+dmst_index = 76.0

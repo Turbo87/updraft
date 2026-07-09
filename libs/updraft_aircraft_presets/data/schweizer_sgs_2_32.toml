@@ -1,0 +1,9 @@
+model = "Schweizer SGS 2-32"
+manufacturer = "Schweizer Aircraft"
+
+[[preset]]
+variant = "Schweizer SGS 2-32"
+propulsion = "pure"
+seats = 2
+weglide_id = 559
+dmst_index = 83.0

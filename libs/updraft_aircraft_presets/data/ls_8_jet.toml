@@ -1,0 +1,13 @@
+model = "LS 8 Jet"
+
+[[preset]]
+variant = "LS 8 Jet"
+weglide_id = 737
+dmst_index = 108.0
+
+[[preset]]
+variant = "LS 8 Jet"
+id = "LS 8 Jet 18m"
+wingspan = 18.0
+weglide_id = 735
+dmst_index = 114.0

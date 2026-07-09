@@ -1,0 +1,23 @@
+model = "Zugvogel"
+manufacturer = "Scheibe-Flugzeugbau"
+
+[[preset]]
+variant = "Zugvogel I"
+propulsion = "pure"
+seats = 1
+weglide_id = 208
+dmst_index = 86.0
+
+[[preset]]
+variant = "Zugvogel II"
+propulsion = "pure"
+seats = 1
+weglide_id = 209
+dmst_index = 86.0
+
+[[preset]]
+variant = "Zugvogel IV"
+propulsion = "pure"
+seats = 1
+weglide_id = 210
+dmst_index = 86.0

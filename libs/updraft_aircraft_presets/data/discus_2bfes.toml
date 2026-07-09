@@ -1,0 +1,7 @@
+model = "Discus 2bFES"
+
+[[preset]]
+variant = "Discus 2bFES"
+propulsion = "electric_sustainer"
+weglide_id = 453
+dmst_index = 108.0

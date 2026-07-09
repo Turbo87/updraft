@@ -1,0 +1,10 @@
+model = "HP 24"
+manufacturer = "HP Aircraft"
+
+[[preset]]
+variant = "HP 24"
+propulsion = "pure"
+seats = 1
+wingspan = 15.0
+weglide_id = 628
+dmst_index = 111.0

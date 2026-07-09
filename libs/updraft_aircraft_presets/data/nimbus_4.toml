@@ -1,0 +1,38 @@
+model = "Nimbus 4"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Nimbus 4"
+propulsion = "pure"
+seats = 1
+wing_area = 17.86
+reference_mass = 732.0
+polar_coefficients = { a = 1.09, b = -1.58, c = 0.96 }
+empty_mass = 470.0
+max_takeoff_mass = 750.0
+weglide_id = 379
+dmst_index = 124.0
+
+[[preset]]
+variant = "Nimbus 4M"
+propulsion = "self_launch"
+seats = 1
+wing_area = 17.8
+reference_mass = 605.0
+polar_coefficients = { a = 1.18, b = -1.75, c = 1.04 }
+empty_mass = 580.0
+max_takeoff_mass = 800.0
+weglide_id = 380
+dmst_index = 124.0
+
+[[preset]]
+variant = "Nimbus 4T"
+propulsion = "sustainer"
+seats = 1
+wing_area = 17.86
+reference_mass = 607.0
+polar_coefficients = { a = 1.42, b = -2.4, c = 1.44 }
+empty_mass = 520.0
+max_takeoff_mass = 800.0
+weglide_id = 381
+dmst_index = 124.0

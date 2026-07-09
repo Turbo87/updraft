@@ -1,0 +1,9 @@
+model = "ASW 20C"
+
+[[preset]]
+variant = "ASW 20C"
+wing_area = 10.5
+reference_mass = 315.0
+polar_coefficients = { a = 1.02, b = -1.26, c = 0.91 }
+empty_mass = 260.0
+max_takeoff_mass = 454.0

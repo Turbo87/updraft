@@ -1,0 +1,7 @@
+model = "Neiva B Monitor"
+
+[[preset]]
+variant = "Neiva B Monitor"
+propulsion = "pure"
+weglide_id = 731
+dmst_index = 55.0

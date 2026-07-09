@@ -1,0 +1,9 @@
+model = "G103 acro"
+
+[[preset]]
+variant = "G103 acro"
+wing_area = 17.8
+reference_mass = 570.0
+polar_coefficients = { a = 2.15, b = -3.23, c = 1.84 }
+empty_mass = 368.0
+max_takeoff_mass = 580.0

@@ -1,0 +1,28 @@
+model = "ASK 21"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASK 21"
+propulsion = "pure"
+seats = 2
+wing_area = 17.95
+reference_mass = 538.0
+polar_coefficients = { a = 2.5, b = -4.08, c = 2.4 }
+empty_mass = 360.0
+max_takeoff_mass = 600.0
+weglide_id = 292
+dmst_index = 92.0
+
+[[preset]]
+variant = "ASK 21 B"
+propulsion = "pure"
+seats = 2
+weglide_id = 293
+dmst_index = 92.0
+
+[[preset]]
+variant = "ASK 21 Mi"
+propulsion = "self_launch"
+seats = 2
+weglide_id = 294
+dmst_index = 92.0

@@ -1,0 +1,9 @@
+model = "Slingsby T.65 Vega"
+manufacturer = "Slingsby"
+
+[[preset]]
+variant = "Slingsby T.65 Vega"
+propulsion = "pure"
+seats = 1
+weglide_id = 546
+dmst_index = 102.0

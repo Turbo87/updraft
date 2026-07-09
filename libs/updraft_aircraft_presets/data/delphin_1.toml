@@ -1,0 +1,8 @@
+model = "Delphin 1"
+
+[[preset]]
+variant = "Delphin 1"
+propulsion = "pure"
+seats = 1
+weglide_id = 144
+dmst_index = 98.0

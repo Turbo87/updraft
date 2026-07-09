@@ -1,0 +1,9 @@
+model = "Diamant 18"
+manufacturer = "FFA"
+
+[[preset]]
+variant = "Diamant 18"
+propulsion = "pure"
+seats = 1
+weglide_id = 130
+dmst_index = 108.0

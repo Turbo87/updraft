@@ -1,0 +1,7 @@
+model = "SVC Mačka"
+
+[[preset]]
+variant = "SVC Mačka"
+propulsion = "pure"
+weglide_id = 745
+dmst_index = 54.0

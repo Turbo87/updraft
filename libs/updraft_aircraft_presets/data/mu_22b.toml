@@ -1,0 +1,9 @@
+model = "Mü 22b"
+manufacturer = "Akaflieg München"
+
+[[preset]]
+variant = "Mü 22b"
+propulsion = "pure"
+seats = 1
+weglide_id = 164
+dmst_index = 95.0

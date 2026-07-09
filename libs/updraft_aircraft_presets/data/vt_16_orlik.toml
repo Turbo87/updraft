@@ -1,0 +1,20 @@
+model = "VT-16 Orlik"
+
+[[preset]]
+variant = "VT-116 Orlik 2"
+propulsion = "pure"
+seats = 1
+weglide_id = 207
+dmst_index = 86.0
+
+[[preset]]
+variant = "VT-16 Orlik"
+propulsion = "pure"
+seats = 1
+wing_area = 12.8
+reference_mass = 335.0
+polar_coefficients = { a = 3.01, b = -4.11, c = 2.13 }
+empty_mass = 245.0
+max_takeoff_mass = 345.0
+weglide_id = 206
+dmst_index = 86.0

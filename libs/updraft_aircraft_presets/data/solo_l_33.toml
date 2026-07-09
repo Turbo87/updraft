@@ -1,0 +1,8 @@
+model = "Solo L 33"
+
+[[preset]]
+variant = "Solo L 33"
+propulsion = "pure"
+seats = 1
+weglide_id = 204
+dmst_index = 86.0

@@ -1,0 +1,21 @@
+model = "ASK 23"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASK 23"
+propulsion = "pure"
+seats = 1
+wing_area = 12.9
+reference_mass = 387.0
+polar_coefficients = { a = 2.15, b = -3.04, c = 1.74 }
+empty_mass = 240.0
+max_takeoff_mass = 360.0
+weglide_id = 175
+dmst_index = 92.0
+
+[[preset]]
+variant = "ASK 23 B"
+propulsion = "pure"
+seats = 1
+weglide_id = 176
+dmst_index = 92.0

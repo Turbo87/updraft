@@ -1,0 +1,9 @@
+model = "SGS 1-26E"
+
+[[preset]]
+variant = "SGS 1-26E"
+wing_area = 14.9
+reference_mass = 447.0
+polar_coefficients = { a = 3.43, b = -4.48, c = 2.4 }
+empty_mass = 202.0
+max_takeoff_mass = 318.0

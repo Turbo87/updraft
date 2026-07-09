@@ -1,0 +1,7 @@
+model = "Marske Monarch E"
+
+[[preset]]
+variant = "Marske Monarch E"
+propulsion = "pure"
+weglide_id = 693
+dmst_index = 53.0

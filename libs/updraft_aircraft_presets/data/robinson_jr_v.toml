@@ -1,0 +1,9 @@
+model = "Robinson JR-V"
+manufacturer = "Robinson"
+
+[[preset]]
+variant = "Robinson JR-V"
+propulsion = "pure"
+seats = 1
+weglide_id = 675
+dmst_index = 54.0

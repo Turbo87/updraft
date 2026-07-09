@@ -1,0 +1,10 @@
+model = "JS5"
+manufacturer = "Jonker Sailplanes"
+
+[[preset]]
+variant = "JS5"
+propulsion = "self_launch"
+seats = 1
+wingspan = 24.0
+weglide_id = 655
+dmst_index = 128.0

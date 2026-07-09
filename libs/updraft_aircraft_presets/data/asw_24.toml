@@ -1,0 +1,42 @@
+model = "ASW 24"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "ASW 24"
+propulsion = "pure"
+seats = 1
+wing_area = 10.0
+reference_mass = 310.0
+polar_coefficients = { a = 1.58, b = -2.21, c = 1.27 }
+empty_mass = 230.0
+max_takeoff_mass = 500.0
+weglide_id = 463
+dmst_index = 106.0
+
+[[preset]]
+variant = "ASW 24 B"
+propulsion = "pure"
+seats = 1
+weglide_id = 464
+dmst_index = 106.0
+
+[[preset]]
+variant = "ASW 24 E"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 465
+dmst_index = 106.0
+
+[[preset]]
+variant = "ASW 24 E WL"
+propulsion = "self_launch"
+seats = 1
+weglide_id = 486
+dmst_index = 107.0
+
+[[preset]]
+variant = "ASW 24 WL"
+propulsion = "pure"
+seats = 1
+weglide_id = 485
+dmst_index = 107.0

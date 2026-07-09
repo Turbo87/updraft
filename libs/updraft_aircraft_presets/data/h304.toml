@@ -1,0 +1,9 @@
+model = "H304"
+
+[[preset]]
+variant = "H304"
+wing_area = 9.9
+reference_mass = 297.0
+polar_coefficients = { a = 1.15, b = -1.57, c = 1.2 }
+empty_mass = 235.0
+max_takeoff_mass = 450.0

@@ -1,0 +1,9 @@
+model = "L-13 Blaník"
+manufacturer = "LET"
+
+[[preset]]
+variant = "L-13 Blaník"
+propulsion = "pure"
+seats = 2
+weglide_id = 549
+dmst_index = 78.0

@@ -1,0 +1,7 @@
+model = "Chilton Olympia"
+
+[[preset]]
+variant = "Chilton Olympia"
+propulsion = "pure"
+weglide_id = 695
+dmst_index = 64.0

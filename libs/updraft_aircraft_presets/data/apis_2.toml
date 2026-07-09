@@ -1,0 +1,26 @@
+model = "Apis 2"
+manufacturer = "Pipistrel"
+
+[[preset]]
+variant = "Apis 2"
+propulsion = "pure"
+seats = 1
+wingspan = 15.0
+weglide_id = 137
+dmst_index = 98.0
+
+[[preset]]
+variant = "Apis 2 M"
+propulsion = "self_launch"
+seats = 1
+wingspan = 15.0
+weglide_id = 138
+dmst_index = 98.0
+
+[[preset]]
+variant = "Apis 2 MCs"
+propulsion = "self_launch"
+seats = 1
+wingspan = 15.0
+weglide_id = 139
+dmst_index = 98.0

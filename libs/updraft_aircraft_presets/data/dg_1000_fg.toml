@@ -1,0 +1,18 @@
+model = "DG 1000 FG"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 1000 FG"
+propulsion = "pure"
+seats = 2
+wingspan = 18.0
+weglide_id = 360
+dmst_index = 104.0
+
+[[preset]]
+variant = "DG 1000 neo FG"
+propulsion = "pure"
+seats = 2
+wingspan = 18.0
+weglide_id = 609
+dmst_index = 105.0

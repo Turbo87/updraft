@@ -1,0 +1,9 @@
+model = "Twin Ast.II"
+
+[[preset]]
+variant = "Twin Ast.II"
+wing_area = 17.8
+reference_mass = 534.0
+polar_coefficients = { a = 1.61, b = -1.95, c = 1.2 }
+empty_mass = 390.0
+max_takeoff_mass = 580.0

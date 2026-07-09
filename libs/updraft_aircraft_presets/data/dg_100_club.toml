@@ -1,0 +1,9 @@
+model = "DG 100 Club"
+manufacturer = "DG Flugzeugbau"
+
+[[preset]]
+variant = "DG 100 Club"
+propulsion = "pure"
+seats = 1
+weglide_id = 143
+dmst_index = 98.0

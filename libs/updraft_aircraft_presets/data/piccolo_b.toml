@@ -1,0 +1,9 @@
+model = "Piccolo B"
+
+[[preset]]
+variant = "Piccolo B"
+wing_area = 10.6
+reference_mass = 297.0
+polar_coefficients = { a = 5.57, b = -7.4, c = 3.37 }
+empty_mass = 180.0
+max_takeoff_mass = 297.0

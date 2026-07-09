@@ -1,0 +1,7 @@
+model = "Schweizer SGU 1-20"
+
+[[preset]]
+variant = "Schweizer SGU 1-20"
+propulsion = "pure"
+weglide_id = 730
+dmst_index = 58.0

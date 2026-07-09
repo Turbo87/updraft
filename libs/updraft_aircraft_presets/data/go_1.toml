@@ -1,0 +1,7 @@
+model = "Gö-1"
+
+[[preset]]
+variant = "Gö-1"
+propulsion = "pure"
+weglide_id = 734
+dmst_index = 54.0

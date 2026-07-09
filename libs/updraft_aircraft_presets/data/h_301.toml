@@ -1,0 +1,9 @@
+model = "H-301"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "H-301"
+propulsion = "pure"
+seats = 1
+weglide_id = 59
+dmst_index = 101.0

@@ -1,0 +1,9 @@
+model = "Lom-61 Favorit"
+manufacturer = "Lommatzsch"
+
+[[preset]]
+variant = "Lom-61 Favorit"
+propulsion = "pure"
+seats = 1
+weglide_id = 574
+dmst_index = 75.0

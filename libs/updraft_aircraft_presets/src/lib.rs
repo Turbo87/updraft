@@ -9,14 +9,22 @@
 //!
 //! The polar *math* lives in [`updraft_polar`]; this crate owns only the
 //! catalogue and depends on `updraft_polar` for the coefficient types.
+//!
+//! The catalogue data lives as per-base-model TOML files under `data/`;
+//! `build.rs` turns them into the [`PRESETS`] `const` at build time.
 
-mod catalogue;
 mod model;
 
-pub use catalogue::PRESETS;
 pub use model::{
     AircraftPreset, CgLimits, FlapSpeedRange, Polar, Propulsion, Variant, WingspanConfig,
 };
+
+mod catalogue {
+    //! The `PRESETS` const, generated from `data/*.toml` by `build.rs`.
+    include!(concat!(env!("OUT_DIR"), "/catalogue.rs"));
+}
+
+pub use catalogue::PRESETS;
 
 #[cfg(test)]
 mod tests {
@@ -108,6 +116,19 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn inheritance_is_resolved_by_the_build_script() {
+        // `Arcus M` in data/arcus.toml carries no polar of its own; it
+        // `inherits_from` `Arcus`, so build.rs must copy the coefficients
+        // and reference mass onto it.
+        let (_, polar) = polars()
+            .find(|(name, _)| *name == "Arcus M")
+            .expect("Arcus M should carry an inherited polar");
+        let coefficients = polar.coefficients();
+        let arcus = polars().find(|(name, _)| *name == "Arcus").unwrap().1;
+        assert_eq!(coefficients, arcus.coefficients());
     }
 
     #[test]

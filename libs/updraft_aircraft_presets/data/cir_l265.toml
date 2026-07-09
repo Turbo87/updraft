@@ -1,0 +1,9 @@
+model = "Cir.L265"
+
+[[preset]]
+variant = "Cir.L265"
+wing_area = 12.6
+reference_mass = 378.0
+polar_coefficients = { a = 1.29, b = -1.36, c = 0.77 }
+empty_mass = 276.0
+max_takeoff_mass = 400.0

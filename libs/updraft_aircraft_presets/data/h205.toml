@@ -1,0 +1,9 @@
+model = "H205"
+
+[[preset]]
+variant = "H205"
+wing_area = 9.8
+reference_mass = 294.0
+polar_coefficients = { a = 1.78, b = -2.13, c = 1.2 }
+empty_mass = 200.0
+max_takeoff_mass = 350.0

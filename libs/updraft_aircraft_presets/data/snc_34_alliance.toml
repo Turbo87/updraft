@@ -1,0 +1,7 @@
+model = "SNC-34 Alliance"
+
+[[preset]]
+variant = "SNC-34 Alliance"
+propulsion = "pure"
+weglide_id = 702
+dmst_index = 86.0

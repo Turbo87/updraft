@@ -1,0 +1,7 @@
+model = "Rubik R-11b Cimbora"
+
+[[preset]]
+variant = "Rubik R-11b Cimbora"
+propulsion = "pure"
+weglide_id = 747
+dmst_index = 62.0

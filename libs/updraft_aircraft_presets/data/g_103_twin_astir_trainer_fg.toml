@@ -1,0 +1,9 @@
+model = "G 103 Twin Astir Trainer FG"
+manufacturer = "Grob Aircraft"
+
+[[preset]]
+variant = "G 103 Twin Astir Trainer FG"
+propulsion = "pure"
+seats = 2
+weglide_id = 296
+dmst_index = 92.0

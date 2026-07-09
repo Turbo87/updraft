@@ -1,0 +1,66 @@
+model = "Nimbus 3D"
+manufacturer = "Schempp-Hirth"
+
+[[preset]]
+variant = "Nimbus 3D"
+propulsion = "pure"
+seats = 2
+wing_area = 16.85
+reference_mass = 741.0
+polar_coefficients = { a = 0.9, b = -1.15, c = 0.76 }
+empty_mass = 485.0
+max_takeoff_mass = 750.0
+
+[[preset]]
+variant = "Nimbus 3D"
+id = "Nimbus 3D 24.6m"
+propulsion = "pure"
+seats = 2
+wingspan = 24.6
+weglide_id = 415
+dmst_index = 120.0
+
+[[preset]]
+variant = "Nimbus 3D"
+id = "Nimbus 3D 25.6m"
+propulsion = "pure"
+seats = 2
+wingspan = 25.6
+weglide_id = 577
+dmst_index = 121.0
+
+[[preset]]
+variant = "Nimbus 3DM"
+id = "Nimbus 3DM 24.6m"
+propulsion = "self_launch"
+seats = 2
+wingspan = 24.6
+weglide_id = 416
+dmst_index = 120.0
+
+[[preset]]
+variant = "Nimbus 3DM"
+id = "Nimbus 3DM 25.6m"
+propulsion = "self_launch"
+seats = 2
+wingspan = 25.6
+weglide_id = 578
+dmst_index = 121.0
+
+[[preset]]
+variant = "Nimbus 3DT"
+id = "Nimbus 3DT 24.6m"
+propulsion = "sustainer"
+seats = 2
+wingspan = 24.6
+weglide_id = 417
+dmst_index = 120.0
+
+[[preset]]
+variant = "Nimbus 3DT"
+id = "Nimbus 3DT 25.6m"
+propulsion = "sustainer"
+seats = 2
+wingspan = 25.6
+weglide_id = 579
+dmst_index = 121.0

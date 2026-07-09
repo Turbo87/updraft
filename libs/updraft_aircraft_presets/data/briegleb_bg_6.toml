@@ -1,0 +1,9 @@
+model = "Briegleb BG-6"
+manufacturer = "Briegleb"
+
+[[preset]]
+variant = "Briegleb BG-6"
+propulsion = "pure"
+seats = 1
+weglide_id = 646
+dmst_index = 71.0

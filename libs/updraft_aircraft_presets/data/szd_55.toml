@@ -1,0 +1,9 @@
+model = "SZD 55"
+
+[[preset]]
+variant = "SZD 55"
+wing_area = 9.6
+reference_mass = 288.0
+polar_coefficients = { a = 1.58, b = -2.46, c = 1.54 }
+empty_mass = 215.0
+max_takeoff_mass = 500.0

@@ -1,0 +1,9 @@
+model = "Club Libelle"
+manufacturer = "Glasflügel"
+
+[[preset]]
+variant = "Club Libelle"
+propulsion = "pure"
+seats = 1
+weglide_id = 154
+dmst_index = 96.0

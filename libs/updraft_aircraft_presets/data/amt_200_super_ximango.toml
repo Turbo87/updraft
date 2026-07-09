@@ -1,0 +1,6 @@
+model = "AMT-200 Super Ximango"
+
+[[preset]]
+variant = "AMT-200 Super Ximango"
+weglide_id = 696
+dmst_index = 70.0

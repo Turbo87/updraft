@@ -1,0 +1,9 @@
+model = "VSO-10C RG"
+
+[[preset]]
+variant = "VSO-10C RG"
+wing_area = 12.0
+reference_mass = 347.0
+polar_coefficients = { a = 3.17, b = -5.42, c = 3.1 }
+empty_mass = 234.0
+max_takeoff_mass = 380.0

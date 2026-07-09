@@ -1,0 +1,9 @@
+model = "Franklin PS-2"
+manufacturer = "Franklin"
+
+[[preset]]
+variant = "Franklin PS-2"
+propulsion = "pure"
+seats = 1
+weglide_id = 659
+dmst_index = 50.0

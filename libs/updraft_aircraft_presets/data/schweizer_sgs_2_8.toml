@@ -1,0 +1,7 @@
+model = "Schweizer SGS 2-8"
+
+[[preset]]
+variant = "Schweizer SGS 2-8"
+propulsion = "pure"
+weglide_id = 744
+dmst_index = 52.0

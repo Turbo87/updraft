@@ -1,0 +1,16 @@
+model = "Ka 2"
+manufacturer = "Alexander Schleicher"
+
+[[preset]]
+variant = "Ka 2"
+propulsion = "pure"
+seats = 2
+weglide_id = 314
+dmst_index = 76.0
+
+[[preset]]
+variant = "Ka 2 b"
+propulsion = "pure"
+seats = 2
+weglide_id = 567
+dmst_index = 78.0

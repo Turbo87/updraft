@@ -1,0 +1,9 @@
+model = "Jantar 1"
+
+[[preset]]
+variant = "Jantar 1"
+wing_area = 13.38
+reference_mass = 401.0
+polar_coefficients = { a = 3.01, b = -5.57, c = 3.23 }
+empty_mass = 295.0
+max_takeoff_mass = 515.0

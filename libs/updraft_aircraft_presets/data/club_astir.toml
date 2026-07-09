@@ -1,0 +1,9 @@
+model = "Club Astir"
+
+[[preset]]
+variant = "Club Astir"
+wing_area = 12.4
+reference_mass = 372.0
+polar_coefficients = { a = 2.11, b = -2.94, c = 1.68 }
+empty_mass = 260.0
+max_takeoff_mass = 450.0

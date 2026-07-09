@@ -1,0 +1,9 @@
+model = "SZD-9 Bocian"
+manufacturer = "PZL Bielsko"
+
+[[preset]]
+variant = "SZD-9 Bocian"
+propulsion = "pure"
+seats = 2
+weglide_id = 312
+dmst_index = 76.0

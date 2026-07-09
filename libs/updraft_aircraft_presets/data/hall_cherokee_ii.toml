@@ -1,0 +1,7 @@
+model = "Hall Cherokee II"
+
+[[preset]]
+variant = "Hall Cherokee II"
+propulsion = "pure"
+weglide_id = 709
+dmst_index = 65.0

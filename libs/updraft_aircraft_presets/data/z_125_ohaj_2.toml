@@ -1,0 +1,7 @@
+model = "Z-125 Šohaj 2"
+
+[[preset]]
+variant = "Z-125 Šohaj 2"
+propulsion = "pure"
+weglide_id = 739
+dmst_index = 80.0

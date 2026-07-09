@@ -1,0 +1,15 @@
+model = "Panjo"
+
+[[preset]]
+variant = "Panjo V1"
+propulsion = "pure"
+seats = 1
+weglide_id = 148
+dmst_index = 98.0
+
+[[preset]]
+variant = "Panjo V2"
+propulsion = "pure"
+seats = 1
+weglide_id = 149
+dmst_index = 98.0

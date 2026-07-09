@@ -1,0 +1,11 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Unknown(
+        Unknown {
+            sentence: "PXABC,11,1,2,1,0,,0,,,",
+        },
+    ),
+)

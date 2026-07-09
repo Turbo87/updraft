@@ -1,0 +1,23 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Gsa(
+        Gsa {
+            talker: Gps,
+            selection_mode: Automatic,
+            fix_type: ThreeDimensional,
+            satellites: [],
+            pdop: Some(
+                1.0,
+            ),
+            hdop: Some(
+                1.0,
+            ),
+            vdop: Some(
+                1.0,
+            ),
+        },
+    ),
+)

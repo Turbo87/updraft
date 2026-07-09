@@ -1,0 +1,20 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Gga(
+        Gga {
+            talker: Combined,
+            utc_time: None,
+            position: None,
+            fix_quality: Invalid,
+            satellites_used: None,
+            hdop: None,
+            altitude: None,
+            geoid_separation: None,
+            dgps_age: None,
+            dgps_station: None,
+        },
+    ),
+)

@@ -1,0 +1,19 @@
+[package]
+name = "updraft_nmea"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[lints]
+workspace = true
+
+[dependencies]
+updraft_geo = { path = "../updraft_geo" }
+updraft_units = { path = "../updraft_units" }
+
+[dev-dependencies]
+approx = { version = "=0.6.0-rc2", features = ["derive"] }
+claims = "=0.8.0"
+insta = "=1.48.0"
+proptest = "=1.11.0"
+updraft_geo = { path = "../updraft_geo", features = ["approx"] }

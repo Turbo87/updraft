@@ -34,44 +34,56 @@ A vario derived from the internal pressure sensor is not compensated for airspee
 
 Internal sensors stay active by default even while external devices provide the same data (a WeGlide-valid IGC log requires continuous internal GPS input). A single battery-saver setting suspends internal acquisition while external devices actively provide the same data.
 
-## Parser Stack
+## Parsing
 
-The parsing of external data (NMEA sentences, vendor protocols, file formats) lives in pure functions (bytes in, messages out) that are trivially unit-testable, separate from the transport that carried the bytes.
+External device data (NMEA sentences, vendor protocols, binary frames) is parsed by pure functions — bytes in, typed messages out — with no knowledge of the transport that carried them. There is no separate framer, dispatcher, or parser registry: a single parser per _framing_ owns the whole job (locating frame boundaries, validating checksums, resynchronising, decoding) and always decodes every sentence family it knows. Nothing is enabled, disabled, or routed per stream.
 
-A connection carries one stream, processed by:
+Two framings are supported in the target design:
 
-- a **framer** that splits bytes into sentences or frames (NMEA lines first, including line records that don't start with `$` such as the Cambridge CAI302's `!w` vario records, extensible to binary frames), feeding
-- a **dispatcher** that routes each sentence to whichever registered parsers claim it:
-  - `$G?XXX` → generic NMEA (routed by the three-letter sentence formatter, accepting any GNSS talker ID; the nonstandard `$BD` BeiDou talker is treated as an alias)
-  - `$PGRMZ` → Garmin
-  - `$PFLA*` → FLARM
-  - `$LXWP*` → LXNav
-  - `$PLXV*` → LXNav (settings read/write, declarations, log transfer)
-  - unknown sentences → counted and logged
+- **line-based text** (`updraft_nmea`) — NMEA-style sentences delimited by line terminators, covering every text family that shares this framing: generic GNSS (any talker ID, with the nonstandard `$BD` BeiDou talker aliased), and the vendor families (Garmin `$PGRMZ`, FLARM `$PFLA*`, LXNav `$LXWP*`/`$PLXV*`, OpenVario `$POV`, Cambridge `!w`, …). They interleave freely on one stream — an LX9000 emits GNSS, baro, FLARM pass-through and both LXNav families on one port — so they share one parser.
+- **GDL90** (`updraft_gdl90`) — the flag-delimited binary ADS-B framing, on its own transport. Added when ADS-B input lands; the read path is structured so it slots in as a second framing without touching the text parser or its callers.
 
-A device such as an LX9000 that emits NMEA, `$PGRMZ`, FLARM pass-through, and both LXNav families on one port simply has the corresponding parsers active on that one stream, all feeding the core.
+The parser is a function the connection _calls_; it never owns the connection. On each step it yields exactly one of:
 
-Some operations switch a device out of NMEA entirely: a driver can claim the stream for an **exclusive binary session** for the duration of an operation such as a flight-log download (FLARM's binary IGC protocol being the canonical case), after which normal framing and dispatch resume.
+- **`Frame`** — a complete, checksum/CRC-validated frame, decoded into a wire-faithful typed message;
+- **`Incomplete`** — the buffer does not yet hold a full frame; it is retained and the caller feeds more bytes;
+- **`Rejected`** — the bytes at the front are not a valid frame (bad checksum, corruption, junk); the parser discards forward to the next frame boundary, records which kind of failure it was, and retries.
+
+Framing is boundary-based (start marker to terminator), which is what makes `Incomplete` and `Rejected` fall out naturally and lets a connection that joins mid-stream self-heal at the next clean boundary. A well-framed sentence whose type is unrecognised is not `Rejected` — it is a `Frame` carrying an `Unknown` message, counted and logged, never silently dropped.
+
+The parsers are **hand-rolled**, not built on a parser-combinator or regex library. NMEA is flat and line-oriented, so the genuinely non-trivial parts (streaming framing, resync, failure tallying) are owned directly regardless of tooling, while field parsing is plain delimiter splitting into typed quantities. Hand-rolling keeps a zero-dependency, easily-fuzzed crate on the untrusted-input boundary. The binary GDL90 framing may revisit this when it lands.
+
+### Wire messages and core input
+
+Parser output is **wire-faithful**: one typed message per sentence, every wire field represented and parsed into typed quantities (via `updraft_units`), but with no device-specific fix-ups. A device that reports LX wind with a flipped direction is parsed verbatim; the correction is a per-device config flag applied _downstream_ of the parser, never inside it. This keeps the parser a pure, losslessly-testable function.
+
+Between the parser and the core's input channel, parsed messages are normalised and per-device corrections applied, then delivered as the typed messages the core consumes (the same channel internal sensors and replay feed). Multi-device merging and source priority operate on a per-category view ("position", "pressure altitude", "traffic", …), so they never need to know which framing or vendor produced a value. Whether the core consumes a distinct vendor-agnostic semantic message set or the wire-faithful messages more directly is an [open question](#open-questions).
+
+Some operations switch a device out of normal parsing entirely: a driver can claim the stream for an **exclusive binary session** for the duration of an operation such as a flight-log download (FLARM's binary IGC protocol being the canonical case), after which normal framing and parsing resume. This mode is part of the target design; because the parser is called rather than owning the connection, the connection simply stops feeding the parser and routes raw bytes to the session for its duration. The detailed protocol is deferred.
 
 ## Drivers & Personalities
 
-A device _driver_ is the device-specific knowledge: which sentence families to parse and which personality to speak, layered on top of a shared transport. Crucially, **a driver is deliberately not the owner of a connection.** It is a sentence-family handler plus an optional _device personality_.
+A device _driver_ is device-specific knowledge layered on a shared transport. Its _read_ side — which sentence families to understand — is no longer a separate thing: the parser already decodes every family, and which families a device actually emits is observed, not configured (see [Auto-Detection](#auto-detection)). What remains is the driver's _write_ side, an optional **device personality**.
 
-A personality keeps settings such as MacCready, ballast, bugs, and QNH in **bidirectional sync**: turn the knob on the vario and the app follows, change the value in the app and the device follows. The most recent change wins, regardless of where it was made. Each device carries per-setting sync preferences (send, receive, both, or neither), with full sync as the default. Beyond settings sync, personalities handle one-shot outbound operations: task declarations and config commands. For LXNav hardware the sync channel is the `$PLXV*` settings protocol.
+A personality keeps settings such as MacCready, ballast, bugs, and QNH in **bidirectional sync**: turn the knob on the vario and the app follows, change the value in the app and the device follows. The most recent change wins, regardless of where it was made. Each device carries per-setting sync preferences (send, receive, both, or neither), with full sync as the default. Beyond settings sync, personalities handle one-shot outbound operations: task declarations and config commands. For LXNav hardware the sync channel is the `$PLXV*` settings protocol. Which personality speaks is auto-detected from the observed message stream, with a manual override for the protocol used to send.
+
+The personality layer is part of the target design; its detailed design — the outbound protocols, and the probe queries that wake silent request/response devices during identification — is deferred.
 
 ## Auto-Detection
 
-New connections start in an **identification mode** with all parsers enabled promiscuously. Identification is not purely passive: drivers can register probe queries that are sent during the identification window (reading an LXNav's current settings, waking request/response devices). On serial transports a **baud probe** runs first, cycling common rates until valid checksums appear; manual baud configuration remains available.
+Detection has two independent layers: which _framing_ a connection speaks, and which _capabilities_ its messages reveal.
 
-After a short observation window (or immediately on a signature sentence), the stream is tagged with detected capabilities ("GPS source", "FLARM traffic", "LXNav vario, protocol vX"), which drives:
+**Framing selection.** A new connection runs its incoming bytes through the candidate framings and watches the `Frame`/`Rejected` tally; the framing that yields valid, checksum-passing frames wins, one that yields only `Rejected` loses. This is the same principle as the serial **baud probe** (cycle common rates until valid checksums appear), one level up: on a serial transport the two nest into a baud-by-framing sweep. Manual override of framing and baud remains available for unusual or silent hardware. Today there is a single text framing; GDL90 joins as a second candidate in the same sweep without changing the selector.
+
+**Capability observation.** Above the parser sits a passive observer that never changes what the parser does — it only watches the typed messages flow past and tags the connection: valid position fixes → "GPS source", baro-altitude sentences → "pressure altitude", traffic sentences → "FLARM traffic", the LXNav families → "LXNav vario, protocol vX". A combo unit accumulates all its tags simply because those messages appear; nothing was enabled to make it happen. The tags drive:
 
 1. the source priority (see below),
 2. which **device personality** attaches,
 3. what the **devices screen** shows ("LX9000 — GPS ✓ Vario ✓ Traffic ✓").
 
-Manual override remains available for unusual hardware.
+The active side of identification — sending probe queries to wake silent request/response devices or read current settings — is outbound and belongs to the deferred personality layer; it fires during this same identification window.
 
-When a connection drops, the platform side reconnects with backoff (see [tauri.md](tauri.md)). A reconnected stream resumes its previously detected capabilities and personality instantly from session state, so a flapping link never yanks a device out of the priority order; identification re-runs in the background and revises the tag if the hardware changed. After an app restart, identification starts fresh.
+When a connection drops, the platform side reconnects with backoff (see [tauri.md](tauri.md)). A reconnected stream resumes its previously selected framing and capability tags instantly from session state, so a flapping link never yanks a device out of the priority order; detection re-runs in the background and revises the tags if the hardware changed. After an app restart, detection starts fresh.
 
 ## Source Priority
 
@@ -87,6 +99,10 @@ A **device config** is a named, saveable snapshot of the whole setup: the device
 
 The devices screen manages all of this: connection status per device, priority reordering, manual overrides, and config save/load.
 
+## Open Questions
+
+- **Core input shape.** Whether the core consumes a distinct vendor-agnostic semantic message set (clean, but potentially hides detail the core wants) or the wire-faithful typed messages more directly (richer, but the core learns vendor shapes), or a middle ground that is semantic yet carries provenance, is undecided.
+
 ## Testing
 
-Framing, dispatch, parsing, and detection heuristics are pure functions over byte or sentence sequences, tested against recorded captures from real devices and fuzzed to never panic on arbitrary bytes (see [testing.md](testing.md)).
+Framing, parsing, and detection heuristics are pure functions over byte sequences, tested against recorded captures from real devices and fuzzed to never panic on arbitrary bytes (see [testing.md](testing.md)). Each vendor family within `updraft_nmea` carries its own proptest no-panic suite and snapshot tests against the shared `testdata/` corpus, so the families harden independently despite sharing a crate.

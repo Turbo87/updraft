@@ -2,7 +2,7 @@
 
 - **The core skeleton comes before any feature.** Every feature is "state + commands + computed values + a view", so the message protocol, the state struct, injected time, and one working transport are prerequisites for everything.
 - **Replay is infrastructure, not a feature.** IGC parsing + a replay driver unlock the whole test strategy (e2e fixtures, regression tests, sim/demo mode), so they come right after the input pipeline exists.
-- **Parser crates are hardened as they land.** Every parser crate carries proptest no-panic suites and snapshot tests against the shared `testdata/` corpus of recorded device captures (see [design/testing.md](design/testing.md)).
+- **Parsers are hardened as they land.** Every parser carries proptest no-panic suites and snapshot tests against the shared `testdata/` corpus of recorded device captures (see [design/testing.md](design/testing.md)).
 - **This is a rough plan, not a set of concrete tasks.** The exact shape of the individual steps is subject to change as the design evolves.
 
 ## Scaffolding
@@ -35,28 +35,30 @@
 
 ## Sensor input & replay
 
-- [ ] **nmea** — `libs/updraft_nmea`: sentence framing, checksum, GGA/RMC/GSA parsing into typed structs. _(needs: units, geo)_
-- [ ] **nmea-airdata** — vendor sentences for baro altitude, IAS/TAS, TE vario (LXWP0, PGRMZ, POV, …). _(needs: nmea)_
-- [ ] **io-adapters** — adapter trait for byte-stream devices, TCP client/server and UDP adapters, fake adapter for tests; framer + dispatcher routing each sentence to the parsers that claim it (multiple parsers per stream), with promiscuous identification mode, driver probe queries, and capability tagging; wire NMEA input into core position state. _(needs: nmea, core-time)_
+- [ ] **nmea** — `libs/updraft_nmea`: the line-based text parser — framing, checksum, resync, the always-decode structure, and generic GNSS (GGA/RMC/GSA) plus the cross-device `$PGRMZ` baro-altitude sentence, into typed structs. Vendor families land as sibling slices. _(needs: units, geo)_
+- [ ] **lx-nmea** — LXNav sentences (`$LXWP0-4`, `$PLXV*`) as an `updraft_nmea` slice: baro altitude, IAS/TAS, TE vario, wind, settings read/write. _(needs: nmea)_
+- [ ] **openvario-nmea** — OpenVario/XCVario `$POV` sentence (pressure, airspeed, TE vario) as an `updraft_nmea` slice. _(needs: nmea)_
+- [ ] **cambridge-nmea** — Cambridge `!w` vario records as an `updraft_nmea` slice. _(needs: nmea)_
+- [ ] **io-adapters** — adapter trait for byte-stream devices, TCP client/server and UDP adapters, fake adapter for tests; per-connection parser selection (validation-driven framing detection with manual override), the passive capability observer, and mapping parsed messages into core state (applying per-device corrections); wire NMEA input into core position state. _(needs: nmea, core-time)_
 - [ ] **gps-status** — fix quality, satellite info, positioning-source selection/fallback in state; status indicator in the UI. _(needs: io-adapters)_
 - [ ] **igc-read** — `libs/updraft_igc`: parser for A/H/B/E/L records and extensions. _(needs: units, geo)_
-- [ ] **replay** — replay engine feeding the core typed messages from IGC files at variable speed, bypassing the parser stack (byte-capture replay is a devmode tool); used for simulator mode, demo mode, and as the e2e fixture mechanism, migrating the e2e suite from scripted commands to replay fixtures. Input-log replay records external I/O results verbatim but recomputes pure worker results and injects them at their recorded position. _(needs: igc-read, core-time)_
+- [ ] **replay** — replay engine feeding the core typed messages from IGC files at variable speed, bypassing the parser (byte-capture replay is a devmode tool); used for simulator mode, demo mode, and as the e2e fixture mechanism, migrating the e2e suite from scripted commands to replay fixtures. Input-log replay records external I/O results verbatim but recomputes pure worker results and injects them at their recorded position. _(needs: igc-read, core-time)_
 - [ ] **input-recording** — opt-in recording of the core's input sequence to `captures/`, written incrementally like the IGC log; snapshot-seeded replay ("seed from snapshot X, replay from position N") alongside replay-from-empty. _(needs: replay)_
 - [ ] **flight-modes** — takeoff/landing detection, cruise/circling detection, flight timer; mode exposed in state and shown in UI. _(needs: io-adapters)_
-- [ ] **vario-values** — TE/netto/relative vario, integrator and thermal averagers computed in core from GPS + baro inputs. _(needs: nmea-airdata, flight-modes)_
+- [ ] **vario-values** — TE/netto/relative vario, integrator and thermal averagers computed in core from GPS + baro inputs. _(needs: nmea, flight-modes)_
 
 ## Glide computer
 
 - [x] **polar** — glide polar model (quadratic coefficients, ballast/bugs degradation), a starter polar library, speed-to-fly and MacCready ring math. _(needs: units)_
 - [ ] **glide-settings** — MacCready, ballast, bugs, safety heights / safety MC: commands, state, and a settings dialog. _(needs: polar, core-state, frontend-protocol)_
 - [ ] **wind-circling** — wind estimation from circling drift; wind vector in state, manual override command, wind display. _(needs: flight-modes)_
-- [ ] **wind-zigzag** — airspeed-based zigzag/EKF wind estimation, layered wind statistics, source blending. _(needs: wind-circling, nmea-airdata)_
+- [ ] **wind-zigzag** — airspeed-based zigzag/EKF wind estimation, layered wind statistics, source blending. _(needs: wind-circling, lx-nmea)_
 - [ ] **final-glide** — wind-corrected arrival altitude for an arbitrary target (Mc and Mc-0), safety-height aware. _(needs: glide-settings, wind-circling)_
 - [ ] **speed-to-fly** — STF / speed command values, dolphin speed, auto MacCready modes. _(needs: glide-settings, vario-values)_
 - [ ] **datafields-v1** — configurable data-field grid (fixed geometry, selectable values, tap-to-edit MC); the first set of altitude / speed / direction / time values. _(needs: frontend-protocol)_
 - [ ] **thermal-assistant** — climb sampling around the circle, centering aid view, thermal profile (climb vs altitude band). _(needs: vario-values)_
 - [ ] **thermal-history** — own-climb thermal markers on the map with wind drift compensation. _(needs: thermal-assistant, wind-circling, frontend-map)_
-- [ ] **density-altitude** — pressure/density-altitude tools, potential-temperature trigger aid. _(needs: nmea-airdata)_
+- [ ] **density-altitude** — pressure/density-altitude tools, potential-temperature trigger aid. _(needs: lx-nmea)_
 
 ## Waypoints & navigation
 
@@ -114,15 +116,15 @@
 
 ## Traffic
 
-- [ ] **flarm** — `libs/updraft_flarm`: PFLAA/PFLAU parsing, alarm levels, FLARM configuration sentences. _(needs: nmea)_
-- [ ] **traffic-store** — traffic targets in core: aging, threat levels, relative geometry. _(needs: flarm, core-time)_
+- [ ] **flarm-nmea** — FLARM sentences (`$PFLAA`/`$PFLAU`/`$PFLAC`, alarm levels) as an `updraft_nmea` slice. _(needs: nmea)_
+- [ ] **traffic-store** — traffic targets in core: aging, threat levels, relative geometry. _(needs: flarm-nmea, core-time)_
 - [ ] **traffic-on-map** — traffic symbols, threat colouring, labels, short track trails. _(needs: traffic-store, frontend-map)_
 - [ ] **radar-view** — dedicated FLARM radar page (relative-position rose). _(needs: traffic-store)_
 - [ ] **traffic-warnings** — collision warning UI with alarm levels and acknowledgement; hook for audio alerts. _(needs: traffic-store)_
 - [ ] **traffic-lookup** — FlarmNet / OGN DDB parsing and ID→registration lookup, custom naming, buddy highlighting. _(needs: traffic-store)_
 - [ ] **traffic-details** — per-target details dialog and sortable traffic list. _(needs: traffic-on-map, traffic-lookup)_
 - [ ] **ogn** — OGN traffic via the WeGlide Live API (bbox-scoped polling) + FLARM/OGN deduplication. _(needs: traffic-store, connectivity)_
-- [ ] **adsb** — ADS-B In traffic (GDL90 parsing, PowerFLARM/Stratux). _(needs: traffic-store)_
+- [ ] **adsb** — ADS-B In traffic: `libs/updraft_gdl90` (flag-delimited binary framing) as a second parser framing, plus PowerFLARM/Stratux wiring. _(needs: traffic-store)_
 
 ## Logging & recording
 
@@ -151,7 +153,7 @@
 - [ ] **weight-balance** — W&B / CG-envelope calculator. _(needs: aircraft-profiles)_
 - [ ] **config-sharing** — configuration sharing via files / QR codes. _(needs: settings-persistence)_
 - [ ] **stopwatch-misc** — stopwatch, position/ATC report page. _(needs: datafields-v1)_
-- [ ] **ahrs-pfd** — attitude indicator / PFD from AHRS data; synthetic vision later. _(needs: nmea-airdata, io-adapters)_
+- [ ] **ahrs-pfd** — attitude indicator / PFD from AHRS data; synthetic vision later. _(needs: lx-nmea, io-adapters)_
 
 ## Online services
 
@@ -185,7 +187,7 @@
 
 - [ ] **serial-adapter** — serial/TTY adapter for desktop platforms with baud probing. _(needs: io-adapters)_
 - [ ] **terminal-monitor** — terminal monitor page for I/O debugging. _(needs: io-adapters)_
-- [ ] **devmode** — hidden developer mode (seven-tap unlock): byte-capture replay transport through the real parser stack, map rendering and data loading debug options. _(needs: frontend-protocol, io-adapters)_
+- [ ] **devmode** — hidden developer mode (seven-tap unlock): byte-capture replay transport through the real parser, map rendering and data loading debug options. _(needs: frontend-protocol, io-adapters)_
 - [ ] **bluetooth** — Bluetooth SPP adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
 - [ ] **ble** — Bluetooth BLE adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
 - [ ] **usb-otg** — USB-serial adapter via Android OTG. _(needs: serial-adapter, tauri-android)_

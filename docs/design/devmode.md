@@ -4,7 +4,7 @@ Like Android's hidden developer options, Updraft ships a developer mode in produ
 
 Options unlocked by developer mode include:
 
-- the byte-capture replay transport (see [devices.md](devices.md)), which replays recorded raw device bytes through the real framer, dispatcher, and parsers
+- the byte-capture replay transport (see [devices.md](devices.md)), which replays recorded raw device bytes through the real parser (framing, checksum, decode)
 - map rendering debugging
 - data loading debugging
 

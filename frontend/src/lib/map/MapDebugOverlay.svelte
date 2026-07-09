@@ -13,7 +13,7 @@
   function syncView() {
     if (!map) return;
     zoom = map.getZoom();
-    const center = map.getCenter();
+    let center = map.getCenter();
     lng = center.lng;
     lat = center.lat;
   }
@@ -21,7 +21,7 @@
   function onKeydown(event: KeyboardEvent) {
     if (event.key !== 'd' && event.key !== 'D') return;
 
-    const target = event.target as HTMLElement | null;
+    let target = event.target as HTMLElement | null;
     if (
       target &&
       (target.isContentEditable ||

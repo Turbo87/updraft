@@ -13,5 +13,23 @@ vite.config.ts.timestamp-*
 # Paraglide (generated i18n code)
 /frontend/src/lib/paraglide
 
+# Gradle
+.gradle
+
 # Tauri
 /tauri/gen/schemas
+/tauri/gen/android/.tauri
+/tauri/gen/android/captures
+/tauri/gen/android/local.properties
+/tauri/gen/android/tauri.settings.gradle
+/tauri/gen/android/**/build
+/tauri/gen/android/**/.cxx
+/tauri/gen/android/**/.externalNativeBuild
+/tauri/gen/android/**/key.properties
+/tauri/gen/android/**/keystore.properties
+/tauri/gen/android/app/proguard-tauri.pro
+/tauri/gen/android/app/tauri.build.gradle.kts
+/tauri/gen/android/app/tauri.properties
+/tauri/gen/android/app/src/main/**/generated
+/tauri/gen/android/app/src/main/assets/tauri.conf.json
+/tauri/gen/android/app/src/main/jniLibs/**/*.so

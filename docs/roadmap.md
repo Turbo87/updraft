@@ -143,6 +143,7 @@
 - [ ] **themes** — day/night/high-contrast modes, sunlight-readability contrast targets validated outdoors, auto-brightness hooks. _(needs: frontend-scaffold)_
 - [x] **i18n** — localization scaffolding (Paraglide JS) + German translation; land before untranslated strings accumulate. _(needs: frontend-scaffold)_
 - [ ] **disclaimer** — first-run "not a certified navigation source" dialog and about-screen text. _(needs: frontend-scaffold)_
+- [ ] **webview-compat-warning** — detect webviews too old to render the MapLibre map and show an unsupported-version warning instead of a blank map. Repro: the Android emulator API 34 image ships WebView 113, which renders the map blank. API 35 (WebView 124) renders fine. _(needs: frontend-map)_
 - [ ] **input-gestures** — configurable hardware buttons/keys and gesture bindings. _(needs: frontend-protocol)_
 - [ ] **status-pages** — flight / times / system status dialogs. _(needs: datafields-v1)_
 - [ ] **sun-ephemeris** — `libs/updraft_sun`: sunrise/sunset/twilight math; time-of-day data fields and "arrival past sunset" warning. _(needs: units, task-calculator)_
@@ -187,7 +188,7 @@
 - [ ] **devmode** — hidden developer mode (seven-tap unlock): byte-capture replay transport through the real parser stack, map rendering and data loading debug options. _(needs: frontend-protocol, io-adapters)_
 - [ ] **bluetooth** — Bluetooth SPP adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
 - [ ] **ble** — Bluetooth BLE adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
-- [ ] **usb-otg** — USB-serial adapter via Android OTG. _(needs: serial-adapter, tauri-mobile)_
+- [ ] **usb-otg** — USB-serial adapter via Android OTG. _(needs: serial-adapter, tauri-android)_
 - [ ] **internal-sensors** — internal GPS and pressure sensor input via Tauri plugins, injected as typed messages, ranked below external devices; always-on by default (WeGlide-valid IGC logs) with a battery-saver setting. _(needs: core-time, tauri-protocol)_
 - [ ] **device-manager** — devices screen (user-ordered priority list), multi-device value merging, priority/fallback, NMEA pass-through/output. _(needs: io-adapters, gps-status)_
 - [ ] **device-configs** — named device-config snapshots (device entries + priority order), aircraft-config linkage, manual save/load. _(needs: device-manager, aircraft-profiles)_
@@ -196,7 +197,11 @@
 - [ ] **flarm-declaration** — FLARM task declaration _(needs: vendor-protocols, task-files)_
 - [ ] **lxnav-igc** — IGC file download from LXNav devices. _(needs: vendor-protocols)_
 - [ ] **flarm-igc** — IGC file download from FLARM devices (FLARM, LX) via exclusive binary session. _(needs: vendor-protocols)_
-- [ ] **tauri-mobile** — Android/iOS builds: location permission, background execution, keep-awake. _(needs: tauri-scaffold)_
+- [x] **tauri-android** — Android build target: buildable debug APK, emulator smoke-test, single-ABI CI build. _(needs: tauri-scaffold)_
+- [ ] **tauri-ios** — iOS build target. _(needs: tauri-scaffold)_
+- [ ] **keep-awake** — screen keep-awake while flying. _(needs: tauri-scaffold)_
+- [ ] **foreground-service** — location permission and background execution via an Android foreground service keeping the core alive off-screen. _(needs: tauri-android, internal-sensors)_
+- [ ] **mobile-emulator-tests** — automated Android emulator build/launch smoke-test in CI. _(needs: tauri-android, e2e-scaffold)_
 - [ ] **sim-mode** — on-device simulator mode (fly without GPS): manual flying controls, direct position/altitude setting; activating sim/replay disables IGC logging and online data (weather, OGN). _(needs: replay)_
 - [ ] **secondary-clients** — primary/secondary operation: auth, roles & permissions for remote frontends, repeater display mode. _(needs: server-protocol, settings-persistence)_
 - [ ] **audio-alerts** — native audio plugin for airspace/traffic warning playback, driven directly from the core; ships with the first release so airspace warnings are audible from day one. _(needs: airspace-warnings, tauri-protocol)_
@@ -210,4 +215,4 @@
 
 ## Distribution
 
-- [ ] **releases** — packaging and release pipeline: GitHub Releases, Google Play, Apple App Store, F-Droid; platform-native update channels, no self-updater. Play Console foreground-service justification + demo video prepared before first submission. _(needs: tauri-mobile, disclaimer)_
+- [ ] **releases** — packaging and release pipeline: GitHub Releases, Google Play, Apple App Store, F-Droid; platform-native update channels, no self-updater. Play Console foreground-service justification + demo video prepared before first submission. _(needs: foreground-service, tauri-ios, disclaimer)_

@@ -25,5 +25,5 @@ pub use sentences::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Gga, GgaFixQuality, Gsa,
     GsaFixType, GsaSelectionMode, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Lxwp3SpeedCommandMode,
     Lxwp3SwitchMode, Pflaa, Pflac, PflacQueryType, Pflau, PflauAlarmType, PflauGpsStatus, Pgrmz,
-    PgrmzFixDimension, PositioningMode, Rmc, RmcStatus,
+    PgrmzFixDimension, Plxvf, PositioningMode, Rmc, RmcStatus,
 };

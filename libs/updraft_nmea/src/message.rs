@@ -2,7 +2,9 @@
 //! shared across sentence families.
 
 use crate::field::text;
-use crate::sentences::{Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pflaa, Pflac, Pflau, Pgrmz, Rmc};
+use crate::sentences::{
+    Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pflaa, Pflac, Pflau, Pgrmz, Plxvf, Rmc,
+};
 
 /// A single decoded NMEA sentence, faithful to the wire.
 #[derive(Clone, Debug, PartialEq)]
@@ -30,6 +32,8 @@ pub enum Message {
     Lxwp2(Lxwp2),
     /// LXNAV vario/speed-command configuration (`LXWP3`).
     Lxwp3(Lxwp3),
+    /// LXNAV vario fast data (`PLXVF`).
+    Plxvf(Plxvf),
     /// A well-formed sentence of a type this crate does not decode.
     Unknown(Unknown),
 }

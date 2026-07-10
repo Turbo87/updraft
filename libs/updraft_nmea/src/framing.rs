@@ -239,6 +239,12 @@ mod tests {
     }
 
     #[test]
+    fn parses_plxvf() {
+        let s = b"$PLXVF,,1.00,0.87,-0.12,-0.25,90.2,244.3,*64\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
     fn keeps_unrecognised_sentence_as_unknown() {
         let s = b"$PXABC,11,1,2,1,0,,0,,,*7A\r\n";
         insta::assert_debug_snapshot!(parse_one(s));

@@ -3,7 +3,7 @@
 
 use crate::field::text;
 use crate::sentences::{
-    Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pflaa, Pflac, Pflau, Pgrmz, Plxvf, Rmc,
+    Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pflaa, Pflac, Pflau, Pgrmz, Plxvf, Plxvs, Rmc,
 };
 
 /// A single decoded NMEA sentence, faithful to the wire.
@@ -34,6 +34,8 @@ pub enum Message {
     Lxwp3(Lxwp3),
     /// LXNAV vario fast data (`PLXVF`).
     Plxvf(Plxvf),
+    /// LXNAV vario slow data (`PLXVS`).
+    Plxvs(Plxvs),
     /// A well-formed sentence of a type this crate does not decode.
     Unknown(Unknown),
 }

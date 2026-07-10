@@ -13,7 +13,9 @@ pub use garmin::{Pgrmz, PgrmzFixDimension};
 pub use gnss::{
     Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, PositioningMode, Rmc, RmcStatus,
 };
-pub use lx::{Lxwp0, Lxwp1, Lxwp2, Lxwp3, Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Plxvf};
+pub use lx::{
+    Lxwp0, Lxwp1, Lxwp2, Lxwp3, Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Plxvf, Plxvs, PlxvsMode,
+};
 
 use crate::message::{Message, Talker, Unknown};
 
@@ -33,6 +35,7 @@ pub fn parse_body(body: &[u8]) -> Message {
         b"LXWP2" => return Message::Lxwp2(Lxwp2::parse(&fields(rest))),
         b"LXWP3" => return Message::Lxwp3(Lxwp3::parse(&fields(rest))),
         b"PLXVF" => return Message::Plxvf(Plxvf::parse(&fields(rest))),
+        b"PLXVS" => return Message::Plxvs(Plxvs::parse(&fields(rest))),
         _ => {}
     }
 

@@ -1,8 +1,8 @@
 # The Frontend
 
-The UI is a single **SvelteKit** application built as a pure SPA (`adapter-static`, no SSR), served by Tauri's asset handler or by `updraft-server`. It contains presentation logic only: it renders state received from the core and translates user interactions into commands. It does not compute domain values itself, unless strictly required for performance reasons. The number shown in a data field is computed in the core, so it is identical on every platform and every connected device.
+The UI is a single **SvelteKit** application built as a pure SPA (`adapter-static`, no SSR), served by the axum server in both hostings — embedded in the Tauri shell or standalone (see [server.md](server.md)). It contains presentation logic only: it renders state received from the core and translates user interactions into commands. It does not compute domain values itself, unless strictly required for performance reasons. The number shown in a data field is computed in the core, so it is identical on every platform and every connected device.
 
-Because the frontend speaks only the core's message protocol, the same codebase runs inside the Tauri shell, served by the axum server, or against a mocked message layer in component tests. Only the transport binding differs per build (see _State Model_ below).
+Because the frontend speaks only the core's message protocol, the same build runs inside the Tauri shell and in any browser — both are served by the same embedded axum server (see [server.md](server.md)) — or against a mocked message layer in component tests.
 
 ## Stack
 
@@ -14,11 +14,11 @@ Because the frontend speaks only the core's message protocol, the same codebase 
 
 ## State Model
 
-A single `UpdraftClient` TypeScript interface abstracts the transport (Tauri IPC or HTTP/stream). The implementation is selected at **build time** (e.g. via an environment variable in the Vite config), so each build contains exactly one transport and the other is tree-shaken away.
+A single `UpdraftClient` TypeScript interface wraps the transport (HTTP requests plus SSE topic streams). There is only one production implementation, because there is only one transport (see [server.md](server.md)); the interface exists so tests can substitute a fake client.
 
 On top of it, thin reactive stores: each subscription topic becomes a rune-backed store (`$state` updated by the topic decoder), and components consume them declaratively. No component ever talks to a transport directly, so the whole UI is testable against a fake client. Commands are async functions with generated types. Optimistic UI only where harmless (e.g. settings toggles).
 
-**Hot path exception:** ownship position updates bypass Svelte reactivity and write straight to the map at frame rate. Reactivity is for UI chrome, not the 10 Hz path.
+**Hot path & extrapolation:** the core publishes moving objects (ownship, traffic) as kinematic state vectors — position, track, speed, turn rate, climb rate, timestamp (see [core.md](core.md)). The frontend extrapolates them to render time and writes positions straight to the map at frame rate, bypassing Svelte reactivity. Smooth 60 fps rendering therefore needs no high-rate updates crossing the transport; reactivity is for UI chrome, not the per-frame path.
 
 ## Map
 

@@ -16,22 +16,22 @@
 - [x] **units** — custom newtype quantities (length/altitude, speed, vertical speed, angle to start; pressure, mass, temperature added when features need them), conversions, and unit-system formatting. Start minimal and grow. _(needs: workspace)_
 - [x] **geo** — lat/lon types, WGS84 distance/bearing/destination-point (via `geographiclib-rs`) with a haversine fast path, bounding boxes with antimeridian handling, `geo-types` interop behind a feature. Coordinate parsing/formatting is out of scope: each data-format crate parses its own wire format, display formatting is a UI concern. _(needs: units)_
 - [x] **egm96** — `libs/updraft_egm96`: EGM96 geoid undulation lookup (`separation`, ellipsoidal↔MSL helpers) via a bilinear 1° grid downsampled from the official 15′ `WW15MGH` source, with a feature-gated `downsample` generator and golden test. Used to convert bare-ellipsoidal GNSS altitude to MSL (and back for IGC). _(needs: geo)_
-- [ ] **core-state** — the central state struct, `Command`/`Query`/`Event` enums, `apply()` entry point, prioritized + coalescing input channel, serde serialization of the protocol. _(needs: units)_
+- [ ] **core-state** — the central state struct (per-domain sub-states), `Command`/`Query`/`Event` enums, `apply()` entry point, the two-lane input front (bounded command channel + latest-wins sensor slots, coalescing at drain), per-cycle snapshot publishing, serde serialization of the protocol. _(needs: units)_
 - [ ] **core-time** — time as an input: clock/tick commands, deterministic timer queue, simulated-time test helpers, monotonic flight-time tracking. _(needs: core-state)_
 - [ ] **core-subscriptions** — state-change notifications via named topics (last-value, keyed collection, events plus active set, reference) so UIs can subscribe to slices instead of full snapshots. _(needs: core-state)_
-- [ ] **core-workers** — async computation pipeline: rate-limited stages, rayon worker pool posting results back as input messages, per-worker-kind staleness invalidation. _(needs: core-state, core-time)_
+- [ ] **core-workers** — async computation pipeline: rate-limited stages, worker pool behind a trait (rayon-backed on native hosts, sequential fallback) posting results back as input messages, snapshot-comparison staleness invalidation. _(needs: core-state, core-time)_
 
 ## Transports & walking skeleton
 
-- [ ] **server-protocol** — axum: REST endpoints for queries/commands + state-change stream (WebSocket or SSE, whichever works best in practice), speaking the core protocol. _(needs: server-scaffold, core-subscriptions)_
-- [ ] **server-auth** — session token required on all routes (commands, state stream, bulk data), `Host` allowlist, `Origin` validation on stream upgrades, strict CORS, password gate for non-loopback binding. _(needs: server-protocol)_
+- [ ] **server-protocol** — axum: REST endpoints for queries/commands + per-topic SSE state streams, speaking the core protocol. _(needs: server-scaffold, core-subscriptions)_
+- [ ] **server-auth** — session token required on all routes (commands, state streams, bulk data), `Host` allowlist, `Origin` validation on stream subscriptions, strict CORS, password gate for non-loopback binding. _(needs: server-protocol)_
 - [x] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the axum server. _(needs: server-scaffold)_
 - [ ] **frontend-protocol** — TypeScript protocol types (generated from the Rust types, committed, with a CI drift check), state-stream client, Svelte store bridging core state into components. _(needs: frontend-scaffold, server-protocol)_
 - [x] **frontend-map** — maplibre-gl map page with interim online basemap (OpenFreeMap, replaced by offline packs in basemap-packs), own-position symbol at a fixed placeholder position, manual pan/zoom. _(needs: frontend-scaffold)_
 - [ ] **map-position** — own-position symbol driven by core state. Bulk geodata (tiles, overlays) is served as map sources by URL reference, never pushed through the message channel. _(needs: frontend-map, frontend-protocol)_
 - [x] **tauri-scaffold** — Tauri shell (desktop first) hosting the frontend in the system webview; `pnpm tauri dev`/`build` loop and Linux CI build. _(needs: frontend-scaffold)_
-- [ ] **tauri-protocol** — Tauri IPC bridge embedding the core in-process and exposing the same protocol as the server (commands/queries + state-change stream). _(needs: frontend-protocol, tauri-scaffold)_
-- [ ] **bulk-data** — bulk geodata serving: native HTTP routes in the server and `updraft://` URI scheme in the Tauri shell, streaming tiles/GeoJSON as version-counted resources referenced by URL. _(needs: server-protocol, tauri-protocol)_
+- [ ] **tauri-server** — Tauri shell embedding the core and the axum server on loopback, webview pointed at `http://localhost:<port>` with token handoff at page load; Android cleartext-loopback release config; includes the suspend/resume lifecycle spike (see [design/tauri.md](design/tauri.md)). _(needs: frontend-protocol, tauri-scaffold, server-auth)_
+- [ ] **bulk-data** — bulk geodata serving: HTTP routes in the axum server (standalone and embedded), streaming tiles/GeoJSON as version-counted resources referenced by URL. _(needs: server-protocol, tauri-server)_
 - [ ] **e2e-scaffold** — Playwright suite booting server + frontend, scripting position commands, asserting the map shows them. Establishes the CI rendering harness: software GL (SwiftShader/llvmpipe) for headless MapLibre and a `testMode` flag disabling map animation so tests await explicit "map idle" / "data version rendered" signals. Tests use a minimal inline map style instead of online tile services. This is the walking skeleton milestone. _(needs: map-position)_
 
 ## Sensor input & replay
@@ -43,8 +43,8 @@
 - [ ] **io-adapters** — adapter trait for byte-stream devices, TCP client/server and UDP adapters, fake adapter for tests; per-connection parser selection (validation-driven framing detection with manual override), the passive capability observer, and mapping parsed messages into core state (applying per-device corrections); wire NMEA input into core position state. _(needs: nmea, core-time)_
 - [ ] **gps-status** — fix quality, satellite info, positioning-source selection/fallback in state; status indicator in the UI. _(needs: io-adapters)_
 - [ ] **igc-read** — `libs/updraft_igc`: parser for A/H/B/E/L records and extensions. _(needs: units, geo)_
-- [ ] **replay** — replay engine feeding the core typed messages from IGC files at variable speed, bypassing the parser (byte-capture replay is a devmode tool); used for simulator mode, demo mode, and as the e2e fixture mechanism, migrating the e2e suite from scripted commands to replay fixtures. Input-log replay records external I/O results verbatim but recomputes pure worker results and injects them at their recorded position. _(needs: igc-read, core-time)_
-- [ ] **input-recording** — opt-in recording of the core's input sequence to `captures/`, written incrementally like the IGC log; snapshot-seeded replay ("seed from snapshot X, replay from position N") alongside replay-from-empty. _(needs: replay)_
+- [ ] **replay** — replay engine feeding the core typed messages from IGC files at variable speed, bypassing the parser (byte-capture replay is a devmode tool); used for simulator mode, demo mode, and as the e2e fixture mechanism, migrating the e2e suite from scripted commands to replay fixtures. Input-log replay applies recorded inputs — external I/O and worker results alike — verbatim; recompute-and-compare runs as a CI verification mode. _(needs: igc-read, core-time)_
+- [ ] **input-recording** — opt-in recording of the core's input sequence to `captures/`, written incrementally like the IGC log, with worker payloads in a droppable compressed sidecar stream; snapshot-seeded replay ("seed from snapshot X, replay from position N") alongside replay-from-empty. _(needs: replay)_
 - [ ] **flight-modes** — takeoff/landing detection, cruise/circling detection, flight timer; mode exposed in state and shown in UI. _(needs: io-adapters)_
 - [ ] **vario-values** — TE/netto/relative vario, integrator and thermal averagers computed in core from GPS + baro inputs. _(needs: nmea, flight-modes)_
 
@@ -65,7 +65,7 @@
 
 - [ ] **cup** — `libs/updraft_cup`: SeeYou CUP waypoint/task file parser (CUPX and other formats come later). _(needs: units, geo)_
 - [ ] **waypoint-db** — core waypoint store: multiple files, landable distinction, search, nearest-N queries. _(needs: cup, core-state)_
-- [ ] **file-import** — file import via OS file picker and share intent, routed by file type to the matching store. _(needs: waypoint-db, tauri-protocol)_
+- [ ] **file-import** — file import via OS file picker and share intent, routed by file type to the matching store. _(needs: waypoint-db, tauri-server)_
 - [ ] **cupx** — SeeYou CUPX waypoint files (CUP plus embedded images). _(needs: cup)_
 - [ ] **openaip-waypoints** — OpenAIP airport/waypoint parser. _(needs: waypoint-db)_
 - [ ] **gpx-waypoints** — GPX waypoint parser. _(needs: waypoint-db)_
@@ -189,10 +189,10 @@
 - [ ] **serial-adapter** — serial/TTY adapter for desktop platforms with baud probing. _(needs: io-adapters)_
 - [ ] **terminal-monitor** — terminal monitor page for I/O debugging. _(needs: io-adapters)_
 - [ ] **devmode** — hidden developer mode (seven-tap unlock): byte-capture replay transport through the real parser, map rendering and data loading debug options. _(needs: frontend-protocol, io-adapters)_
-- [ ] **bluetooth** — Bluetooth SPP adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
-- [ ] **ble** — Bluetooth BLE adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
+- [ ] **bluetooth** — Bluetooth SPP adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-server)_
+- [ ] **ble** — Bluetooth BLE adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-server)_
 - [ ] **usb-otg** — USB-serial adapter via Android OTG. _(needs: serial-adapter, tauri-android)_
-- [ ] **internal-sensors** — internal GPS and pressure sensor input via Tauri plugins, injected as typed messages, ranked below external devices; always-on by default (WeGlide-valid IGC logs) with a battery-saver setting. _(needs: core-time, tauri-protocol)_
+- [ ] **internal-sensors** — internal GPS and pressure sensor input via Tauri plugins, injected as typed messages, ranked below external devices; always-on by default (WeGlide-valid IGC logs) with a battery-saver setting. _(needs: core-time, tauri-server)_
 - [ ] **device-manager** — devices screen (user-ordered priority list), multi-device value merging, priority/fallback, NMEA pass-through/output. _(needs: io-adapters, gps-status)_
 - [ ] **device-configs** — named device-config snapshots (device entries + priority order), aircraft-config linkage, manual save/load. _(needs: device-manager, aircraft-profiles)_
 - [ ] **vendor-protocols** — driver/personality framework: sentence-family drivers, bidirectional settings sync with per-setting preferences, one-shot outbound operations, exclusive binary sessions. _(needs: device-manager)_
@@ -207,7 +207,7 @@
 - [ ] **mobile-emulator-tests** — automated Android emulator build/launch smoke-test in CI. _(needs: tauri-android, e2e-scaffold)_
 - [ ] **sim-mode** — on-device simulator mode (fly without GPS): manual flying controls, direct position/altitude setting; activating sim/replay disables IGC logging and online data (weather, OGN). _(needs: replay)_
 - [ ] **secondary-clients** — primary/secondary operation: auth, roles & permissions for remote frontends, repeater display mode. _(needs: server-protocol, settings-persistence)_
-- [ ] **audio-alerts** — native audio plugin for airspace/traffic warning playback, driven directly from the core; ships with the first release so airspace warnings are audible from day one. _(needs: airspace-warnings, tauri-protocol)_
+- [ ] **audio-alerts** — native audio plugin for airspace/traffic warning playback, driven directly from the core; ships with the first release so airspace warnings are audible from day one. _(needs: airspace-warnings, tauri-server)_
 - [ ] **battery-monitoring** — internal/external battery and voltage state. _(needs: device-manager)_
 - [ ] **switch-inputs** — gear/flap warning digital inputs. _(needs: device-manager)_
 - [ ] **radio** — radio frequency management via drivers. _(needs: vendor-protocols)_

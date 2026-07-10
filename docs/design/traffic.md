@@ -11,7 +11,7 @@ How FLARM and OGN traffic data are handled, from source to screen.
 
 The core merges both sources into one table keyed by target ID. A glider visible through FLARM and OGN at the same time is a single target, with the direct FLARM data taking priority (lower latency, no network path). Targets age out visibly after a while. It should be easy to distinguish live FLARM targets, OGN targets, and outdated ones.
 
-The table is published on the `traffic` topic as a keyed collection (see [core.md](core.md)).
+The table is published on the `traffic` topic as a keyed collection (see [core.md](core.md)). Each target is a **kinematic state vector** — position, track, ground speed, turn rate, climb rate, and timestamp — not a bare coordinate.
 
 A FLARMNet/OGN device database for resolving IDs to registrations/callsigns is used to enhance the table with additional information.
 
@@ -25,6 +25,6 @@ OGN data is pulled via the **WeGlide Live API** rather than the raw OGN/APRS str
 
 The endpoint is `GET https://live.weglide.org/api/locations?format=json`, optionally filtered with a `bbox=west|south|east|north` query parameter. It returns a JSON array of aircraft records: FLARM ID, display name, unix timestamp, longitude/latitude, altitude, bearing, and vario.
 
-## Open Questions
+## Display Extrapolation
 
-- **Dead reckoning:** FLARM updates at ~1 Hz and OGN much slower, so displayed targets need extrapolation (position + track + turn rate + ground speed + climb rate) to stay current. Undecided where it runs: in the core (every display shows identical positions, but extrapolated updates cross IPC and the frontend still interpolates for smooth rendering) or in the frontend as presentation smoothing at render time (raw target states plus timestamps cross IPC once, see the related rendering question in [frontend.md](frontend.md)).
+FLARM updates at ~1 Hz and OGN much slower, so displayed targets need extrapolation to stay current. The kinematic state vectors published by the core carry everything needed: the frontend extrapolates each target to render time (see [frontend.md](frontend.md)). Every client extrapolates from identical states, the transport carries one message per target update instead of per frame, and staleness stays explicit — the vector's timestamp drives the aging display.

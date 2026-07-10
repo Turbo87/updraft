@@ -1,8 +1,24 @@
 # The Tauri Shell
 
-The **Tauri** application is the primary shipping artifact for all five platforms. It embeds the Rust core in-process, hosts the frontend in the system webview, and bridges the two over Tauri's IPC using the shared message protocol (see [core.md](core.md)), plus a custom URI scheme for the bulk geodata path. It is also where platform-specific concerns live: permissions (location, Bluetooth), background execution, screen-keep-awake, and access to native device APIs.
+The **Tauri** application is the primary shipping artifact for all five platforms. It embeds the Rust core in-process, hosts the frontend in the system webview, and connects the two through the embedded axum server bound to loopback (see [server.md](server.md) and _The Embedded Server_ below) — the same transport, routes, and auth as everywhere else. There is no separate IPC bridge and no custom URI scheme. The shell is where platform-specific concerns live: permissions (location, Bluetooth), background execution, screen-keep-awake, and access to native device APIs.
 
 The shell is kept deliberately thin. Everything above it (core, protocol, frontend) is host-agnostic and covered by the main test layers, so the shell itself only needs a small smoke-test checklist (see [testing.md](testing.md)).
+
+## The Embedded Server
+
+The shell starts the axum server on a loopback port and points the webview at `http://localhost:<port>`, with the session token injected at page load. One transport instead of two is a deliberate trade:
+
+- The alternative — Tauri's custom URI scheme — cannot stream response bodies (wry #1404), and Android's webview fails byte-range requests against custom protocols (a Chromium webview bug), which breaks PMTiles range reads exactly on the primary platform. The established community workaround for offline maps in Tauri on Android is an embedded loopback HTTP server, so the "fallback" _is_ this design.
+- With the page itself served from a localhost origin, SSE works plainly and none of the secure-context restrictions that webviews apply to custom-scheme origins get in the way.
+- The protocol, its contract tests, and the Playwright suite cover the shipping transport exactly, on all five platforms.
+
+Platform footwork this requires:
+
+- **Android:** release builds block cleartext HTTP since Android 9. Loopback needs `usesCleartextTraffic` scoped to `127.0.0.1` via a network security config — debug builds set it implicitly, so this belongs on the release checklist rather than being discovered in the first release build.
+- **iOS:** an ATS loopback exemption, if the default localhost carve-out proves insufficient.
+- **Security:** a loopback listener is reachable by every local process, so all routes require the session token (see [server.md](server.md)).
+
+**Validation spike (early):** the one genuinely unproven part is lifecycle — the server and its port across Android suspend/resume alongside the foreground service, and iOS backgrounding. This is validated before the transport decision becomes load-bearing; the fallback if it fails is the custom-scheme protocol with its known Android limitations.
 
 ## Safety Constraints
 

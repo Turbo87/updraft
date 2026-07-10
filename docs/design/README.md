@@ -2,7 +2,7 @@
 
 **Updraft** is a multi-platform soaring flight computer with a modern UI/UX in the spirit of WeGlide Copilot and Enroute Flight Navigation. It targets the full XCSoar feature envelope long-term, but ships incrementally, starting with rock-solid situational awareness.
 
-**Architecture in one sentence:** a Rust core that owns all state, computation, and device I/O, exposed through a transport-agnostic API consumed by a SvelteKit + MapLibre GL JS frontend, packaged via Tauri on mobile and desktop, but equally runnable as a plain HTTP/WebSocket/SSE server serving the same frontend in a browser.
+**Architecture in one sentence:** a Rust core that owns all state, computation, and device I/O, exposed through a single HTTP + SSE server (axum) that the Tauri shell embeds on mobile and desktop and that runs standalone for any modern browser, consumed by a SvelteKit + MapLibre GL JS frontend.
 
 These documents describe the target design and architecture. The [roadmap.md](../roadmap.md) file tracks the implementation status.
 
@@ -35,7 +35,7 @@ These documents describe the target design and architecture. The [roadmap.md](..
 ```
 core/        Rust core library: state, messages, domain logic
 libs/        Rust libraries (e.g. NMEA parsing, geodesy, units, …)
-server/      axum server (REST + state stream, optional static hosting)
+server/      axum server: the single transport (REST + SSE + bulk data), standalone or embedded
 tauri/       Tauri shell for Android/iOS/Linux/macOS/Windows
 frontend/    SvelteKit + maplibre-gl-js application
 e2e/         Playwright test suite and replay fixtures
@@ -49,8 +49,8 @@ The exact crate/package layout may evolve, but the dependency direction is fixed
 ## Documents
 
 - [core.md](core.md): the Rust core, its message protocol, and the bulk geodata path
-- [server.md](server.md): the axum host, headless mode, and its security model
-- [tauri.md](tauri.md): the Tauri shell, mobile plugins, platform risks, and native safety constraints
+- [server.md](server.md): the axum server (the single transport), headless mode, and its security model
+- [tauri.md](tauri.md): the Tauri shell, the embedded server, mobile plugins, platform risks, and native safety constraints
 - [frontend.md](frontend.md): the SvelteKit app, map, interaction model, and platform behaviors
 - [devices.md](devices.md): device I/O, parsing, and auto-detection
 - [simulator.md](simulator.md): simulator mode and IGC replay

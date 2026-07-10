@@ -28,7 +28,7 @@ The platform-specific sides (Bluetooth plugins, foreground service) live in the 
 
 ## Internal Sensors
 
-Internal sensors (GPS, pressure sensor) skip the transport and parser machinery entirely: they produce typed messages directly onto the core's input channel. In the source priority they always rank below external devices. The platform-specific wiring lives in the Tauri shell (see [tauri.md](tauri.md)).
+Internal sensors (GPS, pressure sensor) skip the transport and parser machinery entirely: they produce typed messages directly onto the core's input front. In the source priority they always rank below external devices. The platform-specific wiring lives in the Tauri shell (see [tauri.md](tauri.md)).
 
 A vario derived from the internal pressure sensor is not compensated for airspeed changes (no total-energy compensation), so it can only ever serve as a backup for a real vario device.
 
@@ -57,7 +57,7 @@ The parsers are **hand-rolled**, not built on a parser-combinator or regex libra
 
 Parser output is **wire-faithful**: one typed message per sentence, every wire field represented and parsed into typed quantities (via `updraft_units`), but with no device-specific fix-ups. A device that reports LX wind with a flipped direction is parsed verbatim; the correction is a per-device config flag applied _downstream_ of the parser, never inside it. This keeps the parser a pure, losslessly-testable function.
 
-Between the parser and the core's input channel, parsed messages are normalised and per-device corrections applied, then delivered as the typed messages the core consumes (the same channel internal sensors and replay feed). Multi-device merging and source priority operate on a per-category view ("position", "pressure altitude", "traffic", …), so they never need to know which framing or vendor produced a value. Whether the core consumes a distinct vendor-agnostic semantic message set or the wire-faithful messages more directly is an [open question](#open-questions).
+Between the parser and the core's input front, parsed messages are normalised and per-device corrections applied, then delivered as the typed messages the core consumes (the same input front internal sensors and replay feed). Multi-device merging and source priority operate on a per-category view ("position", "pressure altitude", "traffic", …), so they never need to know which framing or vendor produced a value. Whether the core consumes a distinct vendor-agnostic semantic message set or the wire-faithful messages more directly is an [open question](#open-questions).
 
 Some operations switch a device out of normal parsing entirely: a driver can claim the stream for an **exclusive binary session** for the duration of an operation such as a flight-log download (FLARM's binary IGC protocol being the canonical case), after which normal framing and parsing resume. This mode is part of the target design; because the parser is called rather than owning the connection, the connection simply stops feeding the parser and routes raw bytes to the session for its duration. The detailed protocol is deferred.
 

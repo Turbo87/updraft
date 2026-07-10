@@ -1,0 +1,42 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Rmc(
+        Rmc {
+            talker: Gps,
+            utc_time: Some(
+                Time {
+                    hour: 13,
+                    minute: 47,
+                    seconds: 49.6,
+                },
+            ),
+            status: Active,
+            position: Some(
+                LatLon {
+                    latitude: 48.964695°,
+                    longitude: 7.0973215000000005°,
+                },
+            ),
+            speed_over_ground: Some(
+                18.468555555555557 m/s,
+            ),
+            course_over_ground: Some(
+                270.6°,
+            ),
+            date: Some(
+                Date {
+                    year: 2024,
+                    month: 12,
+                    day: 28,
+                },
+            ),
+            magnetic_variation: None,
+            mode: Some(
+                Differential,
+            ),
+        },
+    ),
+)

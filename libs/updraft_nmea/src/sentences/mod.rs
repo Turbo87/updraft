@@ -1,0 +1,57 @@
+//! Decoders for each NMEA sentence family.
+
+mod garmin;
+mod gnss;
+
+pub use garmin::{Pgrmz, PgrmzFixDimension};
+pub use gnss::{
+    Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, PositioningMode, Rmc, RmcStatus,
+};
+
+use crate::message::{Message, Talker, Unknown};
+
+/// Routes a sentence body (everything after the start marker, with the
+/// checksum stripped) to the matching family, falling back to
+/// [`Message::Unknown`].
+pub fn parse_body(body: &[u8]) -> Message {
+    let (address, rest) = split_once(body, b',').unwrap_or((body, b""));
+
+    if address == b"PGRMZ" {
+        return Message::Pgrmz(Pgrmz::parse(&fields(rest)));
+    }
+
+    let Some((code, sentence_type)) = split_standard_address(address) else {
+        return Message::Unknown(Unknown::from_bytes(body));
+    };
+
+    let talker = Talker::from_code(code);
+    match sentence_type {
+        b"GGA" => Message::Gga(Gga::parse(talker, &fields(rest))),
+        b"RMC" => Message::Rmc(Rmc::parse(talker, &fields(rest))),
+        b"GSA" => Message::Gsa(Gsa::parse(talker, &fields(rest))),
+        _ => Message::Unknown(Unknown::from_bytes(body)),
+    }
+}
+
+/// Splits `body` at the first `separator`, dropping it, or `None` if it is
+/// absent.
+fn split_once(body: &[u8], separator: u8) -> Option<(&[u8], &[u8])> {
+    let index = body.iter().position(|&byte| byte == separator)?;
+    Some((&body[..index], &body[index + 1..]))
+}
+
+/// Splits the comma-separated argument list of a sentence into fields.
+fn fields(args: &[u8]) -> Vec<&[u8]> {
+    args.split(|&byte| byte == b',').collect()
+}
+
+/// Splits a standard (non-proprietary) address into its talker code and
+/// three-letter sentence type, or `None` for proprietary (`P…`) or
+/// too-short addresses.
+fn split_standard_address(address: &[u8]) -> Option<(&[u8], &[u8])> {
+    if address.first() == Some(&b'P') {
+        return None;
+    }
+    let split = address.len().checked_sub(3)?;
+    Some(address.split_at(split))
+}

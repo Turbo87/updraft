@@ -1,0 +1,39 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Gga(
+        Gga {
+            talker: Gps,
+            utc_time: Some(
+                Time {
+                    hour: 13,
+                    minute: 47,
+                    seconds: 49.6,
+                },
+            ),
+            position: Some(
+                LatLon {
+                    latitude: 48.964695°,
+                    longitude: 7.0973215000000005°,
+                },
+            ),
+            fix_quality: Dgps,
+            satellites_used: Some(
+                25,
+            ),
+            hdop: Some(
+                1.0,
+            ),
+            altitude: Some(
+                1452 m,
+            ),
+            geoid_separation: Some(
+                47.2 m,
+            ),
+            dgps_age: None,
+            dgps_station: None,
+        },
+    ),
+)

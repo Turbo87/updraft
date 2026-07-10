@@ -14,8 +14,10 @@ and Tauri as thin shells sharing the same code.
 
 **Method.** Each proposal was reviewed adversarially by an independent subagent; a fifth
 subagent fact-checked the load-bearing external claims (float determinism, Tauri/wry
-limitations, SSE/WebSocket behavior) against specs, bug trackers, and upstream docs.
-`codex-core` was additionally built and tested empirically in this environment.
+limitations, SSE/WebSocket behavior) against specs, bug trackers, and upstream docs, and
+ran local experiments where possible (std-vs-`libm` bit divergence, clone-vs-`imbl`
+micro-benchmark). `codex-core` was additionally built and tested empirically in this
+environment (full Rust + frontend + Playwright e2e suites).
 
 ## Empirical results (codex-core)
 
@@ -42,6 +44,9 @@ The only proposal with code, and it holds up:
 - Warnings are computed synchronously in the update path, natively.
 - Verbatim recording of external I/O results; replayability as the foundation of testing.
 - ts-rs-generated TypeScript, committed, with a CI drift check; JSON as first encoding.
+  (Fact-check aside: the alternative, tauri-specta, only pays off when Tauri `invoke` is
+  the primary API — under an HTTP/SSE transport plain ts-rs is the lower-risk fit, and
+  tauri-specta v2 is still a release candidate.)
 - Bulk geodata never crosses the message channel — served by URL reference + version.
 - Playwright against the axum server is the flagship test layer.
 
@@ -142,9 +147,11 @@ independently rejected that, and the evidence is on their side:
 
 - Rust guarantees bit-exact cross-platform floats only for basic ops (RFC 3514); `sin`/
   `cos`/`atan2` route to platform libm and are documented "non-deterministic … varies by
-  platform" — glibc/musl/bionic/Apple differ at the ulp level, and real divergence bugs
-  exist. A recording made in the cockpit (ARM/bionic) would not be trusted to replay on
-  an x86 dev machine.
+  platform". **Demonstrated empirically during this review on one x86_64 machine:** std
+  (glibc) `sin` vs the `libm` crate (musl port) disagree on 6,165 of 200,000 inputs, and
+  `atan2` on 22,494 of 100,000 — two libms, one machine, different bits. glibc ↔ bionic
+  will differ likewise, so a recording made in the cockpit (ARM/bionic) cannot be trusted
+  to replay bit-exactly on an x86 dev machine.
 - Recompute-on-replay ties recordings to the algorithm version: qk989e concedes this by
   making recordings version-bound artifacts that replay *refuses* on mismatch — which
   destroys the primary use case (field bug recorded on release vX, debugged on HEAD) and
@@ -169,10 +176,18 @@ guideline. One honest scope note (from the fbqjgl review): verbatim recordings r
 the *recorded* behavior faithfully forever; as fixtures against evolved core logic they
 are approximations — that is fine, but say it.
 
+For completeness: recompute-on-replay *is* technically salvageable — but only by pinning
+every transcendental in the core and workers to a version-pinned `libm` crate (Rapier's
+`enhanced-determinism` approach, or Factorio's hand-written trig) plus a dual-architecture
+CI fingerprint test. That is permanent discipline imposed on every future contributor to
+buy a smaller log file, and it still leaves recordings version-bound. Verbatim recording
+needs none of it.
+
 Also **refuted** during fact-checking, for the record: qk989e's `mul_add` ban.
 `f64::mul_add` is IEEE-754 `fusedMultiplyAdd`, correctly rounded and deterministic —
-one of the few math functions that *is* — and Rust never contracts `a*b+c` implicitly.
-The real portability hazard is exclusively the libm transcendentals.
+one of the few math functions that *is* (empirically 0/100,000 mismatches against
+`libm::fma`) — and Rust never contracts `a*b+c` implicitly. The real portability hazard
+is exclusively the libm transcendentals.
 
 ### 5. Outputs — codex-core's snapshot+changes stream now; keep main's topic taxonomy as vocabulary; audio via effects
 
@@ -208,13 +223,16 @@ axum server, no Tauri IPC, no custom scheme; codex-core: "Tauri does not start a
 HTTP server"). The evidence collected favors rnyrkn's direction:
 
 - **Both of rnyrkn's load-bearing claims verify.** wry cannot stream custom-protocol
-  response bodies (wry #1404, open since 2024 — responses are fully-buffered
+  response bodies (wry #1404, open since 2024, no linked PR — responses are fully-buffered
   `Cow<'static, [u8]>`; SSE over the custom scheme is outright impossible). Android
-  System WebView fails HTTP Range requests against custom-scheme responses (multiple
-  independent reports incl. tauri-apps discussion #12243), which breaks PMTiles range
-  reads **on the primary platform**. The established workarounds are an embedded loopback
-  HTTP server or buffering whole files — for a map-centric app, the custom-scheme bulk
-  path main and codex-core assume is not viable on Android today.
+  System WebView breaks HTTP Range requests against custom-scheme responses — the first
+  ranged read succeeds, subsequent ones fail with `net::ERR_FAILED` (tauri-apps
+  discussion #12243, upstream Chromium bug; intermittent, which is worse than a clean
+  failure) — breaking PMTiles range reads **on the primary platform**. The community's
+  converged workaround is exactly an embedded loopback HTTP server (a hyper-based
+  fallback in that same discussion; Tauri's own warned-about localhost plugin). For a
+  map-centric app, the custom-scheme bulk path main and codex-core assume is not viable
+  on Android today.
 - **The dual-transport position is internally contradictory anyway** — two reviewers
   converged on this independently: multi-client.md requires the *pilot's phone app* (the
   Tauri build) to host the axum server for copilot clients. The server ends up inside the
@@ -249,6 +267,24 @@ plugins are driven core→effect→shell rather than frontend→invoke. But a re
 shell-mediated interactions (permission prompts, keep-awake, share-intent ingress) stays
 on Tauri plugins/IPC. That residue is small and UI-independent; it does not undermine the
 single *protocol* transport.
+
+Platform facts established by the fact-check, which shrink the footwork rnyrkn listed:
+
+- **iOS needs no ATS exemption at all** — ATS explicitly does not apply to IP-literal
+  hosts, so `http://127.0.0.1:<port>` works without configuration (rnyrkn's hedged "ATS
+  exemption if needed" resolves to *not needed*).
+- **Android** blocks cleartext in release builds below API 37 (Android 17 finally exempts
+  loopback implicitly); until then it is one `network-security-config` file scoping
+  `cleartextTrafficPermitted` to `127.0.0.1`.
+- **ws:// to loopback is not blocked** by mixed-content rules in Chromium or Firefox
+  (loopback is a potentially-trustworthy origin), and Tauri's iOS custom-scheme origin
+  isn't subject to mixed-content blocking anyway — rnyrkn's ws-secure-context argument
+  for SSE is a myth. SSE is still the right call, but on its merits: auto-reconnect
+  composing with snapshot-on-subscribe, and no hand-rolled heartbeat/backoff code.
+- **Tauri IPC itself is no longer a serialization bogeyman** — v2 has a raw-ArrayBuffer
+  response path and channels for streaming. The case against the dual-transport design
+  rests on the custom-scheme bulk path (wry #1404, Android Range bug) and on code
+  sharing, not on IPC performance.
 
 **Risk management:** rnyrkn's own "validation spike" is correctly identified and must run
 at walking-skeleton time, covering specifically **iOS suspend/resume socket teardown**
@@ -288,12 +324,16 @@ argument dissolves at one multiplexed stream). Revisit WebSocket only on a measu
   the way every FLARM display works, one message per update instead of per-frame traffic.
 - Versioned persistence (snapshot schema version; discard, don't migrate; IGC resume
   unaffected).
-- Defer: per-cycle Arc snapshots for readers, `imbl`, queries-off-the-loop (premature at
-  this state size — codex-core's query-through-runtime is fine until measured); the
-  wasm32 core build (YAGNI, and its "sequential workers" contradict "never block the
-  loop" on one thread); the panic-supervision *ladder* (keep catch/reseed/quarantine as
-  the eventual crash story; stage-bisection safe mode is speculative, and `catch_unwind`
+- Defer: per-cycle Arc snapshots for readers and queries-off-the-loop (premature at this
+  state size — codex-core's query-through-runtime is fine until measured); the wasm32
+  core build (YAGNI, and its "sequential workers" contradict "never block the loop" on
+  one thread); the panic-supervision *ladder* (keep catch/reseed/quarantine as the
+  eventual crash story; stage-bisection safe mode is speculative, and `catch_unwind`
   conflicts with `panic = "abort"` release profiles — a constraint the doc must state).
+- Reject `imbl`: benchmarked during this review at traffic-table scale (48 entries),
+  plain `Vec` clone+update is ~4× faster (43 ns vs 158 ns per op) and dependency-free;
+  persistent structures pay off at 10^4+ elements or many live snapshots, neither of
+  which applies.
 
 **fbqjgl — adopt the two hard-question answers:**
 - Verbatim recording of all worker results + determinism-scope statement (decision 4).
@@ -361,7 +401,19 @@ decision 6 removes.
 - **RFC 3514 float semantics** — basic ops bit-exact, no implicit FMA contraction; NaN
   payloads excluded; rust-lang.github.io/rfcs/3514-float-semantics.html
 - **std transcendentals non-deterministic** across platforms (documented in `f64` docs);
-  `mul_add` correctly rounded per IEEE 754 (deterministic — qk989e's ban refuted)
+  empirically reproduced in this review: std-glibc vs `libm`-crate `sin` differ on
+  6,165/200,000 inputs (1 ulp each), `atan2` on 22,494/100,000, on a single x86_64
+  machine; `mul_add` correctly rounded per IEEE 754, 0/100,000 mismatches vs `libm::fma`
+  (deterministic — qk989e's ban refuted)
+- **iOS ATS does not apply to IP-literal hosts** — no exemption needed for
+  `http://127.0.0.1` (Apple Info.plist key reference); **Android** requires a
+  network-security-config for loopback cleartext below API 37, implicit exemption from
+  Android 17
+- **Mixed-content rules exempt loopback** (potentially-trustworthy origin) in Chromium
+  and Firefox for both `http://` and `ws://` — "webviews block ws:// to localhost"
+  refuted (W3C Secure Contexts, crbug 40386732)
+- **imbl** maintained (7.0.0, 2026) but benchmarked ~4× slower than plain clone at
+  traffic-table scale (48 × 72 B entries: 43 ns vs 158 ns per clone+update)
 - **rr** records nondeterminism verbatim with same-machine determinism scope
   (rr-project.org); **Factorio** desync history incl. custom trig for lockstep
   (FFF-188, forums)

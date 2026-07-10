@@ -1,5 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "menu_title": "Menu",
+  "settings_title": "Settings",
   "language_label": "Language",
   "dialog_back": "Back",
   "dialog_close": "Close"

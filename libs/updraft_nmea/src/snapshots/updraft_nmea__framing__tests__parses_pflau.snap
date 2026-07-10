@@ -1,0 +1,32 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Pflau(
+        Pflau {
+            rx_count: Some(
+                3,
+            ),
+            tx_ok: Some(
+                true,
+            ),
+            gps_status: Airborne,
+            power_ok: Some(
+                true,
+            ),
+            alarm_level: Important,
+            relative_bearing: Some(
+                -29.999999999999996°,
+            ),
+            alarm_type: Aircraft,
+            relative_vertical: Some(
+                -32 m,
+            ),
+            relative_distance: Some(
+                755 m,
+            ),
+            id: None,
+        },
+    ),
+)

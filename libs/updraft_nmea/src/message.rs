@@ -1,7 +1,8 @@
 //! The typed messages produced by [`parse`](crate::parse) and the values
 //! shared across sentence families.
 
-use crate::sentences::{Gga, Gsa, Pgrmz, Rmc};
+use crate::field::text;
+use crate::sentences::{Gga, Gsa, Pflaa, Pflac, Pflau, Pgrmz, Rmc};
 
 /// A single decoded NMEA sentence, faithful to the wire.
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +16,12 @@ pub enum Message {
     Gsa(Gsa),
     /// Garmin barometric altitude (`PGRMZ`).
     Pgrmz(Pgrmz),
+    /// FLARM heartbeat, status, and basic alarms (`PFLAU`).
+    Pflau(Pflau),
+    /// FLARM data on one proximate aircraft (`PFLAA`).
+    Pflaa(Pflaa),
+    /// FLARM configuration read/set/answer (`PFLAC`).
+    Pflac(Pflac),
     /// A well-formed sentence of a type this crate does not decode.
     Unknown(Unknown),
 }
@@ -32,7 +39,7 @@ pub struct Unknown {
 impl Unknown {
     pub fn from_bytes(body: &[u8]) -> Self {
         Self {
-            sentence: String::from_utf8_lossy(body).into_owned().into_boxed_str(),
+            sentence: text(body),
         }
     }
 }
@@ -66,7 +73,7 @@ impl Talker {
             b"GB" | b"BD" => Self::BeiDou,
             b"GQ" => Self::Qzss,
             b"GN" => Self::Combined,
-            _ => Self::Other(String::from_utf8_lossy(code).into_owned().into_boxed_str()),
+            _ => Self::Other(text(code)),
         }
     }
 }

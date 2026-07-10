@@ -49,6 +49,8 @@ fn parses_every_sentence_in_the_flight() {
     let mut rmc = 0;
     let mut gsa = 0;
     let mut pgrmz = 0;
+    let mut pflau = 0;
+    let mut pflaa = 0;
     let mut unknown = 0;
     let mut junk = 0;
     for step in &steps {
@@ -57,6 +59,8 @@ fn parses_every_sentence_in_the_flight() {
             Step::Frame(Message::Rmc(_)) => rmc += 1,
             Step::Frame(Message::Gsa(_)) => gsa += 1,
             Step::Frame(Message::Pgrmz(_)) => pgrmz += 1,
+            Step::Frame(Message::Pflau(_)) => pflau += 1,
+            Step::Frame(Message::Pflaa(_)) => pflaa += 1,
             Step::Frame(Message::Unknown(_)) => unknown += 1,
             Step::Rejected(RejectReason::Junk) => junk += 1,
             other => panic!("unexpected step: {other:?}"),
@@ -69,8 +73,9 @@ fn parses_every_sentence_in_the_flight() {
     assert_eq!(rmc, 466);
     assert_eq!(gsa, 469);
     assert_eq!(pgrmz, 467);
-    // The FLARM sentences ($PFLAA, $PFLAU) are not decoded here yet.
-    assert_eq!(unknown, 2377);
+    assert_eq!(pflau, 470);
+    assert_eq!(pflaa, 1907);
+    assert_eq!(unknown, 0);
     // The trailing bytes on those two lines are rejected as junk.
     assert_eq!(junk, 2);
     assert_eq!(steps.len(), 4247);
@@ -98,8 +103,8 @@ fn chunk_boundaries_do_not_change_the_frames() {
 
 #[test]
 fn decodes_the_opening_sentences() {
-    // A file snapshot of the first handful of sentences: the GNSS families
-    // decoded, the FLARM ones kept as `Unknown`.
+    // A file snapshot of the first handful of sentences, covering the GNSS
+    // and FLARM families.
     let opening: Vec<Step> = parse_all(FLIGHT).into_iter().take(7).collect();
     insta::assert_debug_snapshot!(opening);
 }

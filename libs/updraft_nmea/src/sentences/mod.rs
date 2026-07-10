@@ -1,8 +1,13 @@
 //! Decoders for each NMEA sentence family.
 
+mod flarm;
 mod garmin;
 mod gnss;
 
+pub use flarm::{
+    FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
+    PflacQueryType, Pflau, PflauAlarmType, PflauGpsStatus,
+};
 pub use garmin::{Pgrmz, PgrmzFixDimension};
 pub use gnss::{
     Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, PositioningMode, Rmc, RmcStatus,
@@ -16,8 +21,12 @@ use crate::message::{Message, Talker, Unknown};
 pub fn parse_body(body: &[u8]) -> Message {
     let (address, rest) = split_once(body, b',').unwrap_or((body, b""));
 
-    if address == b"PGRMZ" {
-        return Message::Pgrmz(Pgrmz::parse(&fields(rest)));
+    match address {
+        b"PGRMZ" => return Message::Pgrmz(Pgrmz::parse(&fields(rest))),
+        b"PFLAU" => return Message::Pflau(Pflau::parse(&fields(rest))),
+        b"PFLAA" => return Message::Pflaa(Pflaa::parse(&fields(rest))),
+        b"PFLAC" => return Message::Pflac(Pflac::parse(&fields(rest))),
+        _ => {}
     }
 
     let Some((code, sentence_type)) = split_standard_address(address) else {

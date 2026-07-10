@@ -197,6 +197,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_pflau() {
+        let s = b"$PFLAU,3,1,2,1,2,-30,2,-32,755*56\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_pflaa() {
+        let s = b"$PFLAA,0,-1540,-1020,-1126,1,39103C!FJLKN,93,0,33,4.9,8*63\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_pflac() {
+        let s = b"$PFLAC,A,RADIOID,1,A832ED*0D\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
     fn keeps_unrecognised_sentence_as_unknown() {
         let s = b"$PXABC,11,1,2,1,0,,0,,,*7A\r\n";
         insta::assert_debug_snapshot!(parse_one(s));

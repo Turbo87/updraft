@@ -5,6 +5,7 @@ mod lxwp0;
 mod lxwp1;
 mod lxwp2;
 mod lxwp3;
+mod plxv0;
 mod plxvf;
 mod plxvs;
 
@@ -12,5 +13,6 @@ pub use lxwp0::Lxwp0;
 pub use lxwp1::Lxwp1;
 pub use lxwp2::Lxwp2;
 pub use lxwp3::{Lxwp3, Lxwp3SpeedCommandMode, Lxwp3SwitchMode};
+pub use plxv0::{Plxv0, Plxv0Direction};
 pub use plxvf::Plxvf;
 pub use plxvs::{Plxvs, PlxvsMode};

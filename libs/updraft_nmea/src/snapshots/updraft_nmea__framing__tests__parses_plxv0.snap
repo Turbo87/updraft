@@ -1,0 +1,28 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Plxv0(
+        Plxv0 {
+            setting: Some(
+                "POLAR",
+            ),
+            direction: Some(
+                Write,
+            ),
+            values: [
+                "1.780",
+                "-3.030",
+                "1.930",
+                "30.0",
+                "292",
+                "600",
+                "265",
+                "90",
+                "LS 7",
+                "0",
+            ],
+        },
+    ),
+)

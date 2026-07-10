@@ -1,4 +1,6 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
-  "language_label": "Sprache"
+  "language_label": "Sprache",
+  "dialog_back": "Zurück",
+  "dialog_close": "Schließen"
 }

@@ -5,7 +5,10 @@ declare global {
     // interface Error {}
     // interface Locals {}
     // interface PageData {}
-    // interface PageState {}
+    interface PageState {
+      /** Depth/opener of the current dialog history entry, restored on back/forward. */
+      dialog?: { depth: number; hasOpener: boolean };
+    }
     // interface Platform {}
   }
 }

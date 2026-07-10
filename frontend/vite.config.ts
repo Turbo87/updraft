@@ -20,6 +20,9 @@ export default defineConfig({
       adapter: adapter({ fallback: 'index.html' }),
     }),
   ],
+  server: {
+    host: process.env.TAURI_DEV_HOST,
+  },
   test: {
     expect: { requireAssertions: true },
     projects: [

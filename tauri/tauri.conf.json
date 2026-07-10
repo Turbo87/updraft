@@ -4,8 +4,8 @@
   "identifier": "aero.updraft",
   "build": {
     "frontendDist": "../frontend/build",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm --filter @updraft/frontend dev",
+    "devUrl": "http://localhost:5177",
+    "beforeDevCommand": "pnpm --filter @updraft/frontend dev --port 5177",
     "beforeBuildCommand": "pnpm --filter @updraft/frontend build"
   },
   "app": {

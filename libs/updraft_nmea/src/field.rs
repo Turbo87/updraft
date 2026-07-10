@@ -10,6 +10,13 @@ pub fn field<'a>(fields: &[&'a [u8]], index: usize) -> Option<&'a [u8]> {
     fields.get(index).copied().filter(|field| !field.is_empty())
 }
 
+/// The bytes as owned text, with invalid UTF-8 replaced by the Unicode
+/// replacement character. NMEA carries ASCII, so this only matters for a
+/// corrupt field or sentence.
+pub fn text(bytes: &[u8]) -> Box<str> {
+    String::from_utf8_lossy(bytes).into_owned().into_boxed_str()
+}
+
 /// Parses bytes as `T`, or `None` if they are not valid UTF-8 or do not
 /// parse. NMEA numbers are ASCII, so a non-UTF-8 field simply reads as absent.
 pub fn parse_from_utf8<T: FromStr>(bytes: &[u8]) -> Option<T> {

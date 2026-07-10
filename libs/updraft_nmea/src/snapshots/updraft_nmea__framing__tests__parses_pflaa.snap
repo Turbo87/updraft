@@ -1,0 +1,42 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Pflaa(
+        Pflaa {
+            alarm_level: None,
+            relative_north: Some(
+                -1540 m,
+            ),
+            relative_east: Some(
+                -1020 m,
+            ),
+            relative_vertical: Some(
+                -1126 m,
+            ),
+            id_type: Some(
+                Icao,
+            ),
+            id: Some(
+                FlarmId(39103C!FJLKN),
+            ),
+            track: Some(
+                93°,
+            ),
+            turn_rate: Some(
+                0.0,
+            ),
+            ground_speed: Some(
+                33 m/s,
+            ),
+            climb_rate: Some(
+                4.9 m/s,
+            ),
+            aircraft_type: PistonAircraft,
+            no_track: None,
+            source: None,
+            rssi: None,
+        },
+    ),
+)

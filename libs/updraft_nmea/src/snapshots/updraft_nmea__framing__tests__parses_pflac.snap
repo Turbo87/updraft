@@ -1,0 +1,20 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Pflac(
+        Pflac {
+            query_type: Some(
+                Answer,
+            ),
+            item: Some(
+                "RADIOID",
+            ),
+            values: [
+                "1",
+                "A832ED",
+            ],
+        },
+    ),
+)

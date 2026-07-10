@@ -4,16 +4,62 @@ expression: opening
 ---
 [
     Frame(
-        Unknown(
-            Unknown {
-                sentence: "PFLAA,0,-1540,-1020,-1126,1,39103C!FJLKN,93,0,33,4.9,8",
+        Pflaa(
+            Pflaa {
+                alarm_level: None,
+                relative_north: Some(
+                    -1540 m,
+                ),
+                relative_east: Some(
+                    -1020 m,
+                ),
+                relative_vertical: Some(
+                    -1126 m,
+                ),
+                id_type: Some(
+                    Icao,
+                ),
+                id: Some(
+                    FlarmId(39103C!FJLKN),
+                ),
+                track: Some(
+                    93°,
+                ),
+                turn_rate: Some(
+                    0.0,
+                ),
+                ground_speed: Some(
+                    33 m/s,
+                ),
+                climb_rate: Some(
+                    4.9 m/s,
+                ),
+                aircraft_type: PistonAircraft,
+                no_track: None,
+                source: None,
+                rssi: None,
             },
         ),
     ),
     Frame(
-        Unknown(
-            Unknown {
-                sentence: "PFLAU,11,1,2,1,0,,0,,,",
+        Pflau(
+            Pflau {
+                rx_count: Some(
+                    11,
+                ),
+                tx_ok: Some(
+                    true,
+                ),
+                gps_status: Airborne,
+                power_ok: Some(
+                    true,
+                ),
+                alarm_level: None,
+                relative_bearing: None,
+                alarm_type: None,
+                relative_vertical: None,
+                relative_distance: None,
+                id: None,
             },
         ),
     ),
@@ -37,9 +83,40 @@ expression: opening
         ),
     ),
     Frame(
-        Unknown(
-            Unknown {
-                sentence: "PFLAA,0,-40770,-41860,8108,1,392AEB,101,0,233,0.0,0",
+        Pflaa(
+            Pflaa {
+                alarm_level: None,
+                relative_north: Some(
+                    -40770 m,
+                ),
+                relative_east: Some(
+                    -41860 m,
+                ),
+                relative_vertical: Some(
+                    8108 m,
+                ),
+                id_type: Some(
+                    Icao,
+                ),
+                id: Some(
+                    FlarmId(392AEB),
+                ),
+                track: Some(
+                    101°,
+                ),
+                turn_rate: Some(
+                    0.0,
+                ),
+                ground_speed: Some(
+                    233 m/s,
+                ),
+                climb_rate: Some(
+                    0 m/s,
+                ),
+                aircraft_type: Unknown,
+                no_track: None,
+                source: None,
+                rssi: None,
             },
         ),
     ),

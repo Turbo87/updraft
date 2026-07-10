@@ -36,7 +36,7 @@
 
 ## Sensor input & replay
 
-- [ ] **nmea** — `libs/updraft_nmea`: the line-based text parser — framing, checksum, resync, the always-decode structure, and generic GNSS (GGA/RMC/GSA) plus the cross-device `$PGRMZ` baro-altitude sentence, into typed structs. Vendor families land as sibling slices. _(needs: units, geo)_
+- [x] **nmea** — `libs/updraft_nmea`: the line-based text parser — framing, checksum, resync, the always-decode structure, and generic GNSS (GGA/RMC/GSA) plus the cross-device `$PGRMZ` baro-altitude sentence, into typed structs. Vendor families land as sibling slices. _(needs: units, geo)_
 - [ ] **lx-nmea** — LXNav sentences (`$LXWP0-4`, `$PLXV*`) as an `updraft_nmea` slice: baro altitude, IAS/TAS, TE vario, wind, settings read/write. _(needs: nmea)_
 - [ ] **openvario-nmea** — OpenVario/XCVario `$POV` sentence (pressure, airspeed, TE vario) as an `updraft_nmea` slice. _(needs: nmea)_
 - [ ] **cambridge-nmea** — Cambridge `!w` vario records as an `updraft_nmea` slice. _(needs: nmea)_
@@ -117,7 +117,7 @@
 
 ## Traffic
 
-- [ ] **flarm-nmea** — FLARM sentences (`$PFLAA`/`$PFLAU`/`$PFLAC`, alarm levels) as an `updraft_nmea` slice. _(needs: nmea)_
+- [x] **flarm-nmea** — FLARM sentences (`$PFLAA`/`$PFLAU`/`$PFLAC`, alarm levels) as an `updraft_nmea` slice. _(needs: nmea)_
 - [ ] **traffic-store** — traffic targets in core: aging, threat levels, relative geometry. _(needs: flarm-nmea, core-time)_
 - [ ] **traffic-on-map** — traffic symbols, threat colouring, labels, short track trails. _(needs: traffic-store, frontend-map)_
 - [ ] **radar-view** — dedicated FLARM radar page (relative-position rose). _(needs: traffic-store)_

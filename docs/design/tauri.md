@@ -1,8 +1,29 @@
 # The Tauri Shell
 
-The **Tauri** application is the primary shipping artifact for all five platforms. It embeds the Rust core in-process, hosts the frontend in the system webview, and bridges the two over Tauri's IPC using the shared message protocol (see [core.md](core.md)), plus a custom URI scheme for the bulk geodata path. It is also where platform-specific concerns live: permissions (location, Bluetooth), background execution, screen-keep-awake, and access to native device APIs.
+The **Tauri** application is the primary shipping artifact for all five platforms. It embeds the Rust core and runtime in-process, hosts the frontend in the system webview, and connects the two through the **embedded axum server** bound to loopback (see [server.md](server.md) and _The Embedded Server_ below) — the same transport, routes, and auth as everywhere else. There is no Tauri-IPC protocol bridge and no custom URI scheme for the bulk geodata path. The shell is where platform-specific concerns live: permissions (location, Bluetooth), background execution, screen-keep-awake, and access to native device APIs — a small residue of shell-mediated interactions (permission prompts, keep-awake, share-intent ingress) stays on Tauri plugins, driven by core effects rather than by the frontend.
 
 The shell is kept deliberately thin. Everything above it (core, protocol, frontend) is host-agnostic and covered by the main test layers, so the shell itself only needs a small smoke-test checklist (see [testing.md](testing.md)).
+
+## The Embedded Server
+
+The shell starts the axum server on an ephemeral loopback port and injects the resulting origin plus the session token into the webview at startup (initialization script or one-shot URL nonce — never obtainable by merely loading the page). One transport instead of two is a deliberate trade:
+
+- The alternative — Tauri's custom URI scheme — cannot stream response bodies (wry #1404), and Android's system webview fails follow-up byte-range requests against custom-scheme responses, which breaks PMTiles range reads exactly on the primary platform. The established community workaround for offline maps in Tauri on Android is an embedded loopback HTTP server, so the "fallback" _is_ this design.
+- [multi-client.md](multi-client.md) requires the pilot's app to host the axum server for copilot clients anyway — this design deletes a second transport rather than adding a server.
+- The protocol, its contract tests, and the Playwright suite cover the shipping transport exactly, on all five platforms.
+
+**Asset serving has two workable shapes**; the validation spike picks one:
+
+1. **Single origin:** the webview loads everything — page, API, geodata — from the embedded server. The built frontend is embedded in the binary (`rust-embed`-style; APK assets are not filesystem paths a `ServeDir` could serve). No CORS anywhere, and the Tauri and standalone hostings stay byte-identical.
+2. **Hybrid:** Tauri keeps serving the static frontend through its normal asset handler (fine over the custom scheme — app assets are small and need no Range requests), and the page talks cross-origin to the embedded server for API + state stream + bulk geodata only. No embedding and no change to Tauri's asset pipeline, at the cost of CORS/`Origin` allowances for the webview origin and an asset path that differs between hostings.
+
+Platform footwork this requires:
+
+- **Android:** release builds block cleartext HTTP below API 37 (Android 17 exempts loopback implicitly). Until then, one network-security-config file scopes `cleartextTrafficPermitted` to `127.0.0.1` — a release-checklist item, not a discovery.
+- **iOS:** nothing. ATS does not apply to IP-literal hosts, so `http://127.0.0.1:<port>` needs no exemption.
+- **Security:** a loopback listener is reachable by every local process, so all routes require the session token (see [server.md](server.md)).
+
+**Validation spike (early):** the one genuinely unproven part is lifecycle — the listener socket across **iOS suspend/resume** (iOS invalidates listening sockets on backgrounding) and **Android doze** alongside the foreground service. The spike runs at walking-skeleton time, before any Tauri protocol bridge would otherwise be built; nothing blocks on it, because the walking skeleton (server + browser) is transport-final either way. If the spike fails on iOS, the fallback is scoped: keep the embedded server on Android and desktop (where the custom scheme is broken) and accept custom-scheme transport with buffered GeoJSON and no PMTiles-by-range on iOS only.
 
 ## Safety Constraints
 

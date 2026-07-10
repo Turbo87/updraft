@@ -4,7 +4,7 @@ The system is offline-first: vector map tiles, terrain, airspace, and waypoints 
 
 ## Basemap (Vector Tiles)
 
-Offline-first via PMTiles/MBTiles packs stored on device, served to MapLibre through the bulk geodata path (see [core.md](core.md)).
+PMTiles or MBTiles packs are stored on the device and served to MapLibre through resource routes (see [runtime.md](runtime.md#resource-storage)).
 
 ## Terrain
 
@@ -29,12 +29,14 @@ In a later phase we will support in-app downloads from e.g. openAIP with update 
 ├── flights/     # IGC logs
 ├── state/       # in-flight resume snapshots (active task, logging status)
 ├── captures/    # raw NMEA captures + replay input recordings (opt-in)
-└── config/      # settings, device profiles, UI state
+└── config/      # shared settings, device profiles, display profiles
 ```
 
 Note that CUP files contain waypoints and (optionally) tasks too. These files should be supported in `waypoints/` and `tasks/` directories.
 
-Aircraft presets (glide polars plus mass, wingspan, and related data) ship built-in as embedded data; user aircraft profiles live in `aircraft/`.
+Aircraft presets, including glide polars, mass, and wingspan, ship as built-in data. User aircraft profiles live in `aircraft/`.
+
+Display profiles contain saved layouts, data-field pages, and other per-display settings. Temporary state such as the current map viewport or an open dialog is not stored here.
 
 ## Crash-Safe Persistence
 

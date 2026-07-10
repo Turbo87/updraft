@@ -5,13 +5,13 @@ How FLARM and OGN traffic data are handled, from source to screen.
 ## Sources
 
 - **FLARM** devices deliver nearby targets as `PFLAA` sentences and their own collision-alarm/status assessment as `PFLAU`, both at ~1 Hz, over whatever transport the device is connected through (see [devices.md](devices.md)).
-- **OGN** live positions are pulled over the network by an async adapter task (see [core.md](core.md) and _WeGlide Live_ below). This is an optional online enhancement: the system stays fully functional without connectivity, and OGN data arrives with multi-second latency.
+- **OGN** live positions are pulled over the network by an async adapter task (see [runtime.md](runtime.md#effects) and _WeGlide Live_ below). This is optional. The system stays fully functional without connectivity, and OGN data arrives several seconds late.
 
 ## The Traffic Table
 
-The core merges both sources into one table keyed by target ID. A glider visible through FLARM and OGN at the same time is a single target, with the direct FLARM data taking priority (lower latency, no network path). Targets age out visibly after a while. It should be easy to distinguish live FLARM targets, OGN targets, and outdated ones.
+The core merges all traffic observations into one table keyed by target ID. This is a merged data category, not a selected signal (see [devices.md](devices.md#source-selection-and-merging)). A glider visible through FLARM and OGN at the same time is one target. Direct FLARM data wins because it is faster and does not use the network. Old targets remain visible for a short time with a clear stale marker.
 
-The table is published on the `traffic` topic as a keyed collection (see [core.md](core.md)).
+The table is published as changes keyed by target ID (see [core.md](core.md)). Each target is a kinematic state vector (see [core.md](core.md#outputs)), not only a coordinate.
 
 A FLARMNet/OGN device database for resolving IDs to registrations/callsigns is used to enhance the table with additional information.
 
@@ -25,6 +25,6 @@ OGN data is pulled via the **WeGlide Live API** rather than the raw OGN/APRS str
 
 The endpoint is `GET https://live.weglide.org/api/locations?format=json`, optionally filtered with a `bbox=west|south|east|north` query parameter. It returns a JSON array of aircraft records: FLARM ID, display name, unix timestamp, longitude/latitude, altitude, bearing, and vario.
 
-## Open Questions
+## Display Extrapolation
 
-- **Dead reckoning:** FLARM updates at ~1 Hz and OGN much slower, so displayed targets need extrapolation (position + track + turn rate + ground speed + climb rate) to stay current. Undecided where it runs: in the core (every display shows identical positions, but extrapolated updates cross IPC and the frontend still interpolates for smooth rendering) or in the frontend as presentation smoothing at render time (raw target states plus timestamps cross IPC once, see the related rendering question in [frontend.md](frontend.md)).
+FLARM updates about once per second, and OGN is slower. The frontend estimates each target's current render position between updates (see [frontend.md](frontend.md)). It uses the kinematic state vector from the core. Every client starts from the same values, and the transport sends one message per target update instead of one per frame. The timestamp tells the frontend when data is old. This smoothing is only visual because traffic warnings come directly from FLARM alarms.

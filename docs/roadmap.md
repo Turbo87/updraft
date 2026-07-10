@@ -16,23 +16,23 @@
 - [x] **units** — custom newtype quantities (length/altitude, speed, vertical speed, angle to start; pressure, mass, temperature added when features need them), conversions, and unit-system formatting. Start minimal and grow. _(needs: workspace)_
 - [x] **geo** — lat/lon types, WGS84 distance/bearing/destination-point (via `geographiclib-rs`) with a haversine fast path, bounding boxes with antimeridian handling, `geo-types` interop behind a feature. Coordinate parsing/formatting is out of scope: each data-format crate parses its own wire format, display formatting is a UI concern. _(needs: units)_
 - [x] **egm96** — `libs/updraft_egm96`: EGM96 geoid undulation lookup (`separation`, ellipsoidal↔MSL helpers) via a bilinear 1° grid downsampled from the official 15′ `WW15MGH` source, with a feature-gated `downsample` generator and golden test. Used to convert bare-ellipsoidal GNSS altitude to MSL (and back for IGC). _(needs: geo)_
-- [ ] **core-state** — the central state struct, `Command`/`Query`/`Event` enums, `apply()` entry point, prioritized + coalescing input channel, serde serialization of the protocol. _(needs: units)_
-- [ ] **core-time** — time as an input: clock/tick commands, deterministic timer queue, simulated-time test helpers, monotonic flight-time tracking. _(needs: core-state)_
-- [ ] **core-subscriptions** — state-change notifications via named topics (last-value, keyed collection, events plus active set, reference) so UIs can subscribe to slices instead of full snapshots. _(needs: core-state)_
-- [ ] **core-workers** — async computation pipeline: rate-limited stages, rayon worker pool posting results back as input messages, per-worker-kind staleness invalidation. _(needs: core-state, core-time)_
+- [ ] **core-app** — the central `App` struct composed from per-domain modules, the `handle(Input) -> Update { changes, effects }` entry point, `query()`/`snapshot()`, and the `Input`/`Change`/`Effect`/`Command`/`Query` enums with serde serialization. No tokio/rayon/I-O dependencies in the core crate. _(needs: units)_
+- [ ] **core-time** — time as an input: monotonic timestamps stamped by adapters from a single process-wide epoch (no `Clock` trait), deterministic timer queue with earliest-deadline in `Update`, simulated-time test helpers, monotonic flight-time tracking. _(needs: core-app)_
+- [ ] **core-runtime** — the shared host runtime used by server and tauri alike: bounded FIFO input queue (block-on-full), effect executor (dedicated I/O thread, per-kind workers, async tasks), snapshot+changes fan-out with atomic subscribe, observable slow-subscriber drop, panic supervision, and queue-depth/handler-duration instrumentation. _(needs: core-app)_
+- [ ] **core-workers** — the async computation seam: compute effects carrying input snapshots, dirty-flag + one-in-flight + epoch scheduling, `JobFailed` on worker panic, persistent stateful workers (epoch bump resets state). First heavy tenants: live scoring and task optimization. _(needs: core-runtime, core-time)_
 
 ## Transports & walking skeleton
 
-- [ ] **server-protocol** — axum: REST endpoints for queries/commands + state-change stream (WebSocket or SSE, whichever works best in practice), speaking the core protocol. _(needs: server-scaffold, core-subscriptions)_
-- [ ] **server-auth** — session token required on all routes (commands, state stream, bulk data), `Host` allowlist, `Origin` validation on stream upgrades, strict CORS, password gate for non-loopback binding. _(needs: server-protocol)_
+- [ ] **server-protocol** — axum: REST endpoints for queries/commands + one multiplexed SSE state stream (snapshot, then changes; keep-alive enabled), speaking the core protocol. _(needs: server-scaffold, core-runtime)_
+- [ ] **server-auth** — session token required on all routes (commands, state stream, bulk data; query-param/cookie token for the SSE stream since EventSource cannot set headers), `Host` allowlist, `Origin` validation on stream subscriptions, strict CORS, password gate for non-loopback binding. _(needs: server-protocol)_
 - [x] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the axum server. _(needs: server-scaffold)_
-- [ ] **frontend-protocol** — TypeScript protocol types (generated from the Rust types, committed, with a CI drift check), state-stream client, Svelte store bridging core state into components. _(needs: frontend-scaffold, server-protocol)_
+- [ ] **frontend-protocol** — TypeScript protocol types (generated from the Rust types, committed, with a CI drift check), state-stream client with error handling and a data-age/staleness surface, Svelte stores bridging core state into components. _(needs: frontend-scaffold, server-protocol)_
 - [x] **frontend-map** — maplibre-gl map page with interim online basemap (OpenFreeMap, replaced by offline packs in basemap-packs), own-position symbol at a fixed placeholder position, manual pan/zoom. _(needs: frontend-scaffold)_
 - [ ] **map-position** — own-position symbol driven by core state. Bulk geodata (tiles, overlays) is served as map sources by URL reference, never pushed through the message channel. _(needs: frontend-map, frontend-protocol)_
 - [x] **tauri-scaffold** — Tauri shell (desktop first) hosting the frontend in the system webview; `pnpm tauri dev`/`build` loop and Linux CI build. _(needs: frontend-scaffold)_
-- [ ] **tauri-protocol** — Tauri IPC bridge embedding the core in-process and exposing the same protocol as the server (commands/queries + state-change stream). _(needs: frontend-protocol, tauri-scaffold)_
-- [ ] **bulk-data** — bulk geodata serving: native HTTP routes in the server and `updraft://` URI scheme in the Tauri shell, streaming tiles/GeoJSON as version-counted resources referenced by URL. _(needs: server-protocol, tauri-protocol)_
-- [ ] **e2e-scaffold** — Playwright suite booting server + frontend, scripting position commands, asserting the map shows them. Establishes the CI rendering harness: software GL (SwiftShader/llvmpipe) for headless MapLibre and a `testMode` flag disabling map animation so tests await explicit "map idle" / "data version rendered" signals. Tests use a minimal inline map style instead of online tile services. This is the walking skeleton milestone. _(needs: map-position)_
+- [ ] **tauri-server** — Tauri shell embedding the core, runtime, and axum server on an ephemeral loopback port; shell-injected session token; asset shape (single-origin vs hybrid) per the spike; Android cleartext-loopback release config; includes the suspend/resume/doze lifecycle spike (see [design/tauri.md](design/tauri.md)). _(needs: frontend-protocol, tauri-scaffold, server-auth)_
+- [ ] **bulk-data** — bulk geodata serving: HTTP routes in the axum server (standalone and embedded), streaming tiles/GeoJSON as version-counted resources referenced by URL. _(needs: server-protocol, tauri-server)_
+- [ ] **e2e-scaffold** — Playwright suite booting server + frontend in its own CI job (cached/prebuilt server binary), scripting position inputs through the simulation seam (which accepts injected `observed_at`, so e2e time is simulated), asserting the map shows them. Establishes the CI rendering harness: software GL (SwiftShader/llvmpipe) for headless MapLibre and a `testMode` flag disabling map animation so tests await explicit "map idle" / "data version rendered" signals. Tests use a minimal inline map style instead of online tile services. This is the walking skeleton milestone. _(needs: map-position)_
 
 ## Sensor input & replay
 
@@ -43,15 +43,15 @@
 - [ ] **io-adapters** — adapter trait for byte-stream devices, TCP client/server and UDP adapters, fake adapter for tests; per-connection parser selection (validation-driven framing detection with manual override), the passive capability observer, and mapping parsed messages into core state (applying per-device corrections); wire NMEA input into core position state. _(needs: nmea, core-time)_
 - [ ] **gps-status** — fix quality, satellite info, positioning-source selection/fallback in state; status indicator in the UI. _(needs: io-adapters)_
 - [ ] **igc-read** — `libs/updraft_igc`: parser for A/H/B/E/L records and extensions. _(needs: units, geo)_
-- [ ] **replay** — replay engine feeding the core typed messages from IGC files at variable speed, bypassing the parser (byte-capture replay is a devmode tool); used for simulator mode, demo mode, and as the e2e fixture mechanism, migrating the e2e suite from scripted commands to replay fixtures. Input-log replay records external I/O results verbatim but recomputes pure worker results and injects them at their recorded position. _(needs: igc-read, core-time)_
-- [ ] **input-recording** — opt-in recording of the core's input sequence to `captures/`, written incrementally like the IGC log; snapshot-seeded replay ("seed from snapshot X, replay from position N") alongside replay-from-empty. _(needs: replay)_
+- [ ] **replay** — replay engine feeding the core typed messages from IGC files at variable speed, bypassing the parser (byte-capture replay is a devmode tool); used for simulator mode, demo mode, and as the e2e fixture mechanism, migrating the e2e suite from scripted commands to replay fixtures. Input-log replay applies recorded inputs — external I/O and worker results alike — verbatim; recompute-and-compare runs as a CI verification mode with per-result divergence hashes. _(needs: igc-read, core-time)_
+- [ ] **input-recording** — opt-in recording of the core's input sequence to `captures/`, written incrementally like the IGC log, with worker payloads in a droppable compressed sidecar stream; snapshot-seeded replay ("seed from snapshot X, replay from position N") alongside replay-from-empty. _(needs: replay)_
 - [ ] **flight-modes** — takeoff/landing detection, cruise/circling detection, flight timer; mode exposed in state and shown in UI. _(needs: io-adapters)_
 - [ ] **vario-values** — TE/netto/relative vario, integrator and thermal averagers computed in core from GPS + baro inputs. _(needs: nmea, flight-modes)_
 
 ## Glide computer
 
 - [x] **polar** — glide polar model (quadratic coefficients, ballast/bugs degradation), a starter polar library, speed-to-fly and MacCready ring math. _(needs: units)_
-- [ ] **glide-settings** — MacCready, ballast, bugs, safety heights / safety MC: commands, state, and a settings dialog. _(needs: polar, core-state, frontend-protocol)_
+- [ ] **glide-settings** — MacCready, ballast, bugs, safety heights / safety MC: commands, state, and a settings dialog. _(needs: polar, core-app, frontend-protocol)_
 - [ ] **wind-circling** — wind estimation from circling drift; wind vector in state, manual override command, wind display. _(needs: flight-modes)_
 - [ ] **wind-zigzag** — airspeed-based zigzag/EKF wind estimation, layered wind statistics, source blending. _(needs: wind-circling, lx-nmea)_
 - [ ] **final-glide** — wind-corrected arrival altitude for an arbitrary target (Mc and Mc-0), safety-height aware. _(needs: glide-settings, wind-circling)_
@@ -64,8 +64,8 @@
 ## Waypoints & navigation
 
 - [ ] **cup** — `libs/updraft_cup`: SeeYou CUP waypoint/task file parser (CUPX and other formats come later). _(needs: units, geo)_
-- [ ] **waypoint-db** — core waypoint store: multiple files, landable distinction, search, nearest-N queries. _(needs: cup, core-state)_
-- [ ] **file-import** — file import via OS file picker and share intent, routed by file type to the matching store. _(needs: waypoint-db, tauri-protocol)_
+- [ ] **waypoint-db** — core waypoint store: multiple files, landable distinction, search, nearest-N queries. _(needs: cup, core-app)_
+- [ ] **file-import** — file import via OS file picker and share intent, routed by file type to the matching store. _(needs: waypoint-db, tauri-server)_
 - [ ] **cupx** — SeeYou CUPX waypoint files (CUP plus embedded images). _(needs: cup)_
 - [ ] **openaip-waypoints** — OpenAIP airport/waypoint parser. _(needs: waypoint-db)_
 - [ ] **gpx-waypoints** — GPX waypoint parser. _(needs: waypoint-db)_
@@ -91,7 +91,7 @@
 
 - [ ] **geo-shapes** — cylinders, sectors, lines, arcs, polygons; point-inside tests and boundary-crossing detection. Shared by observation zones and airspace. _(needs: geo)_
 - [ ] **openair** — `libs/updraft_openair`: OpenAir airspace file parser. _(needs: geo-shapes)_
-- [ ] **airspace-store** — core airspace state: classes, altitude/class filters, per-zone enable/disable. _(needs: openair, core-state)_
+- [ ] **airspace-store** — core airspace state: classes, altitude/class filters, per-zone enable/disable. _(needs: openair, core-app)_
 - [ ] **openaip-airspace** — OpenAIP airspace parser. _(needs: airspace-store)_
 - [ ] **cub-airspace** — SeeYou CUB airspace parser. _(needs: airspace-store)_
 - [ ] **sua-airspace** — SUA airspace parser. _(needs: airspace-store)_
@@ -141,7 +141,7 @@
 - [ ] **snail-trail** — flight trail with length modes and colouring by vario/altitude/speed. _(needs: frontend-map, vario-values)_
 - [ ] **datafield-pages** — multiple data-field pages/layouts, per-flight-mode auto switching, bottom nav-box bar. _(needs: datafields-v1, flight-modes)_
 - [ ] **units-settings** — per-quantity unit configuration UI wired through all displayed values. _(needs: datafields-v1)_
-- [ ] **settings-persistence** — configuration profiles (per pilot/per aircraft), settings persistence adapter, profile switching. _(needs: core-state)_
+- [ ] **settings-persistence** — configuration profiles (per pilot/per aircraft), settings persistence adapter, profile switching. _(needs: core-app)_
 - [ ] **aircraft-profiles** — move the built-in catalogue out of the polar store into `updraft_aircraft_presets` (aircraft presets); aircraft profiles created from a preset or from scratch, with per-field overrides, ballast/weights, and registration/comp ID. _(needs: settings-persistence, glide-settings)_
 - [ ] **themes** — day/night/high-contrast modes, sunlight-readability contrast targets validated outdoors, auto-brightness hooks. _(needs: frontend-scaffold)_
 - [x] **i18n** — localization scaffolding (Paraglide JS) + German translation; land before untranslated strings accumulate. _(needs: frontend-scaffold)_
@@ -158,10 +158,10 @@
 
 ## Online services
 
-- [ ] **connectivity** — online/offline detection and state in core, offline-first hooks (status indicator, queue-and-retry for uploads). _(needs: core-state)_
+- [ ] **connectivity** — online/offline detection and state in core, offline-first hooks (status indicator, queue-and-retry for uploads). _(needs: core-app)_
 - [ ] **basemap-packs** — offline basemap packs (PMTiles or MBTiles, format TBD) stored on device, served to MapLibre through the bulk geodata path. _(needs: bulk-data, frontend-map)_
 - [ ] **data-downloads** — in-app download manager for waypoint / airspace / map / DEM data with repository manifest and offline caching. _(needs: connectivity)_
-- [ ] **metar-taf** — METAR/TAF fetch, decode, map flags, QNH extraction. _(needs: core-state, frontend-map)_
+- [ ] **metar-taf** — METAR/TAF fetch, decode, map flags, QNH extraction. _(needs: core-app, frontend-map)_
 - [ ] **weather-overlays** — rain radar and satellite imagery overlays with time slider; forecast overlays (SkySight/TopMeteo) behind the same interface. _(needs: frontend-map)_
 - [ ] **wind-aloft** — multi-level forecast wind + live station wind display. _(needs: weather-overlays, wind-circling)_
 - [ ] **notam** — NOTAM download rendered as airspace, filters, details. _(needs: airspace-store)_
@@ -180,8 +180,8 @@
 - [ ] **climb-stats** — per-climb history, thermal statistics, leg statistics pages. _(needs: thermal-assistant, task-engine)_
 - [ ] **analysis-pages** — wind vs altitude, glide polar analysis, vario histogram, temperature trace. _(needs: barograph)_
 - [ ] **cross-section** — airspace + terrain side-view profile ahead. _(needs: agl-terrain, airspace-store)_
-- [ ] **contest-optimizer** — `libs/updraft_contest`: OLC/WeGlide/FAI rule sets, optimal path over the flown trace. _(needs: geo)_
-- [ ] **live-scoring** — in-flight optimization: score/achieved-distance data fields, optimal path display. _(needs: contest-optimizer, datafields-v1)_
+- [ ] **contest-optimizer** — `libs/updraft_contest`: OLC/WeGlide/FAI rule sets, optimal path over the flown trace; designed for incremental re-optimization (retains state between rounds over the growing trace). _(needs: geo)_
+- [ ] **live-scoring** — in-flight optimization: score/achieved-distance data fields, optimal path display; runs as a stateful async worker, the compute seam's first heavy tenant (see [design/core.md](design/core.md)). _(needs: contest-optimizer, datafields-v1, core-workers)_
 - [ ] **task-analysis** — post-flight per-leg statistics and AAT rendering. _(needs: task-engine, barograph)_
 
 ## Devices & platforms
@@ -189,10 +189,10 @@
 - [ ] **serial-adapter** — serial/TTY adapter for desktop platforms with baud probing. _(needs: io-adapters)_
 - [ ] **terminal-monitor** — terminal monitor page for I/O debugging. _(needs: io-adapters)_
 - [ ] **devmode** — hidden developer mode (seven-tap unlock): byte-capture replay transport through the real parser, map rendering and data loading debug options. _(needs: frontend-protocol, io-adapters)_
-- [ ] **bluetooth** — Bluetooth SPP adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
-- [ ] **ble** — Bluetooth BLE adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-protocol)_
+- [ ] **bluetooth** — Bluetooth SPP adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-server)_
+- [ ] **ble** — Bluetooth BLE adapter via Tauri plugin (per-platform permissions). _(needs: io-adapters, tauri-server)_
 - [ ] **usb-otg** — USB-serial adapter via Android OTG. _(needs: serial-adapter, tauri-android)_
-- [ ] **internal-sensors** — internal GPS and pressure sensor input via Tauri plugins, injected as typed messages, ranked below external devices; always-on by default (WeGlide-valid IGC logs) with a battery-saver setting. _(needs: core-time, tauri-protocol)_
+- [ ] **internal-sensors** — internal GPS and pressure sensor input via Tauri plugins, injected as typed messages, ranked below external devices; always-on by default (WeGlide-valid IGC logs) with a battery-saver setting. _(needs: core-time, tauri-server)_
 - [ ] **device-manager** — devices screen (user-ordered priority list), multi-device value merging, priority/fallback, NMEA pass-through/output. _(needs: io-adapters, gps-status)_
 - [ ] **device-configs** — named device-config snapshots (device entries + priority order), aircraft-config linkage, manual save/load. _(needs: device-manager, aircraft-profiles)_
 - [ ] **vendor-protocols** — driver/personality framework: sentence-family drivers, bidirectional settings sync with per-setting preferences, one-shot outbound operations, exclusive binary sessions. _(needs: device-manager)_
@@ -207,7 +207,7 @@
 - [ ] **mobile-emulator-tests** — automated Android emulator build/launch smoke-test in CI. _(needs: tauri-android, e2e-scaffold)_
 - [ ] **sim-mode** — on-device simulator mode (fly without GPS): manual flying controls, direct position/altitude setting; activating sim/replay disables IGC logging and online data (weather, OGN). _(needs: replay)_
 - [ ] **secondary-clients** — primary/secondary operation: auth, roles & permissions for remote frontends, repeater display mode. _(needs: server-protocol, settings-persistence)_
-- [ ] **audio-alerts** — native audio plugin for airspace/traffic warning playback, driven directly from the core; ships with the first release so airspace warnings are audible from day one. _(needs: airspace-warnings, tauri-protocol)_
+- [ ] **audio-alerts** — native audio plugin for airspace/traffic warning playback, driven directly from the core; ships with the first release so airspace warnings are audible from day one. _(needs: airspace-warnings, tauri-server)_
 - [ ] **battery-monitoring** — internal/external battery and voltage state. _(needs: device-manager)_
 - [ ] **switch-inputs** — gear/flap warning digital inputs. _(needs: device-manager)_
 - [ ] **radio** — radio frequency management via drivers. _(needs: vendor-protocols)_

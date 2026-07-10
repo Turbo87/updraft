@@ -2,7 +2,7 @@
 
 **Updraft** is a multi-platform soaring flight computer with a modern UI/UX in the spirit of WeGlide Copilot and Enroute Flight Navigation. It targets the full XCSoar feature envelope long-term, but ships incrementally, starting with rock-solid situational awareness.
 
-**Architecture in one sentence:** a Rust core that owns all state, computation, and device I/O, exposed through a transport-agnostic API consumed by a SvelteKit + MapLibre GL JS frontend, packaged via Tauri on mobile and desktop, but equally runnable as a plain HTTP/WebSocket/SSE server serving the same frontend in a browser.
+**Architecture in one sentence:** a Rust core that owns all state, computation, and device I/O, exposed through a single HTTP + SSE transport (axum) that the Tauri shell embeds on mobile and desktop and that runs standalone for any modern browser, consumed by a SvelteKit + MapLibre GL JS frontend.
 
 These documents describe the target design and architecture. The [roadmap.md](../roadmap.md) file tracks the implementation status.
 
@@ -33,24 +33,25 @@ These documents describe the target design and architecture. The [roadmap.md](..
 ## Repository Shape
 
 ```
-core/        Rust core library: state, messages, domain logic
+core/        Rust core library: state, messages, domain logic (no I/O, no threads)
+runtime/     shared host runtime: input queue, effect executors, state-stream fan-out
+server/      axum server: the single transport (REST + SSE + bulk data), standalone or embedded
+tauri/       Tauri shell for Android/iOS/Linux/macOS/Windows (embeds the server)
 libs/        Rust libraries (e.g. NMEA parsing, geodesy, units, …)
-server/      axum server (REST + state stream, optional static hosting)
-tauri/       Tauri shell for Android/iOS/Linux/macOS/Windows
 frontend/    SvelteKit + maplibre-gl-js application
 e2e/         Playwright test suite and replay fixtures
 docs/        Documentation
 ```
 
-The exact crate/package layout may evolve, but the dependency direction is fixed: `frontend`, `server`, and `tauri` depend on `core`'s message protocol, while `core` depends on nothing above it.
+The exact crate/package layout may evolve (the runtime may start as a crate next to `core/` rather than a top-level directory), but two rules are fixed: `frontend`, `server`, and `tauri` depend on `core`'s message protocol while `core` depends on nothing above it, and the `core` crate never depends on tokio, rayon, or any I/O library — threads and I/O live in the runtime and hosts (see [core.md](core.md)).
 
 **Crate policy:** before writing any of the small parser/geometry crates, evaluate existing crates.io options and prefer contributing upstream over forking. Own crates live in `libs/updraft_<name>` directories.
 
 ## Documents
 
-- [core.md](core.md): the Rust core, its message protocol, and the bulk geodata path
-- [server.md](server.md): the axum host, headless mode, and its security model
-- [tauri.md](tauri.md): the Tauri shell, mobile plugins, platform risks, and native safety constraints
+- [core.md](core.md): the Rust core, its runtime, effects, message protocol, and the bulk geodata path
+- [server.md](server.md): the axum server (the single transport), headless mode, and its security model
+- [tauri.md](tauri.md): the Tauri shell, the embedded server, mobile plugins, platform risks, and native safety constraints
 - [frontend.md](frontend.md): the SvelteKit app, map, interaction model, and platform behaviors
 - [devices.md](devices.md): device I/O, parsing, and auto-detection
 - [simulator.md](simulator.md): simulator mode and IGC replay

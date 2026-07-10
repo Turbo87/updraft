@@ -28,7 +28,7 @@ The platform-specific sides (Bluetooth plugins, foreground service) live in the 
 
 ## Internal Sensors
 
-Internal sensors (GPS, pressure sensor) skip the transport and parser machinery entirely: they produce typed messages directly onto the core's input channel. In the source priority they always rank below external devices. The platform-specific wiring lives in the Tauri shell (see [tauri.md](tauri.md)).
+Internal sensors (GPS, pressure sensor) skip the transport and parser machinery entirely: they produce typed messages directly onto the core's input queue. In the source priority they always rank below external devices. The platform-specific wiring lives in the Tauri shell (see [tauri.md](tauri.md)).
 
 A vario derived from the internal pressure sensor is not compensated for airspeed changes (no total-energy compensation), so it can only ever serve as a backup for a real vario device.
 
@@ -57,7 +57,7 @@ The parsers are **hand-rolled**, not built on a parser-combinator or regex libra
 
 Parser output is **wire-faithful**: one typed message per sentence, every wire field represented and parsed into typed quantities (via `updraft_units`), but with no device-specific fix-ups. A device that reports LX wind with a flipped direction is parsed verbatim; the correction is a per-device config flag applied _downstream_ of the parser, never inside it. This keeps the parser a pure, losslessly-testable function.
 
-Between the parser and the core's input channel, parsed messages are normalised and per-device corrections applied, then delivered as the typed messages the core consumes (the same channel internal sensors and replay feed). Multi-device merging and source priority operate on a per-category view ("position", "pressure altitude", "traffic", …), so they never need to know which framing or vendor produced a value. Whether the core consumes a distinct vendor-agnostic semantic message set or the wire-faithful messages more directly is an [open question](#open-questions).
+Between the parser and the core's input queue, parsed messages are normalised and per-device corrections applied, then delivered as the typed messages the core consumes (the same queue internal sensors and replay feed). The core's input shape is **semantic messages carrying provenance**: vendor-agnostic observations (position, pressure altitude, traffic, …) tagged with the source device ID and a raw-sentence reference, so the reducers stay vendor-agnostic while devmode diagnostics and the capability observer retain full fidelity — vendor wire shapes never cross into the core. Multi-device merging and source priority operate on the same per-category view, so they never need to know which framing or vendor produced a value.
 
 Some operations switch a device out of normal parsing entirely: a driver can claim the stream for an **exclusive binary session** for the duration of an operation such as a flight-log download (FLARM's binary IGC protocol being the canonical case), after which normal framing and parsing resume. This mode is part of the target design; because the parser is called rather than owning the connection, the connection simply stops feeding the parser and routes raw bytes to the session for its duration. The detailed protocol is deferred.
 
@@ -98,10 +98,6 @@ What persists per device is deliberately slim: the transport configuration (Blue
 A **device config** is a named, saveable snapshot of the whole setup: the device entries and their priority order. Loading a device config replaces the entire current list. An aircraft config can reference a device config, so switching aircraft automatically connects to that aircraft's panel. A config doesn't have to be attached to an aircraft: a pilot who carries an LX Nano across gliders saves a device config for it and loads it manually.
 
 The devices screen manages all of this: connection status per device, priority reordering, manual overrides, and config save/load.
-
-## Open Questions
-
-- **Core input shape.** Whether the core consumes a distinct vendor-agnostic semantic message set (clean, but potentially hides detail the core wants) or the wire-faithful typed messages more directly (richer, but the core learns vendor shapes), or a middle ground that is semantic yet carries provenance, is undecided.
 
 ## Testing
 

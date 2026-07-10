@@ -1,8 +1,10 @@
 # The Frontend
 
-The UI is a single **SvelteKit** application built as a pure SPA (`adapter-static`, no SSR), served by Tauri's asset handler or by `updraft-server`. It contains presentation logic only: it renders state received from the core and translates user interactions into commands. It does not compute domain values itself, unless strictly required for performance reasons. The number shown in a data field is computed in the core, so it is identical on every platform and every connected device.
+The UI is one **SvelteKit** application built as a static single-page app. The axum server or Tauri asset handler serves it, depending on the result of the lifecycle test (see [tauri.md](tauri.md)). The frontend renders state from the core and turns user actions into commands. Domain values are calculated in the core unless render performance requires client-side work. A data field therefore shows the same value on every platform and connected display.
 
-Because the frontend speaks only the core's message protocol, the same codebase runs inside the Tauri shell, served by the axum server, or against a mocked message layer in component tests. Only the transport binding differs per build (see _State Model_ below).
+Because the frontend speaks only the core's message protocol — and there is only one production transport, the axum server's HTTP + SSE surface (see [server.md](server.md)) — the same build runs inside the Tauri shell and in any browser, or against a mocked client in component tests.
+
+**Nothing that must survive a restart lives in browser-origin storage** such as localStorage, IndexedDB, or OPFS. The embedded server may use a different origin after each start. Shared flight state belongs to the core. Saved layouts and other per-display settings live in Rust-side display-profile storage. The frontend owns only temporary presentation state such as the viewport, open dialogs, and unfinished edits.
 
 ## Stack
 
@@ -14,11 +16,11 @@ Because the frontend speaks only the core's message protocol, the same codebase 
 
 ## State Model
 
-A single `UpdraftClient` TypeScript interface abstracts the transport (Tauri IPC or HTTP/stream). The implementation is selected at **build time** (e.g. via an environment variable in the Vite config), so each build contains exactly one transport and the other is tree-shaken away.
+A single `UpdraftClient` TypeScript interface wraps the transport (HTTP requests plus the SSE state stream). There is only one production implementation, because there is only one transport; the interface exists so tests can substitute a fake client. The stream client handles errors explicitly and surfaces **data age** — a stalled or dead stream must show as staleness in the UI, never as a silently frozen map.
 
-On top of it, thin reactive stores: each subscription topic becomes a rune-backed store (`$state` updated by the topic decoder), and components consume them declaratively. No component ever talks to a transport directly, so the whole UI is testable against a fake client. Commands are async functions with generated types. Optimistic UI only where harmless (e.g. settings toggles).
+On top of it, thin reactive stores: each change group becomes a rune-backed store (`$state` updated by the stream decoder, seeded from the snapshot), and components consume them declaratively. No component ever talks to the transport directly, so the whole UI is testable against a fake client. Commands are async functions with generated types. Optimistic UI only where harmless (e.g. settings toggles).
 
-**Hot path exception:** ownship position updates bypass Svelte reactivity and write straight to the map at frame rate. Reactivity is for UI chrome, not the 10 Hz path.
+**Moving objects:** the core publishes the ownship and traffic as kinematic state vectors (see [core.md](core.md#outputs)). The frontend uses these values to estimate the render position between updates. It writes the position straight to the map at frame rate, outside Svelte reactivity. Smooth rendering therefore does not need frame-rate messages from the core.
 
 ## Map
 
@@ -32,7 +34,7 @@ One fullscreen MapLibre instance is the app's centerpiece. Layers, bottom-up:
 6. traffic symbols
 7. ownship symbol
 
-Bulk geodata (tiles, overlays) arrives as map sources by URL reference, never through the message channel (see [core.md](core.md)).
+Bulk map data such as tiles and overlays arrives through resource URLs, never through the state stream (see [runtime.md](runtime.md#resource-storage)).
 
 The map is integrated via [svelte-maplibre-gl](https://github.com/MIERUNE/svelte-maplibre-gl): declarative source/layer components for the stack above, with the raw map and sources reachable through `bind:map`/`bind:source` for the hot path. `<MapLibre>` must set `autoloadGlobalCss={false}` and import the MapLibre CSS locally, because the default loads it from a CDN at runtime, which violates offline-first.
 

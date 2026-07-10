@@ -1,0 +1,21 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Plxvc(
+        Plxvc {
+            key: Some(
+                "RADIO",
+            ),
+            message_type: Some(
+                Answer,
+            ),
+            values: [
+                "COMM",
+                "128800",
+                "CELJE",
+            ],
+        },
+    ),
+)

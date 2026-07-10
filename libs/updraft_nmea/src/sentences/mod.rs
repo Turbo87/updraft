@@ -3,6 +3,7 @@
 mod flarm;
 mod garmin;
 mod gnss;
+mod lx;
 
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
@@ -12,6 +13,7 @@ pub use garmin::{Pgrmz, PgrmzFixDimension};
 pub use gnss::{
     Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, PositioningMode, Rmc, RmcStatus,
 };
+pub use lx::Lxwp0;
 
 use crate::message::{Message, Talker, Unknown};
 
@@ -26,6 +28,7 @@ pub fn parse_body(body: &[u8]) -> Message {
         b"PFLAU" => return Message::Pflau(Pflau::parse(&fields(rest))),
         b"PFLAA" => return Message::Pflaa(Pflaa::parse(&fields(rest))),
         b"PFLAC" => return Message::Pflac(Pflac::parse(&fields(rest))),
+        b"LXWP0" => return Message::Lxwp0(Lxwp0::parse(&fields(rest))),
         _ => {}
     }
 

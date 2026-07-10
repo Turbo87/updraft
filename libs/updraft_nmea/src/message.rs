@@ -2,7 +2,7 @@
 //! shared across sentence families.
 
 use crate::field::text;
-use crate::sentences::{Gga, Gsa, Pflaa, Pflac, Pflau, Pgrmz, Rmc};
+use crate::sentences::{Gga, Gsa, Lxwp0, Pflaa, Pflac, Pflau, Pgrmz, Rmc};
 
 /// A single decoded NMEA sentence, faithful to the wire.
 #[derive(Clone, Debug, PartialEq)]
@@ -22,6 +22,8 @@ pub enum Message {
     Pflaa(Pflaa),
     /// FLARM configuration read/set/answer (`PFLAC`).
     Pflac(Pflac),
+    /// LXNAV main flight data (`LXWP0`).
+    Lxwp0(Lxwp0),
     /// A well-formed sentence of a type this crate does not decode.
     Unknown(Unknown),
 }

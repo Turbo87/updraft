@@ -23,6 +23,6 @@ pub use framing::{RejectReason, Step, parse};
 pub use message::{Message, Talker, Unknown};
 pub use sentences::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Gga, GgaFixQuality, Gsa,
-    GsaFixType, GsaSelectionMode, Pflaa, Pflac, PflacQueryType, Pflau, PflauAlarmType,
+    GsaFixType, GsaSelectionMode, Lxwp0, Pflaa, Pflac, PflacQueryType, Pflau, PflauAlarmType,
     PflauGpsStatus, Pgrmz, PgrmzFixDimension, PositioningMode, Rmc, RmcStatus,
 };

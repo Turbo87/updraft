@@ -65,7 +65,7 @@ async fn run(mut app: App, mut requests: mpsc::Receiver<Request>) {
                 let update = app.handle(input);
                 let elapsed = started.elapsed();
                 if elapsed >= SLOW_HANDLER_THRESHOLD {
-                    tracing::warn!(?elapsed, "slow input handler");
+                    tracing::warn!(?elapsed, queue_depth = requests.len(), "slow input handler");
                 }
 
                 update.effects.into_iter().for_each(execute_effect);

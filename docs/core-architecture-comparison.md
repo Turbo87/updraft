@@ -113,31 +113,49 @@ plain bounded FIFO suffices, and the review supports them:
 - Keep the escape hatch documented (second command channel with biased poll, a host-side
   change) so the deferred decision doesn't become a forgotten one.
 
-### 3. Computation & workers — sync-first (codex-core), with fbqjgl's scheme as the documented escalation path; reject the computation graph
+### 3. Computation & workers — sync by default, but the async seam is part of the skeleton; reject the computation graph
 
 - **Reject qk989e's static computation graph.** It is framework-building for what its own
   cadence table shows is ~8 synchronous values (cheaper to recompute unconditionally than
-  to track dirtiness for) plus exactly **3 async jobs** (reach, task optimization, wind
-  refinement). Its hidden cost — per-state-field change detection — is never priced. Keep
-  its *vocabulary* (cadence classes, per-node invalidation reasoning, per-worker devmode
-  stats) as convention, not machinery.
-- **Adopt codex-core's default**: compute synchronously after relevant inputs; move a
-  calculation to a background worker only when measured. Amendment (from the codex-core
-  review): this deferral is only sound if the promised queue-depth/handler-duration
-  instrumentation lands **with the first real sensor adapter**, and the docs should name a
-  warning-latency budget (e.g. PFLAU-to-audio) that triggers escalation. Main's
+  to track dirtiness for) plus a handful of async jobs (reach, task optimization/live
+  scoring, wind refinement). Its hidden cost — per-state-field change detection — is
+  never priced. Keep its *vocabulary* (cadence classes, per-node invalidation reasoning,
+  per-worker devmode stats) as convention, not machinery.
+- **Sync by default, but build the async seam from the start.** codex-core's "background
+  work only after profiling demonstrates a need" is too strong: WeGlide live-score
+  calculation is *known* to be slow, and other task calculations are expected to follow —
+  these are day-one tenants of the async path, not a hypothetical escalation. So the
+  seam (spawn effect carrying an input snapshot, result re-entering as an input) belongs
+  in the core skeleton, while each individual calculation still starts synchronous and
+  moves behind it per known cost or measurement. The codex-core review's amendment
+  stands: queue-depth/handler-duration instrumentation lands **with the first real sensor
+  adapter**, and the docs name a warning-latency budget (e.g. PFLAU-to-audio). Main's
   cadence/cost table (every-fix / every-vario / ~1 Hz / debounced-async) should be
   restored as the domain's cost model — codex-core deleted the rationale along with the
   mechanism.
-- **When a job does go async, use fbqjgl's scheme**, which subsumes both main's
-  per-worker-kind invalidation predicates and codex-core's generation ID: dirty flag + at
-  most one job in flight per kind + results applied by default + a per-kind **epoch
-  counter** bumped by semantically breaking changes (task replaced, position
-  discontinuity). Two amendments: (a) a worker panic must be converted by the runtime
-  into a `JobFailed { kind, epoch }` input — with one-in-flight bookkeeping, a lost
-  completion otherwise wedges that worker kind for the rest of the flight; (b) "results
-  are always applied" needs the discontinuity exception spelled out, because teleports are
-  a *supported interaction* here (simulator drag, replay seek).
+- **For async jobs, use fbqjgl's scheme**, which subsumes both main's per-worker-kind
+  invalidation predicates and codex-core's generation ID: dirty flag + at most one job in
+  flight per kind + results applied by default + a per-kind **epoch counter** bumped by
+  semantically breaking changes (task replaced, position discontinuity). Two amendments:
+  (a) a worker panic must be converted by the runtime into a `JobFailed { kind, epoch }`
+  input — with one-in-flight bookkeeping, a lost completion otherwise wedges that worker
+  kind for the rest of the flight; (b) "results are always applied" needs the
+  discontinuity exception spelled out, because teleports are a *supported interaction*
+  here (simulator drag, replay seek).
+- **Stateful workers are expected and fit the scheme.** Live scoring wants to retain
+  acceleration state between rounds (incremental structures over the growing trace)
+  rather than re-optimizing from scratch. Design: the runtime owns one persistent worker
+  per kind with `run(&mut self, inputs) -> result`; one-in-flight already serializes all
+  access to that state, and an **epoch bump doubles as the reset-state signal** (task
+  replaced ⇒ optimizer caches are garbage). Worker state is a host-side cache — never
+  core state, never snapshotted; after restart/resume it is cold and the first round is
+  slower, which resume must tolerate anyway. Replay is unaffected because results are
+  recorded verbatim (decision 4) — and statefulness is one more argument for that
+  default, since recomputing a stateful worker requires replaying its whole invocation
+  sequence in order (possible, thanks to the per-kind total order, but exactly the kind
+  of fragility verbatim recording avoids; the CI verify mode does replay the sequence).
+  The growing-trace input pairs naturally with the `track` sequence numbering: a job's
+  input snapshot can be "points since seq N" instead of the full trace.
 
 ### 4. Replay of worker results — record verbatim (rnyrkn/fbqjgl/codex-core); reject recompute-on-replay
 
@@ -255,11 +273,32 @@ decision stands on the wry/Android facts and code-sharing, not on those):
    qk989e's main argument for WebSocket.
 2. **Token bootstrap must be shell-injected** (initialization script or one-shot URL
    nonce). As written ("the served frontend receives the token at page load") any local
-   process can load the page and receive the token.
-3. **Fixed port + collision policy**, not an ephemeral port: the origin changes with the
-   port, silently discarding localStorage/IndexedDB/OPFS map caches on every launch.
-4. **Frontend assets on Android** are APK assets, not filesystem paths — embed the built
-   frontend into the binary (`rust-embed`/`include_dir`) rather than `ServeDir`.
+   process can load the page and receive the token. Related detail for both hostings:
+   `EventSource` cannot set request headers, so the SSE stream authenticates via a
+   query-param token or a cookie scoped to the loopback origin.
+3. **Port strategy: an ephemeral port is fine.** An earlier draft argued for a fixed
+   port to keep browser-side caches (origin-keyed storage) alive across launches;
+   maintainer correction accepted: all durable caching lives on the Rust side and the
+   frontend only ever loads from loopback, where a refetch is nearly as cheap as a cache
+   hit. With the explicit rule that nothing durable lives in origin-keyed browser
+   storage (durable state belongs to the core), binding port 0 is *simpler* than a fixed
+   port — the collision policy disappears and the shell hands the bound origin plus the
+   session nonce to the webview at startup. The standalone server keeps its fixed
+   default port for dev/browser convenience.
+4. **Asset serving in the Tauri hosting has two workable shapes** — pick one in the
+   spike: (a) *single origin*: the webview loads everything from the embedded server
+   (rnyrkn as written); the built frontend must then be embedded in the binary
+   (`rust-embed`/`include_dir`), because APK assets are not filesystem paths `ServeDir`
+   can serve; no CORS anywhere, and the Tauri and server hostings stay byte-identical.
+   (b) *hybrid*: Tauri keeps serving the static frontend through its normal asset
+   handler — fine over the custom scheme, since app assets are small and need no Range
+   requests — and the page talks cross-origin to the embedded axum server for API + SSE
+   + bulk geodata only; no embedding and no change to Tauri's asset pipeline, at the
+   cost of CORS/`Origin` allowances for the webview origin and an asset path that
+   differs between hostings (a delta Playwright does not cover). Either way the
+   *protocol and bulk-data* surface stays the single shared axum transport, which is
+   what the testing argument rests on; `ServeDir` itself remains relevant only to the
+   standalone server.
 
 Plus one honest de-scoping: "no IPC at all" is overstated. File import works as plain
 HTML file input + POST (identical in browser mode — a genuine simplification), and device
@@ -386,10 +425,13 @@ decision 6 removes.
 3. **Run the rnyrkn lifecycle spike** (embedded server across Android
    suspend/resume/doze + foreground service, iOS backgrounding) before building any
    Tauri protocol bridge. Its outcome picks between "webview speaks HTTP/SSE to the
-   embedded server everywhere" and the scoped iOS fallback.
-4. Grow features inside codex-core's shape, escalating to fbqjgl's worker scheme per
-   calculation as measurements demand, with the instrumentation landing alongside the
-   first sensor adapter.
+   embedded server everywhere" and the scoped iOS fallback, and settles the
+   asset-serving shape (single-origin vs hybrid, decision 6 item 4).
+4. Grow features inside codex-core's shape. The async worker seam (spawn effect,
+   dirty/one-in-flight/epoch, `JobFailed`) is part of the core skeleton — WeGlide live
+   scoring and task optimization are its known first tenants, stateful workers included —
+   while everything else stays synchronous until the instrumentation (landing with the
+   first sensor adapter) says otherwise.
 
 ## Key verified claims (references)
 

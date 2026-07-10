@@ -13,7 +13,7 @@ pub use garmin::{Pgrmz, PgrmzFixDimension};
 pub use gnss::{
     Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, PositioningMode, Rmc, RmcStatus,
 };
-pub use lx::{Lxwp0, Lxwp1};
+pub use lx::{Lxwp0, Lxwp1, Lxwp2};
 
 use crate::message::{Message, Talker, Unknown};
 
@@ -30,6 +30,7 @@ pub fn parse_body(body: &[u8]) -> Message {
         b"PFLAC" => return Message::Pflac(Pflac::parse(&fields(rest))),
         b"LXWP0" => return Message::Lxwp0(Lxwp0::parse(&fields(rest))),
         b"LXWP1" => return Message::Lxwp1(Lxwp1::parse(&fields(rest))),
+        b"LXWP2" => return Message::Lxwp2(Lxwp2::parse(&fields(rest))),
         _ => {}
     }
 

@@ -1,0 +1,31 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Lxwp2(
+        Lxwp2 {
+            mac_cready: Some(
+                1.5 m/s,
+            ),
+            ballast: Some(
+                1.11,
+            ),
+            bugs: Some(
+                13.0,
+            ),
+            polar_a: Some(
+                2.96,
+            ),
+            polar_b: Some(
+                -3.03,
+            ),
+            polar_c: Some(
+                1.35,
+            ),
+            volume: Some(
+                45.0,
+            ),
+        },
+    ),
+)

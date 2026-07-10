@@ -3,6 +3,8 @@
 
 mod lxwp0;
 mod lxwp1;
+mod lxwp2;
 
 pub use lxwp0::Lxwp0;
 pub use lxwp1::Lxwp1;
+pub use lxwp2::Lxwp2;

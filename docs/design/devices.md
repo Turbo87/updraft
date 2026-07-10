@@ -101,7 +101,7 @@ The devices screen manages all of this: connection status per device, priority r
 
 ## Open Questions
 
-- **Core input shape.** Whether the core consumes a distinct vendor-agnostic semantic message set (clean, but potentially hides detail the core wants) or the wire-faithful typed messages more directly (richer, but the core learns vendor shapes), or a middle ground that is semantic yet carries provenance, is undecided.
+- **Core input shape.** Whether the core consumes a distinct vendor-agnostic semantic message set (clean, but potentially hides detail the core wants) or the wire-faithful typed messages more directly (richer, but the core learns vendor shapes), or a middle ground that is semantic yet carries provenance, is undecided. Leading candidate: the middle ground — semantic messages carrying provenance (source device ID plus a raw-sentence reference) — so the reducers and computation graph stay vendor-agnostic while devmode diagnostics and the capability observer retain full fidelity; vendor shapes never cross into `updraft_core`.
 
 ## Testing
 

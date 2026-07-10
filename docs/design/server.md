@@ -28,4 +28,4 @@ Binding to a non-loopback address additionally requires a configured password (l
 
 ## Open Questions
 
-- **WebSocket vs SSE** for the state-change stream: to be decided by whichever works best in practice.
+- **WebSocket vs SSE** for the state-change stream: to be decided by whichever works best in practice. Leading candidate: **WebSocket** — SSE is text-only (blocking the per-topic binary-encoding option, see [core.md](core.md)) and shares the browser's six-connections-per-host HTTP/1.1 limit with the bulk-geodata fetches against the same server; a single multiplexed WebSocket sidesteps both, while commands stay on REST (their retry-with-request-ID semantics map cleanly to POST).

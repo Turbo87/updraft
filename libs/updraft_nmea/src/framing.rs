@@ -221,6 +221,12 @@ mod tests {
     }
 
     #[test]
+    fn parses_lxwp1() {
+        let s = b"$LXWP1,LX9000,45123,9.5,2.0,ABC123*5C\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
     fn keeps_unrecognised_sentence_as_unknown() {
         let s = b"$PXABC,11,1,2,1,0,,0,,,*7A\r\n";
         insta::assert_debug_snapshot!(parse_one(s));

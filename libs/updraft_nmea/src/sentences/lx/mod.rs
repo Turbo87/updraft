@@ -2,5 +2,7 @@
 //! LXNAV vario family (V7, S-series, Nano).
 
 mod lxwp0;
+mod lxwp1;
 
 pub use lxwp0::Lxwp0;
+pub use lxwp1::Lxwp1;

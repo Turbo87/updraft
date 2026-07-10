@@ -17,22 +17,33 @@ subagent fact-checked the load-bearing external claims (float determinism, Tauri
 limitations, SSE/WebSocket behavior) against specs, bug trackers, and upstream docs, and
 ran local experiments where possible (std-vs-`libm` bit divergence, clone-vs-`imbl`
 micro-benchmark). `codex-core` was additionally built and tested empirically in this
-environment (full Rust + frontend + Playwright e2e suites).
+environment. **Maintainer decision:** the `codex-core` code itself is set aside — the
+implementation will be built from scratch against the synthesized design below. The code
+is treated here purely as an experiment: evidence about feasibility and a source of
+pitfalls, not a candidate for merging. The assessment below is adjusted accordingly.
 
-## Empirical results (codex-core)
+## What the codex-core experiment established (code set aside)
 
-The only proposal with code, and it holds up:
+Even without merging a line of it, running the branch settled real unknowns that a
+from-scratch build inherits as validated assumptions:
 
-- `cargo test -p updraft_core -p updraft_server`: **25 tests pass** (app reducer, runtime
-  FIFO/atomic-subscribe/slow-subscriber semantics, server routes, ts-rs binding exports).
-- Regenerating ts-rs bindings produces **zero drift** against the committed files — the
-  golden-file CI check works as designed.
-- Frontend: **10 vitest tests pass**.
-- **The Playwright e2e walking skeleton passes** (~6 s): `cargo run`-built server with
-  `--simulation`, real headless Chromium, MapLibre rendering via software GL, positions
-  POSTed to `/api/simulation/position` asserted via `getSource()` coordinates and
-  `queryRenderedFeatures`. This validates testing.md's "WebGL in CI" prediction and the
-  whole walking-skeleton test approach on the first try.
+- **The e2e strategy works exactly as testing.md predicted, on the first try**: a
+  `cargo run` server with a simulation seam, real headless Chromium, MapLibre rendering
+  via software GL with no special setup, assertions on map state (`getSource()`,
+  `queryRenderedFeatures` after an awaited `idle`) rather than pixels. The
+  walking-skeleton test layer is de-risked for whatever implementation is built.
+- **The ts-rs committed-bindings + CI drift-check workflow functions as designed**
+  (regeneration produced zero drift; the `TS_RS_EXPORT_DIR` + `git diff --exit-code`
+  wiring is worth copying as a pattern).
+- **The `handle(Input) -> Update` shape is buildable and stays small**: a complete
+  position-to-map vertical slice (core, runtime, SSE server, typed client, store, e2e)
+  fit in ~600 lines of ordinary code. That says the interface shape carries no hidden
+  framework tax — though a position slice exercises none of the hard parts (workers,
+  warnings, replay), so it validates the shape, not the architecture.
+- **The code review produced a pitfall checklist** that the fresh implementation should
+  treat as requirements (see _Suggested sequencing_): runtime-task supervision, SSE
+  keep-alive, injected time at the simulation seam, slow-subscriber observability,
+  client-side stream error/staleness handling, and CI layout for the e2e job.
 
 ## Where all four proposals agree (treat as settled)
 
@@ -61,7 +72,8 @@ simplifies specific mechanisms.
 All four converge on "core performs no I/O, spawns no threads, owns no channel". The
 differences are surface syntax:
 
-- codex-core: `App::handle(&mut self, Input) -> Update { changes, effects }` (implemented, tested)
+- codex-core: `App::handle(&mut self, Input) -> Update { changes, effects }`
+  (demonstrated buildable in its experiment)
 - fbqjgl: "pure update function" returning publishes + effects — semantically identical to
   a `&mut self` method in Rust; the "pure function" label is branding
 - qk989e: `handle_input` / `poll_effect` / `next_deadline` poll surface — str0m's shape,
@@ -73,20 +85,21 @@ pure function. There is **zero testability difference** between the shapes; the
 testability win — shared by all four — is evicting threads/channels/rayon/tokio from the
 core, which main's "core's own update loop" phrasing left ambiguous.
 
-**Adopt:** codex-core's `handle() -> Update` as implemented. Add the earliest pending
-timer deadline to the update output (fbqjgl) when timers land, so hosts can sleep
-precisely. **Drop** main's `Clock` trait language — a trait the core calls is a hidden
-read; a timestamp in the input is data in the replay log (codex-core is right here, and
-the sibling docs still carrying "Clock trait" text alongside "time advances via messages"
-were internally inconsistent).
+**Adopt:** the `handle() -> Update` shape. Add the earliest pending timer deadline to the
+update output (fbqjgl) when timers land, so hosts can sleep precisely. **Drop** main's
+`Clock` trait language — a trait the core calls is a hidden read; a timestamp in the
+input is data in the replay log (codex-core is right here, and the sibling docs still
+carrying "Clock trait" text alongside "time advances via messages" were internally
+inconsistent).
 
-**One structural fix to codex-core:** `CoreRuntime` (tokio) currently lives inside
-`updraft_core`, so the domain crate carries a tokio dependency. Move the runtime out
-(small `updraft_runtime` crate, or into the server crate only if Tauri ends up not needing
-it — see decision 6). The domain core staying dependency-free is cheap discipline now and
-what keeps whole-flight tests a plain loop. The separate `updraft_protocol` crate
-(fbqjgl/qk989e) is a mechanical refactor that can happen whenever compile times or codegen
-hygiene ask for it; not urgent at current size.
+**One lesson from the experiment to bake into the fresh build:** codex-core placed its
+tokio-based runtime *inside* the core crate, giving the domain crate a tokio dependency.
+The from-scratch layout should keep the domain core dependency-free from day one — the
+runtime (channel pump, effect executor, subscriber fan-out) lives outside it, in a small
+shared `updraft_runtime` crate (or module) used by both hosts. That is cheap discipline
+at greenfield cost and what keeps whole-flight tests a plain loop. The separate
+`updraft_protocol` crate (fbqjgl/qk989e) remains a mechanical refactor for whenever
+compile times or codegen hygiene ask for it; not required on day one.
 
 ### 2. Input channel — plain bounded FIFO (fbqjgl/codex-core); reject priority lanes and coalescing for now
 
@@ -108,8 +121,9 @@ plain bounded FIFO suffices, and the review supports them:
 
 - **The full-queue policy must be block-the-producer, never drop.** FLARM collision
   alarms share the queue; kernel socket buffers absorb the backpressure and the BT reader
-  is a dumb pipe. codex-core's `mpsc::channel(16).send().await` already does this;
-  it needs to be stated as a rule, and the capacity deserves a more generous value.
+  is a dumb pipe. A bounded async channel with an awaited `send` gives this for free —
+  but it must be stated as a rule, with a generous capacity, so nobody "optimizes" it
+  into a lossy `try_send` later.
 - Keep the escape hatch documented (second command channel with biased poll, a host-side
   change) so the deferred decision doesn't become a forgotten one.
 
@@ -211,11 +225,22 @@ is exclusively the libm transcendentals.
 
 codex-core replaces main's four-kind topic taxonomy with one stream: snapshot on
 subscribe, then FIFO batches of `Change` values; reconnect = fresh snapshot; slow
-subscribers are dropped and recover by reconnecting. This is implemented, its atomicity
-guarantee (subscription + snapshot captured inside the runtime loop, no update can fall
-between) is tested, and it is the simplest thing that satisfies "every topic delivers
-current state on subscribe". The `Change` enum is grouped by domain, which is a coarse
-topic key — per-client filtering can be added at the host later without touching the core.
+subscribers are dropped and recover by reconnecting. It is the simplest design that
+satisfies "every topic delivers current state on subscribe", and the `Change` enum is
+grouped by domain, which is a coarse topic key — per-client filtering can be added at the
+host later without touching the core. Full disclosure: of the six decisions this is the
+one whose recommendation leaned most on codex-core's working implementation; with the
+code set aside it still stands, but on reasoning alone (no consumer needs per-topic
+filtering on day one — the local UI wants nearly everything, audio moves to effects, and
+secondary clients are full displays), so the fresh implementation must carry its
+invariants explicitly rather than inheriting them:
+
+- **Atomic subscribe**: subscription registration and snapshot capture happen together
+  inside the runtime loop, so no change can fall between them — this needs a test in the
+  fresh implementation, not just a sentence (a late subscriber asserting its snapshot
+  already contains earlier submissions is the cheap way to pin it).
+- **Reconnect contract**: a dropped or reconnecting subscriber starts over with a fresh
+  snapshot; there is no replay buffer, no sequence bookkeeping.
 
 **Adopt with amendments:**
 
@@ -328,33 +353,33 @@ Platform facts established by the fact-check, which shrink the footwork rnyrkn l
 **Risk management:** rnyrkn's own "validation spike" is correctly identified and must run
 at walking-skeleton time, covering specifically **iOS suspend/resume socket teardown**
 (documented killer: iOS invalidates listener sockets on backgrounding) and **Android
-doze** alongside the foreground service. Until the spike passes, codex-core's shipped
-state (axum server + browser; Tauri shell untouched) loses nothing — the walking skeleton
-is transport-final either way. If the spike fails on iOS, the fallback is scoped: keep
-the embedded server on Android/desktop (where the custom scheme is broken) and accept
-custom-scheme + buffered GeoJSON + no PMTiles-by-range on iOS only.
+doze** alongside the foreground service. Nothing blocks on it: the walking skeleton
+(axum server + browser, Tauri shell untouched) is transport-final either way, so it is
+built first and the spike runs before any Tauri protocol bridge exists. If the spike
+fails on iOS, the fallback is scoped: keep the embedded server on Android/desktop (where
+the custom scheme is broken) and accept custom-scheme + buffered GeoJSON + no
+PMTiles-by-range on iOS only.
 
 SSE itself is the right starting choice (auto-reconnect composes with
-snapshot-on-subscribe into zero reconnect code — already demonstrated by codex-core's
-implementation; binary framing is a hypothetical need, and qk989e's six-connection
-argument dissolves at one multiplexed stream). Revisit WebSocket only on a measured need.
+snapshot-on-subscribe into zero reconnect code — confirmed working in the codex-core
+experiment; binary framing is a hypothetical need, and qk989e's six-connection argument
+dissolves at one multiplexed stream). Revisit WebSocket only on a measured need.
 
 ## What to adopt from each branch
 
-**codex-core — adopt as the foundation (code and doc shape):**
-- The walking skeleton, merged essentially as-is: `App`/`Flight`/`protocol`/`CoreRuntime`,
-  server SSE stream, state client/stores, e2e pattern, ts-rs pipeline. It is clean,
-  tested, and the only proposal that proved itself executable.
-- Effects-as-data; time-as-input without a Clock trait; snapshot+changes stream;
-  host-owned command dedup; authoritative-vs-presentation state split; OGN
-  area-of-interest from the primary's viewport; operation-ID pattern for long-running ops.
-- Required fixes before/at merge: supervise the runtime task (a panic currently freezes
-  every client permanently — subscribe returns 503, which EventSource treats as fatal);
-  add SSE keep-alive (axum default is none); make the simulation route accept an optional
-  `observed_at` so e2e time is actually simulated; make slow-subscriber drops observable;
-  add EventSource error/staleness handling in `state-client.ts`; give e2e its own CI job
-  with a cached/prebuilt server; move `CoreRuntime` out of the domain crate; fix the
-  map recentering on every fix; add a Vite dev proxy for `/api`.
+**codex-core — adopt the design decisions; the code is set aside (built from scratch instead):**
+- Effects-as-data; time-as-input without a Clock trait; snapshot+changes stream (with the
+  invariants from decision 5 carried explicitly); host-owned command dedup;
+  authoritative-vs-presentation state split; OGN area-of-interest from the primary's
+  viewport; operation-ID pattern for long-running ops.
+- The walking-skeleton *pattern* it demonstrated — a position-to-map vertical slice with
+  a simulation POST seam as the first e2e test — is the right first milestone for the
+  fresh build, and its e2e/ts-rs wiring is worth copying as a pattern even where the code
+  is not.
+- Its docs alone are not the spec: the branch deleted main's rationale (cadence/cost
+  table, prioritization reasoning, effects-never-block rule, timer determinism) and
+  contradicts multi-client.md on the transport. The synthesized design — main's docs
+  edited per decisions 1–6 — is the spec the fresh implementation builds against.
 
 **rnyrkn — adopt the transport direction and two design pieces:**
 - Embedded-server single transport, amended as above, gated on the lifecycle spike.
@@ -412,22 +437,41 @@ shared home for the host runtime — importing qk989e's shared-runtime idea fixe
 \*\* codex-core's runtime *is* shared; the score reflects the dual-transport residue that
 decision 6 removes.
 
+With the code set aside, codex-core's actionability 9 needs an asterisk of its own: it
+was earned almost entirely by the working skeleton. Its core.md alone is the thinnest of
+the four documents (~1.3k words vs main's ~1.7k, fbqjgl's ~2.4k, qk989e's ~3.4k) and
+would not stand alone as a build spec — which is why the sequencing below makes the
+design-doc fold-in the first step, not an afterthought.
+
 ## Suggested sequencing
 
-1. **Merge codex-core's walking skeleton** with the listed fixes (runtime supervision,
-   SSE keep-alive, simulated `observed_at`, drop observability, client error handling,
-   CI e2e job, runtime out of the domain crate).
-2. **Fold the doc decisions above into `docs/design/`** — one edit that reconciles
-   core.md/server.md/tauri.md/testing.md/roadmap.md with decisions 1–6, restoring the
-   rationale paragraphs codex-core dropped (cadence table, prioritization reasoning,
-   effects-never-block rule, timer determinism) and updating multi-client.md's
-   contradiction with the transport decision.
+1. **Write the synthesized design first.** Fold decisions 1–6 into `docs/design/` —
+   one edit reconciling core.md/server.md/tauri.md/testing.md/multi-client.md/roadmap.md:
+   the `handle() -> Update` surface and dependency-free core crate; plain bounded FIFO
+   with block-on-full; the async worker seam with stateful workers and epochs; verbatim
+   recording with the CI verify mode; the snapshot+changes stream with its two invariants
+   spelled out; the embedded-server transport with the amendments (one multiplexed SSE
+   stream, shell-injected token, ephemeral port, asset-shape options). Restore the
+   rationale main already had and codex-core's docs dropped (cadence/cost table,
+   prioritization reasoning, effects-never-block rule, timer determinism), and resolve
+   the multi-client contradiction. Since the implementation is built from scratch, these
+   docs *are* the spec — under-specification here becomes improvisation later.
+2. **Build the walking skeleton fresh against that spec**, replicating the slice the
+   codex-core experiment proved viable (core → runtime → SSE → store → map → Playwright)
+   and treating the experiment's pitfall list as requirements, not fixes: the runtime
+   task is supervised (a swallowed panic must not leave clients frozen on a dead stream —
+   EventSource treats a non-200 subscribe as permanently fatal); the SSE response sends
+   keep-alives (axum's default is none); the simulation seam accepts injected
+   `observed_at` so e2e time is genuinely simulated; slow-subscriber drops are observable
+   (a `Full` drop is not a `Closed` cleanup); the frontend stream client handles errors
+   and surfaces data staleness; e2e runs in its own CI job with a cached/prebuilt server
+   binary; the dev loop proxies `/api` so `pnpm dev` works against a running server.
 3. **Run the rnyrkn lifecycle spike** (embedded server across Android
    suspend/resume/doze + foreground service, iOS backgrounding) before building any
    Tauri protocol bridge. Its outcome picks between "webview speaks HTTP/SSE to the
    embedded server everywhere" and the scoped iOS fallback, and settles the
    asset-serving shape (single-origin vs hybrid, decision 6 item 4).
-4. Grow features inside codex-core's shape. The async worker seam (spawn effect,
+4. **Grow features inside that shape.** The async worker seam (spawn effect,
    dirty/one-in-flight/epoch, `JobFailed`) is part of the core skeleton — WeGlide live
    scoring and task optimization are its known first tenants, stateful workers included —
    while everything else stays synchronous until the instrumentation (landing with the

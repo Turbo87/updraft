@@ -3,7 +3,7 @@
   import type { OwnshipPosition } from '$lib/protocol/generated/OwnshipPosition';
   import { ownshipFeature } from './ownship';
 
-  let { position }: { position: OwnshipPosition } = $props();
+  let { position, stale = false }: { position: OwnshipPosition; stale?: boolean } = $props();
 </script>
 
 <GeoJSONSource id="ownship" maxzoom={24} data={ownshipFeature(position)}>
@@ -20,6 +20,7 @@
       'icon-halo-color': '#ffffff',
       'icon-halo-width': 2,
       'icon-halo-blur': 0.5,
+      'icon-opacity': stale ? 0.5 : 1,
     }}
   />
 </GeoJSONSource>

@@ -147,7 +147,7 @@ async fn state_stream_begins_with_the_current_snapshot() {
     let (event, data) = stream.next_event().await;
 
     assert_eq!(event, "snapshot");
-    assert_eq!(data, json!({ "position": null }));
+    assert_eq!(data, json!({ "position": null, "track_distance": 0.0 }));
 }
 
 #[tokio::test]
@@ -204,9 +204,12 @@ async fn late_subscriber_snapshot_contains_earlier_positions() {
         data,
         json!({
             "position": {
-                "location": { "latitude": 50.823, "longitude": 6.186 },
-                "track": null,
-            }
+                "current": {
+                    "location": { "latitude": 50.823, "longitude": 6.186 },
+                    "track": null,
+                }
+            },
+            "track_distance": 0.0,
         })
     );
 }

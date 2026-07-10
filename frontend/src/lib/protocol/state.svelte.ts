@@ -1,6 +1,7 @@
 import { subscribeToState, type StreamStatus } from './client';
 import type { Change } from './generated/Change';
 import type { OwnshipPosition } from './generated/OwnshipPosition';
+import type { PositionFix } from './generated/PositionFix';
 import type { Snapshot } from './generated/Snapshot';
 
 /**
@@ -8,19 +9,38 @@ import type { Snapshot } from './generated/Snapshot';
  * snapshot, updated by changes, exposed as reactive state.
  */
 export class ApplicationState {
-  position = $state.raw<OwnshipPosition | null>(null);
+  fix = $state.raw<PositionFix | null>(null);
+  /** Flown-track distance in meters. */
+  trackDistance = $state(0);
   streamStatus = $state<StreamStatus>('connecting');
   /** Timestamp (ms) of the last stream message, for data-age display. */
   lastUpdatedAt = $state<number | null>(null);
 
+  position = $derived.by((): OwnshipPosition | null => {
+    if (this.fix === null) return null;
+    return 'current' in this.fix ? this.fix.current : this.fix.stale;
+  });
+
+  positionStale = $derived(this.fix !== null && 'stale' in this.fix);
+
   applySnapshot(snapshot: Snapshot) {
-    this.position = snapshot.position;
+    this.fix = snapshot.position;
+    this.trackDistance = snapshot.track_distance;
     this.lastUpdatedAt = Date.now();
   }
 
   applyChanges(changes: Change[]) {
     for (let change of changes) {
-      this.position = change.flight.position_changed;
+      let flight = change.flight;
+      if (flight === 'position_stale') {
+        if (this.position !== null) {
+          this.fix = { stale: this.position };
+        }
+      } else if ('position_changed' in flight) {
+        this.fix = { current: flight.position_changed };
+      } else {
+        this.trackDistance = flight.track_distance_changed;
+      }
     }
     this.lastUpdatedAt = Date.now();
   }

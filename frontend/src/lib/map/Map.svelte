@@ -6,7 +6,10 @@
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import Ownship from './Ownship.svelte';
 
-  let { position }: { position: OwnshipPosition | null } = $props();
+  let {
+    position,
+    positionStale = false,
+  }: { position: OwnshipPosition | null; positionStale?: boolean } = $props();
 
   // Initial view only (EDKA Aachen-Merzbrück): the map never recenters on
   // position updates, so panning stays under the user's control. The
@@ -50,7 +53,7 @@
     zoom={11}
   >
     {#if spritesLoaded && position}
-      <Ownship {position} />
+      <Ownship {position} stale={positionStale} />
     {/if}
   </MapLibre>
   <MapDebugOverlay {map} />

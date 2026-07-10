@@ -7,11 +7,15 @@ mod app;
 mod flight;
 mod protocol;
 mod time;
+mod timers;
+pub mod workers;
 
 pub use app::App;
 pub use flight::{
-    FlightChange, FlightInput, InvalidPosition, ObservationSource, OwnshipPosition,
+    FlightChange, FlightInput, InvalidPosition, ObservationSource, OwnshipPosition, PositionFix,
     PositionObservation,
 };
-pub use protocol::{Change, Effect, Input, Snapshot, Update};
+pub use protocol::{
+    Change, ComputeJob, Effect, Epoch, Input, JobKind, JobOutcome, JobResult, Snapshot, Update,
+};
 pub use time::MonotonicTime;

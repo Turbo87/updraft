@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use axum::Router;
 use axum::extract::{Json, State};
@@ -19,8 +19,6 @@ use updraft_units::Angle;
 #[derive(Clone)]
 struct ServerState {
     runtime: RuntimeHandle,
-    /// The process-wide monotonic epoch that adapters stamp inputs against.
-    epoch: Instant,
 }
 
 /// Builds the HTTP application.
@@ -48,10 +46,7 @@ fn build_router(static_dir: impl AsRef<Path>, runtime: RuntimeHandle, simulation
     if simulation {
         api = api.route("/simulation/position", post(simulation_position));
     }
-    let api = api.fallback(not_found).with_state(ServerState {
-        runtime,
-        epoch: Instant::now(),
-    });
+    let api = api.fallback(not_found).with_state(ServerState { runtime });
 
     let static_service = ServeDir::new(static_dir).fallback(ServeFile::new(index_html));
 
@@ -112,10 +107,10 @@ async fn simulation_position(
     State(state): State<ServerState>,
     Json(body): Json<SimulationPosition>,
 ) -> Result<StatusCode, StatusCode> {
-    let observed_at = MonotonicTime::from_duration(match body.observed_at_ms {
-        Some(millis) => Duration::from_millis(millis),
-        None => state.epoch.elapsed(),
-    });
+    let observed_at = match body.observed_at_ms {
+        Some(millis) => MonotonicTime::from_duration(Duration::from_millis(millis)),
+        None => state.runtime.now(),
+    };
 
     let observation = PositionObservation::new(
         ObservationSource::Simulation,

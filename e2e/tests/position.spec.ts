@@ -72,6 +72,10 @@ test('renders positions submitted through the simulation seam', async ({ page, r
 
   await expect.poll(() => readOwnshipCoordinates(page)).toEqual([6.187, 50.824]);
 
+  // The flown distance comes back from the compute worker (~132 m
+  // between the two fixes) and reaches the UI through the state stream.
+  await expect(page.locator('.track-distance')).toHaveText('0.1 km');
+
   await awaitMapIdle(page);
 
   await expect

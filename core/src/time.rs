@@ -21,3 +21,11 @@ impl MonotonicTime {
         self.0
     }
 }
+
+impl std::ops::Add<Duration> for MonotonicTime {
+    type Output = Self;
+
+    fn add(self, duration: Duration) -> Self {
+        Self(self.0 + duration)
+    }
+}

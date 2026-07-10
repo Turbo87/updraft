@@ -20,6 +20,11 @@ export default defineConfig({
       adapter: adapter({ fallback: 'index.html' }),
     }),
   ],
+  server: {
+    // The dev server has no backend of its own: run `cargo run -p
+    // updraft_server` alongside `pnpm dev` and the API is proxied to it.
+    proxy: { '/api': 'http://127.0.0.1:4449' },
+  },
   test: {
     expect: { requireAssertions: true },
     projects: [

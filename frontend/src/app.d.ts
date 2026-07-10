@@ -8,6 +8,11 @@ declare global {
     // interface PageState {}
     // interface Platform {}
   }
+
+  interface Window {
+    /** Test hook exposed only in `?testMode=1` (see docs/design/testing.md). */
+    updraftTest?: { map: import('maplibre-gl').Map };
+  }
 }
 
 export {};

@@ -1,14 +1,27 @@
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css';
-  import type { Map } from 'maplibre-gl';
+  import type { Map, StyleSpecification } from 'maplibre-gl';
   import { MapLibre } from 'svelte-maplibre-gl';
+  import type { OwnshipPosition } from '$lib/protocol/generated/OwnshipPosition';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import Ownship from './Ownship.svelte';
-  import type { OwnshipPosition } from './ownship';
 
-  // Fixed placeholder position (EDKA Aachen-Merzbrück) until core state drives
-  // the map in the `map-position` step.
-  const ownship: OwnshipPosition = { longitude: 6.186, latitude: 50.823, track: 45 };
+  let { position }: { position: OwnshipPosition | null } = $props();
+
+  // Initial view only (EDKA Aachen-Merzbrück): the map never recenters on
+  // position updates, so panning stays under the user's control. The
+  // "return to position" affordance comes later (see docs/design/frontend.md).
+  const INITIAL_CENTER: [number, number] = [6.186, 50.823];
+
+  // Test mode (see docs/design/testing.md): offline inline style instead of
+  // online tiles, no symbol fading, and the map exposed for Playwright.
+  const testMode = new URLSearchParams(window.location.search).has('testMode');
+
+  const TEST_STYLE: StyleSpecification = {
+    version: 8,
+    sources: {},
+    layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#e6e4e0' } }],
+  };
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
@@ -17,20 +30,27 @@
     await map?.addSprite('updraft-sdf', `${window.location.origin}/sprites/updraft-sdf`);
     spritesLoaded = true;
   }
+
+  $effect(() => {
+    if (testMode && map) {
+      window.updraftTest = { map };
+    }
+  });
 </script>
 
 <div class="map-container">
   <MapLibre
     inlineStyle="height: 100%; width: 100%"
-    style="https://tiles.openfreemap.org/styles/positron"
+    style={testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron'}
     autoloadGlobalCss={false}
+    fadeDuration={testMode ? 0 : undefined}
     bind:map
     onload={loadSprites}
-    center={[ownship.longitude, ownship.latitude]}
+    center={INITIAL_CENTER}
     zoom={11}
   >
-    {#if spritesLoaded}
-      <Ownship position={ownship} />
+    {#if spritesLoaded && position}
+      <Ownship {position} />
     {/if}
   </MapLibre>
   <MapDebugOverlay {map} />

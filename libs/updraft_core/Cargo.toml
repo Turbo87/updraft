@@ -10,8 +10,8 @@ workspace = true
 [dependencies]
 serde = { version = "=1.0.228", features = ["derive"] }
 ts-rs = "=12.0.1"
-updraft_geo = { path = "../libs/updraft_geo", features = ["serde", "ts"] }
-updraft_units = { path = "../libs/updraft_units", features = ["serde", "ts"] }
+updraft_geo = { path = "../updraft_geo", features = ["serde", "ts"] }
+updraft_units = { path = "../updraft_units", features = ["serde", "ts"] }
 
 [dev-dependencies]
 serde_json = "=1.0.150"

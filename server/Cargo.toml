@@ -17,9 +17,9 @@ tokio = { version = "=1.52.3", features = ["rt-multi-thread", "net", "macros", "
 tower-http = { version = "=0.7.0", features = ["fs"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.22", features = ["env-filter"] }
-updraft_core = { path = "../core" }
+updraft_core = { path = "../libs/updraft_core" }
 updraft_geo = { path = "../libs/updraft_geo" }
-updraft_runtime = { path = "../runtime" }
+updraft_runtime = { path = "../libs/updraft_runtime" }
 updraft_units = { path = "../libs/updraft_units" }
 
 [dev-dependencies]

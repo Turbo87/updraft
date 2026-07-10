@@ -10,9 +10,9 @@ workspace = true
 [dependencies]
 tokio = { version = "=1.52.3", features = ["macros", "rt", "sync", "time"] }
 tracing = "=0.1.44"
-updraft_core = { path = "../core" }
+updraft_core = { path = "../updraft_core" }
 
 [dev-dependencies]
 tokio = { version = "=1.52.3", features = ["macros", "rt", "sync", "test-util", "time"] }
-updraft_geo = { path = "../libs/updraft_geo" }
-updraft_units = { path = "../libs/updraft_units" }
+updraft_geo = { path = "../updraft_geo" }
+updraft_units = { path = "../updraft_units" }

@@ -33,17 +33,17 @@ These documents describe the target design and architecture. The [roadmap.md](..
 ## Repository Shape
 
 ```
-core/        Rust core library: state, messages, domain logic (no I/O, no threads)
-runtime/     shared host runtime: input queue, effect executors, state-stream fan-out
+libs/        Rust crates: updraft_core (state machine, no I/O, no threads),
+             updraft_runtime (shared host runtime: input queue, effect
+             executors, state-stream fan-out), parsers, geodesy, units, …
 server/      axum server: the single transport (REST + SSE + bulk data), standalone or embedded
 tauri/       Tauri shell for Android/iOS/Linux/macOS/Windows (embeds the server)
-libs/        Rust libraries (e.g. NMEA parsing, geodesy, units, …)
 frontend/    SvelteKit + maplibre-gl-js application
 e2e/         Playwright test suite and replay fixtures
 docs/        Documentation
 ```
 
-The exact crate/package layout may evolve (the runtime may start as a crate next to `core/` rather than a top-level directory), but two rules are fixed: `frontend`, `server`, and `tauri` depend on `core`'s message protocol while `core` depends on nothing above it, and the `core` crate never depends on tokio, rayon, or any I/O library — threads and I/O live in the runtime and hosts (see [core.md](core.md)).
+The exact crate/package layout may evolve, but two rules are fixed: `frontend`, `server`, and `tauri` depend on `updraft_core`'s message protocol while the core depends on nothing above it, and the `updraft_core` crate never depends on tokio, rayon, or any I/O library — threads and I/O live in `updraft_runtime` and the hosts (see [core.md](core.md)).
 
 **Crate policy:** before writing any of the small parser/geometry crates, evaluate existing crates.io options and prefer contributing upstream over forking. Own crates live in `libs/updraft_<name>` directories.
 

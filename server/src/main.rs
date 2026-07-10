@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use tokio::net::TcpListener;
+use updraft_core::App;
 
 #[derive(Parser)]
 struct Args {
@@ -18,13 +19,28 @@ struct Args {
     /// Directory holding the built frontend assets
     #[arg(long, env = "UPDRAFT_STATIC_DIR", default_value = "frontend/build")]
     static_dir: PathBuf,
+
+    /// Enable the simulation input routes (used by the e2e suite)
+    #[arg(long, env = "UPDRAFT_SIMULATION")]
+    simulation: bool,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    let app = updraft_server::router(&args.static_dir);
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
+        .init();
+
+    let runtime = updraft_runtime::spawn(App::default());
+    let app = if args.simulation {
+        updraft_server::simulation_router(&args.static_dir, runtime)
+    } else {
+        updraft_server::router(&args.static_dir, runtime)
+    };
 
     let addr = SocketAddr::new(args.ip, args.port);
     let listener = TcpListener::bind(addr)

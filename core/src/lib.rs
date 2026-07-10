@@ -1,14 +1,17 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! The application core: a single-owner state machine that performs no
+//! I/O, spawns no threads, and reads no clocks. Hosts drive it one
+//! [`Input`] at a time through [`App::handle`] and execute the returned
+//! [`Effect`]s; see `docs/design/core.md`.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod app;
+mod flight;
+mod protocol;
+mod time;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use app::App;
+pub use flight::{
+    FlightChange, FlightInput, InvalidPosition, ObservationSource, OwnshipPosition,
+    PositionObservation,
+};
+pub use protocol::{Change, Effect, Input, Snapshot, Update};
+pub use time::MonotonicTime;

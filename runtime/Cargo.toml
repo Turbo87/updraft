@@ -1,0 +1,18 @@
+[package]
+name = "updraft_runtime"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[lints]
+workspace = true
+
+[dependencies]
+tokio = { version = "=1.52.3", features = ["rt", "sync"] }
+tracing = "=0.1.44"
+updraft_core = { path = "../core" }
+
+[dev-dependencies]
+tokio = { version = "=1.52.3", features = ["macros", "rt", "sync", "time"] }
+updraft_geo = { path = "../libs/updraft_geo" }
+updraft_units = { path = "../libs/updraft_units" }

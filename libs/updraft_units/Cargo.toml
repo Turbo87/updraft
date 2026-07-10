@@ -10,10 +10,12 @@ workspace = true
 [features]
 approx = ["dep:approx"]
 serde = ["dep:serde"]
+ts = ["dep:ts-rs"]
 
 [dependencies]
 approx = { version = "=0.6.0-rc2", features = ["derive"], optional = true }
 serde = { version = "=1.0.228", features = ["derive"], optional = true }
+ts-rs = { version = "=12.0.1", optional = true }
 
 [dev-dependencies]
 approx = { version = "=0.6.0-rc2", features = ["derive"] }

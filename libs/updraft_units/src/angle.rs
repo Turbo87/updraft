@@ -13,10 +13,14 @@ use crate::macros::impl_quantity_ops;
 /// the internal radians, matching the human-facing convention used by the
 /// rest of the API (`from_degrees`, `as_degrees`, `Debug`).
 ///
+/// With the `ts` feature, the matching TypeScript type is a plain
+/// `number` carrying degrees, mirroring the serde representation.
+///
 /// With the `approx` feature, approximate-equality comparisons operate on
 /// the internal **radians**, so epsilons are radians, not degrees.
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
 #[cfg_attr(any(test, feature = "approx"), derive(approx::RelativeEq))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Angle(f64);
 
 impl Angle {

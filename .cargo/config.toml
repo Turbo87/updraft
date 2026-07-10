@@ -1,0 +1,4 @@
+[env]
+# ts-rs writes the generated TypeScript protocol bindings here during
+# `cargo test`; CI fails if regeneration changes the committed files.
+TS_RS_EXPORT_DIR = { value = "frontend/src/lib/protocol/generated", relative = true }

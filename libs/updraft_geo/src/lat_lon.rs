@@ -23,9 +23,13 @@ const MEAN_EARTH_RADIUS_METERS: f64 = 6_371_008.771_4;
 /// With the `approx` feature, approximate-equality comparisons operate
 /// on the internal **radians** of both angles, so epsilons are radians,
 /// not degrees.
+///
+/// With the `ts` feature, the matching TypeScript type mirrors the serde
+/// representation: `latitude`/`longitude` as degrees.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(any(test, feature = "approx"), derive(approx::RelativeEq))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct LatLon {
     latitude: Angle,
     longitude: Angle,

@@ -42,7 +42,7 @@ The core owns **authoritative domain state**; clients own presentation state (ma
 Everything enters as messages through `handle()`:
 
 - user commands (from the transport layer),
-- normalized sensor observations (from connection threads, see [devices.md](devices.md)) carrying source, monotonic observation time, typed value, and GPS timestamp where applicable,
+- normalized sensor observations (from connection threads, see [devices.md](devices.md)) carrying source, monotonic observation time, typed value, and GPS timestamp where applicable, delivered at adapter-bounded rates,
 - clock advancement,
 - results of completed effects: I/O completions and computation results (see below).
 
@@ -88,6 +88,7 @@ Effect::SaveSnapshot(...)    // dedicated I/O thread
 Effect::Compute(...)         // per-kind worker (see Computation)
 Effect::FetchOgnTraffic(...) // async task
 Effect::SendToDevice(...)    // connection writer
+Effect::PublishResource(...) // runtime resource store (see The Bulk Geodata Path)
 ```
 
 Completion-sensitive effects deliver a typed result back as an input; fire-and-observe effects (audio) do not travel through client subscriptions at all, so the safety-critical warning→audio path never shares machinery or drop policies with UI streaming — and is assertable in a unit test with no transport. **Effect execution never blocks the runtime loop**: file writes run on a dedicated I/O thread, so a slow flash write can never stall the warning pipeline. Long-running operations return an operation ID immediately and report progress and completion as ordinary changes instead of holding a transport request open.
@@ -112,7 +113,9 @@ Clients observe the core through **one state stream**: on subscribe, a full `Sna
 - **Atomic subscribe.** Subscription registration and snapshot capture happen together inside the runtime loop, so no change can fall between them — a late subscriber's snapshot already contains everything submitted before it.
 - **Reconnect is resubscribe.** A reconnecting client starts over with a fresh snapshot. There is no replay buffer, no sequence bookkeeping, and no generic diff/patch format (JSON Patch and friends buy nothing at these payload sizes).
 
-A slow subscriber never grows an unbounded buffer: when its bounded buffer overflows, the subscription is dropped — observably (logged and counted, distinct from normal disconnect) — and the client recovers by reconnecting, which is safe and cheap precisely because subscribe delivers a fresh snapshot. `Change` values are grouped by domain, which is a coarse topic key: per-client filtering (a vario-only repeater) can be added host-side later without touching the core.
+A slow subscriber never grows an unbounded buffer: when its bounded buffer overflows, the subscription is dropped — observably (logged and counted, distinct from normal disconnect) — and the client recovers by reconnecting, which is safe and cheap precisely because subscribe delivers a fresh snapshot. `Change` values are grouped by domain, which is a coarse topic key: per-client filtering (a vario-only repeater, a tablet without the PFD page) can be added host-side later without touching the core. For that key to stay useful, high-rate instrument changes (attitude, live vario) get groups of their own as they land, instead of sharing one with low-rate navigation state.
+
+**The `Snapshot` stays small.** It carries current values and active sets only — never datasets, histories, or time series. The altitude trace, climb statistics, waypoint database, and their like are served as reference resources (see _The Bulk Geodata Path_) or answered by queries; a snapshot that grew with flight duration would break the cheap-reconnect contract that everything above relies on.
 
 Change payloads follow a small taxonomy — this shapes payload semantics, it is not per-topic stream machinery:
 
@@ -155,6 +158,8 @@ The protocol contract is **host-agnostic**: the same messages flow over HTTP or 
 A webview custom URI scheme was considered for the native apps and rejected: wry's custom protocols cannot stream response bodies (wry #1404), and Android's system webview fails follow-up byte-range requests against custom-scheme responses, which breaks PMTiles exactly on the primary platform. Real HTTP over loopback has none of these problems.
 
 For this geodata the frontend only ever handles **references**: source URLs plus version counters. When the reach polygon is recomputed, the core bumps the version in a `reach` change and the frontend refreshes the source. No geometry crosses the message channel.
+
+**Resource bytes live in a runtime-owned resource store.** When the core (or one of its workers) produces a new payload — a reach polygon, a batch of track segments, an overlay — it emits a publish effect carrying the bytes behind a cheap shared handle plus their version; the runtime keeps them in the store, and the host's routes serve them from there directly. Serving bulk data therefore never enters the input loop or the query path, and the state stream still carries only `{version, url}`. A version is published only after its bytes are available.
 
 **The own track** is the one ever-growing resource, and it is never re-served in full: the core serves it as an immutable log with a monotonic sequence number per appended segment and a stable feature ID. The `track` change carries the latest sequence; the frontend fetches `?since=<seq>` for just the new segments and applies them with MapLibre's `GeoJSONSource.updateData` diff (which requires exactly the stable feature IDs the sequence numbering provides). A fresh or reconnecting subscriber fetches without `since` and receives the consolidated track (old geometry may be simplified server-side at that point); after that, tail fetches only.
 

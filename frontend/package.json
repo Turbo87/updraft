@@ -11,12 +11,14 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test:unit": "vitest",
+    "test:e2e": "playwright test",
     "test": "vitest --run"
   },
   "devDependencies": {
     "@inlang/paraglide-js": "2.20.2",
     "@inlang/plugin-m-function-matcher": "2.2.9",
     "@inlang/plugin-message-format": "4.4.0",
+    "@playwright/test": "1.61.1",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.69.1",
     "@sveltejs/vite-plugin-svelte": "7.1.4",

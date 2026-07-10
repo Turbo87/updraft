@@ -33,3 +33,9 @@ vite.config.ts.timestamp-*
 /tauri/gen/android/app/src/main/**/generated
 /tauri/gen/android/app/src/main/assets/tauri.conf.json
 /tauri/gen/android/app/src/main/jniLibs/**/*.so
+
+# Playwright
+/frontend/test-results
+/frontend/playwright-report
+/frontend/blob-report
+/frontend/.playwright

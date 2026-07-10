@@ -263,6 +263,12 @@ mod tests {
     }
 
     #[test]
+    fn parses_plxvtarg() {
+        let s = b"$PLXVTARG,KOLN,4628.80,N,01541.167,E,268.0*3C\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
     fn keeps_unrecognised_sentence_as_unknown() {
         let s = b"$PXABC,11,1,2,1,0,,0,,,*7A\r\n";
         insta::assert_debug_snapshot!(parse_one(s));

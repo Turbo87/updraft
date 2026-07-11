@@ -30,7 +30,7 @@ Some changes make all earlier work invalid, such as replacing a task or seeking 
 
 Workers may keep cached intermediate data between runs. A live optimizer can update data from the growing flight trace instead of starting again from nothing. Worker data is a cache, not authoritative state. It is not included in snapshots and starts empty after a restart.
 
-A worker panic becomes a typed failure input. Without a completion or failure input, the core could keep waiting forever for a job that has stopped. The runtime replaces the failed worker state before it accepts later jobs.
+A worker panic becomes a typed failure input. Without a completion or failure input, the core could keep waiting forever for a job that has stopped. The runtime resets the failed worker's cached state before it accepts later jobs.
 
 This lifecycle stays inside the core job slot and the runtime worker adapter. Other feature code does not need to manage it. Domains provide job inputs, rules for rejecting old results, and code that applies valid results. The design does not include a general computation graph.
 

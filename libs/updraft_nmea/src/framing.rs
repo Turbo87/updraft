@@ -268,6 +268,12 @@ mod tests {
     }
 
     #[test]
+    fn parses_openvario_data() {
+        let s = b"$POV,P,+949.30,Q,-24.57*7D\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
     fn keeps_unrecognised_sentence_as_unknown() {
         let s = b"$PXABC,11,1,2,1,0,,0,,,*7A\r\n";
         insta::assert_debug_snapshot!(parse_one(s));

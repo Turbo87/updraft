@@ -26,5 +26,5 @@ pub use sentences::{
     GsaFixType, GsaSelectionMode, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Lxwp3SpeedCommandMode,
     Lxwp3SwitchMode, Pflaa, Pflac, PflacQueryType, Pflau, PflauAlarmType, PflauGpsStatus, Pgrmz,
     PgrmzFixDimension, Plxv0, Plxv0Direction, Plxvc, PlxvcMessageType, Plxvf, Plxvs, PlxvsMode,
-    Plxvtarg, PositioningMode, Rmc, RmcStatus,
+    Plxvtarg, PositioningMode, Pov, PovDatum, Rmc, RmcStatus,
 };

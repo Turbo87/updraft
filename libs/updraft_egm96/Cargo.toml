@@ -19,8 +19,13 @@ updraft_units = { path = "../updraft_units" }
 
 [dev-dependencies]
 approx = { version = "=0.6.0-rc2", features = ["derive"] }
+criterion = "=0.8.2"
 updraft_units = { path = "../updraft_units", features = ["approx"] }
 
 [[bin]]
 name = "downsample"
 required-features = ["gen"]
+
+[[bench]]
+name = "undulation"
+harness = false

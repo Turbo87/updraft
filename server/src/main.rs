@@ -1,3 +1,4 @@
+use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 
@@ -22,6 +23,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    init_tracing();
+
     let args = Args::parse();
 
     let app = updraft_server::router(&args.static_dir);
@@ -31,13 +34,38 @@ async fn main() -> anyhow::Result<()> {
         .await
         .with_context(|| format!("failed to bind to {addr}"))?;
 
-    println!("listening on http://{}", listener.local_addr()?);
+    let local_addr = listener.local_addr()?;
+    tracing::info!("listening on http://{local_addr}");
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
     Ok(())
+}
+
+/// Installs the process-wide `tracing` subscriber.
+///
+/// Verbosity is controlled by the `UPDRAFT_LOG` environment variable (falling
+/// back to `RUST_LOG`), e.g. `UPDRAFT_LOG=debug` or
+/// `UPDRAFT_LOG=updraft_server=trace,tower_http=debug`.
+fn init_tracing() {
+    use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+
+    let filter = EnvFilter::try_from_env("UPDRAFT_LOG")
+        .or_else(|_| EnvFilter::try_from_default_env())
+        .unwrap_or_else(|error| {
+            if env::var_os("UPDRAFT_LOG").is_some() || env::var_os("RUST_LOG").is_some() {
+                eprintln!("invalid log filter, falling back to `info`: {error}");
+            }
+
+            EnvFilter::new("info")
+        });
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::layer().with_writer(std::io::stderr))
+        .init();
 }
 
 /// Resolves when the process receives Ctrl-C (SIGINT) or, on Unix, SIGTERM.

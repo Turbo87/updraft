@@ -4,6 +4,7 @@ use axum::Router;
 use axum::http::StatusCode;
 use axum::routing::get;
 use tower_http::services::{ServeDir, ServeFile};
+use tower_http::trace::TraceLayer;
 
 /// Builds the HTTP application.
 ///
@@ -23,6 +24,9 @@ pub fn router(static_dir: impl AsRef<Path>) -> Router {
     Router::new()
         .nest("/api", api)
         .fallback_service(static_service)
+        // Emits a span per request plus request/response events; verbosity is
+        // governed by the `tower_http::trace` target in the `UPDRAFT_LOG` filter.
+        .layer(TraceLayer::new_for_http())
 }
 
 async fn health() -> StatusCode {

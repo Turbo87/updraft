@@ -1,4 +1,4 @@
-use crate::field::{field, text};
+use crate::field::FieldsIter;
 
 /// `$LXWP1`: device identification, sent about once a minute.
 ///
@@ -21,13 +21,13 @@ pub struct Lxwp1 {
 }
 
 impl Lxwp1 {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            product: field(fields, 0).map(text),
-            serial: field(fields, 1).map(text),
-            software_version: field(fields, 2).map(text),
-            hardware_version: field(fields, 3).map(text),
-            license: field(fields, 4).map(text),
+            product: fields.text(),
+            serial: fields.text(),
+            software_version: fields.text(),
+            hardware_version: fields.text(),
+            license: fields.text(),
         }
     }
 }
@@ -39,8 +39,7 @@ mod tests {
 
     #[test]
     fn parses_a_full_identification() {
-        let fields: [&[u8]; 6] = [b"LX9000", b"45123", b"9.5", b"2.0", b"ABC123", b""];
-        let lxwp1 = Lxwp1::parse(&fields);
+        let lxwp1 = Lxwp1::parse(FieldsIter::new(b"LX9000,45123,9.5,2.0,ABC123,"));
         assert_some_eq!(lxwp1.product, "LX9000".into());
         assert_some_eq!(lxwp1.serial, "45123".into());
         assert_some_eq!(lxwp1.software_version, "9.5".into());
@@ -51,8 +50,7 @@ mod tests {
     #[test]
     fn a_missing_license_reads_as_absent() {
         // Many devices omit the license field entirely.
-        let fields: [&[u8]; 4] = [b"V7", b"12345", b"1.0", b"1.0"];
-        let lxwp1 = Lxwp1::parse(&fields);
+        let lxwp1 = Lxwp1::parse(FieldsIter::new(b"V7,12345,1.0,1.0"));
         assert_some_eq!(lxwp1.product, "V7".into());
         assert_none!(lxwp1.license);
     }

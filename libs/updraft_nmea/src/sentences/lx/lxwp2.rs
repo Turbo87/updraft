@@ -1,4 +1,4 @@
-use crate::field::f64_field;
+use crate::field::FieldsIter;
 use updraft_units::Speed;
 
 /// `$LXWP2`: the glide-computer settings: MacCready, ballast, bugs, the
@@ -30,15 +30,15 @@ pub struct Lxwp2 {
 }
 
 impl Lxwp2 {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            mac_cready: f64_field(fields, 0).map(Speed::from_meters_per_second),
-            ballast: f64_field(fields, 1),
-            bugs: f64_field(fields, 2),
-            polar_a: f64_field(fields, 3),
-            polar_b: f64_field(fields, 4),
-            polar_c: f64_field(fields, 5),
-            volume: f64_field(fields, 6),
+            mac_cready: fields.f64().map(Speed::from_meters_per_second),
+            ballast: fields.f64(),
+            bugs: fields.f64(),
+            polar_a: fields.f64(),
+            polar_b: fields.f64(),
+            polar_c: fields.f64(),
+            volume: fields.f64(),
         }
     }
 }
@@ -50,8 +50,7 @@ mod tests {
 
     #[test]
     fn parses_settings_with_a_polar_and_volume() {
-        let fields: [&[u8]; 7] = [b"1.5", b"1.11", b"13", b"2.96", b"-3.03", b"1.35", b"45"];
-        let lxwp2 = Lxwp2::parse(&fields);
+        let lxwp2 = Lxwp2::parse(FieldsIter::new(b"1.5,1.11,13,2.96,-3.03,1.35,45"));
         assert_some_eq!(lxwp2.mac_cready, Speed::from_meters_per_second(1.5));
         assert_some_eq!(lxwp2.ballast, 1.11);
         assert_some_eq!(lxwp2.bugs, 13.0);
@@ -64,8 +63,7 @@ mod tests {
     #[test]
     fn keeps_present_fields_when_the_polar_and_volume_are_omitted() {
         // A short form: MacCready, ballast, and bugs only.
-        let fields: [&[u8]; 3] = [b"1.7", b"1.1", b"5"];
-        let lxwp2 = Lxwp2::parse(&fields);
+        let lxwp2 = Lxwp2::parse(FieldsIter::new(b"1.7,1.1,5"));
         assert_some_eq!(lxwp2.mac_cready, Speed::from_meters_per_second(1.7));
         assert_some_eq!(lxwp2.ballast, 1.1);
         assert_some_eq!(lxwp2.bugs, 5.0);

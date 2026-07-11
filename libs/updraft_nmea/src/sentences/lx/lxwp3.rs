@@ -1,4 +1,4 @@
-use crate::field::{f64_field, field, parsed_field, text};
+use crate::field::FieldsIter;
 use updraft_units::{Length, Speed};
 
 /// `$LXWP3`: vario and speed-command configuration.
@@ -38,21 +38,21 @@ pub struct Lxwp3 {
 }
 
 impl Lxwp3 {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            altitude_offset: f64_field(fields, 0).map(Length::from_feet),
-            speed_command_mode: parsed_field(fields, 1).map(Lxwp3SpeedCommandMode::from_value),
-            vario_filter: f64_field(fields, 2),
-            te_filter: f64_field(fields, 3),
-            te_level: f64_field(fields, 4),
-            vario_average: f64_field(fields, 5),
-            vario_range: f64_field(fields, 6),
-            speed_command_deadband: f64_field(fields, 7).map(Speed::from_meters_per_second),
-            switch_mode: parsed_field(fields, 8).map(Lxwp3SwitchMode::from_value),
-            speed_command_switch_speed: f64_field(fields, 9).map(Speed::from_kilometers_per_hour),
-            smart_diff: f64_field(fields, 10),
-            glider_name: field(fields, 11).map(text),
-            time_offset: f64_field(fields, 12),
+            altitude_offset: fields.f64().map(Length::from_feet),
+            speed_command_mode: fields.parsed().map(Lxwp3SpeedCommandMode::from_value),
+            vario_filter: fields.f64(),
+            te_filter: fields.f64(),
+            te_level: fields.f64(),
+            vario_average: fields.f64(),
+            vario_range: fields.f64(),
+            speed_command_deadband: fields.f64().map(Speed::from_meters_per_second),
+            switch_mode: fields.parsed().map(Lxwp3SwitchMode::from_value),
+            speed_command_switch_speed: fields.f64().map(Speed::from_kilometers_per_hour),
+            smart_diff: fields.f64(),
+            glider_name: fields.text(),
+            time_offset: fields.f64(),
         }
     }
 }
@@ -111,11 +111,8 @@ mod tests {
 
     #[test]
     fn parses_a_full_configuration() {
-        let fields: [&[u8]; 13] = [
-            b"47.76", b"0", b"2.0", b"5.0", b"15", b"30", b"2.5", b"1.0", b"0", b"100", b"0.1",
-            b"", b"0",
-        ];
-        let lxwp3 = Lxwp3::parse(&fields);
+        let fields = FieldsIter::new(b"47.76,0,2.0,5.0,15,30,2.5,1.0,0,100,0.1,,0");
+        let lxwp3 = Lxwp3::parse(fields);
         assert_some_eq!(lxwp3.altitude_offset, Length::from_feet(47.76));
         assert_some_eq!(lxwp3.speed_command_mode, Lxwp3SpeedCommandMode::External);
         assert_some_eq!(lxwp3.vario_filter, 2.0);
@@ -139,11 +136,8 @@ mod tests {
 
     #[test]
     fn reads_a_glider_name_and_enumerated_modes() {
-        let fields: [&[u8]; 13] = [
-            b"105", b"2", b"5.0", b"0", b"29", b"20", b"10.0", b"1.3", b"1", b"120", b"0", b"KA6e",
-            b"2",
-        ];
-        let lxwp3 = Lxwp3::parse(&fields);
+        let fields = FieldsIter::new(b"105,2,5.0,0,29,20,10.0,1.3,1,120,0,KA6e,2");
+        let lxwp3 = Lxwp3::parse(fields);
         assert_some_eq!(lxwp3.speed_command_mode, Lxwp3SpeedCommandMode::Airspeed);
         assert_some_eq!(lxwp3.switch_mode, Lxwp3SwitchMode::Inverted);
         assert_some_eq!(lxwp3.glider_name, "KA6e".into());
@@ -152,10 +146,8 @@ mod tests {
 
     #[test]
     fn an_absent_mode_field_reads_as_absent() {
-        let fields: [&[u8]; 13] = [
-            b"0", b"", b"", b"", b"", b"", b"", b"", b"", b"", b"", b"", b"",
-        ];
-        let lxwp3 = Lxwp3::parse(&fields);
+        let fields = FieldsIter::new(b"0,,,,,,,,,,,,");
+        let lxwp3 = Lxwp3::parse(fields);
         assert_none!(lxwp3.speed_command_mode);
         assert_none!(lxwp3.switch_mode);
     }

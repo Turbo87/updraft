@@ -1,4 +1,4 @@
-use crate::field::{field, text};
+use crate::field::{FieldsIter, text};
 
 /// `$PLXV0`: the LXNAV vario setting exchange: read requests, writes, and
 /// the device's answers, as a generic name/values pair.
@@ -21,17 +21,11 @@ pub struct Plxv0 {
 }
 
 impl Plxv0 {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            setting: field(fields, 0).map(text),
-            direction: field(fields, 1).map(Plxv0Direction::from_bytes),
-            values: fields
-                .get(2..)
-                .unwrap_or_default()
-                .iter()
-                .copied()
-                .map(text)
-                .collect(),
+            setting: fields.text(),
+            direction: fields.bytes().map(Plxv0Direction::from_bytes),
+            values: fields.map(text).collect(),
         }
     }
 }
@@ -63,11 +57,8 @@ mod tests {
 
     #[test]
     fn parses_a_polar_write() {
-        let fields: [&[u8]; 13] = [
-            b"POLAR", b"W", b"1.780", b"-3.030", b"1.930", b"30.0", b"292", b"600", b"265", b"90",
-            b"LS 7", b"0", b"",
-        ];
-        let plxv0 = Plxv0::parse(&fields);
+        let fields = FieldsIter::new(b"POLAR,W,1.780,-3.030,1.930,30.0,292,600,265,90,LS 7,0,");
+        let plxv0 = Plxv0::parse(fields);
         assert_some_eq!(plxv0.setting, "POLAR".into());
         assert_some_eq!(plxv0.direction, Plxv0Direction::Write);
         assert_eq!(plxv0.values.first(), Some(&"1.780".into()));
@@ -78,15 +69,13 @@ mod tests {
     fn keeps_interior_empty_value_fields() {
         // An empty value between two present ones is kept as an empty
         // string so later values stay at their sent position.
-        let fields: [&[u8]; 4] = [b"POLAR", b"W", b"", b"1.5"];
-        let plxv0 = Plxv0::parse(&fields);
+        let plxv0 = Plxv0::parse(FieldsIter::new(b"POLAR,W,,1.5"));
         assert_eq!(plxv0.values, vec!["".into(), "1.5".into()]);
     }
 
     #[test]
     fn parses_a_scalar_write() {
-        let fields: [&[u8]; 3] = [b"MC", b"W", b"1.5"];
-        let plxv0 = Plxv0::parse(&fields);
+        let plxv0 = Plxv0::parse(FieldsIter::new(b"MC,W,1.5"));
         assert_some_eq!(plxv0.setting, "MC".into());
         assert_some_eq!(plxv0.direction, Plxv0Direction::Write);
         assert_eq!(plxv0.values, vec!["1.5".into()]);
@@ -94,8 +83,7 @@ mod tests {
 
     #[test]
     fn parses_a_read_request_with_no_values() {
-        let fields: [&[u8]; 2] = [b"ELEVATION", b"R"];
-        let plxv0 = Plxv0::parse(&fields);
+        let plxv0 = Plxv0::parse(FieldsIter::new(b"ELEVATION,R"));
         assert_some_eq!(plxv0.setting, "ELEVATION".into());
         assert_some_eq!(plxv0.direction, Plxv0Direction::Read);
         assert_eq!(plxv0.values, Vec::<Box<str>>::new());
@@ -103,8 +91,7 @@ mod tests {
 
     #[test]
     fn keeps_an_unknown_direction_as_text() {
-        let fields: [&[u8]; 2] = [b"CONNECTION", b"S"];
-        let plxv0 = Plxv0::parse(&fields);
+        let plxv0 = Plxv0::parse(FieldsIter::new(b"CONNECTION,S"));
         assert_some_eq!(plxv0.direction, Plxv0Direction::Other("S".into()));
     }
 }

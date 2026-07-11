@@ -1,4 +1,4 @@
-use crate::field::{field, text};
+use crate::field::{FieldsIter, text};
 
 /// FLARM configuration exchange (`$PFLAC`): read requests, set requests,
 /// and the device's answers, as a generic item/values pair.
@@ -17,17 +17,11 @@ pub struct Pflac {
 }
 
 impl Pflac {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            query_type: field(fields, 0).map(PflacQueryType::from_bytes),
-            item: field(fields, 1).map(text),
-            values: fields
-                .get(2..)
-                .unwrap_or_default()
-                .iter()
-                .copied()
-                .map(text)
-                .collect(),
+            query_type: fields.bytes().map(PflacQueryType::from_bytes),
+            item: fields.text(),
+            values: fields.map(text).collect(),
         }
     }
 }
@@ -62,8 +56,7 @@ mod tests {
 
     #[test]
     fn parses_a_read_request() {
-        let fields: [&[u8]; 2] = [b"R", b"NMEAOUT"];
-        let pflac = Pflac::parse(&fields);
+        let pflac = Pflac::parse(FieldsIter::new(b"R,NMEAOUT"));
         assert_some_eq!(pflac.query_type, PflacQueryType::Read);
         assert_some_eq!(pflac.item, "NMEAOUT".into());
         assert_eq!(pflac.values, Vec::<Box<str>>::new());
@@ -71,8 +64,7 @@ mod tests {
 
     #[test]
     fn parses_a_set_request() {
-        let fields: [&[u8]; 3] = [b"S", b"BAUD", b"5"];
-        let pflac = Pflac::parse(&fields);
+        let pflac = Pflac::parse(FieldsIter::new(b"S,BAUD,5"));
         assert_some_eq!(pflac.query_type, PflacQueryType::Set);
         assert_some_eq!(pflac.item, "BAUD".into());
         assert_eq!(pflac.values, vec!["5".into()]);
@@ -80,8 +72,7 @@ mod tests {
 
     #[test]
     fn keeps_every_value_of_a_multi_value_answer() {
-        let fields: [&[u8]; 4] = [b"A", b"RADIOID", b"1", b"A832ED"];
-        let pflac = Pflac::parse(&fields);
+        let pflac = Pflac::parse(FieldsIter::new(b"A,RADIOID,1,A832ED"));
         assert_some_eq!(pflac.query_type, PflacQueryType::Answer);
         assert_some_eq!(pflac.item, "RADIOID".into());
         assert_eq!(pflac.values, vec!["1".into(), "A832ED".into()]);
@@ -91,15 +82,13 @@ mod tests {
     fn keeps_empty_value_fields() {
         // Unlike the item field, an empty value field is kept as an empty
         // string so the positions of the following values are preserved.
-        let fields: [&[u8]; 4] = [b"S", b"ID", b"", b"foo"];
-        let pflac = Pflac::parse(&fields);
+        let pflac = Pflac::parse(FieldsIter::new(b"S,ID,,foo"));
         assert_eq!(pflac.values, vec!["".into(), "foo".into()]);
     }
 
     #[test]
     fn parses_an_error_answer() {
-        let fields: [&[u8]; 2] = [b"A", b"ERROR"];
-        let pflac = Pflac::parse(&fields);
+        let pflac = Pflac::parse(FieldsIter::new(b"A,ERROR"));
         assert_some_eq!(pflac.query_type, PflacQueryType::Answer);
         assert_some_eq!(pflac.item, "ERROR".into());
         assert_eq!(pflac.values, Vec::<Box<str>>::new());
@@ -108,8 +97,7 @@ mod tests {
     #[test]
     fn keeps_an_unknown_query_type_as_text() {
         // The ICD's error example: `$PFLAC,HELLO,GLIDER_PILOTS`.
-        let fields: [&[u8]; 2] = [b"HELLO", b"GLIDER_PILOTS"];
-        let pflac = Pflac::parse(&fields);
+        let pflac = Pflac::parse(FieldsIter::new(b"HELLO,GLIDER_PILOTS"));
         assert_some_eq!(pflac.query_type, PflacQueryType::Other("HELLO".into()));
         assert_some_eq!(pflac.item, "GLIDER_PILOTS".into());
     }

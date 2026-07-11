@@ -1,7 +1,7 @@
 //! Standard GNSS sentences: `GGA`, `RMC`, `GSA`, for any talker.
 
 use crate::datetime::{Date, Time};
-use crate::field::{f64_field, field, lat_lon, parsed_field};
+use crate::field::FieldsIter;
 use crate::message::Talker;
 use updraft_geo::LatLon;
 use updraft_units::{Angle, Length, Speed};
@@ -24,28 +24,29 @@ pub struct Gga {
 }
 
 impl Gga {
-    pub fn parse(talker: Talker, fields: &[&[u8]]) -> Self {
+    pub fn parse(talker: Talker, mut fields: FieldsIter<'_>) -> Self {
         Self {
             talker,
-            utc_time: field(fields, 0).and_then(Time::parse),
-            position: lat_lon(fields, 1, 2, 3, 4),
-            fix_quality: GgaFixQuality::from_field(parsed_field(fields, 5)),
-            satellites_used: parsed_field(fields, 6),
-            hdop: f64_field(fields, 7),
-            altitude: meters(fields, 8, 9),
-            geoid_separation: meters(fields, 10, 11),
-            dgps_age: f64_field(fields, 12),
-            dgps_station: parsed_field(fields, 13),
+            utc_time: fields.bytes().and_then(Time::parse),
+            position: fields.lat_lon(),
+            fix_quality: GgaFixQuality::from_field(fields.parsed()),
+            satellites_used: fields.parsed(),
+            hdop: fields.f64(),
+            altitude: meters(&mut fields),
+            geoid_separation: meters(&mut fields),
+            dgps_age: fields.f64(),
+            dgps_station: fields.parsed(),
         }
     }
 }
 
 /// A length field paired with its unit field, which `GGA` always reports as
 /// `M` for meters. A missing or non-meter unit reads the length as absent.
-fn meters(fields: &[&[u8]], value: usize, unit: usize) -> Option<Length> {
-    let value = f64_field(fields, value)?;
-    match field(fields, unit)? {
-        b"M" | b"m" => Some(Length::from_meters(value)),
+/// Both fields are consumed even when the value is absent.
+fn meters(fields: &mut FieldsIter<'_>) -> Option<Length> {
+    let value = fields.f64();
+    match fields.bytes()? {
+        b"M" | b"m" => Some(Length::from_meters(value?)),
         _ => None,
     }
 }
@@ -98,17 +99,18 @@ pub struct Rmc {
 }
 
 impl Rmc {
-    pub fn parse(talker: Talker, fields: &[&[u8]]) -> Self {
+    pub fn parse(talker: Talker, mut fields: FieldsIter<'_>) -> Self {
         Self {
             talker,
-            utc_time: field(fields, 0).and_then(Time::parse),
-            status: RmcStatus::from_field(field(fields, 1)),
-            position: lat_lon(fields, 2, 3, 4, 5),
-            speed_over_ground: f64_field(fields, 6).map(Speed::from_knots),
-            course_over_ground: f64_field(fields, 7).map(Angle::from_degrees),
-            date: field(fields, 8).and_then(Date::parse_ddmmyy),
-            magnetic_variation: magnetic_variation(fields, 9, 10),
-            mode: field(fields, 11)
+            utc_time: fields.bytes().and_then(Time::parse),
+            status: RmcStatus::from_field(fields.bytes()),
+            position: fields.lat_lon(),
+            speed_over_ground: fields.f64().map(Speed::from_knots),
+            course_over_ground: fields.f64().map(Angle::from_degrees),
+            date: fields.bytes().and_then(Date::parse_ddmmyy),
+            magnetic_variation: magnetic_variation(&mut fields),
+            mode: fields
+                .bytes()
                 .and_then(|field| field.first().copied())
                 .map(|byte| PositioningMode::from_char(char::from(byte))),
         }
@@ -116,12 +118,12 @@ impl Rmc {
 }
 
 /// The signed magnetic variation from a magnitude field and its `E`/`W`
-/// hemisphere.
-fn magnetic_variation(fields: &[&[u8]], value: usize, hemisphere: usize) -> Option<Angle> {
-    let degrees = f64_field(fields, value)?;
-    match field(fields, hemisphere)? {
-        b"E" => Some(Angle::from_degrees(degrees)),
-        b"W" => Some(Angle::from_degrees(-degrees)),
+/// hemisphere. Both fields are consumed even when the magnitude is absent.
+fn magnetic_variation(fields: &mut FieldsIter<'_>) -> Option<Angle> {
+    let degrees = fields.f64();
+    match fields.bytes()? {
+        b"E" => Some(Angle::from_degrees(degrees?)),
+        b"W" => Some(Angle::from_degrees(-degrees?)),
         _ => None,
     }
 }
@@ -184,17 +186,16 @@ pub struct Gsa {
 }
 
 impl Gsa {
-    pub fn parse(talker: Talker, fields: &[&[u8]]) -> Self {
+    pub fn parse(talker: Talker, mut fields: FieldsIter<'_>) -> Self {
         Self {
             talker,
-            selection_mode: GsaSelectionMode::from_field(field(fields, 0)),
-            fix_type: GsaFixType::from_field(parsed_field(fields, 1)),
-            satellites: (2..14)
-                .filter_map(|index| parsed_field(fields, index))
-                .collect(),
-            pdop: f64_field(fields, 14),
-            hdop: f64_field(fields, 15),
-            vdop: f64_field(fields, 16),
+            selection_mode: GsaSelectionMode::from_field(fields.bytes()),
+            fix_type: GsaFixType::from_field(fields.parsed()),
+            // Twelve satellite fields; absent ones are consumed but dropped.
+            satellites: (0..12).filter_map(|_| fields.parsed()).collect(),
+            pdop: fields.f64(),
+            hdop: fields.f64(),
+            vdop: fields.f64(),
         }
     }
 }
@@ -247,38 +248,18 @@ mod tests {
     use super::*;
     use claims::{assert_none, assert_some_eq};
 
-    fn gga_fields() -> Vec<&'static [u8]> {
-        vec![
-            b"123519",
-            b"4807.038",
-            b"N",
-            b"01131.000",
-            b"E",
-            b"1",
-            b"08",
-            b"0.9",
-            b"545.4",
-            b"M",
-            b"46.9",
-            b"M",
-            b"",
-            b"",
-        ]
-    }
-
     #[test]
     fn reads_altitude_and_geoid_separation_in_meters() {
-        let gga = Gga::parse(Talker::Gps, &gga_fields());
+        let fields = FieldsIter::new(b"123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,");
+        let gga = Gga::parse(Talker::Gps, fields);
         assert_some_eq!(gga.altitude, Length::from_meters(545.4));
         assert_some_eq!(gga.geoid_separation, Length::from_meters(46.9));
     }
 
     #[test]
     fn ignores_altitude_with_a_non_meter_unit() {
-        let mut fields = gga_fields();
-        fields[9] = b"F";
-        fields[11] = b"F";
-        let gga = Gga::parse(Talker::Gps, &fields);
+        let fields = FieldsIter::new(b"123519,4807.038,N,01131.000,E,1,08,0.9,545.4,F,46.9,F,,");
+        let gga = Gga::parse(Talker::Gps, fields);
         assert_none!(gga.altitude);
         assert_none!(gga.geoid_separation);
     }
@@ -297,22 +278,24 @@ mod tests {
 
     #[test]
     fn signs_magnetic_variation_by_hemisphere() {
-        let east: [&[u8]; 2] = [b"3.5", b"E"];
-        assert_some_eq!(magnetic_variation(&east, 0, 1), Angle::from_degrees(3.5));
-        let west: [&[u8]; 2] = [b"3.5", b"W"];
-        assert_some_eq!(magnetic_variation(&west, 0, 1), Angle::from_degrees(-3.5));
-        let unknown: [&[u8]; 2] = [b"3.5", b"X"];
-        assert_none!(magnetic_variation(&unknown, 0, 1));
+        assert_some_eq!(
+            magnetic_variation(&mut FieldsIter::new(b"3.5,E")),
+            Angle::from_degrees(3.5)
+        );
+        assert_some_eq!(
+            magnetic_variation(&mut FieldsIter::new(b"3.5,W")),
+            Angle::from_degrees(-3.5)
+        );
+        assert_none!(magnetic_variation(&mut FieldsIter::new(b"3.5,X")));
     }
 
     #[test]
     fn keeps_three_digit_satellite_prns() {
         // Galileo ids run 301-336, past a byte, so they must survive decoding.
-        let fields: [&[u8]; 17] = [
-            b"A", b"3", b"301", b"302", b"336", b"", b"", b"", b"", b"", b"", b"", b"", b"",
-            b"1.2", b"1.0", b"1.0",
-        ];
-        let gsa = Gsa::parse(Talker::Galileo, &fields);
-        assert_eq!(gsa.satellites, vec![301, 302, 336]);
+        let fields = FieldsIter::new(b"A,3,301,302,336,,,,,,,,,,1.2,1.0,1.0");
+        let gsa = Gsa::parse(Talker::Galileo, fields);
+        assert_eq!(gsa.satellites.as_slice(), [301, 302, 336]);
+        assert_some_eq!(gsa.pdop, 1.2);
+        assert_some_eq!(gsa.vdop, 1.0);
     }
 }

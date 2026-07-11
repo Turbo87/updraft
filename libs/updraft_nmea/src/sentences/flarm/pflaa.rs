@@ -1,5 +1,5 @@
 use super::common::{FlarmAlarmLevel, FlarmId, bool_field, hex_field};
-use crate::field::{f64_field, field, parsed_field};
+use crate::field::FieldsIter;
 use updraft_units::{Angle, Length, Speed};
 
 /// One nearby traffic target (`$PFLAA`).
@@ -49,22 +49,22 @@ pub struct Pflaa {
 }
 
 impl Pflaa {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            alarm_level: FlarmAlarmLevel::from_field(parsed_field(fields, 0)),
-            relative_north: f64_field(fields, 1).map(Length::from_meters),
-            relative_east: f64_field(fields, 2).map(Length::from_meters),
-            relative_vertical: f64_field(fields, 3).map(Length::from_meters),
-            id_type: parsed_field(fields, 4).map(FlarmIdType::from_value),
-            id: field(fields, 5).and_then(FlarmId::parse),
-            track: f64_field(fields, 6).map(Angle::from_degrees),
-            turn_rate: f64_field(fields, 7),
-            ground_speed: f64_field(fields, 8).map(Speed::from_meters_per_second),
-            climb_rate: f64_field(fields, 9).map(Speed::from_meters_per_second),
-            aircraft_type: FlarmAircraftType::from_field(hex_field(fields, 10)),
-            no_track: bool_field(fields, 11),
-            source: parsed_field(fields, 12).map(FlarmSource::from_value),
-            rssi: f64_field(fields, 13),
+            alarm_level: FlarmAlarmLevel::from_field(fields.parsed()),
+            relative_north: fields.f64().map(Length::from_meters),
+            relative_east: fields.f64().map(Length::from_meters),
+            relative_vertical: fields.f64().map(Length::from_meters),
+            id_type: fields.parsed().map(FlarmIdType::from_value),
+            id: fields.bytes().and_then(FlarmId::parse),
+            track: fields.f64().map(Angle::from_degrees),
+            turn_rate: fields.f64(),
+            ground_speed: fields.f64().map(Speed::from_meters_per_second),
+            climb_rate: fields.f64().map(Speed::from_meters_per_second),
+            aircraft_type: FlarmAircraftType::from_field(hex_field(&mut fields)),
+            no_track: bool_field(&mut fields),
+            source: fields.parsed().map(FlarmSource::from_value),
+            rssi: fields.f64(),
         }
     }
 }
@@ -189,10 +189,8 @@ mod tests {
     fn parses_a_traffic_target() {
         // The ICD's traffic example: a glider 1.2 km south, 1.2 km east,
         // 220 m higher, on a south track at 30 m/s, sinking 1.4 m/s.
-        let fields: [&[u8]; 11] = [
-            b"0", b"-1234", b"1234", b"220", b"2", b"DD8F12", b"180", b"", b"30", b"-1.4", b"1",
-        ];
-        let pflaa = Pflaa::parse(&fields);
+        let fields = FieldsIter::new(b"0,-1234,1234,220,2,DD8F12,180,,30,-1.4,1");
+        let pflaa = Pflaa::parse(fields);
         assert_eq!(pflaa.alarm_level, FlarmAlarmLevel::None);
         assert_some_eq!(pflaa.relative_north, Length::from_meters(-1234.0));
         assert_some_eq!(pflaa.relative_east, Length::from_meters(1234.0));
@@ -213,11 +211,8 @@ mod tests {
 
     #[test]
     fn parses_the_version_9_trailing_fields() {
-        let fields: [&[u8]; 14] = [
-            b"0", b"1206", b"504", b"182", b"1", b"DDA85C", b"240", b"", b"49", b"2.5", b"9", b"0",
-            b"1", b"-58.5",
-        ];
-        let pflaa = Pflaa::parse(&fields);
+        let fields = FieldsIter::new(b"0,1206,504,182,1,DDA85C,240,,49,2.5,9,0,1,-58.5");
+        let pflaa = Pflaa::parse(fields);
         assert_eq!(pflaa.aircraft_type, FlarmAircraftType::JetAircraft);
         assert_some_eq!(pflaa.no_track, false);
         assert_some_eq!(pflaa.source, FlarmSource::AdsB);
@@ -229,10 +224,8 @@ mod tests {
         // A transponder Mode-S target: no bearing, so `relative_north`
         // carries the distance estimate, and the identity/motion fields
         // are empty.
-        let fields: [&[u8]; 11] = [
-            b"0", b"1852", b"", b"-163", b"", b"", b"", b"", b"", b"", b"0",
-        ];
-        let pflaa = Pflaa::parse(&fields);
+        let fields = FieldsIter::new(b"0,1852,,-163,,,,,,,0");
+        let pflaa = Pflaa::parse(fields);
         assert_some_eq!(pflaa.relative_north, Length::from_meters(1852.0));
         assert_none!(pflaa.relative_east);
         assert_none!(pflaa.id_type);

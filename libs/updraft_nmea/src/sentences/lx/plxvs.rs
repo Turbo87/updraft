@@ -1,4 +1,4 @@
-use crate::field::{f64_field, field, parsed_field, text};
+use crate::field::FieldsIter;
 use updraft_units::Length;
 
 /// `$PLXVS`: the vario "slow data" sentence from LXNAV varios, sent every
@@ -21,13 +21,13 @@ pub struct Plxvs {
 }
 
 impl Plxvs {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            outside_air_temperature: f64_field(fields, 0),
-            mode: parsed_field(fields, 1).map(PlxvsMode::from_value),
-            supply_voltage: f64_field(fields, 2),
-            igc_pressure_altitude: f64_field(fields, 3).map(Length::from_meters),
-            flap_position: field(fields, 4).map(text),
+            outside_air_temperature: fields.f64(),
+            mode: fields.parsed().map(PlxvsMode::from_value),
+            supply_voltage: fields.f64(),
+            igc_pressure_altitude: fields.f64().map(Length::from_meters),
+            flap_position: fields.text(),
         }
     }
 }
@@ -59,8 +59,7 @@ mod tests {
 
     #[test]
     fn parses_the_short_form() {
-        let fields: [&[u8]; 4] = [b"23.1", b"0", b"12.3", b""];
-        let plxvs = Plxvs::parse(&fields);
+        let plxvs = Plxvs::parse(FieldsIter::new(b"23.1,0,12.3,"));
         assert_some_eq!(plxvs.outside_air_temperature, 23.1);
         assert_some_eq!(plxvs.mode, PlxvsMode::Vario);
         assert_some_eq!(plxvs.supply_voltage, 12.3);
@@ -70,8 +69,7 @@ mod tests {
 
     #[test]
     fn parses_the_recorder_altitude_and_flap() {
-        let fields: [&[u8]; 6] = [b"18.4", b"1", b"12.1", b"1543.2", b"L", b""];
-        let plxvs = Plxvs::parse(&fields);
+        let plxvs = Plxvs::parse(FieldsIter::new(b"18.4,1,12.1,1543.2,L,"));
         assert_some_eq!(plxvs.mode, PlxvsMode::SpeedCommand);
         assert_some_eq!(plxvs.igc_pressure_altitude, Length::from_meters(1543.2));
         assert_some_eq!(plxvs.flap_position, "L".into());

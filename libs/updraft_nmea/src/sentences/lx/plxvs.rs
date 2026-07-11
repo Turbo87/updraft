@@ -24,7 +24,7 @@ impl Plxvs {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
             outside_air_temperature: fields.f64(),
-            mode: fields.parsed().map(PlxvsMode::from_value),
+            mode: fields.u8().map(PlxvsMode::from_value),
             supply_voltage: fields.f64(),
             igc_pressure_altitude: fields.f64().map(Length::from_meters),
             flap_position: fields.text(),

@@ -1,8 +1,6 @@
 //! Date and time of day carried by NMEA sentences, kept exactly as
 //! transmitted.
 
-use crate::field::parse_from_utf8;
-
 /// A time of day, as transmitted, without timezone.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Time {
@@ -24,8 +22,8 @@ impl Time {
     /// a real time of day read as absent. The seconds bound leaves room for a
     /// positive leap second (`23:59:60`).
     pub fn parse(field: &[u8]) -> Option<Self> {
-        let hour = parse_from_utf8(field.get(0..2)?)?;
-        let minute = parse_from_utf8(field.get(2..4)?)?;
+        let hour = btoi::btoi(field.get(0..2)?).ok()?;
+        let minute = btoi::btoi(field.get(2..4)?).ok()?;
         let seconds = fast_float2::parse(field.get(4..)?).ok()?;
         (hour <= 23 && minute <= 59 && (0.0..61.0).contains(&seconds)).then_some(Self {
             hour,
@@ -55,9 +53,9 @@ impl Date {
         if field.len() != 6 {
             return None;
         }
-        let day = parse_from_utf8(field.get(0..2)?)?;
-        let month = parse_from_utf8(field.get(2..4)?)?;
-        let year = 2000 + parse_from_utf8::<u16>(field.get(4..6)?)?;
+        let day = btoi::btoi(field.get(0..2)?).ok()?;
+        let month = btoi::btoi(field.get(2..4)?).ok()?;
+        let year = 2000 + btoi::btoi::<u16>(field.get(4..6)?).ok()?;
         ((1..=12).contains(&month) && (1..=days_in_month(year, month)).contains(&day))
             .then_some(Self { year, month, day })
     }

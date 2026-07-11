@@ -29,13 +29,13 @@ impl Gga {
             talker,
             utc_time: fields.bytes().and_then(Time::parse),
             position: fields.lat_lon(),
-            fix_quality: GgaFixQuality::from_field(fields.parsed()),
-            satellites_used: fields.parsed(),
+            fix_quality: GgaFixQuality::from_field(fields.u8()),
+            satellites_used: fields.u8(),
             hdop: fields.f64(),
             altitude: meters(&mut fields),
             geoid_separation: meters(&mut fields),
             dgps_age: fields.f64(),
-            dgps_station: fields.parsed(),
+            dgps_station: fields.u16(),
         }
     }
 }
@@ -190,9 +190,9 @@ impl Gsa {
         Self {
             talker,
             selection_mode: GsaSelectionMode::from_field(fields.bytes()),
-            fix_type: GsaFixType::from_field(fields.parsed()),
+            fix_type: GsaFixType::from_field(fields.u8()),
             // Twelve satellite fields; absent ones are consumed but dropped.
-            satellites: (0..12).filter_map(|_| fields.parsed()).collect(),
+            satellites: (0..12).filter_map(|_| fields.u16()).collect(),
             pdop: fields.f64(),
             hdop: fields.f64(),
             vdop: fields.f64(),

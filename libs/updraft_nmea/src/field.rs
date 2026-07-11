@@ -3,7 +3,6 @@
 //! Every helper treats an empty or unparseable field as absent, so a
 //! malformed optional field never fails a whole sentence.
 
-use std::str::FromStr;
 use updraft_geo::LatLon;
 
 /// The comma-separated fields of a sentence body, consumed left to right.
@@ -35,9 +34,14 @@ impl<'a> FieldsIter<'a> {
         self.bytes().map(text)
     }
 
-    /// The next field parsed as `T`.
-    pub fn parsed<T: FromStr>(&mut self) -> Option<T> {
-        parse_from_utf8(self.bytes()?)
+    /// The next field parsed as a `u8` integer.
+    pub fn u8(&mut self) -> Option<u8> {
+        btoi::btoi(self.bytes()?).ok()
+    }
+
+    /// The next field parsed as a `u16` integer.
+    pub fn u16(&mut self) -> Option<u16> {
+        btoi::btoi(self.bytes()?).ok()
     }
 
     /// The next field as a finite floating-point value. `nan`/`inf` parse
@@ -86,12 +90,6 @@ pub fn text(bytes: &[u8]) -> Box<str> {
     String::from_utf8_lossy(bytes).into_owned().into_boxed_str()
 }
 
-/// Parses bytes as `T`, or `None` if they are not valid UTF-8 or do not
-/// parse. NMEA numbers are ASCII, so a non-UTF-8 field simply reads as absent.
-pub fn parse_from_utf8<T: FromStr>(bytes: &[u8]) -> Option<T> {
-    std::str::from_utf8(bytes).ok()?.parse().ok()
-}
-
 /// Converts an NMEA `[d]ddmm.mmmm` magnitude plus a hemisphere letter into
 /// signed decimal degrees.
 fn coordinate(value: &[u8], hemisphere: &[u8]) -> Option<f64> {
@@ -125,9 +123,9 @@ mod tests {
         assert_none!(fields.bytes());
 
         let mut fields = FieldsIter::new(b",12");
-        assert_none!(fields.parsed::<u8>());
-        assert_some_eq!(fields.parsed::<u8>(), 12);
-        assert_none!(fields.parsed::<u8>());
+        assert_none!(fields.u8());
+        assert_some_eq!(fields.u8(), 12);
+        assert_none!(fields.u8());
     }
 
     #[test]
@@ -202,7 +200,7 @@ mod tests {
         // the fourth field so later fields keep their positions.
         let mut fields = FieldsIter::new(b"4857.88170,X,00705.83929,E,42");
         assert_none!(fields.lat_lon());
-        assert_some_eq!(fields.parsed::<u8>(), 42);
+        assert_some_eq!(fields.u8(), 42);
     }
 
     #[test]

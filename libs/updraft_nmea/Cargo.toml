@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 workspace = true
 
 [dependencies]
+btoi = "=0.5.0"
 fast-float2 = "=0.2.3"
 updraft_geo = { path = "../updraft_geo" }
 updraft_units = { path = "../updraft_units" }

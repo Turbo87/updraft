@@ -1,0 +1,22 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Plxvtarg(
+        Plxvtarg {
+            name: Some(
+                "KOLN",
+            ),
+            position: Some(
+                LatLon {
+                    latitude: 46.480000000000004°,
+                    longitude: 15.686116666666663°,
+                },
+            ),
+            elevation: Some(
+                268 m,
+            ),
+        },
+    ),
+)

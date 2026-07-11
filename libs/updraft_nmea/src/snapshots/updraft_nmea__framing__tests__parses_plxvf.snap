@@ -1,0 +1,29 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Plxvf(
+        Plxvf {
+            time: None,
+            acceleration_x: Some(
+                1.0,
+            ),
+            acceleration_y: Some(
+                0.87,
+            ),
+            acceleration_z: Some(
+                -0.12,
+            ),
+            vario: Some(
+                -0.25 m/s,
+            ),
+            indicated_airspeed: Some(
+                90.2 m/s,
+            ),
+            pressure_altitude: Some(
+                244.3 m,
+            ),
+        },
+    ),
+)

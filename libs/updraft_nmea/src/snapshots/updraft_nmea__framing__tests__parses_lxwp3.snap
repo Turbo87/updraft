@@ -1,0 +1,47 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Lxwp3(
+        Lxwp3 {
+            altitude_offset: Some(
+                14.557248 m,
+            ),
+            speed_command_mode: Some(
+                External,
+            ),
+            vario_filter: Some(
+                2.0,
+            ),
+            te_filter: Some(
+                5.0,
+            ),
+            te_level: Some(
+                15.0,
+            ),
+            vario_average: Some(
+                30.0,
+            ),
+            vario_range: Some(
+                2.5,
+            ),
+            speed_command_deadband: Some(
+                1 m/s,
+            ),
+            switch_mode: Some(
+                Normal,
+            ),
+            speed_command_switch_speed: Some(
+                27.77777777777778 m/s,
+            ),
+            smart_diff: Some(
+                0.1,
+            ),
+            glider_name: None,
+            time_offset: Some(
+                0.0,
+            ),
+        },
+    ),
+)

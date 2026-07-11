@@ -215,9 +215,102 @@ mod tests {
     }
 
     #[test]
+    fn parses_lxwp0() {
+        let s = b"$LXWP0,Y,222.3,1665.5,1.71,1.71,1.71,1.71,1.71,1.71,239,174,10.1*5E\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_lxwp1() {
+        let s = b"$LXWP1,LX9000,45123,9.5,2.0,ABC123*5C\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_lxwp2() {
+        let s = b"$LXWP2,1.5,1.11,13,2.96,-3.03,1.35,45*02\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_lxwp3() {
+        let s = b"$LXWP3,47.76,0,2.0,5.0,15,30,2.5,1.0,0,100,0.1,,0*08\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_plxvf() {
+        let s = b"$PLXVF,,1.00,0.87,-0.12,-0.25,90.2,244.3,*64\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_plxvs() {
+        let s = b"$PLXVS,23.1,0,12.3,*71\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_plxv0() {
+        let s = b"$PLXV0,POLAR,W,1.780,-3.030,1.930,30.0,292,600,265,90,LS 7,0*21\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_plxvc() {
+        let s = b"$PLXVC,RADIO,A,COMM,128800,CELJE*27\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_plxvtarg() {
+        let s = b"$PLXVTARG,KOLN,4628.80,N,01541.167,E,268.0*3C\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
     fn keeps_unrecognised_sentence_as_unknown() {
         let s = b"$PXABC,11,1,2,1,0,,0,,,*7A\r\n";
         insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn keeps_an_undecoded_lx_sentence_as_unknown() {
+        // LXWP5 is a real but undecoded LXNAV sentence. It must fall
+        // through to Unknown, not be misrouted to a decoded LXWP variant.
+        let s = b"$LXWP5,1,2,3*3A\r\n";
+        assert!(matches!(parse_one(s), Step::Frame(Message::Unknown(_))));
+    }
+
+    #[test]
+    fn frames_lx_sentences_delivered_byte_at_a_time() {
+        // The flight fixture carries no LX sentences, so exercise the
+        // streaming path on the LX family directly: fed one byte at a time
+        // (the harshest chunk boundary), the two sentences must still frame
+        // in order.
+        let stream = b"$LXWP2,1.5,1.11,13,2.96,-3.03,1.35,45*02\r\n\
+                       $PLXVS,23.1,0,12.3,*71\r\n";
+        let mut buffer: Vec<u8> = Vec::new();
+        let mut frames = Vec::new();
+        for &byte in stream.iter() {
+            buffer.push(byte);
+            loop {
+                let mut cursor = buffer.as_slice();
+                let step = parse(&mut cursor);
+                if step == Step::Incomplete {
+                    break;
+                }
+                let consumed = buffer.len() - cursor.len();
+                if let Step::Frame(message) = step {
+                    frames.push(message);
+                }
+                buffer.drain(..consumed);
+            }
+        }
+        assert!(matches!(
+            frames.as_slice(),
+            [Message::Lxwp2(_), Message::Plxvs(_)]
+        ));
     }
 
     #[test]

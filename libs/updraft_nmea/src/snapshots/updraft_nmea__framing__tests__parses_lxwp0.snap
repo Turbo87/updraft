@@ -1,0 +1,36 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Lxwp0(
+        Lxwp0 {
+            logger_running: Some(
+                true,
+            ),
+            true_airspeed: Some(
+                61.75000000000001 m/s,
+            ),
+            pressure_altitude: Some(
+                1665.5 m,
+            ),
+            vario_samples: [
+                1.71 m/s,
+                1.71 m/s,
+                1.71 m/s,
+                1.71 m/s,
+                1.71 m/s,
+                1.71 m/s,
+            ],
+            heading: Some(
+                239°,
+            ),
+            wind_direction: Some(
+                174°,
+            ),
+            wind_speed: Some(
+                2.805555555555556 m/s,
+            ),
+        },
+    ),
+)

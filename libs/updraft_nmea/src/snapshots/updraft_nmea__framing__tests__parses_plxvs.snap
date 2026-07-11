@@ -1,0 +1,21 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Plxvs(
+        Plxvs {
+            outside_air_temperature: Some(
+                23.1,
+            ),
+            mode: Some(
+                Vario,
+            ),
+            supply_voltage: Some(
+                12.3,
+            ),
+            igc_pressure_altitude: None,
+            flap_position: None,
+        },
+    ),
+)

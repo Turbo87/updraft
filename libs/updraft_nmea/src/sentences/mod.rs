@@ -3,6 +3,7 @@
 mod flarm;
 mod garmin;
 mod gnss;
+mod lx;
 
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
@@ -11,6 +12,10 @@ pub use flarm::{
 pub use garmin::{Pgrmz, PgrmzFixDimension};
 pub use gnss::{
     Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, PositioningMode, Rmc, RmcStatus,
+};
+pub use lx::{
+    Lxwp0, Lxwp1, Lxwp2, Lxwp3, Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Plxv0, Plxv0Direction,
+    Plxvc, PlxvcMessageType, Plxvf, Plxvs, PlxvsMode, Plxvtarg,
 };
 
 use crate::message::{Message, Talker, Unknown};
@@ -26,6 +31,15 @@ pub fn parse_body(body: &[u8]) -> Message {
         b"PFLAU" => return Message::Pflau(Pflau::parse(&fields(rest))),
         b"PFLAA" => return Message::Pflaa(Pflaa::parse(&fields(rest))),
         b"PFLAC" => return Message::Pflac(Pflac::parse(&fields(rest))),
+        b"LXWP0" => return Message::Lxwp0(Lxwp0::parse(&fields(rest))),
+        b"LXWP1" => return Message::Lxwp1(Lxwp1::parse(&fields(rest))),
+        b"LXWP2" => return Message::Lxwp2(Lxwp2::parse(&fields(rest))),
+        b"LXWP3" => return Message::Lxwp3(Lxwp3::parse(&fields(rest))),
+        b"PLXVF" => return Message::Plxvf(Plxvf::parse(&fields(rest))),
+        b"PLXVS" => return Message::Plxvs(Plxvs::parse(&fields(rest))),
+        b"PLXV0" => return Message::Plxv0(Plxv0::parse(&fields(rest))),
+        b"PLXVC" => return Message::Plxvc(Plxvc::parse(&fields(rest))),
+        b"PLXVTARG" => return Message::Plxvtarg(Plxvtarg::parse(&fields(rest))),
         _ => {}
     }
 

@@ -1,10 +1,31 @@
+use tauri::Manager;
+use tracing_appender::non_blocking::WorkerGuard;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .setup(|app| {
+            if let Some(guard) = init_tracing(app.handle()) {
+                // Keep the non-blocking file writer's worker alive for the whole
+                // process; dropping it would discard buffered log lines on exit.
+                app.manage(guard);
+            }
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
 ///
-/// Emits human-readable records to stderr (desktop / `tauri … dev`), filtered by
-/// `UPDRAFT_LOG` (then `RUST_LOG`, else `debug` in debug builds and `info` in
+/// Composes a human-readable stderr layer (desktop / `tauri … dev`) with a
+/// rolling daily file in the platform app-log directory (best effort). Filtered
+/// by `UPDRAFT_LOG` (then `RUST_LOG`, else `debug` in debug builds and `info` in
 /// release). `.init()` also installs a `LogTracer`, so dependencies that still
 /// emit through the `log` facade (including parts of Tauri) are captured too.
-fn init_tracing() {
+///
+/// Returns the file writer's [`WorkerGuard`], which the caller must keep alive.
+fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGuard> {
     use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
     let default_level = if cfg!(debug_assertions) { "debug" } else { "info" };
@@ -12,17 +33,23 @@ fn init_tracing() {
         .or_else(|_| EnvFilter::try_from_default_env())
         .unwrap_or_else(|_| EnvFilter::new(default_level));
 
+    // Rolling daily file in the OS app-log dir (best effort — skipped if the
+    // directory can't be resolved or created, so logging never blocks startup).
+    let (file_layer, guard) = match app.path().app_log_dir() {
+        Ok(dir) if std::fs::create_dir_all(&dir).is_ok() => {
+            let appender = tracing_appender::rolling::daily(dir, "updraft.log");
+            let (writer, guard) = tracing_appender::non_blocking(appender);
+            let layer = fmt::layer().with_ansi(false).with_writer(writer);
+            (Some(layer), Some(guard))
+        }
+        _ => (None, None),
+    };
+
     tracing_subscriber::registry()
         .with(filter)
         .with(fmt::layer().with_writer(std::io::stderr))
+        .with(file_layer)
         .init();
-}
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    init_tracing();
-
-    tauri::Builder::default()
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+    guard
 }

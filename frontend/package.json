@@ -19,7 +19,7 @@
     "@inlang/plugin-message-format": "4.4.0",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.69.2",
-    "@sveltejs/vite-plugin-svelte": "7.1.4",
+    "@sveltejs/vite-plugin-svelte": "7.2.0",
     "@types/geojson": "7946.0.16",
     "@types/node": "24.13.3",
     "@vitest/browser-playwright": "4.1.10",

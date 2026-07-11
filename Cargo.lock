@@ -4855,6 +4855,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "updraft_runtime"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "updraft_core",
+ "updraft_geo",
+ "updraft_units",
+]
+
+[[package]]
 name = "updraft_server"
 version = "0.0.0"
 dependencies = [

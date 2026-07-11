@@ -26,7 +26,7 @@ impl Time {
     pub fn parse(field: &[u8]) -> Option<Self> {
         let hour = parse_from_utf8(field.get(0..2)?)?;
         let minute = parse_from_utf8(field.get(2..4)?)?;
-        let seconds = parse_from_utf8(field.get(4..)?)?;
+        let seconds = fast_float2::parse(field.get(4..)?).ok()?;
         (hour <= 23 && minute <= 59 && (0.0..61.0).contains(&seconds)).then_some(Self {
             hour,
             minute,

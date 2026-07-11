@@ -18,12 +18,15 @@ pub fn run() {
 
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
 ///
-/// Composes a human-readable stderr layer (desktop / `tauri … dev`), a rolling
-/// daily file in the platform app-log directory (best effort), and — on Android
-/// — logcat via `paranoid-android`. Filtered by `UPDRAFT_LOG` (then `RUST_LOG`,
-/// else `debug` in debug builds and `info` in release). `.init()` also installs
-/// a `LogTracer`, so dependencies that still emit through the `log` facade
-/// (including parts of Tauri) are captured too.
+/// Composes, in one subscriber:
+/// - an `EnvFilter` (`UPDRAFT_LOG`, then `RUST_LOG`, else `debug` in debug builds
+///   and `info` in release),
+/// - a human-readable layer to stderr for desktop / `tauri … dev`,
+/// - a rolling daily file in the platform app-log directory (best effort),
+/// - Android logcat via `paranoid-android` and iOS oslog via `tracing-oslog`.
+///
+/// `.init()` also installs a `LogTracer`, so dependencies that still emit through
+/// the `log` facade (including parts of Tauri) are captured too.
 ///
 /// Returns the file writer's [`WorkerGuard`], which the caller must keep alive.
 fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGuard> {
@@ -52,7 +55,9 @@ fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGu
     let platform_layer = Some(fmt::layer().with_ansi(false).with_writer(
         paranoid_android::AndroidLogMakeWriter::new("Updraft".to_owned()),
     ));
-    #[cfg(not(target_os = "android"))]
+    #[cfg(target_os = "ios")]
+    let platform_layer = Some(tracing_oslog::OsLogger::new("aero.updraft", "default"));
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let platform_layer: Option<tracing_subscriber::layer::Identity> = None;
 
     tracing_subscriber::registry()

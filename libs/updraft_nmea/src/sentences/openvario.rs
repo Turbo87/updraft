@@ -11,6 +11,8 @@ pub enum Pov {
     Query(Vec<Box<str>>),
     /// Command fields following the `C` field, kept in wire order.
     Command(Vec<Box<str>>),
+    /// A payload that does not start with a known data or control field.
+    Other(Vec<Box<str>>),
 }
 
 /// One typed sensor value from an `OpenVario` data sentence.
@@ -65,6 +67,12 @@ impl Pov {
         }
         if first == b"C" {
             return Self::Command(fields.map(text).collect());
+        }
+        if !matches!(
+            first,
+            b"S" | b"P" | b"Q" | b"R" | b"T" | b"V" | b"E" | b"H" | b"A" | b"G"
+        ) {
+            return Self::Other(std::iter::once(first).chain(fields).map(text).collect());
         }
 
         let mut data = Vec::new();
@@ -271,6 +279,16 @@ mod tests {
         assert_eq!(
             pov,
             Pov::Command(vec!["MC".into(), "".into(), "+0.5".into()])
+        );
+    }
+
+    #[test]
+    fn preserves_other_openvario_traffic() {
+        let pov = Pov::parse(FieldsIter::new(b"Z,foo,,bar"));
+
+        assert_eq!(
+            pov,
+            Pov::Other(vec!["Z".into(), "foo".into(), "".into(), "bar".into()])
         );
     }
 }

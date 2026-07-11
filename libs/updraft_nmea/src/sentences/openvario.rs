@@ -1,7 +1,7 @@
 use crate::field::{FieldsIter, text};
 use updraft_units::{Pressure, Speed};
 
-/// `OpenVario` `$POV` sensor data or a settings query.
+/// `OpenVario` `$POV` sensor data or control traffic.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Pov {
@@ -9,6 +9,8 @@ pub enum Pov {
     Data(Vec<PovDatum>),
     /// Requested setting names following the `?` field, kept in wire order.
     Query(Vec<Box<str>>),
+    /// Command fields following the `C` field, kept in wire order.
+    Command(Vec<Box<str>>),
 }
 
 /// One typed sensor value from an `OpenVario` data sentence.
@@ -60,6 +62,9 @@ impl Pov {
         };
         if first == b"?" {
             return Self::Query(fields.map(text).collect());
+        }
+        if first == b"C" {
+            return Self::Command(fields.map(text).collect());
         }
 
         let mut data = Vec::new();
@@ -257,5 +262,15 @@ mod tests {
         let pov = Pov::parse(FieldsIter::new(b"?,RPO,,MC"));
 
         assert_eq!(pov, Pov::Query(vec!["RPO".into(), "".into(), "MC".into()]));
+    }
+
+    #[test]
+    fn preserves_command_fields() {
+        let pov = Pov::parse(FieldsIter::new(b"C,MC,,+0.5"));
+
+        assert_eq!(
+            pov,
+            Pov::Command(vec!["MC".into(), "".into(), "+0.5".into()])
+        );
     }
 }

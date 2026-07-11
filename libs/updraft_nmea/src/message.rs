@@ -43,7 +43,7 @@ pub enum Message {
     Plxvc(Plxvc),
     /// LXNAV navigation target (`PLXVTARG`).
     Plxvtarg(Plxvtarg),
-    /// `OpenVario` sensor data or a settings query (`POV`).
+    /// `OpenVario` sensor data or control traffic (`POV`).
     Pov(Pov),
     /// A well-formed sentence of a type this crate does not decode.
     Unknown(Unknown),

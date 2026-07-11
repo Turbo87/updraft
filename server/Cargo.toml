@@ -12,7 +12,7 @@ anyhow = "=1.0.103"
 axum = "=0.8.9"
 clap = { version = "=4.6.1", features = ["derive", "env"] }
 tokio = { version = "=1.52.3", features = ["rt-multi-thread", "net", "macros", "signal"] }
-tower-http = { version = "=0.7.0", features = ["fs"] }
+tower-http = { version = "=0.7.0", features = ["fs", "trace"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 

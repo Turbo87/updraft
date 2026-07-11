@@ -1,12 +1,14 @@
 use crate::field::{FieldsIter, text};
 use updraft_units::{Pressure, Speed};
 
-/// `OpenVario` `$POV` sensor data.
+/// `OpenVario` `$POV` sensor data or a settings query.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Pov {
     /// Sensor values carried by the sentence, in wire order.
     Data(Vec<PovDatum>),
+    /// Requested setting names following the `?` field, kept in wire order.
+    Query(Vec<Box<str>>),
 }
 
 /// One typed sensor value from an `OpenVario` data sentence.
@@ -53,9 +55,17 @@ pub enum PovDatum {
 
 impl Pov {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
-        let mut data = Vec::new();
+        let Some(first) = fields.next() else {
+            return Self::Data(Vec::new());
+        };
+        if first == b"?" {
+            return Self::Query(fields.map(text).collect());
+        }
 
-        while let Some(kind) = fields.next() {
+        let mut data = Vec::new();
+        let mut next = Some(first);
+
+        while let Some(kind) = next {
             let datum = match kind {
                 b"S" => scalar(kind, &mut fields)
                     .map(Speed::from_kilometers_per_hour)
@@ -85,7 +95,10 @@ impl Pov {
             };
 
             match datum {
-                Ok(datum) => data.push(datum),
+                Ok(datum) => {
+                    data.push(datum);
+                    next = fields.next();
+                }
                 Err(tail) => {
                     data.push(PovDatum::RawTail(tail));
                     break;
@@ -237,5 +250,12 @@ mod tests {
                 PovDatum::TotalEnergyVario(Speed::from_meters_per_second(2.)),
             ])
         );
+    }
+
+    #[test]
+    fn preserves_query_fields() {
+        let pov = Pov::parse(FieldsIter::new(b"?,RPO,,MC"));
+
+        assert_eq!(pov, Pov::Query(vec!["RPO".into(), "".into(), "MC".into()]));
     }
 }

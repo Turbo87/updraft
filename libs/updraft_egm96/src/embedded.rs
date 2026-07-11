@@ -26,6 +26,7 @@ fn cell(row: usize, col: usize) -> f64 {
 /// The EGM96 geoid undulation *N* at `position` (the height of the geoid
 /// above the WGS84 ellipsoid) bilinearly interpolated from the embedded
 /// 1° grid.
+#[inline]
 pub fn undulation(position: LatLon) -> Length {
     let lat = position.latitude().as_degrees();
     let lon = position.longitude().as_degrees();
@@ -36,20 +37,28 @@ pub fn undulation(position: LatLon) -> Length {
         return Length::from_meters(f64::NAN);
     }
 
-    // Latitude clamps to the poles; longitude wraps into [0, 360).
+    // Latitude clamps to the poles; longitude wraps into [0, 360). The
+    // wrap is spelled `lon − 360·⌊lon/360⌋` rather than
+    // `lon.rem_euclid(360.0)`: it is equivalent for the finite inputs that
+    // reach here (NaN was rejected above) but a few nanoseconds cheaper,
+    // and the `% COLS` below already absorbs the boundary case where the
+    // wrapped value lands on exactly 360.
     let lat = lat.clamp(-90.0, 90.0);
-    let lon = lon.rem_euclid(360.0);
+    let lon = lon - 360.0 * (lon / 360.0).floor();
 
     // Row grows southward from 90°N; column grows eastward from 0°E, one
-    // degree per step.
+    // degree per step. Each floor feeds both a grid index and its
+    // fractional weight, so compute it once.
     let row = 90.0 - lat; // [0, 180]
-    let r0 = row.floor() as usize; // 0..=180
+    let row_floor = row.floor();
+    let r0 = row_floor as usize; // 0..=180
     let r1 = (r0 + 1).min(ROWS - 1); // clamp at the south pole
-    let fy = row - r0 as f64;
+    let fy = row - row_floor;
 
-    let c0 = lon.floor() as usize % COLS;
+    let lon_floor = lon.floor();
+    let c0 = lon_floor as usize % COLS;
     let c1 = (c0 + 1) % COLS; // wraps 359 → 0 across the antimeridian
-    let fx = lon - lon.floor();
+    let fx = lon - lon_floor;
 
     let top = cell(r0, c0) * (1.0 - fx) + cell(r0, c1) * fx;
     let bottom = cell(r1, c0) * (1.0 - fx) + cell(r1, c1) * fx;

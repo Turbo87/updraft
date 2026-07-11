@@ -14,6 +14,11 @@ updraft_units = { path = "../updraft_units" }
 [dev-dependencies]
 approx = { version = "=0.6.0-rc2", features = ["derive"] }
 claims = "=0.8.0"
+criterion = "=0.8.2"
 insta = "=1.48.0"
 proptest = "=1.11.0"
 updraft_geo = { path = "../updraft_geo", features = ["approx"] }
+
+[[bench]]
+name = "parse"
+harness = false

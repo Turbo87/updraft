@@ -1,6 +1,6 @@
 //! Types and field helpers shared across the FLARM sentence family.
 
-use crate::field::field;
+use crate::field::FieldsIter;
 
 /// The collision-alarm level assessed by FLARM, shared by `PFLAU` and
 /// `PFLAA`. The time-to-impact brackets follow the current ICD. Older
@@ -75,8 +75,8 @@ impl std::fmt::Debug for FlarmId {
 }
 
 /// A FLARM `0`/`1` status field. Any other value reads as absent.
-pub(super) fn bool_field(fields: &[&[u8]], index: usize) -> Option<bool> {
-    match field(fields, index)? {
+pub(super) fn bool_field(fields: &mut FieldsIter<'_>) -> Option<bool> {
+    match fields.bytes()? {
         b"0" => Some(false),
         b"1" => Some(true),
         _ => None,
@@ -84,8 +84,8 @@ pub(super) fn bool_field(fields: &[&[u8]], index: usize) -> Option<bool> {
 }
 
 /// A hexadecimal field: FLARM sends alarm and aircraft types in hex.
-pub(super) fn hex_field(fields: &[&[u8]], index: usize) -> Option<u8> {
-    let field = std::str::from_utf8(field(fields, index)?).ok()?;
+pub(super) fn hex_field(fields: &mut FieldsIter<'_>) -> Option<u8> {
+    let field = std::str::from_utf8(fields.bytes()?).ok()?;
     u8::from_str_radix(field, 16).ok()
 }
 
@@ -148,10 +148,10 @@ mod tests {
 
     #[test]
     fn non_boolean_status_fields_are_absent() {
-        let fields: [&[u8]; 3] = [b"2", b"true", b""];
-        assert_none!(bool_field(&fields, 0));
-        assert_none!(bool_field(&fields, 1));
-        assert_none!(bool_field(&fields, 2));
-        assert_none!(bool_field(&fields, 3));
+        let mut fields = FieldsIter::new(b"2,true,");
+        assert_none!(bool_field(&mut fields));
+        assert_none!(bool_field(&mut fields));
+        assert_none!(bool_field(&mut fields));
+        assert_none!(bool_field(&mut fields));
     }
 }

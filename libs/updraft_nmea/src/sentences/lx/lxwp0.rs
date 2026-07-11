@@ -1,4 +1,4 @@
-use crate::field::{f64_field, field};
+use crate::field::FieldsIter;
 use updraft_units::{Angle, Length, Speed};
 
 /// `$LXWP0`: the main flight-data sentence, sent about once per second.
@@ -21,22 +21,22 @@ pub struct Lxwp0 {
 }
 
 impl Lxwp0 {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            logger_running: yes_no(field(fields, 0)),
-            true_airspeed: f64_field(fields, 1).map(Speed::from_kilometers_per_hour),
-            pressure_altitude: f64_field(fields, 2).map(Length::from_meters),
-            // Fields 3-8 are the six vario samples. Present ones are kept
-            // in order, empty samples are dropped. Devices fill them
+            logger_running: yes_no(fields.bytes()),
+            true_airspeed: fields.f64().map(Speed::from_kilometers_per_hour),
+            pressure_altitude: fields.f64().map(Length::from_meters),
+            // Six vario sample fields. Present ones are kept in order,
+            // empty samples are consumed but dropped. Devices fill them
             // left-to-right (all six, the first only, or none), so no
             // interior gap arises in practice.
-            vario_samples: (3..9)
-                .filter_map(|index| f64_field(fields, index))
+            vario_samples: (0..6)
+                .filter_map(|_| fields.f64())
                 .map(Speed::from_meters_per_second)
                 .collect(),
-            heading: f64_field(fields, 9).map(Angle::from_degrees),
-            wind_direction: f64_field(fields, 10).map(Angle::from_degrees),
-            wind_speed: f64_field(fields, 11).map(Speed::from_kilometers_per_hour),
+            heading: fields.f64().map(Angle::from_degrees),
+            wind_direction: fields.f64().map(Angle::from_degrees),
+            wind_speed: fields.f64().map(Speed::from_kilometers_per_hour),
         }
     }
 }
@@ -58,11 +58,8 @@ mod tests {
 
     #[test]
     fn parses_a_full_flight_data_sentence() {
-        let fields: [&[u8]; 12] = [
-            b"Y", b"222.3", b"1665.5", b"1.71", b"1.71", b"1.71", b"1.71", b"1.71", b"1.71",
-            b"239", b"174", b"10.1",
-        ];
-        let lxwp0 = Lxwp0::parse(&fields);
+        let fields = FieldsIter::new(b"Y,222.3,1665.5,1.71,1.71,1.71,1.71,1.71,1.71,239,174,10.1");
+        let lxwp0 = Lxwp0::parse(fields);
         assert_some_eq!(lxwp0.logger_running, true);
         assert_some_eq!(lxwp0.true_airspeed, Speed::from_kilometers_per_hour(222.3));
         assert_some_eq!(lxwp0.pressure_altitude, Length::from_meters(1665.5));
@@ -79,10 +76,8 @@ mod tests {
     fn keeps_only_the_vario_samples_that_are_present() {
         // A common form: airspeed and altitude, a single vario sample, wind,
         // and no heading.
-        let fields: [&[u8]; 12] = [
-            b"N", b"", b"1266.5", b"", b"", b"", b"", b"", b"", b"", b"248", b"23.1",
-        ];
-        let lxwp0 = Lxwp0::parse(&fields);
+        let fields = FieldsIter::new(b"N,,1266.5,,,,,,,,248,23.1");
+        let lxwp0 = Lxwp0::parse(fields);
         assert_some_eq!(lxwp0.logger_running, false);
         assert_none!(lxwp0.true_airspeed);
         assert_some_eq!(lxwp0.pressure_altitude, Length::from_meters(1266.5));
@@ -94,10 +89,8 @@ mod tests {
 
     #[test]
     fn reads_the_single_leading_vario_sample() {
-        let fields: [&[u8]; 12] = [
-            b"Y", b"222.3", b"1665.5", b"1.71", b"", b"", b"", b"", b"", b"239", b"174", b"10.1",
-        ];
-        let lxwp0 = Lxwp0::parse(&fields);
+        let fields = FieldsIter::new(b"Y,222.3,1665.5,1.71,,,,,,239,174,10.1");
+        let lxwp0 = Lxwp0::parse(fields);
         assert_eq!(
             lxwp0.vario_samples,
             vec![Speed::from_meters_per_second(1.71)]

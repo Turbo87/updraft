@@ -1,4 +1,4 @@
-use crate::field::{f64_field, field, lat_lon, text};
+use crate::field::FieldsIter;
 use updraft_geo::LatLon;
 use updraft_units::Length;
 
@@ -15,11 +15,11 @@ pub struct Plxvtarg {
 }
 
 impl Plxvtarg {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            name: field(fields, 0).map(text),
-            position: lat_lon(fields, 1, 2, 3, 4),
-            elevation: f64_field(fields, 5).map(Length::from_meters),
+            name: fields.text(),
+            position: fields.lat_lon(),
+            elevation: fields.f64().map(Length::from_meters),
         }
     }
 }
@@ -32,8 +32,7 @@ mod tests {
 
     #[test]
     fn parses_a_target() {
-        let fields: [&[u8]; 6] = [b"KOLN", b"4628.80", b"N", b"01541.167", b"E", b"268.0"];
-        let plxvtarg = Plxvtarg::parse(&fields);
+        let plxvtarg = Plxvtarg::parse(FieldsIter::new(b"KOLN,4628.80,N,01541.167,E,268.0"));
         assert_some_eq!(plxvtarg.name, "KOLN".into());
         let position = assert_some!(plxvtarg.position);
         assert_abs_diff_eq!(
@@ -46,8 +45,7 @@ mod tests {
 
     #[test]
     fn a_target_without_a_position_still_decodes() {
-        let fields: [&[u8]; 6] = [b"KOLN", b"", b"", b"", b"", b"268.0"];
-        let plxvtarg = Plxvtarg::parse(&fields);
+        let plxvtarg = Plxvtarg::parse(FieldsIter::new(b"KOLN,,,,,268.0"));
         assert_some_eq!(plxvtarg.name, "KOLN".into());
         assert_none!(plxvtarg.position);
         assert_some_eq!(plxvtarg.elevation, Length::from_meters(268.0));

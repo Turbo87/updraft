@@ -1,4 +1,4 @@
-use crate::field::f64_field;
+use crate::field::FieldsIter;
 use updraft_units::{Length, Speed};
 
 /// `$PLXVF`: the vario "fast data" sentence from LXNAV varios (V7,
@@ -25,15 +25,15 @@ pub struct Plxvf {
 }
 
 impl Plxvf {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            time: f64_field(fields, 0),
-            acceleration_x: f64_field(fields, 1),
-            acceleration_y: f64_field(fields, 2),
-            acceleration_z: f64_field(fields, 3),
-            vario: f64_field(fields, 4).map(Speed::from_meters_per_second),
-            indicated_airspeed: f64_field(fields, 5).map(Speed::from_meters_per_second),
-            pressure_altitude: f64_field(fields, 6).map(Length::from_meters),
+            time: fields.f64(),
+            acceleration_x: fields.f64(),
+            acceleration_y: fields.f64(),
+            acceleration_z: fields.f64(),
+            vario: fields.f64().map(Speed::from_meters_per_second),
+            indicated_airspeed: fields.f64().map(Speed::from_meters_per_second),
+            pressure_altitude: fields.f64().map(Length::from_meters),
         }
     }
 }
@@ -45,10 +45,8 @@ mod tests {
 
     #[test]
     fn parses_fast_vario_data() {
-        let fields: [&[u8]; 8] = [
-            b"", b"1.00", b"0.87", b"-0.12", b"-0.25", b"90.2", b"244.3", b"",
-        ];
-        let plxvf = Plxvf::parse(&fields);
+        let fields = FieldsIter::new(b",1.00,0.87,-0.12,-0.25,90.2,244.3,");
+        let plxvf = Plxvf::parse(fields);
         assert_none!(plxvf.time);
         assert_some_eq!(plxvf.acceleration_x, 1.00);
         assert_some_eq!(plxvf.acceleration_y, 0.87);
@@ -65,8 +63,8 @@ mod tests {
     fn omitted_trailing_fields_read_as_absent() {
         // A short form: an acceleration triple only, no vario, airspeed, or
         // altitude.
-        let fields: [&[u8]; 4] = [b"", b"1.00", b"0.87", b"-0.12"];
-        let plxvf = Plxvf::parse(&fields);
+        let fields = FieldsIter::new(b",1.00,0.87,-0.12");
+        let plxvf = Plxvf::parse(fields);
         assert_some_eq!(plxvf.acceleration_x, 1.00);
         assert_none!(plxvf.vario);
         assert_none!(plxvf.indicated_airspeed);

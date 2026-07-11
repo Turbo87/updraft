@@ -18,28 +18,30 @@ pub use lx::{
     Plxvc, PlxvcMessageType, Plxvf, Plxvs, PlxvsMode, Plxvtarg,
 };
 
+use crate::field::FieldsIter;
 use crate::message::{Message, Talker, Unknown};
 
 /// Routes a sentence body (everything after the start marker, with the
 /// checksum stripped) to the matching family, falling back to
 /// [`Message::Unknown`].
 pub fn parse_body(body: &[u8]) -> Message {
-    let (address, rest) = split_once(body, b',').unwrap_or((body, b""));
+    let mut fields = FieldsIter::new(body);
+    let address = fields.next().unwrap_or_default();
 
     match address {
-        b"PGRMZ" => return Message::Pgrmz(Pgrmz::parse(&fields(rest))),
-        b"PFLAU" => return Message::Pflau(Pflau::parse(&fields(rest))),
-        b"PFLAA" => return Message::Pflaa(Pflaa::parse(&fields(rest))),
-        b"PFLAC" => return Message::Pflac(Pflac::parse(&fields(rest))),
-        b"LXWP0" => return Message::Lxwp0(Lxwp0::parse(&fields(rest))),
-        b"LXWP1" => return Message::Lxwp1(Lxwp1::parse(&fields(rest))),
-        b"LXWP2" => return Message::Lxwp2(Lxwp2::parse(&fields(rest))),
-        b"LXWP3" => return Message::Lxwp3(Lxwp3::parse(&fields(rest))),
-        b"PLXVF" => return Message::Plxvf(Plxvf::parse(&fields(rest))),
-        b"PLXVS" => return Message::Plxvs(Plxvs::parse(&fields(rest))),
-        b"PLXV0" => return Message::Plxv0(Plxv0::parse(&fields(rest))),
-        b"PLXVC" => return Message::Plxvc(Plxvc::parse(&fields(rest))),
-        b"PLXVTARG" => return Message::Plxvtarg(Plxvtarg::parse(&fields(rest))),
+        b"PGRMZ" => return Message::Pgrmz(Pgrmz::parse(fields)),
+        b"PFLAU" => return Message::Pflau(Pflau::parse(fields)),
+        b"PFLAA" => return Message::Pflaa(Pflaa::parse(fields)),
+        b"PFLAC" => return Message::Pflac(Pflac::parse(fields)),
+        b"LXWP0" => return Message::Lxwp0(Lxwp0::parse(fields)),
+        b"LXWP1" => return Message::Lxwp1(Lxwp1::parse(fields)),
+        b"LXWP2" => return Message::Lxwp2(Lxwp2::parse(fields)),
+        b"LXWP3" => return Message::Lxwp3(Lxwp3::parse(fields)),
+        b"PLXVF" => return Message::Plxvf(Plxvf::parse(fields)),
+        b"PLXVS" => return Message::Plxvs(Plxvs::parse(fields)),
+        b"PLXV0" => return Message::Plxv0(Plxv0::parse(fields)),
+        b"PLXVC" => return Message::Plxvc(Plxvc::parse(fields)),
+        b"PLXVTARG" => return Message::Plxvtarg(Plxvtarg::parse(fields)),
         _ => {}
     }
 
@@ -49,23 +51,11 @@ pub fn parse_body(body: &[u8]) -> Message {
 
     let talker = Talker::from_code(code);
     match sentence_type {
-        b"GGA" => Message::Gga(Gga::parse(talker, &fields(rest))),
-        b"RMC" => Message::Rmc(Rmc::parse(talker, &fields(rest))),
-        b"GSA" => Message::Gsa(Gsa::parse(talker, &fields(rest))),
+        b"GGA" => Message::Gga(Gga::parse(talker, fields)),
+        b"RMC" => Message::Rmc(Rmc::parse(talker, fields)),
+        b"GSA" => Message::Gsa(Gsa::parse(talker, fields)),
         _ => Message::Unknown(Unknown::from_bytes(body)),
     }
-}
-
-/// Splits `body` at the first `separator`, dropping it, or `None` if it is
-/// absent.
-fn split_once(body: &[u8], separator: u8) -> Option<(&[u8], &[u8])> {
-    let index = body.iter().position(|&byte| byte == separator)?;
-    Some((&body[..index], &body[index + 1..]))
-}
-
-/// Splits the comma-separated argument list of a sentence into fields.
-fn fields(args: &[u8]) -> Vec<&[u8]> {
-    args.split(|&byte| byte == b',').collect()
 }
 
 /// Splits a standard (non-proprietary) address into its talker code and

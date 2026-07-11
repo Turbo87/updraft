@@ -1,5 +1,5 @@
 use super::common::{FlarmAlarmLevel, FlarmId, bool_field, hex_field};
-use crate::field::{f64_field, field, parsed_field};
+use crate::field::FieldsIter;
 use updraft_units::{Angle, Length};
 
 /// `$PFLAU`: FLARM heartbeat, status, and the most relevant current threat,
@@ -35,18 +35,18 @@ pub struct Pflau {
 }
 
 impl Pflau {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            rx_count: parsed_field(fields, 0),
-            tx_ok: bool_field(fields, 1),
-            gps_status: PflauGpsStatus::from_field(parsed_field(fields, 2)),
-            power_ok: bool_field(fields, 3),
-            alarm_level: FlarmAlarmLevel::from_field(parsed_field(fields, 4)),
-            relative_bearing: f64_field(fields, 5).map(Angle::from_degrees),
-            alarm_type: PflauAlarmType::from_field(hex_field(fields, 6)),
-            relative_vertical: f64_field(fields, 7).map(Length::from_meters),
-            relative_distance: f64_field(fields, 8).map(Length::from_meters),
-            id: field(fields, 9).and_then(FlarmId::parse),
+            rx_count: fields.parsed(),
+            tx_ok: bool_field(&mut fields),
+            gps_status: PflauGpsStatus::from_field(fields.parsed()),
+            power_ok: bool_field(&mut fields),
+            alarm_level: FlarmAlarmLevel::from_field(fields.parsed()),
+            relative_bearing: fields.f64().map(Angle::from_degrees),
+            alarm_type: PflauAlarmType::from_field(hex_field(&mut fields)),
+            relative_vertical: fields.f64().map(Length::from_meters),
+            relative_distance: fields.f64().map(Length::from_meters),
+            id: fields.bytes().and_then(FlarmId::parse),
         }
     }
 }
@@ -114,10 +114,8 @@ mod tests {
     fn parses_a_priority_intruder() {
         // The ICD's alarm example: level 2, intruder at 11 o'clock,
         // 32 m below, 755 m away.
-        let fields: [&[u8]; 10] = [
-            b"3", b"1", b"2", b"1", b"2", b"-30", b"2", b"-32", b"755", b"",
-        ];
-        let pflau = Pflau::parse(&fields);
+        let fields = FieldsIter::new(b"3,1,2,1,2,-30,2,-32,755,");
+        let pflau = Pflau::parse(fields);
         assert_some_eq!(pflau.rx_count, 3);
         assert_some_eq!(pflau.tx_ok, true);
         assert_eq!(pflau.gps_status, PflauGpsStatus::Airborne);
@@ -133,8 +131,8 @@ mod tests {
     #[test]
     fn quiet_heartbeat_reads_no_threat() {
         // No alarm and nothing within range: the threat fields are empty.
-        let fields: [&[u8]; 10] = [b"2", b"1", b"1", b"1", b"0", b"", b"0", b"", b"", b""];
-        let pflau = Pflau::parse(&fields);
+        let fields = FieldsIter::new(b"2,1,1,1,0,,0,,,");
+        let pflau = Pflau::parse(fields);
         assert_eq!(pflau.gps_status, PflauGpsStatus::OnGround);
         assert_eq!(pflau.alarm_level, FlarmAlarmLevel::None);
         assert_none!(pflau.relative_bearing);
@@ -192,8 +190,8 @@ mod tests {
     #[test]
     fn alarm_type_is_hexadecimal() {
         // The Alert Zone type `41` must read as 0x41, not decimal 41.
-        let fields: [&[u8]; 10] = [b"1", b"1", b"2", b"1", b"1", b"0", b"41", b"0", b"0", b""];
-        let pflau = Pflau::parse(&fields);
+        let fields = FieldsIter::new(b"1,1,2,1,1,0,41,0,0,");
+        let pflau = Pflau::parse(fields);
         assert_eq!(pflau.alarm_type, PflauAlarmType::AlertZone(0x41));
     }
 }

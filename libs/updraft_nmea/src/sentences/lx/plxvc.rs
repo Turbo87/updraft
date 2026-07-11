@@ -1,4 +1,4 @@
-use crate::field::{field, text};
+use crate::field::{FieldsIter, text};
 
 /// `$PLXVC`: the LXNAV command and file-transfer protocol used by Nano
 /// loggers and s-varios, decoded as a generic key / type / values triple.
@@ -21,17 +21,11 @@ pub struct Plxvc {
 }
 
 impl Plxvc {
-    pub fn parse(fields: &[&[u8]]) -> Self {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            key: field(fields, 0).map(text),
-            message_type: field(fields, 1).map(PlxvcMessageType::from_bytes),
-            values: fields
-                .get(2..)
-                .unwrap_or_default()
-                .iter()
-                .copied()
-                .map(text)
-                .collect(),
+            key: fields.text(),
+            message_type: fields.bytes().map(PlxvcMessageType::from_bytes),
+            values: fields.map(text).collect(),
         }
     }
 }
@@ -72,8 +66,7 @@ mod tests {
 
     #[test]
     fn parses_a_radio_answer() {
-        let fields: [&[u8]; 5] = [b"RADIO", b"A", b"COMM", b"128800", b"CELJE"];
-        let plxvc = Plxvc::parse(&fields);
+        let plxvc = Plxvc::parse(FieldsIter::new(b"RADIO,A,COMM,128800,CELJE"));
         assert_some_eq!(plxvc.key, "RADIO".into());
         assert_some_eq!(plxvc.message_type, PlxvcMessageType::Answer);
         assert_eq!(
@@ -86,15 +79,13 @@ mod tests {
     fn keeps_interior_empty_value_fields() {
         // An empty value between two present ones is kept as an empty
         // string so later values stay at their sent position.
-        let fields: [&[u8]; 5] = [b"RADIO", b"A", b"COMM", b"", b"CELJE"];
-        let plxvc = Plxvc::parse(&fields);
+        let plxvc = Plxvc::parse(FieldsIter::new(b"RADIO,A,COMM,,CELJE"));
         assert_eq!(plxvc.values, vec!["COMM".into(), "".into(), "CELJE".into()]);
     }
 
     #[test]
     fn parses_an_info_answer() {
-        let fields: [&[u8]; 6] = [b"INFO", b"A", b"LX9000", b"9.5", b"May 12 2012", b"45123"];
-        let plxvc = Plxvc::parse(&fields);
+        let plxvc = Plxvc::parse(FieldsIter::new(b"INFO,A,LX9000,9.5,May 12 2012,45123"));
         assert_some_eq!(plxvc.key, "INFO".into());
         assert_some_eq!(plxvc.message_type, PlxvcMessageType::Answer);
         assert_eq!(

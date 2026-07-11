@@ -71,11 +71,10 @@ pub fn parse(input: &mut &[u8]) -> Step {
     // Only look one sentence ahead: a start marker with no terminator within
     // `MAX_SENTENCE_LEN` never began a real sentence, and scanning the whole
     // buffer on every call would be quadratic on a delimiter-free stream. The
-    // first `*`/`\r`/`\n` decides which terminator wins.
+    // first `*`/`\r`/`\n` decides which terminator wins. This scan touches
+    // every payload byte, so it is worth `memchr`'s SIMD search.
     let horizon = &input[..input.len().min(MAX_SENTENCE_LEN)];
-    let terminator = horizon
-        .iter()
-        .position(|&byte| byte == b'*' || is_newline(byte));
+    let terminator = memchr::memchr3(b'*', b'\r', b'\n', horizon);
 
     match terminator {
         Some(pos) if input[pos] == b'*' => frame_with_checksum(input, pos),

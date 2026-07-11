@@ -4587,6 +4587,7 @@ name = "updraft_tauri"
 version = "0.0.0"
 dependencies = [
  "paranoid-android",
+ "serde",
  "tauri",
  "tauri-build",
  "tracing",

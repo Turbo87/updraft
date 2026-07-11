@@ -1,9 +1,39 @@
 use tauri::Manager;
 use tracing_appender::non_blocking::WorkerGuard;
 
+/// Log level forwarded from the webview through [`frontend_log`].
+///
+/// Mirrors the levels exposed by the frontend `log` helper so a webview call
+/// lands at the matching `tracing` level in the shared subscriber.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum FrontendLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+/// Bridges a log record produced in the webview into the native `tracing`
+/// subscriber, so frontend diagnostics share the same file / logcat / oslog
+/// stream as core and shell logs. Records are tagged with the `webview` target.
+#[tauri::command]
+fn frontend_log(level: FrontendLevel, message: String, location: Option<String>) {
+    let location = location.unwrap_or_default();
+    match level {
+        FrontendLevel::Error => tracing::error!(target: "webview", %location, "{message}"),
+        FrontendLevel::Warn => tracing::warn!(target: "webview", %location, "{message}"),
+        FrontendLevel::Info => tracing::info!(target: "webview", %location, "{message}"),
+        FrontendLevel::Debug => tracing::debug!(target: "webview", %location, "{message}"),
+        FrontendLevel::Trace => tracing::trace!(target: "webview", %location, "{message}"),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![frontend_log])
         .setup(|app| {
             if let Some(guard) = init_tracing(app.handle()) {
                 // Keep the non-blocking file writer's worker alive for the whole

@@ -26,19 +26,23 @@ impl ServerProcess {
         let mut child = Command::new(env!("CARGO_BIN_EXE_updraft_server"))
             .args(["--ip", "127.0.0.1", "--port", "0", "--static-dir"])
             .arg(dir.path())
-            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("spawn server");
 
-        let stdout = child.stdout.take().expect("capture stdout");
+        // The server reports its readiness through `tracing`, which writes to
+        // stderr, so scan stderr until the startup line appears.
+        let stderr = child.stderr.take().expect("capture stderr");
+        let mut reader = BufReader::new(stderr);
         let mut line = String::new();
-        BufReader::new(stdout)
-            .read_line(&mut line)
-            .expect("read startup line");
-        assert!(
-            line.starts_with("listening on "),
-            "unexpected startup output: {line:?}"
-        );
+        loop {
+            line.clear();
+            let read = reader.read_line(&mut line).expect("read startup line");
+            assert_ne!(read, 0, "server exited before reporting readiness");
+            if line.contains("listening on http://") {
+                break;
+            }
+        }
 
         Self(child)
     }

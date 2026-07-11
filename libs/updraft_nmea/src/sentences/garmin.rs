@@ -21,7 +21,7 @@ impl Pgrmz {
         });
         Self {
             altitude,
-            fix_dimension: PgrmzFixDimension::from_field(fields.parsed()),
+            fix_dimension: PgrmzFixDimension::from_field(fields.u8()),
         }
     }
 }

@@ -41,14 +41,14 @@ impl Lxwp3 {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
             altitude_offset: fields.f64().map(Length::from_feet),
-            speed_command_mode: fields.parsed().map(Lxwp3SpeedCommandMode::from_value),
+            speed_command_mode: fields.u8().map(Lxwp3SpeedCommandMode::from_value),
             vario_filter: fields.f64(),
             te_filter: fields.f64(),
             te_level: fields.f64(),
             vario_average: fields.f64(),
             vario_range: fields.f64(),
             speed_command_deadband: fields.f64().map(Speed::from_meters_per_second),
-            switch_mode: fields.parsed().map(Lxwp3SwitchMode::from_value),
+            switch_mode: fields.u8().map(Lxwp3SwitchMode::from_value),
             speed_command_switch_speed: fields.f64().map(Speed::from_kilometers_per_hour),
             smart_diff: fields.f64(),
             glider_name: fields.text(),

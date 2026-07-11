@@ -51,11 +51,11 @@ pub struct Pflaa {
 impl Pflaa {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            alarm_level: FlarmAlarmLevel::from_field(fields.parsed()),
+            alarm_level: FlarmAlarmLevel::from_field(fields.u8()),
             relative_north: fields.f64().map(Length::from_meters),
             relative_east: fields.f64().map(Length::from_meters),
             relative_vertical: fields.f64().map(Length::from_meters),
-            id_type: fields.parsed().map(FlarmIdType::from_value),
+            id_type: fields.u8().map(FlarmIdType::from_value),
             id: fields.bytes().and_then(FlarmId::parse),
             track: fields.f64().map(Angle::from_degrees),
             turn_rate: fields.f64(),
@@ -63,7 +63,7 @@ impl Pflaa {
             climb_rate: fields.f64().map(Speed::from_meters_per_second),
             aircraft_type: FlarmAircraftType::from_field(hex_field(&mut fields)),
             no_track: bool_field(&mut fields),
-            source: fields.parsed().map(FlarmSource::from_value),
+            source: fields.u8().map(FlarmSource::from_value),
             rssi: fields.f64(),
         }
     }

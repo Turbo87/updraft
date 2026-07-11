@@ -37,11 +37,11 @@ pub struct Pflau {
 impl Pflau {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            rx_count: fields.parsed(),
+            rx_count: fields.u8(),
             tx_ok: bool_field(&mut fields),
-            gps_status: PflauGpsStatus::from_field(fields.parsed()),
+            gps_status: PflauGpsStatus::from_field(fields.u8()),
             power_ok: bool_field(&mut fields),
-            alarm_level: FlarmAlarmLevel::from_field(fields.parsed()),
+            alarm_level: FlarmAlarmLevel::from_field(fields.u8()),
             relative_bearing: fields.f64().map(Angle::from_degrees),
             alarm_type: PflauAlarmType::from_field(hex_field(&mut fields)),
             relative_vertical: fields.f64().map(Length::from_meters),

@@ -346,6 +346,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "btoi"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b5ab9db53bcda568284df0fd39f6eac24ad6f7ba7ff1168b9e76eba6576b976"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4820,6 +4829,7 @@ name = "updraft_nmea"
 version = "0.0.0"
 dependencies = [
  "approx 0.6.0-rc2",
+ "btoi",
  "claims",
  "criterion",
  "fast-float2",

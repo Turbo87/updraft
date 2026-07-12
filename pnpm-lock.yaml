@@ -48,8 +48,8 @@ importers:
   frontend:
     devDependencies:
       '@inlang/paraglide-js':
-        specifier: 2.20.2
-        version: 2.20.2(typescript@6.0.3)
+        specifier: 2.21.0
+        version: 2.21.0(typescript@6.0.3)
       '@inlang/plugin-m-function-matcher':
         specifier: 2.2.9
         version: 2.2.9
@@ -175,8 +175,8 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@inlang/paraglide-js@2.20.2':
-    resolution: {integrity: sha512-V8iY3uu/vQU94gEag1bdC3glMJSp4Dg3XMwfnabZLBh1Dv0F++DvDYlMeniqv2+nHbnS/twB75AM140OmpHDEg==}
+  '@inlang/paraglide-js@2.21.0':
+    resolution: {integrity: sha512-t+OOui1i5p73zQ2Dk28yFzu6rZhh7hsDOCHjkXDmSwFFsUsS5HyUD4CvPJ+wf02qgmlCMu2z1qffJ5aWwgx1CA==}
     hasBin: true
     peerDependencies:
       typescript: '>=5.6'
@@ -1570,7 +1570,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@inlang/paraglide-js@2.20.2(typescript@6.0.3)':
+  '@inlang/paraglide-js@2.21.0(typescript@6.0.3)':
     dependencies:
       '@inlang/recommend-sherlock': 0.2.1
       '@inlang/sdk': 2.10.2

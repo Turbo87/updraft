@@ -85,8 +85,7 @@ pub(super) fn bool_field(fields: &mut FieldsIter<'_>) -> Option<bool> {
 
 /// A hexadecimal field: FLARM sends alarm and aircraft types in hex.
 pub(super) fn hex_field(fields: &mut FieldsIter<'_>) -> Option<u8> {
-    let field = std::str::from_utf8(fields.bytes()?).ok()?;
-    u8::from_str_radix(field, 16).ok()
+    btoi::btou_radix(fields.bytes()?, 16).ok()
 }
 
 #[cfg(test)]

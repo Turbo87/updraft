@@ -22,8 +22,8 @@ impl Time {
     /// a real time of day read as absent. The seconds bound leaves room for a
     /// positive leap second (`23:59:60`).
     pub fn parse(field: &[u8]) -> Option<Self> {
-        let hour = btoi::btoi(field.get(0..2)?).ok()?;
-        let minute = btoi::btoi(field.get(2..4)?).ok()?;
+        let hour = btoi::btou(field.get(0..2)?).ok()?;
+        let minute = btoi::btou(field.get(2..4)?).ok()?;
         let seconds = fast_float2::parse(field.get(4..)?).ok()?;
         (hour <= 23 && minute <= 59 && (0.0..61.0).contains(&seconds)).then_some(Self {
             hour,
@@ -53,9 +53,9 @@ impl Date {
         if field.len() != 6 {
             return None;
         }
-        let day = btoi::btoi(field.get(0..2)?).ok()?;
-        let month = btoi::btoi(field.get(2..4)?).ok()?;
-        let year = 2000 + btoi::btoi::<u16>(field.get(4..6)?).ok()?;
+        let day = btoi::btou(field.get(0..2)?).ok()?;
+        let month = btoi::btou(field.get(2..4)?).ok()?;
+        let year = 2000 + btoi::btou::<u16>(field.get(4..6)?).ok()?;
         ((1..=12).contains(&month) && (1..=days_in_month(year, month)).contains(&day))
             .then_some(Self { year, month, day })
     }

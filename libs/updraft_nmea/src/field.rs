@@ -36,12 +36,12 @@ impl<'a> FieldsIter<'a> {
 
     /// The next field parsed as a `u8` integer.
     pub fn u8(&mut self) -> Option<u8> {
-        btoi::btoi(self.bytes()?).ok()
+        btoi::btou(self.bytes()?).ok()
     }
 
     /// The next field parsed as a `u16` integer.
     pub fn u16(&mut self) -> Option<u16> {
-        btoi::btoi(self.bytes()?).ok()
+        btoi::btou(self.bytes()?).ok()
     }
 
     /// The next field as a finite floating-point value. `nan`/`inf` parse

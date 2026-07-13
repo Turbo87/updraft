@@ -63,7 +63,7 @@ There is no replay buffer or general patch format. A fresh current snapshot is h
 
 Changes are grouped by domain. This is a useful host-side filtering key without requiring separate streams. High-rate instruments such as attitude and live vario receive their own groups when they land, so a secondary display can omit them without affecting low-rate navigation state. Because a group's encoding can evolve without touching other consumers, a compact binary channel for one high-rate signal, such as the live audio-vario stream, stays a deferred option to revisit only on a measured need.
 
-The runtime measures queue depth and handler time. It also records worker failures and slow-client drops. The warning path has a total time budget under 100 ms. These measurements arrive with the first real sensor adapter instead of relying on unit-test timing.
+The runtime measures maximum pending messages, queue wait, and handler time. It also records worker failures and slow-client drops. The warning path has a total time budget under 100 ms. Real sensor adapters provide the workload used to evaluate these measurements instead of relying on unit-test timing.
 
 ## Resource Storage
 

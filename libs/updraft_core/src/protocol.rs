@@ -25,10 +25,27 @@ pub enum Input {
     ComputeFailed(ComputeFailure),
 }
 
-/// A client-visible state update produced after handling an input.
+/// A client-visible state update, published to state-stream subscribers in
+/// input order.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Change {
     Flight(flight::Change),
+}
+
+impl Change {
+    /// The delivery group used by state-stream subscriptions.
+    pub fn group(&self) -> ChangeGroup {
+        match self {
+            Self::Flight(_) => ChangeGroup::Flight,
+        }
+    }
+}
+
+/// A stable filtering key for state-stream subscriptions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ChangeGroup {
+    Flight,
 }
 
 /// A request for work outside the core.
@@ -121,6 +138,10 @@ pub struct ComputeFailure {
 }
 
 /// The shared current state for a newly subscribing client.
+///
+/// The snapshot carries current shared values and active sets only, so
+/// reconnecting stays cheap for the entire flight. Datasets, histories,
+/// and display-specific configuration use queries or resources instead.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Snapshot {
     pub flight: flight::Snapshot,

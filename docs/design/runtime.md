@@ -24,9 +24,11 @@ Timer identity, deadlines, and deterministic ordering remain core state. The run
 
 Cheap derived values remain synchronous. A known expensive calculation enters the worker path through `Effect::Compute`, carrying a snapshot of everything the job needs. Its result returns as an ordinary input.
 
+Compute workers run CPU calculations only. Network polling, downloads, uploads, and device streams use effect adapters with lifecycles suited to those operations.
+
 Each worker kind runs at most one job at a time. A small job slot in the core records whether another run is needed. When the current job finishes, the core asks for a new job if more work arrived. The domain decides which state changes make an older result invalid and whether an older result is safe to display.
 
-Some changes make all earlier work invalid, such as replacing a task or seeking to a distant replay position. These changes increase a generation number called an epoch. The core ignores a result from an older epoch. The runtime clears the worker's cached state when it sees a new epoch.
+Some changes make all earlier work invalid, such as replacing a task or seeking to a distant replay position. These changes increase a compute revision. The core ignores results from older revisions. The runtime clears the worker's cached state when the revision changes.
 
 Workers may keep cached intermediate data between runs. A live optimizer can update data from the growing flight trace instead of starting again from nothing. Worker data is a cache, not authoritative state. It is not included in snapshots and starts empty after a restart.
 
@@ -46,6 +48,8 @@ The runtime uses a small `match` over effect types. It does not use a general ef
 - computed resource publication.
 
 Effect execution never blocks the input loop. File writes use a dedicated I/O thread. Network work uses async tasks. Compute jobs use per-kind workers. Device output uses the connection writer.
+
+Effect enums describe the work requested by the core. Runtime adapters own how that work runs, including polling, retries, cancellation, caching, and provider-specific behavior. Adapter traits may be used within a domain when implementations are interchangeable. There is no common background-job interface.
 
 Effects that need a result return a typed input. Long operations quickly return an operation ID, then publish progress and completion as normal changes. Warning audio does not use client subscriptions, so it still works when the webview or state stream has a problem.
 

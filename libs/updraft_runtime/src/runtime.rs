@@ -1,14 +1,20 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError, sync_channel};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, SyncSender, TrySendError};
+use std::sync::mpsc::{channel, sync_channel};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 use std::{fmt, thread};
 
-use updraft_core::{App, Change, ChangeGroup, ComputeFailure, Effect, Input, Query, Snapshot};
+use updraft_core::{
+    App, Change, ChangeGroup, ComputeFailure, ComputeJob, ComputeKind, Effect, Input, Query,
+    Snapshot,
+};
 
 use crate::clock::Clock;
 use crate::metrics::Metrics;
+use crate::worker::{CancellationToken, Worker, WorkerResult};
 
 /// Everything the core loop accepts from the outside.
 ///
@@ -53,6 +59,11 @@ struct QueueSender {
     metrics: Arc<Metrics>,
 }
 
+struct WorkerRequest {
+    job: ComputeJob,
+    cancellation: CancellationToken,
+}
+
 impl QueueSender {
     fn send(&self, msg: LoopMsg) -> Result<(), ()> {
         self.metrics.record_enqueued();
@@ -71,9 +82,28 @@ pub struct RuntimeBuilder {
     app: App,
     input_queue_capacity: usize,
     subscriber_buffer_capacity: usize,
+    workers: Vec<(ComputeKind, Box<dyn Worker>)>,
 }
 
 impl RuntimeBuilder {
+    /// Registers the worker executing one compute-job kind.
+    ///
+    /// A job for a kind without a registered worker fails immediately
+    /// with an [`Input::ComputeFailed`]. Registering two workers for the
+    /// same kind is a configuration error and panics.
+    #[must_use]
+    pub fn worker(mut self, kind: ComputeKind, worker: impl Worker) -> Self {
+        assert!(
+            !self
+                .workers
+                .iter()
+                .any(|(registered, _)| *registered == kind),
+            "a worker is already registered for {kind:?}"
+        );
+        self.workers.push((kind, Box::new(worker)));
+        self
+    }
+
     /// Capacity of the bounded input FIFO (default 256). A full queue
     /// blocks the producer and never drops an input.
     #[must_use]
@@ -90,6 +120,7 @@ impl RuntimeBuilder {
         self
     }
 
+    /// Starts the core loop and worker threads.
     #[must_use = "dropping the returned Runtime immediately shuts it down"]
     pub fn start(self) -> Runtime {
         let clock = Clock::new();
@@ -100,6 +131,24 @@ impl RuntimeBuilder {
             metrics: Arc::clone(&metrics),
         };
 
+        let mut worker_channels = HashMap::new();
+        let mut worker_threads = Vec::new();
+        for (kind, worker) in self.workers {
+            // The job channel is unbounded, but the core's job slot only
+            // dispatches a kind's next job once the previous result has been
+            // handled, so at most one job per kind is ever in flight and the
+            // channel never actually grows.
+            let (job_tx, job_rx) = channel();
+            worker_channels.insert(kind, job_tx);
+            let results = tx.clone();
+            let metrics = Arc::clone(&metrics);
+            let thread = thread::Builder::new()
+                .name(format!("updraft-worker-{kind:?}"))
+                .spawn(move || worker_loop(kind, worker, &job_rx, &results, &metrics))
+                .expect("failed to spawn worker thread");
+            worker_threads.push(thread);
+        }
+
         let core_loop = CoreLoop {
             app: self.app,
             rx,
@@ -107,6 +156,7 @@ impl RuntimeBuilder {
             metrics: Arc::clone(&metrics),
             subscribers: Vec::new(),
             subscriber_buffer_capacity: self.subscriber_buffer_capacity,
+            workers: worker_channels,
             next_deadline: None,
         };
         let core_thread = thread::Builder::new()
@@ -117,14 +167,21 @@ impl RuntimeBuilder {
         Runtime {
             handle: Handle { tx, clock, metrics },
             core_thread: Some(core_thread),
+            worker_threads,
         }
     }
 }
 
-/// The shared runtime that owns one [`App`] and its input loop.
+/// The shared runtime: owns one [`App`], the input queue, a monotonic
+/// clock, compute workers, and state-stream subscribers.
+///
+/// Hosts add transport or platform bindings on top of a [`Handle`] and
+/// are responsible for detecting when the runtime stops
+/// ([`RuntimeStopped`]) and reporting the failure.
 pub struct Runtime {
     handle: Handle,
     core_thread: Option<JoinHandle<()>>,
+    worker_threads: Vec<JoinHandle<()>>,
 }
 
 impl Runtime {
@@ -133,6 +190,7 @@ impl Runtime {
             app,
             input_queue_capacity: 256,
             subscriber_buffer_capacity: 64,
+            workers: Vec::new(),
         }
     }
 
@@ -140,21 +198,36 @@ impl Runtime {
         self.handle.clone()
     }
 
-    /// Stops the core loop and joins the runtime thread.
+    /// Stops the core loop and joins all runtime threads.
     ///
     /// Queued messages ahead of the shutdown message are still handled.
     /// Inputs submitted concurrently may be queued behind it and not handled.
-    /// Dropping the `Runtime` does the same thing.
+    /// Dropping the `Runtime` does the same thing. Calling this explicitly
+    /// lets the caller block on teardown at a chosen point.
     pub fn shutdown(mut self) {
         self.stop_and_join();
     }
 
+    /// Signals the core loop to stop and joins every runtime thread.
+    /// Idempotent: the second call (from `Drop` after `shutdown`) finds no
+    /// threads left to join and a disconnected input channel.
     fn stop_and_join(&mut self) {
         let _ = self.handle.tx.send(LoopMsg::Shutdown);
-        if let Some(core_thread) = self.core_thread.take()
-            && let Err(panic) = core_thread.join()
-        {
-            tracing::error!("core loop thread panicked: {}", panic_message(&*panic));
+        if let Some(core_thread) = self.core_thread.take() {
+            // A panicked core loop stops the runtime just like a clean
+            // shutdown, so surface it here instead of letting the join
+            // swallow the only trace of it.
+            if let Err(panic) = core_thread.join() {
+                tracing::error!("core loop thread panicked: {}", panic_message(&*panic));
+            }
+        }
+        // The core loop owned the job senders, so the workers' queues are
+        // now disconnected and the threads wind down. A worker thread that
+        // panicked past its own unwind boundary surfaces here.
+        for thread in self.worker_threads.drain(..) {
+            if let Err(panic) = thread.join() {
+                tracing::error!("worker thread panicked: {}", panic_message(&*panic));
+            }
         }
     }
 }
@@ -239,16 +312,19 @@ impl fmt::Display for RuntimeStopped {
 
 impl std::error::Error for RuntimeStopped {}
 
+/// Selects which change groups a state-stream subscriber receives.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChangeFilter {
     groups: Option<Vec<ChangeGroup>>,
 }
 
 impl ChangeFilter {
+    /// Receives every current and future change group.
     pub fn all() -> Self {
         Self { groups: None }
     }
 
+    /// Receives only the listed change groups.
     pub fn only(groups: impl IntoIterator<Item = ChangeGroup>) -> Self {
         Self {
             groups: Some(groups.into_iter().collect()),
@@ -262,12 +338,20 @@ impl ChangeFilter {
     }
 }
 
+/// A state-stream subscription.
+///
+/// The change buffer is bounded: a subscriber that falls behind is
+/// dropped by the runtime and its receiver disconnects. There is no
+/// replay buffer: reconnecting means resubscribing for a fresh snapshot.
 #[derive(Debug)]
 pub struct Subscription {
+    /// The shared state at the moment the subscription was registered.
     pub snapshot: Snapshot,
+    /// Change batches, in input order.
     pub changes: Receiver<Vec<Change>>,
 }
 
+/// The single thread that owns the `App` and feeds it inputs.
 struct CoreLoop {
     app: App,
     rx: Receiver<QueuedMsg>,
@@ -275,6 +359,7 @@ struct CoreLoop {
     metrics: Arc<Metrics>,
     subscribers: Vec<SubscriberSender>,
     subscriber_buffer_capacity: usize,
+    workers: HashMap<ComputeKind, Sender<WorkerRequest>>,
     next_deadline: Option<Duration>,
 }
 
@@ -290,9 +375,8 @@ impl CoreLoop {
                 match self.rx.recv_timeout(deadline.saturating_sub(clock_time)) {
                     Ok(msg) => msg,
                     Err(RecvTimeoutError::Timeout) => {
-                        self.process(Input::Clock {
-                            clock_time: self.clock.clock_time(),
-                        });
+                        let clock_time = self.clock.clock_time();
+                        self.process(Input::Clock { clock_time });
                         continue;
                     }
                     Err(RecvTimeoutError::Disconnected) => return,
@@ -314,6 +398,8 @@ impl CoreLoop {
         }
     }
 
+    /// Registers a subscriber and captures its snapshot in this loop
+    /// turn, so no change can fall between the two.
     fn subscribe(&mut self, filter: ChangeFilter, reply: &SyncSender<Subscription>) {
         let (tx, rx) = sync_channel(self.subscriber_buffer_capacity);
         let subscription = Subscription {
@@ -326,6 +412,9 @@ impl CoreLoop {
     }
 
     fn process(&mut self, input: Input) {
+        // Effects that fail to dispatch synthesize follow-up inputs. The
+        // local queue keeps their handling ordered without re-entering
+        // the bounded FIFO.
         let mut inputs = VecDeque::from([input]);
         while let Some(input) = inputs.pop_front() {
             let started = Instant::now();
@@ -334,16 +423,13 @@ impl CoreLoop {
             self.metrics.record_input();
             self.next_deadline = update.next_deadline;
             for effect in update.effects {
-                let Effect::Compute(job) = effect;
-                let kind = job.kind();
-                let revision = job.revision();
-                tracing::error!("no worker available for {kind:?} compute jobs");
-                self.metrics.record_worker_failure();
-                inputs.push_back(Input::ComputeFailed(ComputeFailure {
-                    kind,
-                    revision,
-                    message: format!("no worker available for {kind:?}"),
-                }));
+                match effect {
+                    Effect::Compute(job) => {
+                        if let Some(failure) = self.dispatch(job) {
+                            inputs.push_back(Input::ComputeFailed(failure));
+                        }
+                    }
+                }
             }
             if !update.changes.is_empty() {
                 self.publish(&update.changes);
@@ -351,6 +437,32 @@ impl CoreLoop {
         }
     }
 
+    /// Hands a job to its worker. Returns the failure to feed back if
+    /// there is no worker for the job's kind.
+    fn dispatch(&mut self, job: ComputeJob) -> Option<ComputeFailure> {
+        let kind = job.kind();
+        let revision = job.revision();
+        let request = WorkerRequest {
+            job,
+            cancellation: CancellationToken::default(),
+        };
+        let failed = match self.workers.get(&kind) {
+            Some(jobs) => jobs.send(request).is_err(),
+            None => true,
+        };
+        failed.then(|| {
+            tracing::error!("no worker available for {kind:?} compute jobs");
+            self.metrics.record_worker_failure();
+            ComputeFailure {
+                kind,
+                revision,
+                message: format!("no worker available for {kind:?}"),
+            }
+        })
+    }
+
+    /// Publishes one change batch to every subscriber, dropping the
+    /// subscriptions whose bounded buffer is full.
     fn publish(&mut self, changes: &[Change]) {
         let metrics = &self.metrics;
         self.subscribers.retain(|subscriber| {
@@ -378,6 +490,95 @@ impl CoreLoop {
 struct SubscriberSender {
     tx: SyncSender<Vec<Change>>,
     filter: ChangeFilter,
+}
+
+/// One worker thread: runs jobs for one kind, one at a time, and returns
+/// every outcome to the core as an input.
+fn worker_loop(
+    kind: ComputeKind,
+    mut worker: Box<dyn Worker>,
+    jobs: &Receiver<WorkerRequest>,
+    results: &QueueSender,
+    metrics: &Metrics,
+) {
+    // The revision the worker's cache belongs to. `None` forces a reset
+    // before the next run: at startup, and after any failure so a
+    // poisoned cache never reaches the next job.
+    let mut cache_revision = None;
+    while let Ok(request) = jobs.recv() {
+        let WorkerRequest { job, cancellation } = request;
+        let job_revision = job.revision();
+        // A new revision invalidates all earlier work, including the
+        // worker's cached state.
+        let stale_cache = cache_revision != Some(job_revision);
+
+        // Reset and run share one unwind boundary: a panic in either
+        // becomes a typed failure for this job, so the core's job slot
+        // is always freed and never waits forever.
+        let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| {
+            if stale_cache {
+                worker.reset();
+            }
+            worker.run(job, &cancellation)
+        }));
+        let input = match outcome {
+            Ok(WorkerResult::Completed(result)) => {
+                if result.kind() == kind && result.revision() == job_revision {
+                    cache_revision = Some(job_revision);
+                    Input::ComputeResult(result)
+                } else {
+                    let message = format!(
+                        "worker returned {:?} at {:?} for {kind:?} at {job_revision:?}",
+                        result.kind(),
+                        result.revision()
+                    );
+                    tracing::error!("{message}");
+                    metrics.record_worker_failure();
+                    cache_revision = None;
+                    Input::ComputeFailed(ComputeFailure {
+                        kind,
+                        revision: job_revision,
+                        message,
+                    })
+                }
+            }
+            Ok(WorkerResult::Cancelled) => {
+                let message = format!("{kind:?} worker cancelled without a cancellation request");
+                tracing::error!("{message}");
+                metrics.record_worker_failure();
+                cache_revision = None;
+                Input::ComputeFailed(ComputeFailure {
+                    kind,
+                    revision: job_revision,
+                    message,
+                })
+            }
+            Ok(WorkerResult::Failed(message)) => {
+                tracing::error!("{kind:?} worker failed: {message}");
+                metrics.record_worker_failure();
+                cache_revision = None;
+                Input::ComputeFailed(ComputeFailure {
+                    kind,
+                    revision: job_revision,
+                    message,
+                })
+            }
+            Err(panic) => {
+                let message = panic_message(&panic);
+                tracing::error!("{kind:?} worker panicked: {message}");
+                metrics.record_worker_failure();
+                cache_revision = None;
+                Input::ComputeFailed(ComputeFailure {
+                    kind,
+                    revision: job_revision,
+                    message,
+                })
+            }
+        };
+        if results.send(LoopMsg::Input(input)).is_err() {
+            return; // the runtime stopped
+        }
+    }
 }
 
 fn panic_message(panic: &(dyn std::any::Any + Send)) -> String {

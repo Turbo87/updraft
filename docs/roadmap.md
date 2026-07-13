@@ -19,7 +19,7 @@
 - [x] **core-app** — the central `App` struct composed from per-domain modules, the `handle(Input) -> Update { changes, effects }` entry point, `query()`/`snapshot()`, and typed query requests with associated output types. No tokio/rayon/I-O dependencies in the core crate. _(needs: units)_
 - [x] **core-time** — time as an input: monotonic timestamps stamped by adapters from their runtime's clock (no `Clock` trait) and a deterministic timer queue with the earliest deadline reported in `Update`. Scenario tests drive time by submitting clock inputs, with no wall clock. _(needs: core-app)_
 - [x] **core-runtime:** the shared runtime kernel: one monotonic clock per runtime, bounded FIFO input queue, synchronous queries, snapshot-first state delivery, filtered change groups, visible slow-client drops, and runtime measurements (see [design/runtime.md](design/runtime.md)). Hosts add effect adapters and transport bindings as their features land. _(needs: core-app)_
-- [ ] **core-workers:** the worker path for expensive calculations: one job at a time per kind, generation-based invalidation, typed failure inputs, and optional cached worker state (see [design/runtime.md](design/runtime.md#compute-workers)). First heavy users: live scoring and task optimization. _(needs: core-runtime, core-time)_
+- [x] **core-workers:** the worker path for expensive calculations: one job at a time per kind, generation-based invalidation, typed failure inputs, and optional cached worker state (see [design/runtime.md](design/runtime.md#compute-workers)). First heavy users: live scoring and task optimization. _(needs: core-runtime, core-time)_
 
 ## Transports & walking skeleton
 
@@ -157,6 +157,8 @@
 - [ ] **ahrs-pfd** — attitude indicator / PFD from AHRS data; synthetic vision later. _(needs: lx-nmea, io-adapters)_
 
 ## Online services
+
+Online services use async effect adapters. Bulk imagery and datasets use the resource path. They do not run as compute jobs.
 
 - [ ] **connectivity** — online/offline detection and state in core, offline-first hooks (status indicator, queue-and-retry for uploads). _(needs: core-app)_
 - [ ] **basemap-packs** — offline basemap packs (PMTiles or MBTiles, format TBD) stored on device, served to MapLibre through the bulk geodata path. _(needs: bulk-data, frontend-map)_

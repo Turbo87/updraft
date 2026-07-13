@@ -10,7 +10,11 @@ pub struct CancellationToken {
 }
 
 impl CancellationToken {
-    /// Whether this job should stop before producing a result.
+    pub(crate) fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Release);
+    }
+
+    /// Whether the runtime requested this job to stop.
     pub fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::Acquire)
     }
@@ -38,7 +42,8 @@ pub trait Worker: Send + 'static {
     /// Runs one job to completion.
     ///
     /// A failure or panic becomes a typed
-    /// [`Input::ComputeFailed`](updraft_core::Input). Every outcome frees
+    /// [`Input::ComputeFailed`](updraft_core::Input). A cancellation becomes
+    /// [`Input::ComputeCancelled`](updraft_core::Input). Every outcome frees
     /// the core job slot so it never waits forever.
     fn run(&mut self, job: ComputeJob, cancellation: &CancellationToken) -> WorkerResult;
 

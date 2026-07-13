@@ -47,9 +47,11 @@ impl ComputeSlot {
 
     /// Invalidates all earlier work: an in-flight job's result will be
     /// rejected, and any pending request is discarded.
-    pub(crate) fn invalidate(&mut self) {
+    pub(crate) fn invalidate(&mut self) -> Option<ComputeRevision> {
+        let running = self.running.then_some(self.revision);
         self.revision.bump();
         self.pending = false;
+        running
     }
 }
 
@@ -83,7 +85,7 @@ mod tests {
 
         // Invalidating before the job ever starts drops the pending request
         // so nothing runs over the now-stale state.
-        slot.invalidate();
+        let _ = slot.invalidate();
         assert!(!slot.wants_start());
 
         // A fresh request still runs under the new revision.
@@ -98,7 +100,7 @@ mod tests {
         slot.request();
         let revision = slot.start();
 
-        slot.invalidate();
+        let _ = slot.invalidate();
         assert!(!slot.finish(revision));
         assert!(!slot.wants_start());
 

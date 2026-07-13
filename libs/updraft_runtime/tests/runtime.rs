@@ -3,7 +3,7 @@
 //! (panic-to-`ComputeFailed`, recovery, revision handling).
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use updraft_core::flight::{
@@ -58,6 +58,187 @@ fn runtime_records_queue_and_handler_measurements() {
         handle.metrics().total_handler_time() >= handle.metrics().max_handler_time(),
         "the maximum handler duration is part of the total"
     );
+    runtime.shutdown();
+}
+
+struct CancelsFirstJob {
+    first: bool,
+    started: std::sync::mpsc::SyncSender<()>,
+    cancelled: std::sync::mpsc::SyncSender<()>,
+}
+
+impl Worker for CancelsFirstJob {
+    fn run(&mut self, job: ComputeJob, cancellation: &CancellationToken) -> WorkerResult {
+        if self.first {
+            self.first = false;
+            self.started.send(()).unwrap();
+            while !cancellation.is_cancelled() {
+                std::thread::yield_now();
+            }
+            self.cancelled.send(()).unwrap();
+            WorkerResult::Cancelled
+        } else {
+            WorkerResult::Completed(job.run())
+        }
+    }
+}
+
+struct NonCooperativeWorker {
+    started: std::sync::mpsc::SyncSender<()>,
+    release: std::sync::mpsc::Receiver<()>,
+}
+
+impl Worker for NonCooperativeWorker {
+    fn run(&mut self, job: ComputeJob, _cancellation: &CancellationToken) -> WorkerResult {
+        self.started.send(()).unwrap();
+        self.release.recv().unwrap();
+        WorkerResult::Completed(job.run())
+    }
+}
+
+struct WorkerReleaseGuard(std::sync::mpsc::Sender<()>);
+
+impl Drop for WorkerReleaseGuard {
+    fn drop(&mut self) {
+        let _ = self.0.send(());
+        let _ = self.0.send(());
+    }
+}
+
+struct ShutdownProbe {
+    started: std::sync::mpsc::SyncSender<()>,
+    observed: std::sync::mpsc::SyncSender<bool>,
+    release: Arc<AtomicBool>,
+}
+
+impl Worker for ShutdownProbe {
+    fn run(&mut self, _job: ComputeJob, cancellation: &CancellationToken) -> WorkerResult {
+        self.started.send(()).unwrap();
+        while !cancellation.is_cancelled() && !self.release.load(Ordering::Acquire) {
+            std::thread::yield_now();
+        }
+
+        let cancelled = cancellation.is_cancelled();
+        self.observed.send(cancelled).unwrap();
+        if cancelled {
+            WorkerResult::Cancelled
+        } else {
+            WorkerResult::Failed("test released an uncancelled worker".into())
+        }
+    }
+}
+
+#[test]
+fn shutdown_cancels_an_active_worker_job() {
+    let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
+    let (observed_tx, observed_rx) = std::sync::mpsc::sync_channel(1);
+    let release = Arc::new(AtomicBool::new(false));
+    let runtime = Runtime::builder(app())
+        .worker(
+            trace_stats_kind(),
+            ShutdownProbe {
+                started: started_tx,
+                observed: observed_tx,
+                release: Arc::clone(&release),
+            },
+        )
+        .start();
+    let handle = runtime.handle();
+
+    submit_fix(&handle, 50.);
+    started_rx.recv_timeout(TIMEOUT).unwrap();
+
+    let shutdown = std::thread::spawn(move || runtime.shutdown());
+    let cancelled = match observed_rx.recv_timeout(TIMEOUT) {
+        Ok(cancelled) => cancelled,
+        Err(_) => {
+            release.store(true, Ordering::Release);
+            observed_rx
+                .recv_timeout(TIMEOUT)
+                .expect("worker did not exit after the test released it")
+        }
+    };
+    shutdown.join().unwrap();
+
+    assert!(cancelled, "shutdown did not cancel the active worker job");
+}
+
+#[test]
+fn invalidating_work_cancels_the_stale_worker_job() {
+    let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
+    let (cancelled_tx, cancelled_rx) = std::sync::mpsc::sync_channel(1);
+    let runtime = Runtime::builder(App::with_config(AppConfig {
+        flight: updraft_core::flight::Config {
+            trace_stats_interval: Duration::ZERO,
+        },
+    }))
+    .worker(
+        trace_stats_kind(),
+        CancelsFirstJob {
+            first: true,
+            started: started_tx,
+            cancelled: cancelled_tx,
+        },
+    )
+    .start();
+    let handle = runtime.handle();
+    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+
+    submit_fix(&handle, 50.);
+    started_rx.recv_timeout(TIMEOUT).unwrap();
+    handle
+        .submit(Input::Flight(updraft_core::flight::Input::Command(
+            FlightCommand::ClearTrace,
+        )))
+        .unwrap();
+    submit_fix(&handle, 51.);
+
+    cancelled_rx.recv_timeout(TIMEOUT).unwrap();
+    let stats = wait_for_stats(&subscription).expect("fresh-revision work completes");
+    assert_eq!(stats.fix_count, 1);
+    assert_eq!(handle.metrics().worker_failures(), 0);
+    runtime.shutdown();
+}
+
+#[test]
+fn stale_result_from_non_cooperative_worker_is_ignored() {
+    let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let runtime = Runtime::builder(App::with_config(AppConfig {
+        flight: updraft_core::flight::Config {
+            trace_stats_interval: Duration::ZERO,
+        },
+    }))
+    .worker(
+        trace_stats_kind(),
+        NonCooperativeWorker {
+            started: started_tx,
+            release: release_rx,
+        },
+    )
+    .start();
+    let _release_guard = WorkerReleaseGuard(release_tx.clone());
+    let handle = runtime.handle();
+    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+
+    submit_fix(&handle, 50.);
+    started_rx.recv_timeout(TIMEOUT).unwrap();
+
+    handle
+        .submit(Input::Flight(updraft_core::flight::Input::Command(
+            FlightCommand::ClearTrace,
+        )))
+        .unwrap();
+    submit_fix(&handle, 51.);
+    submit_fix(&handle, 52.);
+
+    release_tx.send(()).unwrap();
+    started_rx.recv_timeout(TIMEOUT).unwrap();
+    release_tx.send(()).unwrap();
+
+    let stats = wait_for_stats(&subscription).expect("fresh-revision work completes");
+    assert_eq!(stats.fix_count, 2);
+    assert_eq!(handle.metrics().worker_failures(), 0);
     runtime.shutdown();
 }
 

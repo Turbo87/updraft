@@ -30,9 +30,11 @@ Each worker kind runs at most one job at a time. A small job slot in the core re
 
 Some changes make all earlier work invalid, such as replacing a task or seeking to a distant replay position. These changes increase a compute revision. The core ignores results from older revisions. The runtime clears the worker's cached state when the revision changes.
 
+Invalidating running work also signals a cooperative cancellation token. A worker that can stop between calculation steps returns a typed cancellation, which frees the core job slot without recording a failure. Workers that do not check the token remain correct because the core still rejects their stale result, but fresh work waits for them to finish.
+
 Workers may keep cached intermediate data between runs. A live optimizer can update data from the growing flight trace instead of starting again from nothing. Worker data is a cache, not authoritative state. It is not included in snapshots and starts empty after a restart.
 
-A worker panic becomes a typed failure input. Without a completion or failure input, the core could keep waiting forever for a job that has stopped. The runtime replaces the failed worker state before it accepts later jobs.
+A worker panic becomes a typed failure input. Without a completion or failure input, the core could keep waiting forever for a job that has stopped. The runtime resets the failed worker's cached state before it accepts later jobs.
 
 This lifecycle stays inside the core job slot and the runtime worker adapter. Other feature code does not need to manage it. Domains provide job inputs, rules for rejecting old results, and code that applies valid results. The design does not include a general computation graph.
 

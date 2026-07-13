@@ -9,7 +9,10 @@ use updraft_geo::LatLon;
 use updraft_units::{Angle, Length, Speed};
 
 use crate::job::ComputeSlot;
-use crate::protocol::{Change as AppChange, ComputeJob as AppComputeJob, Effect, Update};
+use crate::protocol::{
+    Change as AppChange, ComputeCancellation, ComputeJob as AppComputeJob,
+    ComputeKind as AppComputeKind, Effect, Update,
+};
 use crate::time::{Timer, Timers};
 
 /// An altitude above mean sea level.
@@ -302,7 +305,14 @@ impl Flight {
 
     pub(crate) fn clear_trace(&mut self, timers: &mut Timers, update: &mut Update) {
         self.trace.clear();
-        self.stats_job.invalidate();
+        if let Some(revision) = self.stats_job.invalidate() {
+            update
+                .effects
+                .push(Effect::CancelCompute(ComputeCancellation {
+                    kind: AppComputeKind::Flight(ComputeKind::TraceStats),
+                    revision,
+                }));
+        }
         timers.cancel(Timer::TraceStats);
         if self.trace_stats.take().is_some() {
             update
@@ -338,6 +348,26 @@ impl Flight {
     }
 
     pub(crate) fn compute_failed(
+        &mut self,
+        kind: ComputeKind,
+        revision: crate::ComputeRevision,
+        clock_time: Duration,
+        timers: &mut Timers,
+    ) {
+        self.finish_compute(kind, revision, clock_time, timers);
+    }
+
+    pub(crate) fn compute_cancelled(
+        &mut self,
+        kind: ComputeKind,
+        revision: crate::ComputeRevision,
+        clock_time: Duration,
+        timers: &mut Timers,
+    ) {
+        self.finish_compute(kind, revision, clock_time, timers);
+    }
+
+    fn finish_compute(
         &mut self,
         kind: ComputeKind,
         revision: crate::ComputeRevision,

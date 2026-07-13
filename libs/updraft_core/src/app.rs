@@ -74,6 +74,15 @@ impl App {
                     &mut self.timers,
                 );
             }
+            Input::ComputeCancelled(cancellation) => {
+                let ComputeKind::Flight(kind) = cancellation.kind;
+                self.flight.compute_cancelled(
+                    kind,
+                    cancellation.revision,
+                    self.clock_time,
+                    &mut self.timers,
+                );
+            }
         }
         for timer in self.timers.take_due(self.clock_time) {
             self.flight.timer(timer, self.clock_time, &mut update);

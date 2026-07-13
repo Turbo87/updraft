@@ -23,6 +23,8 @@ pub enum Input {
     /// A failed compute job. Without this input the core could keep
     /// waiting forever for a job that has stopped.
     ComputeFailed(ComputeFailure),
+    /// A compute job stopped after its inputs were invalidated.
+    ComputeCancelled(ComputeCancellation),
 }
 
 /// A client-visible state update, published to state-stream subscribers in
@@ -43,7 +45,6 @@ impl Change {
 
 /// A stable filtering key for state-stream subscriptions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ChangeGroup {
     Flight,
 }
@@ -57,9 +58,11 @@ pub enum ChangeGroup {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Effect {
     /// Runs an expensive calculation on a runtime compute worker. The
-    /// outcome returns as [`Input::ComputeResult`] or
-    /// [`Input::ComputeFailed`].
+    /// outcome returns as [`Input::ComputeResult`], [`Input::ComputeFailed`],
+    /// or [`Input::ComputeCancelled`].
     Compute(ComputeJob),
+    /// Requests cooperative cancellation of invalidated compute work.
+    CancelCompute(ComputeCancellation),
 }
 
 /// One expensive calculation, carrying a snapshot of everything it needs.
@@ -126,7 +129,14 @@ impl ComputeResult {
     }
 }
 
-/// A compute job that failed rather than completing.
+/// Identifies compute work that should stop because its inputs are stale.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ComputeCancellation {
+    pub kind: ComputeKind,
+    pub revision: ComputeRevision,
+}
+
+/// A compute job that failed rather than completing or being cancelled.
 ///
 /// It enters the core as an ordinary input so the job slot never waits
 /// forever.

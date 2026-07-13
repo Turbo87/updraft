@@ -34,6 +34,6 @@ mod time;
 pub use app::{App, AppConfig, Query};
 pub use job::ComputeRevision;
 pub use protocol::{
-    Change, ChangeGroup, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input,
-    Snapshot, Update,
+    Change, ChangeGroup, ComputeCancellation, ComputeFailure, ComputeJob, ComputeKind,
+    ComputeResult, Effect, Input, Snapshot, Update,
 };

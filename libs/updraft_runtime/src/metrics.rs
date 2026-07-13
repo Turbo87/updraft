@@ -51,7 +51,8 @@ impl Metrics {
         self.slow_subscriber_drops.load(Ordering::Relaxed)
     }
 
-    /// How many compute jobs ended in failure rather than completion.
+    /// How many compute jobs ended in failure rather than completion or
+    /// cancellation.
     pub fn worker_failures(&self) -> u64 {
         self.worker_failures.load(Ordering::Relaxed)
     }

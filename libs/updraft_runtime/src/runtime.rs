@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 use std::{fmt, thread};
 
 use updraft_core::{
-    App, Change, ChangeGroup, ComputeFailure, ComputeJob, ComputeKind, Effect, Input, Query,
-    Snapshot,
+    App, Change, ChangeGroup, ComputeCancellation, ComputeFailure, ComputeJob, ComputeKind, Effect,
+    Input, Query, Snapshot,
 };
 
 use crate::clock::Clock;
@@ -61,6 +61,11 @@ struct QueueSender {
 
 struct WorkerRequest {
     job: ComputeJob,
+    cancellation: CancellationToken,
+}
+
+struct ActiveJob {
+    revision: updraft_core::ComputeRevision,
     cancellation: CancellationToken,
 }
 
@@ -157,6 +162,7 @@ impl RuntimeBuilder {
             subscribers: Vec::new(),
             subscriber_buffer_capacity: self.subscriber_buffer_capacity,
             workers: worker_channels,
+            active_jobs: HashMap::new(),
             next_deadline: None,
         };
         let core_thread = thread::Builder::new()
@@ -202,6 +208,7 @@ impl Runtime {
     ///
     /// Queued messages ahead of the shutdown message are still handled.
     /// Inputs submitted concurrently may be queued behind it and not handled.
+    /// Active worker jobs receive cooperative cancellation before joining.
     /// Dropping the `Runtime` does the same thing. Calling this explicitly
     /// lets the caller block on teardown at a chosen point.
     pub fn shutdown(mut self) {
@@ -360,6 +367,7 @@ struct CoreLoop {
     subscribers: Vec<SubscriberSender>,
     subscriber_buffer_capacity: usize,
     workers: HashMap<ComputeKind, Sender<WorkerRequest>>,
+    active_jobs: HashMap<ComputeKind, ActiveJob>,
     next_deadline: Option<Duration>,
 }
 
@@ -417,6 +425,14 @@ impl CoreLoop {
         // the bounded FIFO.
         let mut inputs = VecDeque::from([input]);
         while let Some(input) = inputs.pop_front() {
+            if let Some((kind, revision)) = completed_job(&input)
+                && self
+                    .active_jobs
+                    .get(&kind)
+                    .is_some_and(|active| active.revision == revision)
+            {
+                self.active_jobs.remove(&kind);
+            }
             let started = Instant::now();
             let update = self.app.handle(input);
             self.metrics.record_handler_time(started.elapsed());
@@ -429,6 +445,7 @@ impl CoreLoop {
                             inputs.push_back(Input::ComputeFailed(failure));
                         }
                     }
+                    Effect::CancelCompute(cancellation) => self.cancel(cancellation),
                 }
             }
             if !update.changes.is_empty() {
@@ -442,14 +459,24 @@ impl CoreLoop {
     fn dispatch(&mut self, job: ComputeJob) -> Option<ComputeFailure> {
         let kind = job.kind();
         let revision = job.revision();
+        let cancellation = CancellationToken::default();
         let request = WorkerRequest {
             job,
-            cancellation: CancellationToken::default(),
+            cancellation: cancellation.clone(),
         };
         let failed = match self.workers.get(&kind) {
             Some(jobs) => jobs.send(request).is_err(),
             None => true,
         };
+        if !failed {
+            self.active_jobs.insert(
+                kind,
+                ActiveJob {
+                    revision,
+                    cancellation,
+                },
+            );
+        }
         failed.then(|| {
             tracing::error!("no worker available for {kind:?} compute jobs");
             self.metrics.record_worker_failure();
@@ -459,6 +486,14 @@ impl CoreLoop {
                 message: format!("no worker available for {kind:?}"),
             }
         })
+    }
+
+    fn cancel(&self, cancellation: ComputeCancellation) {
+        if let Some(active) = self.active_jobs.get(&cancellation.kind)
+            && active.revision == cancellation.revision
+        {
+            active.cancellation.cancel();
+        }
     }
 
     /// Publishes one change batch to every subscriber, dropping the
@@ -484,6 +519,14 @@ impl CoreLoop {
                 Err(TrySendError::Disconnected(_)) => false,
             }
         });
+    }
+}
+
+impl Drop for CoreLoop {
+    fn drop(&mut self) {
+        for active in self.active_jobs.values() {
+            active.cancellation.cancel();
+        }
     }
 }
 
@@ -543,14 +586,10 @@ fn worker_loop(
                 }
             }
             Ok(WorkerResult::Cancelled) => {
-                let message = format!("{kind:?} worker cancelled without a cancellation request");
-                tracing::error!("{message}");
-                metrics.record_worker_failure();
                 cache_revision = None;
-                Input::ComputeFailed(ComputeFailure {
+                Input::ComputeCancelled(ComputeCancellation {
                     kind,
                     revision: job_revision,
-                    message,
                 })
             }
             Ok(WorkerResult::Failed(message)) => {
@@ -578,6 +617,15 @@ fn worker_loop(
         if results.send(LoopMsg::Input(input)).is_err() {
             return; // the runtime stopped
         }
+    }
+}
+
+fn completed_job(input: &Input) -> Option<(ComputeKind, updraft_core::ComputeRevision)> {
+    match input {
+        Input::ComputeResult(result) => Some((result.kind(), result.revision())),
+        Input::ComputeFailed(failure) => Some((failure.kind, failure.revision)),
+        Input::ComputeCancelled(cancellation) => Some((cancellation.kind, cancellation.revision)),
+        Input::Clock { .. } | Input::Flight(_) => None,
     }
 }
 

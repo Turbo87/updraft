@@ -29,22 +29,18 @@ fn parse_streamed(bytes: &[u8], chunk: usize) -> usize {
     let mut frames = 0;
     for slice in bytes.chunks(chunk) {
         buffer.extend_from_slice(slice);
+        let mut cursor = buffer.as_slice();
         loop {
-            let mut cursor = buffer.as_slice();
             match parse(&mut cursor) {
-                Step::Incomplete => {
-                    let consumed = buffer.len() - cursor.len();
-                    buffer.drain(..consumed);
-                    break;
-                }
+                Step::Incomplete => break,
                 step => {
                     black_box(&step);
-                    let consumed = buffer.len() - cursor.len();
                     frames += 1;
-                    buffer.drain(..consumed);
                 }
             }
         }
+        let consumed = buffer.len() - cursor.len();
+        buffer.drain(..consumed);
     }
     frames
 }

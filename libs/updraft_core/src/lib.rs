@@ -1,14 +1,11 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! The deterministic Updraft core.
+//!
+//! The core is a plain Rust library that owns shared application state and
+//! the decisions based on that state. It performs no I/O, spawns no threads,
+//! and reads no clocks.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod app;
+mod protocol;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use app::App;
+pub use protocol::{Input, Update};

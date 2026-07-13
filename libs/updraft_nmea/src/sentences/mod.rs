@@ -4,6 +4,7 @@ mod flarm;
 mod garmin;
 mod gnss;
 mod lx;
+mod openvario;
 
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
@@ -17,6 +18,7 @@ pub use lx::{
     Lxwp0, Lxwp1, Lxwp2, Lxwp3, Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Plxv0, Plxv0Direction,
     Plxvc, PlxvcMessageType, Plxvf, Plxvs, PlxvsMode, Plxvtarg,
 };
+pub use openvario::{Pov, PovDatum};
 
 use crate::field::FieldsIter;
 use crate::message::{Message, Talker, Unknown};
@@ -42,6 +44,7 @@ pub fn parse_body(body: &[u8]) -> Message {
         b"PLXV0" => return Message::Plxv0(Plxv0::parse(fields)),
         b"PLXVC" => return Message::Plxvc(Plxvc::parse(fields)),
         b"PLXVTARG" => return Message::Plxvtarg(Plxvtarg::parse(fields)),
+        b"POV" => return Message::Pov(Pov::parse(fields)),
         _ => {}
     }
 

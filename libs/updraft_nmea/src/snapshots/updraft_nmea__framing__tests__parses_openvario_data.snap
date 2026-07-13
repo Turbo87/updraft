@@ -1,0 +1,18 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Pov(
+        Data(
+            [
+                StaticPressure(
+                    949.3 hPa,
+                ),
+                DynamicPressure(
+                    -0.2457 hPa,
+                ),
+            ],
+        ),
+    ),
+)

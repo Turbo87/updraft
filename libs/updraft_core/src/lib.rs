@@ -8,9 +8,10 @@ mod app;
 pub mod flight;
 mod job;
 mod protocol;
+mod time;
 
-pub use app::{App, Query};
+pub use app::{App, AppConfig, Query};
 pub use job::ComputeRevision;
 pub use protocol::{
-    Change, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Snapshot, Update,
+    Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Snapshot, Update,
 };

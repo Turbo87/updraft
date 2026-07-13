@@ -38,19 +38,27 @@ impl App {
     /// Apply one input; the only mutation entry point.
     pub fn handle(&mut self, input: Input) -> Update;
     /// Read-only queries against current state.
-    pub fn query(&self, query: Query) -> QueryResult;
+    pub fn query<Q: Query>(&self, query: Q) -> Q::Output;
     /// Shared current state for a newly subscribing client.
     pub fn snapshot(&self) -> Snapshot;
+}
+
+pub trait Query {
+    type Output;
+
+    fn execute(self, app: &App) -> Self::Output;
 }
 
 pub struct Update {
     pub changes: Vec<Change>,
     pub effects: Vec<Effect>,
-    pub next_deadline: Option<MonotonicTime>,
+    pub next_deadline: Option<Duration>,
 }
 ```
 
 Inputs, changes, and effects are enums grouped by domain. The core crate never depends on tokio, rayon, or an I/O library. Whole-flight scenario tests are a plain loop over `handle()` with no async runtime, sleeps, or wall clock.
+
+Queries run on the core loop and must finish quickly. They do not perform I/O or return unbounded data. Bulk data uses resources, and expensive calculations use workers.
 
 ## State Ownership
 
@@ -86,7 +94,7 @@ Device connections and platform sensors normalize data before it enters the core
 
 ## Time Is an Input
 
-The core never reads a clock. Adapters stamp observations with monotonic timestamps from one process-wide time origin. GPS time stays in flight data and IGC records. Monotonic time is used only for scheduling, delay rules, freshness, and lookahead.
+The core never reads a clock. Adapters stamp observations with monotonic timestamps from their runtime's clock. GPS time stays in flight data and IGC records. Monotonic time is used only for scheduling, delay rules, freshness, and lookahead.
 
 Timers are authoritative state. `Update.next_deadline` tells the runtime when to deliver the next clock input, so tests and replay use the same scheduling logic as production. Detailed timer ownership lives in [runtime.md](runtime.md#time-and-timers).
 

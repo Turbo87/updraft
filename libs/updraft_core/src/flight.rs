@@ -1,4 +1,7 @@
 //! Flight state for own position and the flown trace.
+//!
+//! Trace statistics are computed asynchronously and invalidated when the
+//! trace is cleared.
 
 use std::time::Duration;
 
@@ -7,6 +10,7 @@ use updraft_units::{Angle, Length, Speed};
 
 use crate::job::ComputeSlot;
 use crate::protocol::{Change as AppChange, ComputeJob as AppComputeJob, Effect, Update};
+use crate::time::{Timer, Timers};
 
 /// An altitude above mean sea level.
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
@@ -21,6 +25,21 @@ impl MslAltitude {
 
     pub const fn length(self) -> Length {
         self.0
+    }
+}
+
+/// Tuning knobs for the flight domain.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Config {
+    /// Minimum spacing between two trace-statistics compute jobs.
+    pub trace_stats_interval: Duration,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            trace_stats_interval: Duration::from_secs(5),
+        }
     }
 }
 
@@ -52,7 +71,7 @@ pub struct TraceStats {
 /// A recorded event or request owned by the flight domain.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Input {
-    /// A recorded user command.
+    /// A user command.
     Command(Command),
     /// A normalized sensor observation.
     Observation(Observation),
@@ -211,15 +230,30 @@ pub(crate) fn trace_stats(fixes: &[PositionFix]) -> TraceStats {
     }
 }
 
-#[derive(Debug, Default)]
+/// The flight domain state.
+#[derive(Debug)]
 pub(crate) struct Flight {
+    /// Minimum spacing between two trace-statistics job starts.
+    stats_interval: Duration,
     position: Option<PositionFix>,
     trace: Vec<PositionFix>,
     trace_stats: Option<TraceStats>,
     stats_job: ComputeSlot,
+    stats_started_at: Option<Duration>,
 }
 
 impl Flight {
+    pub(crate) fn new(config: Config) -> Self {
+        Self {
+            stats_interval: config.trace_stats_interval,
+            position: None,
+            trace: Vec::new(),
+            trace_stats: None,
+            stats_job: ComputeSlot::default(),
+            stats_started_at: None,
+        }
+    }
+
     pub(crate) fn position(&self) -> Option<PositionFix> {
         self.position
     }
@@ -228,26 +262,48 @@ impl Flight {
         self.trace_stats
     }
 
-    pub(crate) fn handle(&mut self, input: Input, update: &mut Update) {
+    pub(crate) fn handle(
+        &mut self,
+        input: Input,
+        clock_time: Duration,
+        timers: &mut Timers,
+        update: &mut Update,
+    ) {
         match input {
-            Input::Command(Command::ClearTrace) => self.clear_trace(update),
-            Input::Observation(Observation::Position(fix)) => self.observe_position(fix, update),
+            Input::Command(Command::ClearTrace) => self.clear_trace(timers, update),
+            Input::Observation(Observation::Position(fix)) => {
+                self.observe_position(fix, clock_time, timers, update);
+            }
         }
     }
 
-    fn observe_position(&mut self, fix: PositionFix, update: &mut Update) {
+    pub(crate) fn snapshot(&self) -> Snapshot {
+        Snapshot {
+            position: self.position(),
+            trace_stats: self.trace_stats(),
+        }
+    }
+
+    pub(crate) fn observe_position(
+        &mut self,
+        fix: PositionFix,
+        clock_time: Duration,
+        timers: &mut Timers,
+        update: &mut Update,
+    ) {
         self.position = Some(fix);
         self.trace.push(fix);
         update
             .changes
             .push(AppChange::Flight(Change::Position(fix)));
         self.stats_job.request();
-        self.start_stats(update);
+        self.schedule_stats(clock_time, timers);
     }
 
-    fn clear_trace(&mut self, update: &mut Update) {
+    pub(crate) fn clear_trace(&mut self, timers: &mut Timers, update: &mut Update) {
         self.trace.clear();
         self.stats_job.invalidate();
+        timers.cancel(Timer::TraceStats);
         if self.trace_stats.take().is_some() {
             update
                 .changes
@@ -255,22 +311,58 @@ impl Flight {
         }
     }
 
-    pub(crate) fn compute_result(&mut self, result: ComputeResult, update: &mut Update) {
-        let ComputeResult::TraceStats { revision, stats } = result;
-        if self.stats_job.finish(revision) {
-            self.trace_stats = Some(stats);
-            update
-                .changes
-                .push(AppChange::Flight(Change::TraceStats(Some(stats))));
+    pub(crate) fn timer(&mut self, timer: Timer, clock_time: Duration, update: &mut Update) {
+        match timer {
+            Timer::TraceStats => self.start_stats(clock_time, update),
         }
-        self.start_stats(update);
     }
 
-    fn start_stats(&mut self, update: &mut Update) {
+    pub(crate) fn compute_result(
+        &mut self,
+        result: ComputeResult,
+        clock_time: Duration,
+        timers: &mut Timers,
+        update: &mut Update,
+    ) {
+        match result {
+            ComputeResult::TraceStats { revision, stats } => {
+                if self.stats_job.finish(revision) {
+                    self.trace_stats = Some(stats);
+                    update
+                        .changes
+                        .push(AppChange::Flight(Change::TraceStats(Some(stats))));
+                }
+                self.schedule_stats(clock_time, timers);
+            }
+        }
+    }
+
+    pub(crate) fn compute_failed(
+        &mut self,
+        kind: ComputeKind,
+        revision: crate::ComputeRevision,
+        clock_time: Duration,
+        timers: &mut Timers,
+    ) {
+        match kind {
+            ComputeKind::TraceStats => {
+                // An older trace-statistics result stays safe to show, so
+                // a non-result only frees the slot. New fixes trigger the
+                // next attempt.
+                self.stats_job.finish(revision);
+                self.schedule_stats(clock_time, timers);
+            }
+        }
+    }
+
+    /// Starts the requested trace-statistics job, carrying a snapshot of
+    /// the trace and the current compute revision.
+    fn start_stats(&mut self, clock_time: Duration, update: &mut Update) {
         if !self.stats_job.wants_start() {
             return;
         }
         let revision = self.stats_job.start();
+        self.stats_started_at = Some(clock_time);
         update.effects.push(Effect::Compute(AppComputeJob::Flight(
             ComputeJob::TraceStats {
                 revision,
@@ -279,11 +371,17 @@ impl Flight {
         )));
     }
 
-    pub(crate) fn snapshot(&self) -> Snapshot {
-        Snapshot {
-            position: self.position,
-            trace_stats: self.trace_stats,
+    /// Schedules the timer that starts the next job, at least
+    /// [`stats_interval`](Self::stats_interval) after the previous start.
+    fn schedule_stats(&mut self, clock_time: Duration, timers: &mut Timers) {
+        if !self.stats_job.wants_start() || timers.is_scheduled(Timer::TraceStats) {
+            return;
         }
+        let at = match self.stats_started_at {
+            Some(started) => started.saturating_add(self.stats_interval).max(clock_time),
+            None => clock_time,
+        };
+        timers.schedule(Timer::TraceStats, at);
     }
 }
 
@@ -303,18 +401,15 @@ mod tests {
 
     #[test]
     fn trace_stats_over_empty_trace() {
-        assert_eq!(
-            trace_stats(&[]),
-            TraceStats {
-                fix_count: 0,
-                distance: Length::ZERO,
-                max_altitude: None,
-            }
-        );
+        let stats = trace_stats(&[]);
+        assert_eq!(stats.fix_count, 0);
+        assert_eq!(stats.distance, Length::ZERO);
+        assert_eq!(stats.max_altitude, None);
     }
 
     #[test]
     fn trace_stats_sums_geodesic_legs() {
+        // Two one-degree meridian arcs, roughly 110.6 km each.
         let fixes = [
             fix(50., 6., Some(1000.)),
             fix(51., 6., None),

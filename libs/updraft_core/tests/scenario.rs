@@ -1,20 +1,51 @@
-//! Whole-flight scenario tests run as a plain loop over `App::handle()`.
+//! Whole-flight scenario tests: a plain loop over `App::handle()` with no
+//! async runtime, sleeps, or wall clock.
 
 use std::time::Duration;
 
 use updraft_core::flight::{
-    Change as FlightChange, Command, ComputeJob as FlightComputeJob, GetPosition, MslAltitude,
-    Observation, PositionFix,
+    Change as FlightChange, Command as FlightCommand, ComputeJob as FlightComputeJob,
+    ComputeKind as FlightComputeKind, ComputeResult as FlightComputeResult, GetPosition,
+    GetTraceStats, MslAltitude, Observation as FlightObservation, PositionFix,
 };
-use updraft_core::{App, Change, ComputeJob, ComputeResult, Effect, Input};
+use updraft_core::{
+    App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
+};
 use updraft_geo::LatLon;
 use updraft_units::Length;
 
+#[test]
+fn app_routes_flight_protocol_through_the_flight_domain() {
+    let mut app = App::new();
+    let fix = fix(0., 50., 6.);
+
+    let update = app.handle(Input::Flight(updraft_core::flight::Input::Observation(
+        updraft_core::flight::Observation::Position(fix),
+    )));
+
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(updraft_core::flight::Change::Position(fix))]
+    );
+    assert_eq!(app.query(GetPosition), Some(fix));
+    assert_eq!(
+        app.snapshot().flight,
+        updraft_core::flight::Snapshot {
+            position: Some(fix),
+            trace_stats: None,
+        }
+    );
+}
+
+fn at(seconds: f64) -> Duration {
+    Duration::from_secs_f64(seconds)
+}
+
 fn fix(seconds: f64, latitude: f64, longitude: f64) -> PositionFix {
     PositionFix {
-        observed_at: Duration::from_secs_f64(seconds),
+        observed_at: at(seconds),
         position: LatLon::from_degrees(latitude, longitude),
-        altitude: Some(MslAltitude::new(Length::from_meters(1_000.))),
+        altitude: Some(MslAltitude::new(Length::from_meters(1000.))),
         track: None,
         ground_speed: None,
     }
@@ -22,16 +53,19 @@ fn fix(seconds: f64, latitude: f64, longitude: f64) -> PositionFix {
 
 fn position_input(seconds: f64, latitude: f64, longitude: f64) -> Input {
     Input::Flight(updraft_core::flight::Input::Observation(
-        Observation::Position(fix(seconds, latitude, longitude)),
+        FlightObservation::Position(fix(seconds, latitude, longitude)),
     ))
 }
 
 fn clear_trace_input() -> Input {
-    Input::Flight(updraft_core::flight::Input::Command(Command::ClearTrace))
+    Input::Flight(updraft_core::flight::Input::Command(
+        FlightCommand::ClearTrace,
+    ))
 }
 
-fn compute_job(effects: &[Effect]) -> Option<&ComputeJob> {
-    match effects {
+/// Extracts the single compute job from an update, if any.
+fn compute_job(update: &Update) -> Option<&ComputeJob> {
+    match update.effects.as_slice() {
         [] => None,
         [Effect::Compute(job)] => Some(job),
         effects => panic!("unexpected effects: {effects:?}"),
@@ -39,71 +73,239 @@ fn compute_job(effects: &[Effect]) -> Option<&ComputeJob> {
 }
 
 #[test]
-fn app_routes_position_state_through_the_flight_domain() {
-    let mut app = App::new();
-    let position = fix(1., 50., 6.);
-
-    let update = app.handle(position_input(1., 50., 6.));
-
-    assert_eq!(
-        update.changes,
-        vec![Change::Flight(FlightChange::Position(position))]
-    );
-    assert_eq!(app.query(GetPosition), Some(position));
-    assert_eq!(app.snapshot().flight.position, Some(position));
-}
-
-#[test]
 fn trace_stats_compute_lifecycle() {
     let mut app = App::new();
 
-    let first = app.handle(position_input(0., 50., 6.));
-    let first_job = compute_job(&first.effects).unwrap().clone();
-    let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) = &first_job;
+    // The first fix updates the position and immediately starts a
+    // trace-statistics job (nothing ran before, so no throttling).
+    let update = app.handle(position_input(0., 50., 6.));
+    assert_eq!(update.changes.len(), 1);
+    assert!(matches!(
+        update.changes[0],
+        Change::Flight(FlightChange::Position(_))
+    ));
+    let job = compute_job(&update)
+        .expect("first fix starts a job")
+        .clone();
+    let ComputeJob::Flight(FlightComputeJob::TraceStats {
+        revision,
+        ref fixes,
+    }) = job;
     assert_eq!(fixes.len(), 1);
+    // The job is running, nothing further is requested yet.
+    assert_eq!(update.next_deadline, None);
 
-    let second = app.handle(position_input(0.2, 50.01, 6.));
-    assert_eq!(second.effects, vec![]);
-
-    let first_result = first_job.run();
-    let update = app.handle(Input::ComputeResult(first_result));
+    // A second fix while the job runs only marks the slot pending.
+    let update = app.handle(position_input(0.2, 50.01, 6.));
     assert!(matches!(
         update.changes.as_slice(),
-        [Change::Flight(FlightChange::TraceStats(Some(_)))]
+        [Change::Flight(FlightChange::Position(_))]
     ));
-    let second_job = compute_job(&update.effects).unwrap().clone();
-    let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) = &second_job;
+    assert_eq!(update.effects, vec![]);
+    assert_eq!(update.next_deadline, None);
+
+    // The worker result applies and schedules the next start five
+    // seconds after the previous one.
+    let result = job.clone().run();
+    let ComputeResult::Flight(FlightComputeResult::TraceStats { stats, .. }) = result;
+    assert_eq!(stats.fix_count, 1);
+    let update = app.handle(Input::ComputeResult(result));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::TraceStats(Some(stats)))],
+        "current-revision result becomes a change"
+    );
+    assert_eq!(update.next_deadline, Some(at(5.)));
+    assert_eq!(app.query(GetTraceStats), Some(stats));
+
+    // The clock reaching the deadline starts the next job over both fixes.
+    let update = app.handle(Input::Clock { clock_time: at(5.) });
+    let job = compute_job(&update)
+        .expect("timer starts the next job")
+        .clone();
+    let ComputeJob::Flight(FlightComputeJob::TraceStats {
+        revision: second_revision,
+        ref fixes,
+    }) = job;
+    assert_eq!(revision, second_revision, "no invalidation happened");
     assert_eq!(fixes.len(), 2);
 
+    // Clearing the trace invalidates the in-flight job and clears the
+    // published statistics.
     let update = app.handle(clear_trace_input());
     assert_eq!(
         update.changes,
         vec![Change::Flight(FlightChange::TraceStats(None))]
     );
-    app.handle(position_input(0.5, 51., 6.));
+    assert_eq!(update.next_deadline, None);
 
-    let update = app.handle(Input::ComputeResult(second_job.run()));
+    // The stale result is rejected: no change, state stays cleared.
+    let update = app.handle(Input::ComputeResult(job.run()));
     assert_eq!(update.changes, vec![]);
-    let fresh_job = compute_job(&update.effects).unwrap();
-    let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) = fresh_job;
+    assert_eq!(app.query(GetTraceStats), None);
+
+    // A fresh fix starts over under the new revision, throttled to five
+    // seconds after the previous start.
+    let update = app.handle(position_input(5.5, 51., 6.));
+    assert_eq!(update.next_deadline, Some(at(10.)));
+    let update = app.handle(Input::Clock {
+        clock_time: at(10.),
+    });
+    let job = compute_job(&update).expect("job starts under the new revision");
+    let ComputeJob::Flight(FlightComputeJob::TraceStats {
+        revision: new_revision,
+        fixes,
+    }) = job;
+    assert_ne!(revision, *new_revision);
     assert_eq!(fixes.len(), 1);
 }
 
 #[test]
-fn compute_jobs_are_pure() {
-    let mut app = App::new();
-    let update = app.handle(position_input(0., 50., 6.));
-    let job = compute_job(&update.effects).unwrap().clone();
+fn stats_interval_is_configurable() {
+    let mut app = App::with_config(updraft_core::AppConfig {
+        flight: updraft_core::flight::Config {
+            trace_stats_interval: Duration::from_millis(100),
+        },
+    });
 
-    assert_eq!(job.clone().run(), job.run());
+    let update = app.handle(position_input(0., 50., 6.));
+    let job = compute_job(&update)
+        .expect("first fix starts a job")
+        .clone();
+    app.handle(position_input(0.02, 50.01, 6.));
+
+    // The result schedules the next start at the configured interval
+    // instead of the five-second default.
+    let update = app.handle(Input::ComputeResult(job.run()));
+    assert_eq!(update.next_deadline, Some(at(0.1)));
 }
 
 #[test]
-fn snapshot_reflects_completed_trace_statistics() {
+fn compute_failure_frees_the_slot() {
     let mut app = App::new();
-    let update = app.handle(position_input(0., 50., 6.));
-    let result: ComputeResult = compute_job(&update.effects).unwrap().clone().run();
-    app.handle(Input::ComputeResult(result));
 
-    assert_eq!(app.snapshot().flight.trace_stats.unwrap().fix_count, 1);
+    let update = app.handle(position_input(0., 50., 6.));
+    let job = compute_job(&update)
+        .expect("first fix starts a job")
+        .clone();
+
+    // More work arrives while the job runs, then the job fails.
+    app.handle(position_input(0.5, 50.01, 6.));
+    let update = app.handle(Input::ComputeFailed(ComputeFailure {
+        kind: ComputeKind::Flight(FlightComputeKind::TraceStats),
+        revision: job.revision(),
+        message: "worker panicked".into(),
+    }));
+
+    // No change is published, but the pending request reschedules.
+    assert_eq!(update.changes, vec![]);
+    assert_eq!(update.next_deadline, Some(at(5.)));
+    let update = app.handle(Input::Clock { clock_time: at(5.) });
+    assert!(compute_job(&update).is_some(), "the slot accepts a new job");
+}
+
+#[test]
+fn fix_after_the_interval_starts_a_job_without_waiting() {
+    let mut app = App::new();
+
+    // The first fix starts and completes a job, leaving the slot idle with
+    // its last start five seconds before the next fix.
+    let update = app.handle(position_input(0., 50., 6.));
+    let job = compute_job(&update).unwrap().clone();
+    app.handle(Input::ComputeResult(job.run()));
+
+    // A fix arriving after the throttle interval has already elapsed starts
+    // the next job in the same handle() call, with no throttle wait.
+    let update = app.handle(position_input(10., 50.1, 6.));
+    assert!(compute_job(&update).is_some(), "the job starts immediately");
+    assert_eq!(update.next_deadline, None);
+}
+
+#[test]
+fn clearing_the_trace_cancels_a_pending_stats_timer() {
+    let mut app = App::new();
+
+    // Run one job to completion with a second fix pending, so the result
+    // arms the next start as an unfired throttle timer.
+    let update = app.handle(position_input(0., 50., 6.));
+    let job = compute_job(&update).unwrap().clone();
+    app.handle(position_input(0.2, 50.01, 6.));
+    let update = app.handle(Input::ComputeResult(job.run()));
+    assert_eq!(
+        update.next_deadline,
+        Some(at(5.)),
+        "throttle timer is armed"
+    );
+
+    // Clearing the trace before that timer fires must cancel it, not leave a
+    // stale deadline that would wake the runtime for nothing.
+    let update = app.handle(clear_trace_input());
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::TraceStats(None))]
+    );
+    assert_eq!(update.next_deadline, None);
+}
+
+#[test]
+fn stale_result_frees_the_slot_for_new_revision_work() {
+    let mut app = App::new();
+
+    // Start a job, then clear the trace so the running job's revision is stale.
+    let update = app.handle(position_input(0., 50., 6.));
+    let job = compute_job(&update).unwrap().clone();
+    app.handle(clear_trace_input());
+
+    // New work arrives under the new revision while the stale job is still out.
+    app.handle(position_input(0.5, 51., 6.));
+
+    // The stale result publishes no change but still frees the slot, so the
+    // pending new-revision request gets scheduled.
+    let update = app.handle(Input::ComputeResult(job.run()));
+    assert_eq!(update.changes, vec![]);
+    assert_eq!(update.next_deadline, Some(at(5.)));
+
+    let update = app.handle(Input::Clock { clock_time: at(5.) });
+    let job = compute_job(&update).expect("new-revision job starts");
+    let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) = job;
+    assert_eq!(fixes.len(), 1, "only the post-clear fix is included");
+}
+
+#[test]
+fn snapshot_reflects_current_shared_state() {
+    let mut app = App::new();
+    assert_eq!(app.snapshot(), updraft_core::Snapshot::default());
+
+    let update = app.handle(position_input(0., 50., 6.));
+    let job = compute_job(&update).unwrap().clone();
+    app.handle(Input::ComputeResult(job.run()));
+
+    let snapshot = app.snapshot();
+    assert_eq!(snapshot.flight.position, Some(fix(0., 50., 6.)));
+    let stats = snapshot.flight.trace_stats.expect("stats are shared state");
+    assert_eq!(stats.fix_count, 1);
+}
+
+#[test]
+fn same_inputs_produce_same_updates() {
+    let inputs = [
+        position_input(0., 50., 6.),
+        position_input(0.2, 50.01, 6.),
+        Input::Clock { clock_time: at(1.) },
+        clear_trace_input(),
+        position_input(1.5, 50.02, 6.),
+        Input::Clock {
+            clock_time: at(2.5),
+        },
+    ];
+
+    let run = || -> Vec<Update> {
+        let mut app = App::new();
+        inputs
+            .iter()
+            .cloned()
+            .map(|input| app.handle(input))
+            .collect()
+    };
+    assert_eq!(run(), run());
 }

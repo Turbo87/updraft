@@ -24,7 +24,7 @@ impl Plxvs {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
             outside_air_temperature: fields.f64(),
-            mode: fields.u8().map(PlxvsMode::from_value),
+            mode: fields.bytes().and_then(PlxvsMode::from_field),
             supply_voltage: fields.f64(),
             igc_pressure_altitude: fields.f64().map(Length::from_meters),
             flap_position: fields.text(),
@@ -43,11 +43,11 @@ pub enum PlxvsMode {
 }
 
 impl PlxvsMode {
-    fn from_value(value: u8) -> Self {
-        match value {
-            0 => Self::Vario,
-            1 => Self::SpeedCommand,
-            other => Self::Other(other),
+    fn from_field(field: &[u8]) -> Option<Self> {
+        match field {
+            b"0" => Some(Self::Vario),
+            b"1" => Some(Self::SpeedCommand),
+            field => btoi::btou(field).ok().map(Self::Other),
         }
     }
 }
@@ -77,8 +77,8 @@ mod tests {
 
     #[test]
     fn maps_mode_values() {
-        assert_eq!(PlxvsMode::from_value(0), PlxvsMode::Vario);
-        assert_eq!(PlxvsMode::from_value(1), PlxvsMode::SpeedCommand);
-        assert_eq!(PlxvsMode::from_value(5), PlxvsMode::Other(5));
+        assert_eq!(PlxvsMode::from_field(b"0"), Some(PlxvsMode::Vario));
+        assert_eq!(PlxvsMode::from_field(b"1"), Some(PlxvsMode::SpeedCommand));
+        assert_eq!(PlxvsMode::from_field(b"5"), Some(PlxvsMode::Other(5)));
     }
 }

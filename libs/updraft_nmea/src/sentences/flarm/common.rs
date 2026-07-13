@@ -20,13 +20,13 @@ pub enum FlarmAlarmLevel {
 }
 
 impl FlarmAlarmLevel {
-    pub(super) fn from_field(value: Option<u8>) -> Self {
-        match value {
-            None | Some(0) => Self::None,
-            Some(1) => Self::Low,
-            Some(2) => Self::Important,
-            Some(3) => Self::Urgent,
-            Some(other) => Self::Other(other),
+    pub(super) fn from_field(field: Option<&[u8]>) -> Self {
+        match field {
+            None | Some(b"0") => Self::None,
+            Some(b"1") => Self::Low,
+            Some(b"2") => Self::Important,
+            Some(b"3") => Self::Urgent,
+            Some(field) => btoi::btou(field).ok().map_or(Self::None, Self::Other),
         }
     }
 }
@@ -84,8 +84,8 @@ pub(super) fn bool_field(fields: &mut FieldsIter<'_>) -> Option<bool> {
 }
 
 /// A hexadecimal field: FLARM sends alarm and aircraft types in hex.
-pub(super) fn hex_field(fields: &mut FieldsIter<'_>) -> Option<u8> {
-    btoi::btou_radix(fields.bytes()?, 16).ok()
+pub(super) fn parse_hex(field: &[u8]) -> Option<u8> {
+    btoi::btou_radix(field, 16).ok()
 }
 
 #[cfg(test)]
@@ -129,18 +129,24 @@ mod tests {
     #[test]
     fn maps_alarm_levels() {
         assert_eq!(FlarmAlarmLevel::from_field(None), FlarmAlarmLevel::None);
-        assert_eq!(FlarmAlarmLevel::from_field(Some(0)), FlarmAlarmLevel::None);
-        assert_eq!(FlarmAlarmLevel::from_field(Some(1)), FlarmAlarmLevel::Low);
         assert_eq!(
-            FlarmAlarmLevel::from_field(Some(2)),
+            FlarmAlarmLevel::from_field(Some(b"0")),
+            FlarmAlarmLevel::None
+        );
+        assert_eq!(
+            FlarmAlarmLevel::from_field(Some(b"1")),
+            FlarmAlarmLevel::Low
+        );
+        assert_eq!(
+            FlarmAlarmLevel::from_field(Some(b"2")),
             FlarmAlarmLevel::Important
         );
         assert_eq!(
-            FlarmAlarmLevel::from_field(Some(3)),
+            FlarmAlarmLevel::from_field(Some(b"3")),
             FlarmAlarmLevel::Urgent
         );
         assert_eq!(
-            FlarmAlarmLevel::from_field(Some(4)),
+            FlarmAlarmLevel::from_field(Some(b"4")),
             FlarmAlarmLevel::Other(4)
         );
     }

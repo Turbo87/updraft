@@ -21,7 +21,7 @@ impl Pgrmz {
         });
         Self {
             altitude,
-            fix_dimension: PgrmzFixDimension::from_field(fields.u8()),
+            fix_dimension: PgrmzFixDimension::from_field(fields.bytes()),
         }
     }
 }
@@ -36,12 +36,12 @@ pub enum PgrmzFixDimension {
 }
 
 impl PgrmzFixDimension {
-    fn from_field(value: Option<u8>) -> Self {
-        match value {
-            None | Some(1) => Self::NoFix,
-            Some(2) => Self::TwoDimensional,
-            Some(3) => Self::ThreeDimensional,
-            Some(other) => Self::Other(other),
+    fn from_field(field: Option<&[u8]>) -> Self {
+        match field {
+            None | Some(b"1") => Self::NoFix,
+            Some(b"2") => Self::TwoDimensional,
+            Some(b"3") => Self::ThreeDimensional,
+            Some(field) => btoi::btou(field).ok().map_or(Self::NoFix, Self::Other),
         }
     }
 }
@@ -78,19 +78,19 @@ mod tests {
             PgrmzFixDimension::NoFix
         );
         assert_eq!(
-            PgrmzFixDimension::from_field(Some(1)),
+            PgrmzFixDimension::from_field(Some(b"1")),
             PgrmzFixDimension::NoFix
         );
         assert_eq!(
-            PgrmzFixDimension::from_field(Some(2)),
+            PgrmzFixDimension::from_field(Some(b"2")),
             PgrmzFixDimension::TwoDimensional
         );
         assert_eq!(
-            PgrmzFixDimension::from_field(Some(3)),
+            PgrmzFixDimension::from_field(Some(b"3")),
             PgrmzFixDimension::ThreeDimensional
         );
         assert_eq!(
-            PgrmzFixDimension::from_field(Some(9)),
+            PgrmzFixDimension::from_field(Some(b"9")),
             PgrmzFixDimension::Other(9)
         );
     }

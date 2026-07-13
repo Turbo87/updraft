@@ -29,7 +29,7 @@ impl Gga {
             talker,
             utc_time: fields.bytes().and_then(Time::parse),
             position: fields.lat_lon(),
-            fix_quality: GgaFixQuality::from_field(fields.u8()),
+            fix_quality: GgaFixQuality::from_field(fields.bytes()),
             satellites_used: fields.u8(),
             hdop: fields.f64(),
             altitude: meters(&mut fields),
@@ -67,18 +67,18 @@ pub enum GgaFixQuality {
 }
 
 impl GgaFixQuality {
-    fn from_field(value: Option<u8>) -> Self {
-        match value {
-            None | Some(0) => Self::Invalid,
-            Some(1) => Self::Gps,
-            Some(2) => Self::Dgps,
-            Some(3) => Self::Pps,
-            Some(4) => Self::RealTimeKinematic,
-            Some(5) => Self::FloatRtk,
-            Some(6) => Self::DeadReckoning,
-            Some(7) => Self::Manual,
-            Some(8) => Self::Simulation,
-            Some(other) => Self::Other(other),
+    fn from_field(field: Option<&[u8]>) -> Self {
+        match field {
+            None | Some(b"0") => Self::Invalid,
+            Some(b"1") => Self::Gps,
+            Some(b"2") => Self::Dgps,
+            Some(b"3") => Self::Pps,
+            Some(b"4") => Self::RealTimeKinematic,
+            Some(b"5") => Self::FloatRtk,
+            Some(b"6") => Self::DeadReckoning,
+            Some(b"7") => Self::Manual,
+            Some(b"8") => Self::Simulation,
+            Some(field) => btoi::btou(field).ok().map_or(Self::Invalid, Self::Other),
         }
     }
 }
@@ -190,7 +190,7 @@ impl Gsa {
         Self {
             talker,
             selection_mode: GsaSelectionMode::from_field(fields.bytes()),
-            fix_type: GsaFixType::from_field(fields.u8()),
+            fix_type: GsaFixType::from_field(fields.bytes()),
             // Twelve satellite fields; absent ones are consumed but dropped.
             satellites: (0..12).filter_map(|_| fields.u16()).collect(),
             pdop: fields.f64(),
@@ -233,12 +233,12 @@ pub enum GsaFixType {
 }
 
 impl GsaFixType {
-    fn from_field(value: Option<u8>) -> Self {
-        match value {
-            None | Some(1) => Self::NoFix,
-            Some(2) => Self::TwoDimensional,
-            Some(3) => Self::ThreeDimensional,
-            Some(other) => Self::Other(other),
+    fn from_field(field: Option<&[u8]>) -> Self {
+        match field {
+            None | Some(b"1") => Self::NoFix,
+            Some(b"2") => Self::TwoDimensional,
+            Some(b"3") => Self::ThreeDimensional,
+            Some(field) => btoi::btou(field).ok().map_or(Self::NoFix, Self::Other),
         }
     }
 }
@@ -267,13 +267,19 @@ mod tests {
     #[test]
     fn maps_gga_fix_quality_codes() {
         assert_eq!(GgaFixQuality::from_field(None), GgaFixQuality::Invalid);
-        assert_eq!(GgaFixQuality::from_field(Some(0)), GgaFixQuality::Invalid);
-        assert_eq!(GgaFixQuality::from_field(Some(1)), GgaFixQuality::Gps);
         assert_eq!(
-            GgaFixQuality::from_field(Some(8)),
+            GgaFixQuality::from_field(Some(b"0")),
+            GgaFixQuality::Invalid
+        );
+        assert_eq!(GgaFixQuality::from_field(Some(b"1")), GgaFixQuality::Gps);
+        assert_eq!(
+            GgaFixQuality::from_field(Some(b"8")),
             GgaFixQuality::Simulation
         );
-        assert_eq!(GgaFixQuality::from_field(Some(9)), GgaFixQuality::Other(9));
+        assert_eq!(
+            GgaFixQuality::from_field(Some(b"9")),
+            GgaFixQuality::Other(9)
+        );
     }
 
     #[test]

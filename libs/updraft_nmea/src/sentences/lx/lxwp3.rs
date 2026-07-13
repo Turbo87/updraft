@@ -41,14 +41,14 @@ impl Lxwp3 {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
             altitude_offset: fields.f64().map(Length::from_feet),
-            speed_command_mode: fields.u8().map(Lxwp3SpeedCommandMode::from_value),
+            speed_command_mode: fields.bytes().and_then(Lxwp3SpeedCommandMode::from_field),
             vario_filter: fields.f64(),
             te_filter: fields.f64(),
             te_level: fields.f64(),
             vario_average: fields.f64(),
             vario_range: fields.f64(),
             speed_command_deadband: fields.f64().map(Speed::from_meters_per_second),
-            switch_mode: fields.u8().map(Lxwp3SwitchMode::from_value),
+            switch_mode: fields.bytes().and_then(Lxwp3SwitchMode::from_field),
             speed_command_switch_speed: fields.f64().map(Speed::from_kilometers_per_hour),
             smart_diff: fields.f64(),
             glider_name: fields.text(),
@@ -71,12 +71,12 @@ pub enum Lxwp3SpeedCommandMode {
 }
 
 impl Lxwp3SpeedCommandMode {
-    fn from_value(value: u8) -> Self {
-        match value {
-            0 => Self::External,
-            1 => Self::Circling,
-            2 => Self::Airspeed,
-            other => Self::Other(other),
+    fn from_field(field: &[u8]) -> Option<Self> {
+        match field {
+            b"0" => Some(Self::External),
+            b"1" => Some(Self::Circling),
+            b"2" => Some(Self::Airspeed),
+            field => btoi::btou(field).ok().map(Self::Other),
         }
     }
 }
@@ -94,12 +94,12 @@ pub enum Lxwp3SwitchMode {
 }
 
 impl Lxwp3SwitchMode {
-    fn from_value(value: u8) -> Self {
-        match value {
-            0 => Self::Normal,
-            1 => Self::Inverted,
-            2 => Self::Taster,
-            other => Self::Other(other),
+    fn from_field(field: &[u8]) -> Option<Self> {
+        match field {
+            b"0" => Some(Self::Normal),
+            b"1" => Some(Self::Inverted),
+            b"2" => Some(Self::Taster),
+            field => btoi::btou(field).ok().map(Self::Other),
         }
     }
 }
@@ -155,23 +155,29 @@ mod tests {
     #[test]
     fn maps_enumerated_fields() {
         assert_eq!(
-            Lxwp3SpeedCommandMode::from_value(0),
-            Lxwp3SpeedCommandMode::External
+            Lxwp3SpeedCommandMode::from_field(b"0"),
+            Some(Lxwp3SpeedCommandMode::External)
         );
         assert_eq!(
-            Lxwp3SpeedCommandMode::from_value(1),
-            Lxwp3SpeedCommandMode::Circling
+            Lxwp3SpeedCommandMode::from_field(b"1"),
+            Some(Lxwp3SpeedCommandMode::Circling)
         );
         assert_eq!(
-            Lxwp3SpeedCommandMode::from_value(2),
-            Lxwp3SpeedCommandMode::Airspeed
+            Lxwp3SpeedCommandMode::from_field(b"2"),
+            Some(Lxwp3SpeedCommandMode::Airspeed)
         );
         assert_eq!(
-            Lxwp3SpeedCommandMode::from_value(7),
-            Lxwp3SpeedCommandMode::Other(7)
+            Lxwp3SpeedCommandMode::from_field(b"7"),
+            Some(Lxwp3SpeedCommandMode::Other(7))
         );
 
-        assert_eq!(Lxwp3SwitchMode::from_value(2), Lxwp3SwitchMode::Taster);
-        assert_eq!(Lxwp3SwitchMode::from_value(9), Lxwp3SwitchMode::Other(9));
+        assert_eq!(
+            Lxwp3SwitchMode::from_field(b"2"),
+            Some(Lxwp3SwitchMode::Taster)
+        );
+        assert_eq!(
+            Lxwp3SwitchMode::from_field(b"9"),
+            Some(Lxwp3SwitchMode::Other(9))
+        );
     }
 }

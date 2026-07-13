@@ -51,7 +51,10 @@ pub struct Pflaa {
 impl Pflaa {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            alarm_level: FlarmAlarmLevel::from_field(fields.bytes()),
+            alarm_level: fields
+                .bytes()
+                .map(FlarmAlarmLevel::from_field)
+                .unwrap_or_default(),
             relative_north: fields.f64().map(Length::from_meters),
             relative_east: fields.f64().map(Length::from_meters),
             relative_vertical: fields.f64().map(Length::from_meters),
@@ -61,7 +64,10 @@ impl Pflaa {
             turn_rate: fields.f64(),
             ground_speed: fields.f64().map(Speed::from_meters_per_second),
             climb_rate: fields.f64().map(Speed::from_meters_per_second),
-            aircraft_type: FlarmAircraftType::from_field(fields.bytes()),
+            aircraft_type: fields
+                .bytes()
+                .map(FlarmAircraftType::from_field)
+                .unwrap_or_default(),
             no_track: bool_field(&mut fields),
             source: fields.bytes().and_then(FlarmSource::from_field),
             rssi: fields.f64(),
@@ -94,9 +100,10 @@ impl FlarmIdType {
 
 /// The aircraft type of a `PFLAA` target. Transmitted as a hexadecimal
 /// value.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum FlarmAircraftType {
     /// `0` (reserved) or `A`: no aircraft type known.
+    #[default]
     Unknown,
     /// `1`: glider, motor glider, or TMG.
     Glider,
@@ -128,23 +135,23 @@ pub enum FlarmAircraftType {
 }
 
 impl FlarmAircraftType {
-    fn from_field(field: Option<&[u8]>) -> Self {
+    fn from_field(field: &[u8]) -> Self {
         match field {
-            None | Some(b"0" | b"A" | b"a") => Self::Unknown,
-            Some(b"1") => Self::Glider,
-            Some(b"2") => Self::TowPlane,
-            Some(b"3") => Self::Helicopter,
-            Some(b"4") => Self::Skydiver,
-            Some(b"5") => Self::DropPlane,
-            Some(b"6") => Self::HangGlider,
-            Some(b"7") => Self::Paraglider,
-            Some(b"8") => Self::PistonAircraft,
-            Some(b"9") => Self::JetAircraft,
-            Some(b"B" | b"b") => Self::Balloon,
-            Some(b"C" | b"c") => Self::Airship,
-            Some(b"D" | b"d") => Self::Uav,
-            Some(b"F" | b"f") => Self::StaticObstacle,
-            Some(field) => parse_hex(field).map_or(Self::Unknown, Self::Other),
+            b"0" | b"A" | b"a" => Self::Unknown,
+            b"1" => Self::Glider,
+            b"2" => Self::TowPlane,
+            b"3" => Self::Helicopter,
+            b"4" => Self::Skydiver,
+            b"5" => Self::DropPlane,
+            b"6" => Self::HangGlider,
+            b"7" => Self::Paraglider,
+            b"8" => Self::PistonAircraft,
+            b"9" => Self::JetAircraft,
+            b"B" | b"b" => Self::Balloon,
+            b"C" | b"c" => Self::Airship,
+            b"D" | b"d" => Self::Uav,
+            b"F" | b"f" => Self::StaticObstacle,
+            field => parse_hex(field).map(Self::Other).unwrap_or_default(),
         }
     }
 }
@@ -240,32 +247,29 @@ mod tests {
     fn maps_aircraft_types() {
         // `0` is reserved and `A` is "unknown": both read as `Unknown`,
         // like an absent field.
+        assert_eq!(FlarmAircraftType::default(), FlarmAircraftType::Unknown);
         assert_eq!(
-            FlarmAircraftType::from_field(None),
+            FlarmAircraftType::from_field(b"0"),
             FlarmAircraftType::Unknown
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(b"0")),
+            FlarmAircraftType::from_field(b"A"),
             FlarmAircraftType::Unknown
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(b"A")),
-            FlarmAircraftType::Unknown
-        );
-        assert_eq!(
-            FlarmAircraftType::from_field(Some(b"1")),
+            FlarmAircraftType::from_field(b"1"),
             FlarmAircraftType::Glider
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(b"7")),
+            FlarmAircraftType::from_field(b"7"),
             FlarmAircraftType::Paraglider
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(b"F")),
+            FlarmAircraftType::from_field(b"F"),
             FlarmAircraftType::StaticObstacle
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(b"E")),
+            FlarmAircraftType::from_field(b"E"),
             FlarmAircraftType::Other(0xE)
         );
     }

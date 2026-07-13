@@ -5,9 +5,10 @@ use crate::field::FieldsIter;
 /// The collision-alarm level assessed by FLARM, shared by `PFLAU` and
 /// `PFLAA`. The time-to-impact brackets follow the current ICD. Older
 /// firmware used slightly different ones.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum FlarmAlarmLevel {
     /// `0`: no alarm, also sent for no-alarm traffic information.
+    #[default]
     None,
     /// `1`: 15-20 seconds to impact, an Alert Zone alarm, or a traffic
     /// advisory.
@@ -20,13 +21,13 @@ pub enum FlarmAlarmLevel {
 }
 
 impl FlarmAlarmLevel {
-    pub(super) fn from_field(field: Option<&[u8]>) -> Self {
+    pub(super) fn from_field(field: &[u8]) -> Self {
         match field {
-            None | Some(b"0") => Self::None,
-            Some(b"1") => Self::Low,
-            Some(b"2") => Self::Important,
-            Some(b"3") => Self::Urgent,
-            Some(field) => btoi::btou(field).ok().map_or(Self::None, Self::Other),
+            b"0" => Self::None,
+            b"1" => Self::Low,
+            b"2" => Self::Important,
+            b"3" => Self::Urgent,
+            field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
         }
     }
 }
@@ -128,27 +129,15 @@ mod tests {
 
     #[test]
     fn maps_alarm_levels() {
-        assert_eq!(FlarmAlarmLevel::from_field(None), FlarmAlarmLevel::None);
+        assert_eq!(FlarmAlarmLevel::default(), FlarmAlarmLevel::None);
+        assert_eq!(FlarmAlarmLevel::from_field(b"0"), FlarmAlarmLevel::None);
+        assert_eq!(FlarmAlarmLevel::from_field(b"1"), FlarmAlarmLevel::Low);
         assert_eq!(
-            FlarmAlarmLevel::from_field(Some(b"0")),
-            FlarmAlarmLevel::None
-        );
-        assert_eq!(
-            FlarmAlarmLevel::from_field(Some(b"1")),
-            FlarmAlarmLevel::Low
-        );
-        assert_eq!(
-            FlarmAlarmLevel::from_field(Some(b"2")),
+            FlarmAlarmLevel::from_field(b"2"),
             FlarmAlarmLevel::Important
         );
-        assert_eq!(
-            FlarmAlarmLevel::from_field(Some(b"3")),
-            FlarmAlarmLevel::Urgent
-        );
-        assert_eq!(
-            FlarmAlarmLevel::from_field(Some(b"4")),
-            FlarmAlarmLevel::Other(4)
-        );
+        assert_eq!(FlarmAlarmLevel::from_field(b"3"), FlarmAlarmLevel::Urgent);
+        assert_eq!(FlarmAlarmLevel::from_field(b"4"), FlarmAlarmLevel::Other(4));
     }
 
     #[test]

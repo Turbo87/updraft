@@ -39,11 +39,20 @@ impl Pflau {
         Self {
             rx_count: fields.u8(),
             tx_ok: bool_field(&mut fields),
-            gps_status: PflauGpsStatus::from_field(fields.bytes()),
+            gps_status: fields
+                .bytes()
+                .map(PflauGpsStatus::from_field)
+                .unwrap_or_default(),
             power_ok: bool_field(&mut fields),
-            alarm_level: FlarmAlarmLevel::from_field(fields.bytes()),
+            alarm_level: fields
+                .bytes()
+                .map(FlarmAlarmLevel::from_field)
+                .unwrap_or_default(),
             relative_bearing: fields.f64().map(Angle::from_degrees),
-            alarm_type: PflauAlarmType::from_field(fields.bytes()),
+            alarm_type: fields
+                .bytes()
+                .map(PflauAlarmType::from_field)
+                .unwrap_or_default(),
             relative_vertical: fields.f64().map(Length::from_meters),
             relative_distance: fields.f64().map(Length::from_meters),
             id: fields.bytes().and_then(FlarmId::parse),
@@ -53,9 +62,10 @@ impl Pflau {
 
 /// The GPS status reported in a `PFLAU` sentence. Without a fix (`NoFix`)
 /// the device cannot generate warnings.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PflauGpsStatus {
     /// `0`: no GPS reception.
+    #[default]
     NoFix,
     /// `1`: 3D fix, not airborne.
     OnGround,
@@ -65,21 +75,22 @@ pub enum PflauGpsStatus {
 }
 
 impl PflauGpsStatus {
-    fn from_field(field: Option<&[u8]>) -> Self {
+    fn from_field(field: &[u8]) -> Self {
         match field {
-            None | Some(b"0") => Self::NoFix,
-            Some(b"1") => Self::OnGround,
-            Some(b"2") => Self::Airborne,
-            Some(field) => btoi::btou(field).ok().map_or(Self::NoFix, Self::Other),
+            b"0" => Self::NoFix,
+            b"1" => Self::OnGround,
+            b"2" => Self::Airborne,
+            field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
         }
     }
 }
 
 /// The kind of threat behind a `PFLAU` alarm. Transmitted as a
 /// hexadecimal value.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PflauAlarmType {
     /// `0`: no aircraft within range, or no-alarm traffic information.
+    #[default]
     None,
     /// `2`: aircraft collision alarm.
     Aircraft,
@@ -93,16 +104,16 @@ pub enum PflauAlarmType {
 }
 
 impl PflauAlarmType {
-    fn from_field(field: Option<&[u8]>) -> Self {
+    fn from_field(field: &[u8]) -> Self {
         match field {
-            None | Some(b"0") => Self::None,
-            Some(b"2") => Self::Aircraft,
-            Some(b"3") => Self::Obstacle,
-            Some(b"4") => Self::TrafficAdvisory,
-            Some(field) => match parse_hex(field) {
+            b"0" => Self::None,
+            b"2" => Self::Aircraft,
+            b"3" => Self::Obstacle,
+            b"4" => Self::TrafficAdvisory,
+            field => match parse_hex(field) {
                 Some(zone @ 0x10..) => Self::AlertZone(zone),
                 Some(other) => Self::Other(other),
-                None => Self::None,
+                None => Self::default(),
             },
         }
     }
@@ -147,50 +158,29 @@ mod tests {
 
     #[test]
     fn maps_gps_status() {
-        assert_eq!(PflauGpsStatus::from_field(None), PflauGpsStatus::NoFix);
-        assert_eq!(
-            PflauGpsStatus::from_field(Some(b"0")),
-            PflauGpsStatus::NoFix
-        );
-        assert_eq!(
-            PflauGpsStatus::from_field(Some(b"1")),
-            PflauGpsStatus::OnGround
-        );
-        assert_eq!(
-            PflauGpsStatus::from_field(Some(b"2")),
-            PflauGpsStatus::Airborne
-        );
-        assert_eq!(
-            PflauGpsStatus::from_field(Some(b"3")),
-            PflauGpsStatus::Other(3)
-        );
+        assert_eq!(PflauGpsStatus::default(), PflauGpsStatus::NoFix);
+        assert_eq!(PflauGpsStatus::from_field(b"0"), PflauGpsStatus::NoFix);
+        assert_eq!(PflauGpsStatus::from_field(b"1"), PflauGpsStatus::OnGround);
+        assert_eq!(PflauGpsStatus::from_field(b"2"), PflauGpsStatus::Airborne);
+        assert_eq!(PflauGpsStatus::from_field(b"3"), PflauGpsStatus::Other(3));
     }
 
     #[test]
     fn maps_alarm_types() {
-        assert_eq!(PflauAlarmType::from_field(None), PflauAlarmType::None);
-        assert_eq!(PflauAlarmType::from_field(Some(b"0")), PflauAlarmType::None);
+        assert_eq!(PflauAlarmType::default(), PflauAlarmType::None);
+        assert_eq!(PflauAlarmType::from_field(b"0"), PflauAlarmType::None);
+        assert_eq!(PflauAlarmType::from_field(b"2"), PflauAlarmType::Aircraft);
+        assert_eq!(PflauAlarmType::from_field(b"3"), PflauAlarmType::Obstacle);
         assert_eq!(
-            PflauAlarmType::from_field(Some(b"2")),
-            PflauAlarmType::Aircraft
-        );
-        assert_eq!(
-            PflauAlarmType::from_field(Some(b"3")),
-            PflauAlarmType::Obstacle
-        );
-        assert_eq!(
-            PflauAlarmType::from_field(Some(b"4")),
+            PflauAlarmType::from_field(b"4"),
             PflauAlarmType::TrafficAdvisory
         );
         // `10`-`FF` carry the type of an Alert Zone.
         assert_eq!(
-            PflauAlarmType::from_field(Some(b"41")),
+            PflauAlarmType::from_field(b"41"),
             PflauAlarmType::AlertZone(0x41)
         );
-        assert_eq!(
-            PflauAlarmType::from_field(Some(b"5")),
-            PflauAlarmType::Other(5)
-        );
+        assert_eq!(PflauAlarmType::from_field(b"5"), PflauAlarmType::Other(5));
     }
 
     #[test]

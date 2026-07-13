@@ -5,7 +5,8 @@
 //! and reads no clocks.
 
 mod app;
+pub mod flight;
 mod protocol;
 
-pub use app::App;
-pub use protocol::{Input, Update};
+pub use app::{App, Query};
+pub use protocol::{Change, Input, Snapshot, Update};

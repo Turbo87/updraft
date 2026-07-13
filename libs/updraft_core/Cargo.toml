@@ -6,3 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [lints]
 workspace = true
+
+[dependencies]
+updraft_geo = { path = "../updraft_geo" }
+updraft_units = { path = "../updraft_units" }

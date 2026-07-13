@@ -1,4 +1,4 @@
-use super::common::{FlarmAlarmLevel, FlarmId, bool_field, hex_field};
+use super::common::{FlarmAlarmLevel, FlarmId, bool_field, parse_hex};
 use crate::field::FieldsIter;
 use updraft_units::{Angle, Length, Speed};
 
@@ -51,19 +51,19 @@ pub struct Pflaa {
 impl Pflaa {
     pub fn parse(mut fields: FieldsIter<'_>) -> Self {
         Self {
-            alarm_level: FlarmAlarmLevel::from_field(fields.u8()),
+            alarm_level: FlarmAlarmLevel::from_field(fields.bytes()),
             relative_north: fields.f64().map(Length::from_meters),
             relative_east: fields.f64().map(Length::from_meters),
             relative_vertical: fields.f64().map(Length::from_meters),
-            id_type: fields.u8().map(FlarmIdType::from_value),
+            id_type: fields.bytes().and_then(FlarmIdType::from_field),
             id: fields.bytes().and_then(FlarmId::parse),
             track: fields.f64().map(Angle::from_degrees),
             turn_rate: fields.f64(),
             ground_speed: fields.f64().map(Speed::from_meters_per_second),
             climb_rate: fields.f64().map(Speed::from_meters_per_second),
-            aircraft_type: FlarmAircraftType::from_field(hex_field(&mut fields)),
+            aircraft_type: FlarmAircraftType::from_field(fields.bytes()),
             no_track: bool_field(&mut fields),
-            source: fields.u8().map(FlarmSource::from_value),
+            source: fields.bytes().and_then(FlarmSource::from_field),
             rssi: fields.f64(),
         }
     }
@@ -82,12 +82,12 @@ pub enum FlarmIdType {
 }
 
 impl FlarmIdType {
-    fn from_value(value: u8) -> Self {
-        match value {
-            0 => Self::Random,
-            1 => Self::Icao,
-            2 => Self::Flarm,
-            other => Self::Other(other),
+    fn from_field(field: &[u8]) -> Option<Self> {
+        match field {
+            b"0" => Some(Self::Random),
+            b"1" => Some(Self::Icao),
+            b"2" => Some(Self::Flarm),
+            field => btoi::btou(field).ok().map(Self::Other),
         }
     }
 }
@@ -128,23 +128,23 @@ pub enum FlarmAircraftType {
 }
 
 impl FlarmAircraftType {
-    fn from_field(value: Option<u8>) -> Self {
-        match value {
-            None | Some(0x0) | Some(0xA) => Self::Unknown,
-            Some(0x1) => Self::Glider,
-            Some(0x2) => Self::TowPlane,
-            Some(0x3) => Self::Helicopter,
-            Some(0x4) => Self::Skydiver,
-            Some(0x5) => Self::DropPlane,
-            Some(0x6) => Self::HangGlider,
-            Some(0x7) => Self::Paraglider,
-            Some(0x8) => Self::PistonAircraft,
-            Some(0x9) => Self::JetAircraft,
-            Some(0xB) => Self::Balloon,
-            Some(0xC) => Self::Airship,
-            Some(0xD) => Self::Uav,
-            Some(0xF) => Self::StaticObstacle,
-            Some(other) => Self::Other(other),
+    fn from_field(field: Option<&[u8]>) -> Self {
+        match field {
+            None | Some(b"0" | b"A" | b"a") => Self::Unknown,
+            Some(b"1") => Self::Glider,
+            Some(b"2") => Self::TowPlane,
+            Some(b"3") => Self::Helicopter,
+            Some(b"4") => Self::Skydiver,
+            Some(b"5") => Self::DropPlane,
+            Some(b"6") => Self::HangGlider,
+            Some(b"7") => Self::Paraglider,
+            Some(b"8") => Self::PistonAircraft,
+            Some(b"9") => Self::JetAircraft,
+            Some(b"B" | b"b") => Self::Balloon,
+            Some(b"C" | b"c") => Self::Airship,
+            Some(b"D" | b"d") => Self::Uav,
+            Some(b"F" | b"f") => Self::StaticObstacle,
+            Some(field) => parse_hex(field).map_or(Self::Unknown, Self::Other),
         }
     }
 }
@@ -168,14 +168,14 @@ pub enum FlarmSource {
 }
 
 impl FlarmSource {
-    fn from_value(value: u8) -> Self {
-        match value {
-            0 => Self::Flarm,
-            1 => Self::AdsB,
-            3 => Self::AdsR,
-            4 => Self::TisB,
-            6 => Self::ModeS,
-            other => Self::Other(other),
+    fn from_field(field: &[u8]) -> Option<Self> {
+        match field {
+            b"0" => Some(Self::Flarm),
+            b"1" => Some(Self::AdsB),
+            b"3" => Some(Self::AdsR),
+            b"4" => Some(Self::TisB),
+            b"6" => Some(Self::ModeS),
+            field => btoi::btou(field).ok().map(Self::Other),
         }
     }
 }
@@ -245,43 +245,43 @@ mod tests {
             FlarmAircraftType::Unknown
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(0x0)),
+            FlarmAircraftType::from_field(Some(b"0")),
             FlarmAircraftType::Unknown
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(0xA)),
+            FlarmAircraftType::from_field(Some(b"A")),
             FlarmAircraftType::Unknown
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(0x1)),
+            FlarmAircraftType::from_field(Some(b"1")),
             FlarmAircraftType::Glider
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(0x7)),
+            FlarmAircraftType::from_field(Some(b"7")),
             FlarmAircraftType::Paraglider
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(0xF)),
+            FlarmAircraftType::from_field(Some(b"F")),
             FlarmAircraftType::StaticObstacle
         );
         assert_eq!(
-            FlarmAircraftType::from_field(Some(0xE)),
+            FlarmAircraftType::from_field(Some(b"E")),
             FlarmAircraftType::Other(0xE)
         );
     }
 
     #[test]
     fn maps_id_types_and_sources() {
-        assert_eq!(FlarmIdType::from_value(0), FlarmIdType::Random);
-        assert_eq!(FlarmIdType::from_value(1), FlarmIdType::Icao);
-        assert_eq!(FlarmIdType::from_value(2), FlarmIdType::Flarm);
-        assert_eq!(FlarmIdType::from_value(3), FlarmIdType::Other(3));
+        assert_eq!(FlarmIdType::from_field(b"0"), Some(FlarmIdType::Random));
+        assert_eq!(FlarmIdType::from_field(b"1"), Some(FlarmIdType::Icao));
+        assert_eq!(FlarmIdType::from_field(b"2"), Some(FlarmIdType::Flarm));
+        assert_eq!(FlarmIdType::from_field(b"3"), Some(FlarmIdType::Other(3)));
 
-        assert_eq!(FlarmSource::from_value(0), FlarmSource::Flarm);
-        assert_eq!(FlarmSource::from_value(1), FlarmSource::AdsB);
-        assert_eq!(FlarmSource::from_value(3), FlarmSource::AdsR);
-        assert_eq!(FlarmSource::from_value(4), FlarmSource::TisB);
-        assert_eq!(FlarmSource::from_value(6), FlarmSource::ModeS);
-        assert_eq!(FlarmSource::from_value(2), FlarmSource::Other(2));
+        assert_eq!(FlarmSource::from_field(b"0"), Some(FlarmSource::Flarm));
+        assert_eq!(FlarmSource::from_field(b"1"), Some(FlarmSource::AdsB));
+        assert_eq!(FlarmSource::from_field(b"3"), Some(FlarmSource::AdsR));
+        assert_eq!(FlarmSource::from_field(b"4"), Some(FlarmSource::TisB));
+        assert_eq!(FlarmSource::from_field(b"6"), Some(FlarmSource::ModeS));
+        assert_eq!(FlarmSource::from_field(b"2"), Some(FlarmSource::Other(2)));
     }
 }

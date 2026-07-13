@@ -6,7 +6,11 @@
 
 mod app;
 pub mod flight;
+mod job;
 mod protocol;
 
 pub use app::{App, Query};
-pub use protocol::{Change, Input, Snapshot, Update};
+pub use job::ComputeRevision;
+pub use protocol::{
+    Change, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Snapshot, Update,
+};

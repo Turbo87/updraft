@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::flight::Flight;
-use crate::protocol::{Input, Snapshot, Update};
+use crate::protocol::{ComputeResult, Input, Snapshot, Update};
 
 /// A typed read-only request against current state.
 pub trait Query {
@@ -38,6 +38,9 @@ impl App {
                     self.advance(observed_at);
                 }
                 self.flight.handle(input, &mut update);
+            }
+            Input::ComputeResult(ComputeResult::Flight(result)) => {
+                self.flight.compute_result(result, &mut update);
             }
         }
         update

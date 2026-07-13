@@ -21,14 +21,18 @@ impl Pgrmz {
         });
         Self {
             altitude,
-            fix_dimension: PgrmzFixDimension::from_field(fields.bytes()),
+            fix_dimension: fields
+                .bytes()
+                .map(PgrmzFixDimension::from_field)
+                .unwrap_or_default(),
         }
     }
 }
 
 /// The fix dimensionality reported in the third `$PGRMZ` field.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PgrmzFixDimension {
+    #[default]
     NoFix,
     TwoDimensional,
     ThreeDimensional,
@@ -36,12 +40,12 @@ pub enum PgrmzFixDimension {
 }
 
 impl PgrmzFixDimension {
-    fn from_field(field: Option<&[u8]>) -> Self {
+    fn from_field(field: &[u8]) -> Self {
         match field {
-            None | Some(b"1") => Self::NoFix,
-            Some(b"2") => Self::TwoDimensional,
-            Some(b"3") => Self::ThreeDimensional,
-            Some(field) => btoi::btou(field).ok().map_or(Self::NoFix, Self::Other),
+            b"1" => Self::NoFix,
+            b"2" => Self::TwoDimensional,
+            b"3" => Self::ThreeDimensional,
+            field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
         }
     }
 }
@@ -73,24 +77,21 @@ mod tests {
 
     #[test]
     fn maps_fix_dimension() {
+        assert_eq!(PgrmzFixDimension::default(), PgrmzFixDimension::NoFix);
         assert_eq!(
-            PgrmzFixDimension::from_field(None),
+            PgrmzFixDimension::from_field(b"1"),
             PgrmzFixDimension::NoFix
         );
         assert_eq!(
-            PgrmzFixDimension::from_field(Some(b"1")),
-            PgrmzFixDimension::NoFix
-        );
-        assert_eq!(
-            PgrmzFixDimension::from_field(Some(b"2")),
+            PgrmzFixDimension::from_field(b"2"),
             PgrmzFixDimension::TwoDimensional
         );
         assert_eq!(
-            PgrmzFixDimension::from_field(Some(b"3")),
+            PgrmzFixDimension::from_field(b"3"),
             PgrmzFixDimension::ThreeDimensional
         );
         assert_eq!(
-            PgrmzFixDimension::from_field(Some(b"9")),
+            PgrmzFixDimension::from_field(b"9"),
             PgrmzFixDimension::Other(9)
         );
     }

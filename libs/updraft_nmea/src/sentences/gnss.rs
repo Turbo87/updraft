@@ -29,7 +29,10 @@ impl Gga {
             talker,
             utc_time: fields.bytes().and_then(Time::parse),
             position: fields.lat_lon(),
-            fix_quality: GgaFixQuality::from_field(fields.bytes()),
+            fix_quality: fields
+                .bytes()
+                .map(GgaFixQuality::from_field)
+                .unwrap_or_default(),
             satellites_used: fields.u8(),
             hdop: fields.f64(),
             altitude: meters(&mut fields),
@@ -52,8 +55,9 @@ fn meters(fields: &mut FieldsIter<'_>) -> Option<Length> {
 }
 
 /// The fix quality reported in a `GGA` sentence.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum GgaFixQuality {
+    #[default]
     Invalid,
     Gps,
     Dgps,
@@ -67,18 +71,18 @@ pub enum GgaFixQuality {
 }
 
 impl GgaFixQuality {
-    fn from_field(field: Option<&[u8]>) -> Self {
+    fn from_field(field: &[u8]) -> Self {
         match field {
-            None | Some(b"0") => Self::Invalid,
-            Some(b"1") => Self::Gps,
-            Some(b"2") => Self::Dgps,
-            Some(b"3") => Self::Pps,
-            Some(b"4") => Self::RealTimeKinematic,
-            Some(b"5") => Self::FloatRtk,
-            Some(b"6") => Self::DeadReckoning,
-            Some(b"7") => Self::Manual,
-            Some(b"8") => Self::Simulation,
-            Some(field) => btoi::btou(field).ok().map_or(Self::Invalid, Self::Other),
+            b"0" => Self::Invalid,
+            b"1" => Self::Gps,
+            b"2" => Self::Dgps,
+            b"3" => Self::Pps,
+            b"4" => Self::RealTimeKinematic,
+            b"5" => Self::FloatRtk,
+            b"6" => Self::DeadReckoning,
+            b"7" => Self::Manual,
+            b"8" => Self::Simulation,
+            field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
         }
     }
 }
@@ -103,7 +107,10 @@ impl Rmc {
         Self {
             talker,
             utc_time: fields.bytes().and_then(Time::parse),
-            status: RmcStatus::from_field(fields.bytes()),
+            status: fields
+                .bytes()
+                .map(RmcStatus::from_field)
+                .unwrap_or_default(),
             position: fields.lat_lon(),
             speed_over_ground: fields.f64().map(Speed::from_knots),
             course_over_ground: fields.f64().map(Angle::from_degrees),
@@ -130,20 +137,21 @@ fn magnetic_variation(fields: &mut FieldsIter<'_>) -> Option<Angle> {
 
 /// Whether a `RMC` fix is valid. Any value other than `A`, including an
 /// absent field, reads as `Void`.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum RmcStatus {
     /// `A`: data valid.
     Active,
     /// `V`: navigation receiver warning.
+    #[default]
     Void,
 }
 
 impl RmcStatus {
-    fn from_field(field: Option<&[u8]>) -> Self {
-        if field == Some(b"A".as_slice()) {
+    fn from_field(field: &[u8]) -> Self {
+        if field == b"A" {
             Self::Active
         } else {
-            Self::Void
+            Self::default()
         }
     }
 }
@@ -189,8 +197,14 @@ impl Gsa {
     pub fn parse(talker: Talker, mut fields: FieldsIter<'_>) -> Self {
         Self {
             talker,
-            selection_mode: GsaSelectionMode::from_field(fields.bytes()),
-            fix_type: GsaFixType::from_field(fields.bytes()),
+            selection_mode: fields
+                .bytes()
+                .map(GsaSelectionMode::from_field)
+                .unwrap_or_default(),
+            fix_type: fields
+                .bytes()
+                .map(GsaFixType::from_field)
+                .unwrap_or_default(),
             // Twelve satellite fields; absent ones are consumed but dropped.
             satellites: (0..12).filter_map(|_| fields.u16()).collect(),
             pdop: fields.f64(),
@@ -202,28 +216,30 @@ impl Gsa {
 
 /// Whether the `GSA` fix mode was chosen automatically or manually. Any
 /// value other than `M`, including an absent field, reads as `Automatic`.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum GsaSelectionMode {
     /// `A`: automatic 2D/3D selection.
+    #[default]
     Automatic,
     /// `M`: manually forced.
     Manual,
 }
 
 impl GsaSelectionMode {
-    fn from_field(field: Option<&[u8]>) -> Self {
-        if field == Some(b"M".as_slice()) {
+    fn from_field(field: &[u8]) -> Self {
+        if field == b"M" {
             Self::Manual
         } else {
-            Self::Automatic
+            Self::default()
         }
     }
 }
 
 /// The dimensionality of a `GSA` fix.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum GsaFixType {
     /// `1`: no fix.
+    #[default]
     NoFix,
     /// `2`: 2D fix.
     TwoDimensional,
@@ -233,12 +249,12 @@ pub enum GsaFixType {
 }
 
 impl GsaFixType {
-    fn from_field(field: Option<&[u8]>) -> Self {
+    fn from_field(field: &[u8]) -> Self {
         match field {
-            None | Some(b"1") => Self::NoFix,
-            Some(b"2") => Self::TwoDimensional,
-            Some(b"3") => Self::ThreeDimensional,
-            Some(field) => btoi::btou(field).ok().map_or(Self::NoFix, Self::Other),
+            b"1" => Self::NoFix,
+            b"2" => Self::TwoDimensional,
+            b"3" => Self::ThreeDimensional,
+            field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
         }
     }
 }
@@ -266,20 +282,11 @@ mod tests {
 
     #[test]
     fn maps_gga_fix_quality_codes() {
-        assert_eq!(GgaFixQuality::from_field(None), GgaFixQuality::Invalid);
-        assert_eq!(
-            GgaFixQuality::from_field(Some(b"0")),
-            GgaFixQuality::Invalid
-        );
-        assert_eq!(GgaFixQuality::from_field(Some(b"1")), GgaFixQuality::Gps);
-        assert_eq!(
-            GgaFixQuality::from_field(Some(b"8")),
-            GgaFixQuality::Simulation
-        );
-        assert_eq!(
-            GgaFixQuality::from_field(Some(b"9")),
-            GgaFixQuality::Other(9)
-        );
+        assert_eq!(GgaFixQuality::default(), GgaFixQuality::Invalid);
+        assert_eq!(GgaFixQuality::from_field(b"0"), GgaFixQuality::Invalid);
+        assert_eq!(GgaFixQuality::from_field(b"1"), GgaFixQuality::Gps);
+        assert_eq!(GgaFixQuality::from_field(b"8"), GgaFixQuality::Simulation);
+        assert_eq!(GgaFixQuality::from_field(b"9"), GgaFixQuality::Other(9));
     }
 
     #[test]

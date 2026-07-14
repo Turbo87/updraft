@@ -1,5 +1,58 @@
-use crate::field::FieldsIter;
+use crate::field::{FieldsIter, text};
 use updraft_units::{Angle, Length, Pressure, Speed};
+
+/// Cambridge `!g` setting commands.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CaiG {
+    /// Settings in wire order, including unrecognized or malformed fields.
+    pub settings: Vec<CaiSetting>,
+}
+
+/// One setting carried by a Cambridge `!g` command.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum CaiSetting {
+    /// MacCready setting.
+    MacCready(Speed),
+    /// Water-ballast fraction.
+    Ballast(f64),
+    /// Glider performance fraction after bug degradation.
+    Bugs(f64),
+    /// Altimeter pressure setting from the QNH compatibility extension.
+    Qnh(Pressure),
+    /// An unrecognized or malformed field, preserved verbatim.
+    Other(Box<str>),
+}
+
+impl CaiG {
+    pub fn parse(fields: FieldsIter<'_>) -> Self {
+        Self {
+            settings: fields.map(parse_setting).collect(),
+        }
+    }
+}
+
+fn parse_setting(field: &[u8]) -> CaiSetting {
+    let Some((&kind, value)) = field.split_first() else {
+        return CaiSetting::Other(text(field));
+    };
+    let Some(value) = finite_f64(value) else {
+        return CaiSetting::Other(text(field));
+    };
+
+    match kind {
+        b'm' => CaiSetting::MacCready(Speed::from_knots(value / 10.0)),
+        b'b' => CaiSetting::Ballast(value / 10.0),
+        b'u' => CaiSetting::Bugs(value / 100.0),
+        b'q' => CaiSetting::Qnh(Pressure::from_hectopascals(value)),
+        _ => CaiSetting::Other(text(field)),
+    }
+}
+
+fn finite_f64(field: &[u8]) -> Option<f64> {
+    let value: f64 = fast_float2::parse(field).ok()?;
+    value.is_finite().then_some(value)
+}
 
 /// Cambridge `!w` flight data.
 #[derive(Clone, Debug, PartialEq)]

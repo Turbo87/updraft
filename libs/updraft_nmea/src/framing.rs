@@ -441,4 +441,22 @@ mod tests {
         let s = b"$w,270,123,15,450,1750,1013.25,3210,215,185,200,25,45,90\r\n";
         assert!(matches!(parse_one(s), Step::Frame(Message::Unknown(_))));
     }
+
+    #[test]
+    fn decodes_cambridge_setting_commands() {
+        let s = b"!g,m25,b4,u90,q1008.5\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_setting_commands_preserve_fallbacks_and_duplicates() {
+        let s = b"!g,m10,x7,m20,bad,u80,qnan,b5,\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn does_not_decode_cambridge_setting_commands_with_a_dollar_marker() {
+        let s = b"$g,m25\r\n";
+        assert_matches!(parse_one(s), Step::Frame(Message::Unknown(_)));
+    }
 }

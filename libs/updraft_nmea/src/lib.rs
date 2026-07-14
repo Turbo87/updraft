@@ -22,8 +22,8 @@ pub use datetime::{Date, Time};
 pub use framing::{RejectReason, Step, parse};
 pub use message::{Message, Talker, Unknown};
 pub use sentences::{
-    CaiW, FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Gga,
-    GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, Lxwp0, Lxwp1, Lxwp2, Lxwp3,
+    CaiG, CaiSetting, CaiW, FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource,
+    Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, Lxwp0, Lxwp1, Lxwp2, Lxwp3,
     Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Pflaa, Pflac, PflacQueryType, Pflau, PflauAlarmType,
     PflauGpsStatus, Pgrmz, PgrmzFixDimension, Plxv0, Plxv0Direction, Plxvc, PlxvcMessageType,
     Plxvf, Plxvs, PlxvsMode, Plxvtarg, PositioningMode, Pov, PovDatum, Rmc, RmcStatus,

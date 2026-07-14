@@ -1,0 +1,36 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    CaiG(
+        CaiG {
+            settings: [
+                MacCready(
+                    0.5144444444444445 m/s,
+                ),
+                Other(
+                    "x7",
+                ),
+                MacCready(
+                    1.028888888888889 m/s,
+                ),
+                Other(
+                    "bad",
+                ),
+                Bugs(
+                    0.8,
+                ),
+                Other(
+                    "qnan",
+                ),
+                Ballast(
+                    0.5,
+                ),
+                Other(
+                    "",
+                ),
+            ],
+        },
+    ),
+)

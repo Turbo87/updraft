@@ -10,6 +10,10 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Playwright
+/e2e/playwright-report
+/e2e/test-results
+
 # Paraglide (generated i18n code)
 /frontend/src/lib/paraglide
 

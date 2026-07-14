@@ -54,6 +54,36 @@ fn finite_f64(field: &[u8]) -> Option<f64> {
     value.is_finite().then_some(value)
 }
 
+/// Cambridge `$PCAID` logger data.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Pcaid {
+    /// Whether the most recent point was written to the flight log (`L`/`N`).
+    pub last_point_logged: Option<bool>,
+    /// Pressure altitude.
+    pub pressure_altitude: Option<Length>,
+    /// Engine noise level reported by the 10-bit input.
+    pub engine_noise_level: Option<u16>,
+    /// Raw logger flags whose bit meanings are not documented.
+    pub log_flags: Option<u32>,
+}
+
+impl Pcaid {
+    pub fn parse(mut fields: FieldsIter<'_>) -> Self {
+        Self {
+            last_point_logged: match fields.bytes() {
+                Some(b"L") => Some(true),
+                Some(b"N") => Some(false),
+                _ => None,
+            },
+            pressure_altitude: fields.f64().map(Length::from_meters),
+            engine_noise_level: fields.u16(),
+            log_flags: fields
+                .bytes()
+                .and_then(|field| btoi::btou::<u32>(field).ok()),
+        }
+    }
+}
+
 /// Cambridge `!w` flight data.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CaiW {

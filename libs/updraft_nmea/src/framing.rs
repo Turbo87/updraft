@@ -459,4 +459,29 @@ mod tests {
         let s = b"$g,m25\r\n";
         assert_matches!(parse_one(s), Step::Frame(Message::Unknown(_)));
     }
+
+    #[test]
+    fn decodes_cambridge_logger_data() {
+        let s = b"$PCAID,L,-1234,1023,42\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_logger_data_maps_not_logged_and_invalid_numeric_fields() {
+        let s = b"$PCAID,N,inf,65536,-1\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_logger_data_rejects_unknown_status_and_invalid_fields() {
+        let s = b"$PCAID,X,bad,bad,bad\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn keeps_unsupported_cambridge_related_sentences_unknown() {
+        for sentence in [b"$PCAIB,1,2,3\r\n".as_slice(), b"$GPRMB,A,1,2\r\n"] {
+            assert_matches!(parse_one(sentence), Step::Frame(Message::Unknown(_)));
+        }
+    }
 }

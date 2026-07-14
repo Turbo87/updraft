@@ -7,7 +7,7 @@ mod gnss;
 mod lx;
 mod openvario;
 
-pub use cambridge::{CaiG, CaiSetting, CaiW};
+pub use cambridge::{CaiG, CaiSetting, CaiW, Pcaid};
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
     PflacQueryType, Pflau, PflauAlarmType, PflauGpsStatus,
@@ -34,6 +34,7 @@ pub fn parse_sentence(sentence: &[u8]) -> Message {
     match address {
         b"!g" => return Message::CaiG(CaiG::parse(fields)),
         b"!w" => return Message::CaiW(CaiW::parse(fields)),
+        b"$PCAID" => return Message::Pcaid(Pcaid::parse(fields)),
         b"$PGRMZ" => return Message::Pgrmz(Pgrmz::parse(fields)),
         b"$PFLAU" => return Message::Pflau(Pflau::parse(fields)),
         b"$PFLAA" => return Message::Pflaa(Pflaa::parse(fields)),

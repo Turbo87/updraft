@@ -1,6 +1,6 @@
 # The Shared Runtime
 
-The runtime is the layer around the deterministic [core](core.md). It owns one `App`, the input queue, the process clock, compute workers, effect adapters, state-stream subscribers, and computed resource storage. The axum server and Tauri shell use the same runtime. They add only transport or platform bindings.
+The runtime is the layer around the deterministic [core](core.md). Each runtime owns one `App`, an input queue, a monotonic clock, compute workers, effect adapters, state-stream subscribers, and computed resource storage. The axum server and Tauri shell use this layer and add only transport or platform bindings.
 
 Most domain work does not need to know these details. Callers submit typed `Input` values and subscribe to a state stream that starts with a snapshot. Hosts provide adapters for the effects they support.
 
@@ -24,13 +24,17 @@ Timer identity, deadlines, and deterministic ordering remain core state. The run
 
 Cheap derived values remain synchronous. A known expensive calculation enters the worker path through `Effect::Compute`, carrying a snapshot of everything the job needs. Its result returns as an ordinary input.
 
+Compute workers run CPU calculations only. Network polling, downloads, uploads, and device streams use effect adapters with lifecycles suited to those operations.
+
 Each worker kind runs at most one job at a time. A small job slot in the core records whether another run is needed. When the current job finishes, the core asks for a new job if more work arrived. The domain decides which state changes make an older result invalid and whether an older result is safe to display.
 
-Some changes make all earlier work invalid, such as replacing a task or seeking to a distant replay position. These changes increase a generation number called an epoch. The core ignores a result from an older epoch. The runtime clears the worker's cached state when it sees a new epoch.
+Some changes make all earlier work invalid, such as replacing a task or seeking to a distant replay position. These changes increase a compute revision. The core ignores results from older revisions. The runtime clears the worker's cached state when the revision changes.
+
+Invalidating running work also signals a cooperative cancellation token. A worker that can stop between calculation steps returns a typed cancellation, which frees the core job slot without recording a failure. Workers that do not check the token remain correct because the core still rejects their stale result, but fresh work waits for them to finish.
 
 Workers may keep cached intermediate data between runs. A live optimizer can update data from the growing flight trace instead of starting again from nothing. Worker data is a cache, not authoritative state. It is not included in snapshots and starts empty after a restart.
 
-A worker panic becomes a typed failure input. Without a completion or failure input, the core could keep waiting forever for a job that has stopped. The runtime replaces the failed worker state before it accepts later jobs.
+A worker panic becomes a typed failure input. Without a completion or failure input, the core could keep waiting forever for a job that has stopped. The runtime resets the failed worker's cached state before it accepts later jobs.
 
 This lifecycle stays inside the core job slot and the runtime worker adapter. Other feature code does not need to manage it. Domains provide job inputs, rules for rejecting old results, and code that applies valid results. The design does not include a general computation graph.
 
@@ -46,6 +50,8 @@ The runtime uses a small `match` over effect types. It does not use a general ef
 - computed resource publication.
 
 Effect execution never blocks the input loop. File writes use a dedicated I/O thread. Network work uses async tasks. Compute jobs use per-kind workers. Device output uses the connection writer.
+
+Effect enums describe the work requested by the core. Runtime adapters own how that work runs, including polling, retries, cancellation, caching, and provider-specific behavior. Adapter traits may be used within a domain when implementations are interchangeable. There is no common background-job interface.
 
 Effects that need a result return a typed input. Long operations quickly return an operation ID, then publish progress and completion as normal changes. Warning audio does not use client subscriptions, so it still works when the webview or state stream has a problem.
 
@@ -63,7 +69,7 @@ There is no replay buffer or general patch format. A fresh current snapshot is h
 
 Changes are grouped by domain. This is a useful host-side filtering key without requiring separate streams. High-rate instruments such as attitude and live vario receive their own groups when they land, so a secondary display can omit them without affecting low-rate navigation state. Because a group's encoding can evolve without touching other consumers, a compact binary channel for one high-rate signal, such as the live audio-vario stream, stays a deferred option to revisit only on a measured need.
 
-The runtime measures queue depth and handler time. It also records worker failures and slow-client drops. The warning path has a total time budget under 100 ms. These measurements arrive with the first real sensor adapter instead of relying on unit-test timing.
+The runtime measures maximum pending messages, queue wait, and handler time. It also records worker failures and slow-client drops. The warning path has a total time budget under 100 ms. Real sensor adapters provide the workload used to evaluate these measurements instead of relying on unit-test timing.
 
 ## Resource Storage
 

@@ -16,10 +16,10 @@
 - [x] **units** — custom newtype quantities (length/altitude, speed, vertical speed, angle to start; pressure, mass, temperature added when features need them), conversions, and unit-system formatting. Start minimal and grow. _(needs: workspace)_
 - [x] **geo** — lat/lon types, WGS84 distance/bearing/destination-point (via `geographiclib-rs`) with a haversine fast path, bounding boxes with antimeridian handling, `geo-types` interop behind a feature. Coordinate parsing/formatting is out of scope: each data-format crate parses its own wire format, display formatting is a UI concern. _(needs: units)_
 - [x] **egm96** — `libs/updraft_egm96`: EGM96 geoid undulation lookup (`separation`, ellipsoidal↔MSL helpers) via a bilinear 1° grid downsampled from the official 15′ `WW15MGH` source, with a feature-gated `downsample` generator and golden test. Used to convert bare-ellipsoidal GNSS altitude to MSL (and back for IGC). _(needs: geo)_
-- [ ] **core-app** — the central `App` struct composed from per-domain modules, the `handle(Input) -> Update { changes, effects }` entry point, `query()`/`snapshot()`, and the `Input`/`Change`/`Effect`/`Command`/`Query` enums with serde serialization. No tokio/rayon/I-O dependencies in the core crate. _(needs: units)_
-- [ ] **core-time** — time as an input: monotonic timestamps stamped by adapters from a single process-wide epoch (no `Clock` trait), deterministic timer queue with earliest-deadline in `Update`, simulated-time test helpers, monotonic flight-time tracking. _(needs: core-app)_
-- [ ] **core-runtime:** the shared runtime used by the server and Tauri: bounded FIFO input queue, effect execution, snapshot-first state delivery, visible slow-client drops, worker failure handling, and runtime measurements (see [design/runtime.md](design/runtime.md)). _(needs: core-app)_
-- [ ] **core-workers:** the worker path for expensive calculations: one job at a time per kind, generation-based invalidation, typed failure inputs, and optional cached worker state (see [design/runtime.md](design/runtime.md#compute-workers)). First heavy users: live scoring and task optimization. _(needs: core-runtime, core-time)_
+- [x] **core-app** — the central `App` struct composed from per-domain modules, the `handle(Input) -> Update { changes, effects }` entry point, `query()`/`snapshot()`, and typed query requests with associated output types. No tokio/rayon/I-O dependencies in the core crate. _(needs: units)_
+- [x] **core-time** — time as an input: monotonic timestamps stamped by adapters from their runtime's clock (no `Clock` trait) and a deterministic timer queue with the earliest deadline reported in `Update`. Scenario tests drive time by submitting clock inputs, with no wall clock. _(needs: core-app)_
+- [x] **core-runtime:** the shared runtime kernel: one monotonic clock per runtime, bounded FIFO input queue, synchronous queries, snapshot-first state delivery, filtered change groups, visible slow-client drops, and runtime measurements (see [design/runtime.md](design/runtime.md)). Hosts add effect adapters and transport bindings as their features land. _(needs: core-app)_
+- [x] **core-workers:** the worker path for expensive calculations: one job at a time per kind, generation-based invalidation, typed failure inputs, and optional cached worker state (see [design/runtime.md](design/runtime.md#compute-workers)). First heavy users: live scoring and task optimization. _(needs: core-runtime, core-time)_
 
 ## Transports & walking skeleton
 
@@ -157,6 +157,8 @@
 - [ ] **ahrs-pfd** — attitude indicator / PFD from AHRS data; synthetic vision later. _(needs: lx-nmea, io-adapters)_
 
 ## Online services
+
+Online services use async effect adapters. Bulk imagery and datasets use the resource path. They do not run as compute jobs.
 
 - [ ] **connectivity** — online/offline detection and state in core, offline-first hooks (status indicator, queue-and-retry for uploads). _(needs: core-app)_
 - [ ] **basemap-packs** — offline basemap packs (PMTiles or MBTiles, format TBD) stored on device, served to MapLibre through the bulk geodata path. _(needs: bulk-data, frontend-map)_

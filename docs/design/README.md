@@ -33,7 +33,8 @@ These documents describe the target design and architecture. The [roadmap.md](..
 ## Where a Feature Belongs
 
 - Does it change shared flight decisions, safety behavior, or trusted state? → A core domain module
-- Does it touch a clock, filesystem, network, device, platform API, or expensive worker? → A runtime or host adapter, requested through an effect when the core owns the decision
+- Does it touch a clock, filesystem, network, device, or platform API? → A runtime or host adapter, requested through an effect when the core owns the decision
+- Is it an expensive calculation whose inputs are already available? → A compute worker
 - Is it a large dataset, geometry, image, or growing history? → The resource path, with only identity and version in shared state
 - Is it layout, formatting, animation, gesture handling, or estimating movement for rendering? → The frontend
 - Is it durable but specific to one display? → Rust-side display-profile storage, outside the shared flight snapshot

@@ -3,14 +3,16 @@
 
 use crate::field::text;
 use crate::sentences::{
-    Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pflaa, Pflac, Pflau, Pgrmz, Plxv0, Plxvc, Plxvf, Plxvs,
-    Plxvtarg, Pov, Rmc,
+    CaiW, Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pflaa, Pflac, Pflau, Pgrmz, Plxv0, Plxvc, Plxvf,
+    Plxvs, Plxvtarg, Pov, Rmc,
 };
 
 /// A single decoded NMEA sentence, faithful to the wire.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Message {
+    /// Cambridge flight data (`!w`).
+    CaiW(CaiW),
     /// GNSS fix data (`**GGA`).
     Gga(Gga),
     /// Recommended minimum GNSS data (`**RMC`).

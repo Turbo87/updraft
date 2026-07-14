@@ -1,11 +1,13 @@
 //! Decoders for each NMEA sentence family.
 
+mod cambridge;
 mod flarm;
 mod garmin;
 mod gnss;
 mod lx;
 mod openvario;
 
+pub use cambridge::CaiW;
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
     PflacQueryType, Pflau, PflauAlarmType, PflauGpsStatus,
@@ -30,6 +32,7 @@ pub fn parse_sentence(sentence: &[u8]) -> Message {
     let address = fields.next().unwrap_or_default();
 
     match address {
+        b"!w" => return Message::CaiW(CaiW::parse(fields)),
         b"$PGRMZ" => return Message::Pgrmz(Pgrmz::parse(fields)),
         b"$PFLAU" => return Message::Pflau(Pflau::parse(fields)),
         b"$PFLAA" => return Message::Pflaa(Pflaa::parse(fields)),

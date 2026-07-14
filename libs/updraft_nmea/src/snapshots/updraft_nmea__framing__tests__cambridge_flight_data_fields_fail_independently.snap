@@ -1,0 +1,39 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    CaiW(
+        CaiW {
+            wind_vector_direction: Some(
+                450°,
+            ),
+            wind_speed: None,
+            wind_age_seconds: None,
+            tailwind_component: Some(
+                0 m/s,
+            ),
+            true_altitude: Some(
+                0 m,
+            ),
+            qnh: None,
+            true_airspeed: Some(
+                -1 m/s,
+            ),
+            vario: None,
+            average_vario: Some(
+                0 m/s,
+            ),
+            relative_vario: Some(
+                -2.5722222222222224 m/s,
+            ),
+            mac_cready: Some(
+                0 m/s,
+            ),
+            ballast: Some(
+                -0.25,
+            ),
+            bugs: None,
+        },
+    ),
+)

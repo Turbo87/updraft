@@ -39,7 +39,7 @@
 - [x] **nmea** — `libs/updraft_nmea`: the line-based text parser — framing, checksum, resync, the always-decode structure, and generic GNSS (GGA/RMC/GSA) plus the cross-device `$PGRMZ` baro-altitude sentence, into typed structs. Vendor families land as sibling slices. _(needs: units, geo)_
 - [x] **lx-nmea** — LXNav sentences (`$LXWP0-4`, `$PLXV*`) as an `updraft_nmea` slice: baro altitude, IAS/TAS, TE vario, wind, settings read/write. _(needs: nmea)_
 - [x] **openvario-nmea** — OpenVario/XCVario `$POV` sentence (pressure, airspeed, TE vario) as an `updraft_nmea` slice. _(needs: nmea)_
-- [ ] **cambridge-nmea** — Cambridge `!w` vario records as an `updraft_nmea` slice. _(needs: nmea)_
+- [x] **cambridge-nmea** — Cambridge `!w` vario records as an `updraft_nmea` slice. _(needs: nmea)_
 - [ ] **io-adapters** — adapter trait for byte-stream devices, TCP client/server and UDP adapters, fake adapter for tests; per-connection parser selection (validation-driven framing detection with manual override), the passive capability observer, and mapping parsed messages into core state (applying per-device corrections); wire NMEA input into core position state. _(needs: nmea, core-time)_
 - [ ] **gps-status** — fix quality, satellite info, positioning-source selection/fallback in state; status indicator in the UI. _(needs: io-adapters)_
 - [ ] **igc-read** — `libs/updraft_igc`: parser for A/H/B/E/L records and extensions. _(needs: units, geo)_

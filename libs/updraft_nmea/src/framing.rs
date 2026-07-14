@@ -423,4 +423,22 @@ mod tests {
         let s = b"!AIVDM,1,1,,A,177KQ\r\n";
         assert!(matches!(parse_one(s), Step::Frame(Message::Unknown(_))));
     }
+
+    #[test]
+    fn decodes_cambridge_flight_data() {
+        let s = b"!w,270,123,15,450,1750,1013.25,3210,215,185,200,25,45,90\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_flight_data_fields_fail_independently() {
+        let s = b"!w,450,nan,-1,500,1000,inf,-100,bad,200,150,0,-25,\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn does_not_decode_cambridge_flight_data_with_a_dollar_marker() {
+        let s = b"$w,270,123,15,450,1750,1013.25,3210,215,185,200,25,45,90\r\n";
+        assert!(matches!(parse_one(s), Step::Frame(Message::Unknown(_))));
+    }
 }

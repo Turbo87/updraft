@@ -1,14 +1,14 @@
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
 use axum::Router;
-use axum::extract::State;
+use axum::extract::{Json, State};
 use axum::http::StatusCode;
 use axum::response::sse::{Event, Sse};
-use axum::routing::get;
+use axum::routing::{get, post};
 use futures_util::stream::{self, Stream};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -22,9 +22,19 @@ pub mod wire;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15);
 
+/// Required dependencies shared by HTTP request handlers.
 #[derive(Clone)]
-struct ServerState {
-    runtime: Handle,
+pub struct ServerState {
+    pub runtime: Handle,
+}
+
+/// Optional HTTP application configuration.
+///
+/// By default, only the standard `/api` routes are exposed.
+#[derive(Default)]
+pub struct RouterOptions {
+    pub static_dir: Option<PathBuf>,
+    pub simulation: bool,
 }
 
 /// State carried from one [`stream::unfold`] iteration to the next.
@@ -88,28 +98,51 @@ pub fn start_runtime(app: App) -> Runtime {
 /// Builds the HTTP application.
 ///
 /// Backend routes live under `/api`, and unknown `/api` paths return `404`.
-/// Everything else is served from `static_dir`, falling back to `index.html`
-/// so the client-side-routed frontend can handle deep links.
-pub fn router(static_dir: impl AsRef<Path>, runtime: Handle) -> Router {
-    let static_dir = static_dir.as_ref();
-    let index_html = static_dir.join("index.html");
-
-    let api = Router::new()
+/// When `static_dir` is configured, everything outside `/api` is served from
+/// that directory and falls back to `index.html` for client-side routing.
+/// Without it, routes outside `/api` also return `404`.
+pub fn router(state: ServerState, options: RouterOptions) -> Router {
+    let mut api = Router::new()
         .route("/health", get(health))
-        .route("/state", get(state_stream))
-        .fallback(not_found)
-        .with_state(ServerState { runtime });
+        .route("/state", get(state_stream));
+    if options.simulation {
+        api = api.route("/simulation/position", post(simulation_position));
+    }
+    let api = api.fallback(not_found).with_state(state);
 
-    let static_service = ServeDir::new(static_dir).fallback(ServeFile::new(index_html));
+    let mut app = Router::new().nest("/api", api);
+    if let Some(static_dir) = options.static_dir {
+        let index_html = static_dir.join("index.html");
+        let static_service = ServeDir::new(static_dir).fallback(ServeFile::new(index_html));
+        app = app.fallback_service(static_service);
+    }
 
-    Router::new()
-        .nest("/api", api)
-        .fallback_service(static_service)
-        .layer(TraceLayer::new_for_http())
+    app.layer(TraceLayer::new_for_http())
 }
 
 async fn health() -> StatusCode {
     StatusCode::OK
+}
+
+async fn simulation_position(
+    State(state): State<ServerState>,
+    Json(position): Json<wire::PositionFix>,
+) -> Result<StatusCode, StatusCode> {
+    let position = updraft_core::flight::PositionFix::try_from(position)
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    let input = updraft_core::Input::Flight(updraft_core::flight::Input::Observation(
+        updraft_core::flight::Observation::Position(position),
+    ));
+    let runtime = state.runtime;
+
+    tokio::task::spawn_blocking(move || runtime.submit(input))
+        .await
+        .inspect_err(|error| tracing::error!("simulation input task failed: {error}"))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .inspect_err(|error| tracing::error!("simulation input failed: {error}"))
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Opens a snapshot-first SSE stream backed by one runtime subscription.

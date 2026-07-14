@@ -1,0 +1,2 @@
+# Preserve signed IGC fixture bytes and avoid enormous text diffs.
+testdata/*.igc -text -diff

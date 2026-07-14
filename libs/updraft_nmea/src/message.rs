@@ -53,16 +53,16 @@ pub enum Message {
 /// logged rather than silently dropped.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Unknown {
-    /// The sentence body: everything after the start marker, up to the
-    /// checksum or, for a checksum-less sentence, the terminating newline.
+    /// The complete sentence from its start marker up to the checksum or,
+    /// for a checksum-less sentence, the terminating newline.
     /// Non-UTF-8 bytes are replaced with the Unicode replacement character.
     pub sentence: Box<str>,
 }
 
 impl Unknown {
-    pub fn from_bytes(body: &[u8]) -> Self {
+    pub fn from_bytes(sentence: &[u8]) -> Self {
         Self {
-            sentence: text(body),
+            sentence: text(sentence),
         }
     }
 }

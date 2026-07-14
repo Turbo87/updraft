@@ -81,7 +81,7 @@ pub fn parse(input: &mut &[u8]) -> Step {
 
         // No checksum before the newline: a checksum-less sentence.
         Some(pos) => {
-            let frame = Step::Frame(sentences::parse_body(&input[1..pos]));
+            let frame = Step::Frame(sentences::parse_sentence(&input[..pos]));
             *input = &input[pos..];
             frame
         }
@@ -100,9 +100,9 @@ fn frame_with_checksum(input: &mut &[u8], star: usize) -> Step {
 
     match checksum {
         Some(checksum) => {
-            let body = &input[1..star];
-            let frame = if checksum == xor(body) {
-                Step::Frame(sentences::parse_body(body))
+            let payload = &input[1..star];
+            let frame = if checksum == xor(payload) {
+                Step::Frame(sentences::parse_sentence(&input[..star]))
             } else {
                 Step::Rejected(RejectReason::BadChecksum)
             };
@@ -164,7 +164,7 @@ fn hex_digit(byte: u8) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::assert_some_eq;
+    use claims::{assert_matches, assert_some_eq};
 
     /// Parses a single complete sentence and returns the step.
     fn parse_one(mut sentence: &[u8]) -> Step {
@@ -193,6 +193,16 @@ mod tests {
     fn parses_pgrmz() {
         let s = b"$PGRMZ,4395,f,3*20\r\n";
         insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn start_marker_is_part_of_sentence_identity() {
+        let s = b"!PGRMZ,4395,f,3*20\r\n";
+        assert_matches!(
+            parse_one(s),
+            Step::Frame(Message::Unknown(unknown))
+                if &*unknown.sentence == "!PGRMZ,4395,f,3"
+        );
     }
 
     #[test]

@@ -1,8 +1,9 @@
 <script lang="ts">
   import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
-  import { ownshipFeature, type OwnshipPosition } from './ownship';
+  import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+  import { ownshipFeature } from './ownship';
 
-  let { position }: { position: OwnshipPosition } = $props();
+  let { position }: { position: PositionFix } = $props();
 </script>
 
 <GeoJSONSource id="ownship" maxzoom={24} data={ownshipFeature(position)}>

@@ -2,19 +2,23 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
   import type { Map } from 'maplibre-gl';
   import { MapLibre } from 'svelte-maplibre-gl';
+  import type { PositionFix } from '$lib/protocol/generated/PositionFix';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import Ownship from './Ownship.svelte';
-  import type { OwnshipPosition } from './ownship';
+  import { positionCoordinates } from './ownship';
 
-  // Fixed placeholder position (EDKA Aachen-Merzbrück) until core state drives
-  // the map in the `map-position` step.
-  const ownship: OwnshipPosition = { longitude: 6.186, latitude: 50.823, track: 45 };
+  const DEFAULT_CENTER: [number, number] = [6.186, 50.823];
+
+  let { position }: { position: PositionFix | null } = $props();
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
+  const center = $derived(position ? positionCoordinates(position) : DEFAULT_CENTER);
 
-  async function loadSprites() {
-    await map?.addSprite('updraft-sdf', `${window.location.origin}/sprites/updraft-sdf`);
+  function loadSprites() {
+    if (!map) return;
+
+    map.addSprite('updraft-sdf', `${window.location.origin}/sprites/updraft-sdf`);
     spritesLoaded = true;
   }
 </script>
@@ -26,11 +30,11 @@
     autoloadGlobalCss={false}
     bind:map
     onload={loadSprites}
-    center={[ownship.longitude, ownship.latitude]}
+    {center}
     zoom={11}
   >
-    {#if spritesLoaded}
-      <Ownship position={ownship} />
+    {#if spritesLoaded && position}
+      <Ownship {position} />
     {/if}
   </MapLibre>
   <MapDebugOverlay {map} />

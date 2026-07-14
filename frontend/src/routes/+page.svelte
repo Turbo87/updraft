@@ -1,10 +1,17 @@
 <script lang="ts">
   import Map from '$lib/map/Map.svelte';
   import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
+  import { HttpUpdraftClient } from '$lib/protocol/client';
+  import { ApplicationState } from '$lib/protocol/state.svelte';
+
+  const state = new ApplicationState();
+  const client = new HttpUpdraftClient();
+
+  $effect(() => client.subscribe(state));
 </script>
 
 <div class="map">
-  <Map />
+  <Map position={state.flight.position} />
   <div class="overlay">
     <LocaleSwitcher />
   </div>

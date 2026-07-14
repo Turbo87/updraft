@@ -7,16 +7,32 @@ license = "MIT OR Apache-2.0"
 [lints]
 workspace = true
 
+[features]
+ts = ["dep:ts-rs"]
+
 [dependencies]
 anyhow = "=1.0.103"
 axum = "=0.8.9"
 clap = { version = "=4.6.1", features = ["derive", "env"] }
-tokio = { version = "=1.52.3", features = ["rt-multi-thread", "net", "macros", "signal"] }
+futures-util = "=0.3.32"
+serde = { version = "=1.0.228", features = ["derive"] }
+tokio = { version = "=1.52.3", features = ["rt-multi-thread", "net", "macros", "signal", "time"] }
 tower-http = { version = "=0.7.0", features = ["fs", "trace"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
+ts-rs = { version = "=12.0.1", optional = true }
+updraft_core = { path = "../libs/updraft_core" }
+updraft_runtime = { path = "../libs/updraft_runtime" }
 
 [dev-dependencies]
+claims = "=0.8.0"
 http-body-util = "=0.1.4"
 tempfile = "=3.27.0"
+tokio = { version = "=1.52.3", features = ["test-util"] }
 tower = { version = "=0.5.3", features = ["util"] }
+updraft_geo = { path = "../libs/updraft_geo" }
+updraft_units = { path = "../libs/updraft_units" }
+
+[[example]]
+name = "generate_protocol_bindings"
+required-features = ["ts"]

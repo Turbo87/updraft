@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use tokio::net::TcpListener;
+use updraft_core::App;
 
 #[derive(Parser)]
 struct Args {
@@ -27,7 +28,8 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let app = updraft_server::router(&args.static_dir);
+    let runtime = updraft_server::start_runtime(App::new());
+    let app = updraft_server::router(&args.static_dir, runtime.handle());
 
     let addr = SocketAddr::new(args.ip, args.port);
     let listener = TcpListener::bind(addr)
@@ -40,6 +42,8 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    runtime.shutdown();
 
     Ok(())
 }

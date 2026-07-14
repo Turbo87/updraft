@@ -23,15 +23,16 @@
 
 ## Transports & walking skeleton
 
-- [ ] **server-protocol** — axum: REST endpoints for queries/commands + one multiplexed SSE state stream (snapshot, then changes; keep-alive enabled), speaking the core protocol. _(needs: server-scaffold, core-runtime)_
-- [ ] **server-auth** — session token required on all routes (commands, state stream, bulk data; query-param/cookie token for the SSE stream since EventSource cannot set headers), `Host` allowlist, `Origin` validation on stream subscriptions, strict CORS, password gate for non-loopback binding. _(needs: server-protocol)_
+- [x] **server-state-stream** — axum: one multiplexed SSE state stream (snapshot, then changes; fixed-interval heartbeat enabled), speaking the core state protocol. _(needs: server-scaffold, core-runtime)_
+- [ ] **server-rest** — axum: REST endpoints for core queries and commands. _(needs: server-scaffold, core-runtime)_
+- [ ] **server-auth** — session token required on all routes (commands, state stream, bulk data; query-param/cookie token for the SSE stream since EventSource cannot set headers), `Host` allowlist, `Origin` validation on stream subscriptions, strict CORS, password gate for non-loopback binding. _(needs: server-state-stream, server-rest)_
 - [x] **server-shutdown** — graceful shutdown (Ctrl-C / SIGTERM) for the axum server. _(needs: server-scaffold)_
-- [ ] **frontend-protocol** — TypeScript protocol types (generated from the Rust types, committed, with a CI drift check), state-stream client with error handling and a data-age/staleness surface, Svelte stores bridging core state into components. _(needs: frontend-scaffold, server-protocol)_
+- [ ] **frontend-protocol** — TypeScript protocol types (generated from the Rust types, committed, with a CI drift check), state-stream client with error handling and a data-age/staleness surface, Svelte stores bridging core state into components. _(needs: frontend-scaffold, server-state-stream)_
 - [x] **frontend-map** — maplibre-gl map page with interim online basemap (OpenFreeMap, replaced by offline packs in basemap-packs), own-position symbol at a fixed placeholder position, manual pan/zoom. _(needs: frontend-scaffold)_
 - [ ] **map-position** — own-position symbol driven by core state. Bulk geodata (tiles, overlays) is served as map sources by URL reference, never pushed through the message channel. _(needs: frontend-map, frontend-protocol)_
 - [x] **tauri-scaffold** — Tauri shell (desktop first) hosting the frontend in the system webview; `pnpm tauri dev`/`build` loop and Linux CI build. _(needs: frontend-scaffold)_
 - [ ] **tauri-server** — Tauri shell embedding the core, runtime, and axum server on an ephemeral loopback port; shell-injected session token; asset shape (single-origin vs hybrid) per the spike; Android cleartext-loopback release config; includes the suspend/resume/doze lifecycle spike (see [design/tauri.md](design/tauri.md)). _(needs: frontend-protocol, tauri-scaffold, server-auth)_
-- [ ] **bulk-data** — bulk geodata serving: HTTP routes in the axum server (standalone and embedded), streaming tiles/GeoJSON as version-counted resources referenced by URL. _(needs: server-protocol, tauri-server)_
+- [ ] **bulk-data** — bulk geodata serving: HTTP routes in the axum server (standalone and embedded), streaming tiles/GeoJSON as version-counted resources referenced by URL. _(needs: server-rest, tauri-server)_
 - [ ] **e2e-scaffold** — Playwright suite booting server + frontend in its own CI job (cached/prebuilt server binary), scripting position inputs through the simulation seam (which accepts injected `observed_at`, so e2e time is simulated), asserting the map shows them. Establishes the CI rendering harness: software GL (SwiftShader/llvmpipe) for headless MapLibre and a `testMode` flag disabling map animation so tests await explicit "map idle" / "data version rendered" signals. Tests use a minimal inline map style instead of online tile services. This is the walking skeleton milestone. _(needs: map-position)_
 
 ## Sensor input & replay

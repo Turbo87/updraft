@@ -3,14 +3,20 @@
 
 use crate::field::text;
 use crate::sentences::{
-    Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pflaa, Pflac, Pflau, Pgrmz, Plxv0, Plxvc, Plxvf, Plxvs,
-    Plxvtarg, Pov, Rmc,
+    CaiG, CaiW, Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pcaid, Pflaa, Pflac, Pflau, Pgrmz, Plxv0,
+    Plxvc, Plxvf, Plxvs, Plxvtarg, Pov, Rmc,
 };
 
 /// A single decoded NMEA sentence, faithful to the wire.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Message {
+    /// Cambridge setting commands (`!g`).
+    CaiG(CaiG),
+    /// Cambridge flight data (`!w`).
+    CaiW(CaiW),
+    /// Cambridge logger data (`$PCAID`).
+    Pcaid(Pcaid),
     /// GNSS fix data (`**GGA`).
     Gga(Gga),
     /// Recommended minimum GNSS data (`**RMC`).
@@ -53,16 +59,16 @@ pub enum Message {
 /// logged rather than silently dropped.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Unknown {
-    /// The sentence body: everything after the start marker, up to the
-    /// checksum or, for a checksum-less sentence, the terminating newline.
+    /// The complete sentence from its start marker up to the checksum or,
+    /// for a checksum-less sentence, the terminating newline.
     /// Non-UTF-8 bytes are replaced with the Unicode replacement character.
     pub sentence: Box<str>,
 }
 
 impl Unknown {
-    pub fn from_bytes(body: &[u8]) -> Self {
+    pub fn from_bytes(sentence: &[u8]) -> Self {
         Self {
-            sentence: text(body),
+            sentence: text(sentence),
         }
     }
 }

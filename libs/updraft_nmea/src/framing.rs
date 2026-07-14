@@ -81,7 +81,7 @@ pub fn parse(input: &mut &[u8]) -> Step {
 
         // No checksum before the newline: a checksum-less sentence.
         Some(pos) => {
-            let frame = Step::Frame(sentences::parse_body(&input[1..pos]));
+            let frame = Step::Frame(sentences::parse_sentence(&input[..pos]));
             *input = &input[pos..];
             frame
         }
@@ -100,9 +100,9 @@ fn frame_with_checksum(input: &mut &[u8], star: usize) -> Step {
 
     match checksum {
         Some(checksum) => {
-            let body = &input[1..star];
-            let frame = if checksum == xor(body) {
-                Step::Frame(sentences::parse_body(body))
+            let payload = &input[1..star];
+            let frame = if checksum == xor(payload) {
+                Step::Frame(sentences::parse_sentence(&input[..star]))
             } else {
                 Step::Rejected(RejectReason::BadChecksum)
             };
@@ -164,7 +164,7 @@ fn hex_digit(byte: u8) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::assert_some_eq;
+    use claims::{assert_matches, assert_some_eq};
 
     /// Parses a single complete sentence and returns the step.
     fn parse_one(mut sentence: &[u8]) -> Step {
@@ -193,6 +193,16 @@ mod tests {
     fn parses_pgrmz() {
         let s = b"$PGRMZ,4395,f,3*20\r\n";
         insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn start_marker_is_part_of_sentence_identity() {
+        let s = b"!PGRMZ,4395,f,3*20\r\n";
+        assert_matches!(
+            parse_one(s),
+            Step::Frame(Message::Unknown(unknown))
+                if &*unknown.sentence == "!PGRMZ,4395,f,3"
+        );
     }
 
     #[test]
@@ -412,5 +422,66 @@ mod tests {
         // becomes `Unknown` rather than being discarded.
         let s = b"!AIVDM,1,1,,A,177KQ\r\n";
         assert!(matches!(parse_one(s), Step::Frame(Message::Unknown(_))));
+    }
+
+    #[test]
+    fn decodes_cambridge_flight_data() {
+        let s = b"!w,270,123,15,450,1750,1013.25,3210,215,185,200,25,45,90\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_flight_data_fields_fail_independently() {
+        let s = b"!w,450,nan,-1,500,1000,inf,-100,bad,200,150,0,-25,\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn does_not_decode_cambridge_flight_data_with_a_dollar_marker() {
+        let s = b"$w,270,123,15,450,1750,1013.25,3210,215,185,200,25,45,90\r\n";
+        assert!(matches!(parse_one(s), Step::Frame(Message::Unknown(_))));
+    }
+
+    #[test]
+    fn decodes_cambridge_setting_commands() {
+        let s = b"!g,m25,b4,u90,q1008.5\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_setting_commands_preserve_fallbacks_and_duplicates() {
+        let s = b"!g,m10,x7,m20,bad,u80,qnan,b5,\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn does_not_decode_cambridge_setting_commands_with_a_dollar_marker() {
+        let s = b"$g,m25\r\n";
+        assert_matches!(parse_one(s), Step::Frame(Message::Unknown(_)));
+    }
+
+    #[test]
+    fn decodes_cambridge_logger_data() {
+        let s = b"$PCAID,L,-1234,1023,42\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_logger_data_maps_not_logged_and_invalid_numeric_fields() {
+        let s = b"$PCAID,N,inf,65536,-1\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn cambridge_logger_data_rejects_unknown_status_and_invalid_fields() {
+        let s = b"$PCAID,X,bad,bad,bad\r\n";
+        insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn keeps_unsupported_cambridge_related_sentences_unknown() {
+        for sentence in [b"$PCAIB,1,2,3\r\n".as_slice(), b"$GPRMB,A,1,2\r\n"] {
+            assert_matches!(parse_one(sentence), Step::Frame(Message::Unknown(_)));
+        }
     }
 }

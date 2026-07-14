@@ -1,11 +1,13 @@
 //! Decoders for each NMEA sentence family.
 
+mod cambridge;
 mod flarm;
 mod garmin;
 mod gnss;
 mod lx;
 mod openvario;
 
+pub use cambridge::{CaiG, CaiSetting, CaiW, Pcaid};
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
     PflacQueryType, Pflau, PflauAlarmType, PflauGpsStatus,
@@ -23,33 +25,36 @@ pub use openvario::{Pov, PovDatum};
 use crate::field::FieldsIter;
 use crate::message::{Message, Talker, Unknown};
 
-/// Routes a sentence body (everything after the start marker, with the
-/// checksum stripped) to the matching family, falling back to
-/// [`Message::Unknown`].
-pub fn parse_body(body: &[u8]) -> Message {
-    let mut fields = FieldsIter::new(body);
+/// Routes a complete checksum-stripped sentence to the matching family,
+/// falling back to [`Message::Unknown`].
+pub fn parse_sentence(sentence: &[u8]) -> Message {
+    let mut fields = FieldsIter::new(sentence);
     let address = fields.next().unwrap_or_default();
 
     match address {
-        b"PGRMZ" => return Message::Pgrmz(Pgrmz::parse(fields)),
-        b"PFLAU" => return Message::Pflau(Pflau::parse(fields)),
-        b"PFLAA" => return Message::Pflaa(Pflaa::parse(fields)),
-        b"PFLAC" => return Message::Pflac(Pflac::parse(fields)),
-        b"LXWP0" => return Message::Lxwp0(Lxwp0::parse(fields)),
-        b"LXWP1" => return Message::Lxwp1(Lxwp1::parse(fields)),
-        b"LXWP2" => return Message::Lxwp2(Lxwp2::parse(fields)),
-        b"LXWP3" => return Message::Lxwp3(Lxwp3::parse(fields)),
-        b"PLXVF" => return Message::Plxvf(Plxvf::parse(fields)),
-        b"PLXVS" => return Message::Plxvs(Plxvs::parse(fields)),
-        b"PLXV0" => return Message::Plxv0(Plxv0::parse(fields)),
-        b"PLXVC" => return Message::Plxvc(Plxvc::parse(fields)),
-        b"PLXVTARG" => return Message::Plxvtarg(Plxvtarg::parse(fields)),
-        b"POV" => return Message::Pov(Pov::parse(fields)),
+        b"!g" => return Message::CaiG(CaiG::parse(fields)),
+        b"!w" => return Message::CaiW(CaiW::parse(fields)),
+        b"$PCAID" => return Message::Pcaid(Pcaid::parse(fields)),
+        b"$PGRMZ" => return Message::Pgrmz(Pgrmz::parse(fields)),
+        b"$PFLAU" => return Message::Pflau(Pflau::parse(fields)),
+        b"$PFLAA" => return Message::Pflaa(Pflaa::parse(fields)),
+        b"$PFLAC" => return Message::Pflac(Pflac::parse(fields)),
+        b"$LXWP0" => return Message::Lxwp0(Lxwp0::parse(fields)),
+        b"$LXWP1" => return Message::Lxwp1(Lxwp1::parse(fields)),
+        b"$LXWP2" => return Message::Lxwp2(Lxwp2::parse(fields)),
+        b"$LXWP3" => return Message::Lxwp3(Lxwp3::parse(fields)),
+        b"$PLXVF" => return Message::Plxvf(Plxvf::parse(fields)),
+        b"$PLXVS" => return Message::Plxvs(Plxvs::parse(fields)),
+        b"$PLXV0" => return Message::Plxv0(Plxv0::parse(fields)),
+        b"$PLXVC" => return Message::Plxvc(Plxvc::parse(fields)),
+        b"$PLXVTARG" => return Message::Plxvtarg(Plxvtarg::parse(fields)),
+        b"$POV" => return Message::Pov(Pov::parse(fields)),
         _ => {}
     }
 
-    let Some((code, sentence_type)) = split_standard_address(address) else {
-        return Message::Unknown(Unknown::from_bytes(body));
+    let Some((code, sentence_type)) = address.strip_prefix(b"$").and_then(split_standard_address)
+    else {
+        return Message::Unknown(Unknown::from_bytes(sentence));
     };
 
     let talker = Talker::from_code(code);
@@ -57,7 +62,7 @@ pub fn parse_body(body: &[u8]) -> Message {
         b"GGA" => Message::Gga(Gga::parse(talker, fields)),
         b"RMC" => Message::Rmc(Rmc::parse(talker, fields)),
         b"GSA" => Message::Gsa(Gsa::parse(talker, fields)),
-        _ => Message::Unknown(Unknown::from_bytes(body)),
+        _ => Message::Unknown(Unknown::from_bytes(sentence)),
     }
 }
 

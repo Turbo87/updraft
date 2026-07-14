@@ -1,0 +1,22 @@
+---
+source: libs/updraft_nmea/src/framing.rs
+expression: parse_one(s)
+---
+Frame(
+    Pcaid(
+        Pcaid {
+            last_point_logged: Some(
+                true,
+            ),
+            pressure_altitude: Some(
+                -1234 m,
+            ),
+            engine_noise_level: Some(
+                1023,
+            ),
+            log_flags: Some(
+                42,
+            ),
+        },
+    ),
+)

@@ -1,3 +1,5 @@
 packages:
   - e2e
   - frontend
+allowBuilds:
+  esbuild: true

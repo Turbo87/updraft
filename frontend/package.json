@@ -11,12 +11,18 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test:unit": "vitest",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "devDependencies": {
     "@inlang/paraglide-js": "2.21.0",
     "@inlang/plugin-m-function-matcher": "2.2.9",
     "@inlang/plugin-message-format": "4.4.0",
+    "@storybook/addon-a11y": "10.5.0",
+    "@storybook/addon-docs": "10.5.0",
+    "@storybook/addon-svelte-csf": "5.1.2",
+    "@storybook/sveltekit": "10.5.0",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.69.2",
     "@sveltejs/vite-plugin-svelte": "7.2.0",
@@ -25,6 +31,7 @@
     "@vitest/browser-playwright": "4.1.10",
     "maplibre-gl": "5.24.0",
     "playwright": "1.61.1",
+    "storybook": "10.5.0",
     "svelte": "5.56.4",
     "svelte-check": "4.7.2",
     "svelte-maplibre-gl": "2.1.0",

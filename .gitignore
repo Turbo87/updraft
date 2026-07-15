@@ -14,6 +14,10 @@ vite.config.ts.timestamp-*
 /e2e/playwright-report
 /e2e/test-results
 
+# Storybook
+/frontend/debug-storybook.log
+/frontend/storybook-static
+
 # Paraglide (generated i18n code)
 /frontend/src/lib/paraglide
 

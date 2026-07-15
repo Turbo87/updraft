@@ -36,7 +36,7 @@ Note that CUP files contain waypoints and (optionally) tasks too. These files sh
 
 Aircraft presets, including glide polars, mass, and wingspan, ship as built-in data. User aircraft profiles live in `aircraft/`.
 
-Display profiles contain saved layouts, data-field pages, and other per-display settings. Temporary state such as the current map viewport or an open dialog is not stored here.
+Display profiles contain saved layouts, infobox pages, and other per-display settings. Temporary state such as the current map viewport or an open dialog is not stored here.
 
 ## Crash-Safe Persistence
 

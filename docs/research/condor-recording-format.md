@@ -6,28 +6,38 @@ records flights, written to inform any future Condor-related work in Updraft
 see [testing.md](../design/testing.md) and [devices.md](../design/devices.md)).
 
 - **Date researched:** 2026-07-15
+- **Primary evidence:** one real Condor `.ftr` file was reverse-engineered
+  byte-for-byte (Slovenia3 landscape, JS3 glider, 87 639 samples, 5.63 MB). Its
+  layout is documented in §2. Everything in §2 is derived from that single file
+  and cross-checked against the community facts in §1/§3.
 - **Condor versions in scope:** Condor 1.x, Condor 2, Condor 3
-- **Confidence legend:** `[doc]` stated in vendor/primary docs · `[obs]` reported
-  by community tool authors who have parsed the files · `[inf]` inferred from
-  behaviour, not directly confirmed · `[?]` unknown / could not be verified
+- **Confidence legend:** `[bin]` established directly from the sample file ·
+  `[doc]` stated in vendor/primary docs · `[obs]` reported by community tool
+  authors who have parsed the files · `[inf]` inferred from behaviour, not
+  directly confirmed · `[?]` unknown / could not be verified
 
 ## TL;DR
 
-- Condor stores each flight as a **proprietary binary `.ftr` file** ("flight
-  track recording"). It is the sim's native flight record and the file Condor
-  Club scores. `.ftr` is **not** documented publicly and **not** human-readable.
-- Positions inside an `.ftr` are **landscape-relative Cartesian `X`/`Y` in
-  metres** (derived from the landscape's UTM projection), **not** lat/lon.
-  Converting to geographic coordinates requires the matching landscape's `.trn`
-  terrain file plus Condor's `NaviCon.dll`.
-- Each sample carries more than an IGC fix: besides position and altitude it
-  includes **aircraft attitude** (heading/yaw, pitch, bank), sampled at a fixed
-  high rate. Condor can export an `.ftr` to **IGC**, downsampling/interpolating
-  to IGC's 1 Hz B-records.
+- Condor stores each flight as a **binary `.ftr` file** ("flight track
+  recording") — the sim's native record and the file Condor Club scores. There
+  is no vendor spec, but the format is straightforward once decoded.
+- The file is: an ASCII **`FTR`** magic + a header (pilot, aircraft, landscape,
+  task), a **`uint32` sample count**, a flat array of **fixed 64-byte sample
+  records**, a small summary footer, and a trailing **64-character validation
+  signature**. `[bin]`
+- Each 64-byte sample holds `float32` **time, position (X, Y, Z), a unit
+  attitude quaternion, and a cumulative distance**, plus a 24-byte trailer that
+  does not decode as floats (likely packed/obfuscated validation data). `[bin]`
+- Positions are **landscape-relative Cartesian `X`/`Y`/`Z` in metres** (from the
+  landscape's UTM projection), **not** lat/lon. Converting to geographic
+  coordinates needs the matching landscape's `.trn` file plus Condor's
+  `NaviCon.dll`. `[bin]` `[doc]`
+- Sampling is dense — **~11–12 Hz** in the sample (mean ≈ 0.086 s between
+  samples) — which is why FTR→IGC converters downsample to IGC's 1 Hz. `[bin]`
 - Do **not** confuse the `.ftr` *file* with Condor's **live UDP telemetry
   output** (NMEA + an extended `parameter=value` stream). That live feed — not
   the `.ftr` file — is what an app like Updraft would consume as a "Condor
-  device". The two are documented separately below.
+  device". Covered in §4.
 
 ## Two different things people call a "Condor recording"
 
@@ -36,14 +46,12 @@ see [testing.md](../design/testing.md) and [devices.md](../design/devices.md)).
 | Nature | On-disk binary file, written after/while flying | Real-time network stream while flying |
 | Contents | Full trajectory + attitude for replay/scoring | Per-frame telemetry (NMEA + extended fields) |
 | Coordinates | Landscape `X`/`Y` metres | lat/lon (in the NMEA sentences) |
-| Documented? | No (proprietary, reverse-engineered piecemeal) | Yes (config + field list are public) |
+| Documented? | No vendor spec (decoded in §2) | Yes (config + field list are public) |
 | Relevance to Updraft | Import/replay a past Condor flight | The "Condor interface" live data source |
-
-The rest of this note treats them in that order.
 
 ---
 
-## 1. The `.ftr` flight track file
+## 1. The `.ftr` flight track file (background)
 
 ### 1.1 What it is and where it lives
 
@@ -64,211 +72,314 @@ If you finish a flight without explicitly saving, Condor writes
 **`LastTrack.ftr`** into that folder; it is overwritten on the next flight, so
 it must be renamed to be kept. `[doc]`
 
-### 1.2 Container and encoding
-
-- The file is **binary and proprietary**. It does not open meaningfully in a
-  text editor, and Condor ships no format specification. `[doc]`
-- There is **no publicly documented byte layout**. The dedicated Condor-forum
-  thread literally titled *"Reading FTR (Flight Track) file"* asking how to
-  decode it went **unanswered**, and the main third-party converter (CoFliCo)
-  is closed-source. Treat any byte-offset claim as unverified. `[obs]` `[?]`
-- The one converter author who has built both directions describes an `.ftr`
-  as holding the flight's **track/fixes plus orientation**, injected from or
-  extracted to IGC B-records — consistent with a header + a fixed-rate array of
-  sample records, but the exact framing is not published. `[obs]` `[inf]`
-
-> Practical implication: there is currently no reliable way to parse `.ftr`
-> directly from published specs. The supported path to usable data is
-> **conversion to IGC** (§2), which is what every community tool does.
-
-### 1.3 Coordinate system — the important part
+### 1.2 Coordinate system
 
 Condor does **not** store lat/lon in the flight track. Positions are
 **landscape-relative Cartesian coordinates**, `X` (easting) and `Y` (northing)
 in **metres**, defined by that landscape's projection (built in the Condor
 Landscape Editor from the **UTM** system, at 0.1 m editor accuracy). `[doc]`
-
-Consequences:
+The sample file confirms this directly (§2). Consequences:
 
 - To turn a Condor position into lat/lon you need the **specific landscape**'s
   terrain file, `Landscapes\<name>\<name>.trn`, and Condor's coordinate
   library **`NaviCon.dll`**. `[doc]`
 - `NaviCon.dll` exposes (confirmed via the `pycondor`/`Condor2Nav` bindings):
-  - `NaviConInit(const char* trnPath)` — load a landscape's `.trn`
-  - `GetMaxX()` / `GetMaxY()` — landscape extent in metres (valid `X`/`Y` range)
-  - `XYToLon(float x, float y)` / `XYToLat(float x, float y)` — `X`/`Y` → degrees
-    `[obs]`
-- The projection round-trips at roughly **11 m** worst-case accuracy when going
-  lon/lat → `X`/`Y` and back, per the landscape-editor documentation. `[doc]`
-- This is why an `.ftr` is meaningless without knowing its landscape: the same
-  `(X, Y)` maps to totally different places in different landscapes. The
-  landscape name is recorded in the associated flight plan (`.fpl`, an
-  INI-style text file) and echoed in Condor's own IGC export header. `[obs]`
+  `NaviConInit(const char* trnPath)`, `GetMaxX()` / `GetMaxY()` (landscape
+  extent, metres), and `XYToLon(x, y)` / `XYToLat(x, y)`. `[obs]`
+- The projection round-trips at roughly **11 m** worst-case accuracy. `[doc]`
+- The same `(X, Y)` maps to different places in different landscapes, so an
+  `.ftr` is meaningless without its landscape name — which the header records
+  (`Slovenia3` in the sample). `[bin]`
 
-### 1.4 What a sample contains
-
-More than an IGC fix. Beyond position (`X`/`Y`) and altitude, the track records
-**aircraft attitude** — heading/yaw, pitch, and bank — so Condor can replay the
-ship banking into turns, not just translating along the ground. Evidence: the
-IGC→FTR tool author notes that when attitude is *reconstructed* from a bare IGC
-(which lacks it), the replayed aircraft "turns on the yaw axis only, and not
-smoothly… in one move", i.e. the native format normally carries real attitude
-data that a plain IGC cannot supply. `[obs]` `[inf]`
-
-Sampling:
-
-- Recorded at a **fixed, sub-second rate** (well above IGC's 1 Hz). The exact
-  interval is not published; the fact that FTR→IGC converters must **downsample**
-  and IGC→FTR converters must **interpolate/extrapolate** to fill the gaps
-  confirms the native rate is higher and regular. `[obs]` `[inf]` `[?]`
-- Because IGC fixes are sparser, CoFliCo offers several interpolation schemes
-  when going the *other* way (IGC-like spacing → IGC): next / previous / nearest
-  point-in-time, linear, and parabolic (most precise). `[doc]`
-
-### 1.5 Validation / anti-cheat
+### 1.3 Validation / anti-cheat
 
 Condor ships a **Track File Validator** ("Condor File Validator") that checks
 whether an `.ftr` (or exported `.igc`) is **authentic and unaltered** — the
 mechanism competition organisers use for offline events and that Condor Club
-relies on for scoring. `[doc]`
+relies on for scoring. `[doc]` The sample file ends with a **64-character
+uppercase alphanumeric signature** (§2.6) that is almost certainly what the
+validator recomputes — analogous in spirit to the IGC **G-record**. `[bin]` `[inf]`
+The third-party CoFliCo converter explicitly **cannot produce validatable
+files** ("no checksums are computed"), i.e. only Condor itself can emit a track
+that passes its own validator. `[doc]`
 
-- Implication: `.ftr` (and Condor's IGC export) carry an integrity/authenticity
-  token — analogous in spirit to the IGC **G-record** security signature —
-  that the validator recomputes. The exact algorithm is not public. `[doc]` `[inf]`
-- Confirming this: the third-party CoFliCo converter explicitly **cannot produce
-  validatable files** because "no checksums are computed" — i.e. only Condor
-  itself can emit a track that passes its own validator. `[doc]`
+### 1.4 Version differences (C2 vs C3)
 
-### 1.6 Version differences (C2 vs C3)
-
-- Flight **plans** (`.fpl`) are known to differ between Condor 2 and Condor 3
-  (e.g. inversion-layer height is AGL in C2 but AMSL in C3) and need conversion
-  (the `FPL2V3` tool). `[doc]`
-- Whether the `.ftr` **track** binary layout changed between C2 and C3 is **not
-  documented**; community converters historically target "Condor 2" explicitly,
-  and C3 changed the default folder to `Condor3\`. Cross-version `.ftr`
-  compatibility should be treated as unverified. `[obs]` `[?]`
+Flight **plans** (`.fpl`) differ between Condor 2 and Condor 3 (e.g.
+inversion-layer height is AGL in C2 but AMSL in C3) and need conversion (the
+`FPL2V3` tool). `[doc]` Whether the `.ftr` **track** binary layout changed
+between C2 and C3 is **not documented**; community converters historically
+target "Condor 2" explicitly. The sample here is one version only, so treat
+cross-version details as unverified. `[obs]` `[?]`
 
 ---
 
-## 2. `.ftr` → IGC conversion (the practical data path)
+## 2. `.ftr` binary structure — reverse-engineered from a real file
 
-Since `.ftr` is opaque, all real workflows convert to IGC:
+All of §2 comes from decoding one real `.ftr` (little-endian throughout;
+IEEE-754 `float32` unless noted). It is a single sample, so field *labels* carry
+the confidence tags, but the *layout* (magic, count, 64-byte stride, footer,
+signature) is unambiguous and closes to the exact file size.
 
-- **Condor itself** — Flight Analysis can export the loaded track to IGC. This
-  is the only path that also produces a **validator-passing** IGC. `[doc]`
+### 2.1 File map
+
+| Region | Offset | Size | Contents |
+|---|---|---|---|
+| Magic | `0x00` | 3 | ASCII `FTR` |
+| Format byte | `0x03` | 1 | `0x1C` (= 28) — version/format tag `[inf]` |
+| Header | `0x04` | … | version/flags, pilot, aircraft, landscape, task (§2.2–2.3) |
+| Sample count | `0x54AB` (21675) | 4 | `uint32` = **87 639** (number of records) `[bin]` |
+| — | 21679 | 4 | one `float32` (`0.0136`) before the array — role unclear `[?]` |
+| **Track array** | **21683** | **87639 × 64** | flat array of 64-byte sample records (§2.4) |
+| Footer | 5 630 579 | 88 | per-turnpoint summary + final distances (§2.5) |
+| Signature | 5 630 667 | 64 | ASCII `[A-Z0-9]{64}` validation hash (§2.6) |
+| EOF | 5 630 731 | | (header + 87639·64 + 88 + 64 = file size, exactly) |
+
+The header's first bytes: `46 54 52 1c 0c 00 00 00 …` — `FTR`, `0x1C`, then a
+`uint32` = 12 and several `float32`s (a recurring `13.0233` appears here and in
+the footer — possibly a build/version constant). Their exact meaning is not
+resolved. `[bin]` `[?]`
+
+### 2.2 Header metadata (strings)
+
+Text fields are **length-prefixed** (a 1-byte length, then that many ASCII
+bytes) embedded among binary fields. From the sample:
+
+| Field | Value | Meaning `[inf]` |
+|---|---|---|
+| pilot first name | `Philip` | |
+| pilot last name | `S` | |
+| country | `Germany` | |
+| aircraft id / reg | `D-2611` | glider registration / CN |
+| comp sign | `YB` | competition ID |
+| landscape | `Slovenia3` | scenery — needed for `X/Y`→lat/lon |
+| glider | `JS3-15` (`JS3-15s18S`) | plane type / class |
+| livery | `KW.dds`, `BALLAAAARN` | texture file / paint text |
+
+### 2.3 Task turnpoints
+
+After the pilot/landscape block the **task** is stored as a list of fixed
+**84-byte** turnpoint records, each: a length-prefixed name, then two positions
+as `float32` **(X, Y, elevation)** in metres, then observation-zone parameters
+(radius/angles). In the sample the task is `Lienz-Nikolsdorf` (listed twice —
+takeoff + start) → `Paterzipf` → `Mauterndorf` → `Lesce-Bled`. The first
+turnpoint decodes cleanly as `X=307036.6, Y=162198.6, elev=638.0`. `[bin]`
+
+### 2.4 The 64-byte sample record (the core)
+
+Each of the 87 639 records is 64 bytes: **ten `float32` fields (40 bytes)
+followed by a 24-byte trailer**. Field-by-field, with observed ranges over the
+whole flight:
+
+| Off | Type | Field | Observed | Notes |
+|---|---|---|---|---|
+| +0 | f32 | **time** | 2.63191 → 2.71931 | monotonic sample clock; see §2.4.1 `[bin]` |
+| +4 | f32 | **X** (easting, m) | 205 200 – 308 700 | landscape metres `[bin]` |
+| +8 | f32 | **Y** (northing, m) | 110 600 – 198 000 | landscape metres `[bin]` |
+| +12 | f32 | **Z** (altitude, m) | 506 – 2 771 | MSL metres `[bin]` |
+| +16 | f32 | small signed | −0.012 – 0.024 | ~±0.02 (rad?); weak corr. with turn rate — **unresolved** `[?]` |
+| +20 | f32 | **q0** (quat x) | ±0.9 | attitude quaternion `[bin]` |
+| +24 | f32 | **q1** (quat y) | ±0.9 | |
+| +28 | f32 | **q2** (quat z) | ±0.9 | |
+| +32 | f32 | **q3** (quat w) | ±1.0 | scalar-last; \|q\|≈1 (§2.4.2) `[bin]` |
+| +36 | f32 | **distance** (m) | 0 → 184 557 | cumulative, monotonic (§2.4.3) `[bin]` |
+| +40 | 24 B | trailer | high-entropy | does **not** decode as floats — packed/obfuscated `[?]` |
+
+Sanity checks that anchor the labels:
+
+- **Record 0 sits on the runway at the departure airfield.** Its
+  `X,Y,Z = 306928, 162121, 639.4` matches the `Lienz-Nikolsdorf` turnpoint
+  (`307037, 162199, 638`) to ~110 m / ~1 m, and `distance = 0`. Record 1 is
+  identical in position (glider stationary at start). `[bin]`
+- **Altitude range 506–2771 m** is right for an alpine soaring flight, and the
+  **last** sample is ~100 km away near the final turnpoint (a point-to-point
+  task, not a return). `[bin]`
+
+First record, annotated (bytes at offset 21683):
+
+```
+22 71 28 40   time = 2.63191
+f6 dd 95 48   X    = 306927.69
+3e 52 1e 48   Y    = 162120.97
+b5 db 1f 44   Z    = 639.43
+38 7c e9 ba   f4   = -0.00178
+b9 b7 e5 bc   q0   = -0.02804
+4a 06 1f 3d   q1   =  0.03882
+6e db 9c be   q2   = -0.30636
+b7 61 73 3f   q3   =  0.95071
+00 00 00 00   dist =  0.0
+12 52 52 05 7a fe a5 1f 6d 8a ae 8c   ┐ 24-byte trailer
+5f a2 97 8b 0a 7a bd 52 64 1a c5 e9   ┘ (not float-decodable)
+```
+
+#### 2.4.1 The time field and sample rate
+
+`+0` is monotonic and near-perfectly linear with the record index
+(corr ≈ 0.99999) — a fixed-timestep sample clock. Interpreting it as **days**
+(the only unit that yields a sane rate) gives a **2.10-hour** flight sampled at
+a mean **~11.6 Hz** (mean Δt ≈ 0.086 s), with a handful of larger gaps (sim
+pauses/stutters). It is stored as `float32`, so its resolution is only ~0.05 s.
+The exact unit/epoch is not resolved (the raw value 2.63 is not a meaningful
+absolute calendar date), but the *rate* is solid. `[bin]` `[inf]`
+
+#### 2.4.2 The attitude quaternion
+
+`+20..+32` are a **unit quaternion** (scalar-last): the sum of squares is 1.000
+at the start and drifts down only to ~0.995 by the end (stored, not
+renormalised each frame). This is the per-sample **aircraft attitude** — the
+thing a plain IGC lacks, and why Condor can replay the ship banking rather than
+just sliding along its ground track. `[bin]`
+
+#### 2.4.3 The distance field
+
+`+36` starts at exactly 0 and increases monotonically to **184 557 m**. Over the
+2.10 h flight that is an **88 km/h average** — a textbook soaring cross-country
+average — so it reads as a **cumulative odometer / achieved distance** (the kind
+of value used for scoring), not raw straight-line displacement. `[bin]` `[inf]`
+
+### 2.5 Footer (88 bytes)
+
+Between the last record and the signature is a small summary block: a series of
+`(uint32 index, float32 value, …)` entries — turnpoint indices with associated
+values (times/distances), and near the end the **final distances**
+(`184 556.9` — matching the last record's distance field — and `165 282.9`).
+Interpretable as the flight's per-turnpoint and total-distance summary. `[bin]` `[inf]`
+
+### 2.6 Validation signature (64 bytes)
+
+The final 64 bytes are ASCII uppercase `[A-Z0-9]` — in the sample:
+
+```
+FR6IIRE997GZ9WX0PJJYVNVQGC3I75JJ919DUCQ0AJKSK38WY3XWHFNA0KXAGU0P
+```
+
+This is the file's **authenticity token**, recomputed by Condor's Track File
+Validator (§1.3). The signing/hashing algorithm is not public, and altering any
+earlier byte would invalidate it — which is exactly why third-party converters
+cannot emit validatable tracks. `[bin]` `[inf]` `[?]`
+
+> **Takeaway for tooling:** reading position/altitude/attitude/time out of an
+> `.ftr` is entirely feasible from §2.4 alone; the only genuinely opaque parts
+> are the 24-byte per-sample trailer and the trailing signature. Producing lat/
+> lon still requires the landscape's `.trn` + `NaviCon.dll` projection.
+
+---
+
+## 3. `.ftr` → IGC conversion (the usual data path)
+
+Because reading `.ftr` needs the landscape projection (and because only Condor
+can emit validatable output), most workflows convert to IGC:
+
+- **Condor itself** — Flight Analysis exports the loaded track to IGC. The only
+  path that also produces a **validator-passing** IGC. `[doc]`
 - **Condor Club** — serves both the original `.ftr` and a converted `.igc` per
   uploaded flight. `[doc]`
-- **CoFliCo** (COndor FLIght track COnverter, condorutill.fr) — standalone/batch
-  `.ftr` → `.igc`. Needs the landscape's `.trn` (for the `NaviCon.dll`
-  `X`/`Y` → lat/lon step), supports the interpolation schemes above, and can
-  also rename files by flight metadata (date, comp-ID, glider, landscape, start
-  time). **Condor 2 only**, and its output is **not** validatable. `[doc]`
+- **CoFliCo** (condorutill.fr) — standalone/batch `.ftr` → `.igc`. Needs the
+  landscape's `.trn` (for the `NaviCon.dll` `X/Y`→lat/lon step), offers several
+  interpolation schemes to resample the dense native rate down to IGC's 1 Hz,
+  and can rename files by flight metadata. **Condor 2 only**; its output is
+  **not** validatable. `[doc]`
 - **Downloader utilities** (e.g. `ryanwoodie/Condor.Club-FTR-IGC-Downloader`,
-  CupX tools) — orchestrate bulk download from Condor Club and shell out to
-  CoFliCo/7-Zip for the actual conversion; they do **not** parse `.ftr`
-  themselves. `[obs]`
+  CupX tools) — orchestrate bulk Condor Club downloads and shell out to
+  CoFliCo/7-Zip; they do **not** parse `.ftr` themselves. `[obs]`
 
-Condor's exported IGC header carries sim-specific context — landscape name,
-glider type, Condor version, comp-ID — which is what lets downstream tools
-label and group flights. `[obs]`
-
-> Accuracy caveats worth remembering if Updraft ever ingests converted Condor
-> IGCs: minor rounding differences between converters; interpolation choices
-> change intermediate fixes; and third-party conversions lose the security
-> signature. `[doc]`
+Condor's exported IGC header carries sim-specific context (landscape name,
+glider type, Condor version, comp-ID) — the same metadata seen in the `.ftr`
+header (§2.2). `[obs]`
 
 ---
 
-## 3. Live UDP telemetry output (the "Condor interface")
+## 4. Live UDP telemetry output (the "Condor interface")
 
 Separate from the `.ftr` file, Condor can **stream telemetry over UDP** while
 you fly. This is the feed relevant to Updraft's device layer, and unlike the
 `.ftr` file it **is** documented and configurable.
 
-### 3.1 Configuration
+### 4.1 Configuration
 
 - Controlled by **`UDP.ini`** in the Condor install directory: `Enabled=1`,
   destination **host/IP** and **port**, and **`SendIntervalMs`** (packet
-  period). `[doc]`
-- Optional richer payloads via **`ExtendedData=1`** / **`ExtendedData1=1`**. `[doc]`
-- Payload is **ASCII `parameter=value`** pairs; the NMEA subset makes it look
-  like a normal GPS/vario source to navigation software. `[doc]`
+  period). Optional richer payloads via **`ExtendedData=1`** /
+  **`ExtendedData1=1`**. Payload is **ASCII `parameter=value`** pairs. `[doc]`
 
-### 3.2 NMEA subset
+### 4.2 NMEA subset
 
-Condor emits standard sentences so existing soaring apps can treat it as a
-connected instrument:
+Condor emits `GPGGA`, `GPRMC`, and **`LXWP0`** so existing soaring apps can
+treat it as a connected instrument. Updraft already parses `LXWP0`
+(`libs/updraft_nmea/src/sentences/lx/lxwp0.rs`) and standard GPS sentences, so
+the NMEA half of a Condor feed is largely covered by the existing parser. `[doc]`
 
-- `GPGGA` (position/altitude), `GPRMC` (position/speed/track), and **`LXWP0`**
-  (LX-style vario/altitude/speed). The set "can be expanded if needed." `[doc]`
-- Updraft already parses `LXWP0` (`libs/updraft_nmea/src/sentences/lx/lxwp0.rs`)
-  and standard GPS sentences, so the NMEA half of a Condor feed is largely
-  covered by the existing parser.
-
-### 3.3 Extended field set
+### 4.3 Extended field set
 
 With extended data enabled, the stream adds a rich per-frame model (units as
-reported by community consumers such as `docop/Condor2Arduino`): `[obs]`
+reported by consumers such as `docop/Condor2Arduino`): `[obs]`
 
-- **Time:** `time` (in-sim time, decimal hours)
-- **Altitude / vario:** `altitude` (m), `vario`, `evario` (electronic),
-  `nettovario`, `integrator` (all m/s)
-- **Attitude:** `compass` (deg); `yaw`, `pitch`, `bank` (rad);
-  `quaternionx/y/z`
+- **Time:** `time` (in-sim, decimal hours)
+- **Altitude / vario:** `altitude` (m); `vario`, `evario`, `nettovario`,
+  `integrator` (m/s)
+- **Attitude:** `compass` (deg); `yaw`, `pitch`, `bank` (rad); `quaternionx/y/z`
 - **Rates:** `turnrate`, `rollrate`, `pitchrate`, `yawrate` (rad/s)
 - **Kinematics:** `ax/ay/az` (m/s²), `vx/vy/vz` (m/s), `gforce`
-- **Air/attitude cues:** `slipball` (rad), `yawstringangle` (rad),
-  `turbulencestrength`, `surfaceroughness`
-- **Geometry:** `height` (CG above ground, m), `wheelheight` (m)
-- **Aircraft state / controls:** `flaps` (index), `MC` (m/s), `water` (kg),
-  `radiofrequency` (MHz), `hudmessages` (semicolon-separated text)
+- **Cues/geometry:** `slipball`, `yawstringangle` (rad), `turbulencestrength`,
+  `surfaceroughness`, `height` (CG above ground, m), `wheelheight` (m)
+- **State/controls:** `flaps` (index), `MC` (m/s), `water` (kg),
+  `radiofrequency` (MHz), `hudmessages` (text)
 
-Note the overlap with §1.4: the same attitude/kinematic quantities Condor
-streams live are the kind of state the `.ftr` file must store to reproduce a
-flight — so the live field list is a good *model* of the recorded state, even
-though the on-disk encoding is different and undocumented.
+The overlap with §2.4 is notable: the live stream carries the same
+attitude/kinematic quantities the `.ftr` must store to reproduce a flight (the
+UDP stream even exposes a `quaternion`, echoing the recorded attitude
+quaternion). The live field list is thus a good *model* of the recorded state,
+even though the on-disk encoding differs.
 
 ---
 
-## 4. Implications for Updraft
+## 5. Implications for Updraft
 
 - **Live "Condor device":** consume the UDP feed. The NMEA subset (`GPGGA`,
   `GPRMC`, `LXWP0`) is already within the `updraft_nmea` parser's scope; a
   Condor source is mostly a UDP transport + enabling `LXWP0`. The extended
   `parameter=value` stream is optional and would need its own small parser only
   if we want vario/attitude beyond NMEA.
-- **Importing a past Condor flight:** target **IGC**, not `.ftr`. There is no
-  published `.ftr` spec to implement against, and only Condor emits
-  validator-passing output. Converted Condor IGCs flow through Updraft's normal
-  IGC path.
-- **If direct `.ftr` parsing is ever required:** it is a reverse-engineering
-  project (no spec, no open reference implementation), and it would still need
-  the per-landscape `.trn` + a re-implementation of `NaviCon.dll`'s `X`/`Y` →
-  lat/lon projection to produce geographic fixes. Recommend against unless there
-  is a strong reason IGC export cannot be used.
+- **Importing a past Condor flight:** IGC is the low-effort path (Condor/Condor
+  Club/CoFliCo already produce it, and it flows through Updraft's normal IGC
+  pipeline). Direct `.ftr` parsing is now demonstrably feasible (§2.4) if we
+  ever want attitude or the native sample rate — but it still needs the
+  per-landscape `.trn` + a re-implementation of `NaviCon.dll`'s projection to
+  produce geographic fixes, and it cannot verify or reproduce the validation
+  signature.
+- **If we ever add an `.ftr` reader** (e.g. as an `updraft_*` parser or a test
+  fixture path): the structure in §2 is enough to extract time, X/Y/Z, and
+  attitude. Keep the landscape name from the header to pick the right `.trn`.
 
-## 5. Open questions / not verified
+## 6. Open questions / not verified
 
-- Exact `.ftr` byte layout: header/magic, version field, record size, sample
-  interval, field order. `[?]`
-- Whether the sample rate is constant across gliders/versions. `[?]`
-- The validation/signature algorithm and whether it differs between `.ftr` and
-  Condor's IGC export. `[?]`
-- Whether C2 and C3 `.ftr` files are binary-compatible. `[?]`
-- The precise projection `NaviCon.dll` implements per landscape (UTM zone
-  handling, datum). `[?]`
+- The 24-byte per-sample **trailer** (record `+40..+63`): does not decode as
+  floats; likely packed flags/obfuscated or validation-related. `[?]`
+- The small **`+16` field** (~±0.02): sideslip/yaw-string angle, a rate, or
+  something else — weakly correlates with turn rate only. `[?]`
+- Exact **unit/epoch of the time field** (rate is solid at ~11–12 Hz; the
+  absolute meaning of the `float32` value is not). `[?]`
+- Meaning of the header `float32`s (the recurring `13.0233`, the `uint32=12`)
+  and the pre-array `float32` at offset 21679. `[?]`
+- The **validation signature algorithm**, and whether it differs between `.ftr`
+  and Condor's IGC export. `[?]`
+- Whether **C2 and C3** `.ftr` files are binary-compatible, and whether the
+  record layout is stable across gliders/versions (only one sample examined). `[?]`
+- The precise projection `NaviCon.dll` implements per landscape (UTM zone,
+  datum). `[?]`
 
 ## Sources
+
+Reverse-engineered directly from one real Condor `.ftr` sample (Slovenia3 /
+JS3, 87 639 samples). Community/vendor context:
 
 Vendor / primary:
 - [Condor — official site](https://www.condorsoaring.com/) and
   [Condor 2 manual (PDF)](https://www.condorsoaring.com/wp-content/uploads/2021/09/condor-2-manual-1.pdf)
 - [Condor Help: Submitting a Flight Track to Condor Club](https://condor-help.helpscoutdocs.com/article/48-submitting-a-flight-track-to-condor-club)
-- Condor forum: [where the FlightTracks folder is](https://www.condorsoaring.com/forums/viewtopic.php?t=18854),
+- Condor forum: [FlightTracks folder location](https://www.condorsoaring.com/forums/viewtopic.php?t=18854),
   [LastTrack.ftr](https://www.condorsoaring.com/forums/viewtopic.php?t=20875),
   ["Reading FTR (Flight Track) file" (unanswered decode request)](https://www.condorsoaring.com/forums/viewtopic.php?t=20924),
-  ["Reading FTR files"](https://www.condorsoaring.com/forums/viewtopic.php?t=22510),
   [IGC→FTR replay tool (attitude/interpolation notes)](https://www.condorsoaring.com/forums/viewtopic.php?t=7218),
   [lon/lat ↔ Condor XY](https://www.condorsoaring.com/forums/viewtopic.php?t=12474)
 
@@ -279,7 +390,6 @@ Format / usage descriptions:
 
 Conversion & coordinate tooling:
 - [CoFliCo README (FTR→IGC, .trn dependency, interpolation, "no checksums")](http://condorutill.fr/CoFliCo/CoFliCo_README.txt)
-  and [condorutill.fr tools](http://www.condorutill.fr/)
 - [mpusz/Condor2Nav — `condor.cpp` (NaviCon.dll usage, X/Y metres, .trn)](https://github.com/mpusz/Condor2Nav/blob/master/src/condor.cpp)
 - [scls19fr/pycondor — `condor_dll.py` (NaviCon.dll bindings)](https://github.com/scls19fr/pycondor/blob/master/pycondor/condor_dll.py)
 - [ryanwoodie/Condor.Club-FTR-IGC-Downloader](https://github.com/ryanwoodie/Condor.Club-FTR-IGC-Downloader)

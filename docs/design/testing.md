@@ -13,6 +13,8 @@ Testability is an explicit architecture goal. Each layer can be tested and chang
 
 A **CI verify mode** also replays recorded flights while workers calculate their results again (see [replay.md](replay.md#ci-recompute-verification)). It compares result hashes and reports the first different input and worker. This is easier to debug than only seeing a different final state.
 
+Frontend component behavior is tested with Vitest browser mode. Storybook provides isolated development fixtures and generated component documentation instead of another automated test suite. CI builds the static Storybook to catch configuration and compilation drift. Visual regression may be added later where pixel-level comparisons provide enough value.
+
 ## Simulation as a Feature, Not Scaffolding
 
 The same replay machinery ships to users: IGC replay mode and a simple simulator (set position/speed/track, fly with buttons or by dragging the ownship symbol) for ground training and demos. Dragging conflicts with the normal tap-to-query and pan gestures, so simulator mode uses a **distinct interaction**, a dedicated drag handle on the ownship symbol (or an explicit "move aircraft" mode) rather than overloading the plain drag gesture. The TCP transport doubles as the Condor interface _and_ a test injection point.

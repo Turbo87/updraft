@@ -14,7 +14,10 @@ Because the frontend speaks only the core's message protocol — and there is on
 - **Svelte 5** runes
 - **MapLibre GL JS** for the map, integrated via **svelte-maplibre-gl**
 - **Paraglide JS** for i18n (see _i18n_ below)
+- **Storybook** with Svelte CSF for isolated component development and documentation
 - **UnoCSS** for icons, undecided for CSS
+
+Storybook stories live next to their components as `*.stories.svelte` files. They describe useful component states and may use fixtures such as the map's deterministic `testMode`, but they are not a second automated test suite. The standard map stories continue to use OpenFreeMap. A future visual-regression suite may use these stories without changing their role.
 
 ## State Model
 

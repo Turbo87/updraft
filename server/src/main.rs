@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use tokio::net::TcpListener;
+use updraft_core::App;
 
 #[derive(Parser)]
 struct Args {
@@ -19,6 +20,10 @@ struct Args {
     /// Directory holding the built frontend assets
     #[arg(long, env = "UPDRAFT_STATIC_DIR", default_value = "frontend/build")]
     static_dir: PathBuf,
+
+    /// Enables simulator input routes
+    #[arg(long, env = "UPDRAFT_SIMULATION", default_value_t = false)]
+    simulation: bool,
 }
 
 #[tokio::main]
@@ -27,7 +32,16 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let app = updraft_server::router(&args.static_dir);
+    let runtime = updraft_server::start_runtime(App::new());
+    let app = updraft_server::router(
+        updraft_server::ServerState {
+            runtime: runtime.handle(),
+        },
+        updraft_server::RouterOptions {
+            static_dir: Some(args.static_dir),
+            simulation: args.simulation,
+        },
+    );
 
     let addr = SocketAddr::new(args.ip, args.port);
     let listener = TcpListener::bind(addr)
@@ -40,6 +54,8 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    runtime.shutdown();
 
     Ok(())
 }
@@ -90,5 +106,27 @@ async fn shutdown_signal() {
     tokio::select! {
         () = ctrl_c => {}
         () = terminate => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use claims::assert_ok;
+    use clap::Parser as _;
+
+    use super::Args;
+
+    #[test]
+    fn simulation_profile_is_enabled_by_flag() {
+        let args = assert_ok!(Args::try_parse_from(["updraft-server", "--simulation"]));
+
+        assert!(args.simulation);
+    }
+
+    #[test]
+    fn simulation_profile_is_disabled_by_default() {
+        let args = assert_ok!(Args::try_parse_from(["updraft-server"]));
+
+        assert!(!args.simulation);
     }
 }

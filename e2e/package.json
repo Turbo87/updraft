@@ -1,0 +1,17 @@
+{
+  "name": "@updraft/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pretest": "pnpm --filter @updraft/frontend build",
+    "test": "playwright test",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/geojson": "7946.0.16",
+    "@types/node": "24.13.3",
+    "maplibre-gl": "5.24.0",
+    "typescript": "6.0.3"
+  }
+}

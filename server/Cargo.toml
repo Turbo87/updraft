@@ -13,7 +13,7 @@ ts = ["dep:ts-rs"]
 [dependencies]
 anyhow = "=1.0.103"
 axum = "=0.8.9"
-clap = { version = "=4.6.1", features = ["derive", "env"] }
+clap = { version = "=4.6.2", features = ["derive", "env"] }
 futures-util = "=0.3.32"
 serde = { version = "=1.0.228", features = ["derive"] }
 tokio = { version = "=1.52.3", features = ["rt-multi-thread", "net", "macros", "signal", "time"] }

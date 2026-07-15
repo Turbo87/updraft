@@ -1,6 +1,5 @@
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css';
-  import { browser } from '$app/environment';
   import type { Map, StyleSpecification } from 'maplibre-gl';
   import { MapLibre } from 'svelte-maplibre-gl';
   import type { PositionFix } from '$lib/protocol/generated/PositionFix';
@@ -19,13 +18,15 @@
     layers: [],
   };
 
-  let { position }: { position: PositionFix | null } = $props();
+  let { position, testMode = false }: { position: PositionFix | null; testMode?: boolean } =
+    $props();
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
   const center = $derived(position ? positionCoordinates(position) : DEFAULT_CENTER);
-  const testMode = browser && new URLSearchParams(window.location.search).get('testMode') === '1';
-  const mapStyle = testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron';
+  const mapStyle = $derived(
+    testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
+  );
 
   $effect(() => {
     if (!testMode || !map) return;

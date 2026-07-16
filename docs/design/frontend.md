@@ -15,7 +15,8 @@ Because the frontend speaks only the core's message protocol — and there is on
 - **MapLibre GL JS** for the map, integrated via **svelte-maplibre-gl**
 - **Paraglide JS** for i18n (see _i18n_ below)
 - **Storybook** with Svelte CSF for isolated component development and documentation
-- **UnoCSS** for icons, undecided for CSS
+- **CSS** with a shared global foundation and Svelte-scoped component styles, as described in [CSS](../css.md)
+- **UnoCSS** for icons
 
 Storybook stories live next to their components as `*.stories.svelte` files. They describe useful component states and may use fixtures such as the map's deterministic `testMode`, but they are not a second automated test suite. The standard map stories continue to use OpenFreeMap. A future visual-regression suite may use these stories without changing their role.
 
@@ -58,9 +59,9 @@ areas around map symbols. No action is available only through long press.
 
 ## Platform Behaviors
 
-Wake-lock while flying, fullscreen/immersive mode, safe-area handling, portrait and landscape both first-class, high-contrast day/night themes with auto-switch by sun position.
+Wake-lock while flying, fullscreen/immersive mode, safe-area handling, portrait and landscape both first-class, and light and dark themes. The display setting offers system, light, and dark. System follows the platform color scheme.
 
-**Sunlight readability** is a distinct requirement beyond day/night themes: explicit contrast targets for the day theme (map colors, data bar, warning banners must remain readable in direct cockpit sunlight), an anti-glare palette, and possibly a dedicated high-contrast mode. Validated on real devices outdoors, not just on calibrated monitors.
+**Sunlight readability** is a requirement of the light theme rather than a separate visual theme. Explicit contrast targets cover map colors, the data bar, and warning banners, and the palette accounts for glare. Validation happens on real devices outdoors, not just on calibrated monitors.
 
 **Audio is native, not Web Audio.** Warning sounds are played on the Rust/native side so they keep working with the screen off or the app backgrounded (see [tauri.md](tauri.md)). The frontend may _trigger_ non-critical UI sounds, but nothing safety-relevant depends on the webview being alive.
 
@@ -69,7 +70,3 @@ Wake-lock while flying, fullscreen/immersive mode, safe-area handling, portrait 
 ## i18n
 
 Launch languages are English and German. i18n scaffolding (Paraglide JS, tree-shaken, type-safe message keys) does not need to exist before the first string is written, but it must be introduced before hundreds of untranslated strings accumulate.
-
-## Open Questions
-
-- **UnoCSS:** likely used for icons, undecided whether it is also used for CSS.

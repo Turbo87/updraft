@@ -3,8 +3,20 @@ import { playwright } from '@vitest/browser-playwright';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { browserslistToTargets } from 'lightningcss';
+
+const cssTargets = browserslistToTargets(['chrome 87', 'android 87', 'safari 14']);
 
 export default defineConfig({
+  css: {
+    transformer: 'lightningcss',
+    lightningcss: {
+      targets: cssTargets,
+    },
+  },
+  build: {
+    cssMinify: 'lightningcss',
+  },
   plugins: [
     paraglideVitePlugin({
       project: './project.inlang',

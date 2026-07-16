@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../app.css';
   import favicon from '$lib/assets/favicon.svg';
   import { getLocale } from '$lib/paraglide/runtime.js';
 
@@ -14,11 +15,3 @@
 </svelte:head>
 
 {@render children()}
-
-<style>
-  :global(html),
-  :global(body) {
-    margin: 0;
-    height: 100%;
-  }
-</style>

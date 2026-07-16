@@ -1,0 +1,15 @@
+@import 'normalize.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font: inherit;
+}

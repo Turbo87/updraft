@@ -1,0 +1,18 @@
+:root {
+  color-scheme: light dark;
+
+  --color-app-surface: light-dark(var(--color-white), var(--color-gray-950));
+  --color-text: light-dark(var(--color-gray-950), var(--color-gray-50));
+  --color-link: light-dark(var(--color-blue-700), var(--color-blue-300));
+  --color-focus-ring: light-dark(var(--color-blue-600), var(--color-blue-400));
+  --color-overlay-surface: rgb(0 0 0 / 75%);
+  --color-overlay-text: var(--color-white);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}

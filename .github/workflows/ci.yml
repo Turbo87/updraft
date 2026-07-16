@@ -55,6 +55,7 @@ jobs:
       - run: pnpm --filter @updraft/frontend exec playwright install --with-deps chromium
       - run: pnpm lint
       - run: pnpm build
+      - run: pnpm build:storybook
       - run: pnpm check
       - run: pnpm test
 

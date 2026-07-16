@@ -8,7 +8,9 @@
   },
   "scripts": {
     "dev": "pnpm --filter @updraft/frontend dev",
+    "storybook": "pnpm --filter @updraft/frontend storybook",
     "build": "pnpm --filter @updraft/frontend build",
+    "build:storybook": "pnpm --filter @updraft/frontend build-storybook",
     "check": "pnpm -r check",
     "test": "pnpm -r --filter='!@updraft/e2e' test",
     "test:e2e": "pnpm --filter @updraft/e2e test",

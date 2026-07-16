@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import Map from '$lib/map/Map.svelte';
   import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
   import { HttpUpdraftClient } from '$lib/protocol/client';
@@ -6,12 +7,13 @@
 
   const state = new ApplicationState();
   const client = new HttpUpdraftClient();
+  const testMode = browser && new URLSearchParams(window.location.search).get('testMode') === '1';
 
   $effect(() => client.subscribe(state));
 </script>
 
 <div class="map">
-  <Map position={state.flight.position} />
+  <Map position={state.flight.position} {testMode} />
   <div class="overlay">
     <LocaleSwitcher />
   </div>

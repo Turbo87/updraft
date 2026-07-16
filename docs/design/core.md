@@ -75,7 +75,7 @@ Authoritative domain state includes the current fix, selected sensor values, tra
 
 The `App` contains large domain modules such as flight, navigation, traffic, devices, and settings. Each domain owns its state, inputs, update logic, and changes. Concepts with clear states, such as flight mode or warning status, use small state machines instead of several related booleans. Domains call each other directly inside the process.
 
-Saved display configuration includes layouts, data-field pages, and per-display preferences. It is stored on the Rust side because the embedded server may use a different web origin after each start. The configuration is keyed by display profile and does not become shared flight state. A secondary display can therefore use a different layout without changing the pilot's display.
+Saved display configuration includes layouts, infobox pages, and per-display preferences. It is stored on the Rust side because the embedded server may use a different web origin after each start. The configuration is keyed by display profile and does not become shared flight state. A secondary display can therefore use a different layout without changing the pilot's display.
 
 Temporary presentation state includes the map viewport, open dialogs, unfinished editor changes, and animation state. Some temporary state may affect an external service. For example, the primary viewport selects the OGN area of interest. The client sends this as a specific temporary request. The app does not share it as presentation state with other clients.
 

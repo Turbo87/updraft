@@ -106,7 +106,7 @@ What persists per device is deliberately slim: the transport configuration (Blue
 
 A **device config** is a named, saveable snapshot of the whole setup: the device entries and their priority order. Loading a device config replaces the entire current list. An aircraft config can reference a device config, so switching aircraft automatically connects to that aircraft's panel. A config doesn't have to be attached to an aircraft: a pilot who carries an LX Nano across gliders saves a device config for it and loads it manually.
 
-The devices screen manages all of this: connection status per device, priority reordering, manual overrides, and config save/load.
+The devices screen manages all of this: connection status per device, priority reordering, manual overrides, and config save/load. Its presentation and interaction model are defined in the [Devices workspace UI](ui/devices.md).
 
 ## Testing
 

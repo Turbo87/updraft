@@ -1,6 +1,8 @@
 # The Frontend
 
-The UI is one **SvelteKit** application built as a static single-page app. The axum server or Tauri asset handler serves it, depending on the result of the lifecycle test (see [tauri.md](tauri.md)). The frontend renders state from the core and turns user actions into commands. Domain values are calculated in the core unless render performance requires client-side work. A data field therefore shows the same value on every platform and connected display.
+The UI is one **SvelteKit** application built as a static single-page app. The axum server or Tauri asset handler serves it, depending on the result of the lifecycle test (see [tauri.md](tauri.md)). The frontend renders state from the core and turns user actions into commands. Domain values are calculated in the core unless render performance requires client-side work. A displayed domain value therefore shows the same result on every platform and connected display.
+
+The product-level page structure and interaction model live in the [UI design](ui/README.md). This document covers how the frontend implements that design.
 
 Because the frontend speaks only the core's message protocol — and there is only one production transport, the axum server's HTTP + SSE surface (see [server.md](server.md)) — the same build runs inside the Tauri shell and in any browser, or against a mocked client in component tests.
 
@@ -40,14 +42,16 @@ The map is integrated via [svelte-maplibre-gl](https://github.com/MIERUNE/svelte
 
 Each source lives in one component with its layer(s) nested inside it. This keeps their add/remove order correct under HMR: hot-swapping a standalone source component would remove it while a separate layer still referenced it, which MapLibre rejects.
 
-## Interaction Model
+## UI Components
 
-- **Tap on map opens a "What's here?" dialog:** a list of everything at or near the tap point (touch radius in px, converted to meters). Stacked airspaces with altitude bands, nearby waypoints/airfields, traffic, task points. Tapping an entry opens a detail dialog (airspace limits/class, airfield frequencies/runways/elevation, …). Hit-testing runs **Rust-side** via `query_at`, so results are consistent with the core's data rather than MapLibre's rendered-feature state. List items keep updating in real time. For example, a traffic symbol may be rotating, or distance values in the description may update.
-- **Dialogs, not bottom sheets.** Every secondary surface is a dialog: a centered modal on large screens, automatically fullscreen on small screens, from one responsive component with a consistent header (title + back/close).
-- **A structured settings tree.** Settings form a nested hierarchy (Flight / Map / Airspace / Devices / Units / System …), LX-9000-style. Fullscreen pages with back navigation on mobile, master-detail on wide screens. Search across all settings from the top level.
-- **Map behavior modes:** north-up and track-up orientation, auto-zoom (context-dependent zoom, e.g. zoom in while circling). The map is always freely pannable. Panning away from ownship shows a "return to position" button and snaps back on tap.
-- **Data bar:** slim and opinionated at first, configurability comes later.
-- **Glove- and turbulence-friendly targets:** minimum touch-target size on the order of 48px for all in-flight controls, generous hit space on map symbols, no action available only via long-press. Critical actions reachable with one thumb in turbulence.
+Responsive components implement the page and interaction rules from the
+[UI design](ui/README.md). Complex secondary surfaces use one component that can
+render fullscreen on phones and as a dialog or side panel on wider displays.
+Map hit testing runs Rust-side through typed queries, so results come from the
+core's data rather than MapLibre's rendered-feature state.
+
+In-flight controls use touch targets on the order of 48 px, with generous hit
+areas around map symbols. No action is available only through long press.
 
 ## Platform Behaviors
 

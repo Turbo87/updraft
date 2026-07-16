@@ -6,7 +6,7 @@ body {
 body {
   background-color: var(--color-app-surface);
   color: var(--color-text);
-  font-family: system-ui, sans-serif;
+  font-family: 'Inter Variable', system-ui, sans-serif;
   line-height: 1.5;
 }
 

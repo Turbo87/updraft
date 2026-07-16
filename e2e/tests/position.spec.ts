@@ -1,5 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
+
+import { expect, test } from '@playwright/test';
 
 type Position = {
   observedAtMs: number;

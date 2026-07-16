@@ -1,8 +1,9 @@
+import type { Locale } from '$lib/paraglide/runtime.js';
+
 import {
   getLocale,
   overwriteGetLocale,
   setLocale as persistLocale,
-  type Locale,
 } from '$lib/paraglide/runtime.js';
 
 // Mirror the active locale in reactive state. Every `m.*()` message and any

@@ -1,6 +1,8 @@
 <script module lang="ts">
-  import { defineMeta } from '@storybook/addon-svelte-csf';
   import type { Map } from 'maplibre-gl';
+
+  import { defineMeta } from '@storybook/addon-svelte-csf';
+
   import MapDebugOverlay from './MapDebugOverlay.svelte';
 
   const map = {

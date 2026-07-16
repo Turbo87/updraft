@@ -1,7 +1,8 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import Map from '$lib/map/Map.svelte';
+
   import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
+  import Map from '$lib/map/Map.svelte';
   import { HttpUpdraftClient } from '$lib/protocol/client';
   import { ApplicationState } from '$lib/protocol/state.svelte';
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { ApplicationState } from './state.svelte';
 
 describe('ApplicationState', () => {

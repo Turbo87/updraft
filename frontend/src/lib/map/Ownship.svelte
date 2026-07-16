@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
   import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+
+  import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
+
   import { ownshipFeature } from './ownship';
 
   let { position }: { position: PositionFix } = $props();

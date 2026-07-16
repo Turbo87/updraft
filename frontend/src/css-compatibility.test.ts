@@ -1,6 +1,8 @@
-import { transform } from 'lightningcss';
 import type { UserConfig } from 'vite';
+
+import { transform } from 'lightningcss';
 import { expect, test } from 'vitest';
+
 import viteConfig from '../vite.config';
 
 const fixture = `

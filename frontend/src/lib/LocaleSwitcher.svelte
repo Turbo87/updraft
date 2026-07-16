@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { m } from '$lib/paraglide/messages.js';
-  import { getLocale, locales, type Locale } from '$lib/paraglide/runtime.js';
+  import type { Locale } from '$lib/paraglide/runtime.js';
+
   import { setLocale } from '$lib/i18n.svelte.js';
+  import { m } from '$lib/paraglide/messages.js';
+  import { getLocale, locales } from '$lib/paraglide/runtime.js';
 
   const localeOptions = {
     en: { label: 'English', icon: 'i-circle-flags-lang-en' },

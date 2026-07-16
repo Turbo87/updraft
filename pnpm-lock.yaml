@@ -104,6 +104,9 @@ importers:
       '@vitest/browser-playwright':
         specifier: 4.1.10
         version: 4.1.10(playwright@1.61.1)(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1))(vitest@4.1.10)
+      lightningcss:
+        specifier: 1.32.0
+        version: 1.32.0
       maplibre-gl:
         specifier: 5.24.0
         version: 5.24.0

@@ -156,10 +156,7 @@ A CSS change is ready when:
 - its CSS syntax is lowered for the configured targets or has a usable fallback
 - its third-party global selectors are narrowly anchored
 
-## Open questions
+## Open question
 
-- Should an automated fixture verify the compiled output of
-  compatibility-sensitive CSS such as OKLCH custom properties and
-  `light-dark()`?
 - How and when should full application compatibility, especially MapLibre on
   older WebKit versions, be tested?

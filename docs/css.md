@@ -113,9 +113,9 @@ during startup. Theme-selection logic lives at the application level rather
 than in individual components. There is no infrastructure for additional
 themes or user-defined palettes.
 
-`colors.css` is a generated and committed copy of the complete Tailwind color
-palette from a pinned release, and the generated file records the source
-version. Updraft does not otherwise use Tailwind as a CSS framework or runtime
+`colors.css` is a committed copy of the complete default Tailwind color
+palette. The file records the release, source URL, retrieval date, and license
+notice. Updraft does not otherwise use Tailwind as a CSS framework or runtime
 build dependency. The source values remain in OKLCH, while Lightning CSS emits
 sRGB and wider-gamut fallbacks.
 

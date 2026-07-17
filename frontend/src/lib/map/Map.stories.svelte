@@ -1,7 +1,9 @@
 <script module lang="ts">
-  import { defineMeta } from '@storybook/addon-svelte-csf';
   import type { ComponentProps } from 'svelte';
   import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+
+  import { defineMeta } from '@storybook/addon-svelte-csf';
+
   import Map from './Map.svelte';
 
   const position = {

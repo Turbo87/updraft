@@ -1,5 +1,5 @@
-import type { Change } from './generated/Change';
 import type { StateSubscription } from './client';
+import type { Change } from './generated/Change';
 import type { FlightChange } from './generated/FlightChange';
 import type { PositionFix } from './generated/PositionFix';
 import type { Snapshot } from './generated/Snapshot';

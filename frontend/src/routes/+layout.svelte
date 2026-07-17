@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import 'virtual:uno.css';
+
   import favicon from '$lib/assets/favicon.svg';
   import { getLocale } from '$lib/paraglide/runtime.js';
 

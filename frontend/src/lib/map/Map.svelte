@@ -1,11 +1,14 @@
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css';
+
   import type { Map, StyleSpecification } from 'maplibre-gl';
-  import { MapLibre } from 'svelte-maplibre-gl';
   import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+
+  import { MapLibre } from 'svelte-maplibre-gl';
+
   import MapDebugOverlay from './MapDebugOverlay.svelte';
-  import Ownship from './Ownship.svelte';
   import { positionCoordinates } from './ownship';
+  import Ownship from './Ownship.svelte';
 
   type TestWindow = Window & {
     __updraftTest?: { map: Map };

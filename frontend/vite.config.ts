@@ -1,10 +1,10 @@
-import { defineConfig } from 'vitest/config';
-import { playwright } from '@vitest/browser-playwright';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { playwright } from '@vitest/browser-playwright';
 import { browserslistToTargets } from 'lightningcss';
 import UnoCSS from 'unocss/vite';
+import { defineConfig } from 'vitest/config';
 
 const cssTargets = browserslistToTargets(['chrome 87', 'android 87', 'safari 14']);
 

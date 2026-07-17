@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+
+import { describe, expect, it } from 'vitest';
+
 import { ownshipFeature } from './ownship';
 
 function positionFix(overrides: Partial<PositionFix> = {}): PositionFix {

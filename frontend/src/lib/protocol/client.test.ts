@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { HttpUpdraftClient } from './client';
 import { ApplicationState } from './state.svelte';
 

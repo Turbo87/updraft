@@ -30,7 +30,7 @@ On top of it, thin reactive stores: each change group becomes a rune-backed stor
 
 ## Map
 
-One fullscreen MapLibre instance is the app's centerpiece. Layers, bottom-up:
+One MapLibre instance is the app's centerpiece. Layers, bottom-up:
 
 1. vector basemap + hillshade/terrain (offline PMTiles)
 2. airspace fills/lines with altitude-band filtering

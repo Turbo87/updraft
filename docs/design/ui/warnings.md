@@ -7,14 +7,12 @@ and sends explicit acknowledgement or suppression commands.
 ## Situation Bar Presentation
 
 The highest-priority active warning replaces the target information in the
-Situation Bar. The bar keeps its normal height, so the map and infoboxes do not
-move. Additional active warnings remain available through the warning details,
-but the Situation Bar does not show a counter.
+Situation Bar. Additional active warnings remain available through the warning
+details, but the Situation Bar does not show a counter.
 
-Pinned targets remain visible. While the warning occupies the Situation Bar,
-the focused target appears temporarily as the first compact readout above the
-permanently pinned targets. It returns to the Situation Bar when the warning
-clears.
+Pinned targets remain visible while the warning occupies the Situation Bar. The
+focused target remains available in the pinned-target stack and returns to the
+Situation Bar when the warning clears.
 
 Each warning has two primary interactions:
 

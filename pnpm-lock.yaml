@@ -68,9 +68,12 @@ importers:
 
   frontend:
     dependencies:
-      '@fontsource-variable/inter':
+      '@fontsource/barlow':
         specifier: 5.2.8
         version: 5.2.8
+      '@fontsource/barlow-semi-condensed':
+        specifier: 5.2.7
+        version: 5.2.7
     devDependencies:
       '@iconify-json/circle-flags':
         specifier: 1.2.10
@@ -431,8 +434,11 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@fontsource-variable/inter@5.2.8':
-    resolution: {integrity: sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==}
+  '@fontsource/barlow-semi-condensed@5.2.7':
+    resolution: {integrity: sha512-jkNDrHJe1+rUQkd71f9fdwPmJf7SF506AHfwMChlDrCPx5eLAE28tcmpGDB487yE1fQIEGfgfL4YnE4/KEniuA==}
+
+  '@fontsource/barlow@5.2.8':
+    resolution: {integrity: sha512-iuFOnY4OI2cd1STrJ3NdJNzWjhcwv6JarmqfdoZzAmz9g0jTVjES86MNbuBxqVR3ydbTEjo4opEl24GXScRM7w==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2984,7 +2990,9 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@fontsource-variable/inter@5.2.8': {}
+  '@fontsource/barlow-semi-condensed@5.2.7': {}
+
+  '@fontsource/barlow@5.2.8': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

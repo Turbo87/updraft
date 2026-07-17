@@ -39,13 +39,14 @@ changes farther down the tree.
 imports, in dependency order:
 
 ```text
-reset.css -> colors.css -> theme.css -> base.css -> utils.css
+reset.css -> fonts.css -> colors.css -> theme.css -> base.css -> utils.css
 ```
 
 The imported files live in `frontend/src/styles/`:
 
 - `reset.css` establishes predictable browser defaults, including box sizing
   and inherited typography.
+- `fonts.css` loads application typefaces.
 - `colors.css` contains the versioned Tailwind color palette.
 - `theme.css` defines semantic tokens and light and dark theme behavior.
 - `base.css` styles global elements such as `html`, `body`, links, and form
@@ -58,9 +59,9 @@ general set of spacing, color, flexbox, or grid utilities. Stable layout
 concepts are Svelte components with scoped styles instead.
 
 Third-party CSS is imported close to the component that owns the integration.
-It appears in `app.css` only when it genuinely affects the whole application.
-Storybook loads the same `app.css` entrypoint as the application so components
-use the real reset, tokens, themes, and base styles.
+It appears in the `app.css` import chain only when it genuinely affects the
+whole application. Storybook loads the same `app.css` entrypoint as the
+application so components use the real reset, tokens, themes, and base styles.
 
 ## Component styles
 

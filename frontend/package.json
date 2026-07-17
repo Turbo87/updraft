@@ -15,6 +15,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.2.8"
+  },
   "devDependencies": {
     "@inlang/paraglide-js": "2.21.0",
     "@inlang/plugin-m-function-matcher": "2.2.9",

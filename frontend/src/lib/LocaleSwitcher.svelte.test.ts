@@ -13,11 +13,15 @@ describe('LocaleSwitcher.svelte', () => {
     localStorage.removeItem(localStorageKey);
   });
 
-  it('renders a button per locale, with the active one disabled', async () => {
+  it('renders a button per locale, with the active one selected', async () => {
     render(LocaleSwitcher);
 
-    await expect.element(page.getByRole('button', { name: 'EN' })).toBeDisabled();
-    await expect.element(page.getByRole('button', { name: 'DE' })).toBeEnabled();
+    await expect
+      .element(page.getByRole('button', { name: 'English' }))
+      .toHaveAttribute('aria-pressed', 'true');
+    await expect
+      .element(page.getByRole('button', { name: 'Deutsch' }))
+      .toHaveAttribute('aria-pressed', 'false');
   });
 
   it('switches the translated strings in place without a page reload', async () => {
@@ -28,12 +32,16 @@ describe('LocaleSwitcher.svelte', () => {
     let nav = document.querySelector('nav')!;
     nav.dataset.reloadCanary = 'alive';
 
-    await page.getByRole('button', { name: 'DE' }).click();
+    await page.getByRole('button', { name: 'Deutsch' }).click();
 
     // Strings re-render reactively and the active button flips...
     await expect.element(page.getByText('Sprache')).toBeInTheDocument();
-    await expect.element(page.getByRole('button', { name: 'DE' })).toBeDisabled();
-    await expect.element(page.getByRole('button', { name: 'EN' })).toBeEnabled();
+    await expect
+      .element(page.getByRole('button', { name: 'Deutsch' }))
+      .toHaveAttribute('aria-pressed', 'true');
+    await expect
+      .element(page.getByRole('button', { name: 'English' }))
+      .toHaveAttribute('aria-pressed', 'false');
 
     // ...on the original, un-reloaded document: same node, marker intact.
     let nav2 = document.querySelector('nav')!;

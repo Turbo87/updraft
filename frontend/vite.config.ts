@@ -4,6 +4,7 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { browserslistToTargets } from 'lightningcss';
+import UnoCSS from 'unocss/vite';
 
 const cssTargets = browserslistToTargets(['chrome 87', 'android 87', 'safari 14']);
 
@@ -18,6 +19,7 @@ export default defineConfig({
     cssMinify: 'lightningcss',
   },
   plugins: [
+    UnoCSS(),
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/lib/paraglide',

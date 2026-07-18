@@ -66,7 +66,7 @@ The exact crate and package layout may change. Two rules stay fixed. `frontend`,
 - [server.md](server.md): the axum server (the single transport), headless mode, and its security model
 - [tauri.md](tauri.md): the Tauri shell, the embedded server, mobile plugins, platform risks, and native safety constraints
 - [frontend.md](frontend.md): the SvelteKit implementation, state binding, map rendering, and platform behaviors
-- [ui/README.md](ui/README.md): the product UI, Flight Deck, infoboxes, warnings, workspaces, and device presentation
+- [ui/README.md](ui/README.md): the product UI, Flight View, infoboxes, warnings, workspaces, and device presentation
 - [devices.md](devices.md): device I/O, parsing, and auto-detection
 - [simulator.md](simulator.md): simulator mode and IGC replay
 - [traffic.md](traffic.md): FLARM and OGN traffic handling, merging, and warnings

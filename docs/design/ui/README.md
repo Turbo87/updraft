@@ -1,13 +1,13 @@
 # UI Design
 
-Updraft uses a map-first interface. The **Flight Deck** is the primary in-flight
+Updraft uses a map-first interface. The **Flight View** is the primary in-flight
 surface. Ground-oriented work such as planning, flight review, aircraft setup,
 and data management lives in separate screens. Terms used by these documents
 are defined in the [glossary](../../glossary.md).
 
 The detailed UI is split by responsibility:
 
-- [flight-deck.md](flight-deck.md): the map, navigation targets, Emergency mode,
+- [flight-view.md](flight-view.md): the map, navigation targets, Emergency mode,
   the Situation Bar, and map inspection
 - [warnings.md](warnings.md): warning presentation, acknowledgement,
   suppression, audio behavior, and native notifications
@@ -26,13 +26,13 @@ documents describe how the user sees and controls those systems.
 
 The app has two levels:
 
-1. The Flight Deck keeps the map and flight information immediately available.
+1. The Flight View keeps the map and flight information immediately available.
 2. Main Menu opens the rest of the app without destroying the current Flight
    Deck state.
 
 There is no persistent bottom navigation bar. A fixed Menu control opens Main
 Menu, and every screen has a Map control that returns directly to the preserved
-Flight Deck.
+Flight View.
 
 The app remains complete during flight. It may add contextual shortcuts for
 in-flight actions, but it does not hide or reorder normal destinations. Active
@@ -68,8 +68,8 @@ meaning.
 
 ## Open Prototype Decisions
 
-- **Launch behavior:** compare direct Flight Deck startup with a preflight
+- **Launch behavior:** compare direct Flight View startup with a preflight
   dashboard and a lightweight preflight overlay. An active flight always resumes
-  directly on the Flight Deck.
+  directly on the Flight View.
 - **Infobox geometry:** compare ordered reflow, a shared normalized grid, and a
   common dock geometry when mapping one layout between portrait and landscape.

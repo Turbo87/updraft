@@ -22,7 +22,7 @@ The page gesture follows the long axis of the dock:
 
 The gesture must begin inside the infobox dock. Gestures beginning on the map
 remain map gestures. After a successful swipe, a small non-clickable indicator
-such as `Thermal · 2/4` appears for about two seconds and fades. The Flight Deck
+such as `Thermal · 2/4` appears for about two seconds and fades. The Flight View
 has no permanent page arrows, page button, or clickable page indicator.
 
 Hardware-button page switching may be added later through configurable input
@@ -62,7 +62,7 @@ infoboxes on the selected page. Editing remains available in flight.
 
 During editing, the grid is visible and automatic page changes pause. Warnings
 remain visible. The editor has explicit Done and Cancel actions. After the pilot
-returns to the Flight Deck, the app reevaluates the current flight mode and may
+returns to the Flight View, the app reevaluates the current flight mode and may
 activate Thermal if a new circling episode requires it.
 
 One logical layout applies to portrait and landscape. A prototype must compare

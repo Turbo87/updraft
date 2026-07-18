@@ -12,5 +12,6 @@ tracing = "=0.1.44"
 updraft_core = { path = "../updraft_core" }
 
 [dev-dependencies]
+claims = "=0.8.0"
 updraft_geo = { path = "../updraft_geo" }
 updraft_units = { path = "../updraft_units" }

@@ -1,6 +1,5 @@
-use updraft_units::{Mass, Speed};
-
 use crate::PolarCoefficients;
+use updraft_units::{Mass, Speed};
 
 /// A glider's polar, adjusted for the current wing loading and bug
 /// contamination.

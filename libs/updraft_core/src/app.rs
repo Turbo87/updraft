@@ -1,8 +1,7 @@
-use std::time::Duration;
-
 use crate::flight::{self, Flight};
 use crate::protocol::{ComputeKind, ComputeResult, Input, Snapshot, Update};
 use crate::time::Timers;
+use std::time::Duration;
 
 /// A typed read-only request against current state.
 pub trait Query {

@@ -2,14 +2,13 @@
 //! ordering, slow-subscriber drops) and the worker lifecycle
 //! (panic-to-`ComputeFailed`, recovery, revision handling).
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
-
 use claims::{
     assert_err, assert_err_eq, assert_ge, assert_lt, assert_none, assert_ok, assert_some,
     assert_some_eq,
 };
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
     GetPosition, GetTraceStats, Observation as FlightObservation, PositionFix, TraceStats,

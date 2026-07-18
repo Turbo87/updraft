@@ -1,7 +1,6 @@
-use std::time::Duration;
-
 use crate::flight;
 use crate::job::ComputeRevision;
+use std::time::Duration;
 
 /// A recorded event or request that may change shared state.
 ///

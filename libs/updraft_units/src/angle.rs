@@ -1,7 +1,6 @@
+use crate::macros::impl_quantity_ops;
 use std::f64::consts::{PI, TAU};
 use std::fmt;
-
-use crate::macros::impl_quantity_ops;
 
 /// An angle (bearing, track, heading, …), stored internally in radians
 /// so that it can be used in calculations without conversions.

@@ -57,9 +57,8 @@ impl ComputeSlot {
 
 #[cfg(test)]
 mod tests {
-    use claims::{assert_none, assert_some_eq};
-
     use super::*;
+    use claims::{assert_none, assert_some_eq};
 
     #[test]
     fn job_lifecycle() {

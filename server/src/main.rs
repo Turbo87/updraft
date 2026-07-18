@@ -1,9 +1,8 @@
+use anyhow::Context;
+use clap::Parser;
 use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
-
-use anyhow::Context;
-use clap::Parser;
 use tokio::net::TcpListener;
 use updraft_core::App;
 
@@ -111,10 +110,9 @@ async fn shutdown_signal() {
 
 #[cfg(test)]
 mod tests {
+    use super::Args;
     use claims::assert_ok;
     use clap::Parser as _;
-
-    use super::Args;
 
     #[test]
     fn simulation_profile_is_enabled_by_flag() {

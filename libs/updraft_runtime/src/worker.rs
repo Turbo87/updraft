@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-
 use updraft_core::{ComputeJob, ComputeResult};
 
 /// Cooperative cancellation state for one running worker job.

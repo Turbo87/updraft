@@ -3,11 +3,10 @@
 //! don't cover the Windows Ctrl-C path.
 #![cfg(unix)]
 
+use claims::assert_some;
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
-
-use claims::assert_some;
 use tempfile::TempDir;
 
 /// Kills the server on drop so a failed assertion doesn't leak the process.

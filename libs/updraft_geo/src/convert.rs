@@ -9,9 +9,8 @@
 //! [`geo_types::Rect`] cannot represent a box crossing the
 //! antimeridian.
 
-use geo_types::{Coord, Point};
-
 use crate::LatLon;
+use geo_types::{Coord, Point};
 
 impl From<LatLon> for Coord {
     fn from(point: LatLon) -> Self {

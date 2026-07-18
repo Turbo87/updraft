@@ -3,17 +3,15 @@
 //! Trace statistics are computed asynchronously and invalidated when the
 //! trace is cleared.
 
-use std::time::Duration;
-
-use updraft_geo::LatLon;
-use updraft_units::{Angle, Length, MslAltitude, Speed};
-
 use crate::job::ComputeSlot;
 use crate::protocol::{
     Change as AppChange, ComputeCancellation, ComputeJob as AppComputeJob,
     ComputeKind as AppComputeKind, Effect, Update,
 };
 use crate::time::{Timer, Timers};
+use std::time::Duration;
+use updraft_geo::LatLon;
+use updraft_units::{Angle, Length, MslAltitude, Speed};
 
 /// Tuning knobs for the flight domain.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -401,9 +399,8 @@ impl Flight {
 
 #[cfg(test)]
 mod tests {
-    use claims::{assert_lt, assert_none, assert_some_eq};
-
     use super::*;
+    use claims::{assert_lt, assert_none, assert_some_eq};
 
     fn fix(latitude: f64, longitude: f64, altitude: Option<f64>) -> PositionFix {
         PositionFix {

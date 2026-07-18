@@ -84,8 +84,6 @@ macro_rules! impl_quantity_ops {
     };
 }
 
-pub(crate) use impl_quantity_ops;
-
 /// Implements `Debug` for a quantity as its inner SI value followed by a
 /// fixed unit suffix (e.g. `1234.5 m`). The formatter is forwarded, so a
 /// precision such as `{:.1?}` is honored.
@@ -101,3 +99,4 @@ macro_rules! impl_debug_with_unit {
 }
 
 pub(crate) use impl_debug_with_unit;
+pub(crate) use impl_quantity_ops;

@@ -1,9 +1,7 @@
-use std::path::{Path, PathBuf};
-
-use anyhow::Context as _;
-use ts_rs::TS as _;
-
 use super::{Change, Snapshot};
+use anyhow::Context as _;
+use std::path::{Path, PathBuf};
+use ts_rs::TS as _;
 
 /// Directory containing the TypeScript bindings committed for the frontend.
 pub fn committed_dir() -> PathBuf {
@@ -41,12 +39,10 @@ pub fn generate(output_dir: &Path) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use super::{committed_dir, generate};
+    use claims::{assert_ok, assert_ok_eq, assert_some};
     use std::collections::BTreeMap;
     use std::path::Path;
-
-    use claims::{assert_ok, assert_ok_eq, assert_some};
-
-    use super::{committed_dir, generate};
 
     const REGENERATE_COMMAND: &str =
         "cargo run -p updraft_server --features ts --example generate_protocol_bindings";

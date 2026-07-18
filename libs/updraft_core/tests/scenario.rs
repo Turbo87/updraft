@@ -1,9 +1,8 @@
 //! Whole-flight scenario tests: a plain loop over `App::handle()` with no
 //! async runtime, sleeps, or wall clock.
 
-use std::time::Duration;
-
 use claims::{assert_matches, assert_none, assert_some, assert_some_eq};
+use std::time::Duration;
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeJob as FlightComputeJob,
     ComputeKind as FlightComputeKind, ComputeResult as FlightComputeResult, GetPosition,

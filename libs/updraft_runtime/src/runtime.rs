@@ -1,3 +1,6 @@
+use crate::clock::Clock;
+use crate::metrics::Metrics;
+use crate::worker::{CancellationToken, Worker, WorkerResult};
 use std::collections::{HashMap, VecDeque};
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
@@ -6,15 +9,10 @@ use std::sync::mpsc::{channel, sync_channel};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
-
 use updraft_core::{
     App, Change, ChangeGroup, ComputeCancellation, ComputeFailure, ComputeJob, ComputeKind, Effect,
     Input, Query, Snapshot,
 };
-
-use crate::clock::Clock;
-use crate::metrics::Metrics;
-use crate::worker::{CancellationToken, Worker, WorkerResult};
 
 /// Everything the core loop accepts from the outside.
 ///

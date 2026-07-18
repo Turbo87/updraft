@@ -1,6 +1,5 @@
-use updraft_units::{Area, Mass};
-
 use crate::{GlidePolar, PolarCoefficients};
+use updraft_units::{Area, Mass};
 
 /// A glider from the built-in polar library.
 #[derive(Clone, Copy, Debug, PartialEq)]

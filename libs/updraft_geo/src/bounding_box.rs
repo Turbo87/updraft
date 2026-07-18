@@ -1,6 +1,5 @@
-use updraft_units::Angle;
-
 use crate::LatLon;
+use updraft_units::Angle;
 
 /// A latitude/longitude-aligned bounding box, possibly crossing the
 /// antimeridian.

@@ -1,11 +1,10 @@
-use std::time::Duration;
-use std::{sync::mpsc, thread};
-
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use claims::{assert_none, assert_ok, assert_ok_eq, assert_some};
 use futures_util::FutureExt;
 use http_body_util::BodyExt;
+use std::time::Duration;
+use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
 use updraft_core::flight::{Input as FlightInput, Observation, PositionFix};

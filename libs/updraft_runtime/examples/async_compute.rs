@@ -12,7 +12,6 @@
 
 use std::thread;
 use std::time::Duration;
-
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
     Observation as FlightObservation, PositionFix,

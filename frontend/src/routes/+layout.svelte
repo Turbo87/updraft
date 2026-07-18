@@ -6,8 +6,7 @@
   import { page } from '$app/state';
 
   import favicon from '$lib/assets/favicon.svg';
-  import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
-  import Map from '$lib/map/Map.svelte';
+  import FlightView from '$lib/flight-view/FlightView.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { HttpUpdraftClient } from '$lib/protocol/client';
   import { ApplicationState } from '$lib/protocol/state.svelte';
@@ -30,12 +29,7 @@
 </svelte:head>
 
 <div class="app">
-  <div class="map">
-    <Map position={state.flight.position} {testMode} />
-  </div>
-  <div class="overlay">
-    <LocaleSwitcher />
-  </div>
+  <FlightView position={state.flight.position} {testMode} />
   {#if page.url.pathname !== '/'}
     <div class="route-content">
       {@render children()}
@@ -45,15 +39,8 @@
 
 <style>
   .app,
-  .map,
   .route-content {
     position: absolute;
     inset: 0;
-  }
-
-  .overlay {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
   }
 </style>

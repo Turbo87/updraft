@@ -394,25 +394,18 @@ fn slow_subscriber_is_dropped() {
     let handle = runtime.handle();
 
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    for i in 0..10 {
-        submit_fix(&handle, 50. + f64::from(i) * 0.01);
-    }
+    submit_fix(&handle, 50.);
+    let latest = submit_fix(&handle, 50.01);
 
-    // Without reading, the one-batch buffer overflows and the runtime
-    // drops the subscription: the receiver disconnects after the batches
-    // that fit.
-    let deadline = Instant::now() + TIMEOUT;
-    loop {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        match subscription.changes.recv_timeout(remaining) {
-            Ok(_) => continue,
-            Err(err) => {
-                assert_eq!(err, std::sync::mpsc::RecvTimeoutError::Disconnected);
-                break;
-            }
-        }
-    }
-    assert_ge!(handle.metrics().slow_subscriber_drops(), 1);
+    // The query is ordered behind both fixes on the same queue, so its
+    // response proves that the one-batch buffer overflowed while unread.
+    assert_some_eq!(assert_ok!(handle.query(GetPosition)), latest);
+    assert_ok!(subscription.changes.try_recv());
+    assert_err_eq!(
+        subscription.changes.try_recv(),
+        std::sync::mpsc::TryRecvError::Disconnected
+    );
+    assert_eq!(handle.metrics().slow_subscriber_drops(), 1);
 
     // Reconnect is resubscribe: a fresh subscription works and starts
     // from a fresh snapshot.

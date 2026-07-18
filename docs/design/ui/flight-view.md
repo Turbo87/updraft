@@ -56,11 +56,10 @@ are not rendered by the application.
 Barlow is the application typeface. Flight View numeric values use Barlow Semi
 Condensed with tabular figures so changing values retain stable geometry.
 
-The frontend formatting boundary remains open for a focused prototype. One
-variant supplies display-ready values and units to components. The other
-supplies semantic measurements and directions that shared frontend utilities
-format for display. The comparison covers unit changes, localization,
-responsive abbreviation, stale values, reuse, and test clarity.
+## Formatting Boundary
+
+Numeric values remain in canonical units until Flight View components convert
+them to the selected units and format them for the active locale.
 
 ## Presentation State
 

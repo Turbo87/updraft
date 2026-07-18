@@ -52,16 +52,18 @@ impl Timers {
 
 #[cfg(test)]
 mod tests {
+    use claims::{assert_none, assert_some_eq};
+
     use super::*;
 
     #[test]
     fn timer_queue() {
         let mut timers = Timers::default();
-        assert_eq!(timers.next_deadline(), None);
+        assert_none!(timers.next_deadline());
 
         timers.schedule(Timer::TraceStats, Duration::from_micros(100));
         assert!(timers.is_scheduled(Timer::TraceStats));
-        assert_eq!(timers.next_deadline(), Some(Duration::from_micros(100)));
+        assert_some_eq!(timers.next_deadline(), Duration::from_micros(100));
 
         assert_eq!(timers.take_due(Duration::from_micros(99)), vec![]);
         assert_eq!(
@@ -69,10 +71,10 @@ mod tests {
             vec![Timer::TraceStats]
         );
         assert!(!timers.is_scheduled(Timer::TraceStats));
-        assert_eq!(timers.next_deadline(), None);
+        assert_none!(timers.next_deadline());
 
         timers.schedule(Timer::TraceStats, Duration::from_micros(200));
         timers.cancel(Timer::TraceStats);
-        assert_eq!(timers.next_deadline(), None);
+        assert_none!(timers.next_deadline());
     }
 }

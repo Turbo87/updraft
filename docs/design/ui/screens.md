@@ -1,6 +1,6 @@
 # Main Menu and Screens
 
-Main Menu is the stable entry point to everything outside the Flight Deck. It
+Main Menu is the stable entry point to everything outside the Flight View. It
 opens fullscreen without discarding the map position, focused target, infobox
 page, or temporary flight state behind it.
 
@@ -8,16 +8,16 @@ page, or temporary flight state behind it.
 
 Cold-start behavior remains an open prototype decision:
 
-- Open the Flight Deck directly.
+- Open the Flight View directly.
 - Show a preflight dashboard when no flight is active.
-- Show a lightweight preflight overlay over the Flight Deck.
+- Show a lightweight preflight overlay over the Flight View.
 
 A preflight surface may select the aircraft, task, device setup, and recording
 state before flight. It is a preparation surface, not the primary app
-navigation. If a flight is already active, the app resumes the Flight Deck
+navigation. If a flight is already active, the app resumes the Flight View
 directly.
 
-Direct Flight Deck startup is the smallest initial implementation. The data
+Direct Flight View startup is the smallest initial implementation. The data
 model must still avoid assuming that the last aircraft is always correct.
 
 ## Main Menu
@@ -43,10 +43,10 @@ complete app.
 
 Every screen header contains Back, Map, its title, and local actions. Back
 follows the current screen hierarchy. Map returns directly to the preserved
-Flight Deck. An active warning replaces the Map icon with a warning icon and
+Flight View. An active warning replaces the Map icon with a warning icon and
 applies the warning severity color without changing the control's action or
 size. Collision warnings also appear directly below the header as defined in
-[warnings.md](warnings.md). Opening Main Menu from the Flight Deck always shows
+[warnings.md](warnings.md). Opening Main Menu from the Flight View always shows
 its root.
 
 ## Screen Responsibilities

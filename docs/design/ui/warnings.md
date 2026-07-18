@@ -27,14 +27,14 @@ actions replace target switching. Removing the warning restores the target and
 its gestures.
 
 Acknowledged or suppressed warnings disappear completely until they become
-relevant again. They do not remain as muted entries on the Flight Deck.
+relevant again. They do not remain as muted entries on the Flight View.
 
 ## Screens
 
 An active unacknowledged warning changes the existing Map control in every
 screen. Its map icon becomes a warning triangle and the control uses the highest
 active warning's severity color. It has no warning counter. Its position, size,
-and action do not change. Tapping it returns to the Flight Deck, where the full
+and action do not change. Tapping it returns to the Flight View, where the full
 warning appears in the Situation Bar.
 
 Collision warnings require immediate attention and remain fully visible in
@@ -43,7 +43,7 @@ overlay directly below the screen header. It does not move the
 underlying controls and blocks touches from passing through to covered content.
 The header and warning-aware Map control remain visible above it.
 
-Tapping the collision-warning body returns to the Flight Deck with that traffic
+Tapping the collision-warning body returns to the Flight View with that traffic
 target emphasized. Tapping `✓` acknowledges it without leaving the screen.
 The warning then disappears until new or worsening collision danger makes it
 relevant again.
@@ -62,7 +62,7 @@ notifications for warnings that are already active.
 
 The notification mirrors the existing core warning rather than creating a
 second warning state. Its identity updates or replaces an existing notification
-instead of producing duplicates. Tapping it opens the Flight Deck with that
+instead of producing duplicates. Tapping it opens the Flight View with that
 warning selected. Acknowledging, suppressing, or clearing the warning removes
 the corresponding notification where the platform permits.
 

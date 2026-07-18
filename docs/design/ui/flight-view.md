@@ -1,6 +1,6 @@
-# Flight Deck
+# Flight View
 
-The Flight Deck is Updraft's primary in-flight surface. The moving map is its
+The Flight View is Updraft's primary in-flight surface. The moving map is its
 base content. A fixed Menu control, the Situation Bar, map controls, and the
 infobox dock frame it without turning the map into a collection of permanent
 toolbars.
@@ -53,7 +53,7 @@ are not rendered by the application.
 
 ## Typography
 
-Barlow is the application typeface. Flight Deck numeric values use Barlow Semi
+Barlow is the application typeface. Flight View numeric values use Barlow Semi
 Condensed with tabular figures so changing values retain stable geometry.
 
 The frontend formatting boundary remains open for a focused prototype. One
@@ -66,7 +66,7 @@ responsive abbreviation, stale values, reuse, and test clarity.
 
 Navigation, warnings, infobox pages, traffic, map interaction, and temporary
 panels are independent presentation concerns rather than mutually exclusive
-Flight Deck modes. They may appear in combination, such as a warning over a
+Flight View modes. They may appear in combination, such as a warning over a
 Thermal infobox page while traffic remains on the map.
 
 Visual components receive these concerns through properties and expose user

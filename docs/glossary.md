@@ -11,13 +11,13 @@
 - **Emergency mode**: the navigation-target mode that shows up to three suitable landables and highlights the one currently selected.
 - **FLARM**: collision-warning system ubiquitous in European gliding.
 - **FL (Flight Level)**: pressure altitude in hundreds of feet referenced to 1013.25 hPa.
-- **Flight Deck**: the primary in-flight UI containing the map, Situation Bar, infoboxes, and flight controls.
+- **Flight View**: the primary in-flight UI containing the map, Situation Bar, infoboxes, and flight controls.
 - **Focused target**: the one active navigation target that currently drives guidance, calculations, and target-dependent infoboxes.
 - **IGC file**: FAI-standardized flight log format.
 - **Infobox**: a configurable cell that shows flight information or provides a small, focused control. Its content is not limited to navigation.
 - **MacCready**: speed-to-fly theory parameter (expected climb rate).
 - **Map inspector**: the UI opened by tapping the map to inspect a selected position and any nearby objects.
-- **Main Menu**: the full-screen root for screens outside the Flight Deck, opened by the Flight Deck's Menu control.
+- **Main Menu**: the full-screen root for screens outside the Flight View, opened by the Flight View's Menu control.
 - **NMEA**: serial sentence protocol used by GPS and avionics devices, extended by vendors with proprietary `$P...` sentences.
 - **OGN**: Open Glider Network, crowd-sourced ground-station network for glider position tracking via FLARM.
 - **OpenAir**: de-facto standard airspace text format.
@@ -27,5 +27,5 @@
 - **QNH**: local sea-level pressure setting. makes the altimeter read altitude AMSL.
 - **Reach polygon**: area reachable in glide from current position, terrain-aware.
 - **Screen**: a full-screen destination opened from Main Menu, such as Devices or Flight Review.
-- **Situation Bar**: the fixed Flight Deck region that normally shows the focused target and is temporarily replaced by the highest-priority warning.
+- **Situation Bar**: the fixed Flight View region that normally shows the focused target and is temporarily replaced by the highest-priority warning.
 - **SPP**: Bluetooth Serial Port Profile (classic Bluetooth serial).

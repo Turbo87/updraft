@@ -1,7 +1,7 @@
 //! Geoid undulation lookup over the 1° grid embedded in the binary.
 
 use updraft_geo::LatLon;
-use updraft_units::Length;
+use updraft_units::{EllipsoidAltitude, Length, MslAltitude};
 
 /// Embedded 1° geoid-undulation grid: signed whole-metre samples of the
 /// EGM96 geoid height above the WGS84 ellipsoid, row-major, [`ROWS`] rows
@@ -67,14 +67,14 @@ pub fn undulation(position: LatLon) -> Length {
 
 /// Convert a WGS84-ellipsoidal height to MSL (orthometric) height at
 /// `position`: `msl = ellipsoidal − N`.
-pub fn ellipsoidal_to_msl(position: LatLon, ellipsoidal: Length) -> Length {
-    ellipsoidal - undulation(position)
+pub fn ellipsoidal_to_msl(position: LatLon, ellipsoidal: EllipsoidAltitude) -> MslAltitude {
+    MslAltitude::new(ellipsoidal.into_inner() - undulation(position))
 }
 
 /// Convert an MSL (orthometric) height to WGS84-ellipsoidal height at
 /// `position`: `ellipsoidal = msl + N`.
-pub fn msl_to_ellipsoidal(position: LatLon, msl: Length) -> Length {
-    msl + undulation(position)
+pub fn msl_to_ellipsoidal(position: LatLon, msl: MslAltitude) -> EllipsoidAltitude {
+    EllipsoidAltitude::new(msl.into_inner() + undulation(position))
 }
 
 #[cfg(test)]
@@ -132,11 +132,11 @@ mod tests {
     #[test]
     fn conversions_are_inverse() {
         let pos = LatLon::from_degrees(52.0, 7.0);
-        let ellipsoidal = Length::from_meters(1000.0);
+        let ellipsoidal = EllipsoidAltitude::new(Length::from_meters(1000.0));
         let msl = ellipsoidal_to_msl(pos, ellipsoidal);
 
         // Germany's undulation is positive, so MSL sits below ellipsoidal.
-        assert_relative_eq!(msl, Length::from_meters(956.0));
+        assert_relative_eq!(msl.into_inner(), Length::from_meters(956.0));
         assert_relative_eq!(msl_to_ellipsoidal(pos, msl), ellipsoidal);
     }
 }

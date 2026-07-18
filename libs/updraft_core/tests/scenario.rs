@@ -3,6 +3,7 @@
 
 use std::time::Duration;
 
+use claims::{assert_matches, assert_none, assert_some, assert_some_eq};
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeJob as FlightComputeJob,
     ComputeKind as FlightComputeKind, ComputeResult as FlightComputeResult, GetPosition,
@@ -27,7 +28,7 @@ fn app_routes_flight_protocol_through_the_flight_domain() {
         update.changes,
         vec![Change::Flight(updraft_core::flight::Change::Position(fix))]
     );
-    assert_eq!(app.query(GetPosition), Some(fix));
+    assert_some_eq!(app.query(GetPosition), fix);
     assert_eq!(
         app.snapshot().flight,
         updraft_core::flight::Snapshot {
@@ -79,30 +80,27 @@ fn trace_stats_compute_lifecycle() {
     // The first fix updates the position and immediately starts a
     // trace-statistics job (nothing ran before, so no throttling).
     let update = app.handle(position_input(0., 50., 6.));
-    assert_eq!(update.changes.len(), 1);
-    assert!(matches!(
-        update.changes[0],
-        Change::Flight(FlightChange::Position(_))
-    ));
-    let job = compute_job(&update)
-        .expect("first fix starts a job")
-        .clone();
+    assert_matches!(
+        update.changes.as_slice(),
+        [Change::Flight(FlightChange::Position(_))]
+    );
+    let job = assert_some!(compute_job(&update), "first fix starts a job").clone();
     let ComputeJob::Flight(FlightComputeJob::TraceStats {
         revision,
         ref fixes,
     }) = job;
     assert_eq!(fixes.len(), 1);
     // The job is running, nothing further is requested yet.
-    assert_eq!(update.next_deadline, None);
+    assert_none!(update.next_deadline);
 
     // A second fix while the job runs only marks the slot pending.
     let update = app.handle(position_input(0.2, 50.01, 6.));
-    assert!(matches!(
+    assert_matches!(
         update.changes.as_slice(),
         [Change::Flight(FlightChange::Position(_))]
-    ));
+    );
     assert_eq!(update.effects, vec![]);
-    assert_eq!(update.next_deadline, None);
+    assert_none!(update.next_deadline);
 
     // The worker result applies and schedules the next start five
     // seconds after the previous one.
@@ -115,14 +113,12 @@ fn trace_stats_compute_lifecycle() {
         vec![Change::Flight(FlightChange::TraceStats(Some(stats)))],
         "current-revision result becomes a change"
     );
-    assert_eq!(update.next_deadline, Some(at(5.)));
-    assert_eq!(app.query(GetTraceStats), Some(stats));
+    assert_some_eq!(update.next_deadline, at(5.));
+    assert_some_eq!(app.query(GetTraceStats), stats);
 
     // The clock reaching the deadline starts the next job over both fixes.
     let update = app.handle(Input::Clock { clock_time: at(5.) });
-    let job = compute_job(&update)
-        .expect("timer starts the next job")
-        .clone();
+    let job = assert_some!(compute_job(&update), "timer starts the next job").clone();
     let ComputeJob::Flight(FlightComputeJob::TraceStats {
         revision: second_revision,
         ref fixes,
@@ -137,21 +133,21 @@ fn trace_stats_compute_lifecycle() {
         update.changes,
         vec![Change::Flight(FlightChange::TraceStats(None))]
     );
-    assert_eq!(update.next_deadline, None);
+    assert_none!(update.next_deadline);
 
     // The stale result is rejected: no change, state stays cleared.
     let update = app.handle(Input::ComputeResult(job.run()));
     assert_eq!(update.changes, vec![]);
-    assert_eq!(app.query(GetTraceStats), None);
+    assert_none!(app.query(GetTraceStats));
 
     // A fresh fix starts over under the new revision, throttled to five
     // seconds after the previous start.
     let update = app.handle(position_input(5.5, 51., 6.));
-    assert_eq!(update.next_deadline, Some(at(10.)));
+    assert_some_eq!(update.next_deadline, at(10.));
     let update = app.handle(Input::Clock {
         clock_time: at(10.),
     });
-    let job = compute_job(&update).expect("job starts under the new revision");
+    let job = assert_some!(compute_job(&update), "job starts under the new revision");
     let ComputeJob::Flight(FlightComputeJob::TraceStats {
         revision: new_revision,
         fixes,
@@ -169,15 +165,13 @@ fn stats_interval_is_configurable() {
     });
 
     let update = app.handle(position_input(0., 50., 6.));
-    let job = compute_job(&update)
-        .expect("first fix starts a job")
-        .clone();
+    let job = assert_some!(compute_job(&update), "first fix starts a job").clone();
     app.handle(position_input(0.02, 50.01, 6.));
 
     // The result schedules the next start at the configured interval
     // instead of the five-second default.
     let update = app.handle(Input::ComputeResult(job.run()));
-    assert_eq!(update.next_deadline, Some(at(0.1)));
+    assert_some_eq!(update.next_deadline, at(0.1));
 }
 
 #[test]
@@ -185,9 +179,7 @@ fn compute_failure_frees_the_slot() {
     let mut app = App::new();
 
     let update = app.handle(position_input(0., 50., 6.));
-    let job = compute_job(&update)
-        .expect("first fix starts a job")
-        .clone();
+    let job = assert_some!(compute_job(&update), "first fix starts a job").clone();
 
     // More work arrives while the job runs, then the job fails.
     app.handle(position_input(0.5, 50.01, 6.));
@@ -199,9 +191,9 @@ fn compute_failure_frees_the_slot() {
 
     // No change is published, but the pending request reschedules.
     assert_eq!(update.changes, vec![]);
-    assert_eq!(update.next_deadline, Some(at(5.)));
+    assert_some_eq!(update.next_deadline, at(5.));
     let update = app.handle(Input::Clock { clock_time: at(5.) });
-    assert!(compute_job(&update).is_some(), "the slot accepts a new job");
+    assert_some!(compute_job(&update), "the slot accepts a new job");
 }
 
 #[test]
@@ -211,14 +203,14 @@ fn fix_after_the_interval_starts_a_job_without_waiting() {
     // The first fix starts and completes a job, leaving the slot idle with
     // its last start five seconds before the next fix.
     let update = app.handle(position_input(0., 50., 6.));
-    let job = compute_job(&update).unwrap().clone();
+    let job = assert_some!(compute_job(&update)).clone();
     app.handle(Input::ComputeResult(job.run()));
 
     // A fix arriving after the throttle interval has already elapsed starts
     // the next job in the same handle() call, with no throttle wait.
     let update = app.handle(position_input(10., 50.1, 6.));
-    assert!(compute_job(&update).is_some(), "the job starts immediately");
-    assert_eq!(update.next_deadline, None);
+    assert_some!(compute_job(&update), "the job starts immediately");
+    assert_none!(update.next_deadline);
 }
 
 #[test]
@@ -228,14 +220,10 @@ fn clearing_the_trace_cancels_a_pending_stats_timer() {
     // Run one job to completion with a second fix pending, so the result
     // arms the next start as an unfired throttle timer.
     let update = app.handle(position_input(0., 50., 6.));
-    let job = compute_job(&update).unwrap().clone();
+    let job = assert_some!(compute_job(&update)).clone();
     app.handle(position_input(0.2, 50.01, 6.));
     let update = app.handle(Input::ComputeResult(job.run()));
-    assert_eq!(
-        update.next_deadline,
-        Some(at(5.)),
-        "throttle timer is armed"
-    );
+    assert_some_eq!(update.next_deadline, at(5.), "throttle timer is armed");
 
     // Clearing the trace before that timer fires must cancel it, not leave a
     // stale deadline that would wake the runtime for nothing.
@@ -244,7 +232,7 @@ fn clearing_the_trace_cancels_a_pending_stats_timer() {
         update.changes,
         vec![Change::Flight(FlightChange::TraceStats(None))]
     );
-    assert_eq!(update.next_deadline, None);
+    assert_none!(update.next_deadline);
 }
 
 #[test]
@@ -253,7 +241,7 @@ fn stale_result_frees_the_slot_for_new_revision_work() {
 
     // Start a job, then clear the trace so the running job's revision is stale.
     let update = app.handle(position_input(0., 50., 6.));
-    let job = compute_job(&update).unwrap().clone();
+    let job = assert_some!(compute_job(&update)).clone();
     app.handle(clear_trace_input());
 
     // New work arrives under the new revision while the stale job is still out.
@@ -263,10 +251,10 @@ fn stale_result_frees_the_slot_for_new_revision_work() {
     // pending new-revision request gets scheduled.
     let update = app.handle(Input::ComputeResult(job.run()));
     assert_eq!(update.changes, vec![]);
-    assert_eq!(update.next_deadline, Some(at(5.)));
+    assert_some_eq!(update.next_deadline, at(5.));
 
     let update = app.handle(Input::Clock { clock_time: at(5.) });
-    let job = compute_job(&update).expect("new-revision job starts");
+    let job = assert_some!(compute_job(&update), "new-revision job starts");
     let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) = job;
     assert_eq!(fixes.len(), 1, "only the post-clear fix is included");
 }
@@ -277,12 +265,12 @@ fn snapshot_reflects_current_shared_state() {
     assert_eq!(app.snapshot(), updraft_core::Snapshot::default());
 
     let update = app.handle(position_input(0., 50., 6.));
-    let job = compute_job(&update).unwrap().clone();
+    let job = assert_some!(compute_job(&update)).clone();
     app.handle(Input::ComputeResult(job.run()));
 
     let snapshot = app.snapshot();
-    assert_eq!(snapshot.flight.position, Some(fix(0., 50., 6.)));
-    let stats = snapshot.flight.trace_stats.expect("stats are shared state");
+    assert_some_eq!(snapshot.flight.position, fix(0., 50., 6.));
+    let stats = assert_some!(snapshot.flight.trace_stats, "stats are shared state");
     assert_eq!(stats.fix_count, 1);
 }
 

@@ -57,6 +57,8 @@ impl ComputeSlot {
 
 #[cfg(test)]
 mod tests {
+    use claims::{assert_none, assert_some_eq};
+
     use super::*;
 
     #[test]
@@ -85,7 +87,7 @@ mod tests {
 
         // Invalidating before the job ever starts drops the pending request
         // so nothing runs over the now-stale state.
-        let _ = slot.invalidate();
+        assert_none!(slot.invalidate());
         assert!(!slot.wants_start());
 
         // A fresh request still runs under the new revision.
@@ -100,7 +102,7 @@ mod tests {
         slot.request();
         let revision = slot.start();
 
-        let _ = slot.invalidate();
+        assert_some_eq!(slot.invalidate(), revision);
         assert!(!slot.finish(revision));
         assert!(!slot.wants_start());
 

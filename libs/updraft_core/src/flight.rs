@@ -401,6 +401,8 @@ impl Flight {
 
 #[cfg(test)]
 mod tests {
+    use claims::{assert_lt, assert_none, assert_some_eq};
+
     use super::*;
 
     fn fix(latitude: f64, longitude: f64, altitude: Option<f64>) -> PositionFix {
@@ -418,7 +420,7 @@ mod tests {
         let stats = trace_stats(&[]);
         assert_eq!(stats.fix_count, 0);
         assert_eq!(stats.distance, Length::ZERO);
-        assert_eq!(stats.max_altitude, None);
+        assert_none!(stats.max_altitude);
     }
 
     #[test]
@@ -431,10 +433,10 @@ mod tests {
         ];
         let stats = trace_stats(&fixes);
         assert_eq!(stats.fix_count, 3);
-        assert!((stats.distance.as_kilometers() - 222.6).abs() < 1.);
-        assert_eq!(
+        assert_lt!((stats.distance.as_kilometers() - 222.6).abs(), 1.);
+        assert_some_eq!(
             stats.max_altitude,
-            Some(MslAltitude::new(Length::from_meters(1500.)))
+            MslAltitude::new(Length::from_meters(1500.))
         );
     }
 
@@ -442,10 +444,10 @@ mod tests {
     fn input_reports_observation_time() {
         let position = fix(50., 6., Some(1000.));
 
-        assert_eq!(
+        assert_some_eq!(
             Input::Observation(Observation::Position(position)).observed_at(),
-            Some(position.observed_at)
+            position.observed_at
         );
-        assert_eq!(Input::Command(Command::ClearTrace).observed_at(), None);
+        assert_none!(Input::Command(Command::ClearTrace).observed_at());
     }
 }

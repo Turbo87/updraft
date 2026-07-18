@@ -10,3 +10,6 @@ workspace = true
 [dependencies]
 updraft_geo = { path = "../updraft_geo" }
 updraft_units = { path = "../updraft_units" }
+
+[dev-dependencies]
+claims = "=0.8.0"

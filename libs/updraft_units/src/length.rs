@@ -7,7 +7,9 @@ pub(crate) const METERS_PER_STATUTE_MILE: f64 = 1609.344;
 
 /// A length, stored internally in meters.
 ///
-/// Used for distances, altitudes, and heights alike.
+/// Use [`crate::MslAltitude`] for absolute mean-sea-level altitudes. `Length`
+/// remains appropriate for distances, height differences, and geoid
+/// undulation.
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
 #[cfg_attr(any(test, feature = "approx"), derive(approx::RelativeEq))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

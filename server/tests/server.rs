@@ -8,11 +8,11 @@ use futures_util::FutureExt;
 use http_body_util::BodyExt;
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::flight::{Input as FlightInput, MslAltitude, Observation, PositionFix};
+use updraft_core::flight::{Input as FlightInput, Observation, PositionFix};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::Runtime;
-use updraft_units::{Angle, Length, Speed};
+use updraft_units::{Angle, Length, MslAltitude, Speed};
 
 const INDEX_HTML: &str = "<!doctype html><title>updraft fixture</title>";
 const SIMULATED_POSITION: &str = r#"{"observedAtMs":2500,"latitudeDegrees":50.824,"longitudeDegrees":6.187,"altitudeMeters":410.5,"trackDegrees":90,"groundSpeedMetersPerSecond":31}"#;

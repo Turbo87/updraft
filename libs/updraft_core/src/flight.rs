@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use updraft_geo::LatLon;
-use updraft_units::{Angle, Length, Speed};
+use updraft_units::{Angle, Length, MslAltitude, Speed};
 
 use crate::job::ComputeSlot;
 use crate::protocol::{
@@ -14,22 +14,6 @@ use crate::protocol::{
     ComputeKind as AppComputeKind, Effect, Update,
 };
 use crate::time::{Timer, Timers};
-
-/// An altitude above mean sea level.
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct MslAltitude(Length);
-
-impl MslAltitude {
-    pub const ZERO: Self = Self(Length::ZERO);
-
-    pub const fn new(length: Length) -> Self {
-        Self(length)
-    }
-
-    pub const fn length(self) -> Length {
-        self.0
-    }
-}
 
 /// Tuning knobs for the flight domain.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

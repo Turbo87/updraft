@@ -96,7 +96,7 @@ impl TryFrom<PositionFix> for updraft_core::flight::PositionFix {
                 fix.longitude_degrees,
             ),
             altitude: fix.altitude_meters.map(|meters| {
-                updraft_core::flight::MslAltitude::new(updraft_units::Length::from_meters(meters))
+                updraft_units::MslAltitude::new(updraft_units::Length::from_meters(meters))
             }),
             track: fix.track_degrees.map(updraft_units::Angle::from_degrees),
             ground_speed: fix

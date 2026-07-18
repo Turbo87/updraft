@@ -15,12 +15,12 @@ use std::time::Duration;
 
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
-    MslAltitude, Observation as FlightObservation, PositionFix,
+    Observation as FlightObservation, PositionFix,
 };
 use updraft_core::{App, Change, ComputeKind, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
-use updraft_units::{Angle, Length, Speed};
+use updraft_units::{Angle, Length, MslAltitude, Speed};
 
 fn main() {
     let runtime = Runtime::builder(App::new())

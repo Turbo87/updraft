@@ -29,7 +29,7 @@ mod mass;
 mod pressure;
 mod speed;
 
-pub use altitude::{EllipsoidAltitude, MslAltitude};
+pub use altitude::{EllipsoidAltitude, MslAltitude, PressureAltitude};
 pub use angle::Angle;
 pub use area::Area;
 pub use length::Length;

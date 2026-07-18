@@ -15,7 +15,7 @@ impl MslAltitude {
         Self(length)
     }
 
-    pub const fn length(self) -> Length {
+    pub const fn into_inner(self) -> Length {
         self.0
     }
 }

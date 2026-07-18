@@ -63,7 +63,7 @@ fn main() {
                         "position: {:7.4}° {:7.4}° at {:6.1?}",
                         fix.position.latitude().as_degrees(),
                         fix.position.longitude().as_degrees(),
-                        fix.altitude.unwrap_or(MslAltitude::ZERO).length(),
+                        fix.altitude.unwrap_or(MslAltitude::ZERO).into_inner(),
                     );
                 }
                 Change::Flight(FlightChange::TraceStats(Some(stats))) => {
@@ -71,7 +71,7 @@ fn main() {
                         "trace stats (from the worker): {} fixes, {:.2} km flown, max {:.0?}",
                         stats.fix_count,
                         stats.distance.as_kilometers(),
-                        stats.max_altitude.unwrap_or(MslAltitude::ZERO).length(),
+                        stats.max_altitude.unwrap_or(MslAltitude::ZERO).into_inner(),
                     );
                 }
                 Change::Flight(FlightChange::TraceStats(None)) => {

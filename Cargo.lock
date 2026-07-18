@@ -4888,6 +4888,7 @@ dependencies = [
 name = "updraft_runtime"
 version = "0.0.0"
 dependencies = [
+ "claims",
  "tracing",
  "updraft_core",
  "updraft_geo",

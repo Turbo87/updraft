@@ -6,6 +6,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
+use claims::{
+    assert_err, assert_err_eq, assert_ge, assert_lt, assert_none, assert_ok, assert_some,
+    assert_some_eq,
+};
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
     GetPosition, GetTraceStats, Observation as FlightObservation, PositionFix, TraceStats,
@@ -24,15 +28,15 @@ fn subscription_omits_unselected_change_groups() {
         .worker(trace_stats_kind(), PureWorker)
         .start();
     let handle = runtime.handle();
-    let subscription = handle.subscribe(ChangeFilter::only([])).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::only([])));
 
     let fix = submit_fix(&handle, 50.);
-    assert_eq!(handle.query(GetPosition).unwrap(), Some(fix));
+    assert_some_eq!(assert_ok!(handle.query(GetPosition)), fix);
 
     // The query proves that the fix was handled before this check.
-    assert_eq!(
+    assert_err_eq!(
         subscription.changes.try_recv(),
-        Err(std::sync::mpsc::TryRecvError::Empty)
+        std::sync::mpsc::TryRecvError::Empty
     );
     assert_eq!(handle.metrics().slow_subscriber_drops(), 0);
     runtime.shutdown();
@@ -46,15 +50,17 @@ fn runtime_records_queue_and_handler_measurements() {
     let handle = runtime.handle();
 
     submit_fix(&handle, 50.);
-    handle
-        .query(GetPosition)
-        .expect("query orders measurement after the input");
+    assert_ok!(
+        handle.query(GetPosition),
+        "query orders measurement after the input"
+    );
 
-    assert!(handle.metrics().max_pending_messages() >= 1);
-    assert!(handle.metrics().queue_wait_samples() >= 2);
-    assert!(handle.metrics().inputs_handled() >= 1);
-    assert!(
-        handle.metrics().total_handler_time() >= handle.metrics().max_handler_time(),
+    assert_ge!(handle.metrics().max_pending_messages(), 1);
+    assert_ge!(handle.metrics().queue_wait_samples(), 2);
+    assert_ge!(handle.metrics().inputs_handled(), 1);
+    assert_ge!(
+        handle.metrics().total_handler_time(),
+        handle.metrics().max_handler_time(),
         "the maximum handler duration is part of the total"
     );
     runtime.shutdown();
@@ -70,11 +76,11 @@ impl Worker for CancelsFirstJob {
     fn run(&mut self, job: ComputeJob, cancellation: &CancellationToken) -> WorkerResult {
         if self.first {
             self.first = false;
-            self.started.send(()).unwrap();
+            assert_ok!(self.started.send(()));
             while !cancellation.is_cancelled() {
                 std::thread::yield_now();
             }
-            self.cancelled.send(()).unwrap();
+            assert_ok!(self.cancelled.send(()));
             WorkerResult::Cancelled
         } else {
             WorkerResult::Completed(job.run())
@@ -89,8 +95,8 @@ struct NonCooperativeWorker {
 
 impl Worker for NonCooperativeWorker {
     fn run(&mut self, job: ComputeJob, _cancellation: &CancellationToken) -> WorkerResult {
-        self.started.send(()).unwrap();
-        self.release.recv().unwrap();
+        assert_ok!(self.started.send(()));
+        assert_ok!(self.release.recv());
         WorkerResult::Completed(job.run())
     }
 }
@@ -112,13 +118,13 @@ struct ShutdownProbe {
 
 impl Worker for ShutdownProbe {
     fn run(&mut self, _job: ComputeJob, cancellation: &CancellationToken) -> WorkerResult {
-        self.started.send(()).unwrap();
+        assert_ok!(self.started.send(()));
         while !cancellation.is_cancelled() && !self.release.load(Ordering::Acquire) {
             std::thread::yield_now();
         }
 
         let cancelled = cancellation.is_cancelled();
-        self.observed.send(cancelled).unwrap();
+        assert_ok!(self.observed.send(cancelled));
         if cancelled {
             WorkerResult::Cancelled
         } else {
@@ -145,19 +151,20 @@ fn shutdown_cancels_an_active_worker_job() {
     let handle = runtime.handle();
 
     submit_fix(&handle, 50.);
-    started_rx.recv_timeout(TIMEOUT).unwrap();
+    assert_ok!(started_rx.recv_timeout(TIMEOUT));
 
     let shutdown = std::thread::spawn(move || runtime.shutdown());
     let cancelled = match observed_rx.recv_timeout(TIMEOUT) {
         Ok(cancelled) => cancelled,
         Err(_) => {
             release.store(true, Ordering::Release);
-            observed_rx
-                .recv_timeout(TIMEOUT)
-                .expect("worker did not exit after the test released it")
+            assert_ok!(
+                observed_rx.recv_timeout(TIMEOUT),
+                "worker did not exit after the test released it"
+            )
         }
     };
-    shutdown.join().unwrap();
+    assert_ok!(shutdown.join());
 
     assert!(cancelled, "shutdown did not cancel the active worker job");
 }
@@ -181,19 +188,22 @@ fn invalidating_work_cancels_the_stale_worker_job() {
     )
     .start();
     let handle = runtime.handle();
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
 
     submit_fix(&handle, 50.);
-    started_rx.recv_timeout(TIMEOUT).unwrap();
-    handle
-        .submit(Input::Flight(updraft_core::flight::Input::Command(
+    assert_ok!(started_rx.recv_timeout(TIMEOUT));
+    assert_ok!(
+        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
             FlightCommand::ClearTrace,
         )))
-        .unwrap();
+    );
     submit_fix(&handle, 51.);
 
-    cancelled_rx.recv_timeout(TIMEOUT).unwrap();
-    let stats = wait_for_stats(&subscription).expect("fresh-revision work completes");
+    assert_ok!(cancelled_rx.recv_timeout(TIMEOUT));
+    let stats = assert_some!(
+        wait_for_stats(&subscription),
+        "fresh-revision work completes"
+    );
     assert_eq!(stats.fix_count, 1);
     assert_eq!(handle.metrics().worker_failures(), 0);
     runtime.shutdown();
@@ -218,24 +228,27 @@ fn stale_result_from_non_cooperative_worker_is_ignored() {
     .start();
     let _release_guard = WorkerReleaseGuard(release_tx.clone());
     let handle = runtime.handle();
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
 
     submit_fix(&handle, 50.);
-    started_rx.recv_timeout(TIMEOUT).unwrap();
+    assert_ok!(started_rx.recv_timeout(TIMEOUT));
 
-    handle
-        .submit(Input::Flight(updraft_core::flight::Input::Command(
+    assert_ok!(
+        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
             FlightCommand::ClearTrace,
         )))
-        .unwrap();
+    );
     submit_fix(&handle, 51.);
     submit_fix(&handle, 52.);
 
-    release_tx.send(()).unwrap();
-    started_rx.recv_timeout(TIMEOUT).unwrap();
-    release_tx.send(()).unwrap();
+    assert_ok!(release_tx.send(()));
+    assert_ok!(started_rx.recv_timeout(TIMEOUT));
+    assert_ok!(release_tx.send(()));
 
-    let stats = wait_for_stats(&subscription).expect("fresh-revision work completes");
+    let stats = assert_some!(
+        wait_for_stats(&subscription),
+        "fresh-revision work completes"
+    );
     assert_eq!(stats.fix_count, 2);
     assert_eq!(handle.metrics().worker_failures(), 0);
     runtime.shutdown();
@@ -263,37 +276,42 @@ fn worker_result_for_another_job_is_rejected() {
     .worker(trace_stats_kind(), ReturnsPreviousResult { previous: None })
     .start();
     let handle = runtime.handle();
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
 
     submit_fix(&handle, 50.);
-    wait_for_stats(&subscription).expect("first job completes normally");
+    assert_some!(
+        wait_for_stats(&subscription),
+        "first job completes normally"
+    );
     let handled_before_mismatch = handle.metrics().inputs_handled();
 
-    handle
-        .submit(Input::Flight(updraft_core::flight::Input::Command(
+    assert_ok!(
+        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
             FlightCommand::ClearTrace,
         )))
-        .unwrap();
+    );
     submit_fix(&handle, 51.);
 
     let deadline = Instant::now() + TIMEOUT;
     while handle.metrics().worker_failures() == 0 {
-        assert!(
-            Instant::now() < deadline,
+        assert_lt!(
+            Instant::now(),
+            deadline,
             "mismatched worker result was not rejected"
         );
         std::thread::yield_now();
     }
     while handle.metrics().inputs_handled() < handled_before_mismatch + 3 {
-        assert!(
-            Instant::now() < deadline,
+        assert_lt!(
+            Instant::now(),
+            deadline,
             "typed worker failure did not reach the core"
         );
         std::thread::yield_now();
     }
 
     assert_eq!(handle.metrics().worker_failures(), 1);
-    assert_eq!(handle.query(GetTraceStats).unwrap(), None);
+    assert_none!(assert_ok!(handle.query(GetTraceStats)));
     runtime.shutdown();
 }
 
@@ -318,11 +336,12 @@ fn fix(handle: &Handle, latitude: f64) -> PositionFix {
 
 fn submit_fix(handle: &Handle, latitude: f64) -> PositionFix {
     let fix = fix(handle, latitude);
-    handle
-        .submit(Input::Flight(updraft_core::flight::Input::Observation(
+    assert_ok!(
+        handle.submit(Input::Flight(updraft_core::flight::Input::Observation(
             FlightObservation::Position(fix),
-        )))
-        .expect("runtime is running");
+        ))),
+        "runtime is running"
+    );
     fix
 }
 
@@ -341,8 +360,8 @@ fn atomic_subscribe_and_fifo_ordering() {
 
     // The subscription request is ordered behind the first fix on the
     // same queue, so its snapshot must already contain it.
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
-    assert_eq!(subscription.snapshot.flight.position, Some(first));
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
+    assert_some_eq!(subscription.snapshot.flight.position, first);
 
     let second = submit_fix(&handle, 50.01);
     let third = submit_fix(&handle, 50.02);
@@ -351,7 +370,7 @@ fn atomic_subscribe_and_fifo_ordering() {
     let deadline = Instant::now() + TIMEOUT;
     while positions.len() < 2 {
         let remaining = deadline.saturating_duration_since(Instant::now());
-        let changes = subscription.changes.recv_timeout(remaining).unwrap();
+        let changes = assert_ok!(subscription.changes.recv_timeout(remaining));
         positions.extend(changes.into_iter().filter_map(|change| match change {
             Change::Flight(FlightChange::Position(fix)) => Some(fix),
             Change::Flight(FlightChange::TraceStats(_)) => None,
@@ -374,7 +393,7 @@ fn slow_subscriber_is_dropped() {
         .start();
     let handle = runtime.handle();
 
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
     for i in 0..10 {
         submit_fix(&handle, 50. + f64::from(i) * 0.01);
     }
@@ -393,12 +412,12 @@ fn slow_subscriber_is_dropped() {
             }
         }
     }
-    assert!(handle.metrics().slow_subscriber_drops() >= 1);
+    assert_ge!(handle.metrics().slow_subscriber_drops(), 1);
 
     // Reconnect is resubscribe: a fresh subscription works and starts
     // from a fresh snapshot.
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
-    assert!(subscription.snapshot.flight.position.is_some());
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
+    assert_some!(subscription.snapshot.flight.position);
 
     runtime.shutdown();
 }
@@ -410,12 +429,12 @@ fn worker_computes_trace_stats() {
         .start();
     let handle = runtime.handle();
 
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
     submit_fix(&handle, 50.);
     submit_fix(&handle, 50.1);
 
-    let stats = wait_for_stats(&subscription).expect("worker returns statistics");
-    assert!(stats.fix_count >= 1);
+    let stats = assert_some!(wait_for_stats(&subscription), "worker returns statistics");
+    assert_ge!(stats.fix_count, 1);
 
     runtime.shutdown();
 }
@@ -440,12 +459,15 @@ fn worker_failure_becomes_typed_failure_and_recovers() {
         .worker(trace_stats_kind(), FailsOnce { failed: false })
         .start();
     let handle = runtime.handle();
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
 
     submit_fix(&handle, 50.);
     submit_fix(&handle, 50.1);
 
-    let stats = wait_for_stats(&subscription).expect("runtime recovers from the failure");
+    let stats = assert_some!(
+        wait_for_stats(&subscription),
+        "runtime recovers from the failure"
+    );
     assert_eq!(stats.fix_count, 2);
     assert_eq!(handle.metrics().worker_failures(), 1);
 
@@ -474,13 +496,16 @@ fn worker_panic_becomes_typed_failure_and_recovers() {
         .start();
     let handle = runtime.handle();
 
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
     // The first fix starts the job that panics. The second marks the slot
     // pending again, so the core schedules a retry that must succeed.
     submit_fix(&handle, 50.);
     submit_fix(&handle, 50.1);
 
-    let stats = wait_for_stats(&subscription).expect("runtime recovers from the panic");
+    let stats = assert_some!(
+        wait_for_stats(&subscription),
+        "runtime recovers from the panic"
+    );
     assert_eq!(stats.fix_count, 2);
     assert_eq!(handle.metrics().worker_failures(), 1);
 
@@ -512,13 +537,16 @@ fn worker_reset_panic_becomes_typed_failure_and_recovers() {
         .start();
     let handle = runtime.handle();
 
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
     // The first job resets the worker before running, and that reset
     // panics, which must free the job slot instead of stalling the kind.
     submit_fix(&handle, 50.);
     submit_fix(&handle, 50.1);
 
-    let stats = wait_for_stats(&subscription).expect("runtime recovers from the reset panic");
+    let stats = assert_some!(
+        wait_for_stats(&subscription),
+        "runtime recovers from the reset panic"
+    );
     assert_eq!(stats.fix_count, 2);
     assert_eq!(handle.metrics().worker_failures(), 1);
 
@@ -553,24 +581,26 @@ fn worker_is_reset_when_the_revision_changes() {
         .start();
     let handle = runtime.handle();
 
-    let subscription = handle.subscribe(ChangeFilter::all()).unwrap();
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
     submit_fix(&handle, 50.);
-    wait_for_stats(&subscription).expect("first job completes");
+    assert_some!(wait_for_stats(&subscription), "first job completes");
     let before_clear = resets.load(Ordering::SeqCst);
 
     // Clearing the trace changes the compute revision. The next job runs
     // under the new revision and must reset the worker's cache before it does.
-    handle
-        .submit(Input::Flight(updraft_core::flight::Input::Command(
+    assert_ok!(
+        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
             FlightCommand::ClearTrace,
-        )))
-        .expect("runtime is running");
+        ))),
+        "runtime is running"
+    );
     submit_fix(&handle, 50.1);
 
     let deadline = Instant::now() + TIMEOUT;
     while resets.load(Ordering::SeqCst) <= before_clear {
-        assert!(
-            Instant::now() < deadline,
+        assert_lt!(
+            Instant::now(),
+            deadline,
             "worker was not reset on revision change"
         );
         std::thread::yield_now();
@@ -590,12 +620,12 @@ fn missing_worker_fails_the_job_without_stalling() {
 
     let deadline = Instant::now() + TIMEOUT;
     while handle.metrics().worker_failures() == 0 {
-        assert!(Instant::now() < deadline, "job failure was never recorded");
+        assert_lt!(Instant::now(), deadline, "job failure was never recorded");
         std::thread::yield_now();
     }
 
-    let position = handle.query(GetPosition).unwrap();
-    assert!(position.is_some(), "the core still answers queries");
+    let position = assert_ok!(handle.query(GetPosition));
+    assert_some!(position, "the core still answers queries");
 
     runtime.shutdown();
 }
@@ -617,9 +647,9 @@ fn handle_reports_runtime_stopped_after_shutdown() {
     let input = Input::Clock {
         clock_time: handle.clock_time(),
     };
-    assert!(handle.submit(input).is_err());
-    assert!(handle.query(GetPosition).is_err());
-    assert!(handle.subscribe(ChangeFilter::all()).is_err());
+    assert_err!(handle.submit(input));
+    assert_err!(handle.query(GetPosition));
+    assert_err!(handle.subscribe(ChangeFilter::all()));
 }
 
 #[test]
@@ -637,7 +667,7 @@ fn dropping_the_runtime_stops_the_core() {
     let input = Input::Clock {
         clock_time: handle.clock_time(),
     };
-    assert!(handle.submit(input).is_err());
+    assert_err!(handle.submit(input));
 }
 
 fn wait_for_stats(subscription: &updraft_runtime::Subscription) -> Option<TraceStats> {

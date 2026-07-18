@@ -2,7 +2,8 @@
 
 Infoboxes are configurable cells that show flight information or provide a
 small, focused control. Their content is not limited to navigation. Infoboxes
-sit in a dock over the map and are grouped into ordered pages.
+sit in a dock that reserves space at an edge of the map and are grouped into
+ordered pages.
 
 Portrait initially places the dock along the bottom. Landscape places it along
 the right edge to preserve vertical map space. The first implementation may use

@@ -1,26 +1,34 @@
 # Flight Deck
 
-The Flight Deck is Updraft's primary in-flight surface. A fullscreen map is the
-base layer. A fixed Menu control, the Situation Bar, map controls, and the
-infobox dock sit above it without turning the map into a collection of permanent
+The Flight Deck is Updraft's primary in-flight surface. The moving map is its
+base content. A fixed Menu control, the Situation Bar, map controls, and the
+infobox dock frame it without turning the map into a collection of permanent
 toolbars.
 
 ## Layout
 
-The map remains the base layer beneath these edge regions. In portrait, the
-infobox dock moves to the bottom and leaves the Situation Bar wide. In landscape,
-the dock moves to the right and the Situation Bar uses the remaining width. This
-conceptual wireframe does not decide whether the regions reserve or overlay map
-pixels. The optional pinned area is content-sized up to the available width. Its
-size below is only illustrative.
+For v1, the map occupies one rectangular viewport. In portrait, the infobox dock
+reserves space along the bottom. In landscape, it reserves space along the right
+and the Situation Bar uses the remaining width.
+
+The Situation Bar and each permanently pinned target row span the map width and
+reserve space above it. Adding or removing a permanent pin therefore resizes the
+map viewport. A warning is the exception: it replaces the Situation Bar at the
+same height and inserts the focused target as the first row of the pinned-target
+stack without increasing the reserved height. The stack shifts down, so its last
+row overhangs the map. Showing or clearing a warning therefore does not resize
+the map.
+
+On larger displays, a future layout may make permanent pinned-target rows
+narrower than the map and overlay them instead. That is outside the v1 layout.
 
 ```text
 Portrait                        Landscape
 ┌───────────────────────┐       ┌───────────────────────────────────┬─────────┐
 │ Menu │ Situation Bar  │       │ Menu │ Situation Bar              │ Infobox │
-│─┐───────────────────┌─│       │───────┐───────────────────┌───────│ dock    │
-│ │0..n pinned targets│ │       │       │0..n pinned targets│       │         │
-│ └───────────────────┘ │       │       └───────────────────┘       │         │
+├───────────────────────┤       ├───────────────────────────────────┤ dock    │
+│0..n pinned-target rows│       │0..n pinned-target rows            │         │
+├───────────────────────┤       ├───────────────────────────────────┤         │
 │                       │       │                                   │         │
 │                       │       │                Map                │         │
 │                       │       │           [map controls]          │         │
@@ -38,12 +46,38 @@ The map remains freely pannable. Moving away from the aircraft reveals a return
 to position control. Map orientation and automatic zoom may react to flight mode,
 but the pilot can always pan and return manually.
 
+Platform safe-area insets protect the bar's readable content and controls.
+Interactive backgrounds and hit areas may extend into those insets. Simulated
+device corners, shadows, and camera cutouts belong only to design previews and
+are not rendered by the application.
+
+## Typography
+
+Barlow is the application typeface. Flight Deck numeric values use Barlow Semi
+Condensed with tabular figures so changing values retain stable geometry.
+
+The frontend formatting boundary remains open for a focused prototype. One
+variant supplies display-ready values and units to components. The other
+supplies semantic measurements and directions that shared frontend utilities
+format for display. The comparison covers unit changes, localization,
+responsive abbreviation, stale values, reuse, and test clarity.
+
+## Presentation State
+
+Navigation, warnings, infobox pages, traffic, map interaction, and temporary
+panels are independent presentation concerns rather than mutually exclusive
+Flight Deck modes. They may appear in combination, such as a warning over a
+Thermal infobox page while traffic remains on the map.
+
+Visual components receive these concerns through properties and expose user
+actions through callbacks. Warning priority, Thermal-page activation, and other
+automatic behavior remain outside the visual components.
+
 ## Situation Bar
 
 The Situation Bar occupies one fixed region. In its normal state it shows the
 focused navigation target. A warning temporarily replaces the target in the
-same region, so the map does not resize when a warning appears. Warning behavior
-is defined in [warnings.md](warnings.md).
+same region. Warning behavior is defined in [warnings.md](warnings.md).
 
 The target presentation prioritizes:
 
@@ -89,21 +123,20 @@ management.
 Any target may be pinned, including the dynamic Emergency and Task positions
 and each additional target. Nothing is pinned by default, and there is no fixed
 limit. Every pinned target receives a compact live readout directly below the
-Situation Bar. The pinned area is only as wide as its readouts require, up to the
-available width. Readouts follow the navigation sequence order. The app does not
-collapse or hide them to protect map space.
+Situation Bar. For v1, each readout spans the available width. Readouts follow
+the navigation sequence order. The app does not collapse or hide them to protect
+map space.
 
 The Situation Bar and pinned area are separate controls with the same action.
 Tapping either opens the target list. Individual readouts within the pinned area
-do not have distinct actions, and unused map width beside the pinned area remains
-part of the map. The exact readout density and responsive layout remain an
-implementation-time design decision.
+do not have distinct actions. The exact readout density and responsive layout
+remain an implementation-time design decision.
 
 The focused target appears only in the Situation Bar, even if it is pinned. Its
 pinned readout is omitted to avoid showing the same information twice. When a
 warning replaces the focused target, the pinned readouts remain visible and the
-focused target temporarily appears above them as another compact readout. That
-temporary readout disappears when the warning clears.
+focused target temporarily appears as the first compact readout, followed by the
+permanently pinned targets. It disappears when the warning clears.
 
 Emergency and Task pins follow their dynamic positions rather than preserving
 the currently resolved waypoint. Emergency therefore follows the selected

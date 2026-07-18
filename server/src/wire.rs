@@ -59,7 +59,9 @@ impl From<updraft_core::flight::PositionFix> for PositionFix {
             observed_at_ms: fix.observed_at.as_secs_f64() * 1_000.,
             latitude_degrees: fix.position.latitude().as_degrees(),
             longitude_degrees: fix.position.longitude().as_degrees(),
-            altitude_meters: fix.altitude.map(|altitude| altitude.length().as_meters()),
+            altitude_meters: fix
+                .altitude
+                .map(|altitude| altitude.into_inner().as_meters()),
             track_degrees: fix.track.map(|track| track.as_degrees()),
             ground_speed_meters_per_second: fix
                 .ground_speed
@@ -96,7 +98,7 @@ impl TryFrom<PositionFix> for updraft_core::flight::PositionFix {
                 fix.longitude_degrees,
             ),
             altitude: fix.altitude_meters.map(|meters| {
-                updraft_core::flight::MslAltitude::new(updraft_units::Length::from_meters(meters))
+                updraft_units::MslAltitude::new(updraft_units::Length::from_meters(meters))
             }),
             track: fix.track_degrees.map(updraft_units::Angle::from_degrees),
             ground_speed: fix
@@ -123,7 +125,7 @@ impl From<updraft_core::flight::TraceStats> for TraceStats {
             distance_meters: stats.distance.as_meters(),
             max_altitude_meters: stats
                 .max_altitude
-                .map(|altitude| altitude.length().as_meters()),
+                .map(|altitude| altitude.into_inner().as_meters()),
         }
     }
 }

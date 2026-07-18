@@ -15,12 +15,12 @@ use std::time::Duration;
 
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
-    MslAltitude, Observation as FlightObservation, PositionFix,
+    Observation as FlightObservation, PositionFix,
 };
 use updraft_core::{App, Change, ComputeKind, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
-use updraft_units::{Angle, Length, Speed};
+use updraft_units::{Angle, Length, MslAltitude, Speed};
 
 fn main() {
     let runtime = Runtime::builder(App::new())
@@ -63,7 +63,7 @@ fn main() {
                         "position: {:7.4}° {:7.4}° at {:6.1?}",
                         fix.position.latitude().as_degrees(),
                         fix.position.longitude().as_degrees(),
-                        fix.altitude.unwrap_or(MslAltitude::ZERO).length(),
+                        fix.altitude.unwrap_or(MslAltitude::ZERO).into_inner(),
                     );
                 }
                 Change::Flight(FlightChange::TraceStats(Some(stats))) => {
@@ -71,7 +71,7 @@ fn main() {
                         "trace stats (from the worker): {} fixes, {:.2} km flown, max {:.0?}",
                         stats.fix_count,
                         stats.distance.as_kilometers(),
-                        stats.max_altitude.unwrap_or(MslAltitude::ZERO).length(),
+                        stats.max_altitude.unwrap_or(MslAltitude::ZERO).into_inner(),
                     );
                 }
                 Change::Flight(FlightChange::TraceStats(None)) => {

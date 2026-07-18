@@ -6,13 +6,13 @@ use std::time::Duration;
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeJob as FlightComputeJob,
     ComputeKind as FlightComputeKind, ComputeResult as FlightComputeResult, GetPosition,
-    GetTraceStats, MslAltitude, Observation as FlightObservation, PositionFix,
+    GetTraceStats, Observation as FlightObservation, PositionFix,
 };
 use updraft_core::{
     App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
 };
 use updraft_geo::LatLon;
-use updraft_units::Length;
+use updraft_units::{Length, MslAltitude};
 
 #[test]
 fn app_routes_flight_protocol_through_the_flight_domain() {

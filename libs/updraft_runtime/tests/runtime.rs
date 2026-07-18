@@ -8,14 +8,13 @@ use std::time::{Duration, Instant};
 
 use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
-    GetPosition, GetTraceStats, MslAltitude, Observation as FlightObservation, PositionFix,
-    TraceStats,
+    GetPosition, GetTraceStats, Observation as FlightObservation, PositionFix, TraceStats,
 };
 use updraft_core::{App, AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{CancellationToken, WorkerResult};
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime, Worker};
-use updraft_units::Length;
+use updraft_units::{Length, MslAltitude};
 
 const TIMEOUT: Duration = Duration::from_secs(10);
 

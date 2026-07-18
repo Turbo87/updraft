@@ -3,9 +3,9 @@ use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, SyncSender, TrySendError};
 use std::sync::mpsc::{channel, sync_channel};
+use std::thread;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
-use std::{fmt, thread};
 
 use updraft_core::{
     App, Change, ChangeGroup, ComputeCancellation, ComputeFailure, ComputeJob, ComputeKind, Effect,
@@ -308,16 +308,9 @@ impl Handle {
 }
 
 /// The runtime's core loop has stopped and no longer accepts requests.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("the runtime has stopped")]
 pub struct RuntimeStopped;
-
-impl fmt::Display for RuntimeStopped {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("the runtime has stopped")
-    }
-}
-
-impl std::error::Error for RuntimeStopped {}
 
 /// Selects which change groups a state-stream subscriber receives.
 #[derive(Clone, Debug, PartialEq, Eq)]

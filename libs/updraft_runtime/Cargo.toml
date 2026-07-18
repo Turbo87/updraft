@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 workspace = true
 
 [dependencies]
+thiserror = "=2.0.18"
 tracing = "=0.1.44"
 updraft_core = { path = "../updraft_core" }
 

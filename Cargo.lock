@@ -4889,6 +4889,7 @@ name = "updraft_runtime"
 version = "0.0.0"
 dependencies = [
  "claims",
+ "thiserror 2.0.18",
  "tracing",
  "updraft_core",
  "updraft_geo",

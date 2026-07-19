@@ -16,13 +16,13 @@ use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
     Observation as FlightObservation, PositionFix,
 };
-use updraft_core::{App, Change, ComputeKind, Input};
+use updraft_core::{Change, ComputeKind, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
 use updraft_units::{Angle, Length, MslAltitude, Speed};
 
 fn main() {
-    let runtime = Runtime::builder(App::new())
+    let runtime = Runtime::builder()
         .worker(
             ComputeKind::Flight(FlightComputeKind::TraceStats),
             PureWorker,

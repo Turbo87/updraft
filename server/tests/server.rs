@@ -7,7 +7,9 @@ use std::time::Duration;
 use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::flight::{Input as FlightInput, Observation, PositionFix};
+use updraft_core::flight::{
+    Command as FlightCommand, GetPosition, Input as FlightInput, Observation, PositionFix,
+};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::Runtime;
@@ -20,14 +22,10 @@ const SIMULATED_POSITION: &str = r#"{"observedAtMs":2500,"latitudeDegrees":50.82
 /// `index.html`. The returned `TempDir` must stay in scope for the duration of
 /// the test, as dropping it deletes the directory.
 fn app_with_fixture() -> (TempDir, Runtime, axum::Router) {
-    app_with_core(App::new())
-}
-
-fn app_with_core(core: App) -> (TempDir, Runtime, axum::Router) {
     let dir = tempfile::tempdir().expect("failed to create temporary directory");
     std::fs::write(dir.path().join("index.html"), INDEX_HTML)
         .expect("failed to write test index.html");
-    let runtime = updraft_server::start_runtime(core);
+    let runtime = updraft_server::start_runtime();
     let app = updraft_server::router(
         updraft_server::ServerState {
             runtime: runtime.handle(),
@@ -44,7 +42,7 @@ fn simulation_app_with_fixture() -> (TempDir, Runtime, axum::Router) {
     let dir = tempfile::tempdir().expect("failed to create temporary directory");
     std::fs::write(dir.path().join("index.html"), INDEX_HTML)
         .expect("failed to write test index.html");
-    let runtime = updraft_server::start_runtime(App::new());
+    let runtime = updraft_server::start_runtime();
     let app = updraft_server::router(
         updraft_server::ServerState {
             runtime: runtime.handle(),
@@ -134,7 +132,7 @@ async fn unknown_route_serves_spa_index() {
 
 #[tokio::test]
 async fn server_without_static_dir_only_serves_api() {
-    let runtime = updraft_server::start_runtime(App::new());
+    let runtime = updraft_server::start_runtime();
     let app = updraft_server::router(
         updraft_server::ServerState {
             runtime: runtime.handle(),
@@ -184,9 +182,16 @@ async fn state_stream_starts_with_snapshot() {
 
 #[tokio::test]
 async fn state_stream_snapshot_includes_current_state() {
-    let mut core = App::new();
-    core.handle(position_input());
-    let (_dir, _runtime, app) = app_with_core(core);
+    let (_dir, runtime, app) = app_with_fixture();
+    let handle = runtime.handle();
+    assert_ok_eq!(handle.submit(position_input()), ());
+    assert_ok_eq!(
+        handle.submit(Input::Flight(FlightInput::Command(
+            FlightCommand::ClearTrace
+        ))),
+        ()
+    );
+    assert_some!(assert_ok!(handle.query(GetPosition)));
 
     let request = Request::builder()
         .uri("/api/state")
@@ -367,7 +372,7 @@ async fn waiting_to_submit_a_simulated_position_keeps_executor_responsive() {
     let dir = tempfile::tempdir().expect("failed to create temporary directory");
     std::fs::write(dir.path().join("index.html"), INDEX_HTML)
         .expect("failed to write test index.html");
-    let runtime = Runtime::builder(App::new()).input_queue_capacity(1).start();
+    let runtime = Runtime::builder().input_queue_capacity(1).start();
     let app = updraft_server::router(
         updraft_server::ServerState {
             runtime: runtime.handle(),

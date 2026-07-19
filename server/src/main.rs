@@ -4,7 +4,6 @@ use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use tokio::net::TcpListener;
-use updraft_core::App;
 
 #[derive(Parser)]
 struct Args {
@@ -31,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let runtime = updraft_server::start_runtime(App::new());
+    let runtime = updraft_server::start_runtime();
     let app = updraft_server::router(
         updraft_server::ServerState {
             runtime: runtime.handle(),

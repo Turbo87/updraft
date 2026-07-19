@@ -10,8 +10,8 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 use updraft_core::{
-    App, Change, ChangeGroup, ComputeCancellation, ComputeFailure, ComputeJob, ComputeKind, Effect,
-    Input, Query, Snapshot,
+    App, AppConfig, Change, ChangeGroup, ComputeCancellation, ComputeFailure, ComputeJob,
+    ComputeKind, Effect, Input, Query, Snapshot,
 };
 
 /// Everything the core loop accepts from the outside.
@@ -82,13 +82,20 @@ impl QueueSender {
 
 /// Configures and starts a [`Runtime`].
 pub struct RuntimeBuilder {
-    app: App,
+    app_config: AppConfig,
     input_queue_capacity: usize,
     subscriber_buffer_capacity: usize,
     workers: Vec<(ComputeKind, Box<dyn Worker>)>,
 }
 
 impl RuntimeBuilder {
+    /// Uses the given application configuration instead of [`AppConfig::default()`].
+    #[must_use]
+    pub fn with_app_config(mut self, app_config: AppConfig) -> Self {
+        self.app_config = app_config;
+        self
+    }
+
     /// Registers the worker executing one compute-job kind.
     ///
     /// A job for a kind without a registered worker fails immediately
@@ -127,6 +134,7 @@ impl RuntimeBuilder {
     #[must_use = "dropping the returned Runtime immediately shuts it down"]
     pub fn start(self) -> Runtime {
         let clock = Clock::new();
+        let app = App::with_config(self.app_config);
         let metrics = Arc::new(Metrics::default());
         let (tx, rx) = sync_channel(self.input_queue_capacity);
         let tx = QueueSender {
@@ -153,7 +161,7 @@ impl RuntimeBuilder {
         }
 
         let core_loop = CoreLoop {
-            app: self.app,
+            app,
             rx,
             clock: clock.clone(),
             metrics: Arc::clone(&metrics),
@@ -189,9 +197,12 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    pub fn builder(app: App) -> RuntimeBuilder {
+    /// Configures a runtime that constructs a fresh [`App`] when started.
+    ///
+    /// The application configuration defaults to [`AppConfig::default()`].
+    pub fn builder() -> RuntimeBuilder {
         RuntimeBuilder {
-            app,
+            app_config: AppConfig::default(),
             input_queue_capacity: 256,
             subscriber_buffer_capacity: 64,
             workers: Vec::new(),

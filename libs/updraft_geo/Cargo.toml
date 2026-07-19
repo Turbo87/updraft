@@ -16,7 +16,7 @@ serde = ["dep:serde", "updraft_units/serde"]
 approx = { version = "=0.6.0-rc2", features = ["derive"], optional = true }
 geo-types = { version = "=0.7.19", optional = true }
 geographiclib-rs = { version = "=0.2.7", default-features = false }
-serde = { version = "=1.0.228", features = ["derive"], optional = true }
+serde = { version = "=1.0.229", features = ["derive"], optional = true }
 updraft_units = { path = "../updraft_units" }
 
 [dev-dependencies]

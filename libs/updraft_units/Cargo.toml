@@ -13,7 +13,7 @@ serde = ["dep:serde"]
 
 [dependencies]
 approx = { version = "=0.6.0-rc2", features = ["derive"], optional = true }
-serde = { version = "=1.0.228", features = ["derive"], optional = true }
+serde = { version = "=1.0.229", features = ["derive"], optional = true }
 
 [dev-dependencies]
 approx = { version = "=0.6.0-rc2", features = ["derive"] }

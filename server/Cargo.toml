@@ -15,7 +15,7 @@ anyhow = "=1.0.103"
 axum = "=0.8.9"
 clap = { version = "=4.6.2", features = ["derive", "env"] }
 futures-util = "=0.3.33"
-serde = { version = "=1.0.228", features = ["derive"] }
+serde = { version = "=1.0.229", features = ["derive"] }
 tokio = { version = "=1.53.0", features = ["rt-multi-thread", "net", "macros", "signal", "time"] }
 tower-http = { version = "=0.7.0", features = ["fs", "trace"] }
 tracing = "=0.1.44"

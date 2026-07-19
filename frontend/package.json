@@ -44,7 +44,7 @@
     "svelte-maplibre-gl": "2.1.0",
     "typescript": "6.0.3",
     "unocss": "66.7.5",
-    "vite": "8.1.4",
+    "vite": "8.1.5",
     "vitest": "4.1.10",
     "vitest-browser-svelte": "3.0.0"
   }

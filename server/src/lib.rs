@@ -14,7 +14,6 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, Interval, MissedTickBehavior};
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
-use updraft_core::App;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
 
 pub mod wire;
@@ -85,8 +84,8 @@ impl Drop for ChangeBridge {
 
 /// Starts the shared runtime with the workers required by the current core.
 #[must_use = "dropping the returned runtime immediately shuts it down"]
-pub fn start_runtime(app: App) -> Runtime {
-    Runtime::builder(app)
+pub fn start_runtime() -> Runtime {
+    Runtime::builder()
         .worker(
             updraft_core::ComputeKind::Flight(updraft_core::flight::ComputeKind::TraceStats),
             PureWorker,

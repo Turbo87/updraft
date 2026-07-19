@@ -13,17 +13,17 @@ use updraft_core::flight::{
     Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
     GetPosition, GetTraceStats, Observation as FlightObservation, PositionFix, TraceStats,
 };
-use updraft_core::{App, AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
+use updraft_core::{AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{CancellationToken, WorkerResult};
-use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime, Worker};
+use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime, RuntimeBuilder, Worker};
 use updraft_units::{Length, MslAltitude};
 
 const TIMEOUT: Duration = Duration::from_secs(10);
 
 #[test]
 fn subscription_omits_unselected_change_groups() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), PureWorker)
         .start();
     let handle = runtime.handle();
@@ -43,7 +43,7 @@ fn subscription_omits_unselected_change_groups() {
 
 #[test]
 fn runtime_records_queue_and_handler_measurements() {
-    let runtime = Runtime::builder(app())
+    let runtime = Runtime::builder()
         .worker(trace_stats_kind(), PureWorker)
         .start();
     let handle = runtime.handle();
@@ -137,7 +137,7 @@ fn shutdown_cancels_an_active_worker_job() {
     let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
     let (observed_tx, observed_rx) = std::sync::mpsc::sync_channel(1);
     let release = Arc::new(AtomicBool::new(false));
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(
             trace_stats_kind(),
             ShutdownProbe {
@@ -172,20 +172,21 @@ fn shutdown_cancels_an_active_worker_job() {
 fn invalidating_work_cancels_the_stale_worker_job() {
     let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
     let (cancelled_tx, cancelled_rx) = std::sync::mpsc::sync_channel(1);
-    let runtime = Runtime::builder(App::with_config(AppConfig {
-        flight: updraft_core::flight::Config {
-            trace_stats_interval: Duration::ZERO,
-        },
-    }))
-    .worker(
-        trace_stats_kind(),
-        CancelsFirstJob {
-            first: true,
-            started: started_tx,
-            cancelled: cancelled_tx,
-        },
-    )
-    .start();
+    let runtime = Runtime::builder()
+        .with_app_config(AppConfig {
+            flight: updraft_core::flight::Config {
+                trace_stats_interval: Duration::ZERO,
+            },
+        })
+        .worker(
+            trace_stats_kind(),
+            CancelsFirstJob {
+                first: true,
+                started: started_tx,
+                cancelled: cancelled_tx,
+            },
+        )
+        .start();
     let handle = runtime.handle();
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
 
@@ -212,19 +213,20 @@ fn invalidating_work_cancels_the_stale_worker_job() {
 fn stale_result_from_non_cooperative_worker_is_ignored() {
     let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
     let (release_tx, release_rx) = std::sync::mpsc::channel();
-    let runtime = Runtime::builder(App::with_config(AppConfig {
-        flight: updraft_core::flight::Config {
-            trace_stats_interval: Duration::ZERO,
-        },
-    }))
-    .worker(
-        trace_stats_kind(),
-        NonCooperativeWorker {
-            started: started_tx,
-            release: release_rx,
-        },
-    )
-    .start();
+    let runtime = Runtime::builder()
+        .with_app_config(AppConfig {
+            flight: updraft_core::flight::Config {
+                trace_stats_interval: Duration::ZERO,
+            },
+        })
+        .worker(
+            trace_stats_kind(),
+            NonCooperativeWorker {
+                started: started_tx,
+                release: release_rx,
+            },
+        )
+        .start();
     let _release_guard = WorkerReleaseGuard(release_tx.clone());
     let handle = runtime.handle();
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
@@ -267,13 +269,14 @@ impl Worker for ReturnsPreviousResult {
 
 #[test]
 fn worker_result_for_another_job_is_rejected() {
-    let runtime = Runtime::builder(App::with_config(AppConfig {
-        flight: updraft_core::flight::Config {
-            trace_stats_interval: Duration::ZERO,
-        },
-    }))
-    .worker(trace_stats_kind(), ReturnsPreviousResult { previous: None })
-    .start();
+    let runtime = Runtime::builder()
+        .with_app_config(AppConfig {
+            flight: updraft_core::flight::Config {
+                trace_stats_interval: Duration::ZERO,
+            },
+        })
+        .worker(trace_stats_kind(), ReturnsPreviousResult { previous: None })
+        .start();
     let handle = runtime.handle();
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
 
@@ -314,9 +317,9 @@ fn worker_result_for_another_job_is_rejected() {
     runtime.shutdown();
 }
 
-/// An app whose compute throttle is short enough for wall-clock tests.
-fn app() -> App {
-    App::with_config(AppConfig {
+/// A runtime builder whose compute throttle is short enough for wall-clock tests.
+fn runtime_builder() -> RuntimeBuilder {
+    Runtime::builder().with_app_config(AppConfig {
         flight: updraft_core::flight::Config {
             trace_stats_interval: Duration::from_millis(50),
         },
@@ -350,7 +353,7 @@ fn trace_stats_kind() -> ComputeKind {
 
 #[test]
 fn atomic_subscribe_and_fifo_ordering() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), PureWorker)
         .start();
     let handle = runtime.handle();
@@ -386,7 +389,7 @@ fn atomic_subscribe_and_fifo_ordering() {
 
 #[test]
 fn slow_subscriber_is_dropped() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), PureWorker)
         .subscriber_buffer_capacity(1)
         .start();
@@ -416,7 +419,7 @@ fn slow_subscriber_is_dropped() {
 
 #[test]
 fn worker_computes_trace_stats() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), PureWorker)
         .start();
     let handle = runtime.handle();
@@ -447,7 +450,7 @@ impl Worker for FailsOnce {
 
 #[test]
 fn worker_failure_becomes_typed_failure_and_recovers() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), FailsOnce { failed: false })
         .start();
     let handle = runtime.handle();
@@ -483,7 +486,7 @@ impl Worker for PanicsOnce {
 
 #[test]
 fn worker_panic_becomes_typed_failure_and_recovers() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), PanicsOnce { panicked: false })
         .start();
     let handle = runtime.handle();
@@ -524,7 +527,7 @@ impl Worker for ResetPanicsOnce {
 
 #[test]
 fn worker_reset_panic_becomes_typed_failure_and_recovers() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), ResetPanicsOnce { panicked: false })
         .start();
     let handle = runtime.handle();
@@ -563,7 +566,7 @@ impl Worker for CountingResets {
 #[test]
 fn worker_is_reset_when_the_revision_changes() {
     let resets = Arc::new(AtomicUsize::new(0));
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(
             trace_stats_kind(),
             CountingResets {
@@ -605,7 +608,7 @@ fn worker_is_reset_when_the_revision_changes() {
 fn missing_worker_fails_the_job_without_stalling() {
     // No worker registered: every job fails immediately, and the core
     // keeps running.
-    let runtime = Runtime::builder(app()).start();
+    let runtime = runtime_builder().start();
     let handle = runtime.handle();
 
     submit_fix(&handle, 50.);
@@ -625,14 +628,14 @@ fn missing_worker_fails_the_job_without_stalling() {
 #[test]
 #[should_panic(expected = "already registered for Flight(TraceStats)")]
 fn duplicate_worker_kind_is_rejected() {
-    let _ = Runtime::builder(app())
+    let _ = runtime_builder()
         .worker(trace_stats_kind(), PureWorker)
         .worker(trace_stats_kind(), PureWorker);
 }
 
 #[test]
 fn handle_reports_runtime_stopped_after_shutdown() {
-    let runtime = Runtime::builder(app()).start();
+    let runtime = runtime_builder().start();
     let handle = runtime.handle();
     runtime.shutdown();
 
@@ -646,7 +649,7 @@ fn handle_reports_runtime_stopped_after_shutdown() {
 
 #[test]
 fn dropping_the_runtime_stops_the_core() {
-    let runtime = Runtime::builder(app())
+    let runtime = runtime_builder()
         .worker(trace_stats_kind(), PureWorker)
         .start();
     let handle = runtime.handle();

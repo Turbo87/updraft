@@ -1,6 +1,6 @@
 # The Shared Runtime
 
-The runtime is the layer around the deterministic [core](core.md). Each runtime owns one `App`, an input queue, a monotonic clock, compute workers, effect adapters, state-stream subscribers, and computed resource storage. The axum server and Tauri shell use this layer and add only transport or platform bindings.
+The runtime is the layer around the deterministic [core](core.md). Each runtime owns one `App`, an input queue, a monotonic clock, compute workers, effect adapters, state-stream subscribers, and computed resource storage. The runtime constructs a fresh `App` from `AppConfig` when its clock starts, so it observes every timer and effect request that the app produces. The axum server and Tauri shell use this layer and add only transport or platform bindings.
 
 Most domain work does not need to know these details. Callers submit typed `Input` values and subscribe to a state stream that starts with a snapshot. Hosts provide adapters for the effects they support.
 

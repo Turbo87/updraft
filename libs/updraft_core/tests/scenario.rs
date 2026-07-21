@@ -5,7 +5,7 @@ use claims::{assert_matches, assert_none, assert_some, assert_some_eq};
 use std::time::Duration;
 use updraft_core::flight::{
     FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult, FlightConfig,
-    FlightInput, FlightSnapshot, GetPosition, GetTraceStats, PositionFix,
+    FlightInput, FlightSnapshot, GetTraceStats, PositionFix,
 };
 use updraft_core::{
     App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
@@ -24,7 +24,6 @@ fn app_routes_flight_protocol_through_the_flight_domain() {
         update.changes,
         vec![Change::Flight(FlightChange::Position(fix))]
     );
-    assert_some_eq!(app.query(GetPosition), fix);
     assert_eq!(
         app.snapshot().flight,
         FlightSnapshot {

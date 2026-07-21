@@ -128,9 +128,7 @@ async fn simulation_position(
 ) -> Result<StatusCode, StatusCode> {
     let position = updraft_core::flight::PositionFix::try_from(position)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
-    let input = updraft_core::Input::Flight(updraft_core::flight::Input::Observation(
-        updraft_core::flight::Observation::Position(position),
-    ));
+    let input = updraft_core::Input::Flight(updraft_core::flight::Input::Position(position));
     let runtime = state.runtime;
 
     tokio::task::spawn_blocking(move || runtime.submit(input))

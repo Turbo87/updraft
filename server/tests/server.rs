@@ -7,9 +7,7 @@ use std::time::Duration;
 use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::flight::{
-    Command as FlightCommand, GetPosition, Input as FlightInput, Observation, PositionFix,
-};
+use updraft_core::flight::{GetPosition, Input as FlightInput, PositionFix};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::Runtime;
@@ -56,15 +54,13 @@ fn simulation_app_with_fixture() -> (TempDir, Runtime, axum::Router) {
 }
 
 fn position_input() -> Input {
-    Input::Flight(FlightInput::Observation(Observation::Position(
-        PositionFix {
-            observed_at: Duration::from_millis(1_250),
-            position: LatLon::from_degrees(50.823, 6.186),
-            altitude: Some(MslAltitude::new(Length::from_meters(400.5))),
-            track: Some(Angle::from_degrees(45.)),
-            ground_speed: Some(Speed::from_meters_per_second(30.)),
-        },
-    )))
+    Input::Flight(FlightInput::Position(PositionFix {
+        observed_at: Duration::from_millis(1_250),
+        position: LatLon::from_degrees(50.823, 6.186),
+        altitude: Some(MslAltitude::new(Length::from_meters(400.5))),
+        track: Some(Angle::from_degrees(45.)),
+        ground_speed: Some(Speed::from_meters_per_second(30.)),
+    }))
 }
 
 struct BlockingQuery {
@@ -185,12 +181,7 @@ async fn state_stream_snapshot_includes_current_state() {
     let (_dir, runtime, app) = app_with_fixture();
     let handle = runtime.handle();
     assert_ok_eq!(handle.submit(position_input()), ());
-    assert_ok_eq!(
-        handle.submit(Input::Flight(FlightInput::Command(
-            FlightCommand::ClearTrace
-        ))),
-        ()
-    );
+    assert_ok_eq!(handle.submit(Input::Flight(FlightInput::ClearTrace)), ());
     assert_some!(assert_ok!(handle.query(GetPosition)));
 
     let request = Request::builder()

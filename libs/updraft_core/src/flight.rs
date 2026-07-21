@@ -56,39 +56,17 @@ pub struct TraceStats {
 /// A recorded event or request owned by the flight domain.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Input {
-    /// A user command.
-    Command(Command),
-    /// A normalized sensor observation.
-    Observation(Observation),
+    /// Clears the flown trace and its statistics.
+    ClearTrace,
+    /// An own-position fix.
+    Position(PositionFix),
 }
 
 impl Input {
     pub(crate) fn observed_at(&self) -> Option<Duration> {
         match self {
-            Self::Command(_) => None,
-            Self::Observation(observation) => Some(observation.observed_at()),
-        }
-    }
-}
-
-/// A recorded user command.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Command {
-    /// Clears the flown trace and its statistics.
-    ClearTrace,
-}
-
-/// A normalized sensor observation.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Observation {
-    /// An own-position fix.
-    Position(PositionFix),
-}
-
-impl Observation {
-    fn observed_at(&self) -> Duration {
-        match self {
-            Self::Position(fix) => fix.observed_at,
+            Self::ClearTrace => None,
+            Self::Position(fix) => Some(fix.observed_at),
         }
     }
 }
@@ -255,8 +233,8 @@ impl Flight {
         update: &mut Update,
     ) {
         match input {
-            Input::Command(Command::ClearTrace) => self.clear_trace(timers, update),
-            Input::Observation(Observation::Position(fix)) => {
+            Input::ClearTrace => self.clear_trace(timers, update),
+            Input::Position(fix) => {
                 self.observe_position(fix, clock_time, timers, update);
             }
         }
@@ -442,9 +420,9 @@ mod tests {
         let position = fix(50., 6., Some(1000.));
 
         assert_some_eq!(
-            Input::Observation(Observation::Position(position)).observed_at(),
+            Input::Position(position).observed_at(),
             position.observed_at
         );
-        assert_none!(Input::Command(Command::ClearTrace).observed_at());
+        assert_none!(Input::ClearTrace.observed_at());
     }
 }

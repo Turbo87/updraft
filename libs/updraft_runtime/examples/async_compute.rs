@@ -12,10 +12,7 @@
 
 use std::thread;
 use std::time::Duration;
-use updraft_core::flight::{
-    Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
-    Observation as FlightObservation, PositionFix,
-};
+use updraft_core::flight::{Change as FlightChange, ComputeKind as FlightComputeKind, PositionFix};
 use updraft_core::{Change, ComputeKind, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
@@ -38,9 +35,7 @@ fn main() {
             fly_circle(&handle, 8);
 
             handle
-                .submit(Input::Flight(updraft_core::flight::Input::Command(
-                    FlightCommand::ClearTrace,
-                )))
+                .submit(Input::Flight(updraft_core::flight::Input::ClearTrace))
                 .expect("runtime is running");
             println!("→ trace cleared");
 
@@ -105,9 +100,7 @@ fn fly_circle(handle: &Handle, count: u32) {
             ground_speed: Some(Speed::from_kilometers_per_hour(95.)),
         };
         handle
-            .submit(Input::Flight(updraft_core::flight::Input::Observation(
-                FlightObservation::Position(fix),
-            )))
+            .submit(Input::Flight(updraft_core::flight::Input::Position(fix)))
             .expect("runtime is running");
         thread::sleep(Duration::from_secs(1));
     }

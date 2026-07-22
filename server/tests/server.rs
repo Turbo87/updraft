@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::flight::{GetPosition, Input as FlightInput, PositionFix};
+use updraft_core::flight::{FlightInput, GetPosition, PositionFix};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::Runtime;

@@ -27,8 +27,8 @@ struct FlightSnapshot {
     trace_stats: Option<TraceStats>,
 }
 
-impl From<updraft_core::flight::Snapshot> for FlightSnapshot {
-    fn from(snapshot: updraft_core::flight::Snapshot) -> Self {
+impl From<updraft_core::flight::FlightSnapshot> for FlightSnapshot {
+    fn from(snapshot: updraft_core::flight::FlightSnapshot) -> Self {
         Self {
             position: snapshot.position.map(Into::into),
             trace_stats: snapshot.trace_stats.map(Into::into),
@@ -152,11 +152,11 @@ pub enum FlightChange {
     TraceStats(Option<TraceStats>),
 }
 
-impl From<updraft_core::flight::Change> for FlightChange {
-    fn from(change: updraft_core::flight::Change) -> Self {
+impl From<updraft_core::flight::FlightChange> for FlightChange {
+    fn from(change: updraft_core::flight::FlightChange) -> Self {
         match change {
-            updraft_core::flight::Change::Position(fix) => Self::Position(fix.into()),
-            updraft_core::flight::Change::TraceStats(stats) => {
+            updraft_core::flight::FlightChange::Position(fix) => Self::Position(fix.into()),
+            updraft_core::flight::FlightChange::TraceStats(stats) => {
                 Self::TraceStats(stats.map(Into::into))
             }
         }

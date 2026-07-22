@@ -1,4 +1,4 @@
-use crate::flight::{self, Flight};
+use crate::flight::{Flight, FlightConfig};
 use crate::protocol::{ComputeKind, ComputeResult, Input, Snapshot, Update};
 use crate::time::Timers;
 use std::time::Duration;
@@ -13,7 +13,7 @@ pub trait Query {
 /// Scheduling configuration for the application core.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AppConfig {
-    pub flight: flight::Config,
+    pub flight: FlightConfig,
 }
 
 /// The deterministic application core.

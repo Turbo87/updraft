@@ -16,8 +16,8 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@fontsource/barlow": "5.2.8",
-    "@fontsource/barlow-semi-condensed": "5.2.7"
+    "@fontsource/barlow": "5.3.0",
+    "@fontsource/barlow-semi-condensed": "5.3.0"
   },
   "devDependencies": {
     "@iconify-json/circle-flags": "1.2.10",

@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use updraft_core::flight::{
-    Change as FlightChange, Command as FlightCommand, ComputeKind as FlightComputeKind,
-    GetPosition, GetTraceStats, Observation as FlightObservation, PositionFix, TraceStats,
+    FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetPosition, GetTraceStats,
+    PositionFix, TraceStats,
 };
 use updraft_core::{AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
@@ -174,7 +174,7 @@ fn invalidating_work_cancels_the_stale_worker_job() {
     let (cancelled_tx, cancelled_rx) = std::sync::mpsc::sync_channel(1);
     let runtime = Runtime::builder()
         .with_app_config(AppConfig {
-            flight: updraft_core::flight::Config {
+            flight: FlightConfig {
                 trace_stats_interval: Duration::ZERO,
             },
         })
@@ -192,11 +192,7 @@ fn invalidating_work_cancels_the_stale_worker_job() {
 
     submit_fix(&handle, 50.);
     assert_ok!(started_rx.recv_timeout(TIMEOUT));
-    assert_ok!(
-        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
-            FlightCommand::ClearTrace,
-        )))
-    );
+    assert_ok!(handle.submit(Input::Flight(FlightInput::ClearTrace)));
     submit_fix(&handle, 51.);
 
     assert_ok!(cancelled_rx.recv_timeout(TIMEOUT));
@@ -215,7 +211,7 @@ fn stale_result_from_non_cooperative_worker_is_ignored() {
     let (release_tx, release_rx) = std::sync::mpsc::channel();
     let runtime = Runtime::builder()
         .with_app_config(AppConfig {
-            flight: updraft_core::flight::Config {
+            flight: FlightConfig {
                 trace_stats_interval: Duration::ZERO,
             },
         })
@@ -234,11 +230,7 @@ fn stale_result_from_non_cooperative_worker_is_ignored() {
     submit_fix(&handle, 50.);
     assert_ok!(started_rx.recv_timeout(TIMEOUT));
 
-    assert_ok!(
-        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
-            FlightCommand::ClearTrace,
-        )))
-    );
+    assert_ok!(handle.submit(Input::Flight(FlightInput::ClearTrace)));
     submit_fix(&handle, 51.);
     submit_fix(&handle, 52.);
 
@@ -271,7 +263,7 @@ impl Worker for ReturnsPreviousResult {
 fn worker_result_for_another_job_is_rejected() {
     let runtime = Runtime::builder()
         .with_app_config(AppConfig {
-            flight: updraft_core::flight::Config {
+            flight: FlightConfig {
                 trace_stats_interval: Duration::ZERO,
             },
         })
@@ -287,11 +279,7 @@ fn worker_result_for_another_job_is_rejected() {
     );
     let handled_before_mismatch = handle.metrics().inputs_handled();
 
-    assert_ok!(
-        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
-            FlightCommand::ClearTrace,
-        )))
-    );
+    assert_ok!(handle.submit(Input::Flight(FlightInput::ClearTrace)));
     submit_fix(&handle, 51.);
 
     let deadline = Instant::now() + TIMEOUT;
@@ -320,7 +308,7 @@ fn worker_result_for_another_job_is_rejected() {
 /// A runtime builder whose compute throttle is short enough for wall-clock tests.
 fn runtime_builder() -> RuntimeBuilder {
     Runtime::builder().with_app_config(AppConfig {
-        flight: updraft_core::flight::Config {
+        flight: FlightConfig {
             trace_stats_interval: Duration::from_millis(50),
         },
     })
@@ -339,9 +327,7 @@ fn fix(handle: &Handle, latitude: f64) -> PositionFix {
 fn submit_fix(handle: &Handle, latitude: f64) -> PositionFix {
     let fix = fix(handle, latitude);
     assert_ok!(
-        handle.submit(Input::Flight(updraft_core::flight::Input::Observation(
-            FlightObservation::Position(fix),
-        ))),
+        handle.submit(Input::Flight(FlightInput::Position(fix))),
         "runtime is running"
     );
     fix
@@ -584,9 +570,7 @@ fn worker_is_reset_when_the_revision_changes() {
     // Clearing the trace changes the compute revision. The next job runs
     // under the new revision and must reset the worker's cache before it does.
     assert_ok!(
-        handle.submit(Input::Flight(updraft_core::flight::Input::Command(
-            FlightCommand::ClearTrace,
-        ))),
+        handle.submit(Input::Flight(FlightInput::ClearTrace)),
         "runtime is running"
     );
     submit_fix(&handle, 50.1);

@@ -4,9 +4,8 @@
 use claims::{assert_matches, assert_none, assert_some, assert_some_eq};
 use std::time::Duration;
 use updraft_core::flight::{
-    Change as FlightChange, Command as FlightCommand, ComputeJob as FlightComputeJob,
-    ComputeKind as FlightComputeKind, ComputeResult as FlightComputeResult, GetPosition,
-    GetTraceStats, Observation as FlightObservation, PositionFix,
+    FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult, FlightConfig,
+    FlightInput, FlightSnapshot, GetPosition, GetTraceStats, PositionFix,
 };
 use updraft_core::{
     App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
@@ -19,18 +18,16 @@ fn app_routes_flight_protocol_through_the_flight_domain() {
     let mut app = App::new();
     let fix = fix(0., 50., 6.);
 
-    let update = app.handle(Input::Flight(updraft_core::flight::Input::Observation(
-        updraft_core::flight::Observation::Position(fix),
-    )));
+    let update = app.handle(Input::Flight(FlightInput::Position(fix)));
 
     assert_eq!(
         update.changes,
-        vec![Change::Flight(updraft_core::flight::Change::Position(fix))]
+        vec![Change::Flight(FlightChange::Position(fix))]
     );
     assert_some_eq!(app.query(GetPosition), fix);
     assert_eq!(
         app.snapshot().flight,
-        updraft_core::flight::Snapshot {
+        FlightSnapshot {
             position: Some(fix),
             trace_stats: None,
         }
@@ -52,15 +49,11 @@ fn fix(seconds: f64, latitude: f64, longitude: f64) -> PositionFix {
 }
 
 fn position_input(seconds: f64, latitude: f64, longitude: f64) -> Input {
-    Input::Flight(updraft_core::flight::Input::Observation(
-        FlightObservation::Position(fix(seconds, latitude, longitude)),
-    ))
+    Input::Flight(FlightInput::Position(fix(seconds, latitude, longitude)))
 }
 
 fn clear_trace_input() -> Input {
-    Input::Flight(updraft_core::flight::Input::Command(
-        FlightCommand::ClearTrace,
-    ))
+    Input::Flight(FlightInput::ClearTrace)
 }
 
 /// Extracts the single compute job from an update, if any.
@@ -158,7 +151,7 @@ fn trace_stats_compute_lifecycle() {
 #[test]
 fn stats_interval_is_configurable() {
     let mut app = App::with_config(updraft_core::AppConfig {
-        flight: updraft_core::flight::Config {
+        flight: FlightConfig {
             trace_stats_interval: Duration::from_millis(100),
         },
     });

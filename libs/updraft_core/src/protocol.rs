@@ -1,4 +1,7 @@
-use crate::flight;
+use crate::flight::{
+    FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult, FlightInput,
+    FlightSnapshot,
+};
 use crate::job::ComputeRevision;
 use std::time::Duration;
 
@@ -16,7 +19,7 @@ pub enum Input {
         clock_time: Duration,
     },
     /// An input owned by the flight domain.
-    Flight(flight::Input),
+    Flight(FlightInput),
     /// A completed compute job, returned by a runtime worker.
     ComputeResult(ComputeResult),
     /// A failed compute job. Without this input the core could keep
@@ -30,7 +33,7 @@ pub enum Input {
 /// input order.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Change {
-    Flight(flight::Change),
+    Flight(FlightChange),
 }
 
 impl Change {
@@ -70,7 +73,7 @@ pub enum Effect {
 /// runtime only decides where it executes.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ComputeJob {
-    Flight(flight::ComputeJob),
+    Flight(FlightComputeJob),
 }
 
 impl ComputeJob {
@@ -105,13 +108,13 @@ impl ComputeJob {
 /// The runtime permits at most one worker and one running job per kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ComputeKind {
-    Flight(flight::ComputeKind),
+    Flight(FlightComputeKind),
 }
 
 /// A completed compute job, entering the core as an ordinary input.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ComputeResult {
-    Flight(flight::ComputeResult),
+    Flight(FlightComputeResult),
 }
 
 impl ComputeResult {
@@ -153,7 +156,7 @@ pub struct ComputeFailure {
 /// and display-specific configuration use queries or resources instead.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Snapshot {
-    pub flight: flight::Snapshot,
+    pub flight: FlightSnapshot,
 }
 
 /// Everything produced by handling one input.

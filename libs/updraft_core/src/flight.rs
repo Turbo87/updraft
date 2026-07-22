@@ -15,12 +15,12 @@ use updraft_units::{Angle, Length, MslAltitude, Speed};
 
 /// Tuning knobs for the flight domain.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Config {
+pub struct FlightConfig {
     /// Minimum spacing between two trace-statistics compute jobs.
     pub trace_stats_interval: Duration,
 }
 
-impl Default for Config {
+impl Default for FlightConfig {
     fn default() -> Self {
         Self {
             trace_stats_interval: Duration::from_secs(5),
@@ -55,40 +55,18 @@ pub struct TraceStats {
 
 /// A recorded event or request owned by the flight domain.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Input {
-    /// A user command.
-    Command(Command),
-    /// A normalized sensor observation.
-    Observation(Observation),
-}
-
-impl Input {
-    pub(crate) fn observed_at(&self) -> Option<Duration> {
-        match self {
-            Self::Command(_) => None,
-            Self::Observation(observation) => Some(observation.observed_at()),
-        }
-    }
-}
-
-/// A recorded user command.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Command {
+pub enum FlightInput {
     /// Clears the flown trace and its statistics.
     ClearTrace,
-}
-
-/// A normalized sensor observation.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Observation {
     /// An own-position fix.
     Position(PositionFix),
 }
 
-impl Observation {
-    fn observed_at(&self) -> Duration {
+impl FlightInput {
+    pub(crate) fn observed_at(&self) -> Option<Duration> {
         match self {
-            Self::Position(fix) => fix.observed_at,
+            Self::ClearTrace => None,
+            Self::Position(fix) => Some(fix.observed_at),
         }
     }
 }
@@ -119,7 +97,7 @@ impl crate::Query for GetTraceStats {
 
 /// A client-visible flight-state update.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Change {
+pub enum FlightChange {
     /// The own-position last-value update.
     Position(PositionFix),
     /// New trace statistics, or `None` after the trace was cleared.
@@ -129,7 +107,7 @@ pub enum Change {
 /// One expensive flight calculation, carrying a snapshot of everything it
 /// needs.
 #[derive(Clone, Debug, PartialEq)]
-pub enum ComputeJob {
+pub enum FlightComputeJob {
     /// Statistics over the flown trace.
     TraceStats {
         revision: crate::ComputeRevision,
@@ -137,10 +115,10 @@ pub enum ComputeJob {
     },
 }
 
-impl ComputeJob {
-    pub fn kind(&self) -> ComputeKind {
+impl FlightComputeJob {
+    pub fn kind(&self) -> FlightComputeKind {
         match self {
-            Self::TraceStats { .. } => ComputeKind::TraceStats,
+            Self::TraceStats { .. } => FlightComputeKind::TraceStats,
         }
     }
 
@@ -150,9 +128,9 @@ impl ComputeJob {
         }
     }
 
-    pub fn run(self) -> ComputeResult {
+    pub fn run(self) -> FlightComputeResult {
         match self {
-            Self::TraceStats { revision, fixes } => ComputeResult::TraceStats {
+            Self::TraceStats { revision, fixes } => FlightComputeResult::TraceStats {
                 revision,
                 stats: trace_stats(&fixes),
             },
@@ -162,23 +140,23 @@ impl ComputeJob {
 
 /// The kind of a flight compute job.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ComputeKind {
+pub enum FlightComputeKind {
     TraceStats,
 }
 
 /// A completed flight compute job.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ComputeResult {
+pub enum FlightComputeResult {
     TraceStats {
         revision: crate::ComputeRevision,
         stats: TraceStats,
     },
 }
 
-impl ComputeResult {
-    pub fn kind(&self) -> ComputeKind {
+impl FlightComputeResult {
+    pub fn kind(&self) -> FlightComputeKind {
         match self {
-            Self::TraceStats { .. } => ComputeKind::TraceStats,
+            Self::TraceStats { .. } => FlightComputeKind::TraceStats,
         }
     }
 
@@ -191,7 +169,7 @@ impl ComputeResult {
 
 /// The shared current flight state for a newly subscribing client.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Snapshot {
+pub struct FlightSnapshot {
     pub position: Option<PositionFix>,
     pub trace_stats: Option<TraceStats>,
 }
@@ -228,7 +206,7 @@ pub(crate) struct Flight {
 }
 
 impl Flight {
-    pub(crate) fn new(config: Config) -> Self {
+    pub(crate) fn new(config: FlightConfig) -> Self {
         Self {
             stats_interval: config.trace_stats_interval,
             position: None,
@@ -249,21 +227,21 @@ impl Flight {
 
     pub(crate) fn handle(
         &mut self,
-        input: Input,
+        input: FlightInput,
         clock_time: Duration,
         timers: &mut Timers,
         update: &mut Update,
     ) {
         match input {
-            Input::Command(Command::ClearTrace) => self.clear_trace(timers, update),
-            Input::Observation(Observation::Position(fix)) => {
+            FlightInput::ClearTrace => self.clear_trace(timers, update),
+            FlightInput::Position(fix) => {
                 self.observe_position(fix, clock_time, timers, update);
             }
         }
     }
 
-    pub(crate) fn snapshot(&self) -> Snapshot {
-        Snapshot {
+    pub(crate) fn snapshot(&self) -> FlightSnapshot {
+        FlightSnapshot {
             position: self.position(),
             trace_stats: self.trace_stats(),
         }
@@ -280,7 +258,7 @@ impl Flight {
         self.trace.push(fix);
         update
             .changes
-            .push(AppChange::Flight(Change::Position(fix)));
+            .push(AppChange::Flight(FlightChange::Position(fix)));
         self.stats_job.request();
         self.schedule_stats(clock_time, timers);
     }
@@ -291,7 +269,7 @@ impl Flight {
             update
                 .effects
                 .push(Effect::CancelCompute(ComputeCancellation {
-                    kind: AppComputeKind::Flight(ComputeKind::TraceStats),
+                    kind: AppComputeKind::Flight(FlightComputeKind::TraceStats),
                     revision,
                 }));
         }
@@ -299,7 +277,7 @@ impl Flight {
         if self.trace_stats.take().is_some() {
             update
                 .changes
-                .push(AppChange::Flight(Change::TraceStats(None)));
+                .push(AppChange::Flight(FlightChange::TraceStats(None)));
         }
     }
 
@@ -311,18 +289,18 @@ impl Flight {
 
     pub(crate) fn compute_result(
         &mut self,
-        result: ComputeResult,
+        result: FlightComputeResult,
         clock_time: Duration,
         timers: &mut Timers,
         update: &mut Update,
     ) {
         match result {
-            ComputeResult::TraceStats { revision, stats } => {
+            FlightComputeResult::TraceStats { revision, stats } => {
                 if self.stats_job.finish(revision) {
                     self.trace_stats = Some(stats);
                     update
                         .changes
-                        .push(AppChange::Flight(Change::TraceStats(Some(stats))));
+                        .push(AppChange::Flight(FlightChange::TraceStats(Some(stats))));
                 }
                 self.schedule_stats(clock_time, timers);
             }
@@ -331,7 +309,7 @@ impl Flight {
 
     pub(crate) fn compute_failed(
         &mut self,
-        kind: ComputeKind,
+        kind: FlightComputeKind,
         revision: crate::ComputeRevision,
         clock_time: Duration,
         timers: &mut Timers,
@@ -341,7 +319,7 @@ impl Flight {
 
     pub(crate) fn compute_cancelled(
         &mut self,
-        kind: ComputeKind,
+        kind: FlightComputeKind,
         revision: crate::ComputeRevision,
         clock_time: Duration,
         timers: &mut Timers,
@@ -351,13 +329,13 @@ impl Flight {
 
     fn finish_compute(
         &mut self,
-        kind: ComputeKind,
+        kind: FlightComputeKind,
         revision: crate::ComputeRevision,
         clock_time: Duration,
         timers: &mut Timers,
     ) {
         match kind {
-            ComputeKind::TraceStats => {
+            FlightComputeKind::TraceStats => {
                 // An older trace-statistics result stays safe to show, so
                 // a non-result only frees the slot. New fixes trigger the
                 // next attempt.
@@ -376,7 +354,7 @@ impl Flight {
         let revision = self.stats_job.start();
         self.stats_started_at = Some(clock_time);
         update.effects.push(Effect::Compute(AppComputeJob::Flight(
-            ComputeJob::TraceStats {
+            FlightComputeJob::TraceStats {
                 revision,
                 fixes: self.trace.clone(),
             },
@@ -442,9 +420,9 @@ mod tests {
         let position = fix(50., 6., Some(1000.));
 
         assert_some_eq!(
-            Input::Observation(Observation::Position(position)).observed_at(),
+            FlightInput::Position(position).observed_at(),
             position.observed_at
         );
-        assert_none!(Input::Command(Command::ClearTrace).observed_at());
+        assert_none!(FlightInput::ClearTrace.observed_at());
     }
 }

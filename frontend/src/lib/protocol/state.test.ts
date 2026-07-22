@@ -17,6 +17,7 @@ describe('ApplicationState', () => {
             trackDegrees: 45,
             groundSpeedMetersPerSecond: 30,
           },
+          pressureAltitudeMeters: 390,
           traceStats: null,
         },
       },
@@ -31,6 +32,7 @@ describe('ApplicationState', () => {
       trackDegrees: 45,
       groundSpeedMetersPerSecond: 30,
     });
+    expect(state.flight.pressureAltitudeMeters).toBe(390);
     expect(state.flight.traceStats).toBeNull();
     expect(state.streamStatus).toBe('connected');
     expect(state.lastEventAtMs).toBe(2_000);
@@ -56,6 +58,11 @@ describe('ApplicationState', () => {
         },
         {
           group: 'flight',
+          type: 'pressureAltitudeMeters',
+          value: 425,
+        },
+        {
+          group: 'flight',
           type: 'traceStats',
           value: {
             fixCount: 4,
@@ -68,6 +75,7 @@ describe('ApplicationState', () => {
     );
 
     expect(state.flight.position?.latitudeDegrees).toBe(50.824);
+    expect(state.flight.pressureAltitudeMeters).toBe(425);
     expect(state.flight.traceStats).toEqual({
       fixCount: 4,
       distanceMeters: 123.5,
@@ -82,6 +90,7 @@ describe('ApplicationState', () => {
       {
         flight: {
           position: null,
+          pressureAltitudeMeters: null,
           traceStats: {
             fixCount: 4,
             distanceMeters: 123.5,

@@ -25,6 +25,7 @@ impl From<updraft_core::Snapshot> for Snapshot {
 #[serde(rename_all = "camelCase")]
 struct FlightSnapshot {
     position: Option<PositionFix>,
+    pressure_altitude_meters: Option<f64>,
     trace_stats: Option<TraceStats>,
 }
 
@@ -32,6 +33,9 @@ impl From<updraft_core::flight::FlightSnapshot> for FlightSnapshot {
     fn from(snapshot: updraft_core::flight::FlightSnapshot) -> Self {
         Self {
             position: snapshot.position.map(Into::into),
+            pressure_altitude_meters: snapshot
+                .pressure_altitude
+                .map(|altitude| altitude.into_inner().as_meters()),
             trace_stats: snapshot.trace_stats.map(Into::into),
         }
     }
@@ -152,6 +156,7 @@ impl From<updraft_core::Change> for Change {
 #[serde(tag = "type", content = "value", rename_all = "camelCase")]
 pub enum FlightChange {
     Position(PositionFix),
+    PressureAltitudeMeters(f64),
     TraceStats(Option<TraceStats>),
 }
 
@@ -159,6 +164,9 @@ impl From<updraft_core::flight::FlightChange> for FlightChange {
     fn from(change: updraft_core::flight::FlightChange) -> Self {
         match change {
             updraft_core::flight::FlightChange::Position(fix) => Self::Position(fix.into()),
+            updraft_core::flight::FlightChange::PressureAltitude(altitude) => {
+                Self::PressureAltitudeMeters(altitude.into_inner().as_meters())
+            }
             updraft_core::flight::FlightChange::TraceStats(stats) => {
                 Self::TraceStats(stats.map(Into::into))
             }

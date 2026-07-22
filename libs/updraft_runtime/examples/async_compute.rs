@@ -62,6 +62,9 @@ fn main() {
                         fix.altitude.unwrap_or(MslAltitude::ZERO).into_inner(),
                     );
                 }
+                Change::Flight(FlightChange::PressureAltitude(altitude)) => {
+                    println!("pressure altitude: {:6.1?}", altitude.into_inner());
+                }
                 Change::Flight(FlightChange::TraceStats(Some(stats))) => {
                     println!(
                         "trace stats (from the worker): {} fixes, {:.2} km flown, max {:.0?}",

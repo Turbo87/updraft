@@ -2,4 +2,4 @@
 import type { PositionFix } from "./PositionFix";
 import type { TraceStats } from "./TraceStats";
 
-export type FlightChange = { "type": "position", "value": PositionFix } | { "type": "traceStats", "value": TraceStats | null };
+export type FlightChange = { "type": "position", "value": PositionFix } | { "type": "pressureAltitudeMeters", "value": number } | { "type": "traceStats", "value": TraceStats | null };

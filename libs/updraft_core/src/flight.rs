@@ -12,7 +12,7 @@ use crate::protocol::{
 use crate::time::{Timer, Timers};
 use std::time::Duration;
 use updraft_geo::LatLon;
-use updraft_units::{Angle, Length, MslAltitude, Speed};
+use updraft_units::{Angle, Length, MslAltitude, PressureAltitude, Speed};
 
 /// Tuning knobs for the flight domain.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -131,6 +131,8 @@ pub enum FlightInput {
     ClearTrace,
     /// A GNSS position update.
     Gnss(Sourced<Observation<GnssUpdate>>),
+    /// A standard-pressure altitude observation.
+    PressureAltitude(Sourced<Observation<PressureAltitude>>),
 }
 
 impl FlightInput {
@@ -138,6 +140,7 @@ impl FlightInput {
         match self {
             Self::ClearTrace => None,
             Self::Gnss(gnss) => Some(gnss.value.observed_at),
+            Self::PressureAltitude(altitude) => Some(altitude.value.observed_at),
         }
     }
 }
@@ -159,6 +162,8 @@ impl crate::Query for GetTraceStats {
 pub enum FlightChange {
     /// The own-position last-value update.
     Position(PositionFix),
+    /// The standard-pressure altitude last-value update.
+    PressureAltitude(PressureAltitude),
     /// New trace statistics, or `None` after the trace was cleared.
     TraceStats(Option<TraceStats>),
 }
@@ -230,6 +235,7 @@ impl FlightComputeResult {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct FlightSnapshot {
     pub position: Option<PositionFix>,
+    pub pressure_altitude: Option<PressureAltitude>,
     pub trace_stats: Option<TraceStats>,
 }
 
@@ -258,6 +264,7 @@ pub(crate) struct Flight {
     /// Minimum spacing between two trace-statistics job starts.
     stats_interval: Duration,
     position: Option<PositionFix>,
+    pressure_altitude: Option<Sourced<Observation<PressureAltitude>>>,
     trace: Vec<PositionFix>,
     trace_stats: Option<TraceStats>,
     stats_job: ComputeSlot,
@@ -269,6 +276,7 @@ impl Flight {
         Self {
             stats_interval: config.trace_stats_interval,
             position: None,
+            pressure_altitude: None,
             trace: Vec::new(),
             trace_stats: None,
             stats_job: ComputeSlot::default(),
@@ -292,12 +300,18 @@ impl Flight {
             FlightInput::Gnss(gnss) => {
                 self.observe_gnss(gnss.value, clock_time, timers, update);
             }
+            FlightInput::PressureAltitude(altitude) => {
+                self.observe_pressure_altitude(altitude, update);
+            }
         }
     }
 
     pub(crate) fn snapshot(&self) -> FlightSnapshot {
         FlightSnapshot {
             position: self.position,
+            pressure_altitude: self
+                .pressure_altitude
+                .map(|observation| observation.value.value),
             trace_stats: self.trace_stats(),
         }
     }
@@ -324,6 +338,16 @@ impl Flight {
             .push(AppChange::Flight(FlightChange::Position(fix)));
         self.stats_job.request();
         self.schedule_stats(clock_time, timers);
+    }
+
+    fn observe_pressure_altitude(
+        &mut self,
+        observation: Sourced<Observation<PressureAltitude>>,
+        update: &mut Update,
+    ) {
+        let change = FlightChange::PressureAltitude(observation.value.value);
+        self.pressure_altitude = Some(observation);
+        update.changes.push(AppChange::Flight(change));
     }
 
     pub(crate) fn clear_trace(&mut self, timers: &mut Timers, update: &mut Update) {

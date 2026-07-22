@@ -50,6 +50,7 @@ describe('HttpUpdraftClient', () => {
       JSON.stringify({
         flight: {
           position: null,
+          pressureAltitudeMeters: null,
           traceStats: {
             fixCount: 2,
             distanceMeters: 42,

@@ -9,10 +9,12 @@ export type StreamStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed
 
 export class FlightState {
   position = $state.raw<PositionFix | null>(null);
+  pressureAltitudeMeters = $state<number | null>(null);
   traceStats = $state.raw<TraceStats | null>(null);
 
   replace(snapshot: Snapshot['flight']): void {
     this.position = snapshot.position;
+    this.pressureAltitudeMeters = snapshot.pressureAltitudeMeters;
     this.traceStats = snapshot.traceStats;
   }
 
@@ -20,6 +22,9 @@ export class FlightState {
     switch (change.type) {
       case 'position':
         this.position = change.value;
+        break;
+      case 'pressureAltitudeMeters':
+        this.pressureAltitudeMeters = change.value;
         break;
       case 'traceStats':
         this.traceStats = change.value;

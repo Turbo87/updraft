@@ -3,6 +3,7 @@
 
 use claims::{assert_matches, assert_none, assert_some, assert_some_eq};
 use std::time::Duration;
+use updraft_core::device::DeviceId;
 use updraft_core::flight::{
     FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult, FlightConfig,
     FlightInput, FlightSnapshot, GetTraceStats, GnssUpdate, Observation, PositionFix, Sourced,
@@ -11,7 +12,30 @@ use updraft_core::{
     App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
 };
 use updraft_geo::LatLon;
-use updraft_units::{Length, MslAltitude};
+use updraft_units::{Length, MslAltitude, PressureAltitude};
+
+#[test]
+fn app_publishes_latest_pressure_altitude() {
+    let mut app = App::new();
+    let first = Sourced::external(
+        DeviceId::new(7),
+        Observation::new(at(1.), PressureAltitude::new(Length::from_meters(950.))),
+    );
+    app.handle(Input::Flight(FlightInput::PressureAltitude(first)));
+    let second = Sourced::internal(Observation::new(
+        at(2.),
+        PressureAltitude::new(Length::from_meters(975.)),
+    ));
+    let altitude = second.value.value;
+
+    let update = app.handle(Input::Flight(FlightInput::PressureAltitude(second)));
+
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::PressureAltitude(altitude))]
+    );
+    assert_some_eq!(app.snapshot().flight.pressure_altitude, altitude);
+}
 
 #[test]
 fn app_routes_flight_protocol_through_the_flight_domain() {
@@ -30,6 +54,7 @@ fn app_routes_flight_protocol_through_the_flight_domain() {
         app.snapshot().flight,
         FlightSnapshot {
             position: Some(fix),
+            pressure_altitude: None,
             trace_stats: None,
         }
     );

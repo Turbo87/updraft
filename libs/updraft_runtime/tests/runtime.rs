@@ -373,7 +373,7 @@ fn atomic_subscribe_and_fifo_ordering() {
         let changes = assert_ok!(subscription.changes.recv_timeout(remaining));
         positions.extend(changes.into_iter().filter_map(|change| match change {
             Change::Flight(FlightChange::Position(fix)) => Some(fix),
-            Change::Flight(FlightChange::TraceStats(_)) => None,
+            _ => None,
         }));
     }
     assert_eq!(

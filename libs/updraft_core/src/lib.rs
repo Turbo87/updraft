@@ -19,11 +19,11 @@
 //! - **Resource**: bulk or growing data served by reference instead of
 //!   copied through the state stream.
 //!
-//! [`App::handle()`] is the only mutation entry point. The same ordered
-//! inputs produce the same state changes, so whole-flight scenario tests
-//! are a plain loop over [`App::handle()`] with no async runtime, sleeps,
-//! or wall clock, and a recorded input sequence replays a field failure
-//! exactly.
+//! [`App::handle()`] applies inputs whose observation times control the clock.
+//! [`App::handle_at_clock_time()`] additionally supplies their current
+//! monotonic processing time. The same ordered calls produce the same state
+//! changes, so whole-flight scenario tests need no async runtime, sleeps, or
+//! wall clock.
 
 mod app;
 pub mod device;

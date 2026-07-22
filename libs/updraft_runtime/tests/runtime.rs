@@ -3,15 +3,15 @@
 //! (panic-to-`ComputeFailed`, recovery, revision handling).
 
 use claims::{
-    assert_err, assert_err_eq, assert_ge, assert_lt, assert_none, assert_ok, assert_some,
-    assert_some_eq,
+    assert_err, assert_err_eq, assert_ge, assert_lt, assert_matches, assert_none, assert_ok,
+    assert_some,
 };
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use updraft_core::flight::{
-    FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetTraceStats, GnssState,
-    GnssUpdate, Observation, Sourced, TraceStats,
+    Availability, FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetTraceStats,
+    GnssState, GnssUpdate, Observation, Sourced, TraceStats,
 };
 use updraft_core::{AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
@@ -31,7 +31,7 @@ fn subscription_omits_unselected_change_groups() {
 
     let fix = submit_fix(&handle, 50.);
     let current = assert_ok!(handle.subscribe(ChangeFilter::only([])));
-    assert_some_eq!(current.snapshot.flight.gnss, fix);
+    assert_eq!(current.snapshot.flight.gnss, Availability::Current(fix));
 
     // The second subscription proves that the fix was handled before this check.
     assert_err_eq!(
@@ -351,7 +351,10 @@ fn atomic_subscribe_and_fifo_ordering() {
     // The subscription request is ordered behind the first fix on the
     // same queue, so its snapshot must already contain it.
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_some_eq!(subscription.snapshot.flight.gnss, first);
+    assert_eq!(
+        subscription.snapshot.flight.gnss,
+        Availability::Current(first)
+    );
 
     let second = submit_fix(&handle, 50.01);
     let third = submit_fix(&handle, 50.02);
@@ -362,7 +365,7 @@ fn atomic_subscribe_and_fifo_ordering() {
         let remaining = deadline.saturating_duration_since(Instant::now());
         let changes = assert_ok!(subscription.changes.recv_timeout(remaining));
         states.extend(changes.into_iter().filter_map(|change| match change {
-            Change::Flight(FlightChange::Gnss(gnss)) => gnss,
+            Change::Flight(FlightChange::Gnss(Availability::Current(gnss))) => Some(gnss),
             _ => None,
         }));
     }
@@ -386,7 +389,10 @@ fn slow_subscriber_is_dropped() {
     // Resubscribe is ordered behind both fixes, so its snapshot proves that
     // the one-batch buffer overflowed while unread.
     let replacement = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_some_eq!(replacement.snapshot.flight.gnss, latest);
+    assert_eq!(
+        replacement.snapshot.flight.gnss,
+        Availability::Current(latest)
+    );
     assert_ok!(subscription.changes.try_recv());
     assert_err_eq!(
         subscription.changes.try_recv(),
@@ -396,7 +402,7 @@ fn slow_subscriber_is_dropped() {
 
     // Reconnect is resubscribe: a fresh subscription works and starts
     // from a fresh snapshot.
-    assert_some!(replacement.snapshot.flight.gnss);
+    assert_matches!(replacement.snapshot.flight.gnss, Availability::Current(_));
 
     runtime.shutdown();
 }
@@ -602,7 +608,7 @@ fn missing_worker_fails_the_job_without_stalling() {
     }
 
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_some!(subscription.snapshot.flight.gnss);
+    assert_matches!(subscription.snapshot.flight.gnss, Availability::Current(_));
 
     runtime.shutdown();
 }

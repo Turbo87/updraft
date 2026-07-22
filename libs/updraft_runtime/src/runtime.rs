@@ -379,14 +379,14 @@ impl CoreLoop {
             let queued = if let Some(deadline) = self.next_deadline {
                 let clock_time = self.clock.clock_time();
                 if clock_time >= deadline {
-                    self.process(Input::Clock { clock_time });
+                    self.process(Input::Clock { clock_time }, clock_time);
                     continue;
                 }
                 match self.rx.recv_timeout(deadline.saturating_sub(clock_time)) {
                     Ok(msg) => msg,
                     Err(RecvTimeoutError::Timeout) => {
                         let clock_time = self.clock.clock_time();
-                        self.process(Input::Clock { clock_time });
+                        self.process(Input::Clock { clock_time }, clock_time);
                         continue;
                     }
                     Err(RecvTimeoutError::Disconnected) => return,
@@ -400,7 +400,10 @@ impl CoreLoop {
 
             self.metrics.record_dequeued(queued.enqueued_at.elapsed());
             match queued.msg {
-                LoopMsg::Input(input) => self.process(input),
+                LoopMsg::Input(input) => {
+                    let clock_time = self.clock.clock_time();
+                    self.process(input, clock_time);
+                }
                 LoopMsg::Query(query) => query.execute(&self.app),
                 LoopMsg::Subscribe(filter, reply) => self.subscribe(filter, &reply),
                 LoopMsg::Shutdown => return,
@@ -421,7 +424,7 @@ impl CoreLoop {
         }
     }
 
-    fn process(&mut self, input: Input) {
+    fn process(&mut self, input: Input, clock_time: Duration) {
         // Effects that fail to dispatch synthesize follow-up inputs. The
         // local queue keeps their handling ordered without re-entering
         // the bounded FIFO.
@@ -436,7 +439,7 @@ impl CoreLoop {
                 self.active_jobs.remove(&kind);
             }
             let started = Instant::now();
-            let update = self.app.handle(input);
+            let update = self.app.handle_at_clock_time(input, clock_time);
             self.metrics.record_handler_time(started.elapsed());
             self.metrics.record_input();
             self.next_deadline = update.next_deadline;
@@ -644,6 +647,50 @@ fn panic_message(panic: &(dyn std::any::Any + Send)) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use claims::{assert_matches, assert_ok};
+    use updraft_core::flight::{Availability, FlightInput, Observation, Sourced};
+    use updraft_units::{Length, PressureAltitude};
+
+    #[test]
+    fn queued_observation_uses_runtime_time_for_freshness() {
+        let (tx, rx) = sync_channel(3);
+        let clock_time = Duration::from_secs(4);
+        let altitude = PressureAltitude::new(Length::from_meters(900.));
+        let input = Input::Flight(FlightInput::PressureAltitude(Sourced::simulator(
+            Observation::new(Duration::ZERO, altitude),
+        )));
+        let (subscription_tx, subscription_rx) = sync_channel(1);
+        for msg in [
+            LoopMsg::Input(input),
+            LoopMsg::Subscribe(ChangeFilter::all(), subscription_tx),
+            LoopMsg::Shutdown,
+        ] {
+            assert_ok!(tx.send(QueuedMsg {
+                enqueued_at: Instant::now() - clock_time,
+                msg,
+            }));
+        }
+        let core_loop = CoreLoop {
+            app: App::new(),
+            rx,
+            clock: Clock::with_elapsed(clock_time),
+            metrics: Arc::new(Metrics::default()),
+            subscribers: Vec::new(),
+            subscriber_buffer_capacity: 1,
+            workers: HashMap::new(),
+            active_jobs: HashMap::new(),
+            next_deadline: None,
+        };
+        core_loop.run();
+
+        assert_matches!(
+            assert_ok!(subscription_rx.recv())
+                .snapshot
+                .flight
+                .pressure_altitude,
+            Availability::LastKnown(value) if value == altitude
+        );
+    }
 
     #[test]
     fn describes_non_string_panic_payload() {

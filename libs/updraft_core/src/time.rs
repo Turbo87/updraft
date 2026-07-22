@@ -4,6 +4,8 @@ use std::time::Duration;
 /// Work that the core schedules for later.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Timer {
+    /// Re-evaluates selected flight signals at their earliest freshness deadline.
+    FlightSignalFreshness,
     /// Starts the next trace-statistics job.
     TraceStats,
 }
@@ -26,6 +28,10 @@ impl Timers {
 
     pub(crate) fn is_scheduled(&self, timer: Timer) -> bool {
         self.due_times.contains_key(&timer)
+    }
+
+    pub(crate) fn deadline(&self, timer: Timer) -> Option<Duration> {
+        self.due_times.get(&timer).copied()
     }
 
     /// The earliest scheduled deadline, if any.
@@ -62,6 +68,10 @@ mod tests {
 
         timers.schedule(Timer::TraceStats, Duration::from_micros(100));
         assert!(timers.is_scheduled(Timer::TraceStats));
+        assert_some_eq!(
+            timers.deadline(Timer::TraceStats),
+            Duration::from_micros(100)
+        );
         assert_some_eq!(timers.next_deadline(), Duration::from_micros(100));
 
         assert_eq!(timers.take_due(Duration::from_micros(99)), vec![]);
@@ -69,6 +79,7 @@ mod tests {
             timers.take_due(Duration::from_micros(100)),
             vec![Timer::TraceStats]
         );
+        assert_none!(timers.deadline(Timer::TraceStats));
         assert!(!timers.is_scheduled(Timer::TraceStats));
         assert_none!(timers.next_deadline());
 

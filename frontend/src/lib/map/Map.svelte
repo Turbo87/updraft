@@ -3,6 +3,7 @@
 
   import type { Map, StyleSpecification } from 'maplibre-gl';
   import type { GnssState } from '$lib/protocol/generated/GnssState';
+  import type { Availability } from '$lib/protocol/generated/Availability';
 
   import { MapLibre } from 'svelte-maplibre-gl';
 
@@ -21,11 +22,15 @@
     layers: [],
   };
 
-  let { gnss, testMode = false }: { gnss: GnssState | null; testMode?: boolean } = $props();
+  let {
+    gnss,
+    testMode = false,
+  }: { gnss: Availability<GnssState>; testMode?: boolean } = $props();
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
-  const center = $derived(gnss ? gnssCoordinates(gnss) : DEFAULT_CENTER);
+  const displayedGnss = $derived(gnss.status === 'unavailable' ? null : gnss.value);
+  const center = $derived(displayedGnss ? gnssCoordinates(displayedGnss) : DEFAULT_CENTER);
   const mapStyle = $derived(
     testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
   );
@@ -60,8 +65,8 @@
     {center}
     zoom={11}
   >
-    {#if spritesLoaded && gnss}
-      <Ownship {gnss} />
+    {#if spritesLoaded && displayedGnss}
+      <Ownship gnss={displayedGnss} />
     {/if}
   </MapLibre>
   <MapDebugOverlay {map} />

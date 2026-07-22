@@ -13,7 +13,7 @@
 use std::thread;
 use std::time::Duration;
 use updraft_core::flight::{
-    FlightChange, FlightComputeKind, FlightInput, GnssUpdate, Observation, Sourced,
+    Availability, FlightChange, FlightComputeKind, FlightInput, GnssUpdate, Observation, Sourced,
 };
 use updraft_core::{Change, ComputeKind, Input};
 use updraft_geo::LatLon;
@@ -54,7 +54,7 @@ fn main() {
     while let Ok(changes) = subscription.changes.recv_timeout(Duration::from_secs(3)) {
         for change in changes {
             match change {
-                Change::Flight(FlightChange::Gnss(Some(gnss))) => {
+                Change::Flight(FlightChange::Gnss(Availability::Current(gnss))) => {
                     println!(
                         "position: {:7.4}° {:7.4}° at {:6.1?}",
                         gnss.position.value.latitude().as_degrees(),
@@ -65,14 +65,20 @@ fn main() {
                             .into_inner(),
                     );
                 }
-                Change::Flight(FlightChange::Gnss(None)) => {
+                Change::Flight(FlightChange::Gnss(Availability::Unavailable)) => {
                     println!("position unavailable");
                 }
-                Change::Flight(FlightChange::PressureAltitude(Some(altitude))) => {
+                Change::Flight(FlightChange::Gnss(Availability::LastKnown(_))) => {
+                    println!("position stale");
+                }
+                Change::Flight(FlightChange::PressureAltitude(Availability::Current(altitude))) => {
                     println!("pressure altitude: {:6.1?}", altitude.into_inner());
                 }
-                Change::Flight(FlightChange::PressureAltitude(None)) => {
+                Change::Flight(FlightChange::PressureAltitude(Availability::Unavailable)) => {
                     println!("pressure altitude unavailable");
+                }
+                Change::Flight(FlightChange::PressureAltitude(Availability::LastKnown(_))) => {
+                    println!("pressure altitude stale");
                 }
                 Change::Flight(FlightChange::TraceStats(Some(stats))) => {
                     println!(

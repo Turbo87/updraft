@@ -10,15 +10,18 @@ describe('ApplicationState', () => {
       {
         flight: {
           gnss: {
-            position: {
-              latitudeDegrees: 50.823,
-              longitudeDegrees: 6.186,
+            status: 'current',
+            value: {
+              position: {
+                latitudeDegrees: 50.823,
+                longitudeDegrees: 6.186,
+              },
+              altitudeMeters: 400.5,
+              trackDegrees: 45,
+              groundSpeedMetersPerSecond: 30,
             },
-            altitudeMeters: 400.5,
-            trackDegrees: 45,
-            groundSpeedMetersPerSecond: 30,
           },
-          pressureAltitudeMeters: 390,
+          pressureAltitudeMeters: { status: 'current', value: 390 },
           traceStats: null,
         },
       },
@@ -26,15 +29,18 @@ describe('ApplicationState', () => {
     );
 
     expect(state.flight.gnss).toEqual({
-      position: {
-        latitudeDegrees: 50.823,
-        longitudeDegrees: 6.186,
+      status: 'current',
+      value: {
+        position: {
+          latitudeDegrees: 50.823,
+          longitudeDegrees: 6.186,
+        },
+        altitudeMeters: 400.5,
+        trackDegrees: 45,
+        groundSpeedMetersPerSecond: 30,
       },
-      altitudeMeters: 400.5,
-      trackDegrees: 45,
-      groundSpeedMetersPerSecond: 30,
     });
-    expect(state.flight.pressureAltitudeMeters).toBe(390);
+    expect(state.flight.pressureAltitudeMeters).toEqual({ status: 'current', value: 390 });
     expect(state.flight.traceStats).toBeNull();
     expect(state.streamStatus).toBe('connected');
     expect(state.lastEventAtMs).toBe(2_000);
@@ -50,19 +56,22 @@ describe('ApplicationState', () => {
           group: 'flight',
           type: 'gnss',
           value: {
-            position: {
-              latitudeDegrees: 50.824,
-              longitudeDegrees: 6.187,
+            status: 'lastKnown',
+            value: {
+              position: {
+                latitudeDegrees: 50.824,
+                longitudeDegrees: 6.187,
+              },
+              altitudeMeters: null,
+              trackDegrees: null,
+              groundSpeedMetersPerSecond: null,
             },
-            altitudeMeters: null,
-            trackDegrees: null,
-            groundSpeedMetersPerSecond: null,
           },
         },
         {
           group: 'flight',
           type: 'pressureAltitudeMeters',
-          value: 425,
+          value: { status: 'current', value: 425 },
         },
         {
           group: 'flight',
@@ -77,8 +86,19 @@ describe('ApplicationState', () => {
       3_100,
     );
 
-    expect(state.flight.gnss?.position.latitudeDegrees).toBe(50.824);
-    expect(state.flight.pressureAltitudeMeters).toBe(425);
+    expect(state.flight.gnss).toEqual({
+      status: 'lastKnown',
+      value: {
+        position: {
+          latitudeDegrees: 50.824,
+          longitudeDegrees: 6.187,
+        },
+        altitudeMeters: null,
+        trackDegrees: null,
+        groundSpeedMetersPerSecond: null,
+      },
+    });
+    expect(state.flight.pressureAltitudeMeters).toEqual({ status: 'current', value: 425 });
     expect(state.flight.traceStats).toEqual({
       fixCount: 4,
       distanceMeters: 123.5,
@@ -92,8 +112,8 @@ describe('ApplicationState', () => {
     state.applySnapshot(
       {
         flight: {
-          gnss: null,
-          pressureAltitudeMeters: null,
+          gnss: { status: 'unavailable' },
+          pressureAltitudeMeters: { status: 'unavailable' },
           traceStats: {
             fixCount: 4,
             distanceMeters: 123.5,

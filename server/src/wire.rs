@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use updraft_core::flight::{
-    GnssState as CoreGnssState, GnssUpdate, Observation as CoreObservation,
+    Availability as CoreAvailability, GnssState as CoreGnssState, GnssUpdate,
+    Observation as CoreObservation,
 };
 
 #[cfg(feature = "ts")]
@@ -26,20 +27,40 @@ impl From<updraft_core::Snapshot> for Snapshot {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 struct FlightSnapshot {
-    gnss: Option<GnssState>,
-    pressure_altitude_meters: Option<f64>,
+    gnss: Availability<GnssState>,
+    pressure_altitude_meters: Availability<f64>,
     trace_stats: Option<TraceStats>,
 }
 
 impl From<updraft_core::flight::FlightSnapshot> for FlightSnapshot {
     fn from(snapshot: updraft_core::flight::FlightSnapshot) -> Self {
         Self {
-            gnss: snapshot.gnss.map(Into::into),
-            pressure_altitude_meters: snapshot
-                .pressure_altitude
-                .map(|altitude| altitude.into_inner().as_meters()),
+            gnss: map_availability(snapshot.gnss, Into::into),
+            pressure_altitude_meters: map_availability(snapshot.pressure_altitude, |altitude| {
+                altitude.into_inner().as_meters()
+            }),
             trace_stats: snapshot.trace_stats.map(Into::into),
         }
+    }
+}
+
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(tag = "status", content = "value", rename_all = "camelCase")]
+pub enum Availability<T> {
+    Unavailable,
+    Current(T),
+    LastKnown(T),
+}
+
+fn map_availability<T, U>(
+    availability: CoreAvailability<T>,
+    map: impl FnOnce(T) -> U,
+) -> Availability<U> {
+    match availability {
+        CoreAvailability::Unavailable => Availability::Unavailable,
+        CoreAvailability::Current(value) => Availability::Current(map(value)),
+        CoreAvailability::LastKnown(value) => Availability::LastKnown(map(value)),
     }
 }
 
@@ -181,19 +202,21 @@ impl From<updraft_core::Change> for Change {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(tag = "type", content = "value", rename_all = "camelCase")]
 pub enum FlightChange {
-    Gnss(Option<GnssState>),
-    PressureAltitudeMeters(Option<f64>),
+    Gnss(Availability<GnssState>),
+    PressureAltitudeMeters(Availability<f64>),
     TraceStats(Option<TraceStats>),
 }
 
 impl From<updraft_core::flight::FlightChange> for FlightChange {
     fn from(change: updraft_core::flight::FlightChange) -> Self {
         match change {
-            updraft_core::flight::FlightChange::Gnss(gnss) => Self::Gnss(gnss.map(Into::into)),
+            updraft_core::flight::FlightChange::Gnss(gnss) => {
+                Self::Gnss(map_availability(gnss, Into::into))
+            }
             updraft_core::flight::FlightChange::PressureAltitude(altitude) => {
-                Self::PressureAltitudeMeters(
-                    altitude.map(|altitude| altitude.into_inner().as_meters()),
-                )
+                Self::PressureAltitudeMeters(map_availability(altitude, |altitude| {
+                    altitude.into_inner().as_meters()
+                }))
             }
             updraft_core::flight::FlightChange::TraceStats(stats) => {
                 Self::TraceStats(stats.map(Into::into))

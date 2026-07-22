@@ -69,11 +69,11 @@ importers:
   frontend:
     dependencies:
       '@fontsource/barlow':
-        specifier: 5.2.8
-        version: 5.2.8
+        specifier: 5.3.0
+        version: 5.3.0
       '@fontsource/barlow-semi-condensed':
-        specifier: 5.2.7
-        version: 5.2.7
+        specifier: 5.3.0
+        version: 5.3.0
     devDependencies:
       '@iconify-json/circle-flags':
         specifier: 1.2.10
@@ -434,11 +434,11 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@fontsource/barlow-semi-condensed@5.2.7':
-    resolution: {integrity: sha512-jkNDrHJe1+rUQkd71f9fdwPmJf7SF506AHfwMChlDrCPx5eLAE28tcmpGDB487yE1fQIEGfgfL4YnE4/KEniuA==}
+  '@fontsource/barlow-semi-condensed@5.3.0':
+    resolution: {integrity: sha512-EdpQ1GlLMofGqDsQhEw+g6DonNKmzt21p8y/oNbTl4BFzEkqYkFyE2fj25YGxmZBL/LZZGAxe74FlvEWcgc31w==}
 
-  '@fontsource/barlow@5.2.8':
-    resolution: {integrity: sha512-iuFOnY4OI2cd1STrJ3NdJNzWjhcwv6JarmqfdoZzAmz9g0jTVjES86MNbuBxqVR3ydbTEjo4opEl24GXScRM7w==}
+  '@fontsource/barlow@5.3.0':
+    resolution: {integrity: sha512-tGR0y6QObRtKv71MOth44222+mdNFM/ZWFWDV1VLzNbG4oK9PNRlyJzmkck4vHAi9ibHBXgt4SlY51amFP55CA==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2994,9 +2994,9 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@fontsource/barlow-semi-condensed@5.2.7': {}
+  '@fontsource/barlow-semi-condensed@5.3.0': {}
 
-  '@fontsource/barlow@5.2.8': {}
+  '@fontsource/barlow@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

@@ -6,35 +6,134 @@ use std::time::Duration;
 use updraft_core::device::DeviceId;
 use updraft_core::flight::{
     FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult, FlightConfig,
-    FlightInput, FlightSnapshot, GetTraceStats, GnssState, GnssUpdate, Observation, Sourced,
+    FlightInput, FlightSnapshot, GetTraceStats, GnssState, GnssUpdate, Observation, SourceId,
+    Sourced,
 };
 use updraft_core::{
     App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
 };
 use updraft_geo::LatLon;
-use updraft_units::{Length, MslAltitude, PressureAltitude};
+use updraft_units::{Angle, Length, MslAltitude, PressureAltitude, Speed};
 
 #[test]
-fn app_publishes_latest_pressure_altitude() {
+fn app_selects_the_newest_pressure_altitude_source() {
     let mut app = App::new();
-    let first = Sourced::external(
-        DeviceId::new(7),
-        Observation::new(at(1.), PressureAltitude::new(Length::from_meters(950.))),
-    );
-    app.handle(Input::Flight(FlightInput::PressureAltitude(first)));
-    let second = Sourced::internal(Observation::new(
+    let external = SourceId::External(DeviceId::new(7));
+    let altitude = PressureAltitude::new(Length::from_meters(950.));
+    app.handle(pressure_altitude_input(external, 2., altitude));
+
+    let stale = PressureAltitude::new(Length::from_meters(900.));
+    let update = app.handle(pressure_altitude_input(external, 1., stale));
+    assert!(update.changes.is_empty());
+    assert_some_eq!(app.snapshot().flight.pressure_altitude, altitude);
+
+    let internal = PressureAltitude::new(Length::from_meters(975.));
+    let update = app.handle(pressure_altitude_input(SourceId::Internal, 1.5, internal));
+    assert!(update.changes.is_empty());
+    assert_some_eq!(app.snapshot().flight.pressure_altitude, altitude);
+}
+
+#[test]
+fn app_retains_gnss_components_per_source() {
+    let mut app = App::new();
+    let external_a = SourceId::External(DeviceId::new(1));
+    let external_b = SourceId::External(DeviceId::new(2));
+    let a_initial = Observation::new(
         at(2.),
-        PressureAltitude::new(Length::from_meters(975.)),
-    ));
-    let altitude = second.value.value;
+        GnssUpdate {
+            position: LatLon::from_degrees(50., 6.),
+            altitude: Some(MslAltitude::new(Length::from_meters(1000.))),
+            track: Some(Angle::from_degrees(10.)),
+            ground_speed: Some(Speed::from_meters_per_second(20.)),
+        },
+    );
+    let first_update = app.handle(gnss_input(external_a, a_initial));
+    let first_job = assert_some!(compute_job(&first_update)).clone();
 
-    let update = app.handle(Input::Flight(FlightInput::PressureAltitude(second)));
+    let b_initial = Observation::new(
+        at(1.),
+        GnssUpdate {
+            position: LatLon::from_degrees(51., 7.),
+            altitude: Some(MslAltitude::new(Length::from_meters(2000.))),
+            track: Some(Angle::from_degrees(20.)),
+            ground_speed: Some(Speed::from_meters_per_second(30.)),
+        },
+    );
+    let update = app.handle(gnss_input(external_b, b_initial));
+    assert!(update.changes.is_empty());
+    let update = app.handle(Input::ComputeResult(first_job.run()));
+    assert_none!(
+        update.next_deadline,
+        "the unselected fix did not request trace work"
+    );
 
+    let a_partial = Observation::new(
+        at(3.),
+        GnssUpdate {
+            position: LatLon::from_degrees(50.1, 6.1),
+            altitude: None,
+            track: None,
+            ground_speed: None,
+        },
+    );
+    let expected_a = GnssState {
+        position: Observation::new(at(3.), a_partial.value.position),
+        ..GnssState::from(a_initial)
+    };
+    let update = app.handle(gnss_input(external_a, a_partial));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::PressureAltitude(altitude))]
+        vec![Change::Flight(FlightChange::Gnss(expected_a))]
     );
-    assert_some_eq!(app.snapshot().flight.pressure_altitude, altitude);
+    assert_some_eq!(app.snapshot().flight.gnss, expected_a);
+
+    let stale_a = Observation::new(
+        at(2.5),
+        GnssUpdate {
+            position: LatLon::from_degrees(49., 5.),
+            altitude: Some(MslAltitude::new(Length::from_meters(1500.))),
+            track: None,
+            ground_speed: None,
+        },
+    );
+    let update = app.handle(gnss_input(external_a, stale_a));
+    assert!(update.changes.is_empty());
+    assert_some_eq!(app.snapshot().flight.gnss, expected_a);
+
+    let b_partial = Observation::new(
+        at(4.),
+        GnssUpdate {
+            position: LatLon::from_degrees(51.1, 7.1),
+            altitude: None,
+            track: None,
+            ground_speed: None,
+        },
+    );
+    let expected_b = GnssState {
+        position: Observation::new(at(4.), b_partial.value.position),
+        ..GnssState::from(b_initial)
+    };
+    let update = app.handle(gnss_input(external_b, b_partial));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(expected_b))]
+    );
+    assert_some_eq!(app.snapshot().flight.gnss, expected_b);
+
+    let update = app.handle(Input::Clock { clock_time: at(7.) });
+    let job = assert_some!(compute_job(&update));
+    let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) = job;
+    assert_eq!(
+        fixes
+            .iter()
+            .map(|fix| fix.position.value)
+            .collect::<Vec<_>>(),
+        vec![
+            a_initial.value.position,
+            a_partial.value.position,
+            b_partial.value.position
+        ]
+    );
 }
 
 #[test]
@@ -88,10 +187,22 @@ fn gnss_observation(gnss: GnssState) -> Observation<GnssUpdate> {
     )
 }
 
+fn gnss_input(source: SourceId, observation: Observation<GnssUpdate>) -> Input {
+    Input::Flight(FlightInput::Gnss(Sourced::new(source, observation)))
+}
+
+fn pressure_altitude_input(source: SourceId, seconds: f64, altitude: PressureAltitude) -> Input {
+    Input::Flight(FlightInput::PressureAltitude(Sourced::new(
+        source,
+        Observation::new(at(seconds), altitude),
+    )))
+}
+
 fn position_input(seconds: f64, latitude: f64, longitude: f64) -> Input {
-    Input::Flight(FlightInput::Gnss(Sourced::simulator(gnss_observation(
-        fix(seconds, latitude, longitude),
-    ))))
+    gnss_input(
+        SourceId::Simulator,
+        gnss_observation(fix(seconds, latitude, longitude)),
+    )
 }
 
 fn clear_trace_input() -> Input {

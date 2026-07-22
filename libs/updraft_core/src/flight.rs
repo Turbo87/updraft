@@ -10,6 +10,7 @@ use crate::protocol::{
     ComputeKind as AppComputeKind, Effect, Update,
 };
 use crate::time::{Timer, Timers};
+use std::collections::HashMap;
 use std::time::Duration;
 use updraft_geo::LatLon;
 use updraft_units::{Angle, Length, MslAltitude, PressureAltitude, Speed};
@@ -126,6 +127,43 @@ impl From<Observation<GnssUpdate>> for GnssState {
                 .ground_speed
                 .map(|speed| Observation::new(observed_at, speed)),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct SourceState {
+    gnss: Option<GnssState>,
+    pressure_altitude: Option<Observation<PressureAltitude>>,
+}
+
+impl SourceState {
+    fn observe_gnss(&mut self, observation: Observation<GnssUpdate>) -> Option<GnssState> {
+        let gnss = GnssState::from(observation);
+        if self
+            .gnss
+            .is_some_and(|current| gnss.position.observed_at < current.position.observed_at)
+        {
+            return None;
+        }
+        let gnss = self.gnss.map_or(gnss, |current| GnssState {
+            altitude: gnss.altitude.or(current.altitude),
+            track: gnss.track.or(current.track),
+            ground_speed: gnss.ground_speed.or(current.ground_speed),
+            ..gnss
+        });
+        self.gnss = Some(gnss);
+        Some(gnss)
+    }
+
+    fn observe_pressure_altitude(&mut self, observation: Observation<PressureAltitude>) -> bool {
+        if self
+            .pressure_altitude
+            .is_some_and(|current| observation.observed_at < current.observed_at)
+        {
+            return false;
+        }
+        self.pressure_altitude = Some(observation);
+        true
     }
 }
 
@@ -277,8 +315,9 @@ pub(crate) fn trace_stats(fixes: &[GnssState]) -> TraceStats {
 pub(crate) struct Flight {
     /// Minimum spacing between two trace-statistics job starts.
     stats_interval: Duration,
-    gnss: Option<GnssState>,
-    pressure_altitude: Option<Sourced<Observation<PressureAltitude>>>,
+    source_states: HashMap<SourceId, SourceState>,
+    selected_gnss_source: Option<SourceId>,
+    selected_pressure_altitude_source: Option<SourceId>,
     trace: Vec<GnssState>,
     trace_stats: Option<TraceStats>,
     stats_job: ComputeSlot,
@@ -289,8 +328,9 @@ impl Flight {
     pub(crate) fn new(config: FlightConfig) -> Self {
         Self {
             stats_interval: config.trace_stats_interval,
-            gnss: None,
-            pressure_altitude: None,
+            source_states: HashMap::new(),
+            selected_gnss_source: None,
+            selected_pressure_altitude_source: None,
             trace: Vec::new(),
             trace_stats: None,
             stats_job: ComputeSlot::default(),
@@ -311,34 +351,60 @@ impl Flight {
     ) {
         match input {
             FlightInput::ClearTrace => self.clear_trace(timers, update),
-            FlightInput::Gnss(gnss) => {
-                self.observe_gnss(gnss.value, clock_time, timers, update);
-            }
+            FlightInput::Gnss(gnss) => self.observe_gnss(gnss, clock_time, timers, update),
             FlightInput::PressureAltitude(altitude) => {
-                self.observe_pressure_altitude(altitude, update);
+                self.observe_pressure_altitude(altitude, update)
             }
         }
     }
 
     pub(crate) fn snapshot(&self) -> FlightSnapshot {
         FlightSnapshot {
-            gnss: self.gnss,
+            gnss: self.selected_gnss(),
             pressure_altitude: self
-                .pressure_altitude
-                .map(|observation| observation.value.value),
+                .selected_pressure_altitude()
+                .map(|observation| observation.value),
             trace_stats: self.trace_stats(),
         }
     }
 
+    fn selected_gnss(&self) -> Option<GnssState> {
+        self.selected_gnss_source
+            .and_then(|source| self.source_states.get(&source))
+            .and_then(|state| state.gnss)
+    }
+
+    fn selected_pressure_altitude(&self) -> Option<Observation<PressureAltitude>> {
+        self.selected_pressure_altitude_source
+            .and_then(|source| self.source_states.get(&source))
+            .and_then(|state| state.pressure_altitude)
+    }
+
     pub(crate) fn observe_gnss(
         &mut self,
-        observation: Observation<GnssUpdate>,
+        observation: Sourced<Observation<GnssUpdate>>,
         clock_time: Duration,
         timers: &mut Timers,
         update: &mut Update,
     ) {
-        let gnss = GnssState::from(observation);
-        self.gnss = Some(gnss);
+        let source = observation.source;
+        let observation = observation.value;
+        let selected_observed_at = self.selected_gnss().map(|gnss| gnss.position.observed_at);
+        let Some(gnss) = self
+            .source_states
+            .entry(source)
+            .or_default()
+            .observe_gnss(observation)
+        else {
+            return;
+        };
+        if selected_observed_at.is_none_or(|selected| observation.observed_at >= selected) {
+            self.selected_gnss_source = Some(source);
+        }
+        if self.selected_gnss_source != Some(source) {
+            return;
+        }
+
         self.trace.push(gnss);
         update
             .changes
@@ -352,8 +418,27 @@ impl Flight {
         observation: Sourced<Observation<PressureAltitude>>,
         update: &mut Update,
     ) {
-        let change = FlightChange::PressureAltitude(observation.value.value);
-        self.pressure_altitude = Some(observation);
+        let source = observation.source;
+        let observation = observation.value;
+        let selected_observed_at = self
+            .selected_pressure_altitude()
+            .map(|altitude| altitude.observed_at);
+        if !self
+            .source_states
+            .entry(source)
+            .or_default()
+            .observe_pressure_altitude(observation)
+        {
+            return;
+        }
+        if selected_observed_at.is_none_or(|selected| observation.observed_at >= selected) {
+            self.selected_pressure_altitude_source = Some(source);
+        }
+        if self.selected_pressure_altitude_source != Some(source) {
+            return;
+        }
+
+        let change = FlightChange::PressureAltitude(observation.value);
         update.changes.push(AppChange::Flight(change));
     }
 

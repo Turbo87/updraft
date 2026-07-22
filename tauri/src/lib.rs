@@ -18,6 +18,7 @@ fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGu
                 .rotation(Rotation::DAILY)
                 .filename_prefix("updraft")
                 .filename_suffix("log")
+                .max_log_files(7)
                 .build(&dir)
                 .expect("failed to initialize rolling file appender");
 

@@ -181,6 +181,8 @@ pub struct TraceStats {
 pub enum FlightInput {
     /// Clears the flown trace and its statistics.
     ClearTrace,
+    /// Replaces external-device preference with `Internal` as the final live fallback.
+    SetExternalDeviceOrder(Vec<DeviceId>),
     /// A GNSS position update.
     Gnss(Sourced<Observation<GnssUpdate>>),
     /// A standard-pressure altitude observation.
@@ -190,9 +192,9 @@ pub enum FlightInput {
 impl FlightInput {
     pub(crate) fn observed_at(&self) -> Option<Duration> {
         match self {
-            Self::ClearTrace => None,
             Self::Gnss(gnss) => Some(gnss.value.observed_at),
             Self::PressureAltitude(altitude) => Some(altitude.value.observed_at),
+            _ => None,
         }
     }
 }
@@ -212,10 +214,10 @@ impl crate::Query for GetTraceStats {
 /// A client-visible flight-state update.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FlightChange {
-    /// The selected GNSS component state.
-    Gnss(GnssState),
-    /// The standard-pressure altitude last-value update.
-    PressureAltitude(PressureAltitude),
+    /// The selected GNSS component state, or `None` when unavailable.
+    Gnss(Option<GnssState>),
+    /// The selected standard-pressure altitude, or `None` when unavailable.
+    PressureAltitude(Option<PressureAltitude>),
     /// New trace statistics, or `None` after the trace was cleared.
     TraceStats(Option<TraceStats>),
 }
@@ -315,6 +317,7 @@ pub(crate) fn trace_stats(fixes: &[GnssState]) -> TraceStats {
 pub(crate) struct Flight {
     /// Minimum spacing between two trace-statistics job starts.
     stats_interval: Duration,
+    external_device_order: Vec<DeviceId>,
     source_states: HashMap<SourceId, SourceState>,
     selected_gnss_source: Option<SourceId>,
     selected_pressure_altitude_source: Option<SourceId>,
@@ -328,6 +331,7 @@ impl Flight {
     pub(crate) fn new(config: FlightConfig) -> Self {
         Self {
             stats_interval: config.trace_stats_interval,
+            external_device_order: Vec::new(),
             source_states: HashMap::new(),
             selected_gnss_source: None,
             selected_pressure_altitude_source: None,
@@ -351,6 +355,10 @@ impl Flight {
     ) {
         match input {
             FlightInput::ClearTrace => self.clear_trace(timers, update),
+            FlightInput::SetExternalDeviceOrder(order) => {
+                self.external_device_order = order;
+                self.reselect_live_sources(update);
+            }
             FlightInput::Gnss(gnss) => self.observe_gnss(gnss, clock_time, timers, update),
             FlightInput::PressureAltitude(altitude) => {
                 self.observe_pressure_altitude(altitude, update)
@@ -380,6 +388,42 @@ impl Flight {
             .and_then(|state| state.pressure_altitude)
     }
 
+    fn select_live_gnss_source(&self) -> Option<SourceId> {
+        self.external_device_order
+            .iter()
+            .copied()
+            .map(SourceId::External)
+            .find(|source| {
+                self.source_states
+                    .get(source)
+                    .is_some_and(|state| state.gnss.is_some())
+            })
+            .or_else(|| {
+                self.source_states
+                    .get(&SourceId::Internal)
+                    .and_then(|state| state.gnss)
+                    .map(|_| SourceId::Internal)
+            })
+    }
+
+    fn select_live_pressure_altitude_source(&self) -> Option<SourceId> {
+        self.external_device_order
+            .iter()
+            .copied()
+            .map(SourceId::External)
+            .find(|source| {
+                self.source_states
+                    .get(source)
+                    .is_some_and(|state| state.pressure_altitude.is_some())
+            })
+            .or_else(|| {
+                self.source_states
+                    .get(&SourceId::Internal)
+                    .and_then(|state| state.pressure_altitude)
+                    .map(|_| SourceId::Internal)
+            })
+    }
+
     pub(crate) fn observe_gnss(
         &mut self,
         observation: Sourced<Observation<GnssUpdate>>,
@@ -389,7 +433,6 @@ impl Flight {
     ) {
         let source = observation.source;
         let observation = observation.value;
-        let selected_observed_at = self.selected_gnss().map(|gnss| gnss.position.observed_at);
         let Some(gnss) = self
             .source_states
             .entry(source)
@@ -398,17 +441,22 @@ impl Flight {
         else {
             return;
         };
-        if selected_observed_at.is_none_or(|selected| observation.observed_at >= selected) {
+        if matches!(source, SourceId::Simulator | SourceId::Replay) {
             self.selected_gnss_source = Some(source);
+        } else if !matches!(
+            self.selected_gnss_source,
+            Some(SourceId::Simulator | SourceId::Replay)
+        ) {
+            self.selected_gnss_source = self.select_live_gnss_source();
         }
         if self.selected_gnss_source != Some(source) {
             return;
         }
 
-        self.trace.push(gnss);
         update
             .changes
-            .push(AppChange::Flight(FlightChange::Gnss(gnss)));
+            .push(AppChange::Flight(FlightChange::Gnss(self.selected_gnss())));
+        self.trace.push(gnss);
         self.stats_job.request();
         self.schedule_stats(clock_time, timers);
     }
@@ -420,9 +468,6 @@ impl Flight {
     ) {
         let source = observation.source;
         let observation = observation.value;
-        let selected_observed_at = self
-            .selected_pressure_altitude()
-            .map(|altitude| altitude.observed_at);
         if !self
             .source_states
             .entry(source)
@@ -431,15 +476,49 @@ impl Flight {
         {
             return;
         }
-        if selected_observed_at.is_none_or(|selected| observation.observed_at >= selected) {
+        if matches!(source, SourceId::Simulator | SourceId::Replay) {
             self.selected_pressure_altitude_source = Some(source);
+        } else if !matches!(
+            self.selected_pressure_altitude_source,
+            Some(SourceId::Simulator | SourceId::Replay)
+        ) {
+            self.selected_pressure_altitude_source = self.select_live_pressure_altitude_source();
         }
         if self.selected_pressure_altitude_source != Some(source) {
             return;
         }
 
-        let change = FlightChange::PressureAltitude(observation.value);
+        let altitude = self
+            .selected_pressure_altitude()
+            .map(|altitude| altitude.value);
+        let change = FlightChange::PressureAltitude(altitude);
         update.changes.push(AppChange::Flight(change));
+    }
+
+    fn reselect_live_sources(&mut self, update: &mut Update) {
+        let external_device_order = &self.external_device_order;
+        self.source_states.retain(|source, _| match source {
+            SourceId::External(device_id) => external_device_order.contains(device_id),
+            _ => true,
+        });
+
+        let gnss_source = self.select_live_gnss_source();
+        if self.selected_gnss_source != gnss_source {
+            self.selected_gnss_source = gnss_source;
+            update
+                .changes
+                .push(AppChange::Flight(FlightChange::Gnss(self.selected_gnss())));
+        }
+
+        let pressure_altitude_source = self.select_live_pressure_altitude_source();
+        if self.selected_pressure_altitude_source != pressure_altitude_source {
+            self.selected_pressure_altitude_source = pressure_altitude_source;
+            let altitude = self
+                .selected_pressure_altitude()
+                .map(|altitude| altitude.value);
+            let change = FlightChange::PressureAltitude(altitude);
+            update.changes.push(AppChange::Flight(change));
+        }
     }
 
     pub(crate) fn clear_trace(&mut self, timers: &mut Timers, update: &mut Update) {
@@ -616,5 +695,6 @@ mod tests {
             position.position.observed_at
         );
         assert_none!(FlightInput::ClearTrace.observed_at());
+        assert_none!(FlightInput::SetExternalDeviceOrder(Vec::new()).observed_at());
     }
 }

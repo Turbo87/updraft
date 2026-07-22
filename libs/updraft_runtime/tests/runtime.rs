@@ -362,7 +362,7 @@ fn atomic_subscribe_and_fifo_ordering() {
         let remaining = deadline.saturating_duration_since(Instant::now());
         let changes = assert_ok!(subscription.changes.recv_timeout(remaining));
         states.extend(changes.into_iter().filter_map(|change| match change {
-            Change::Flight(FlightChange::Gnss(gnss)) => Some(gnss),
+            Change::Flight(FlightChange::Gnss(gnss)) => gnss,
             _ => None,
         }));
     }

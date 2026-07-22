@@ -54,7 +54,7 @@ fn main() {
     while let Ok(changes) = subscription.changes.recv_timeout(Duration::from_secs(3)) {
         for change in changes {
             match change {
-                Change::Flight(FlightChange::Gnss(gnss)) => {
+                Change::Flight(FlightChange::Gnss(Some(gnss))) => {
                     println!(
                         "position: {:7.4}° {:7.4}° at {:6.1?}",
                         gnss.position.value.latitude().as_degrees(),
@@ -65,8 +65,14 @@ fn main() {
                             .into_inner(),
                     );
                 }
-                Change::Flight(FlightChange::PressureAltitude(altitude)) => {
+                Change::Flight(FlightChange::Gnss(None)) => {
+                    println!("position unavailable");
+                }
+                Change::Flight(FlightChange::PressureAltitude(Some(altitude))) => {
                     println!("pressure altitude: {:6.1?}", altitude.into_inner());
+                }
+                Change::Flight(FlightChange::PressureAltitude(None)) => {
+                    println!("pressure altitude unavailable");
                 }
                 Change::Flight(FlightChange::TraceStats(Some(stats))) => {
                     println!(

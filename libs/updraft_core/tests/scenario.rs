@@ -16,28 +16,210 @@ use updraft_geo::LatLon;
 use updraft_units::{Angle, Length, MslAltitude, PressureAltitude, Speed};
 
 #[test]
-fn app_selects_the_newest_pressure_altitude_source() {
+fn app_selects_gnss_by_external_device_order() {
     let mut app = App::new();
-    let external = SourceId::External(DeviceId::new(7));
-    let altitude = PressureAltitude::new(Length::from_meters(950.));
-    app.handle(pressure_altitude_input(external, 2., altitude));
+    let preferred = DeviceId::new(1);
+    let fallback = DeviceId::new(2);
+    app.handle(external_device_order_input(vec![preferred, fallback]));
 
-    let stale = PressureAltitude::new(Length::from_meters(900.));
-    let update = app.handle(pressure_altitude_input(external, 1., stale));
+    let internal = fix(1., 50., 6.);
+    let update = app.handle(gnss_input(SourceId::Internal, gnss_observation(internal)));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(Some(internal)))]
+    );
+
+    let fallback_fix = fix(2., 51., 7.);
+    let update = app.handle(gnss_input(
+        SourceId::External(fallback),
+        gnss_observation(fallback_fix),
+    ));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(Some(fallback_fix)))]
+    );
+
+    let preferred_fix = fix(3., 52., 8.);
+    let update = app.handle(gnss_input(
+        SourceId::External(preferred),
+        gnss_observation(preferred_fix),
+    ));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(Some(preferred_fix)))]
+    );
+
+    let newer_fallback_fix = fix(4., 53., 9.);
+    let update = app.handle(gnss_input(
+        SourceId::External(fallback),
+        gnss_observation(newer_fallback_fix),
+    ));
     assert!(update.changes.is_empty());
-    assert_some_eq!(app.snapshot().flight.pressure_altitude, altitude);
+    assert_some_eq!(app.snapshot().flight.gnss, preferred_fix);
+
+    let update = app.handle(external_device_order_input(vec![fallback, preferred]));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(Some(newer_fallback_fix)))]
+    );
+    assert_some_eq!(app.snapshot().flight.gnss, newer_fallback_fix);
+
+    let update = app.handle(external_device_order_input(Vec::new()));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(Some(internal)))]
+    );
+    assert_some_eq!(app.snapshot().flight.gnss, internal);
+}
+
+#[test]
+fn removing_the_only_live_source_publishes_unavailable_signals() {
+    let mut app = App::new();
+    let device = DeviceId::new(1);
+    let source = SourceId::External(device);
+    app.handle(external_device_order_input(vec![device]));
+    app.handle(gnss_input(source, gnss_observation(fix(1., 50., 6.))));
+    app.handle(pressure_altitude_input(
+        source,
+        1.,
+        PressureAltitude::new(Length::from_meters(900.)),
+    ));
+
+    let update = app.handle(external_device_order_input(Vec::new()));
+
+    assert_eq!(
+        update.changes,
+        vec![
+            Change::Flight(FlightChange::Gnss(None)),
+            Change::Flight(FlightChange::PressureAltitude(None)),
+        ]
+    );
+    assert_none!(app.snapshot().flight.gnss);
+    assert_none!(app.snapshot().flight.pressure_altitude);
+}
+
+#[test]
+fn readding_a_removed_source_does_not_restore_old_observations() {
+    let mut app = App::new();
+    let device = DeviceId::new(1);
+    let source = SourceId::External(device);
+    app.handle(external_device_order_input(vec![device]));
+    app.handle(gnss_input(source, gnss_observation(fix(1., 50., 6.))));
+    app.handle(pressure_altitude_input(
+        source,
+        1.,
+        PressureAltitude::new(Length::from_meters(900.)),
+    ));
+    app.handle(external_device_order_input(Vec::new()));
+
+    let update = app.handle(external_device_order_input(vec![device]));
+
+    assert!(update.changes.is_empty());
+    assert_none!(app.snapshot().flight.gnss);
+    assert_none!(app.snapshot().flight.pressure_altitude);
+}
+
+#[test]
+fn app_selects_gnss_and_pressure_altitude_independently() {
+    let mut app = App::new();
+    let preferred = DeviceId::new(1);
+    let fallback = DeviceId::new(2);
+    app.handle(external_device_order_input(vec![preferred, fallback]));
+    let gnss = fix(1., 50., 6.);
+    app.handle(gnss_input(
+        SourceId::External(fallback),
+        gnss_observation(gnss),
+    ));
+    let pressure_altitude = PressureAltitude::new(Length::from_meters(900.));
+    app.handle(pressure_altitude_input(
+        SourceId::External(preferred),
+        1.,
+        pressure_altitude,
+    ));
+
+    let snapshot = app.snapshot().flight;
+    assert_some_eq!(snapshot.gnss, gnss);
+    assert_some_eq!(snapshot.pressure_altitude, pressure_altitude);
+}
+
+#[test]
+fn app_selects_pressure_altitude_by_external_device_order() {
+    let mut app = App::new();
+    let preferred = DeviceId::new(7);
+    let fallback = DeviceId::new(8);
+    app.handle(external_device_order_input(vec![preferred, fallback]));
 
     let internal = PressureAltitude::new(Length::from_meters(975.));
-    let update = app.handle(pressure_altitude_input(SourceId::Internal, 1.5, internal));
+    let update = app.handle(pressure_altitude_input(SourceId::Internal, 1., internal));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::PressureAltitude(Some(
+            internal
+        )))]
+    );
+
+    let fallback_altitude = PressureAltitude::new(Length::from_meters(950.));
+    let update = app.handle(pressure_altitude_input(
+        SourceId::External(fallback),
+        2.,
+        fallback_altitude,
+    ));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::PressureAltitude(Some(
+            fallback_altitude
+        )))]
+    );
+
+    let preferred_altitude = PressureAltitude::new(Length::from_meters(900.));
+    let update = app.handle(pressure_altitude_input(
+        SourceId::External(preferred),
+        3.,
+        preferred_altitude,
+    ));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::PressureAltitude(Some(
+            preferred_altitude
+        )))]
+    );
+
+    let stale = PressureAltitude::new(Length::from_meters(850.));
+    let update = app.handle(pressure_altitude_input(
+        SourceId::External(preferred),
+        2.5,
+        stale,
+    ));
     assert!(update.changes.is_empty());
-    assert_some_eq!(app.snapshot().flight.pressure_altitude, altitude);
+    assert_some_eq!(app.snapshot().flight.pressure_altitude, preferred_altitude);
+
+    let newer_fallback = PressureAltitude::new(Length::from_meters(1000.));
+    let update = app.handle(pressure_altitude_input(
+        SourceId::External(fallback),
+        4.,
+        newer_fallback,
+    ));
+    assert!(update.changes.is_empty());
+    assert_some_eq!(app.snapshot().flight.pressure_altitude, preferred_altitude);
+
+    let update = app.handle(external_device_order_input(vec![fallback, preferred]));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::PressureAltitude(Some(
+            newer_fallback
+        )))]
+    );
+    assert_some_eq!(app.snapshot().flight.pressure_altitude, newer_fallback);
 }
 
 #[test]
 fn app_retains_gnss_components_per_source() {
     let mut app = App::new();
-    let external_a = SourceId::External(DeviceId::new(1));
-    let external_b = SourceId::External(DeviceId::new(2));
+    let device_a = DeviceId::new(1);
+    let device_b = DeviceId::new(2);
+    let external_a = SourceId::External(device_a);
+    let external_b = SourceId::External(device_b);
+    app.handle(external_device_order_input(vec![device_a, device_b]));
     let a_initial = Observation::new(
         at(2.),
         GnssUpdate {
@@ -83,7 +265,7 @@ fn app_retains_gnss_components_per_source() {
     let update = app.handle(gnss_input(external_a, a_partial));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(expected_a))]
+        vec![Change::Flight(FlightChange::Gnss(Some(expected_a)))]
     );
     assert_some_eq!(app.snapshot().flight.gnss, expected_a);
 
@@ -99,6 +281,14 @@ fn app_retains_gnss_components_per_source() {
     let update = app.handle(gnss_input(external_a, stale_a));
     assert!(update.changes.is_empty());
     assert_some_eq!(app.snapshot().flight.gnss, expected_a);
+
+    let expected_b_initial = GnssState::from(b_initial);
+    let update = app.handle(external_device_order_input(vec![device_b, device_a]));
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(Some(expected_b_initial)))]
+    );
+    assert!(update.effects.is_empty());
 
     let b_partial = Observation::new(
         at(4.),
@@ -116,7 +306,7 @@ fn app_retains_gnss_components_per_source() {
     let update = app.handle(gnss_input(external_b, b_partial));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(expected_b))]
+        vec![Change::Flight(FlightChange::Gnss(Some(expected_b)))]
     );
     assert_some_eq!(app.snapshot().flight.gnss, expected_b);
 
@@ -147,7 +337,7 @@ fn app_routes_flight_protocol_through_the_flight_domain() {
 
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(gnss))]
+        vec![Change::Flight(FlightChange::Gnss(Some(gnss)))]
     );
     assert_eq!(
         app.snapshot().flight,
@@ -189,6 +379,10 @@ fn gnss_observation(gnss: GnssState) -> Observation<GnssUpdate> {
 
 fn gnss_input(source: SourceId, observation: Observation<GnssUpdate>) -> Input {
     Input::Flight(FlightInput::Gnss(Sourced::new(source, observation)))
+}
+
+fn external_device_order_input(order: Vec<DeviceId>) -> Input {
+    Input::Flight(FlightInput::SetExternalDeviceOrder(order))
 }
 
 fn pressure_altitude_input(source: SourceId, seconds: f64, altitude: PressureAltitude) -> Input {

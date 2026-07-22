@@ -181,17 +181,19 @@ impl From<updraft_core::Change> for Change {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(tag = "type", content = "value", rename_all = "camelCase")]
 pub enum FlightChange {
-    Gnss(GnssState),
-    PressureAltitudeMeters(f64),
+    Gnss(Option<GnssState>),
+    PressureAltitudeMeters(Option<f64>),
     TraceStats(Option<TraceStats>),
 }
 
 impl From<updraft_core::flight::FlightChange> for FlightChange {
     fn from(change: updraft_core::flight::FlightChange) -> Self {
         match change {
-            updraft_core::flight::FlightChange::Gnss(gnss) => Self::Gnss(gnss.into()),
+            updraft_core::flight::FlightChange::Gnss(gnss) => Self::Gnss(gnss.map(Into::into)),
             updraft_core::flight::FlightChange::PressureAltitude(altitude) => {
-                Self::PressureAltitudeMeters(altitude.into_inner().as_meters())
+                Self::PressureAltitudeMeters(
+                    altitude.map(|altitude| altitude.into_inner().as_meters()),
+                )
             }
             updraft_core::flight::FlightChange::TraceStats(stats) => {
                 Self::TraceStats(stats.map(Into::into))

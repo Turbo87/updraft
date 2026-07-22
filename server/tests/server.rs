@@ -7,7 +7,6 @@ use std::time::Duration;
 use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::device::DeviceId;
 use updraft_core::flight::{FlightInput, GnssUpdate, Observation, Sourced};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
@@ -67,8 +66,7 @@ fn position_input() -> Input {
 }
 
 fn pressure_altitude_input() -> Input {
-    Input::Flight(FlightInput::PressureAltitude(Sourced::external(
-        DeviceId::new(7),
+    Input::Flight(FlightInput::PressureAltitude(Sourced::internal(
         Observation::new(
             Duration::from_millis(1_500),
             PressureAltitude::new(Length::from_meters(975.)),

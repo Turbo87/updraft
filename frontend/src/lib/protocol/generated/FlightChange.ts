@@ -2,4 +2,4 @@
 import type { GnssState } from "./GnssState";
 import type { TraceStats } from "./TraceStats";
 
-export type FlightChange = { "type": "gnss", "value": GnssState } | { "type": "pressureAltitudeMeters", "value": number } | { "type": "traceStats", "value": TraceStats | null };
+export type FlightChange = { "type": "gnss", "value": GnssState | null } | { "type": "pressureAltitudeMeters", "value": number | null } | { "type": "traceStats", "value": TraceStats | null };

@@ -29,7 +29,7 @@ impl Default for FlightConfig {
     }
 }
 
-/// A normalized own-position observation from a positioning source.
+/// A published own-position state.
 ///
 /// This doubles as the published kinematic state vector: clients use it
 /// to estimate the current render position, so frame-rate animation never
@@ -91,6 +91,30 @@ impl<T> Sourced<T> {
     }
 }
 
+/// A value captured at a monotonic observation time.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Observation<T> {
+    pub observed_at: Duration,
+    pub value: T,
+}
+
+impl<T> Observation<T> {
+    pub const fn new(observed_at: Duration, value: T) -> Self {
+        Self { observed_at, value }
+    }
+}
+
+/// Components reported together in one GNSS position update.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GnssUpdate {
+    pub position: LatLon,
+    /// Mean-sea-level GNSS altitude.
+    pub altitude: Option<MslAltitude>,
+    /// Track over ground.
+    pub track: Option<Angle>,
+    pub ground_speed: Option<Speed>,
+}
+
 /// Statistics over the flown trace, computed by a runtime worker.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TraceStats {
@@ -105,15 +129,15 @@ pub struct TraceStats {
 pub enum FlightInput {
     /// Clears the flown trace and its statistics.
     ClearTrace,
-    /// An own-position fix.
-    Position(Sourced<PositionFix>),
+    /// A GNSS position update.
+    Gnss(Sourced<Observation<GnssUpdate>>),
 }
 
 impl FlightInput {
     pub(crate) fn observed_at(&self) -> Option<Duration> {
         match self {
             Self::ClearTrace => None,
-            Self::Position(position) => Some(position.value.observed_at),
+            Self::Gnss(gnss) => Some(gnss.value.observed_at),
         }
     }
 }
@@ -265,8 +289,8 @@ impl Flight {
     ) {
         match input {
             FlightInput::ClearTrace => self.clear_trace(timers, update),
-            FlightInput::Position(position) => {
-                self.observe_position(position.value, clock_time, timers, update);
+            FlightInput::Gnss(gnss) => {
+                self.observe_gnss(gnss.value, clock_time, timers, update);
             }
         }
     }
@@ -278,13 +302,21 @@ impl Flight {
         }
     }
 
-    pub(crate) fn observe_position(
+    pub(crate) fn observe_gnss(
         &mut self,
-        fix: PositionFix,
+        observation: Observation<GnssUpdate>,
         clock_time: Duration,
         timers: &mut Timers,
         update: &mut Update,
     ) {
+        let gnss = observation.value;
+        let fix = PositionFix {
+            observed_at: observation.observed_at,
+            position: gnss.position,
+            altitude: gnss.altitude,
+            track: gnss.track,
+            ground_speed: gnss.ground_speed,
+        };
         self.position = Some(fix);
         self.trace.push(fix);
         update
@@ -449,9 +481,18 @@ mod tests {
     #[test]
     fn input_reports_observation_time() {
         let position = fix(50., 6., Some(1000.));
+        let observation = Observation::new(
+            position.observed_at,
+            GnssUpdate {
+                position: position.position,
+                altitude: position.altitude,
+                track: position.track,
+                ground_speed: position.ground_speed,
+            },
+        );
 
         assert_some_eq!(
-            FlightInput::Position(Sourced::simulator(position)).observed_at(),
+            FlightInput::Gnss(Sourced::simulator(observation)).observed_at(),
             position.observed_at
         );
         assert_none!(FlightInput::ClearTrace.observed_at());

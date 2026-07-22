@@ -12,7 +12,9 @@
 
 use std::thread;
 use std::time::Duration;
-use updraft_core::flight::{FlightChange, FlightComputeKind, FlightInput, PositionFix, Sourced};
+use updraft_core::flight::{
+    FlightChange, FlightComputeKind, FlightInput, GnssUpdate, Observation, Sourced,
+};
 use updraft_core::{Change, ComputeKind, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
@@ -90,18 +92,23 @@ fn main() {
 fn fly_circle(handle: &Handle, count: u32) {
     for step in 0..count {
         let angle = f64::from(step) * 12f64.to_radians();
-        let fix = PositionFix {
-            observed_at: handle.clock_time(),
-            position: LatLon::from_degrees(50.75 + 0.01 * angle.cos(), 6.15 + 0.01 * angle.sin()),
-            altitude: Some(MslAltitude::new(Length::from_meters(
-                1000. + f64::from(step) * 2.,
-            ))),
-            track: Some(Angle::from_radians(angle)),
-            ground_speed: Some(Speed::from_kilometers_per_hour(95.)),
-        };
+        let observation = Observation::new(
+            handle.clock_time(),
+            GnssUpdate {
+                position: LatLon::from_degrees(
+                    50.75 + 0.01 * angle.cos(),
+                    6.15 + 0.01 * angle.sin(),
+                ),
+                altitude: Some(MslAltitude::new(Length::from_meters(
+                    1000. + f64::from(step) * 2.,
+                ))),
+                track: Some(Angle::from_radians(angle)),
+                ground_speed: Some(Speed::from_kilometers_per_hour(95.)),
+            },
+        );
         handle
-            .submit(Input::Flight(FlightInput::Position(Sourced::simulator(
-                fix,
+            .submit(Input::Flight(FlightInput::Gnss(Sourced::simulator(
+                observation,
             ))))
             .expect("runtime is running");
         thread::sleep(Duration::from_secs(1));

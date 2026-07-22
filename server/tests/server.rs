@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::flight::{FlightInput, PositionFix, Sourced};
+use updraft_core::flight::{FlightInput, GnssUpdate, Observation, Sourced};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::Runtime;
@@ -54,13 +54,15 @@ fn simulation_app_with_fixture() -> (TempDir, Runtime, axum::Router) {
 }
 
 fn position_input() -> Input {
-    Input::Flight(FlightInput::Position(Sourced::simulator(PositionFix {
-        observed_at: Duration::from_millis(1_250),
-        position: LatLon::from_degrees(50.823, 6.186),
-        altitude: Some(MslAltitude::new(Length::from_meters(400.5))),
-        track: Some(Angle::from_degrees(45.)),
-        ground_speed: Some(Speed::from_meters_per_second(30.)),
-    })))
+    Input::Flight(FlightInput::Gnss(Sourced::simulator(Observation::new(
+        Duration::from_millis(1_250),
+        GnssUpdate {
+            position: LatLon::from_degrees(50.823, 6.186),
+            altitude: Some(MslAltitude::new(Length::from_meters(400.5))),
+            track: Some(Angle::from_degrees(45.)),
+            ground_speed: Some(Speed::from_meters_per_second(30.)),
+        },
+    ))))
 }
 
 struct BlockingQuery {

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use updraft_core::flight::{GnssUpdate, Observation};
 
 #[cfg(feature = "ts")]
 pub mod bindings;
@@ -69,7 +70,7 @@ impl From<updraft_core::flight::PositionFix> for PositionFix {
     }
 }
 
-impl TryFrom<PositionFix> for updraft_core::flight::PositionFix {
+impl TryFrom<PositionFix> for Observation<GnssUpdate> {
     type Error = InvalidPositionFix;
 
     fn try_from(fix: PositionFix) -> Result<Self, Self::Error> {
@@ -90,20 +91,22 @@ impl TryFrom<PositionFix> for updraft_core::flight::PositionFix {
             return Err(InvalidPositionFix);
         }
 
-        Ok(Self {
+        Ok(Observation::new(
             observed_at,
-            position: updraft_geo::LatLon::from_degrees(
-                fix.latitude_degrees,
-                fix.longitude_degrees,
-            ),
-            altitude: fix.altitude_meters.map(|meters| {
-                updraft_units::MslAltitude::new(updraft_units::Length::from_meters(meters))
-            }),
-            track: fix.track_degrees.map(updraft_units::Angle::from_degrees),
-            ground_speed: fix
-                .ground_speed_meters_per_second
-                .map(updraft_units::Speed::from_meters_per_second),
-        })
+            GnssUpdate {
+                position: updraft_geo::LatLon::from_degrees(
+                    fix.latitude_degrees,
+                    fix.longitude_degrees,
+                ),
+                altitude: fix.altitude_meters.map(|meters| {
+                    updraft_units::MslAltitude::new(updraft_units::Length::from_meters(meters))
+                }),
+                track: fix.track_degrees.map(updraft_units::Angle::from_degrees),
+                ground_speed: fix
+                    .ground_speed_meters_per_second
+                    .map(updraft_units::Speed::from_meters_per_second),
+            },
+        ))
     }
 }
 

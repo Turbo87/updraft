@@ -9,10 +9,11 @@ describe('ApplicationState', () => {
     state.applySnapshot(
       {
         flight: {
-          position: {
-            observedAtMs: 1_250,
-            latitudeDegrees: 50.823,
-            longitudeDegrees: 6.186,
+          gnss: {
+            position: {
+              latitudeDegrees: 50.823,
+              longitudeDegrees: 6.186,
+            },
             altitudeMeters: 400.5,
             trackDegrees: 45,
             groundSpeedMetersPerSecond: 30,
@@ -24,10 +25,11 @@ describe('ApplicationState', () => {
       2_000,
     );
 
-    expect(state.flight.position).toEqual({
-      observedAtMs: 1_250,
-      latitudeDegrees: 50.823,
-      longitudeDegrees: 6.186,
+    expect(state.flight.gnss).toEqual({
+      position: {
+        latitudeDegrees: 50.823,
+        longitudeDegrees: 6.186,
+      },
       altitudeMeters: 400.5,
       trackDegrees: 45,
       groundSpeedMetersPerSecond: 30,
@@ -46,11 +48,12 @@ describe('ApplicationState', () => {
       [
         {
           group: 'flight',
-          type: 'position',
+          type: 'gnss',
           value: {
-            observedAtMs: 3_000,
-            latitudeDegrees: 50.824,
-            longitudeDegrees: 6.187,
+            position: {
+              latitudeDegrees: 50.824,
+              longitudeDegrees: 6.187,
+            },
             altitudeMeters: null,
             trackDegrees: null,
             groundSpeedMetersPerSecond: null,
@@ -74,7 +77,7 @@ describe('ApplicationState', () => {
       3_100,
     );
 
-    expect(state.flight.position?.latitudeDegrees).toBe(50.824);
+    expect(state.flight.gnss?.position.latitudeDegrees).toBe(50.824);
     expect(state.flight.pressureAltitudeMeters).toBe(425);
     expect(state.flight.traceStats).toEqual({
       fixCount: 4,
@@ -89,7 +92,7 @@ describe('ApplicationState', () => {
     state.applySnapshot(
       {
         flight: {
-          position: null,
+          gnss: null,
           pressureAltitudeMeters: null,
           traceStats: {
             fixCount: 4,

@@ -2,12 +2,12 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
 
   import type { Map, StyleSpecification } from 'maplibre-gl';
-  import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+  import type { GnssState } from '$lib/protocol/generated/GnssState';
 
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import MapDebugOverlay from './MapDebugOverlay.svelte';
-  import { positionCoordinates } from './ownship';
+  import { gnssCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
 
   type TestWindow = Window & {
@@ -21,12 +21,11 @@
     layers: [],
   };
 
-  let { position, testMode = false }: { position: PositionFix | null; testMode?: boolean } =
-    $props();
+  let { gnss, testMode = false }: { gnss: GnssState | null; testMode?: boolean } = $props();
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
-  const center = $derived(position ? positionCoordinates(position) : DEFAULT_CENTER);
+  const center = $derived(gnss ? gnssCoordinates(gnss) : DEFAULT_CENTER);
   const mapStyle = $derived(
     testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
   );
@@ -61,8 +60,8 @@
     {center}
     zoom={11}
   >
-    {#if spritesLoaded && position}
-      <Ownship {position} />
+    {#if spritesLoaded && gnss}
+      <Ownship {gnss} />
     {/if}
   </MapLibre>
   <MapDebugOverlay {map} />

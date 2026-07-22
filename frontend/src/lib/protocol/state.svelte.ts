@@ -1,27 +1,27 @@
 import type { StateSubscription } from './client';
 import type { Change } from './generated/Change';
 import type { FlightChange } from './generated/FlightChange';
-import type { PositionFix } from './generated/PositionFix';
+import type { GnssState } from './generated/GnssState';
 import type { Snapshot } from './generated/Snapshot';
 import type { TraceStats } from './generated/TraceStats';
 
 export type StreamStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed';
 
 export class FlightState {
-  position = $state.raw<PositionFix | null>(null);
+  gnss = $state.raw<GnssState | null>(null);
   pressureAltitudeMeters = $state<number | null>(null);
   traceStats = $state.raw<TraceStats | null>(null);
 
   replace(snapshot: Snapshot['flight']): void {
-    this.position = snapshot.position;
+    this.gnss = snapshot.gnss;
     this.pressureAltitudeMeters = snapshot.pressureAltitudeMeters;
     this.traceStats = snapshot.traceStats;
   }
 
   apply(change: FlightChange): void {
     switch (change.type) {
-      case 'position':
-        this.position = change.value;
+      case 'gnss':
+        this.gnss = change.value;
         break;
       case 'pressureAltitudeMeters':
         this.pressureAltitudeMeters = change.value;

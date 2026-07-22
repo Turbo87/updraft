@@ -49,7 +49,7 @@ describe('HttpUpdraftClient', () => {
       'snapshot',
       JSON.stringify({
         flight: {
-          position: null,
+          gnss: null,
           pressureAltitudeMeters: null,
           traceStats: {
             fixCount: 2,

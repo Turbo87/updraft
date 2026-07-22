@@ -185,7 +185,7 @@ async fn state_stream_starts_with_snapshot() {
     let mut body = response.into_body();
     assert_eq!(
         next_data(&mut body).await,
-        "event: snapshot\ndata: {\"flight\":{\"position\":null,\"pressureAltitudeMeters\":null,\"traceStats\":null}}\n\n"
+        "event: snapshot\ndata: {\"flight\":{\"gnss\":null,\"pressureAltitudeMeters\":null,\"traceStats\":null}}\n\n"
     );
 }
 
@@ -206,7 +206,7 @@ async fn state_stream_snapshot_includes_current_state() {
 
     assert_eq!(
         next_data(&mut body).await,
-        "event: snapshot\ndata: {\"flight\":{\"position\":{\"observedAtMs\":1250.0,\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186,\"altitudeMeters\":400.5,\"trackDegrees\":45.0,\"groundSpeedMetersPerSecond\":30.0},\"pressureAltitudeMeters\":975.0,\"traceStats\":null}}\n\n"
+        "event: snapshot\ndata: {\"flight\":{\"gnss\":{\"position\":{\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186},\"altitudeMeters\":400.5,\"trackDegrees\":45.0,\"groundSpeedMetersPerSecond\":30.0},\"pressureAltitudeMeters\":975.0,\"traceStats\":null}}\n\n"
     );
 }
 
@@ -312,7 +312,7 @@ async fn state_stream_sends_change_batches_after_snapshot() {
 
     assert_eq!(
         next_data(&mut body).await,
-        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"position\",\"value\":{\"observedAtMs\":1250.0,\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186,\"altitudeMeters\":400.5,\"trackDegrees\":45.0,\"groundSpeedMetersPerSecond\":30.0}}]\n\n"
+        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"gnss\",\"value\":{\"position\":{\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186},\"altitudeMeters\":400.5,\"trackDegrees\":45.0,\"groundSpeedMetersPerSecond\":30.0}}]\n\n"
     );
 }
 
@@ -352,7 +352,7 @@ async fn simulated_position_is_published_to_the_state_stream() {
     assert!(body_bytes(response).await.is_empty());
     assert_eq!(
         next_data(&mut stream).await,
-        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"position\",\"value\":{\"observedAtMs\":2500.0,\"latitudeDegrees\":50.824,\"longitudeDegrees\":6.187,\"altitudeMeters\":410.5,\"trackDegrees\":90.0,\"groundSpeedMetersPerSecond\":31.0}}]\n\n"
+        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"gnss\",\"value\":{\"position\":{\"latitudeDegrees\":50.824,\"longitudeDegrees\":6.187},\"altitudeMeters\":410.5,\"trackDegrees\":90.0,\"groundSpeedMetersPerSecond\":31.0}}]\n\n"
     );
 }
 

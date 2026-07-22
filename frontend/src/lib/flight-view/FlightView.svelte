@@ -1,16 +1,15 @@
 <script lang="ts">
-  import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+  import type { GnssState } from '$lib/protocol/generated/GnssState';
 
   import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
   import Map from '$lib/map/Map.svelte';
   import { m } from '$lib/paraglide/messages.js';
 
-  let { position, testMode = false }: { position: PositionFix | null; testMode?: boolean } =
-    $props();
+  let { gnss, testMode = false }: { gnss: GnssState | null; testMode?: boolean } = $props();
 </script>
 
 <section class="flight-view" aria-label={m.flight_view()}>
-  <Map {position} {testMode} />
+  <Map {gnss} {testMode} />
   <div class="overlay">
     <LocaleSwitcher />
   </div>

@@ -125,7 +125,7 @@ async fn health() -> StatusCode {
 
 async fn simulation_position(
     State(state): State<ServerState>,
-    Json(position): Json<wire::PositionFix>,
+    Json(position): Json<wire::SimulationPosition>,
 ) -> Result<StatusCode, StatusCode> {
     let observation =
         Observation::<GnssUpdate>::try_from(position).map_err(|_| StatusCode::BAD_REQUEST)?;

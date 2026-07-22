@@ -29,22 +29,6 @@ impl Default for FlightConfig {
     }
 }
 
-/// A published own-position state.
-///
-/// This doubles as the published kinematic state vector: clients use it
-/// to estimate the current render position, so frame-rate animation never
-/// crosses the transport.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PositionFix {
-    /// Clock time when the fix was observed.
-    pub observed_at: Duration,
-    pub position: LatLon,
-    pub altitude: Option<MslAltitude>,
-    /// Track over ground.
-    pub track: Option<Angle>,
-    pub ground_speed: Option<Speed>,
-}
-
 /// The stable identity of a normalized flight-data source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SourceId {
@@ -115,6 +99,36 @@ pub struct GnssUpdate {
     pub ground_speed: Option<Speed>,
 }
 
+/// GNSS components retained with their individual observation times.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GnssState {
+    pub position: Observation<LatLon>,
+    /// Mean-sea-level GNSS altitude.
+    pub altitude: Option<Observation<MslAltitude>>,
+    /// Track over ground.
+    pub track: Option<Observation<Angle>>,
+    pub ground_speed: Option<Observation<Speed>>,
+}
+
+impl From<Observation<GnssUpdate>> for GnssState {
+    fn from(observation: Observation<GnssUpdate>) -> Self {
+        let observed_at = observation.observed_at;
+        let update = observation.value;
+        Self {
+            position: Observation::new(observed_at, update.position),
+            altitude: update
+                .altitude
+                .map(|altitude| Observation::new(observed_at, altitude)),
+            track: update
+                .track
+                .map(|track| Observation::new(observed_at, track)),
+            ground_speed: update
+                .ground_speed
+                .map(|speed| Observation::new(observed_at, speed)),
+        }
+    }
+}
+
 /// Statistics over the flown trace, computed by a runtime worker.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TraceStats {
@@ -160,8 +174,8 @@ impl crate::Query for GetTraceStats {
 /// A client-visible flight-state update.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FlightChange {
-    /// The own-position last-value update.
-    Position(PositionFix),
+    /// The selected GNSS component state.
+    Gnss(GnssState),
     /// The standard-pressure altitude last-value update.
     PressureAltitude(PressureAltitude),
     /// New trace statistics, or `None` after the trace was cleared.
@@ -175,7 +189,7 @@ pub enum FlightComputeJob {
     /// Statistics over the flown trace.
     TraceStats {
         revision: crate::ComputeRevision,
-        fixes: Vec<PositionFix>,
+        fixes: Vec<GnssState>,
     },
 }
 
@@ -234,7 +248,7 @@ impl FlightComputeResult {
 /// The shared current flight state for a newly subscribing client.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct FlightSnapshot {
-    pub position: Option<PositionFix>,
+    pub gnss: Option<GnssState>,
     pub pressure_altitude: Option<PressureAltitude>,
     pub trace_stats: Option<TraceStats>,
 }
@@ -242,14 +256,14 @@ pub struct FlightSnapshot {
 /// Computes trace statistics using a WGS84 geodesic solve for each segment.
 ///
 /// Its cost grows with the trace, so it runs on a compute worker.
-pub(crate) fn trace_stats(fixes: &[PositionFix]) -> TraceStats {
+pub(crate) fn trace_stats(fixes: &[GnssState]) -> TraceStats {
     let distance = fixes
         .windows(2)
-        .map(|pair| pair[0].position.distance(pair[1].position))
+        .map(|pair| pair[0].position.value.distance(pair[1].position.value))
         .fold(Length::ZERO, |total, leg| total + leg);
     let max_altitude = fixes
         .iter()
-        .filter_map(|fix| fix.altitude)
+        .filter_map(|fix| fix.altitude.map(|altitude| altitude.value))
         .reduce(|a, b| if b > a { b } else { a });
     TraceStats {
         fix_count: fixes.len() as u64,
@@ -263,9 +277,9 @@ pub(crate) fn trace_stats(fixes: &[PositionFix]) -> TraceStats {
 pub(crate) struct Flight {
     /// Minimum spacing between two trace-statistics job starts.
     stats_interval: Duration,
-    position: Option<PositionFix>,
+    gnss: Option<GnssState>,
     pressure_altitude: Option<Sourced<Observation<PressureAltitude>>>,
-    trace: Vec<PositionFix>,
+    trace: Vec<GnssState>,
     trace_stats: Option<TraceStats>,
     stats_job: ComputeSlot,
     stats_started_at: Option<Duration>,
@@ -275,7 +289,7 @@ impl Flight {
     pub(crate) fn new(config: FlightConfig) -> Self {
         Self {
             stats_interval: config.trace_stats_interval,
-            position: None,
+            gnss: None,
             pressure_altitude: None,
             trace: Vec::new(),
             trace_stats: None,
@@ -308,7 +322,7 @@ impl Flight {
 
     pub(crate) fn snapshot(&self) -> FlightSnapshot {
         FlightSnapshot {
-            position: self.position,
+            gnss: self.gnss,
             pressure_altitude: self
                 .pressure_altitude
                 .map(|observation| observation.value.value),
@@ -323,19 +337,12 @@ impl Flight {
         timers: &mut Timers,
         update: &mut Update,
     ) {
-        let gnss = observation.value;
-        let fix = PositionFix {
-            observed_at: observation.observed_at,
-            position: gnss.position,
-            altitude: gnss.altitude,
-            track: gnss.track,
-            ground_speed: gnss.ground_speed,
-        };
-        self.position = Some(fix);
-        self.trace.push(fix);
+        let gnss = GnssState::from(observation);
+        self.gnss = Some(gnss);
+        self.trace.push(gnss);
         update
             .changes
-            .push(AppChange::Flight(FlightChange::Position(fix)));
+            .push(AppChange::Flight(FlightChange::Gnss(gnss)));
         self.stats_job.request();
         self.schedule_stats(clock_time, timers);
     }
@@ -467,11 +474,15 @@ mod tests {
     use super::*;
     use claims::{assert_lt, assert_none, assert_some_eq};
 
-    fn fix(latitude: f64, longitude: f64, altitude: Option<f64>) -> PositionFix {
-        PositionFix {
-            observed_at: Duration::ZERO,
-            position: LatLon::from_degrees(latitude, longitude),
-            altitude: altitude.map(|meters| MslAltitude::new(Length::from_meters(meters))),
+    fn fix(latitude: f64, longitude: f64, altitude: Option<f64>) -> GnssState {
+        GnssState {
+            position: Observation::new(Duration::ZERO, LatLon::from_degrees(latitude, longitude)),
+            altitude: altitude.map(|meters| {
+                Observation::new(
+                    Duration::ZERO,
+                    MslAltitude::new(Length::from_meters(meters)),
+                )
+            }),
             track: None,
             ground_speed: None,
         }
@@ -506,18 +517,18 @@ mod tests {
     fn input_reports_observation_time() {
         let position = fix(50., 6., Some(1000.));
         let observation = Observation::new(
-            position.observed_at,
+            position.position.observed_at,
             GnssUpdate {
-                position: position.position,
-                altitude: position.altitude,
-                track: position.track,
-                ground_speed: position.ground_speed,
+                position: position.position.value,
+                altitude: position.altitude.map(|altitude| altitude.value),
+                track: position.track.map(|track| track.value),
+                ground_speed: position.ground_speed.map(|speed| speed.value),
             },
         );
 
         assert_some_eq!(
             FlightInput::Gnss(Sourced::simulator(observation)).observed_at(),
-            position.observed_at
+            position.position.observed_at
         );
         assert_none!(FlightInput::ClearTrace.observed_at());
     }

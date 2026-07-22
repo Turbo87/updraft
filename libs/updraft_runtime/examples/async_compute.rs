@@ -54,12 +54,15 @@ fn main() {
     while let Ok(changes) = subscription.changes.recv_timeout(Duration::from_secs(3)) {
         for change in changes {
             match change {
-                Change::Flight(FlightChange::Position(fix)) => {
+                Change::Flight(FlightChange::Gnss(gnss)) => {
                     println!(
                         "position: {:7.4}° {:7.4}° at {:6.1?}",
-                        fix.position.latitude().as_degrees(),
-                        fix.position.longitude().as_degrees(),
-                        fix.altitude.unwrap_or(MslAltitude::ZERO).into_inner(),
+                        gnss.position.value.latitude().as_degrees(),
+                        gnss.position.value.longitude().as_degrees(),
+                        gnss.altitude
+                            .map(|altitude| altitude.value)
+                            .unwrap_or(MslAltitude::ZERO)
+                            .into_inner(),
                     );
                 }
                 Change::Flight(FlightChange::PressureAltitude(altitude)) => {

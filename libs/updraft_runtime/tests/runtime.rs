@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use updraft_core::flight::{
-    FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetTraceStats, GnssUpdate,
-    Observation, PositionFix, Sourced, TraceStats,
+    FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetTraceStats, GnssState,
+    GnssUpdate, Observation, Sourced, TraceStats,
 };
 use updraft_core::{AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
@@ -31,7 +31,7 @@ fn subscription_omits_unselected_change_groups() {
 
     let fix = submit_fix(&handle, 50.);
     let current = assert_ok!(handle.subscribe(ChangeFilter::only([])));
-    assert_some_eq!(current.snapshot.flight.position, fix);
+    assert_some_eq!(current.snapshot.flight.gnss, fix);
 
     // The second subscription proves that the fix was handled before this check.
     assert_err_eq!(
@@ -315,34 +315,24 @@ fn runtime_builder() -> RuntimeBuilder {
     })
 }
 
-fn fix(handle: &Handle, latitude: f64) -> PositionFix {
-    PositionFix {
-        observed_at: handle.clock_time(),
-        position: LatLon::from_degrees(latitude, 6.),
-        altitude: Some(MslAltitude::new(Length::from_meters(1000.))),
-        track: None,
-        ground_speed: None,
-    }
-}
-
-fn submit_fix(handle: &Handle, latitude: f64) -> PositionFix {
-    let fix = fix(handle, latitude);
+fn submit_fix(handle: &Handle, latitude: f64) -> GnssState {
     let observation = Observation::new(
-        fix.observed_at,
+        handle.clock_time(),
         GnssUpdate {
-            position: fix.position,
-            altitude: fix.altitude,
-            track: fix.track,
-            ground_speed: fix.ground_speed,
+            position: LatLon::from_degrees(latitude, 6.),
+            altitude: Some(MslAltitude::new(Length::from_meters(1000.))),
+            track: None,
+            ground_speed: None,
         },
     );
+    let gnss = GnssState::from(observation);
     assert_ok!(
         handle.submit(Input::Flight(FlightInput::Gnss(Sourced::simulator(
             observation,
         )))),
         "runtime is running"
     );
-    fix
+    gnss
 }
 
 fn trace_stats_kind() -> ComputeKind {
@@ -361,26 +351,22 @@ fn atomic_subscribe_and_fifo_ordering() {
     // The subscription request is ordered behind the first fix on the
     // same queue, so its snapshot must already contain it.
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_some_eq!(subscription.snapshot.flight.position, first);
+    assert_some_eq!(subscription.snapshot.flight.gnss, first);
 
     let second = submit_fix(&handle, 50.01);
     let third = submit_fix(&handle, 50.02);
 
-    let mut positions = Vec::new();
+    let mut states = Vec::new();
     let deadline = Instant::now() + TIMEOUT;
-    while positions.len() < 2 {
+    while states.len() < 2 {
         let remaining = deadline.saturating_duration_since(Instant::now());
         let changes = assert_ok!(subscription.changes.recv_timeout(remaining));
-        positions.extend(changes.into_iter().filter_map(|change| match change {
-            Change::Flight(FlightChange::Position(fix)) => Some(fix),
+        states.extend(changes.into_iter().filter_map(|change| match change {
+            Change::Flight(FlightChange::Gnss(gnss)) => Some(gnss),
             _ => None,
         }));
     }
-    assert_eq!(
-        positions,
-        vec![second, third],
-        "changes arrive in input order"
-    );
+    assert_eq!(states, vec![second, third], "changes arrive in input order");
 
     runtime.shutdown();
 }
@@ -400,7 +386,7 @@ fn slow_subscriber_is_dropped() {
     // Resubscribe is ordered behind both fixes, so its snapshot proves that
     // the one-batch buffer overflowed while unread.
     let replacement = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_some_eq!(replacement.snapshot.flight.position, latest);
+    assert_some_eq!(replacement.snapshot.flight.gnss, latest);
     assert_ok!(subscription.changes.try_recv());
     assert_err_eq!(
         subscription.changes.try_recv(),
@@ -410,7 +396,7 @@ fn slow_subscriber_is_dropped() {
 
     // Reconnect is resubscribe: a fresh subscription works and starts
     // from a fresh snapshot.
-    assert_some!(replacement.snapshot.flight.position);
+    assert_some!(replacement.snapshot.flight.gnss);
 
     runtime.shutdown();
 }
@@ -616,7 +602,7 @@ fn missing_worker_fails_the_job_without_stalling() {
     }
 
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_some!(subscription.snapshot.flight.position);
+    assert_some!(subscription.snapshot.flight.gnss);
 
     runtime.shutdown();
 }

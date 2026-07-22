@@ -6,7 +6,7 @@ use std::time::Duration;
 use updraft_core::device::DeviceId;
 use updraft_core::flight::{
     FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult, FlightConfig,
-    FlightInput, FlightSnapshot, GetTraceStats, GnssUpdate, Observation, PositionFix, Sourced,
+    FlightInput, FlightSnapshot, GetTraceStats, GnssState, GnssUpdate, Observation, Sourced,
 };
 use updraft_core::{
     App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
@@ -40,20 +40,20 @@ fn app_publishes_latest_pressure_altitude() {
 #[test]
 fn app_routes_flight_protocol_through_the_flight_domain() {
     let mut app = App::new();
-    let fix = fix(0., 50., 6.);
+    let gnss = fix(0., 50., 6.);
 
     let update = app.handle(Input::Flight(FlightInput::Gnss(Sourced::simulator(
-        gnss_observation(fix),
+        gnss_observation(gnss),
     ))));
 
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Position(fix))]
+        vec![Change::Flight(FlightChange::Gnss(gnss))]
     );
     assert_eq!(
         app.snapshot().flight,
         FlightSnapshot {
-            position: Some(fix),
+            gnss: Some(gnss),
             pressure_altitude: None,
             trace_stats: None,
         }
@@ -64,24 +64,26 @@ fn at(seconds: f64) -> Duration {
     Duration::from_secs_f64(seconds)
 }
 
-fn fix(seconds: f64, latitude: f64, longitude: f64) -> PositionFix {
-    PositionFix {
-        observed_at: at(seconds),
-        position: LatLon::from_degrees(latitude, longitude),
-        altitude: Some(MslAltitude::new(Length::from_meters(1000.))),
+fn fix(seconds: f64, latitude: f64, longitude: f64) -> GnssState {
+    GnssState {
+        position: Observation::new(at(seconds), LatLon::from_degrees(latitude, longitude)),
+        altitude: Some(Observation::new(
+            at(seconds),
+            MslAltitude::new(Length::from_meters(1000.)),
+        )),
         track: None,
         ground_speed: None,
     }
 }
 
-fn gnss_observation(fix: PositionFix) -> Observation<GnssUpdate> {
+fn gnss_observation(gnss: GnssState) -> Observation<GnssUpdate> {
     Observation::new(
-        fix.observed_at,
+        gnss.position.observed_at,
         GnssUpdate {
-            position: fix.position,
-            altitude: fix.altitude,
-            track: fix.track,
-            ground_speed: fix.ground_speed,
+            position: gnss.position.value,
+            altitude: gnss.altitude.map(|altitude| altitude.value),
+            track: gnss.track.map(|track| track.value),
+            ground_speed: gnss.ground_speed.map(|speed| speed.value),
         },
     )
 }
@@ -114,7 +116,7 @@ fn trace_stats_compute_lifecycle() {
     let update = app.handle(position_input(0., 50., 6.));
     assert_matches!(
         update.changes.as_slice(),
-        [Change::Flight(FlightChange::Position(_))]
+        [Change::Flight(FlightChange::Gnss(_))]
     );
     let job = assert_some!(compute_job(&update), "first fix starts a job").clone();
     let ComputeJob::Flight(FlightComputeJob::TraceStats {
@@ -129,7 +131,7 @@ fn trace_stats_compute_lifecycle() {
     let update = app.handle(position_input(0.2, 50.01, 6.));
     assert_matches!(
         update.changes.as_slice(),
-        [Change::Flight(FlightChange::Position(_))]
+        [Change::Flight(FlightChange::Gnss(_))]
     );
     assert_eq!(update.effects, vec![]);
     assert_none!(update.next_deadline);
@@ -301,7 +303,7 @@ fn snapshot_reflects_current_shared_state() {
     app.handle(Input::ComputeResult(job.run()));
 
     let snapshot = app.snapshot();
-    assert_some_eq!(snapshot.flight.position, fix(0., 50., 6.));
+    assert_some_eq!(snapshot.flight.gnss, fix(0., 50., 6.));
     let stats = assert_some!(snapshot.flight.trace_stats, "stats are shared state");
     assert_eq!(stats.fix_count, 1);
 }

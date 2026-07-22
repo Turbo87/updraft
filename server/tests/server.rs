@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::flight::{FlightInput, GetPosition, PositionFix};
+use updraft_core::flight::{FlightInput, PositionFix};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::Runtime;
@@ -182,7 +182,6 @@ async fn state_stream_snapshot_includes_current_state() {
     let handle = runtime.handle();
     assert_ok_eq!(handle.submit(position_input()), ());
     assert_ok_eq!(handle.submit(Input::Flight(FlightInput::ClearTrace)), ());
-    assert_some!(assert_ok!(handle.query(GetPosition)));
 
     let request = Request::builder()
         .uri("/api/state")

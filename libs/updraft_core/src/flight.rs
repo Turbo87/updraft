@@ -71,18 +71,6 @@ impl FlightInput {
     }
 }
 
-/// Requests the current own-position fix.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct GetPosition;
-
-impl crate::Query for GetPosition {
-    type Output = Option<PositionFix>;
-
-    fn execute(self, app: &crate::App) -> Self::Output {
-        app.flight.position()
-    }
-}
-
 /// Requests the most recent trace statistics.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct GetTraceStats;
@@ -217,10 +205,6 @@ impl Flight {
         }
     }
 
-    pub(crate) fn position(&self) -> Option<PositionFix> {
-        self.position
-    }
-
     pub(crate) fn trace_stats(&self) -> Option<TraceStats> {
         self.trace_stats
     }
@@ -242,7 +226,7 @@ impl Flight {
 
     pub(crate) fn snapshot(&self) -> FlightSnapshot {
         FlightSnapshot {
-            position: self.position(),
+            position: self.position,
             trace_stats: self.trace_stats(),
         }
     }

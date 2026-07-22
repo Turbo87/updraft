@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use updraft_core::flight::{
-    FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetPosition, GetTraceStats,
-    PositionFix, TraceStats,
+    FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetTraceStats, PositionFix,
+    TraceStats,
 };
 use updraft_core::{AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
@@ -30,9 +30,10 @@ fn subscription_omits_unselected_change_groups() {
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::only([])));
 
     let fix = submit_fix(&handle, 50.);
-    assert_some_eq!(assert_ok!(handle.query(GetPosition)), fix);
+    let current = assert_ok!(handle.subscribe(ChangeFilter::only([])));
+    assert_some_eq!(current.snapshot.flight.position, fix);
 
-    // The query proves that the fix was handled before this check.
+    // The second subscription proves that the fix was handled before this check.
     assert_err_eq!(
         subscription.changes.try_recv(),
         std::sync::mpsc::TryRecvError::Empty
@@ -50,7 +51,7 @@ fn runtime_records_queue_and_handler_measurements() {
 
     submit_fix(&handle, 50.);
     assert_ok!(
-        handle.query(GetPosition),
+        handle.query(GetTraceStats),
         "query orders measurement after the input"
     );
 
@@ -385,9 +386,10 @@ fn slow_subscriber_is_dropped() {
     submit_fix(&handle, 50.);
     let latest = submit_fix(&handle, 50.01);
 
-    // The query is ordered behind both fixes on the same queue, so its
-    // response proves that the one-batch buffer overflowed while unread.
-    assert_some_eq!(assert_ok!(handle.query(GetPosition)), latest);
+    // Resubscribe is ordered behind both fixes, so its snapshot proves that
+    // the one-batch buffer overflowed while unread.
+    let replacement = assert_ok!(handle.subscribe(ChangeFilter::all()));
+    assert_some_eq!(replacement.snapshot.flight.position, latest);
     assert_ok!(subscription.changes.try_recv());
     assert_err_eq!(
         subscription.changes.try_recv(),
@@ -397,8 +399,7 @@ fn slow_subscriber_is_dropped() {
 
     // Reconnect is resubscribe: a fresh subscription works and starts
     // from a fresh snapshot.
-    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_some!(subscription.snapshot.flight.position);
+    assert_some!(replacement.snapshot.flight.position);
 
     runtime.shutdown();
 }
@@ -603,8 +604,8 @@ fn missing_worker_fails_the_job_without_stalling() {
         std::thread::yield_now();
     }
 
-    let position = assert_ok!(handle.query(GetPosition));
-    assert_some!(position, "the core still answers queries");
+    let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
+    assert_some!(subscription.snapshot.flight.position);
 
     runtime.shutdown();
 }
@@ -627,7 +628,7 @@ fn handle_reports_runtime_stopped_after_shutdown() {
         clock_time: handle.clock_time(),
     };
     assert_err!(handle.submit(input));
-    assert_err!(handle.query(GetPosition));
+    assert_err!(handle.query(GetTraceStats));
     assert_err!(handle.subscribe(ChangeFilter::all()));
 }
 

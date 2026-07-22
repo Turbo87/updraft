@@ -3,6 +3,7 @@
 //! Trace statistics are computed asynchronously and invalidated when the
 //! trace is cleared.
 
+use crate::device::DeviceId;
 use crate::job::ComputeSlot;
 use crate::protocol::{
     Change as AppChange, ComputeCancellation, ComputeJob as AppComputeJob,
@@ -44,6 +45,19 @@ pub struct PositionFix {
     pub ground_speed: Option<Speed>,
 }
 
+/// The stable identity of a normalized flight-data source.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SourceId {
+    /// Built-in platform GNSS and pressure sensors.
+    Internal,
+    /// One configured external device.
+    External(DeviceId),
+    /// Interactive simulator mode.
+    Simulator,
+    /// Replay of a recorded flight.
+    Replay,
+}
+
 /// Statistics over the flown trace, computed by a runtime worker.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TraceStats {
@@ -58,15 +72,15 @@ pub struct TraceStats {
 pub enum FlightInput {
     /// Clears the flown trace and its statistics.
     ClearTrace,
-    /// An own-position fix.
-    Position(PositionFix),
+    /// An own-position fix with source provenance.
+    Position { source: SourceId, fix: PositionFix },
 }
 
 impl FlightInput {
     pub(crate) fn observed_at(&self) -> Option<Duration> {
         match self {
             Self::ClearTrace => None,
-            Self::Position(fix) => Some(fix.observed_at),
+            Self::Position { fix, .. } => Some(fix.observed_at),
         }
     }
 }
@@ -218,7 +232,7 @@ impl Flight {
     ) {
         match input {
             FlightInput::ClearTrace => self.clear_trace(timers, update),
-            FlightInput::Position(fix) => {
+            FlightInput::Position { fix, .. } => {
                 self.observe_position(fix, clock_time, timers, update);
             }
         }
@@ -404,7 +418,11 @@ mod tests {
         let position = fix(50., 6., Some(1000.));
 
         assert_some_eq!(
-            FlightInput::Position(position).observed_at(),
+            FlightInput::Position {
+                source: SourceId::Simulator,
+                fix: position,
+            }
+            .observed_at(),
             position.observed_at
         );
         assert_none!(FlightInput::ClearTrace.observed_at());

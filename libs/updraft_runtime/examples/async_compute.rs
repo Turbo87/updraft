@@ -12,7 +12,7 @@
 
 use std::thread;
 use std::time::Duration;
-use updraft_core::flight::{FlightChange, FlightComputeKind, FlightInput, PositionFix};
+use updraft_core::flight::{FlightChange, FlightComputeKind, FlightInput, PositionFix, SourceId};
 use updraft_core::{Change, ComputeKind, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
@@ -100,7 +100,10 @@ fn fly_circle(handle: &Handle, count: u32) {
             ground_speed: Some(Speed::from_kilometers_per_hour(95.)),
         };
         handle
-            .submit(Input::Flight(FlightInput::Position(fix)))
+            .submit(Input::Flight(FlightInput::Position {
+                source: SourceId::Simulator,
+                fix,
+            }))
             .expect("runtime is running");
         thread::sleep(Duration::from_secs(1));
     }

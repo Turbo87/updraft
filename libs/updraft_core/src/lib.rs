@@ -26,6 +26,7 @@
 //! exactly.
 
 mod app;
+pub mod device;
 pub mod flight;
 mod job;
 mod protocol;

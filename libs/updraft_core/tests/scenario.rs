@@ -5,7 +5,7 @@ use claims::{assert_matches, assert_none, assert_some, assert_some_eq};
 use std::time::Duration;
 use updraft_core::flight::{
     FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult, FlightConfig,
-    FlightInput, FlightSnapshot, GetTraceStats, PositionFix, SourceId,
+    FlightInput, FlightSnapshot, GetTraceStats, PositionFix, Sourced,
 };
 use updraft_core::{
     App, Change, ComputeFailure, ComputeJob, ComputeKind, ComputeResult, Effect, Input, Update,
@@ -18,10 +18,9 @@ fn app_routes_flight_protocol_through_the_flight_domain() {
     let mut app = App::new();
     let fix = fix(0., 50., 6.);
 
-    let update = app.handle(Input::Flight(FlightInput::Position {
-        source: SourceId::Simulator,
+    let update = app.handle(Input::Flight(FlightInput::Position(Sourced::simulator(
         fix,
-    }));
+    ))));
 
     assert_eq!(
         update.changes,
@@ -51,10 +50,9 @@ fn fix(seconds: f64, latitude: f64, longitude: f64) -> PositionFix {
 }
 
 fn position_input(seconds: f64, latitude: f64, longitude: f64) -> Input {
-    Input::Flight(FlightInput::Position {
-        source: SourceId::Simulator,
-        fix: fix(seconds, latitude, longitude),
-    })
+    Input::Flight(FlightInput::Position(Sourced::simulator(fix(
+        seconds, latitude, longitude,
+    ))))
 }
 
 fn clear_trace_input() -> Input {

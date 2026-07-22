@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use updraft_core::flight::{
     FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetTraceStats, PositionFix,
-    SourceId, TraceStats,
+    Sourced, TraceStats,
 };
 use updraft_core::{AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
@@ -328,10 +328,9 @@ fn fix(handle: &Handle, latitude: f64) -> PositionFix {
 fn submit_fix(handle: &Handle, latitude: f64) -> PositionFix {
     let fix = fix(handle, latitude);
     assert_ok!(
-        handle.submit(Input::Flight(FlightInput::Position {
-            source: SourceId::Simulator,
+        handle.submit(Input::Flight(FlightInput::Position(Sourced::simulator(
             fix,
-        })),
+        )))),
         "runtime is running"
     );
     fix

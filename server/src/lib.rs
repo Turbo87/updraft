@@ -14,7 +14,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, Interval, MissedTickBehavior};
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
-use updraft_core::flight::{FlightComputeKind, FlightInput, SourceId};
+use updraft_core::flight::{FlightComputeKind, FlightInput, Sourced};
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
 
 pub mod wire;
@@ -129,10 +129,7 @@ async fn simulation_position(
 ) -> Result<StatusCode, StatusCode> {
     let position = updraft_core::flight::PositionFix::try_from(position)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
-    let input = updraft_core::Input::Flight(FlightInput::Position {
-        source: SourceId::Simulator,
-        fix: position,
-    });
+    let input = updraft_core::Input::Flight(FlightInput::Position(Sourced::simulator(position)));
     let runtime = state.runtime;
 
     tokio::task::spawn_blocking(move || runtime.submit(input))

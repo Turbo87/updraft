@@ -58,6 +58,39 @@ pub enum SourceId {
     Replay,
 }
 
+/// A value attributed to one flight-data source.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Sourced<T> {
+    pub source: SourceId,
+    pub value: T,
+}
+
+impl<T> Sourced<T> {
+    pub const fn new(source: SourceId, value: T) -> Self {
+        Self { source, value }
+    }
+
+    /// Creates a value sourced from the built-in platform sensors.
+    pub const fn internal(value: T) -> Self {
+        Self::new(SourceId::Internal, value)
+    }
+
+    /// Creates a value sourced from one configured external device.
+    pub const fn external(device_id: DeviceId, value: T) -> Self {
+        Self::new(SourceId::External(device_id), value)
+    }
+
+    /// Creates a value sourced from interactive simulator mode.
+    pub const fn simulator(value: T) -> Self {
+        Self::new(SourceId::Simulator, value)
+    }
+
+    /// Creates a value sourced from a recorded-flight replay.
+    pub const fn replay(value: T) -> Self {
+        Self::new(SourceId::Replay, value)
+    }
+}
+
 /// Statistics over the flown trace, computed by a runtime worker.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TraceStats {
@@ -72,15 +105,15 @@ pub struct TraceStats {
 pub enum FlightInput {
     /// Clears the flown trace and its statistics.
     ClearTrace,
-    /// An own-position fix with source provenance.
-    Position { source: SourceId, fix: PositionFix },
+    /// An own-position fix.
+    Position(Sourced<PositionFix>),
 }
 
 impl FlightInput {
     pub(crate) fn observed_at(&self) -> Option<Duration> {
         match self {
             Self::ClearTrace => None,
-            Self::Position { fix, .. } => Some(fix.observed_at),
+            Self::Position(position) => Some(position.value.observed_at),
         }
     }
 }
@@ -232,8 +265,8 @@ impl Flight {
     ) {
         match input {
             FlightInput::ClearTrace => self.clear_trace(timers, update),
-            FlightInput::Position { fix, .. } => {
-                self.observe_position(fix, clock_time, timers, update);
+            FlightInput::Position(position) => {
+                self.observe_position(position.value, clock_time, timers, update);
             }
         }
     }
@@ -418,11 +451,7 @@ mod tests {
         let position = fix(50., 6., Some(1000.));
 
         assert_some_eq!(
-            FlightInput::Position {
-                source: SourceId::Simulator,
-                fix: position,
-            }
-            .observed_at(),
+            FlightInput::Position(Sourced::simulator(position)).observed_at(),
             position.observed_at
         );
         assert_none!(FlightInput::ClearTrace.observed_at());

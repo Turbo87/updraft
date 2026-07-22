@@ -113,6 +113,41 @@ pub struct GnssState {
     pub ground_speed: Option<Observation<Speed>>,
 }
 
+impl GnssState {
+    fn data_at(self, clock_time: Duration) -> GnssData {
+        GnssData {
+            position: observation_availability(Some(self.position), clock_time),
+            altitude: observation_availability(self.altitude, clock_time),
+            track: observation_availability(self.track, clock_time),
+            ground_speed: observation_availability(self.ground_speed, clock_time),
+        }
+    }
+
+    fn trace_point_at(self, clock_time: Duration) -> TracePoint {
+        TracePoint {
+            position: self.position.value,
+            altitude: self
+                .altitude
+                .filter(|altitude| is_fresh(altitude.observed_at, clock_time))
+                .map(|altitude| altitude.value),
+        }
+    }
+
+    fn freshness_deadline_after(self, clock_time: Duration) -> Option<Duration> {
+        [
+            Some(self.position.observed_at),
+            self.altitude.map(|altitude| altitude.observed_at),
+            self.track.map(|track| track.observed_at),
+            self.ground_speed.map(|speed| speed.observed_at),
+        ]
+        .into_iter()
+        .flatten()
+        .map(|observed_at| observed_at.saturating_add(FLIGHT_SIGNAL_FRESHNESS))
+        .filter(|deadline| *deadline > clock_time)
+        .min()
+    }
+}
+
 /// The availability of a published flight value.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Availability<T> {
@@ -121,8 +156,19 @@ pub enum Availability<T> {
     Unavailable,
     /// The selected value is fresh.
     Current(T),
-    /// The last selected value is retained while no source is eligible.
+    /// The selected value is stale.
     LastKnown(T),
+}
+
+/// Published data from the selected GNSS source.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GnssData {
+    pub position: Availability<LatLon>,
+    /// Mean-sea-level GNSS altitude.
+    pub altitude: Availability<MslAltitude>,
+    /// Track over ground.
+    pub track: Availability<Angle>,
+    pub ground_speed: Availability<Speed>,
 }
 
 impl From<Observation<GnssUpdate>> for GnssState {
@@ -190,6 +236,13 @@ pub struct TraceStats {
     pub max_altitude: Option<MslAltitude>,
 }
 
+/// One accepted horizontal position and its fresh GNSS altitude.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TracePoint {
+    pub position: LatLon,
+    pub altitude: Option<MslAltitude>,
+}
+
 /// A recorded event or request owned by the flight domain.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FlightInput {
@@ -228,8 +281,8 @@ impl crate::Query for GetTraceStats {
 /// A client-visible flight-state update.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FlightChange {
-    /// The selected GNSS state and its availability.
-    Gnss(Availability<GnssState>),
+    /// The selected GNSS data.
+    Gnss(GnssData),
     /// The selected standard-pressure altitude and its availability.
     PressureAltitude(Availability<PressureAltitude>),
     /// New trace statistics, or `None` after the trace was cleared.
@@ -243,7 +296,7 @@ pub enum FlightComputeJob {
     /// Statistics over the flown trace.
     TraceStats {
         revision: crate::ComputeRevision,
-        fixes: Vec<GnssState>,
+        fixes: Vec<TracePoint>,
     },
 }
 
@@ -302,7 +355,7 @@ impl FlightComputeResult {
 /// The shared current flight state for a newly subscribing client.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct FlightSnapshot {
-    pub gnss: Availability<GnssState>,
+    pub gnss: GnssData,
     pub pressure_altitude: Availability<PressureAltitude>,
     pub trace_stats: Option<TraceStats>,
 }
@@ -310,14 +363,14 @@ pub struct FlightSnapshot {
 /// Computes trace statistics using a WGS84 geodesic solve for each segment.
 ///
 /// Its cost grows with the trace, so it runs on a compute worker.
-pub(crate) fn trace_stats(fixes: &[GnssState]) -> TraceStats {
+pub(crate) fn trace_stats(fixes: &[TracePoint]) -> TraceStats {
     let distance = fixes
         .windows(2)
-        .map(|pair| pair[0].position.value.distance(pair[1].position.value))
+        .map(|pair| pair[0].position.distance(pair[1].position))
         .fold(Length::ZERO, |total, leg| total + leg);
     let max_altitude = fixes
         .iter()
-        .filter_map(|fix| fix.altitude.map(|altitude| altitude.value))
+        .filter_map(|fix| fix.altitude)
         .reduce(|a, b| if b > a { b } else { a });
     TraceStats {
         fix_count: fixes.len() as u64,
@@ -335,7 +388,7 @@ pub(crate) struct Flight {
     source_states: HashMap<SourceId, SourceState>,
     selected_gnss_source: Option<SourceId>,
     selected_pressure_altitude_source: Option<SourceId>,
-    trace: Vec<GnssState>,
+    trace: Vec<TracePoint>,
     trace_stats: Option<TraceStats>,
     stats_job: ComputeSlot,
     stats_started_at: Option<Duration>,
@@ -382,7 +435,7 @@ impl Flight {
 
     pub(crate) fn snapshot(&self, clock_time: Duration) -> FlightSnapshot {
         FlightSnapshot {
-            gnss: self.gnss_availability(clock_time),
+            gnss: self.gnss_data(clock_time),
             pressure_altitude: self.pressure_altitude_availability(clock_time),
             trace_stats: self.trace_stats(),
         }
@@ -409,17 +462,10 @@ impl Flight {
             .chain([SourceId::Internal])
     }
 
-    fn gnss_availability(&self, clock_time: Duration) -> Availability<GnssState> {
-        match self
-            .selected_gnss_source
+    fn gnss_data(&self, clock_time: Duration) -> GnssData {
+        self.selected_gnss_source
             .and_then(|source| self.gnss_for_source(source))
-        {
-            Some(gnss) if is_fresh(gnss.position.observed_at, clock_time) => {
-                Availability::Current(gnss)
-            }
-            Some(gnss) => Availability::LastKnown(gnss),
-            None => Availability::Unavailable,
-        }
+            .map_or_else(GnssData::default, |gnss| gnss.data_at(clock_time))
     }
 
     fn pressure_altitude_availability(
@@ -438,20 +484,17 @@ impl Flight {
         }
     }
 
-    fn gnss_freshness_deadline(&self) -> Option<Duration> {
+    fn gnss_freshness_deadline_after(&self, clock_time: Duration) -> Option<Duration> {
         self.selected_gnss_source
             .and_then(|source| self.gnss_for_source(source))
-            .map(|gnss| {
-                gnss.position
-                    .observed_at
-                    .saturating_add(FLIGHT_SIGNAL_FRESHNESS)
-            })
+            .and_then(|gnss| gnss.freshness_deadline_after(clock_time))
     }
 
-    fn pressure_altitude_freshness_deadline(&self) -> Option<Duration> {
+    fn pressure_altitude_freshness_deadline_after(&self, clock_time: Duration) -> Option<Duration> {
         self.selected_pressure_altitude_source
             .and_then(|source| self.pressure_altitude_for_source(source))
             .map(|altitude| altitude.observed_at.saturating_add(FLIGHT_SIGNAL_FRESHNESS))
+            .filter(|deadline| *deadline > clock_time)
     }
 
     fn select_live_gnss_source(&self, clock_time: Duration) -> Option<SourceId> {
@@ -497,7 +540,7 @@ impl Flight {
         timers: &mut Timers,
         update: &mut Update,
     ) {
-        let previous = self.gnss_availability(clock_time);
+        let previous = self.gnss_data(clock_time);
         let source = observation.source;
         let observation = observation.value;
         let Some(gnss) = self
@@ -516,7 +559,7 @@ impl Flight {
         ) {
             self.selected_gnss_source = self.select_live_gnss_source(clock_time);
         }
-        let next = self.gnss_availability(clock_time);
+        let next = self.gnss_data(clock_time);
         if next != previous {
             update
                 .changes
@@ -529,7 +572,7 @@ impl Flight {
             return;
         }
 
-        self.trace.push(gnss);
+        self.trace.push(gnss.trace_point_at(clock_time));
         self.stats_job.request();
         self.schedule_stats(clock_time, timers);
     }
@@ -576,7 +619,7 @@ impl Flight {
         timers: &mut Timers,
         update: &mut Update,
     ) {
-        let previous_gnss = self.gnss_availability(clock_time);
+        let previous_gnss = self.gnss_data(clock_time);
         let previous_pressure_altitude = self.pressure_altitude_availability(clock_time);
         let external_device_order = &self.external_device_order;
         self.source_states.retain(|source, _| match source {
@@ -585,7 +628,7 @@ impl Flight {
         });
         self.reselect_gnss(clock_time);
         self.reselect_pressure_altitude(clock_time);
-        let gnss = self.gnss_availability(clock_time);
+        let gnss = self.gnss_data(clock_time);
         if gnss != previous_gnss {
             update
                 .changes
@@ -642,45 +685,42 @@ impl Flight {
     pub(crate) fn timer(
         &mut self,
         timer: Timer,
+        scheduled_at: Duration,
         clock_time: Duration,
         timers: &mut Timers,
         update: &mut Update,
     ) {
         match timer {
             Timer::FlightSignalFreshness => {
-                let previous_gnss_source = self.selected_gnss_source;
-                let gnss_deadline = self.gnss_freshness_deadline();
-                let previous_pressure_altitude_source = self.selected_pressure_altitude_source;
-                let pressure_altitude_deadline = self.pressure_altitude_freshness_deadline();
+                // Compare across the scheduled boundary even when the runtime
+                // delivers the timer late.
+                let previous_time = scheduled_at.saturating_sub(Duration::from_nanos(1));
+                let previous_gnss = self.gnss_data(previous_time);
+                let previous_pressure_altitude = self.pressure_altitude_availability(previous_time);
 
                 self.reselect_gnss(clock_time);
                 self.reselect_pressure_altitude(clock_time);
 
+                let gnss = self.gnss_data(clock_time);
                 let gnss_changed = update
                     .changes
                     .iter()
                     .any(|change| matches!(change, AppChange::Flight(FlightChange::Gnss(_))));
-                if !gnss_changed
-                    && (self.selected_gnss_source != previous_gnss_source
-                        || gnss_deadline.is_some_and(|deadline| deadline <= clock_time))
-                {
-                    update.changes.push(AppChange::Flight(FlightChange::Gnss(
-                        self.gnss_availability(clock_time),
-                    )));
+                if !gnss_changed && gnss != previous_gnss {
+                    update
+                        .changes
+                        .push(AppChange::Flight(FlightChange::Gnss(gnss)));
                 }
 
+                let pressure_altitude = self.pressure_altitude_availability(clock_time);
                 let pressure_altitude_changed = update.changes.iter().any(|change| {
                     matches!(change, AppChange::Flight(FlightChange::PressureAltitude(_)))
                 });
-                if !pressure_altitude_changed
-                    && (self.selected_pressure_altitude_source != previous_pressure_altitude_source
-                        || pressure_altitude_deadline
-                            .is_some_and(|deadline| deadline <= clock_time))
-                {
+                if !pressure_altitude_changed && pressure_altitude != previous_pressure_altitude {
                     update
                         .changes
                         .push(AppChange::Flight(FlightChange::PressureAltitude(
-                            self.pressure_altitude_availability(clock_time),
+                            pressure_altitude,
                         )));
                 }
                 self.schedule_signal_freshness(clock_time, timers);
@@ -783,16 +823,25 @@ impl Flight {
         {
             return;
         }
-        let gnss = self
-            .gnss_freshness_deadline()
-            .filter(|deadline| *deadline > clock_time);
-        let pressure_altitude = self
-            .pressure_altitude_freshness_deadline()
-            .filter(|deadline| *deadline > clock_time);
+        let gnss = self.gnss_freshness_deadline_after(clock_time);
+        let pressure_altitude = self.pressure_altitude_freshness_deadline_after(clock_time);
         match [gnss, pressure_altitude].into_iter().flatten().min() {
             Some(at) => timers.schedule(Timer::FlightSignalFreshness, at),
             None => timers.cancel(Timer::FlightSignalFreshness),
         }
+    }
+}
+
+fn observation_availability<T>(
+    observation: Option<Observation<T>>,
+    clock_time: Duration,
+) -> Availability<T> {
+    match observation {
+        Some(observation) if is_fresh(observation.observed_at, clock_time) => {
+            Availability::Current(observation.value)
+        }
+        Some(observation) => Availability::LastKnown(observation.value),
+        None => Availability::Unavailable,
     }
 }
 
@@ -805,17 +854,10 @@ mod tests {
     use super::*;
     use claims::{assert_lt, assert_none, assert_some_eq};
 
-    fn fix(latitude: f64, longitude: f64, altitude: Option<f64>) -> GnssState {
-        GnssState {
-            position: Observation::new(Duration::ZERO, LatLon::from_degrees(latitude, longitude)),
-            altitude: altitude.map(|meters| {
-                Observation::new(
-                    Duration::ZERO,
-                    MslAltitude::new(Length::from_meters(meters)),
-                )
-            }),
-            track: None,
-            ground_speed: None,
+    fn fix(latitude: f64, longitude: f64, altitude: Option<f64>) -> TracePoint {
+        TracePoint {
+            position: LatLon::from_degrees(latitude, longitude),
+            altitude: altitude.map(|meters| MslAltitude::new(Length::from_meters(meters))),
         }
     }
 
@@ -846,20 +888,19 @@ mod tests {
 
     #[test]
     fn input_reports_observation_time() {
-        let position = fix(50., 6., Some(1000.));
         let observation = Observation::new(
-            position.position.observed_at,
+            Duration::from_secs(1),
             GnssUpdate {
-                position: position.position.value,
-                altitude: position.altitude.map(|altitude| altitude.value),
-                track: position.track.map(|track| track.value),
-                ground_speed: position.ground_speed.map(|speed| speed.value),
+                position: LatLon::from_degrees(50., 6.),
+                altitude: Some(MslAltitude::new(Length::from_meters(1000.))),
+                track: None,
+                ground_speed: None,
             },
         );
 
         assert_some_eq!(
             FlightInput::Gnss(Sourced::simulator(observation)).observed_at(),
-            position.position.observed_at
+            observation.observed_at
         );
         assert_none!(FlightInput::ClearTrace.observed_at());
         assert_none!(FlightInput::SetExternalDeviceOrder(Vec::new()).observed_at());

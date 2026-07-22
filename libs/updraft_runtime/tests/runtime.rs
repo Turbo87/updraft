@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use updraft_core::flight::{
     Availability, FlightChange, FlightComputeKind, FlightConfig, FlightInput, GetTraceStats,
-    GnssState, GnssUpdate, Observation, Sourced, TraceStats,
+    GnssData, GnssUpdate, Observation, Sourced, TraceStats,
 };
 use updraft_core::{AppConfig, Change, ComputeJob, ComputeKind, ComputeResult, Input};
 use updraft_geo::LatLon;
@@ -31,7 +31,7 @@ fn subscription_omits_unselected_change_groups() {
 
     let fix = submit_fix(&handle, 50.);
     let current = assert_ok!(handle.subscribe(ChangeFilter::only([])));
-    assert_eq!(current.snapshot.flight.gnss, Availability::Current(fix));
+    assert_eq!(current.snapshot.flight.gnss, fix);
 
     // The second subscription proves that the fix was handled before this check.
     assert_err_eq!(
@@ -315,7 +315,7 @@ fn runtime_builder() -> RuntimeBuilder {
     })
 }
 
-fn submit_fix(handle: &Handle, latitude: f64) -> GnssState {
+fn submit_fix(handle: &Handle, latitude: f64) -> GnssData {
     let observation = Observation::new(
         handle.clock_time(),
         GnssUpdate {
@@ -325,7 +325,12 @@ fn submit_fix(handle: &Handle, latitude: f64) -> GnssState {
             ground_speed: None,
         },
     );
-    let gnss = GnssState::from(observation);
+    let gnss = GnssData {
+        position: Availability::Current(observation.value.position),
+        altitude: Availability::Current(assert_some!(observation.value.altitude)),
+        track: Availability::Unavailable,
+        ground_speed: Availability::Unavailable,
+    };
     assert_ok!(
         handle.submit(Input::Flight(FlightInput::Gnss(Sourced::simulator(
             observation,
@@ -351,10 +356,7 @@ fn atomic_subscribe_and_fifo_ordering() {
     // The subscription request is ordered behind the first fix on the
     // same queue, so its snapshot must already contain it.
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_eq!(
-        subscription.snapshot.flight.gnss,
-        Availability::Current(first)
-    );
+    assert_eq!(subscription.snapshot.flight.gnss, first);
 
     let second = submit_fix(&handle, 50.01);
     let third = submit_fix(&handle, 50.02);
@@ -365,7 +367,7 @@ fn atomic_subscribe_and_fifo_ordering() {
         let remaining = deadline.saturating_duration_since(Instant::now());
         let changes = assert_ok!(subscription.changes.recv_timeout(remaining));
         states.extend(changes.into_iter().filter_map(|change| match change {
-            Change::Flight(FlightChange::Gnss(Availability::Current(gnss))) => Some(gnss),
+            Change::Flight(FlightChange::Gnss(gnss)) => Some(gnss),
             _ => None,
         }));
     }
@@ -389,10 +391,7 @@ fn slow_subscriber_is_dropped() {
     // Resubscribe is ordered behind both fixes, so its snapshot proves that
     // the one-batch buffer overflowed while unread.
     let replacement = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_eq!(
-        replacement.snapshot.flight.gnss,
-        Availability::Current(latest)
-    );
+    assert_eq!(replacement.snapshot.flight.gnss, latest);
     assert_ok!(subscription.changes.try_recv());
     assert_err_eq!(
         subscription.changes.try_recv(),
@@ -402,7 +401,10 @@ fn slow_subscriber_is_dropped() {
 
     // Reconnect is resubscribe: a fresh subscription works and starts
     // from a fresh snapshot.
-    assert_matches!(replacement.snapshot.flight.gnss, Availability::Current(_));
+    assert_matches!(
+        replacement.snapshot.flight.gnss.position,
+        Availability::Current(_)
+    );
 
     runtime.shutdown();
 }
@@ -608,7 +610,10 @@ fn missing_worker_fails_the_job_without_stalling() {
     }
 
     let subscription = assert_ok!(handle.subscribe(ChangeFilter::all()));
-    assert_matches!(subscription.snapshot.flight.gnss, Availability::Current(_));
+    assert_matches!(
+        subscription.snapshot.flight.gnss.position,
+        Availability::Current(_)
+    );
 
     runtime.shutdown();
 }

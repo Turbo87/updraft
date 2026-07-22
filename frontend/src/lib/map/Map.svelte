@@ -2,13 +2,12 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
 
   import type { Map, StyleSpecification } from 'maplibre-gl';
-  import type { GnssState } from '$lib/protocol/generated/GnssState';
-  import type { Availability } from '$lib/protocol/generated/Availability';
+  import type { GnssData } from '$lib/protocol/generated/GnssData';
 
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import MapDebugOverlay from './MapDebugOverlay.svelte';
-  import { gnssCoordinates } from './ownship';
+  import { latLonCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
 
   type TestWindow = Window & {
@@ -22,15 +21,12 @@
     layers: [],
   };
 
-  let {
-    gnss,
-    testMode = false,
-  }: { gnss: Availability<GnssState>; testMode?: boolean } = $props();
+  let { gnss, testMode = false }: { gnss: GnssData; testMode?: boolean } = $props();
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
-  const displayedGnss = $derived(gnss.status === 'unavailable' ? null : gnss.value);
-  const center = $derived(displayedGnss ? gnssCoordinates(displayedGnss) : DEFAULT_CENTER);
+  const position = $derived(gnss.position.status === 'unavailable' ? null : gnss.position.value);
+  const center = $derived(position ? latLonCoordinates(position) : DEFAULT_CENTER);
   const mapStyle = $derived(
     testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
   );
@@ -65,8 +61,8 @@
     {center}
     zoom={11}
   >
-    {#if spritesLoaded && displayedGnss}
-      <Ownship gnss={displayedGnss} />
+    {#if spritesLoaded && position}
+      <Ownship {position} track={gnss.trackDegrees} />
     {/if}
   </MapLibre>
   <MapDebugOverlay {map} />

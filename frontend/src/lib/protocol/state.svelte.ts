@@ -1,15 +1,20 @@
 import type { StateSubscription } from './client';
+import type { Availability } from './generated/Availability';
 import type { Change } from './generated/Change';
 import type { FlightChange } from './generated/FlightChange';
-import type { GnssState } from './generated/GnssState';
-import type { Availability } from './generated/Availability';
+import type { GnssData } from './generated/GnssData';
 import type { Snapshot } from './generated/Snapshot';
 import type { TraceStats } from './generated/TraceStats';
 
 export type StreamStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed';
 
 export class FlightState {
-  gnss = $state.raw<Availability<GnssState>>({ status: 'unavailable' });
+  gnss = $state.raw<GnssData>({
+    position: { status: 'unavailable' },
+    altitudeMeters: { status: 'unavailable' },
+    trackDegrees: { status: 'unavailable' },
+    groundSpeedMetersPerSecond: { status: 'unavailable' },
+  });
   pressureAltitudeMeters = $state.raw<Availability<number>>({ status: 'unavailable' });
   traceStats = $state.raw<TraceStats | null>(null);
 

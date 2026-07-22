@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use updraft_core::flight::{
-    Availability as CoreAvailability, GnssState as CoreGnssState, GnssUpdate,
+    Availability as CoreAvailability, GnssData as CoreGnssData, GnssUpdate,
     Observation as CoreObservation,
 };
 
@@ -27,7 +27,7 @@ impl From<updraft_core::Snapshot> for Snapshot {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 struct FlightSnapshot {
-    gnss: Availability<GnssState>,
+    gnss: GnssData,
     pressure_altitude_meters: Availability<f64>,
     trace_stats: Option<TraceStats>,
 }
@@ -35,7 +35,7 @@ struct FlightSnapshot {
 impl From<updraft_core::flight::FlightSnapshot> for FlightSnapshot {
     fn from(snapshot: updraft_core::flight::FlightSnapshot) -> Self {
         Self {
-            gnss: map_availability(snapshot.gnss, Into::into),
+            gnss: snapshot.gnss.into(),
             pressure_altitude_meters: map_availability(snapshot.pressure_altitude, |altitude| {
                 altitude.into_inner().as_meters()
             }),
@@ -73,31 +73,31 @@ pub struct LatLon {
     longitude_degrees: f64,
 }
 
-/// Available GNSS components.
+/// Selected GNSS components.
 #[derive(Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
-pub struct GnssState {
-    position: LatLon,
-    altitude_meters: Option<f64>,
-    track_degrees: Option<f64>,
-    ground_speed_meters_per_second: Option<f64>,
+pub struct GnssData {
+    position: Availability<LatLon>,
+    altitude_meters: Availability<f64>,
+    track_degrees: Availability<f64>,
+    ground_speed_meters_per_second: Availability<f64>,
 }
 
-impl From<CoreGnssState> for GnssState {
-    fn from(gnss: CoreGnssState) -> Self {
+impl From<CoreGnssData> for GnssData {
+    fn from(gnss: CoreGnssData) -> Self {
         Self {
-            position: LatLon {
-                latitude_degrees: gnss.position.value.latitude().as_degrees(),
-                longitude_degrees: gnss.position.value.longitude().as_degrees(),
-            },
-            altitude_meters: gnss
-                .altitude
-                .map(|altitude| altitude.value.into_inner().as_meters()),
-            track_degrees: gnss.track.map(|track| track.value.as_degrees()),
-            ground_speed_meters_per_second: gnss
-                .ground_speed
-                .map(|speed| speed.value.as_meters_per_second()),
+            position: map_availability(gnss.position, |position| LatLon {
+                latitude_degrees: position.latitude().as_degrees(),
+                longitude_degrees: position.longitude().as_degrees(),
+            }),
+            altitude_meters: map_availability(gnss.altitude, |altitude| {
+                altitude.into_inner().as_meters()
+            }),
+            track_degrees: map_availability(gnss.track, |track| track.as_degrees()),
+            ground_speed_meters_per_second: map_availability(gnss.ground_speed, |speed| {
+                speed.as_meters_per_second()
+            }),
         }
     }
 }
@@ -202,7 +202,7 @@ impl From<updraft_core::Change> for Change {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(tag = "type", content = "value", rename_all = "camelCase")]
 pub enum FlightChange {
-    Gnss(Availability<GnssState>),
+    Gnss(GnssData),
     PressureAltitudeMeters(Availability<f64>),
     TraceStats(Option<TraceStats>),
 }
@@ -210,9 +210,7 @@ pub enum FlightChange {
 impl From<updraft_core::flight::FlightChange> for FlightChange {
     fn from(change: updraft_core::flight::FlightChange) -> Self {
         match change {
-            updraft_core::flight::FlightChange::Gnss(gnss) => {
-                Self::Gnss(map_availability(gnss, Into::into))
-            }
+            updraft_core::flight::FlightChange::Gnss(gnss) => Self::Gnss(gnss.into()),
             updraft_core::flight::FlightChange::PressureAltitude(altitude) => {
                 Self::PressureAltitudeMeters(map_availability(altitude, |altitude| {
                     altitude.into_inner().as_meters()

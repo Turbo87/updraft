@@ -6,7 +6,7 @@ use std::time::Duration;
 use updraft_core::device::DeviceId;
 use updraft_core::flight::{
     Availability, FlightChange, FlightComputeJob, FlightComputeKind, FlightComputeResult,
-    FlightConfig, FlightInput, FlightSnapshot, GetTraceStats, GnssState, GnssUpdate, Observation,
+    FlightConfig, FlightInput, FlightSnapshot, GetTraceStats, GnssData, GnssUpdate, Observation,
     SourceId, Sourced,
 };
 use updraft_core::{
@@ -26,7 +26,7 @@ fn app_selects_gnss_by_external_device_order() {
     let update = app.handle(gnss_input(SourceId::Internal, gnss_observation(internal)));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(internal)))]
+        vec![Change::Flight(FlightChange::Gnss(internal.current_data()))]
     );
 
     let fallback_fix = fix(3., 51., 7.);
@@ -36,7 +36,9 @@ fn app_selects_gnss_by_external_device_order() {
     ));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(fallback_fix)))]
+        vec![Change::Flight(FlightChange::Gnss(
+            fallback_fix.current_data()
+        ))]
     );
 
     let preferred_fix = fix(4., 52., 8.);
@@ -46,7 +48,9 @@ fn app_selects_gnss_by_external_device_order() {
     ));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(preferred_fix)))]
+        vec![Change::Flight(FlightChange::Gnss(
+            preferred_fix.current_data()
+        ))]
     );
 
     let newer_fallback_fix = fix(4.5, 53., 9.);
@@ -55,23 +59,26 @@ fn app_selects_gnss_by_external_device_order() {
         gnss_observation(newer_fallback_fix),
     ));
     assert!(update.changes.is_empty());
-    assert_eq!(app.snapshot().flight.gnss, current(preferred_fix));
+    assert_eq!(app.snapshot().flight.gnss, preferred_fix.current_data());
 
     let update = app.handle(external_device_order_input(vec![fallback, preferred]));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(
-            newer_fallback_fix
-        )))]
+        vec![Change::Flight(FlightChange::Gnss(
+            newer_fallback_fix.current_data()
+        ))]
     );
-    assert_eq!(app.snapshot().flight.gnss, current(newer_fallback_fix));
+    assert_eq!(
+        app.snapshot().flight.gnss,
+        newer_fallback_fix.current_data()
+    );
 
     let update = app.handle(external_device_order_input(Vec::new()));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(internal)))]
+        vec![Change::Flight(FlightChange::Gnss(internal.current_data()))]
     );
-    assert_eq!(app.snapshot().flight.gnss, current(internal));
+    assert_eq!(app.snapshot().flight.gnss, internal.current_data());
 }
 
 #[test]
@@ -89,7 +96,7 @@ fn changing_external_order_preserves_simulator_selection() {
     let update = app.handle(external_device_order_input(vec![DeviceId::new(1)]));
 
     assert!(update.changes.is_empty());
-    assert_eq!(app.snapshot().flight.gnss, current(gnss));
+    assert_eq!(app.snapshot().flight.gnss, gnss.current_data());
     assert_eq!(
         app.snapshot().flight.pressure_altitude,
         current(pressure_altitude)
@@ -121,7 +128,7 @@ fn changing_external_order_preserves_the_selected_stale_source() {
     ]));
 
     assert!(update.changes.is_empty());
-    assert_eq!(app.snapshot().flight.gnss, last_known(fallback_fix));
+    assert_eq!(app.snapshot().flight.gnss, fallback_fix.last_known_data());
 }
 
 #[test]
@@ -140,11 +147,11 @@ fn removing_the_only_live_source_makes_its_signals_unavailable() {
     assert_eq!(
         update.changes,
         vec![
-            Change::Flight(FlightChange::Gnss(Availability::Unavailable)),
+            Change::Flight(FlightChange::Gnss(GnssData::default())),
             Change::Flight(FlightChange::PressureAltitude(Availability::Unavailable)),
         ]
     );
-    assert_eq!(app.snapshot().flight.gnss, Availability::Unavailable);
+    assert_eq!(app.snapshot().flight.gnss, GnssData::default());
     assert_eq!(
         app.snapshot().flight.pressure_altitude,
         Availability::Unavailable
@@ -168,7 +175,7 @@ fn readding_a_removed_source_does_not_restore_old_observations() {
     let update = app.handle(external_device_order_input(vec![device]));
 
     assert!(update.changes.is_empty());
-    assert_eq!(app.snapshot().flight.gnss, Availability::Unavailable);
+    assert_eq!(app.snapshot().flight.gnss, GnssData::default());
     assert_eq!(
         app.snapshot().flight.pressure_altitude,
         Availability::Unavailable
@@ -194,7 +201,7 @@ fn app_selects_gnss_and_pressure_altitude_independently() {
     ));
 
     let snapshot = app.snapshot().flight;
-    assert_eq!(snapshot.gnss, current(gnss));
+    assert_eq!(snapshot.gnss, gnss.current_data());
     assert_eq!(snapshot.pressure_altitude, current(pressure_altitude));
 }
 
@@ -305,7 +312,7 @@ fn flight_signals_expire_and_recover_at_exact_deadlines() {
     });
     assert!(update.changes.is_empty());
     assert_some_eq!(update.next_deadline, at(3.));
-    assert_eq!(app.snapshot().flight.gnss, current(preferred_fix));
+    assert_eq!(app.snapshot().flight.gnss, preferred_fix.current_data());
     assert_eq!(
         app.snapshot().flight.pressure_altitude,
         current(pressure_altitude)
@@ -314,10 +321,12 @@ fn flight_signals_expire_and_recover_at_exact_deadlines() {
     let update = app.handle(Input::Clock { clock_time: at(3.) });
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(fallback_fix)))]
+        vec![Change::Flight(FlightChange::Gnss(
+            fallback_fix.current_data()
+        ))]
     );
     assert_some_eq!(update.next_deadline, at(4.));
-    assert_eq!(app.snapshot().flight.gnss, current(fallback_fix));
+    assert_eq!(app.snapshot().flight.gnss, fallback_fix.current_data());
     assert_eq!(
         app.snapshot().flight.pressure_altitude,
         current(pressure_altitude)
@@ -327,7 +336,7 @@ fn flight_signals_expire_and_recover_at_exact_deadlines() {
     assert_eq!(
         update.changes,
         vec![
-            Change::Flight(FlightChange::Gnss(last_known(fallback_fix))),
+            Change::Flight(FlightChange::Gnss(fallback_fix.last_known_data())),
             Change::Flight(FlightChange::PressureAltitude(last_known(
                 pressure_altitude
             ))),
@@ -342,9 +351,11 @@ fn flight_signals_expire_and_recover_at_exact_deadlines() {
     ));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(recovered_fix)))]
+        vec![Change::Flight(FlightChange::Gnss(
+            recovered_fix.current_data()
+        ))]
     );
-    assert_eq!(app.snapshot().flight.gnss, current(recovered_fix));
+    assert_eq!(app.snapshot().flight.gnss, recovered_fix.current_data());
 
     let recovered_pressure_altitude = PressureAltitude::new(Length::from_meters(875.));
     let update = app.handle(pressure_altitude_input(
@@ -372,9 +383,9 @@ fn already_stale_observations_are_published_as_last_known() {
 
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(last_known(gnss)))]
+        vec![Change::Flight(FlightChange::Gnss(gnss.last_known_data()))]
     );
-    assert_eq!(app.snapshot().flight.gnss, last_known(gnss));
+    assert_eq!(app.snapshot().flight.gnss, gnss.last_known_data());
 
     let pressure_altitude = PressureAltitude::new(Length::from_meters(900.));
     let update = app.handle(pressure_altitude_input(
@@ -417,7 +428,9 @@ fn a_stale_selected_source_can_update_its_last_known_values() {
     let update = app.handle(gnss_input(SourceId::Internal, gnss_observation(newer_gnss)));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(last_known(newer_gnss)))]
+        vec![Change::Flight(FlightChange::Gnss(
+            newer_gnss.last_known_data()
+        ))]
     );
 
     let newer_pressure_altitude = PressureAltitude::new(Length::from_meters(950.));
@@ -459,7 +472,7 @@ fn a_stale_preferred_source_does_not_displace_the_selected_source() {
     ));
 
     assert!(update.changes.is_empty());
-    assert_eq!(app.snapshot().flight.gnss, last_known(fallback_fix));
+    assert_eq!(app.snapshot().flight.gnss, fallback_fix.last_known_data());
 }
 
 #[test]
@@ -480,7 +493,9 @@ fn a_fresh_replacement_at_expiry_does_not_publish_a_stale_transition() {
 
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(external_fix)))]
+        vec![Change::Flight(FlightChange::Gnss(
+            external_fix.current_data()
+        ))]
     );
     assert_some_eq!(update.next_deadline, at(7.));
 }
@@ -532,16 +547,18 @@ fn app_retains_gnss_components_per_source() {
             ground_speed: None,
         },
     );
-    let expected_a = GnssState {
-        position: Observation::new(at(3.), a_partial.value.position),
-        ..GnssState::from(a_initial)
+    let expected_a = GnssData {
+        position: current(a_partial.value.position),
+        altitude: current(assert_some!(a_initial.value.altitude)),
+        track: current(assert_some!(a_initial.value.track)),
+        ground_speed: current(assert_some!(a_initial.value.ground_speed)),
     };
     let update = app.handle(gnss_input(external_a, a_partial));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(expected_a)))]
+        vec![Change::Flight(FlightChange::Gnss(expected_a))]
     );
-    assert_eq!(app.snapshot().flight.gnss, current(expected_a));
+    assert_eq!(app.snapshot().flight.gnss, expected_a);
 
     let stale_a = Observation::new(
         at(2.5),
@@ -554,15 +571,18 @@ fn app_retains_gnss_components_per_source() {
     );
     let update = app.handle(gnss_input(external_a, stale_a));
     assert!(update.changes.is_empty());
-    assert_eq!(app.snapshot().flight.gnss, current(expected_a));
+    assert_eq!(app.snapshot().flight.gnss, expected_a);
 
-    let expected_b_initial = GnssState::from(b_initial);
+    let expected_b_initial = GnssData {
+        position: current(b_initial.value.position),
+        altitude: current(assert_some!(b_initial.value.altitude)),
+        track: current(assert_some!(b_initial.value.track)),
+        ground_speed: current(assert_some!(b_initial.value.ground_speed)),
+    };
     let update = app.handle(external_device_order_input(vec![device_b, device_a]));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(
-            expected_b_initial
-        )))]
+        vec![Change::Flight(FlightChange::Gnss(expected_b_initial))]
     );
     assert!(update.effects.is_empty());
 
@@ -575,31 +595,152 @@ fn app_retains_gnss_components_per_source() {
             ground_speed: None,
         },
     );
-    let expected_b = GnssState {
-        position: Observation::new(at(4.), b_partial.value.position),
-        ..GnssState::from(b_initial)
+    let expected_b = GnssData {
+        position: current(b_partial.value.position),
+        altitude: last_known(assert_some!(b_initial.value.altitude)),
+        track: last_known(assert_some!(b_initial.value.track)),
+        ground_speed: last_known(assert_some!(b_initial.value.ground_speed)),
     };
     let update = app.handle(gnss_input(external_b, b_partial));
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(expected_b)))]
+        vec![Change::Flight(FlightChange::Gnss(expected_b))]
     );
-    assert_eq!(app.snapshot().flight.gnss, current(expected_b));
+    assert_eq!(app.snapshot().flight.gnss, expected_b);
 
     let update = app.handle(Input::Clock { clock_time: at(7.) });
     let job = assert_some!(compute_job(&update));
     let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) = job;
     assert_eq!(
-        fixes
-            .iter()
-            .map(|fix| fix.position.value)
-            .collect::<Vec<_>>(),
+        fixes.iter().map(|fix| fix.position).collect::<Vec<_>>(),
         vec![
             a_initial.value.position,
             a_partial.value.position,
             b_partial.value.position
         ]
     );
+}
+
+#[test]
+fn omitted_gnss_components_expire_independently() {
+    let mut app = App::new();
+    let altitude = MslAltitude::new(Length::from_meters(1000.));
+    let track = Angle::from_degrees(45.);
+    let ground_speed = Speed::from_meters_per_second(30.);
+    app.handle(gnss_input(
+        SourceId::Internal,
+        Observation::new(
+            at(0.),
+            GnssUpdate {
+                position: LatLon::from_degrees(50., 6.),
+                altitude: Some(altitude),
+                track: Some(track),
+                ground_speed: Some(ground_speed),
+            },
+        ),
+    ));
+    let pressure_altitude = PressureAltitude::new(Length::from_meters(900.));
+    app.handle(pressure_altitude_input(
+        SourceId::Internal,
+        1.,
+        pressure_altitude,
+    ));
+    let position = LatLon::from_degrees(50.1, 6.1);
+
+    let update = app.handle(gnss_input(
+        SourceId::Internal,
+        Observation::new(
+            at(2.),
+            GnssUpdate {
+                position,
+                altitude: None,
+                track: None,
+                ground_speed: None,
+            },
+        ),
+    ));
+
+    let current_gnss = GnssData {
+        position: current(position),
+        altitude: current(altitude),
+        track: current(track),
+        ground_speed: current(ground_speed),
+    };
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(current_gnss))]
+    );
+    assert_some_eq!(update.next_deadline, at(3.));
+
+    let update = app.handle(Input::Clock {
+        clock_time: at(2.999),
+    });
+    assert!(update.changes.is_empty());
+
+    let stale_companions = GnssData {
+        position: current(position),
+        altitude: last_known(altitude),
+        track: last_known(track),
+        ground_speed: last_known(ground_speed),
+    };
+    let update = app.handle(Input::Clock { clock_time: at(3.) });
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::Gnss(stale_companions))]
+    );
+    assert_some_eq!(update.next_deadline, at(4.));
+    assert_eq!(app.snapshot().flight.gnss, stale_companions);
+
+    let update = app.handle(Input::Clock { clock_time: at(4.) });
+    assert_eq!(
+        update.changes,
+        vec![Change::Flight(FlightChange::PressureAltitude(last_known(
+            pressure_altitude
+        )))]
+    );
+    assert_some_eq!(update.next_deadline, at(5.));
+}
+
+#[test]
+fn stale_gnss_altitude_is_not_added_to_the_trace() {
+    let mut app = App::with_config(updraft_core::AppConfig {
+        flight: FlightConfig {
+            trace_stats_interval: Duration::ZERO,
+        },
+    });
+    let altitude = MslAltitude::new(Length::from_meters(1000.));
+    let first = app.handle(gnss_input(
+        SourceId::Internal,
+        Observation::new(
+            at(0.),
+            GnssUpdate {
+                position: LatLon::from_degrees(50., 6.),
+                altitude: Some(altitude),
+                track: None,
+                ground_speed: None,
+            },
+        ),
+    ));
+    let first_job = assert_some!(compute_job(&first)).clone();
+    app.handle(Input::ComputeResult(first_job.run()));
+
+    let update = app.handle(gnss_input(
+        SourceId::Internal,
+        Observation::new(
+            at(4.),
+            GnssUpdate {
+                position: LatLon::from_degrees(50.1, 6.1),
+                altitude: None,
+                track: None,
+                ground_speed: None,
+            },
+        ),
+    ));
+
+    let ComputeJob::Flight(FlightComputeJob::TraceStats { fixes, .. }) =
+        assert_some!(compute_job(&update));
+    assert_some_eq!(fixes[0].altitude, altitude);
+    assert_none!(fixes[1].altitude);
 }
 
 #[test]
@@ -613,12 +754,12 @@ fn app_routes_flight_protocol_through_the_flight_domain() {
 
     assert_eq!(
         update.changes,
-        vec![Change::Flight(FlightChange::Gnss(current(gnss)))]
+        vec![Change::Flight(FlightChange::Gnss(gnss.current_data()))]
     );
     assert_eq!(
         app.snapshot().flight,
         FlightSnapshot {
-            gnss: current(gnss),
+            gnss: gnss.current_data(),
             pressure_altitude: Availability::Unavailable,
             trace_stats: None,
         }
@@ -637,28 +778,71 @@ fn last_known<T>(value: T) -> Availability<T> {
     Availability::LastKnown(value)
 }
 
-fn fix(seconds: f64, latitude: f64, longitude: f64) -> GnssState {
-    GnssState {
-        position: Observation::new(at(seconds), LatLon::from_degrees(latitude, longitude)),
-        altitude: Some(Observation::new(
-            at(seconds),
-            MslAltitude::new(Length::from_meters(1000.)),
-        )),
-        track: None,
-        ground_speed: None,
+#[derive(Clone, Copy)]
+struct GnssFixture {
+    observation: Observation<GnssUpdate>,
+}
+
+impl GnssFixture {
+    fn current_data(self) -> GnssData {
+        GnssData {
+            position: Availability::Current(self.observation.value.position),
+            altitude: self
+                .observation
+                .value
+                .altitude
+                .map_or(Availability::Unavailable, Availability::Current),
+            track: self
+                .observation
+                .value
+                .track
+                .map_or(Availability::Unavailable, Availability::Current),
+            ground_speed: self
+                .observation
+                .value
+                .ground_speed
+                .map_or(Availability::Unavailable, Availability::Current),
+        }
+    }
+
+    fn last_known_data(self) -> GnssData {
+        GnssData {
+            position: Availability::LastKnown(self.observation.value.position),
+            altitude: self
+                .observation
+                .value
+                .altitude
+                .map_or(Availability::Unavailable, Availability::LastKnown),
+            track: self
+                .observation
+                .value
+                .track
+                .map_or(Availability::Unavailable, Availability::LastKnown),
+            ground_speed: self
+                .observation
+                .value
+                .ground_speed
+                .map_or(Availability::Unavailable, Availability::LastKnown),
+        }
     }
 }
 
-fn gnss_observation(gnss: GnssState) -> Observation<GnssUpdate> {
-    Observation::new(
-        gnss.position.observed_at,
-        GnssUpdate {
-            position: gnss.position.value,
-            altitude: gnss.altitude.map(|altitude| altitude.value),
-            track: gnss.track.map(|track| track.value),
-            ground_speed: gnss.ground_speed.map(|speed| speed.value),
-        },
-    )
+fn fix(seconds: f64, latitude: f64, longitude: f64) -> GnssFixture {
+    GnssFixture {
+        observation: Observation::new(
+            at(seconds),
+            GnssUpdate {
+                position: LatLon::from_degrees(latitude, longitude),
+                altitude: Some(MslAltitude::new(Length::from_meters(1000.))),
+                track: None,
+                ground_speed: None,
+            },
+        ),
+    }
+}
+
+fn gnss_observation(gnss: GnssFixture) -> Observation<GnssUpdate> {
+    gnss.observation
 }
 
 fn gnss_input(source: SourceId, observation: Observation<GnssUpdate>) -> Input {
@@ -903,7 +1087,7 @@ fn snapshot_reflects_current_shared_state() {
     app.handle(Input::ComputeResult(job.run()));
 
     let snapshot = app.snapshot();
-    assert_eq!(snapshot.flight.gnss, current(fix(0., 50., 6.)));
+    assert_eq!(snapshot.flight.gnss, fix(0., 50., 6.).current_data());
     let stats = assert_some!(snapshot.flight.trace_stats, "stats are shared state");
     assert_eq!(stats.fix_count, 1);
 }

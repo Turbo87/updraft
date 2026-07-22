@@ -40,7 +40,7 @@ impl Timers {
     }
 
     /// Removes due timers, ordered by deadline and then timer identity.
-    pub(crate) fn take_due(&mut self, clock_time: Duration) -> Vec<Timer> {
+    pub(crate) fn take_due(&mut self, clock_time: Duration) -> Vec<(Timer, Duration)> {
         let mut due: Vec<(Duration, Timer)> = self
             .due_times
             .iter()
@@ -48,8 +48,8 @@ impl Timers {
             .map(|(timer, at)| (*at, *timer))
             .collect();
         due.sort();
-        let due: Vec<Timer> = due.into_iter().map(|(_, timer)| timer).collect();
-        for timer in &due {
+        let due: Vec<(Timer, Duration)> = due.into_iter().map(|(at, timer)| (timer, at)).collect();
+        for (timer, _) in &due {
             self.due_times.remove(timer);
         }
         due
@@ -77,7 +77,7 @@ mod tests {
         assert_eq!(timers.take_due(Duration::from_micros(99)), vec![]);
         assert_eq!(
             timers.take_due(Duration::from_micros(100)),
-            vec![Timer::TraceStats]
+            vec![(Timer::TraceStats, Duration::from_micros(100))]
         );
         assert_none!(timers.deadline(Timer::TraceStats));
         assert!(!timers.is_scheduled(Timer::TraceStats));

@@ -82,9 +82,14 @@ impl App {
                 );
             }
         }
-        for timer in self.timers.take_due(self.clock_time) {
-            self.flight
-                .timer(timer, self.clock_time, &mut self.timers, &mut update);
+        for (timer, scheduled_at) in self.timers.take_due(self.clock_time) {
+            self.flight.timer(
+                timer,
+                scheduled_at,
+                self.clock_time,
+                &mut self.timers,
+                &mut update,
+            );
         }
         update.next_deadline = self.timers.next_deadline();
         update

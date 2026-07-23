@@ -1,36 +1,102 @@
-//! Date and time of day carried by NMEA sentences, kept exactly as
-//! transmitted.
+//! Date and time of day carried by NMEA sentences.
 
-/// A time of day, as transmitted, without timezone.
-#[derive(Clone, Copy, Debug, PartialEq)]
+const MILLISECONDS_PER_SECOND: u32 = 1_000;
+const MILLISECONDS_PER_MINUTE: u32 = 60 * MILLISECONDS_PER_SECOND;
+const MILLISECONDS_PER_HOUR: u32 = 60 * MILLISECONDS_PER_MINUTE;
+const MILLISECONDS_PER_DAY: u32 = 24 * MILLISECONDS_PER_HOUR;
+
+/// A UTC time of day with millisecond precision and no date.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Time {
-    pub hour: u8,
-    pub minute: u8,
-    pub seconds: f32,
+    milliseconds_since_midnight: u32,
 }
 
 impl Time {
-    pub fn new(hour: u8, minute: u8, seconds: f32) -> Self {
-        Self {
-            hour,
-            minute,
-            seconds,
+    /// Constructs a valid UTC time from clock components.
+    ///
+    /// `23:59:60` is accepted for a positive leap second.
+    pub const fn from_hms_millis(
+        hour: u8,
+        minute: u8,
+        second: u8,
+        millisecond: u16,
+    ) -> Option<Self> {
+        let regular_time = hour < 24 && minute < 60 && second < 60;
+        let leap_second = hour == 23 && minute == 59 && second == 60;
+        if (!regular_time && !leap_second) || millisecond >= 1_000 {
+            return None;
         }
+
+        Some(Self {
+            milliseconds_since_midnight: hour as u32 * MILLISECONDS_PER_HOUR
+                + minute as u32 * MILLISECONDS_PER_MINUTE
+                + second as u32 * MILLISECONDS_PER_SECOND
+                + millisecond as u32,
+        })
     }
 
-    /// Parse `HHMMSS[.SS]` into a `Time` struct. Values that cannot represent
-    /// a real time of day read as absent. The seconds bound leaves room for a
-    /// positive leap second (`23:59:60`).
+    /// Parses `HHMMSS[.fraction]`, truncating fractional seconds to milliseconds.
     pub fn parse(field: &[u8]) -> Option<Self> {
         let hour = btoi::btou(field.get(0..2)?).ok()?;
         let minute = btoi::btou(field.get(2..4)?).ok()?;
-        let seconds = fast_float2::parse(field.get(4..)?).ok()?;
-        (hour <= 23 && minute <= 59 && (0.0..61.0).contains(&seconds)).then_some(Self {
-            hour,
-            minute,
-            seconds,
-        })
+        let second = btoi::btou(field.get(4..6)?).ok()?;
+        let millisecond = match field.get(6..)? {
+            [] => 0,
+            [b'.', fraction @ ..] if !fraction.is_empty() => parse_milliseconds(fraction)?,
+            _ => return None,
+        };
+        Self::from_hms_millis(hour, minute, second, millisecond)
     }
+
+    /// Returns the hour component in `0..=23`.
+    pub const fn hour(self) -> u8 {
+        if self.milliseconds_since_midnight >= MILLISECONDS_PER_DAY {
+            23
+        } else {
+            (self.milliseconds_since_midnight / MILLISECONDS_PER_HOUR) as u8
+        }
+    }
+
+    /// Returns the minute component in `0..=59`.
+    pub const fn minute(self) -> u8 {
+        if self.milliseconds_since_midnight >= MILLISECONDS_PER_DAY {
+            59
+        } else {
+            ((self.milliseconds_since_midnight / MILLISECONDS_PER_MINUTE) % 60) as u8
+        }
+    }
+
+    /// Returns the second component in `0..=60`.
+    pub const fn second(self) -> u8 {
+        if self.milliseconds_since_midnight >= MILLISECONDS_PER_DAY {
+            60
+        } else {
+            ((self.milliseconds_since_midnight / MILLISECONDS_PER_SECOND) % 60) as u8
+        }
+    }
+
+    /// Returns the millisecond component in `0..=999`.
+    pub const fn millisecond(self) -> u16 {
+        (self.milliseconds_since_midnight % MILLISECONDS_PER_SECOND) as u16
+    }
+
+    /// Returns milliseconds since the start of the UTC day.
+    ///
+    /// A positive leap second occupies values `86_400_000..=86_400_999`.
+    pub const fn milliseconds_since_midnight(self) -> u32 {
+        self.milliseconds_since_midnight
+    }
+}
+
+fn parse_milliseconds(fraction: &[u8]) -> Option<u16> {
+    if !fraction.iter().all(u8::is_ascii_digit) {
+        return None;
+    }
+
+    let hundreds = fraction.first().map_or(0, |digit| digit - b'0');
+    let tens = fraction.get(1).map_or(0, |digit| digit - b'0');
+    let ones = fraction.get(2).map_or(0, |digit| digit - b'0');
+    Some(u16::from(hundreds) * 100 + u16::from(tens) * 10 + u16::from(ones))
 }
 
 /// A calendar date, with the two-digit year taken as 20xx.
@@ -80,17 +146,54 @@ fn is_leap_year(year: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some_eq};
+    use claims::{assert_gt, assert_lt, assert_none, assert_some, assert_some_eq};
 
     #[test]
     fn parses_time() {
-        assert_some_eq!(Time::parse(b"235959"), Time::new(23, 59, 59.0));
-        assert_some_eq!(Time::parse(b"134749.60"), Time::new(13, 47, 49.60));
+        let end_of_day = assert_some!(Time::from_hms_millis(23, 59, 59, 0));
+        let afternoon = assert_some!(Time::from_hms_millis(13, 47, 49, 600));
+        assert_some_eq!(Time::parse(b"235959"), end_of_day);
+        assert_some_eq!(Time::parse(b"134749.60"), afternoon);
+    }
+
+    #[test]
+    fn normalizes_fractional_seconds_to_milliseconds() {
+        let expected = assert_some!(Time::from_hms_millis(13, 47, 49, 600));
+        assert_some_eq!(Time::parse(b"134749.6"), expected);
+        assert_some_eq!(Time::parse(b"134749.60"), expected);
+        assert_some_eq!(Time::parse(b"134749.600"), expected);
+        assert_some_eq!(Time::parse(b"134749.6009"), expected);
+    }
+
+    #[test]
+    fn exposes_time_components() {
+        let time = assert_some!(Time::from_hms_millis(13, 47, 49, 605));
+        assert_eq!(time.hour(), 13);
+        assert_eq!(time.minute(), 47);
+        assert_eq!(time.second(), 49);
+        assert_eq!(time.millisecond(), 605);
+        assert_eq!(time.milliseconds_since_midnight(), 49_669_605);
+    }
+
+    #[test]
+    fn compares_normalized_times() {
+        let earlier = assert_some!(Time::parse(b"134749.6009"));
+        let same = assert_some!(Time::parse(b"134749.6001"));
+        let later = assert_some!(Time::parse(b"134749.601"));
+        assert_eq!(earlier, same);
+        assert_lt!(earlier, later);
     }
 
     #[test]
     fn accepts_leap_second() {
-        assert_some_eq!(Time::parse(b"235960"), Time::new(23, 59, 60.0));
+        let leap_second = assert_some!(Time::parse(b"235960.123"));
+        assert_some_eq!(Time::from_hms_millis(23, 59, 60, 123), leap_second);
+        assert_eq!(leap_second.hour(), 23);
+        assert_eq!(leap_second.minute(), 59);
+        assert_eq!(leap_second.second(), 60);
+        assert_eq!(leap_second.millisecond(), 123);
+        let previous = assert_some!(Time::from_hms_millis(23, 59, 59, 999));
+        assert_gt!(leap_second, previous);
     }
 
     #[test]
@@ -103,12 +206,16 @@ mod tests {
         assert_none!(Time::parse(b"245959"));
         assert_none!(Time::parse(b"236059"));
         assert_none!(Time::parse(b"235999"));
+        assert_none!(Time::parse(b"125960"));
+        assert_none!(Time::from_hms_millis(23, 59, 59, 1000));
     }
 
     #[test]
     fn rejects_non_numeric_seconds() {
         assert_none!(Time::parse(b"2359-9"));
         assert_none!(Time::parse(b"2359in"));
+        assert_none!(Time::parse(b"235959."));
+        assert_none!(Time::parse(b"235959.12x"));
     }
 
     #[test]

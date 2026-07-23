@@ -4,6 +4,8 @@ use std::time::Duration;
 /// Work that the core schedules for later.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Timer {
+    /// Re-evaluates selected flight signals at their earliest freshness deadline.
+    FlightSignalFreshness,
     /// Starts the next trace-statistics job.
     TraceStats,
 }
@@ -28,13 +30,17 @@ impl Timers {
         self.due_times.contains_key(&timer)
     }
 
+    pub(crate) fn deadline(&self, timer: Timer) -> Option<Duration> {
+        self.due_times.get(&timer).copied()
+    }
+
     /// The earliest scheduled deadline, if any.
     pub(crate) fn next_deadline(&self) -> Option<Duration> {
         self.due_times.values().copied().min()
     }
 
     /// Removes due timers, ordered by deadline and then timer identity.
-    pub(crate) fn take_due(&mut self, clock_time: Duration) -> Vec<Timer> {
+    pub(crate) fn take_due(&mut self, clock_time: Duration) -> Vec<(Timer, Duration)> {
         let mut due: Vec<(Duration, Timer)> = self
             .due_times
             .iter()
@@ -42,8 +48,8 @@ impl Timers {
             .map(|(timer, at)| (*at, *timer))
             .collect();
         due.sort();
-        let due: Vec<Timer> = due.into_iter().map(|(_, timer)| timer).collect();
-        for timer in &due {
+        let due: Vec<(Timer, Duration)> = due.into_iter().map(|(at, timer)| (timer, at)).collect();
+        for (timer, _) in &due {
             self.due_times.remove(timer);
         }
         due
@@ -62,13 +68,18 @@ mod tests {
 
         timers.schedule(Timer::TraceStats, Duration::from_micros(100));
         assert!(timers.is_scheduled(Timer::TraceStats));
+        assert_some_eq!(
+            timers.deadline(Timer::TraceStats),
+            Duration::from_micros(100)
+        );
         assert_some_eq!(timers.next_deadline(), Duration::from_micros(100));
 
         assert_eq!(timers.take_due(Duration::from_micros(99)), vec![]);
         assert_eq!(
             timers.take_due(Duration::from_micros(100)),
-            vec![Timer::TraceStats]
+            vec![(Timer::TraceStats, Duration::from_micros(100))]
         );
+        assert_none!(timers.deadline(Timer::TraceStats));
         assert!(!timers.is_scheduled(Timer::TraceStats));
         assert_none!(timers.next_deadline());
 

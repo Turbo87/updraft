@@ -7,11 +7,11 @@ use std::time::Duration;
 use std::{sync::mpsc, thread};
 use tempfile::TempDir;
 use tower::ServiceExt;
-use updraft_core::flight::{FlightInput, PositionFix};
+use updraft_core::flight::{FlightInput, GnssUpdate, Observation, Sourced};
 use updraft_core::{App, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::Runtime;
-use updraft_units::{Angle, Length, MslAltitude, Speed};
+use updraft_units::{Angle, Length, MslAltitude, PressureAltitude, Speed};
 
 const INDEX_HTML: &str = "<!doctype html><title>updraft fixture</title>";
 const SIMULATED_POSITION: &str = r#"{"observedAtMs":2500,"latitudeDegrees":50.824,"longitudeDegrees":6.187,"altitudeMeters":410.5,"trackDegrees":90,"groundSpeedMetersPerSecond":31}"#;
@@ -54,13 +54,24 @@ fn simulation_app_with_fixture() -> (TempDir, Runtime, axum::Router) {
 }
 
 fn position_input() -> Input {
-    Input::Flight(FlightInput::Position(PositionFix {
-        observed_at: Duration::from_millis(1_250),
-        position: LatLon::from_degrees(50.823, 6.186),
-        altitude: Some(MslAltitude::new(Length::from_meters(400.5))),
-        track: Some(Angle::from_degrees(45.)),
-        ground_speed: Some(Speed::from_meters_per_second(30.)),
-    }))
+    Input::Flight(FlightInput::Gnss(Sourced::simulator(Observation::new(
+        Duration::from_millis(1_250),
+        GnssUpdate {
+            position: LatLon::from_degrees(50.823, 6.186),
+            altitude: Some(MslAltitude::new(Length::from_meters(400.5))),
+            track: Some(Angle::from_degrees(45.)),
+            ground_speed: Some(Speed::from_meters_per_second(30.)),
+        },
+    ))))
+}
+
+fn pressure_altitude_input() -> Input {
+    Input::Flight(FlightInput::PressureAltitude(Sourced::internal(
+        Observation::new(
+            Duration::from_millis(1_500),
+            PressureAltitude::new(Length::from_meters(975.)),
+        ),
+    )))
 }
 
 struct BlockingQuery {
@@ -172,7 +183,7 @@ async fn state_stream_starts_with_snapshot() {
     let mut body = response.into_body();
     assert_eq!(
         next_data(&mut body).await,
-        "event: snapshot\ndata: {\"flight\":{\"position\":null,\"traceStats\":null}}\n\n"
+        "event: snapshot\ndata: {\"flight\":{\"gnss\":{\"position\":{\"status\":\"unavailable\"},\"altitudeMeters\":{\"status\":\"unavailable\"},\"trackDegrees\":{\"status\":\"unavailable\"},\"groundSpeedMetersPerSecond\":{\"status\":\"unavailable\"}},\"pressureAltitudeMeters\":{\"status\":\"unavailable\"},\"traceStats\":null}}\n\n"
     );
 }
 
@@ -181,6 +192,7 @@ async fn state_stream_snapshot_includes_current_state() {
     let (_dir, runtime, app) = app_with_fixture();
     let handle = runtime.handle();
     assert_ok_eq!(handle.submit(position_input()), ());
+    assert_ok_eq!(handle.submit(pressure_altitude_input()), ());
     assert_ok_eq!(handle.submit(Input::Flight(FlightInput::ClearTrace)), ());
 
     let request = Request::builder()
@@ -192,7 +204,7 @@ async fn state_stream_snapshot_includes_current_state() {
 
     assert_eq!(
         next_data(&mut body).await,
-        "event: snapshot\ndata: {\"flight\":{\"position\":{\"observedAtMs\":1250.0,\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186,\"altitudeMeters\":400.5,\"trackDegrees\":45.0,\"groundSpeedMetersPerSecond\":30.0},\"traceStats\":null}}\n\n"
+        "event: snapshot\ndata: {\"flight\":{\"gnss\":{\"position\":{\"status\":\"current\",\"value\":{\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186}},\"altitudeMeters\":{\"status\":\"current\",\"value\":400.5},\"trackDegrees\":{\"status\":\"current\",\"value\":45.0},\"groundSpeedMetersPerSecond\":{\"status\":\"current\",\"value\":30.0}},\"pressureAltitudeMeters\":{\"status\":\"current\",\"value\":975.0},\"traceStats\":null}}\n\n"
     );
 }
 
@@ -298,7 +310,27 @@ async fn state_stream_sends_change_batches_after_snapshot() {
 
     assert_eq!(
         next_data(&mut body).await,
-        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"position\",\"value\":{\"observedAtMs\":1250.0,\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186,\"altitudeMeters\":400.5,\"trackDegrees\":45.0,\"groundSpeedMetersPerSecond\":30.0}}]\n\n"
+        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"gnss\",\"value\":{\"position\":{\"status\":\"current\",\"value\":{\"latitudeDegrees\":50.823,\"longitudeDegrees\":6.186}},\"altitudeMeters\":{\"status\":\"current\",\"value\":400.5},\"trackDegrees\":{\"status\":\"current\",\"value\":45.0},\"groundSpeedMetersPerSecond\":{\"status\":\"current\",\"value\":30.0}}}]\n\n"
+    );
+}
+
+#[tokio::test]
+async fn state_stream_sends_pressure_altitude_meter_changes() {
+    let (_dir, runtime, app) = app_with_fixture();
+    let handle = runtime.handle();
+    let request = Request::builder()
+        .uri("/api/state")
+        .body(Body::empty())
+        .unwrap();
+    let response = assert_ok!(app.oneshot(request).await);
+    let mut body = response.into_body();
+    let _snapshot = next_data(&mut body).await;
+
+    assert_ok_eq!(handle.submit(pressure_altitude_input()), ());
+
+    assert_eq!(
+        next_data(&mut body).await,
+        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"pressureAltitudeMeters\",\"value\":{\"status\":\"current\",\"value\":975.0}}]\n\n"
     );
 }
 
@@ -318,7 +350,7 @@ async fn simulated_position_is_published_to_the_state_stream() {
     assert!(body_bytes(response).await.is_empty());
     assert_eq!(
         next_data(&mut stream).await,
-        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"position\",\"value\":{\"observedAtMs\":2500.0,\"latitudeDegrees\":50.824,\"longitudeDegrees\":6.187,\"altitudeMeters\":410.5,\"trackDegrees\":90.0,\"groundSpeedMetersPerSecond\":31.0}}]\n\n"
+        "event: changes\ndata: [{\"group\":\"flight\",\"type\":\"gnss\",\"value\":{\"position\":{\"status\":\"current\",\"value\":{\"latitudeDegrees\":50.824,\"longitudeDegrees\":6.187}},\"altitudeMeters\":{\"status\":\"current\",\"value\":410.5},\"trackDegrees\":{\"status\":\"current\",\"value\":90.0},\"groundSpeedMetersPerSecond\":{\"status\":\"current\",\"value\":31.0}}}]\n\n"
     );
 }
 

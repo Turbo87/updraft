@@ -49,7 +49,13 @@ describe('HttpUpdraftClient', () => {
       'snapshot',
       JSON.stringify({
         flight: {
-          position: null,
+          gnss: {
+            position: { status: 'unavailable' },
+            altitudeMeters: { status: 'unavailable' },
+            trackDegrees: { status: 'unavailable' },
+            groundSpeedMetersPerSecond: { status: 'unavailable' },
+          },
+          pressureAltitudeMeters: { status: 'unavailable' },
           traceStats: {
             fixCount: 2,
             distanceMeters: 42,

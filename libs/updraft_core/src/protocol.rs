@@ -9,8 +9,8 @@ use std::time::Duration;
 ///
 /// Inputs include commands, sensor observations, clock advancement, and
 /// outcomes from outside work. The runtime feeds them to
-/// [`App::handle()`](crate::App::handle) one at a time. The recorded input
-/// sequence is exactly what the core observed.
+/// [`App::handle_at_clock_time()`](crate::App::handle_at_clock_time) one at a
+/// time with the monotonic time when processing begins.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Input {
     /// Advances the core's clock when [`Update::next_deadline`] expires.

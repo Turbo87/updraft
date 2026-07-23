@@ -1,14 +1,15 @@
 <script lang="ts">
-  import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+  import type { Availability } from '$lib/protocol/generated/Availability';
+  import type { LatLon } from '$lib/protocol/generated/LatLon';
 
   import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
 
   import { ownshipFeature } from './ownship';
 
-  let { position }: { position: PositionFix } = $props();
+  let { position, track }: { position: LatLon; track: Availability<number> } = $props();
 </script>
 
-<GeoJSONSource id="ownship" maxzoom={24} data={ownshipFeature(position)}>
+<GeoJSONSource id="ownship" maxzoom={24} data={ownshipFeature(position, track)}>
   <SymbolLayer
     id="ownship-symbol"
     layout={{

@@ -12,7 +12,9 @@
 
 use std::thread;
 use std::time::Duration;
-use updraft_core::flight::{FlightChange, FlightComputeKind, FlightInput, PositionFix};
+use updraft_core::flight::{
+    Availability, FlightChange, FlightComputeKind, FlightInput, GnssUpdate, Observation, Sourced,
+};
 use updraft_core::{Change, ComputeKind, Input};
 use updraft_geo::LatLon;
 use updraft_runtime::{ChangeFilter, Handle, PureWorker, Runtime};
@@ -52,13 +54,26 @@ fn main() {
     while let Ok(changes) = subscription.changes.recv_timeout(Duration::from_secs(3)) {
         for change in changes {
             match change {
-                Change::Flight(FlightChange::Position(fix)) => {
-                    println!(
-                        "position: {:7.4}° {:7.4}° at {:6.1?}",
-                        fix.position.latitude().as_degrees(),
-                        fix.position.longitude().as_degrees(),
-                        fix.altitude.unwrap_or(MslAltitude::ZERO).into_inner(),
-                    );
+                Change::Flight(FlightChange::Gnss(gnss)) => match gnss.position {
+                    Availability::Current(position) => {
+                        println!(
+                            "position: {:7.4}° {:7.4}°, altitude: {:?}",
+                            position.latitude().as_degrees(),
+                            position.longitude().as_degrees(),
+                            gnss.altitude,
+                        );
+                    }
+                    Availability::Unavailable => println!("position unavailable"),
+                    Availability::LastKnown(_) => println!("position stale"),
+                },
+                Change::Flight(FlightChange::PressureAltitude(Availability::Current(altitude))) => {
+                    println!("pressure altitude: {:6.1?}", altitude.into_inner());
+                }
+                Change::Flight(FlightChange::PressureAltitude(Availability::Unavailable)) => {
+                    println!("pressure altitude unavailable");
+                }
+                Change::Flight(FlightChange::PressureAltitude(Availability::LastKnown(_))) => {
+                    println!("pressure altitude stale");
                 }
                 Change::Flight(FlightChange::TraceStats(Some(stats))) => {
                     println!(
@@ -90,17 +105,24 @@ fn main() {
 fn fly_circle(handle: &Handle, count: u32) {
     for step in 0..count {
         let angle = f64::from(step) * 12f64.to_radians();
-        let fix = PositionFix {
-            observed_at: handle.clock_time(),
-            position: LatLon::from_degrees(50.75 + 0.01 * angle.cos(), 6.15 + 0.01 * angle.sin()),
-            altitude: Some(MslAltitude::new(Length::from_meters(
-                1000. + f64::from(step) * 2.,
-            ))),
-            track: Some(Angle::from_radians(angle)),
-            ground_speed: Some(Speed::from_kilometers_per_hour(95.)),
-        };
+        let observation = Observation::new(
+            handle.clock_time(),
+            GnssUpdate {
+                position: LatLon::from_degrees(
+                    50.75 + 0.01 * angle.cos(),
+                    6.15 + 0.01 * angle.sin(),
+                ),
+                altitude: Some(MslAltitude::new(Length::from_meters(
+                    1000. + f64::from(step) * 2.,
+                ))),
+                track: Some(Angle::from_radians(angle)),
+                ground_speed: Some(Speed::from_kilometers_per_hour(95.)),
+            },
+        );
         handle
-            .submit(Input::Flight(FlightInput::Position(fix)))
+            .submit(Input::Flight(FlightInput::Gnss(Sourced::simulator(
+                observation,
+            ))))
             .expect("runtime is running");
         thread::sleep(Duration::from_secs(1));
     }

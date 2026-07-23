@@ -19,9 +19,8 @@ pub struct AppConfig {
 /// The deterministic application core.
 ///
 /// One `App` owns shared state such as the current flight state and settings
-/// that affect flight behavior. State changes only through
-/// [`handle()`](Self::handle), so the same ordered inputs always produce the
-/// same results.
+/// that affect flight behavior. The same ordered inputs and clock times always
+/// produce the same results.
 #[derive(Debug)]
 pub struct App {
     /// Latest clock time accepted by the core.
@@ -83,11 +82,23 @@ impl App {
                 );
             }
         }
-        for timer in self.timers.take_due(self.clock_time) {
-            self.flight.timer(timer, self.clock_time, &mut update);
+        for (timer, scheduled_at) in self.timers.take_due(self.clock_time) {
+            self.flight.timer(
+                timer,
+                scheduled_at,
+                self.clock_time,
+                &mut self.timers,
+                &mut update,
+            );
         }
         update.next_deadline = self.timers.next_deadline();
         update
+    }
+
+    /// Applies one input at its monotonic processing time, not its observation time.
+    pub fn handle_at_clock_time(&mut self, input: Input, clock_time: Duration) -> Update {
+        self.advance(clock_time);
+        self.handle(input)
     }
 
     /// Answers a typed read-only query against the current state.
@@ -98,7 +109,7 @@ impl App {
     /// Captures the shared current state for a newly subscribing client.
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
-            flight: self.flight.snapshot(),
+            flight: self.flight.snapshot(self.clock_time),
         }
     }
 

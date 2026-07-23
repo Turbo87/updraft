@@ -1,20 +1,24 @@
 import type * as GeoJSON from 'geojson';
-import type { PositionFix } from '$lib/protocol/generated/PositionFix';
+import type { Availability } from '$lib/protocol/generated/Availability';
+import type { LatLon } from '$lib/protocol/generated/LatLon';
 
-export function positionCoordinates(position: PositionFix): [number, number] {
+export function latLonCoordinates(position: LatLon): [number, number] {
   return [position.longitudeDegrees, position.latitudeDegrees];
 }
 
 /** Builds the GeoJSON point feature that positions the ownship symbol. */
-export function ownshipFeature(position: PositionFix): GeoJSON.Feature<GeoJSON.Point> {
+export function ownshipFeature(
+  position: LatLon,
+  track: Availability<number>,
+): GeoJSON.Feature<GeoJSON.Point> {
   return {
     type: 'Feature',
     geometry: {
       type: 'Point',
-      coordinates: positionCoordinates(position),
+      coordinates: latLonCoordinates(position),
     },
     properties: {
-      track: position.trackDegrees ?? 0,
+      track: track.status === 'current' ? track.value : 0,
     },
   };
 }

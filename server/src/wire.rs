@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use updraft_core::flight::{
+    Availability as CoreAvailability, GnssData as CoreGnssData, GnssUpdate,
+    Observation as CoreObservation,
+};
 
 #[cfg(feature = "ts")]
 pub mod bindings;
@@ -23,23 +27,86 @@ impl From<updraft_core::Snapshot> for Snapshot {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 struct FlightSnapshot {
-    position: Option<PositionFix>,
+    gnss: GnssData,
+    pressure_altitude_meters: Availability<f64>,
     trace_stats: Option<TraceStats>,
 }
 
 impl From<updraft_core::flight::FlightSnapshot> for FlightSnapshot {
     fn from(snapshot: updraft_core::flight::FlightSnapshot) -> Self {
         Self {
-            position: snapshot.position.map(Into::into),
+            gnss: snapshot.gnss.into(),
+            pressure_altitude_meters: map_availability(snapshot.pressure_altitude, |altitude| {
+                altitude.into_inner().as_meters()
+            }),
             trace_stats: snapshot.trace_stats.map(Into::into),
         }
     }
 }
 
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(tag = "status", content = "value", rename_all = "camelCase")]
+pub enum Availability<T> {
+    Unavailable,
+    Current(T),
+    LastKnown(T),
+}
+
+fn map_availability<T, U>(
+    availability: CoreAvailability<T>,
+    map: impl FnOnce(T) -> U,
+) -> Availability<U> {
+    match availability {
+        CoreAvailability::Unavailable => Availability::Unavailable,
+        CoreAvailability::Current(value) => Availability::Current(map(value)),
+        CoreAvailability::LastKnown(value) => Availability::LastKnown(map(value)),
+    }
+}
+
+/// A geographic latitude and longitude in degrees.
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct LatLon {
+    latitude_degrees: f64,
+    longitude_degrees: f64,
+}
+
+/// Selected GNSS components.
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct GnssData {
+    position: Availability<LatLon>,
+    altitude_meters: Availability<f64>,
+    track_degrees: Availability<f64>,
+    ground_speed_meters_per_second: Availability<f64>,
+}
+
+impl From<CoreGnssData> for GnssData {
+    fn from(gnss: CoreGnssData) -> Self {
+        Self {
+            position: map_availability(gnss.position, |position| LatLon {
+                latitude_degrees: position.latitude().as_degrees(),
+                longitude_degrees: position.longitude().as_degrees(),
+            }),
+            altitude_meters: map_availability(gnss.altitude, |altitude| {
+                altitude.into_inner().as_meters()
+            }),
+            track_degrees: map_availability(gnss.track, |track| track.as_degrees()),
+            ground_speed_meters_per_second: map_availability(gnss.ground_speed, |speed| {
+                speed.as_meters_per_second()
+            }),
+        }
+    }
+}
+
+/// A position submitted through interactive simulator mode.
 #[derive(Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
-pub struct PositionFix {
+pub struct SimulationPosition {
     observed_at_ms: f64,
     latitude_degrees: f64,
     longitude_degrees: f64,
@@ -48,62 +115,49 @@ pub struct PositionFix {
     ground_speed_meters_per_second: Option<f64>,
 }
 
-/// A wire position fix containing a value outside the accepted input domain.
+/// A simulator position containing a value outside the accepted input domain.
 #[derive(Debug)]
-pub struct InvalidPositionFix;
+pub struct InvalidSimulationPosition;
 
-impl From<updraft_core::flight::PositionFix> for PositionFix {
-    fn from(fix: updraft_core::flight::PositionFix) -> Self {
-        Self {
-            observed_at_ms: fix.observed_at.as_secs_f64() * 1_000.,
-            latitude_degrees: fix.position.latitude().as_degrees(),
-            longitude_degrees: fix.position.longitude().as_degrees(),
-            altitude_meters: fix
-                .altitude
-                .map(|altitude| altitude.into_inner().as_meters()),
-            track_degrees: fix.track.map(|track| track.as_degrees()),
-            ground_speed_meters_per_second: fix
-                .ground_speed
-                .map(|speed| speed.as_meters_per_second()),
-        }
-    }
-}
+impl TryFrom<SimulationPosition> for CoreObservation<GnssUpdate> {
+    type Error = InvalidSimulationPosition;
 
-impl TryFrom<PositionFix> for updraft_core::flight::PositionFix {
-    type Error = InvalidPositionFix;
-
-    fn try_from(fix: PositionFix) -> Result<Self, Self::Error> {
-        let observed_at = Duration::try_from_secs_f64(fix.observed_at_ms / 1_000.)
-            .map_err(|_| InvalidPositionFix)?;
-        if !(-90. ..=90.).contains(&fix.latitude_degrees)
-            || !(-180. ..=180.).contains(&fix.longitude_degrees)
-            || fix
+    fn try_from(position: SimulationPosition) -> Result<Self, Self::Error> {
+        let observed_at = Duration::try_from_secs_f64(position.observed_at_ms / 1_000.)
+            .map_err(|_| InvalidSimulationPosition)?;
+        if !(-90. ..=90.).contains(&position.latitude_degrees)
+            || !(-180. ..=180.).contains(&position.longitude_degrees)
+            || position
                 .altitude_meters
                 .is_some_and(|altitude| !altitude.is_finite())
-            || fix
+            || position
                 .track_degrees
                 .is_some_and(|track| !(0. ..360.).contains(&track))
-            || fix
+            || position
                 .ground_speed_meters_per_second
                 .is_some_and(|speed| !speed.is_finite() || speed < 0.)
         {
-            return Err(InvalidPositionFix);
+            return Err(InvalidSimulationPosition);
         }
 
-        Ok(Self {
+        Ok(CoreObservation::new(
             observed_at,
-            position: updraft_geo::LatLon::from_degrees(
-                fix.latitude_degrees,
-                fix.longitude_degrees,
-            ),
-            altitude: fix.altitude_meters.map(|meters| {
-                updraft_units::MslAltitude::new(updraft_units::Length::from_meters(meters))
-            }),
-            track: fix.track_degrees.map(updraft_units::Angle::from_degrees),
-            ground_speed: fix
-                .ground_speed_meters_per_second
-                .map(updraft_units::Speed::from_meters_per_second),
-        })
+            GnssUpdate {
+                position: updraft_geo::LatLon::from_degrees(
+                    position.latitude_degrees,
+                    position.longitude_degrees,
+                ),
+                altitude: position.altitude_meters.map(|meters| {
+                    updraft_units::MslAltitude::new(updraft_units::Length::from_meters(meters))
+                }),
+                track: position
+                    .track_degrees
+                    .map(updraft_units::Angle::from_degrees),
+                ground_speed: position
+                    .ground_speed_meters_per_second
+                    .map(updraft_units::Speed::from_meters_per_second),
+            },
+        ))
     }
 }
 
@@ -148,14 +202,20 @@ impl From<updraft_core::Change> for Change {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(tag = "type", content = "value", rename_all = "camelCase")]
 pub enum FlightChange {
-    Position(PositionFix),
+    Gnss(GnssData),
+    PressureAltitudeMeters(Availability<f64>),
     TraceStats(Option<TraceStats>),
 }
 
 impl From<updraft_core::flight::FlightChange> for FlightChange {
     fn from(change: updraft_core::flight::FlightChange) -> Self {
         match change {
-            updraft_core::flight::FlightChange::Position(fix) => Self::Position(fix.into()),
+            updraft_core::flight::FlightChange::Gnss(gnss) => Self::Gnss(gnss.into()),
+            updraft_core::flight::FlightChange::PressureAltitude(altitude) => {
+                Self::PressureAltitudeMeters(map_availability(altitude, |altitude| {
+                    altitude.into_inner().as_meters()
+                }))
+            }
             updraft_core::flight::FlightChange::TraceStats(stats) => {
                 Self::TraceStats(stats.map(Into::into))
             }

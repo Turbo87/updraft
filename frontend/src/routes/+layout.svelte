@@ -29,7 +29,7 @@
 </svelte:head>
 
 <div class="app">
-  <FlightView position={state.flight.position} {testMode} />
+  <FlightView gnss={state.flight.gnss} {testMode} />
   {#if page.url.pathname !== '/'}
     <div class="route-content">
       {@render children()}

@@ -7,11 +7,7 @@ Frame(
         Gga {
             talker: Gps,
             utc_time: Some(
-                Time {
-                    hour: 13,
-                    minute: 47,
-                    seconds: 49.6,
-                },
+                Time(13:47:49.600),
             ),
             position: Some(
                 LatLon {

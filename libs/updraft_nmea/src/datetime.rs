@@ -1,14 +1,29 @@
 //! Date and time of day carried by NMEA sentences.
 
+use std::fmt;
+
 const MILLISECONDS_PER_SECOND: u32 = 1_000;
 const MILLISECONDS_PER_MINUTE: u32 = 60 * MILLISECONDS_PER_SECOND;
 const MILLISECONDS_PER_HOUR: u32 = 60 * MILLISECONDS_PER_MINUTE;
 const MILLISECONDS_PER_DAY: u32 = 24 * MILLISECONDS_PER_HOUR;
 
 /// A UTC time of day with millisecond precision and no date.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Time {
     milliseconds_since_midnight: u32,
+}
+
+impl fmt::Debug for Time {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "Time({:02}:{:02}:{:02}.{:03})",
+            self.hour(),
+            self.minute(),
+            self.second(),
+            self.millisecond()
+        )
+    }
 }
 
 impl Time {
@@ -173,6 +188,12 @@ mod tests {
         assert_eq!(time.second(), 49);
         assert_eq!(time.millisecond(), 605);
         assert_eq!(time.milliseconds_since_midnight(), 49_669_605);
+    }
+
+    #[test]
+    fn formats_time_debug_as_clock_time() {
+        let time = assert_some!(Time::from_hms_millis(12, 34, 56, 789));
+        insta::assert_debug_snapshot!(time, @"Time(12:34:56.789)");
     }
 
     #[test]

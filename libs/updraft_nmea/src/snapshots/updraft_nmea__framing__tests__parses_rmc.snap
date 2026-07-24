@@ -7,9 +7,7 @@ Frame(
         Rmc {
             talker: Gps,
             utc_time: Some(
-                Time {
-                    milliseconds_since_midnight: 49669600,
-                },
+                Time(13:47:49.600),
             ),
             status: Active,
             position: Some(

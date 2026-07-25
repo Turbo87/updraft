@@ -3,8 +3,9 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
-pub mod driver;
-pub mod transport;
+mod driver;
+mod ipc;
+mod transport;
 
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
 ///
@@ -48,10 +49,36 @@ fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGu
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![ipc::subscribe])
         .setup(|app| {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);
             }
+
+            // Connections become runtime-mutable settings in milestone 5.
+            let config = updraft_core::CoreConfig {
+                connections: vec![(
+                    updraft_core::ConnectionId(1),
+                    updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
+                )],
+            };
+
+            // `setup` runs on the main thread outside any runtime context,
+            // so `tokio::spawn` inside the driver would panic. Enter Tauri's
+            // runtime for the call rather than making the driver depend on
+            // Tauri to spawn itself.
+            let handle = {
+                let runtime = tauri::async_runtime::handle();
+                let _guard = runtime.inner().enter();
+                driver::Driver::spawn(
+                    config,
+                    Box::new(transport::open),
+                    std::time::Duration::from_millis(100),
+                )
+            };
+
+            handle.send(updraft_core::Input::Start);
+            app.manage(handle);
 
             Ok(())
         })

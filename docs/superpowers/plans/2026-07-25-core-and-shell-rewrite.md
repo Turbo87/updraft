@@ -1946,7 +1946,7 @@ git commit -m "tauri: Add TCP transport with shell-owned reconnection"
 
 All the subscriber bookkeeping lives in the driver, so this file only adapts a `tauri::ipc::Channel` into a `Sink` closure. No tests: it is three lines of adapter over code already covered in task 9, and exercising it would need a running Tauri app.
 
-- [ ] **Step 1: Write the command**
+- [x] **Step 1: Write the command**
 
 Create `tauri/src/ipc.rs`:
 
@@ -1967,7 +1967,7 @@ pub fn subscribe(channel: Channel<Topic>, handle: tauri::State<'_, DriverHandle>
 }
 ```
 
-- [ ] **Step 2: Wire everything together**
+- [x] **Step 2: Wire everything together**
 
 In `tauri/src/lib.rs`, add `mod ipc;` beside the other modules, drop the `pub` from `driver` and `transport` now that `run()` references them, and replace `pub fn run()`:
 
@@ -2015,12 +2015,12 @@ pub fn run() {
 
 The shell never opens a connection on its own initiative. `Input::Start` makes the core emit the open effects, and the driver routes them to `transport::open`, so the configured list is acted on through exactly one path.
 
-- [ ] **Step 3: Run everything**
+- [x] **Step 3: Run everything**
 
 Run: `cargo test -p updraft_tauri && cargo clippy --workspace --all-targets -- -D warnings`
 Expected: PASS, no warnings.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tauri

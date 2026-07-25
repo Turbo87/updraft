@@ -1,0 +1,91 @@
+import type { Page } from '@playwright/test';
+import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
+
+import { expect, test } from '@playwright/test';
+
+type Instruments = {
+  position: { latitudeDegrees: number; longitudeDegrees: number };
+  trackDegrees: number;
+  groundSpeedMetersPerSecond: number;
+  altitudeMslMeters: number;
+};
+
+type MapState = {
+  center: number[];
+  renderedCoordinates: number[] | null;
+  sourceCoordinates: number[];
+};
+
+type TestWindow = Window & {
+  __updraftTest?: { map: MapLibreMap };
+  __updraftFake?: { emit: (topic: unknown) => void };
+};
+
+const POSITION_A: Instruments = {
+  position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+  trackDegrees: 45,
+  groundSpeedMetersPerSecond: 30,
+  altitudeMslMeters: 400,
+};
+
+const POSITION_B: Instruments = {
+  position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
+  trackDegrees: 90,
+  groundSpeedMetersPerSecond: 31,
+  altitudeMslMeters: 410,
+};
+
+test('renders the ownship position and follows live updates', async ({ page }) => {
+  await page.goto('/?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+
+  await emitInstruments(page, POSITION_A);
+  await expectMapPosition(page, POSITION_A);
+
+  await emitInstruments(page, POSITION_B);
+  await expectMapPosition(page, POSITION_B);
+});
+
+async function emitInstruments(page: Page, instruments: Instruments) {
+  await page.evaluate((value) => {
+    (window as TestWindow).__updraftFake?.emit({ topic: 'instruments', value });
+  }, instruments);
+}
+
+async function expectMapPosition(page: Page, instruments: Instruments) {
+  let { latitudeDegrees, longitudeDegrees } = instruments.position;
+
+  await expect
+    .poll(() => readMapState(page), {
+      message: `map to render position ${latitudeDegrees}, ${longitudeDegrees}`,
+    })
+    .toEqual({
+      center: [expect.closeTo(longitudeDegrees, 6), expect.closeTo(latitudeDegrees, 6)],
+      renderedCoordinates: [
+        expect.closeTo(longitudeDegrees, 4),
+        expect.closeTo(latitudeDegrees, 4),
+      ],
+      sourceCoordinates: [expect.closeTo(longitudeDegrees, 6), expect.closeTo(latitudeDegrees, 6)],
+    });
+}
+
+async function readMapState(page: Page): Promise<MapState | null> {
+  return page.evaluate(async () => {
+    let map = (window as TestWindow).__updraftTest?.map;
+    let source = map?.getSource<GeoJSONSource>('ownship');
+    if (!map || !source) return null;
+
+    let data = await source.getData();
+    if (data.type !== 'Feature' || data.geometry?.type !== 'Point') return null;
+
+    let center = map.getCenter();
+    let renderedOwnship = map.queryRenderedFeatures({ layers: ['ownship-symbol'] })[0];
+
+    return {
+      center: [center.lng, center.lat],
+      renderedCoordinates:
+        renderedOwnship?.geometry.type === 'Point' ? renderedOwnship.geometry.coordinates : null,
+      sourceCoordinates: data.geometry.coordinates,
+    };
+  });
+}

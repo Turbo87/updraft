@@ -2431,7 +2431,7 @@ git commit -m "frontend: Replace the state stream with the Tauri topic client"
 
 The map assertions here are lifted from the `position.spec.ts` deleted in task 1, which drove the same checks through the server's simulation endpoint. Recover the original from git if the details are needed. Only the input side changes: topics are emitted through the fake client instead of posted over HTTP.
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 Create `e2e/tests/map.spec.ts`:
 
@@ -2528,7 +2528,7 @@ async function readMapState(page: Page): Promise<MapState | null> {
 
 Each assertion checks a different position, so the second one proves the update path rather than re-asserting the first.
 
-- [ ] **Step 2: Remove the empty-suite scaffolding from task 1**
+- [x] **Step 2: Remove the empty-suite scaffolding from task 1**
 
 The suite has a real spec again, so an empty run should fail rather than pass silently.
 
@@ -2538,19 +2538,19 @@ git rm e2e/tests/.gitkeep
 
 In `e2e/package.json`, change the `test` script back to `playwright test`.
 
-- [ ] **Step 3: Run the test**
+- [x] **Step 3: Run the test**
 
 Run: `pnpm test:e2e`
 Expected: PASS, 1 test. The `pretest` script builds the frontend first.
 
 If it fails on the first `expectMapPosition`, the fake is not reaching the store. If it fails only on the second, the store is not reactive.
 
-- [ ] **Step 4: Verify the whole repository**
+- [x] **Step 4: Verify the whole repository**
 
 Run: `cargo test --workspace --all-features && cargo clippy --workspace --all-targets --all-features -- -D warnings && pnpm check && pnpm test && pnpm lint`
 Expected: all pass.
 
-- [ ] **Step 5: Manual verification of the walking skeleton**
+- [x] **Step 5: Manual verification of the walking skeleton**
 
 In one terminal:
 
@@ -2568,7 +2568,7 @@ Expected: the glider symbol appears on the map near 50.82 N, 6.19 E and its head
 
 Do not skip this step. Nothing in the automated suite starts a real Tauri process, so an entire class of bug reaches here unchallenged. The first run of this milestone aborted at startup with "there is no reactor running": `setup` executes on the main thread outside any runtime context, and the driver's `tokio::spawn` panicked. The driver's own tests never saw it because `#[tokio::test]` always provides a context. Check the app's log under the OS log directory for `TCP connect failed` too, which is how a transport that never reaches the feeder shows up.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add e2e

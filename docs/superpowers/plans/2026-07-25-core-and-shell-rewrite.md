@@ -1747,7 +1747,7 @@ git commit -m "tauri: Add the driver owning the core and its subscribers"
 
 The shell owns reconnection entirely. An open request means "maintain this link", so the task retries with backoff until the process ends.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tauri/src/transport/tcp.rs`:
 
@@ -1811,12 +1811,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test -p updraft_tauri tcp`
 Expected: FAIL, `cannot find function 'run' in this scope`.
 
-- [ ] **Step 3: Implement the transport**
+- [x] **Step 3: Implement the transport**
 
 Insert into `tauri/src/transport/tcp.rs` between the `use` lines and the test module:
 
@@ -1891,7 +1891,7 @@ async fn pump(connection: ConnectionId, mut stream: TcpStream, handle: &DriverHa
 }
 ```
 
-- [ ] **Step 4: Add the transport dispatch**
+- [x] **Step 4: Add the transport dispatch**
 
 Create `tauri/src/transport/mod.rs`:
 
@@ -1918,12 +1918,12 @@ Add to `tauri/src/lib.rs` below `mod driver;`:
 mod transport;
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cargo test -p updraft_tauri`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tauri

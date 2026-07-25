@@ -4,6 +4,7 @@ use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 pub mod driver;
+pub mod transport;
 
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
 ///

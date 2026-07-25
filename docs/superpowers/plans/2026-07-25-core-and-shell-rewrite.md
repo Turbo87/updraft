@@ -460,7 +460,7 @@ The wire `LatLon` is distinct from `updraft_geo::LatLon`, which stores `Angle` a
 
 Derive `ts_rs::TS` without `#[ts(export)]`. That attribute generates a test that writes TypeScript to the crate's default `bindings/` directory as a side effect of `cargo test --all-features`, which is the wrong place and would be committed by accident. Task 8 exports deliberately, to `frontend/src/lib/protocol/generated/`, via `Topic::export_all(&config)` — a `TS` trait method that needs only the derive.
 
-- [ ] **Step 1: Add serde and ts-rs to the core crate**
+- [x] **Step 1: Add serde and ts-rs to the core crate**
 
 In `libs/updraft_core/Cargo.toml`:
 
@@ -476,7 +476,7 @@ ts = ["dep:ts-rs"]
 insta = { version = "=1.48.0", features = ["json"] }
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `libs/updraft_core/src/topic.rs`:
 
@@ -512,12 +512,12 @@ mod topic;
 pub use topic::{Instruments, LatLon, Topic};
 ```
 
-- [ ] **Step 3: Run the test to verify it fails**
+- [x] **Step 3: Run the test to verify it fails**
 
 Run: `cargo test -p updraft_core`
 Expected: FAIL, `cannot find type 'Topic' in this scope`.
 
-- [ ] **Step 4: Implement the topic types**
+- [x] **Step 4: Implement the topic types**
 
 Insert into `libs/updraft_core/src/topic.rs` between the `use` line and the test module:
 
@@ -560,18 +560,18 @@ pub enum Topic {
 }
 ```
 
-- [ ] **Step 4: Accept the snapshot**
+- [x] **Step 4: Accept the snapshot**
 
 Run: `cargo insta accept`
 
 Then read `libs/updraft_core/src/snapshots/updraft_core__topic__tests__topic_serializes_to_tagged_camel_case_json.snap` and confirm it shows `topic: instruments`, a nested `value`, camelCase keys, and a null `altitudeMslMeters`.
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `cargo test -p updraft_core`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add libs/updraft_core

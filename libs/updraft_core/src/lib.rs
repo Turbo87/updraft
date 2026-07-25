@@ -5,6 +5,8 @@
 
 mod connection;
 mod time;
+mod topic;
 
 pub use connection::{ConnectionId, ConnectionSpec, ConnectionState};
 pub use time::Timestamp;
+pub use topic::{Instruments, LatLon, Topic};

@@ -1317,7 +1317,7 @@ This restores the golden-file mechanism that lived in `server/src/wire/bindings.
 
 `ts` stays a non-default feature so `ts-rs` never enters the shipping binary's dependency graph. CI covers the drift test through `cargo test --workspace --all-features`. `required-features` on the example turns "forgot the flag" into a clear build refusal rather than a confusing error.
 
-- [ ] **Step 1: Add the test dependency and gate the example**
+- [x] **Step 1: Add the test dependency and gate the example**
 
 In `libs/updraft_core/Cargo.toml`, under `[dev-dependencies]`:
 
@@ -1333,7 +1333,7 @@ name = "generate_protocol_bindings"
 required-features = ["ts"]
 ```
 
-- [ ] **Step 2: Write the generation module and its failing test**
+- [x] **Step 2: Write the generation module and its failing test**
 
 Create `libs/updraft_core/src/bindings.rs`:
 
@@ -1421,7 +1421,7 @@ Add to `libs/updraft_core/src/lib.rs`:
 pub mod bindings;
 ```
 
-- [ ] **Step 3: Write the generator example**
+- [x] **Step 3: Write the generator example**
 
 Create `libs/updraft_core/examples/generate_protocol_bindings.rs`:
 
@@ -1434,22 +1434,22 @@ fn main() -> std::io::Result<()> {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it fails**
+- [x] **Step 4: Run the test to verify it fails**
 
 Run: `cargo test -p updraft_core --all-features bindings`
 Expected: FAIL. The committed directory still holds the old `Snapshot.ts`, `Change.ts` and friends, so the file lists differ.
 
-- [ ] **Step 5: Regenerate the bindings**
+- [x] **Step 5: Regenerate the bindings**
 
 Run: `cargo run -p updraft_core --features ts --example generate_protocol_bindings`
 Expected: prints the output path. `frontend/src/lib/protocol/generated/` now contains `Topic.ts`, `Instruments.ts` and `LatLon.ts` only.
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `cargo test -p updraft_core --all-features`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add libs/updraft_core frontend/src/lib/protocol/generated

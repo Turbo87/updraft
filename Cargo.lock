@@ -4605,6 +4605,7 @@ dependencies = [
  "claims",
  "insta",
  "serde",
+ "tempfile",
  "ts-rs",
  "updraft_nmea",
 ]

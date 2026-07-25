@@ -3,6 +3,8 @@
 //! The core owns shared application state and the decisions based on it.
 //! It performs no I/O, spawns no threads, and reads no clocks.
 
+#[cfg(feature = "ts")]
+pub mod bindings;
 mod connection;
 mod core;
 mod decoder;

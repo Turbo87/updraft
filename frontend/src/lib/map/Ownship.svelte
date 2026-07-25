@@ -1,6 +1,5 @@
 <script lang="ts">
-  import type { Availability } from '$lib/protocol/generated/Availability';
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
+  import type { Availability, LatLon } from '$lib/gnss';
 
   import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
 

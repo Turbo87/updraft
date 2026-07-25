@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GnssData } from '$lib/protocol/generated/GnssData';
+  import type { GnssData } from '$lib/gnss';
 
   import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
   import Map from '$lib/map/Map.svelte';

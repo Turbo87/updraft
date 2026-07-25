@@ -2,7 +2,7 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
 
   import type { Map, StyleSpecification } from 'maplibre-gl';
-  import type { GnssData } from '$lib/protocol/generated/GnssData';
+  import type { GnssData } from '$lib/gnss';
 
   import { MapLibre } from 'svelte-maplibre-gl';
 

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "pretest": "pnpm --filter @updraft/frontend build",
-    "test": "playwright test",
+    "test": "playwright test --pass-with-no-tests",
     "check": "tsc --noEmit"
   },
   "devDependencies": {

@@ -118,7 +118,7 @@ Deleting first, in its own commit, so the rewrite starts from a blank sheet and 
 - Consumes: nothing
 - Produces: an empty `updraft_core` crate that compiles, and a frontend that builds with the map temporarily driven by a local placeholder rather than the state stream
 
-- [ ] **Step 1: Delete the Rust crates and modules**
+- [x] **Step 1: Delete the Rust crates and modules**
 
 ```bash
 git rm -r server libs/updraft_runtime
@@ -128,7 +128,7 @@ git rm libs/updraft_core/src/app.rs libs/updraft_core/src/device.rs \
        libs/updraft_core/tests/scenario.rs
 ```
 
-- [ ] **Step 2: Reduce the core crate to an empty shell**
+- [x] **Step 2: Reduce the core crate to an empty shell**
 
 Replace `libs/updraft_core/src/lib.rs` entirely:
 
@@ -156,7 +156,7 @@ workspace = true
 [dev-dependencies]
 ```
 
-- [ ] **Step 3: Drop the server from the workspace**
+- [x] **Step 3: Drop the server from the workspace**
 
 In `Cargo.toml`, change the members line:
 
@@ -164,14 +164,14 @@ In `Cargo.toml`, change the members line:
 members = ["libs/*", "tauri"]
 ```
 
-- [ ] **Step 4: Verify the workspace builds and tests**
+- [x] **Step 4: Verify the workspace builds and tests**
 
 Run: `cargo test --workspace`
 Expected: success, no reference to `updraft_server` or `updraft_runtime`.
 
 Use `cargo test`, not `cargo check`. `cargo check` does not build test targets, so it will not notice an integration test left behind referring to deleted types.
 
-- [ ] **Step 5: Delete the frontend state stream layer**
+- [x] **Step 5: Delete the frontend state stream layer**
 
 ```bash
 git rm frontend/src/lib/protocol/client.ts frontend/src/lib/protocol/client.test.ts \
@@ -202,7 +202,7 @@ export type GnssData = {
 
 and point the type imports in `FlightView.svelte`, `Map.svelte`, `Map.stories.svelte`, `Ownship.svelte` and `ownship.ts` at `$lib/gnss`. Task 12 deletes the module once the generated bindings replace it.
 
-- [ ] **Step 6: Point the layout at a placeholder position**
+- [x] **Step 6: Point the layout at a placeholder position**
 
 The layout, not the page, owns the subscription and renders the flight view. `+page.svelte` is empty. Replace the script block of `frontend/src/routes/+layout.svelte`:
 
@@ -236,7 +236,7 @@ The layout, not the page, owns the subscription and renders the flight view. `+p
 
 and change the markup's flight view to `<FlightView gnss={PLACEHOLDER} {testMode} />`.
 
-- [ ] **Step 7: Remove the server from the Playwright config**
+- [x] **Step 7: Remove the server from the Playwright config**
 
 Replace `e2e/playwright.config.ts` entirely:
 
@@ -267,7 +267,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 8: Keep CI and the empty e2e suite green**
+- [x] **Step 8: Keep CI and the empty e2e suite green**
 
 Deleting the only spec leaves `e2e/tests/` untracked (git does not track empty directories) and leaves Playwright with nothing to run, and the `e2e` CI job still builds the deleted server. All three break the branch until task 13 restores a spec.
 
@@ -277,12 +277,12 @@ In `e2e/package.json`, change the `test` script to `playwright test --pass-with-
 
 Create `e2e/tests/.gitkeep` explaining that the directory is tracked so `testDir` resolves, and that both it and the flag come out in task 13.
 
-- [ ] **Step 9: Verify the frontend builds and tests pass**
+- [x] **Step 9: Verify the frontend builds and tests pass**
 
 Run: `pnpm build && pnpm check && pnpm test && pnpm lint && pnpm test:e2e`
 Expected: all pass, with the e2e run reporting no tests. `pnpm build` comes first because `pnpm check` needs the paraglide output that the build generates, and those files are git-ignored.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add -A

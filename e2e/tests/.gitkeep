@@ -1,0 +1,3 @@
+This directory is intentionally empty. It is tracked so `playwright.config.ts`'s
+`testDir: './tests'` resolves, and `pnpm test` uses `--pass-with-no-tests` to
+tolerate that. Remove this file once Task 13 adds the replacement Playwright spec.

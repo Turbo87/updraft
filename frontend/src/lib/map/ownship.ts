@@ -1,6 +1,5 @@
 import type * as GeoJSON from 'geojson';
-import type { Availability } from '$lib/protocol/generated/Availability';
-import type { LatLon } from '$lib/protocol/generated/LatLon';
+import type { Availability, LatLon } from '$lib/gnss';
 
 export function latLonCoordinates(position: LatLon): [number, number] {
   return [position.longitudeDegrees, position.latitudeDegrees];

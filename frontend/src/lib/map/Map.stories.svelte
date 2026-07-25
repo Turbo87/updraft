@@ -1,6 +1,6 @@
 <script module lang="ts">
   import type { ComponentProps } from 'svelte';
-  import type { GnssData } from '$lib/protocol/generated/GnssData';
+  import type { GnssData } from '$lib/gnss';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
 

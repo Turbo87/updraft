@@ -2,22 +2,23 @@
   import '../app.css';
   import 'virtual:uno.css';
 
-  import { onMount } from 'svelte';
+  import type { GnssData } from '$lib/gnss';
+
   import { page } from '$app/state';
 
   import favicon from '$lib/assets/favicon.svg';
   import FlightView from '$lib/flight-view/FlightView.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
-  import { HttpUpdraftClient } from '$lib/protocol/client';
-  import { ApplicationState } from '$lib/protocol/state.svelte';
 
   let { children } = $props();
 
-  const state = new ApplicationState();
-  const client = new HttpUpdraftClient();
+  const PLACEHOLDER: GnssData = {
+    position: { status: 'unavailable' },
+    altitudeMeters: { status: 'unavailable' },
+    trackDegrees: { status: 'unavailable' },
+    groundSpeedMetersPerSecond: { status: 'unavailable' },
+  };
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
-
-  onMount(() => client.subscribe(state));
 
   $effect(() => {
     document.documentElement.lang = getLocale();
@@ -29,7 +30,7 @@
 </svelte:head>
 
 <div class="app">
-  <FlightView gnss={state.flight.gnss} {testMode} />
+  <FlightView gnss={PLACEHOLDER} {testMode} />
   {#if page.url.pathname !== '/'}
     <div class="route-content">
       {@render children()}

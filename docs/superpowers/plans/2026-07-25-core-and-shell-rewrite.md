@@ -304,7 +304,7 @@ git commit -m "Remove superseded core, runtime, and server crates" \
 - Consumes: nothing
 - Produces: `Timestamp` with `from_millis(u64) -> Timestamp`, `as_millis(self) -> u64`, `saturating_since(self, earlier: Timestamp) -> Duration`. `ConnectionId(pub u32)`. `ConnectionSpec::Tcp { host: String, port: u16 }` with constructor `ConnectionSpec::tcp(host, port)`. `ConnectionState::{Connecting, Connected, Disconnected}`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 This task needs no new dependency: the one test uses `assert_eq!`. Dev-dependencies are added by the task that first uses them, so an unused one never lands in a commit.
 
@@ -343,12 +343,12 @@ mod time;
 pub use time::Timestamp;
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test -p updraft_core`
 Expected: FAIL, `no function or associated item named 'from_millis' found`.
 
-- [ ] **Step 3: Implement `Timestamp`**
+- [x] **Step 3: Implement `Timestamp`**
 
 Insert into `libs/updraft_core/src/time.rs` above the test module:
 
@@ -370,12 +370,12 @@ impl Timestamp {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cargo test -p updraft_core`
 Expected: PASS, 1 test.
 
-- [ ] **Step 5: Add the connection types**
+- [x] **Step 5: Add the connection types**
 
 No test here: these are data definitions with one trivial constructor, and a test would only restate the struct literal. They are exercised throughout tasks 6 onward.
 
@@ -429,12 +429,12 @@ mod connection;
 pub use connection::{ConnectionId, ConnectionSpec, ConnectionState};
 ```
 
-- [ ] **Step 6: Verify it compiles**
+- [x] **Step 6: Verify it compiles**
 
 Run: `cargo test -p updraft_core`
 Expected: PASS, 1 test.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add libs/updraft_core

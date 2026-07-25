@@ -1,90 +1,38 @@
-use std::collections::BTreeMap;
 use std::time::Duration;
 
-/// Work that the core schedules for later.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Timer {
-    /// Re-evaluates selected flight signals at their earliest freshness deadline.
-    FlightSignalFreshness,
-    /// Starts the next trace-statistics job.
-    TraceStats,
-}
+/// Monotonic time since the shell started, supplied with every input.
+///
+/// The core never reads a clock. Time is always passed in, which is what
+/// makes a scripted sequence of inputs reproduce exactly.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Timestamp(Duration);
 
-/// Stores scheduled timers and their deadlines.
-#[derive(Debug, Default)]
-pub(crate) struct Timers {
-    due_times: BTreeMap<Timer, Duration>,
-}
-
-impl Timers {
-    /// Schedules `timer` to fire at `at`, replacing its existing due time.
-    pub(crate) fn schedule(&mut self, timer: Timer, at: Duration) {
-        self.due_times.insert(timer, at);
+impl Timestamp {
+    pub const fn from_millis(millis: u64) -> Self {
+        Self(Duration::from_millis(millis))
     }
 
-    pub(crate) fn cancel(&mut self, timer: Timer) {
-        self.due_times.remove(&timer);
+    pub const fn as_millis(self) -> u64 {
+        self.0.as_millis() as u64
     }
 
-    pub(crate) fn is_scheduled(&self, timer: Timer) -> bool {
-        self.due_times.contains_key(&timer)
-    }
-
-    pub(crate) fn deadline(&self, timer: Timer) -> Option<Duration> {
-        self.due_times.get(&timer).copied()
-    }
-
-    /// The earliest scheduled deadline, if any.
-    pub(crate) fn next_deadline(&self) -> Option<Duration> {
-        self.due_times.values().copied().min()
-    }
-
-    /// Removes due timers, ordered by deadline and then timer identity.
-    pub(crate) fn take_due(&mut self, clock_time: Duration) -> Vec<(Timer, Duration)> {
-        let mut due: Vec<(Duration, Timer)> = self
-            .due_times
-            .iter()
-            .filter(|(_, at)| **at <= clock_time)
-            .map(|(timer, at)| (*at, *timer))
-            .collect();
-        due.sort();
-        let due: Vec<(Timer, Duration)> = due.into_iter().map(|(at, timer)| (timer, at)).collect();
-        for (timer, _) in &due {
-            self.due_times.remove(timer);
-        }
-        due
+    /// Time elapsed since `earlier`, clamped at zero so a late or
+    /// out-of-order input can never produce a negative duration.
+    pub fn saturating_since(self, earlier: Timestamp) -> Duration {
+        self.0.saturating_sub(earlier.0)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some_eq};
 
     #[test]
-    fn timer_queue() {
-        let mut timers = Timers::default();
-        assert_none!(timers.next_deadline());
+    fn measures_elapsed_time_without_going_negative() {
+        let earlier = Timestamp::from_millis(1_000);
+        let later = Timestamp::from_millis(1_250);
 
-        timers.schedule(Timer::TraceStats, Duration::from_micros(100));
-        assert!(timers.is_scheduled(Timer::TraceStats));
-        assert_some_eq!(
-            timers.deadline(Timer::TraceStats),
-            Duration::from_micros(100)
-        );
-        assert_some_eq!(timers.next_deadline(), Duration::from_micros(100));
-
-        assert_eq!(timers.take_due(Duration::from_micros(99)), vec![]);
-        assert_eq!(
-            timers.take_due(Duration::from_micros(100)),
-            vec![(Timer::TraceStats, Duration::from_micros(100))]
-        );
-        assert_none!(timers.deadline(Timer::TraceStats));
-        assert!(!timers.is_scheduled(Timer::TraceStats));
-        assert_none!(timers.next_deadline());
-
-        timers.schedule(Timer::TraceStats, Duration::from_micros(200));
-        timers.cancel(Timer::TraceStats);
-        assert_none!(timers.next_deadline());
+        assert_eq!(later.saturating_since(earlier), Duration::from_millis(250));
+        assert_eq!(earlier.saturating_since(later), Duration::ZERO);
     }
 }

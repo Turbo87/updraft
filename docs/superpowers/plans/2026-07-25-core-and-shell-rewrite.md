@@ -879,7 +879,7 @@ The invalid-fix test carries a fully populated sentence rather than an empty one
 
 `CoreConfig::connections` is temporary. Configured connections become runtime-mutable, changed through a core input driven by the settings UI, in milestone 5. Nothing should come to depend on the list being fixed at construction.
 
-- [ ] **Step 1: Add the approx dependency**
+- [x] **Step 1: Add the approx dependency**
 
 In `libs/updraft_core/Cargo.toml`, under `[dev-dependencies]`:
 
@@ -889,7 +889,7 @@ approx = "=0.6.0-rc2"
 
 `updraft_geo` and `updraft_units` are deliberately **not** added. The core calls inherent methods (`latitude()`, `as_degrees()`, `as_meters_per_second()`, `as_meters()`) on values whose types arrive through `updraft_nmea`'s public API, and Rust resolves those without a direct dependency. Declaring one the crate never names by path is dead weight. A later milestone that names these types directly adds it then.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `libs/updraft_core/src/core.rs`:
 
@@ -1007,12 +1007,12 @@ mod core;
 pub use core::{Core, CoreConfig};
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `cargo test -p updraft_core app`
 Expected: FAIL, `cannot find type 'Core' in this scope`.
 
-- [ ] **Step 4: Implement `Core`**
+- [x] **Step 4: Implement `Core`**
 
 Insert into `libs/updraft_core/src/core.rs` between the `use` lines and the test module:
 
@@ -1131,14 +1131,14 @@ impl Core {
 }
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cargo test -p updraft_core`
 Expected: PASS, all tests.
 
 `Gga::altitude` is `Option<Length>` and documented as altitude above mean sea level, so `as_meters()` is the right accessor and no geoid correction is needed here.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add libs/updraft_core

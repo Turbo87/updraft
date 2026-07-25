@@ -4,6 +4,7 @@
 //! It performs no I/O, spawns no threads, and reads no clocks.
 
 mod connection;
+mod core;
 mod decoder;
 mod effect;
 mod input;
@@ -11,6 +12,7 @@ mod time;
 mod topic;
 
 pub use connection::{ConnectionId, ConnectionSpec, ConnectionState};
+pub use core::{Core, CoreConfig};
 pub use decoder::Decoder;
 pub use effect::Effect;
 pub use input::Input;

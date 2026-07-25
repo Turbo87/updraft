@@ -728,7 +728,7 @@ git commit -m "core: Add \`Input\` and \`Effect\` enums"
 
 The buffer needs no explicit size cap. `parse` rejects a start marker not followed by a delimiter within its 1 KB sentence horizon, so a device emitting garbage can never grow the buffer without bound.
 
-- [ ] **Step 1: Add the dependencies**
+- [x] **Step 1: Add the dependencies**
 
 In `libs/updraft_core/Cargo.toml`, under `[dependencies]`:
 
@@ -742,7 +742,7 @@ and under `[dev-dependencies]`, for the assertions this task's tests use:
 claims = "=0.8.0"
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `libs/updraft_core/src/decoder.rs`:
 
@@ -799,12 +799,12 @@ mod decoder;
 pub use decoder::Decoder;
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `cargo test -p updraft_core decoder`
 Expected: FAIL, `cannot find type 'Decoder' in this scope`.
 
-- [ ] **Step 4: Implement `Decoder`**
+- [x] **Step 4: Implement `Decoder`**
 
 Insert into `libs/updraft_core/src/decoder.rs` between the `use` line and the test module:
 
@@ -846,12 +846,12 @@ impl Decoder {
 }
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cargo test -p updraft_core decoder`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add libs/updraft_core

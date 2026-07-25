@@ -4601,9 +4601,11 @@ checksum = "b1d386ff53b415b7fe27b50bb44679e2cc4660272694b7b6f3326d8480823a94"
 name = "updraft_core"
 version = "0.0.0"
 dependencies = [
+ "claims",
  "insta",
  "serde",
  "ts-rs",
+ "updraft_nmea",
 ]
 
 [[package]]

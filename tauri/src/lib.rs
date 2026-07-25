@@ -3,6 +3,8 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
+pub mod driver;
+
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
 ///
 /// Returns the file writer's [`WorkerGuard`], which the caller must keep alive.

@@ -1479,7 +1479,7 @@ A subscriber is a `Sink` closure returning `false` once its consumer is gone, ra
 
 The driver runs for the process lifetime. Tying its exit to handles being dropped would model the wrong thing, because holding no handles is an ordinary state rather than a signal that work is finished. Explicit shutdown belongs as a `Message` variant if something ever needs it.
 
-- [ ] **Step 1: Add dependencies**
+- [x] **Step 1: Add dependencies**
 
 In `tauri/Cargo.toml`, under `[dependencies]`:
 
@@ -1495,7 +1495,7 @@ approx = "=0.6.0-rc2"
 claims = "=0.8.0"
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `tauri/src/driver.rs`:
 
@@ -1593,12 +1593,12 @@ mod tests {
 
 No test sleeps. Each awaits the event it cares about under a generous timeout, so it finishes as soon as the work is done and fails fast rather than flaking on a loaded machine.
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `cargo test -p updraft_tauri driver`
 Expected: FAIL, `cannot find type 'Driver' in this scope`.
 
-- [ ] **Step 4: Implement the driver**
+- [x] **Step 4: Implement the driver**
 
 Insert into `tauri/src/driver.rs` between the `use` lines and the test module:
 
@@ -1710,7 +1710,7 @@ impl Driver {
 }
 ```
 
-- [ ] **Step 5: Wire the module in**
+- [x] **Step 5: Wire the module in**
 
 Add to `tauri/src/lib.rs` above `fn init_tracing`:
 
@@ -1720,12 +1720,12 @@ pub mod driver;
 
 `pub`, not private: a private module makes every item in it dead code under `-D warnings` until Task 11 wires it up. Task 11 drops the `pub` again once `run()` uses them.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `cargo test -p updraft_tauri`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tauri

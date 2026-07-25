@@ -2054,7 +2054,7 @@ git commit -m "tauri: Add the \`subscribe\` command"
 
 The map components move from the old `GnssData` shape to `Instruments`. Components stay presentational: only `+layout.svelte` touches the client, which is also what keeps the subscription alive across navigation to future routes such as settings.
 
-- [ ] **Step 1: Add the Tauri API dependency**
+- [x] **Step 1: Add the Tauri API dependency**
 
 In `frontend/package.json`, under `dependencies`:
 
@@ -2064,7 +2064,7 @@ In `frontend/package.json`, under `dependencies`:
 
 Run: `pnpm install`
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `frontend/src/lib/client/fake.test.ts`:
 
@@ -2138,12 +2138,12 @@ describe('InstrumentsStore', () => {
 });
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm --filter @updraft/frontend test`
 Expected: FAIL, cannot resolve `./fake` or `./instruments.svelte`.
 
-- [ ] **Step 4: Implement the client**
+- [x] **Step 4: Implement the client**
 
 Create `frontend/src/lib/client/index.ts`:
 
@@ -2225,7 +2225,7 @@ export class TauriClient implements UpdraftClient {
 }
 ```
 
-- [ ] **Step 5: Implement the store**
+- [x] **Step 5: Implement the store**
 
 Create `frontend/src/lib/stores/instruments.svelte.ts`:
 
@@ -2259,12 +2259,12 @@ export class InstrumentsStore {
 
 The adjacent tag chosen in task 3 is what makes this a plain narrow-then-assign.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm --filter @updraft/frontend test`
 Expected: PASS.
 
-- [ ] **Step 7: Move the map components onto `Instruments`**
+- [x] **Step 7: Move the map components onto `Instruments`**
 
 Replace `frontend/src/lib/map/ownship.ts`:
 
@@ -2353,7 +2353,7 @@ Update the import of `latLonCoordinates` to `positionCoordinates`, and the `Owns
 
 Apply the same prop rename in `frontend/src/lib/flight-view/FlightView.svelte` and `frontend/src/lib/map/Map.stories.svelte`.
 
-- [ ] **Step 8: Wire the layout to the client**
+- [x] **Step 8: Wire the layout to the client**
 
 The layout owns the subscription so it survives navigation to future routes. Replace the script block of `frontend/src/routes/+layout.svelte`:
 
@@ -2402,12 +2402,12 @@ and change the markup's flight view to `<FlightView instruments={instruments.cur
 
 Falling back to the fake outside Tauri is the browser-development path the client abstraction exists for: the whole UI runs with no Rust build, and it is what the e2e suite drives in task 13.
 
-- [ ] **Step 9: Verify the whole frontend**
+- [x] **Step 9: Verify the whole frontend**
 
 Run: `pnpm check && pnpm test && pnpm lint && pnpm build`
 Expected: all pass.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add frontend

@@ -1,15 +1,16 @@
 <script lang="ts">
-  import type { GnssData } from '$lib/gnss';
+  import type { Instruments } from '$lib/protocol/generated/Instruments';
 
   import LocaleSwitcher from '$lib/LocaleSwitcher.svelte';
   import Map from '$lib/map/Map.svelte';
   import { m } from '$lib/paraglide/messages.js';
 
-  let { gnss, testMode = false }: { gnss: GnssData; testMode?: boolean } = $props();
+  let { instruments, testMode = false }: { instruments: Instruments; testMode?: boolean } =
+    $props();
 </script>
 
 <section class="flight-view" aria-label={m.flight_view()}>
-  <Map {gnss} {testMode} />
+  <Map {instruments} {testMode} />
   <div class="overlay">
     <LocaleSwitcher />
   </div>

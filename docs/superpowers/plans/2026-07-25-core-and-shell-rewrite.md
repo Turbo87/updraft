@@ -1160,7 +1160,7 @@ git commit -m "core: Add \`Core\` with change-driven topic emission"
 
 This is the regression net described in the spec. The effect stream is the core's complete observable behaviour, so snapshotting it captures exactly what the UI would have seen over time. Floats are rounded to quantity-appropriate precision so a change in optimisation level cannot produce a diff.
 
-- [ ] **Step 1: Create the fixtures**
+- [x] **Step 1: Create the fixtures**
 
 Create `testdata/nmea/basic.nmea` with exactly these four lines:
 
@@ -1180,7 +1180,7 @@ $GPRMC,120005.00,V,5049.50,N,00611.40,E,60.0,300.0,010126,,,N
 
 The first repeats the final line of `basic.nmea` verbatim, so it changes nothing. The second carries plausible position, track and speed but a `V` status, so it must be discarded entirely.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `libs/updraft_core/tests/scenario.rs`:
 
@@ -1273,25 +1273,25 @@ fn sentences_the_core_ignores_produce_no_effects() {
 
 `basic.nmea` alone cannot catch a regression in either guard: every one of its lines is an accepted, value-changing fix, so deleting the change-detection guard or the RMC status guard leaves the snapshot byte-identical. `ignored.nmea` is what closes that, and it stays a separate file so `basic.nmea` remains a clean feed for the manual check in task 13.
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `cargo test -p updraft_core --test scenario`
 Expected: FAIL. The determinism test passes, the snapshot test fails because no snapshot is recorded yet.
 
-- [ ] **Step 5: Accept the snapshot**
+- [x] **Step 5: Accept the snapshot**
 
 Run: `cargo insta accept`
 
 Then read `libs/updraft_core/tests/snapshots/scenario__replaying_a_flight_produces_a_stable_effect_stream.snap` and confirm it shows one open effect followed by instrument emissions whose position advances. The GGA line adds an altitude without moving the position, so its emission repeats the previous coordinates. That is correct.
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cargo test -p updraft_core --test scenario`
 Expected: PASS, 3 tests.
 
 Then verify the guards are genuinely pinned: temporarily delete the `if self.instruments == before` early return in `core.rs`, confirm `sentences_the_core_ignores_produce_no_effects` fails, restore it, and repeat for the `rmc.status == RmcStatus::Active` guard.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add libs/updraft_core testdata/nmea

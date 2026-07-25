@@ -595,7 +595,7 @@ No tests in this task. These are data definitions whose constructors are one-lin
 
 `Input::Location` and `Input::Command` are deliberately absent. Location arrives with the Android plugin in milestone 2 and commands with settings in milestone 5. Adding empty variants now would be speculative.
 
-- [ ] **Step 1: Add `Input`**
+- [x] **Step 1: Add `Input`**
 
 Create `libs/updraft_core/src/input.rs`:
 
@@ -649,7 +649,7 @@ mod input;
 pub use input::Input;
 ```
 
-- [ ] **Step 2: Add `Effect`**
+- [x] **Step 2: Add `Effect`**
 
 Create `libs/updraft_core/src/effect.rs`:
 
@@ -699,12 +699,12 @@ mod effect;
 pub use effect::Effect;
 ```
 
-- [ ] **Step 3: Verify it compiles**
+- [x] **Step 3: Verify it compiles**
 
 Run: `cargo test -p updraft_core`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add libs/updraft_core

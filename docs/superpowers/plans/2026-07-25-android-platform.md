@@ -606,11 +606,11 @@ The known-good fix needs a `tauri-runtime-wry` patch because the mobile `Resumed
 
 **The uncertainty:** tao's `Window::new` claims the "next available activity" via `ndk_glue::next_available_activity()`. Whether a window built from a `run_on_main_thread` closure — rather than from inside the event loop — attaches to the relaunched activity is exactly what nobody has tested.
 
-- [ ] **Step 1: Reproduce the bug on the current build**
+- [x] **Step 1: Reproduce the bug on the current build**
 
 Start a session, swipe from recents, relaunch from the launcher. Expected: blank white webview, no JS execution, and `adb shell dumpsys activity top | grep -c ViewRoot` reporting zero webview views. Confirm the Rust side is alive underneath by checking fixes still appear in logcat.
 
-- [ ] **Step 2: Try the public-API path**
+- [x] **Step 2: Try the public-API path**
 
 Register `ActivityLifecycleCallbacks` in `UpdraftMobilePlugin.kt`, invoke a Rust command on activity creation, and from it:
 
@@ -628,11 +628,11 @@ let _ = app.run_on_main_thread(move || {
 });
 ```
 
-- [ ] **Step 3: Record the outcome**
+- [x] **Step 3: Record the outcome**
 
 Write the result into this plan, directly under task 7, as the decision that determines which branch task 7 takes. Include what was observed, not just the verdict. A negative result is the valuable one: it justifies carrying a patched dependency, and the justification needs to live where the next person will find it.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -u
@@ -642,6 +642,83 @@ git commit -m "docs: Record whether webview re-creation works through public API
 ---
 
 ### Task 7: Webview re-creation
+
+**Task 6 answered: the public-API path works. Do not fork `tauri-runtime-wry`.**
+
+Measured on `spike-api35` (API 35, WebView 124), package `aero.updraft.debug`. The working shape is four pieces, all public API:
+
+1. The plugin's Kotlin registers `Application.ActivityLifecycleCallbacks` and reports each stage on a `tauri::ipc::Channel`. The `Application` outlives every activity, and the channel reaches Rust through `PluginManager.sendChannelData`, a JNI native — no webview involved, which is why it still works while the UI is dead.
+2. Rust acts on **`onActivityStarted`, never `onActivityCreated`** — see the abort below. This is a hard constraint, not a preference.
+3. Rust offers the rebuild to `AppHandle::run_on_main_thread` **repeatedly** until `webview_windows()` is non-empty, rather than once.
+4. **`onActivityDestroyed` withdraws permission to build**, and the offer re-checks that permission on the event loop before it builds anything. Without it, offers 2..n of the retry re-open the very abort that (2) closes.
+
+The window built from that closure attaches to the relaunched activity: `webview_windows()` reads 0 before and 1 after, `RustWebView` appears in the activity's view hierarchy, a new DevTools page appears beside the old one, and the pid never changes. `next_available_activity()` is not the obstacle. On a destroy-and-relaunch the old activity's context is removed, so the new one is the only candidate left — but that removal is conditional on `!is_changing_configurations` (`ndk_glue.rs:686-694`), and what keeps a single candidate in the configuration-change case instead is the reused `ActivityId`: `WryActivity.onCreate` restores its `id` from the saved instance state, so `CONTEXTS.insert` overwrites its own entry. (`window_created`, the field that filter reads, is never set `true` anywhere in tao 0.35.3.)
+
+**Verified live, not merely present.** Moving the mocked position *while the app was destroyed* and then relaunching produced fresh tiles of the new city with the ownship on the new position, three cycles running (Paris, Munich, Vienna). That needs the webview to run JS, fetch tiles, re-subscribe over IPC, and receive the driver's topic replay — a rebuilt-but-dead webview cannot fake it. The fix stream was uninterrupted across every cycle.
+
+#### The constraint: `onActivityCreated` aborts the process
+
+That callback fires from inside `Activity.onCreate`'s own `super` call, before `WryActivity.onCreate` reaches `Rust.onActivityCreate` — which is what registers the activity with wry. tao's `Window::new` reads `ndk_glue::CONTEXTS`, which `onActivityCreate` fills first (`ndk_glue.rs:426-435`), so it succeeds; wry then reads `ACTIVITY_PROXY`, which the same call fills a few JNI hops later at `register_activity_proxy` (`ndk_glue.rs:437` → `wry/src/android/mod.rs:152`), and finds nothing:
+
+```
+panicked at wry-0.55.1/src/android/mod.rs:189:54: no available activity
+F/libc: Fatal signal 6 (SIGABRT) in tid 3909 (Thread-2)
+#03 _RINvCs..._17updraft_tauri_lib11stop_unwindNvB2_3run
+I/ActivityManager: Process aero.updraft.debug (pid 3859) has died: fg TOP
+```
+
+tauri wraps the mobile entry point in `stop_unwind`, so the panic becomes `process::abort()` and takes the foreground service with it — the exact failure milestone 2 exists to prevent. Observed once in the handful of trials run before the variant was abandoned; no rate was measured, and none is needed, because the severity settles it. `onActivityStarted` cannot run before `onCreate` has returned, so it cannot race the registration: zero panics in every trial since.
+
+#### Why the retry is needed, and what it costs
+
+A single `run_on_main_thread` is not enough. It returns `Ok(())` and the closure is sometimes never called: tao's `send_event` discards the `try_send` result (`tao/.../android/mod.rs:541-545`), and the loop parks in `ALooper_pollAll`, which drops a wake that shares a poll iteration with an ident-based fd response (`ndk-0.9.0/src/looper.rs:173`) — exactly what the ndk_glue pipe burst of a relaunch produces. With no window, nothing else wakes the loop. Before the retry existed, one such stall left the screen blank for **51 seconds**, ending only when an unrelated foregrounding woke the loop:
+
+```
+11:47:15.682  INFO Activity transition stage=started        <- dispatch accepted, closure queued
+              (no "on the main thread" line, screen blank, RustWebView=0 for 51 s)
+11:48:07.063  INFO Activity transition stage=started        <- unrelated foregrounding wakes the loop
+11:48:07.063  INFO Activity started, on the main thread windows=0   <- the stale closure, finally
+11:48:07.064  INFO Rebuilt the webview window
+11:48:07.064  INFO Activity started, on the main thread windows=1   <- the fresh one
+```
+
+Those last three lines are also the fix. The loop's `while let Ok(event) = self.receiver.try_recv()` (`tao/.../android/mod.rs:417`) drains *everything* queued as soon as any wake lands, so a later offer at a quiet moment drags the stale one through with it. Re-offering every 200 ms is therefore all that is required.
+
+**Measured, 36 in-process relaunches, 24 of them cold** (force-stop, cold start, swipe from recents, relaunch — the sequence where the pipe burst is worst):
+
+| time to rebuild | cold (24) | warm (12) | all (36) |
+|---|---|---|---|
+| 0-2 ms, first offer landed | 14 | 10 | 24 |
+| 201-203 ms, second offer | 10 | 2 | 12 |
+| third offer or later | 0 | 0 | 0 |
+| never | 0 | 0 | 0 |
+
+Zero panics, zero pid changes, zero `Gave up`/`Could not rebuild`/`Could not reach` lines. Worst case observed: **203 ms**, imperceptible. The cold sequence loses the wake more often (10/24 vs 2/12), which is the predicted signature of the pipe burst.
+
+The cost when a window already exists is nil: the loop exits on its first `webview_windows()` check, with zero dispatches and zero log lines.
+
+#### Why the retry has to be cancelled, and why patience is short
+
+`started` only constrains when the *first* offer is made. Offers 2..n execute whenever the loop next wakes, which can be inside a *later* activity's `onCreate` — the window between `CONTEXTS.insert` and `register_activity_proxy` described above. `onActivityCreate` runs on the Java UI thread while the event loop runs on the thread spawned at `ndk_glue.rs:352`, so the two are genuinely concurrent (task 6's own SIGABRT is tid 3909 in pid 3859). The reachable sequence: a rebuild fails, or the activity goes away before a window is built, so the loop keeps offering; the pilot relaunches inside that window; a pending offer lands mid-`onCreate` and aborts the process, taking the foreground service with it. The existing `webview_windows()` guards do not help — during that window the count *is* empty, which is the loop's own precondition.
+
+Two bounds close it:
+
+- **`onActivityDestroyed` clears the flag that permits building, and the offer re-checks the flag on the event loop.** Cancelling only the loop is not enough: an offer already queued in tao's channel runs whenever the loop next wakes, no matter what the loop decided afterwards. The check has to be inside the closure, and it is the one guard that closes the abort.
+
+  The clear wins the race against the next `onCreate` **by ordering, not by margin**. `Channel.sendObject` calls its handler inline (tauri's `mobile/android/.../plugin/Channel.kt`); the handler is `PluginManager.sendChannelData`, an `external fun`; its JNI entry point calls `send_channel_data` (tauri's `src/lib.rs`), which reaches `Channel::send` and from there the app's channel closure on the calling thread (`src/plugin/mobile.rs`, `src/ipc/channel.rs`). Nothing in that chain posts to a queue, so the flag is cleared inside `onActivityDestroyed`, on the Java UI thread, before that thread can enter any later `onCreate`.
+
+  Do not restate this as a timing margin. The seconds between a swipe and a launcher relaunch are incidental, and they vanish for the recreations this manifest still permits: `configChanges` omits `density`, `fontScale` and `layoutDirection`, so a display- or font-size change destroys and recreates the activity back to back on that one thread. That one case is independently harmless — `isChangingConfigurations` is true for it, so tao emits no `Destroyed` event and keeps its `CONTEXTS` entry, `webview_windows()` stays non-empty, and the offer returns on its first predicate — but the ordering is what covers the general case, and it is the only thing that does. Moving the channel handler onto a task, or making the Kotlin `report()` post to a background handler, would satisfy a margin argument and silently reopen a process abort.
+- **Patience is 10 offers, two seconds.** The measured distribution is bimodal at the first and second offer and never reached a third; ten is an order of magnitude past the worst case. Longer patience buys nothing a pilot notices and keeps offers pending across a relaunch. Giving up is not a dead end either: the queued offers stay in tao's channel and the loop drains all of them at its next wake from any source, so a rebuild that ran out of patience still lands on its own — the 51-second stall recovered by exactly that route, before any retry existed. A fresh `started` is a second way back, not the only one.
+
+A build that fails stops the loop rather than repeating it. `WebviewWindowBuilder::build()` failing for "no available activity" (the `Err` path of tao's `Window::new`, `mod.rs:657`) is persistent, not a dropped wake, so re-offering only buries the reason under its own repetitions. The next `started` retries it.
+
+#### Corrections to the steps below
+
+- The `dumpsys activity top | grep -c ViewRoot` check in task 6 does not discriminate. The relaunched activity has a `ViewRoot` either way, and the process keeps a DevTools target for the *old* webview, so `@webview_devtools_remote_<pid>` and a `tauri.localhost` page both survive the bug. What does discriminate: the activity's `android:id/content` `ContentFrameLayout` has no children, and `dumpsys activity top | grep -c RustWebView` reads 0.
+- `from_config` does not fix an Android layout problem — it cannot. The bare `WebviewWindowBuilder::new` produced a window pixel-identical to the first launch's, because `tauri.conf.json` sets only `width`/`height`/`resizable`/`fullscreen` and tao's `Window::new` carries an explicit `// FIXME this ignores requested window attributes` (`tao/.../android/mod.rs:637`). Use `from_config` anyway, for the reason that survives: a window setting added later is then not silently dropped.
+- **Rotation is not exposed, and the earlier note claiming a stale-context hazard was wrong twice over.** The manifest declares `android:configChanges="orientation|...|screenSize|..."`, so Android does not recreate the activity on a rotation at all: rotating produced **zero** lifecycle transitions, left `RustWebView` attached to the same activity and the webview live and re-laid-out. Nothing reaches `onActivityDestroy`, so no context goes stale. Even without `configChanges` the hazard would not exist: `WryActivity.onCreate` restores its `id` from `savedInstanceState` (`ACTIVITY_ID_KEY`), so a recreated activity reuses the same `ActivityId` and `CONTEXTS.insert` **overwrites** the entry rather than leaving `next_available_activity` a second candidate. And `remove_activity_proxy` is not dead code: `WryActivity.onDestroy` calls `Rust.onWebviewDestroy`, which routes `WebViewMessage::OnDestroy` to `main_pipe.rs:487-497`. Measured end to end: rotate → swipe away → relaunch rebuilt in 206 ms onto a landscape `RustWebView{0,0-2400,1080}` showing fresh tiles of a city set while the app was destroyed, same pid; rotate → rotate back → swipe → relaunch rebuilt in 201 ms.
+
+Take the public-API path:
 
 - [ ] **Step 1: Report activity transitions and offer the rebuild**
 

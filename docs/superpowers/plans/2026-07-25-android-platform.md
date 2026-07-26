@@ -776,14 +776,14 @@ git commit -m "tauri: Rebuild the webview when the activity is relaunched"
 
 A checklist, not new code.
 
-- [ ] **Step 1: Full repository verification**
+- [x] **Step 1: Full repository verification**
 
 Run: `cargo test --workspace --exclude tauri-plugin-updraft --all-features && cargo test -p tauri-plugin-updraft --all-features && cargo clippy --workspace --exclude tauri-plugin-updraft --all-targets --all-features -- -D warnings && pnpm build && pnpm check && pnpm test && pnpm lint && pnpm test:e2e`
 Expected: all pass.
 
 The rebuild's per-transition lines are `debug!`, so run with `UPDRAFT_LOG=debug` when tracing a relaunch. At the default `info` level only `"Watching activity transitions"` and `"Rebuilt the webview window"` appear, and the absence of the rest is the intended quiet rather than a fault. The Kotlin side logs every transition to logcat regardless, under `Tauri/UpdraftMobilePlugin`.
 
-- [ ] **Step 2: Emulator matrix**
+- [x] **Step 2: Emulator matrix**
 
 On `spike-api34`, then `spike-api35`:
 
@@ -797,11 +797,11 @@ On `spike-api34`, then `spike-api35`:
 | Permission revoked mid-session | Surfaced, not silently dead |
 | Force stop, relaunch | Clean recovery |
 
-- [ ] **Step 3: Record what the emulator cannot tell us**
+- [x] **Step 3: Record what the emulator cannot tell us**
 
 Append the results to this plan, keeping failures. Note the known emulator limits: the ongoing notification is not user-dismissible there, and freezer timings are indicative only. Device verification stays open, as does whether the notification should be dismissible at all.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -u
@@ -810,8 +810,237 @@ git commit -m "docs: Record the milestone 2 emulator verification"
 
 ---
 
+## Verification results
+
+Run against the completed milestone, with the debug APK rebuilt from it and
+installed on both AVDs. Step 1 is green end to end: the two `cargo test` invocations, `cargo
+clippy -D warnings`, `pnpm build`, `pnpm check`, `pnpm test` (17 tests), `pnpm lint`
+and `pnpm test:e2e` (1 Playwright test, headless, against a `vite preview` server it
+starts itself) all exit 0.
+
+### The matrix
+
+| Case | spike-api35 (WebView 124) | spike-api34 (WebView 113) |
+| --- | --- | --- |
+| Cold start, permission granted | pass — ownship over Zurich | service, wake lock and fixes pass; **ownship not observable**, blank-canvas limitation below |
+| Home, 5 min | pass — 291 fixes / 299.2 s | pass — 280 fixes / 300.0 s |
+| Screen off, 5 min | pass — 290 fixes / 299.9 s | pass — 280 fixes / 300.0 s |
+| Swipe from recents | pass — pid 13168 both sides, `isForeground=true types=0x8` | pass — pid 16031 both sides, same |
+| Relaunch after swipe | pass — `waited_ms=1`, live Paris map | pass — `waited_ms=1`, live Paris map |
+| Permission revoked mid-session | pass with a gap, below | pass with a gap, below |
+| Force stop, relaunch | pass — new pid, session and ownship back | service, wake lock and fixes pass; **ownship not observable**, same limitation |
+
+### Fix inter-arrival
+
+The emulator's `GPS_PROVIDER` runs at 1 Hz and occasionally skips a fix, which puts a
+minority of gaps at 2 s in every window including the foreground baselines. The
+skipped-fix fraction is 8.5 % for the API 35 baseline, 7.2 % for the API 34 baseline
+and for both API 34 backgrounded windows, and only 2.4 % (home) and 3.1 % (screen
+off) for the two API 35 backgrounded windows. So backgrounding does not raise it, and
+on API 35 it is the backgrounded windows that skip least — consistent with the
+foreground baseline carrying the map's render load while the backgrounded ones do
+not. That fraction is what the p95 column reads: 2.00 s where it exceeds 5 %, and
+~1.01 s where it does not.
+
+| Window | n | duration | median | p95 | max | gaps > 5 s |
+| --- | --- | --- | --- | --- | --- | --- |
+| API 35 foreground baseline | 166 | 179.6 s | 1.004 s | 2.002 s | 2.011 s | 0 |
+| API 35 home | 291 | 299.2 s | 1.008 s | 1.014 s | 2.013 s | 0 |
+| API 35 screen off | 290 | 299.9 s | 1.007 s | 1.015 s | 2.009 s | 0 |
+| API 34 foreground baseline | 168 | 179.6 s | 1.003 s | 2.000 s | 2.008 s | 0 |
+| API 34 home | 280 | 300.0 s | 1.004 s | 2.002 s | 2.009 s | 0 |
+| API 34 screen off | 280 | 300.0 s | 1.004 s | 2.002 s | 2.008 s | 0 |
+
+Task 5's numbers (median 1.003 s, max 2.006 s backgrounded) reproduce.
+
+### What the two soak rows actually exercise
+
+Neither is a Doze test. "Home" leaves `mWakefulness=Awake`, so it exercises
+app-standby and the process freezer only. "Screen off" reaches `mWakefulness=Asleep`
+and drives light idle to `IDLE` within the window, but deep idle stays `INACTIVE`:
+five minutes is far short of the deep-idle thresholds, and an emulator has no
+motion sensor to hold it out of them either. Real Doze remains unverified.
+
+### Permission revoked mid-session
+
+Android kills the process on revocation — that is the platform's behaviour, not the
+app's. What follows is the app's: `SessionService` is restarted by `START_STICKY`
+with a null intent, and the guard fires (`Tauri/SessionService: Restarted without a
+session to resume, stopping`), so no session runs without a permission behind it.
+Reproduced identically on both API levels.
+
+The pilot sees the whole app vanish to the launcher and the ongoing notification go
+with it, which is not subtle. But nothing states the cause.
+
+**The rest of this row was exercised on API 35 only.** Relaunching re-requests the
+pair, and Android shows the "approximate to precise" upgrade dialog because
+`ACCESS_COARSE_LOCATION` is still granted; answering "Keep approximate location" is
+correctly treated as a refusal — no session starts, and the only account of it is
+one log line:
+
+```
+ERROR updraft_tauri_lib: Failed to start the background session
+    error=[permissionDenied] - location permission prompt-with-rationale
+```
+
+On screen that reads as a map at the default centre with no ownship symbol and no
+explanation.
+
+**Open question:** whether a refused or revoked location permission should say so
+in the UI. Today the log is the only place it is named.
+
+The refusal path is API-independent code, so there is no reason to expect API 34 to
+differ, but nobody has watched it there.
+
+### API 34's blank canvas
+
+Reproduced exactly as the root-cause analysis in
+`docs/superpowers/investigations/2026-07-26-android-webview-blank-map.md` describes:
+on the first load of a fresh process the WebView-113 image never composites the WebGL
+canvas, so the map area is white while the MapLibre attribution and the language
+overlay render normally. It blocked the ownship half of two rows, cold start and
+force-stop relaunch — both start a fresh process. It did **not** block the
+relaunch-after-swipe row: the rebuilt webview's canvas is created long after that
+process produced its first frame, and the Paris map painted with the ownship on it.
+Every non-visual criterion on API 34 was observable and passed.
+
+### Emulator limits
+
+- The ongoing notification renders and is not user-dismissible: `flags=0x62`
+  (`ONGOING_EVENT|NO_CLEAR|FOREGROUND_SERVICE`), shown under Silent as "Updraft —
+  Navigating in the background" with no dismiss affordance. Whether it *should* be
+  dismissible on a device is still open.
+- Freezer and Doze timings here are indicative only.
+- `UPDRAFT_LOG` cannot be set for an emulator-installed app: `setprop
+  wrap.aero.updraft.debug` is refused by SELinux. The `debug!` transition lines are
+  therefore unavailable, and the Kotlin `Tauri/UpdraftMobilePlugin` lines carry the
+  lifecycle evidence instead.
+
+### Still needs a physical device
+
+- Real Doze and OEM background throttling against `GPS_PROVIDER`. Nothing measured
+  here speaks to either.
+- Whether the WebView-113 canvas bug reaches real hardware. Play-updated devices are
+  long past 113; de-Googled, kiosk and e-ink hardware with a pinned WebView are not.
+- **Cold start to first map paint.** One API 35 force-stop relaunch took ~12 s from
+  launch to a painted map, against `am start -W TotalTime: 5304` for the activity
+  alone and ~490 ms cold starts elsewhere in the same run. This was an emulator on a
+  loaded host, so the number is not a device number — but it is the one pilot-facing
+  latency in this milestone that nobody has budgeted, and only a device can say what
+  it really is.
+
+### The release build
+
+`pnpm tauri android build --target aarch64` **fails**, reproducibly, in 16-37 s:
+
+```
+Execution failed for task ':app:lintVitalAnalyzeUniversalRelease'
+> Unexpected failure during lint analysis (this is a bug in lint or one of the
+  libraries it depends on)
+  Message: `findFirCompiledSymbol` only works on compiled declarations, but the
+  given declaration is not compiled.
+  Stack: ... SymbolLightClassForScript.getOwnFields ... UastGradleVisitor
+         .visitBuildScript ... LintDriver.checkBuildScripts
+```
+
+The crash is inside lint's Kotlin analysis API while it walks the project's
+`.gradle.kts` scripts. It is not our code, and it stops the build before packaging.
+No release APK has been produced in this tree.
+
+Minification itself is fine, which settles the `SessionService` keep-rule question
+carried from task 3 — and settles it more strongly than "it happens to work today".
+`:app:minifyUniversalReleaseWithR8 --rerun-tasks` succeeds, and every
+reflectively-reached name survives unrenamed:
+
+```
+aero.updraft.mobile.SessionService     -> aero.updraft.mobile.SessionService:
+aero.updraft.mobile.UpdraftMobilePlugin -> aero.updraft.mobile.UpdraftMobilePlugin:
+  ... -> startSession / stopSession / watchActivities
+      / locationPermissionResult / notificationPermissionResult
+```
+
+**What does the keeping.** Neither project ProGuard file contributes anything: both
+`tauri/gen/android/app/proguard-rules.pro` and
+`libs/tauri_plugin_updraft/android/proguard-rules.pro` are entirely comment lines.
+The rules come from two places, both visible in
+`app/build/outputs/mapping/universalRelease/configuration.txt`:
+
+- The plugin's commands and callbacks are kept **by annotation**, from tauri's own
+  consumer ProGuard file (`tauri-2.11.5/mobile/android`, `configuration.txt:221-231`):
+
+  ```
+  -keep @app.tauri.annotation.TauriPlugin public class * {
+    @app.tauri.annotation.Command public <methods>;
+    @app.tauri.annotation.PermissionCallback <methods>;
+    @app.tauri.annotation.ActivityCallback <methods>;
+    @app.tauri.annotation.Permission <methods>;
+    public <init>(...);
+  }
+  -keep @app.tauri.annotation.InvokeArg public class * { *; }
+  ```
+
+  `UpdraftMobilePlugin` carries `@TauriPlugin`, its three commands `@Command` and its
+  two permission callbacks `@PermissionCallback`, and both argument classes carry
+  `@InvokeArg`, so all of them are covered by construction rather than by luck.
+- `SessionService` is kept by AAPT2's manifest-derived rules
+  (`configuration.txt:723`, `-keep class aero.updraft.mobile.SessionService {
+  <init>(); }`), because the plugin's `AndroidManifest.xml` declares it.
+
+So the `consumer-rules.pro` that task 3 found missing was never needed: the framework
+ships its own consumer rules, and the manifest generates the service's. Adding a
+keep rule to either project file would be redundant, and removing an annotation or
+the manifest entry is what would actually break a release build.
+
+`GpsSource` is renamed to `fp`, which is harmless — nothing reaches it by name. The
+`Companion` objects and the private `promptForNotifications` are inlined away.
+
+Two things remain untested because the lint crash blocks them: a release APK
+installed and run, and therefore whether `app.tauri.Logger`'s `BuildConfig.DEBUG`
+gate leaves the release build without the Kotlin log lines this verification leaned
+on throughout.
+
+---
+
 ## Milestone complete
 
 Updraft keeps navigating on Android after the pilot leaves the app: the foreground service holds the process, GNSS fixes reach the core as typed values with the geoid correction applied, and destroying or relaunching the activity loses neither the session nor the UI.
+
+### Ending a session is deferred
+
+The milestone's contract is survival, and it delivers that. It deliberately does not deliver the other half: **nothing calls `stop_session`.** It exists in all three layers — `libs/tauri_plugin_updraft/src/mobile.rs`, `src/desktop.rs` and `UpdraftMobilePlugin.kt` — and has no caller.
+
+The consequence is worth stating plainly rather than discovering later. Once a session starts, the process holds a partial wake lock and a 1 Hz GNSS subscription for as long as it lives. `prevent_exit()` means swiping the app away does not end it, and the ongoing notification is not user-dismissible and carries no stop action, only a `contentIntent` that reopens the app. Force Stop in system settings is the only way out.
+
+This is a scope decision, not an oversight. A stop action with no settings screen to reach it from is half a feature, so teardown lands with the settings UI in milestone 5, which is also where the device list gains a way to turn a source off. The `stop_session` path stays in place for that caller rather than being deleted and rebuilt.
+
+Until then, treat `stop_session` as **unexercised code across three languages**. Nothing has ever run it, so milestone 5 should verify it rather than assume it works.
+
+### Tauri's activity binding goes stale after a relaunch
+
+`prevent_exit()` buys process survival, and this is what it costs. `run()` never runs a second time, so the plugin instance built from the first activity outlives that activity. Tauri does not re-point itself either: `PluginManager.onActivityCreate` is called from `TauriActivity.onCreate` on every activity creation, including the relaunched one, and returns early once its slot is set.
+
+```kotlin
+fun onActivityCreate(activity: AppCompatActivity) {
+    // TODO: on destroy, we should change to a different activity
+    if (::activity.isInitialized) { return }
+```
+
+`PluginManager.onDestroy` forwards to plugins but clears neither the slot nor the three `ActivityResultLauncher`s registered alongside it. Those launchers were created through `activity.registerForActivityResult`, which binds them to that activity's lifecycle and unregisters their keys on `ON_DESTROY`. `PluginHandle.validatePermissions` reads the same stale slot for `shouldShowRequestPermissionRationale`, so the reference reaches the result path as well as the launch.
+
+The blast radius is wider than permissions. `startActivityForResult` and `startIntentSenderForResult` are registered the same way, which is what makes this a milestone 3 problem: the enable-Bluetooth intent and companion device pairing both go through them.
+
+Milestone 2 cannot reach any of it. `startSession` runs once from `setup`, under the first activity, and it is the only caller that requests a permission. The plugin no longer starts the service through the activity either, so nothing here holds a destroyed context.
+
+Verified against tauri 2.11.5, which the workspace pins exactly. What has **not** been verified is the runtime failure itself: the reasoning above is from tauri's source and the androidx API surface, and nobody has watched a permission request fail after a relaunch on a device or an emulator. That check is worth doing before choosing a fix, because it also settles whether the call throws or hangs.
+
+**Open question:** which of these to take, and when.
+
+1. **Register a launcher against the live activity.** `ActivityResultRegistry` carries a `register(String, ActivityResultContract, ActivityResultCallback)` overload that takes no `LifecycleOwner` and therefore no "register before STARTED" restriction, and `ActivityResultLauncher.unregister()` is public. Both are present in the `androidx.activity:activity-ktx:1.13.0` the app resolves to. `watchActivities` already tracks the current activity. A stable key matters: the registry parks a result for an unregistered key and delivers it once one registers again, which covers a configuration change while the dialog is up. Self-contained, needs no upstream change and no edit to generated code, at the price of owning a slice of what `requestPermissionForAlias` does today.
+2. **Re-point `PluginManager.activity`.** It is a public `lateinit var`, and the plugin sees `onActivityCreated`. It is also half a fix: the launchers are private and only assigned inside the guarded block, so the object would look consistent while `launch()` still failed. Reaching the private fields by reflection would need R8 keep rules and would break on any upstream change. Rejected.
+3. **Fix it upstream.** Drop the early return, re-register the launchers, clear the slot in `onDestroy` when the destroyed activity is the current one. `TauriActivity.onCreate` already runs before STARTED, so the change is small, and the `TODO` says upstream knows. The right home for it, but a PR, a release and a pin bump do not arrive on milestone 3's schedule.
+4. **Use `ActivityCompat.requestPermissions` with `onRequestPermissionsResult` in `MainActivity.kt`,** which comes from a tauri-cli template rather than the `generated/` tree and is therefore editable. Sidesteps the registry entirely, but moves plugin logic into the app and gives up the property this plugin is built around: that an app gets a working session from the dependency alone.
+5. **Collect every permission up front, while the first activity is alive.** Does not fix anything, but it makes the broken path rare, and asking a pilot for permissions on the ground rather than mid-flight is better behaviour regardless.
+
+Options 1 and 3 compose: 3 is the fix, 1 is what carries milestone 3 until 3 lands. Option 5 stands on its own merits either way.
 
 Milestone 3 adds the Bluetooth SPP transport and FLARM traffic, joining the same plugin, adding the `connectedDevice` type bit and the command to switch the mask at runtime.

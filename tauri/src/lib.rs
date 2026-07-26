@@ -46,6 +46,23 @@ fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGu
     guard
 }
 
+/// Asks the platform plugin for a foreground session, prompting for location
+/// access on the way.
+///
+/// Android only allows a foreground service to start while an activity is
+/// visible, which is why this runs from `setup` rather than from wherever the
+/// first fix is needed. The call blocks until the pilot has answered the
+/// permission prompt, so it cannot run on the thread that has to show it.
+#[cfg(target_os = "android")]
+fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    use tauri_plugin_updraft::UpdraftMobileExt;
+
+    tauri::async_runtime::spawn_blocking(move || match app.updraft_mobile().start_session() {
+        Ok(()) => tracing::info!("Background session started"),
+        Err(error) => tracing::error!(%error, "Failed to start the background session"),
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -80,6 +97,9 @@ pub fn run() {
 
             handle.send(updraft_core::Input::Start);
             app.manage(handle);
+
+            #[cfg(target_os = "android")]
+            start_session(app.handle().clone());
 
             Ok(())
         })

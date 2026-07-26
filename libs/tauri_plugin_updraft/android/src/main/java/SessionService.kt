@@ -1,0 +1,195 @@
+package aero.updraft.mobile
+
+import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
+import android.os.PowerManager
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import app.tauri.Logger
+
+/**
+ * Keeps the flight computer running while the pilot is not looking at the app.
+ *
+ * Android freezes a process once its last activity goes away, which stops
+ * navigation. Running in the foreground with a partial wake lock keeps the
+ * process scheduled and the CPU awake for the duration of a session.
+ */
+class SessionService : Service() {
+    private var wakeLock: PowerManager.WakeLock? = null
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // A null intent means the system restarted us after the process died.
+        // Nothing carried over from the session that was running, so staying up
+        // would only hold a notification for a session that no longer exists.
+        if (intent == null) {
+            Logger.info(TAG, "Restarted without a session to resume, stopping")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        if (intent.action != ACTION_START) {
+            return START_STICKY
+        }
+
+        val failure = doStartForeground()
+        if (failure != null) {
+            reportStart(failure)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        acquireWakeLock()
+        reportStart(null)
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        releaseWakeLock()
+        super.onDestroy()
+    }
+
+    /**
+     * Promotes the service to the foreground, returning the reason it could not
+     * be promoted rather than throwing.
+     *
+     * A refused `startForeground` leaves the service alive as a plain started
+     * service instead of raising the usual ANR, so the failure has to travel
+     * back to the caller to be distinguishable from a working session.
+     */
+    private fun doStartForeground(): Exception? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    NOTIFICATION_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_LOW
+                )
+            )
+        }
+
+        val notification = buildNotification()
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            null
+        } catch (e: SecurityException) {
+            e
+        } catch (e: IllegalStateException) {
+            e
+        }
+    }
+
+    private fun buildNotification(): Notification {
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        val contentIntent = launch?.let {
+            PendingIntent.getActivity(
+                this,
+                0,
+                it,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
+
+        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle(NOTIFICATION_TITLE)
+            .setContentText(NOTIFICATION_TEXT)
+            .setSmallIcon(android.R.drawable.ic_menu_compass)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setContentIntent(contentIntent)
+            .build()
+    }
+
+    // A timeout would end up shorter than some flights, and a flight computer
+    // that stops navigating part way through one is worse than a battery hit.
+    // The bound is the session itself: the lock goes when the service does, and
+    // the ongoing notification is how the pilot sees a session still running.
+    @SuppressLint("WakelockTimeout")
+    private fun acquireWakeLock() {
+        if (wakeLock != null) {
+            return
+        }
+        val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG).apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.takeIf { it.isHeld }?.release()
+        wakeLock = null
+    }
+
+    private fun reportStart(failure: Exception?) {
+        val listener = startListener
+        startListener = null
+        // Without a listener the failure has nowhere else to go: the service
+        // was started by something other than the plugin.
+        if (failure != null && listener == null) {
+            Logger.error(TAG, "Could not start in the foreground", failure)
+        }
+        listener?.invoke(failure)
+    }
+
+    companion object {
+        private val TAG = Logger.tags("SessionService")
+
+        private const val ACTION_START = "aero.updraft.mobile.SESSION_START"
+        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_CHANNEL_ID = "session"
+        private const val NOTIFICATION_CHANNEL_NAME = "Flight session"
+        private const val NOTIFICATION_TITLE = "Updraft"
+        private const val NOTIFICATION_TEXT = "Navigating in the background"
+        private const val WAKE_LOCK_TAG = "updraft:session"
+
+        /**
+         * Reports the outcome of the pending start back to the plugin.
+         *
+         * `startForegroundService` returns before the service has had a chance
+         * to promote itself, so success or failure can only be answered once
+         * `onStartCommand` has run.
+         */
+        @Volatile
+        private var startListener: ((Exception?) -> Unit)? = null
+
+        /**
+         * Starts a session, calling [onStarted] with null once the service is
+         * in the foreground or with the reason it could not get there.
+         */
+        fun start(context: Context, onStarted: (Exception?) -> Unit) {
+            startListener = onStarted
+
+            val intent = Intent(context, SessionService::class.java).setAction(ACTION_START)
+            try {
+                ContextCompat.startForegroundService(context, intent)
+            } catch (e: IllegalStateException) {
+                startListener = null
+                onStarted(e)
+            }
+        }
+
+        fun stop(context: Context) {
+            context.stopService(Intent(context, SessionService::class.java))
+        }
+    }
+}

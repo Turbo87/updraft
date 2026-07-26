@@ -413,7 +413,7 @@ The Kotlin that keeps the process alive. No location yet: the service starts wit
 - Create: `libs/tauri_plugin_updraft/android/src/main/java/SessionService.kt`
 - Modify: `libs/tauri_plugin_updraft/android/src/main/java/UpdraftMobilePlugin.kt`, `libs/tauri_plugin_updraft/android/src/main/AndroidManifest.xml`
 
-- [ ] **Step 1: Declare exactly what this task uses**
+- [x] **Step 1: Declare exactly what this task uses**
 
 In `libs/tauri_plugin_updraft/android/src/main/AndroidManifest.xml`, above `<application>`:
 
@@ -443,7 +443,7 @@ These live in the plugin's manifest rather than the app's because the plugin own
 
 Deliberately absent: `ACCESS_BACKGROUND_LOCATION`.
 
-- [ ] **Step 2: Write the service**
+- [x] **Step 2: Write the service**
 
 `SessionService.kt` needs:
 
@@ -456,7 +456,7 @@ Deliberately absent: `ACCESS_BACKGROUND_LOCATION`.
 
 Return the failure from `doStartForeground` rather than swallowing it. The spike found a failed `startForeground` does **not** trigger the usual ANR — the service stays alive as a plain started service — so a swallowed `SecurityException` looks exactly like a working session that never produces fixes.
 
-- [ ] **Step 3: Verify on the emulator**
+- [x] **Step 3: Verify on the emulator**
 
 ```bash
 ~/Library/Android/sdk/emulator/emulator -avd spike-api34 -no-snapshot-load &
@@ -470,14 +470,14 @@ adb shell dumpsys activity services aero.updraft | grep -i 'isForeground\|foregr
 
 Expected: `isForeground=true` and a type mask containing the location bit (`0x8`).
 
-- [ ] **Step 4: Verify the failure paths**
+- [x] **Step 4: Verify the failure paths**
 
 Both are silent-degradation traps, so check them deliberately:
 
 - Revoke location permission and start a session. Expected: `SecurityException` naming `FOREGROUND_SERVICE_LOCATION`, surfaced as a typed error rather than a service that quietly is not foreground.
 - Background the app, then start a session. Expected: `ForegroundServiceStartNotAllowedException`. This is why task 5 starts the session while the activity is visible.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add libs/tauri_plugin_updraft tauri

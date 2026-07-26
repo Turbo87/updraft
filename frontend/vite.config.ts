@@ -18,6 +18,9 @@ export default defineConfig({
   build: {
     cssMinify: 'lightningcss',
   },
+  optimizeDeps: {
+    exclude: ['svelte-maplibre-gl/vite'],
+  },
   plugins: [
     UnoCSS(),
     paraglideVitePlugin({

@@ -1,5 +1,6 @@
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css';
+  import 'svelte-maplibre-gl/vite';
 
   import type { Map, StyleSpecification } from 'maplibre-gl';
   import type { Instruments } from '$lib/protocol/generated/Instruments';

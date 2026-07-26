@@ -123,6 +123,7 @@ jobs:
       - run: rustup component add clippy
       - run: pnpm install --frozen-lockfile
       - run: cargo clippy -p updraft_tauri --all-targets --all-features -- -D warnings
+      - run: cargo test -p updraft_tauri --all-features
       - run: cargo doc -p updraft_tauri --no-deps --all-features
       - run: pnpm tauri build --no-bundle
 

@@ -124,7 +124,7 @@ impl Core {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::assert_some;
+    use claims::{assert_some, assert_some_eq};
     use std::assert_matches;
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -165,7 +165,7 @@ mod tests {
         let position = assert_some!(instruments.position);
         assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
         assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
-        assert_eq!(instruments.track_degrees, Some(270.0));
+        assert_some_eq!(instruments.track_degrees, 270.0);
     }
 
     #[test]

@@ -547,7 +547,7 @@ The data path: `GPS_PROVIDER` to Kotlin to `Channel` to `Input::InternalGps` to 
 - Create: `libs/tauri_plugin_updraft/android/src/main/java/GpsSource.kt`, `libs/tauri_plugin_updraft/src/models.rs`, `tauri/src/session.rs`
 - Modify: `libs/tauri_plugin_updraft/src/mobile.rs`, `tauri/src/lib.rs`
 
-- [ ] **Step 1: Emit fixes from Kotlin**
+- [x] **Step 1: Emit fixes from Kotlin**
 
 `GpsSource.kt` requests updates from `LocationManager` with **`GPS_PROVIDER`**, not `FUSED_PROVIDER` and not Google Play Services' `FusedLocationProviderClient`.
 
@@ -563,17 +563,17 @@ Post each fix to the session channel as JSON:
 
 **Check every `has*()` before reading its value.** `Location` returns `0.0` rather than null for anything unset, so `getAltitude()`, `getBearing()`, `getSpeed()` and `getAccuracy()` each need their `hasAltitude()`, `hasBearing()`, `hasSpeed()` and `hasAccuracy()` guard, sending `null` when absent. Skip this and a stationary glider reports a confident track of due north at sea level.
 
-- [ ] **Step 2: Turn channel messages into inputs**
+- [x] **Step 2: Turn channel messages into inputs**
 
 Create `tauri/src/session.rs` holding the adapter: it builds the `Channel` whose closure deserializes a fix and calls `handle.send(Input::InternalGps(fix))` on the `DriverHandle`. Same shape as the TCP transport feeding `Input::bytes`, and for the same reason — the shell converts wire to domain, the core stays pure.
 
-- [ ] **Step 3: Start the session when the app is ready**
+- [x] **Step 3: Start the session when the app is ready**
 
 In `run()`'s `setup`, on Android only, start a session after the driver is spawned. It must be started while the activity is visible.
 
 Request `ACCESS_FINE_LOCATION` before starting and surface a denial rather than swallowing it. A session that silently fails to start is indistinguishable from a GPS with no signal, and the pilot will be looking at a map that never moves.
 
-- [ ] **Step 4: Verify end to end**
+- [x] **Step 4: Verify end to end**
 
 With a session running:
 
@@ -583,11 +583,11 @@ adb emu geo fix 6.186 50.823
 
 Expected: the ownship symbol appears at that position. Move it and confirm the symbol follows.
 
-- [ ] **Step 5: Verify fixes survive backgrounding**
+- [x] **Step 5: Verify fixes survive backgrounding**
 
 Press home, wait two minutes, confirm from logcat that fixes still arrive. Then swipe from recents and confirm the same. This is the milestone's deliverable.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add libs/tauri_plugin_updraft tauri

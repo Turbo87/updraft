@@ -1,5 +1,5 @@
 use serde::de::DeserializeOwned;
-use tauri::{AppHandle, Runtime, plugin::PluginApi};
+use tauri::{AppHandle, Runtime, ipc::Channel, plugin::PluginApi};
 
 pub fn init<R: Runtime, C: DeserializeOwned>(
     app: &AppHandle<R>,
@@ -12,7 +12,7 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
 pub struct UpdraftMobile<R: Runtime>(AppHandle<R>);
 
 impl<R: Runtime> UpdraftMobile<R> {
-    pub fn start_session(&self) -> crate::Result<()> {
+    pub fn start_session(&self, _fixes: Channel) -> crate::Result<()> {
         Ok(())
     }
 

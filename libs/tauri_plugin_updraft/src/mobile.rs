@@ -1,6 +1,7 @@
-use serde::de::DeserializeOwned;
+use serde::{Serialize, de::DeserializeOwned};
 use tauri::{
     AppHandle, Runtime,
+    ipc::Channel,
     plugin::{PluginApi, PluginHandle},
 };
 
@@ -12,13 +13,20 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     Ok(UpdraftMobile(handle))
 }
 
+#[derive(Serialize)]
+struct StartSessionArgs {
+    fixes: Channel,
+}
+
 /// Access to the session controls the Kotlin plugin implements.
 pub struct UpdraftMobile<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> UpdraftMobile<R> {
-    pub fn start_session(&self) -> crate::Result<()> {
+    /// Starts a session, which reports every [`crate::Fix`] its receiver
+    /// produces on `fixes` until the session is stopped.
+    pub fn start_session(&self, fixes: Channel) -> crate::Result<()> {
         self.0
-            .run_mobile_plugin("startSession", ())
+            .run_mobile_plugin("startSession", StartSessionArgs { fixes })
             .map_err(Into::into)
     }
 

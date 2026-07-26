@@ -5,18 +5,34 @@ import android.app.Activity
 import android.os.Build
 import app.tauri.PermissionState
 import app.tauri.annotation.Command
+import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.Permission
 import app.tauri.annotation.PermissionCallback
 import app.tauri.annotation.TauriPlugin
+import app.tauri.plugin.Channel
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.Plugin
 
 private const val LOCATION_ALIAS = "location"
 private const val NOTIFICATIONS_ALIAS = "notifications"
 
+@InvokeArg
+class StartSessionArgs {
+    lateinit var fixes: Channel
+}
+
 @TauriPlugin(
     permissions = [
-        Permission(strings = [Manifest.permission.ACCESS_FINE_LOCATION], alias = LOCATION_ALIAS),
+        // Both, because Android 12 ignores a request for the fine permission
+        // on its own. The alias is granted only when the pilot answers the one
+        // dialog with "precise": an approximate position cannot fly a glider.
+        Permission(
+            strings = [
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ],
+            alias = LOCATION_ALIAS
+        ),
         Permission(strings = [Manifest.permission.POST_NOTIFICATIONS], alias = NOTIFICATIONS_ALIAS)
     ]
 )
@@ -34,12 +50,12 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     private val application = activity.application
 
     /**
-     * Starts a foreground session, collecting the permissions it needs on the
-     * way.
+     * Starts a foreground session reporting the receiver's fixes on the
+     * caller's channel, collecting the permissions it needs on the way.
      *
-     * Resolves only once the service is actually in the foreground, so a
-     * refused promotion reaches the caller instead of leaving behind a session
-     * that looks started but can never report a fix.
+     * Resolves only once the service is in the foreground and subscribed to
+     * the receiver, so a refusal on either count reaches the caller instead of
+     * leaving behind a session that looks started but can never report a fix.
      */
     @Command
     fun startSession(invoke: Invoke) {
@@ -98,7 +114,8 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     }
 
     private fun startService(invoke: Invoke) {
-        SessionService.start(application) { failure ->
+        val fixes = invoke.parseArgs(StartSessionArgs::class.java).fixes
+        SessionService.start(application, fixes) { failure ->
             if (failure == null) {
                 invoke.resolve()
             } else {

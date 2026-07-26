@@ -8,8 +8,10 @@ mod desktop;
 mod error;
 #[cfg(mobile)]
 mod mobile;
+mod models;
 
 pub use error::{Error, Result};
+pub use models::Fix;
 
 #[cfg(desktop)]
 use desktop::UpdraftMobile;

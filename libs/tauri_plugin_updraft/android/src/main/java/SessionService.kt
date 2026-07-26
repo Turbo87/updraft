@@ -15,6 +15,7 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import app.tauri.Logger
+import app.tauri.plugin.Channel
 
 /**
  * Keeps the flight computer running while the pilot is not looking at the app.
@@ -25,6 +26,7 @@ import app.tauri.Logger
  */
 class SessionService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
+    private var gps: GpsSource? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -42,7 +44,7 @@ class SessionService : Service() {
             return START_STICKY
         }
 
-        val failure = doStartForeground()
+        val failure = doStartForeground() ?: startFixes()
         if (failure != null) {
             reportStart(failure)
             stopSelf()
@@ -55,8 +57,30 @@ class SessionService : Service() {
     }
 
     override fun onDestroy() {
+        gps?.stop()
+        gps = null
+        fixes = null
         releaseWakeLock()
         super.onDestroy()
+    }
+
+    /**
+     * Points the receiver at the channel the plugin left behind, returning the
+     * reason it could not, so a session that can never report a fix fails the
+     * call that asked for it rather than looking like a receiver with no
+     * signal.
+     */
+    private fun startFixes(): Exception? {
+        gps?.stop()
+        gps = null
+
+        val channel = fixes ?: return IllegalStateException("no channel to report fixes on")
+        val source = GpsSource(this, channel)
+        val failure = source.start()
+        if (failure == null) {
+            gps = source
+        }
+        return failure
     }
 
     /**
@@ -173,11 +197,23 @@ class SessionService : Service() {
         private var startListener: ((Exception?) -> Unit)? = null
 
         /**
-         * Starts a session, calling [onStarted] with null once the service is
-         * in the foreground or with the reason it could not get there.
+         * The channel the service reports its fixes on.
+         *
+         * A `Channel` cannot travel in an `Intent`, so the plugin leaves it
+         * here for the service to pick up as it starts.
          */
-        fun start(context: Context, onStarted: (Exception?) -> Unit) {
+        @Volatile
+        private var fixes: Channel? = null
+
+        /**
+         * Starts a session that reports every fix on [fixes], calling
+         * [onStarted] with null once the service is in the foreground and
+         * subscribed to the receiver, or with the reason it could not get
+         * there.
+         */
+        fun start(context: Context, fixes: Channel, onStarted: (Exception?) -> Unit) {
             startListener = onStarted
+            this.fixes = fixes
 
             val intent = Intent(context, SessionService::class.java).setAction(ACTION_START)
             try {

@@ -720,17 +720,17 @@ A build that fails stops the loop rather than repeating it. `WebviewWindowBuilde
 
 Take the public-API path:
 
-- [ ] **Step 1: Report activity transitions and offer the rebuild**
+- [x] **Step 1: Report activity transitions and offer the rebuild**
 
 Build the shape the spike measured. The plugin's Kotlin registers `Application.ActivityLifecycleCallbacks` and reports each stage on a `tauri::ipc::Channel`, the plugin exposes `watch_activities`, and the app turns a transition into repeated offers of the rebuild to `AppHandle::run_on_main_thread`.
 
 Trigger on `started`, never `created`. The `created` abort is the spike's own finding, and it is why the trigger is not the obvious one.
 
-- [ ] **Step 2: Bound the retry**
+- [x] **Step 2: Bound the retry**
 
 An unbounded loop offers until it succeeds and repeats a persistent build failure every time. Cancel on `destroyed` — in the closure, not only in the loop — stop on a build error, and cut patience to ten offers. See the section above for why each is load-bearing.
 
-- [ ] **Step 3: Build from the window configuration**
+- [x] **Step 3: Build from the window configuration**
 
 The scaffolding uses a bare `WebviewWindowBuilder::new`. Switch it to the configured windows so a setting added later is not silently dropped:
 
@@ -747,13 +747,13 @@ for config in &app.config().app.windows {
 
 This changes nothing visible on Android today — tao ignores window attributes there — so verify it did not regress rather than expecting an improvement.
 
-- [ ] **Step 4: Verify three destroy/relaunch cycles**
+- [x] **Step 4: Verify three destroy/relaunch cycles**
 
 Swipe from recents and relaunch three times in one process. Each time the UI must render, the map must show the ownship, and the pid must not change. The frontend re-subscribes on load and the driver replays current topics, so the map should repopulate without a gap in the fix stream.
 
 Move the mocked position between cycles. A map showing the *new* position proves the rebuilt webview is live rather than merely present, which window count alone does not.
 
-- [ ] **Step 5: Keep the hazards in the record**
+- [x] **Step 5: Keep the hazards in the record**
 
 Whatever gets refactored, preserve the reasons: the trigger stays on `onActivityStarted` or later, the offer stays a retry rather than a single dispatch, and `destroyed` stays a cancellation the offer itself honours. All three are load-bearing and none is obvious from the code.
 
@@ -763,7 +763,7 @@ The per-transition log line stays at `debug!`: six lines per foreground cycle, f
 
 [tauri#15671](https://github.com/tauri-apps/tauri/issues/15671) and [tauri#15678](https://github.com/tauri-apps/tauri/pull/15678) remain the upstream fix for the same bug. When 15678 merges, the app-level `RunEvent::Resumed` handler becomes the simpler implementation and this scaffolding can go — but there is no reason to fork the crate to get there early.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -u

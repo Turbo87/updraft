@@ -2,7 +2,10 @@ package aero.updraft.mobile
 
 import android.Manifest
 import android.app.Activity
+import android.app.Application
 import android.os.Build
+import android.os.Bundle
+import app.tauri.Logger
 import app.tauri.PermissionState
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -19,6 +22,11 @@ private const val NOTIFICATIONS_ALIAS = "notifications"
 @InvokeArg
 class StartSessionArgs {
     lateinit var fixes: Channel
+}
+
+@InvokeArg
+class WatchActivitiesArgs {
+    lateinit var activities: Channel
 }
 
 @TauriPlugin(
@@ -73,6 +81,62 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     }
 
     /**
+     * Reports every activity lifecycle transition on the caller's channel,
+     * naming the stage and the activity it belongs to.
+     *
+     * The callbacks are registered on the [Application], which outlives every
+     * activity, so a relaunch after the pilot swiped the app away still
+     * reaches the caller.
+     *
+     * The stage names are a wire contract with `tauri/src/activity.rs`, which
+     * matches on all six. Renaming one here without renaming it there costs
+     * either the window after a relaunch or the guard that keeps a rebuild from
+     * aborting the process. The stage that no longer matches falls to that
+     * file's catch-all, which warns on every transition.
+     */
+    @Command
+    fun watchActivities(invoke: Invoke) {
+        val activities = invoke.parseArgs(WatchActivitiesArgs::class.java).activities
+        application.registerActivityLifecycleCallbacks(
+            object : Application.ActivityLifecycleCallbacks {
+                override fun onActivityCreated(activity: Activity, state: Bundle?) =
+                    report("created", activity)
+
+                override fun onActivityStarted(activity: Activity) = report("started", activity)
+
+                override fun onActivityResumed(activity: Activity) = report("resumed", activity)
+
+                override fun onActivityPaused(activity: Activity) = report("paused", activity)
+
+                override fun onActivityStopped(activity: Activity) = report("stopped", activity)
+
+                override fun onActivitySaveInstanceState(activity: Activity, state: Bundle) {}
+
+                override fun onActivityDestroyed(activity: Activity) = report("destroyed", activity)
+
+                /**
+                 * Sends on the caller's thread, and must keep doing so.
+                 *
+                 * `sendObject` runs the whole way into Rust inline, so a
+                 * `destroyed` is recorded before this callback returns and
+                 * therefore before this thread can enter the next activity's
+                 * `onCreate`. `tauri/src/activity.rs` builds a window from
+                 * another thread and relies on exactly that ordering to know
+                 * it still has an activity to build for. Posting this to a
+                 * `Handler` or launching it in a coroutine compiles, passes
+                 * every test, looks normal at runtime, and aborts the process
+                 * the next time a rebuild races an activity being recreated.
+                 */
+                private fun report(stage: String, activity: Activity) {
+                    Logger.info(TAG, "Activity ${activity.javaClass.name}#${activity.hashCode()} $stage")
+                    activities.sendObject(stage)
+                }
+            }
+        )
+        invoke.resolve()
+    }
+
+    /**
      * Location is the one permission a session cannot do without: refused, there
      * are no fixes and the session would navigate on nothing.
      */
@@ -122,5 +186,9 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
                 invoke.reject(failure.toString(), "serviceStartFailed")
             }
         }
+    }
+
+    companion object {
+        private val TAG = Logger.tags("UpdraftMobilePlugin")
     }
 }

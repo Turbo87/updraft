@@ -26,6 +26,5 @@ tokio = { version = "=1.53.1", features = ["macros", "net", "rt-multi-thread", "
 [dev-dependencies]
 approx = "=0.6.0-rc2"
 claims = "=0.8.0"
-# A paused clock runs the rebuild's whole patience without waiting it out.
 tokio = { version = "=1.53.1", features = ["test-util"] }
 tracing-test = "=0.2.6"

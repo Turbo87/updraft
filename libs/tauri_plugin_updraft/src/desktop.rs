@@ -19,4 +19,8 @@ impl<R: Runtime> UpdraftMobile<R> {
     pub fn stop_session(&self) -> crate::Result<()> {
         Ok(())
     }
+
+    pub fn watch_activities(&self, _activities: Channel) -> crate::Result<()> {
+        Ok(())
+    }
 }

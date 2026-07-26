@@ -3,6 +3,7 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
+mod activity;
 mod driver;
 mod ipc;
 // A session only exists on Android. `test` keeps the adapter, and the tests
@@ -108,6 +109,8 @@ pub fn run() {
 
             #[cfg(target_os = "android")]
             start_session(app.handle().clone(), fixes);
+
+            activity::watch(app.handle().clone());
 
             Ok(())
         })

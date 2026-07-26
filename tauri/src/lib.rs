@@ -50,6 +50,7 @@ fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGu
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![ipc::subscribe])
+        .plugin(tauri_plugin_updraft::init())
         .setup(|app| {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);

@@ -347,7 +347,7 @@ An empty plugin that builds for both Android and desktop and is registered in th
 
 - Produces: `tauri_plugin_updraft::init()` and an extension trait on `AppHandle` exposing `start_session` and `stop_session`
 
-- [ ] **Step 1: Scaffold**
+- [x] **Step 1: Scaffold**
 
 ```bash
 pnpm tauri plugin new updraft-mobile --android --no-api --no-example --directory libs
@@ -357,7 +357,7 @@ pnpm tauri plugin new updraft-mobile --android --no-api --no-example --directory
 
 The scaffolded crate is named `tauri-plugin-updraft` — the conventional Tauri plugin crate name, matching `tauri-plugin-*` naming used across the Tauri ecosystem — in the directory `libs/tauri_plugin_updraft`, following the repository's convention that a `libs/*` directory name equals its package name with underscores. Set the Android package to `aero.updraft.mobile` with the plugin class `UpdraftMobilePlugin`. The Tauri plugin identifier is `updraft`, derived from the crate name with its `tauri-plugin-` prefix stripped, and `updraft:default` is the corresponding capability entry.
 
-- [ ] **Step 2: Reduce the scaffold to two commands**
+- [x] **Step 2: Reduce the scaffold to two commands**
 
 The generated plugin ships a `ping` example. Replace it with `startSession` and `stopSession`, both stubs returning `Ok` for now. Keep the generated `desktop.rs` as a no-op so the crate builds on macOS, and keep `error.rs`'s error type — task 3 gives it real variants.
 
@@ -367,17 +367,17 @@ The generated plugin ships a `ping` example. Replace it with `startSession` and 
 let handle = api.register_android_plugin("aero.updraft.mobile", "UpdraftMobilePlugin")?;
 ```
 
-- [ ] **Step 3: Register in the app**
+- [x] **Step 3: Register in the app**
 
 Add the plugin as a dependency of `updraft_tauri`, register it with `.plugin(tauri_plugin_updraft::init())`, and add `updraft:default` to `tauri/capabilities/default.json`.
 
-- [ ] **Step 4: Keep CI honest**
+- [x] **Step 4: Keep CI honest**
 
 The plugin depends on `tauri`, so the workspace job cannot build it without webkit system dependencies. In `.github/workflows/ci.yml`, add `--exclude tauri-plugin-updraft` to the three `--workspace` cargo invocations in the first job, and add `cargo test -p tauri-plugin-updraft --all-features` to the `tauri` job beside the existing `updraft_tauri` test step.
 
 Milestone 1 excluded a crate from CI and ended up with four tests that ran nowhere. The second half of this step is the part that matters.
 
-- [ ] **Step 5: Verify both targets build**
+- [x] **Step 5: Verify both targets build**
 
 ```bash
 cargo check --workspace --exclude tauri-plugin-updraft
@@ -387,7 +387,7 @@ cargo check -p tauri-plugin-updraft --target aarch64-linux-android
 
 Expected: all succeed. The last needs `NDK_HOME` set.
 
-- [ ] **Step 6: Verify the Android app assembles**
+- [x] **Step 6: Verify the Android app assembles**
 
 ```bash
 pnpm tauri android build --debug --target aarch64
@@ -395,7 +395,7 @@ pnpm tauri android build --debug --target aarch64
 
 Expected: an APK is produced. Slow the first time.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add libs/tauri_plugin_updraft Cargo.lock tauri .github

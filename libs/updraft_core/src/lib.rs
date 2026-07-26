@@ -6,6 +6,7 @@
 #[cfg(feature = "ts")]
 pub mod bindings;
 mod connection;
+mod connection_diagnostics;
 mod core;
 mod decoder;
 mod effect;

@@ -1,4 +1,5 @@
 use crate::connection::{ConnectionId, ConnectionSpec};
+use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
 use crate::effect::Effect;
 use crate::fix::Fix;
@@ -26,20 +27,26 @@ pub struct CoreConfig {
 pub struct Core {
     config: CoreConfig,
     decoders: BTreeMap<ConnectionId, Decoder>,
+    diagnostics: ConnectionDiagnostics,
     instruments: Instruments,
 }
 
 impl Core {
     pub fn new(config: CoreConfig) -> Self {
+        let mut diagnostics = ConnectionDiagnostics::default();
         let decoders = config
             .connections
             .iter()
-            .map(|(id, _)| (*id, Decoder::default()))
+            .map(|(id, spec)| {
+                diagnostics.insert(*id, spec.clone());
+                (*id, Decoder::default())
+            })
             .collect();
 
         Self {
             config,
             decoders,
+            diagnostics,
             instruments: Instruments::default(),
         }
     }
@@ -58,8 +65,14 @@ impl Core {
                 .iter()
                 .map(|(connection, spec)| Effect::open(*connection, spec.clone()))
                 .collect(),
-            Input::Bytes { connection, data } => self.decode(connection, &data),
-            Input::ConnectionChanged { .. } => Vec::new(),
+            Input::Bytes { connection, data } => {
+                self.diagnostics.bytes(connection, data.len());
+                self.decode(connection, &data)
+            }
+            Input::ConnectionChanged { connection, state } => {
+                self.diagnostics.changed(connection, state);
+                Vec::new()
+            }
             Input::Tick => Vec::new(),
             Input::InternalGps(fix) => self.apply_fix(fix),
         }
@@ -161,12 +174,16 @@ fn msl_meters(position: LatLon, ellipsoidal_meters: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::connection::ConnectionState;
     use approx::assert_abs_diff_eq;
     use claims::{assert_some, assert_some_eq};
     use std::assert_matches;
+    use tracing_test::traced_test;
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
     const LINK: ConnectionId = ConnectionId(1);
+    const TRACE_TIMESTAMP_FILTER: (&str, &str) =
+        (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", "[TIME]");
 
     fn config() -> CoreConfig {
         CoreConfig {
@@ -200,6 +217,103 @@ mod tests {
             effects,
             vec![Effect::open(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))]
         );
+    }
+
+    #[test]
+    #[traced_test]
+    fn connection_lifecycle_reports_endpoint_and_delivered_bytes() {
+        let mut core = Core::new(config());
+
+        core.apply(
+            Input::connection_changed(LINK, ConnectionState::Connecting),
+            at(0),
+        );
+        core.apply(
+            Input::connection_changed(LINK, ConnectionState::Connected),
+            at(1),
+        );
+        core.apply(Input::bytes(LINK, b"abc"), at(2));
+        core.apply(Input::bytes(LINK, b"de"), at(3));
+        core.apply(
+            Input::connection_changed(LINK, ConnectionState::Disconnected),
+            at(4),
+        );
+
+        logs_assert(|lines| {
+            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
+                insta::assert_snapshot!(lines.join("\n"));
+            });
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[traced_test]
+    fn failed_attempt_is_debug_and_counters_reset_on_reconnect() {
+        let mut core = Core::new(config());
+
+        core.apply(
+            Input::connection_changed(LINK, ConnectionState::Disconnected),
+            at(0),
+        );
+        for (millis, bytes) in [(1, b"abc".as_slice()), (4, b"de".as_slice())] {
+            core.apply(
+                Input::connection_changed(LINK, ConnectionState::Connecting),
+                at(millis),
+            );
+            core.apply(
+                Input::connection_changed(LINK, ConnectionState::Connected),
+                at(millis + 1),
+            );
+            core.apply(Input::bytes(LINK, bytes), at(millis + 2));
+            core.apply(
+                Input::connection_changed(LINK, ConnectionState::Disconnected),
+                at(millis + 3),
+            );
+        }
+
+        logs_assert(|lines| {
+            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
+                insta::assert_snapshot!(lines.join("\n"));
+            });
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[traced_test]
+    fn unknown_and_empty_bytes_produce_no_delivery_log() {
+        let mut core = Core::new(config());
+
+        core.apply(Input::bytes(ConnectionId(99), b"abc"), at(0));
+        core.apply(Input::bytes(LINK, b""), at(1));
+
+        assert!(!logs_contain("First bytes"));
+    }
+
+    #[test]
+    #[traced_test]
+    fn removed_connection_produces_no_further_diagnostics() {
+        let mut core = Core::new(config());
+
+        core.apply(
+            Input::connection_changed(LINK, ConnectionState::Connected),
+            at(0),
+        );
+        core.apply(Input::bytes(LINK, b"abc"), at(1));
+        core.diagnostics.remove(LINK);
+        core.apply(
+            Input::connection_changed(LINK, ConnectionState::Connecting),
+            at(2),
+        );
+        core.apply(Input::bytes(LINK, b"de"), at(3));
+
+        logs_assert(|lines| {
+            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
+                insta::assert_snapshot!(lines.join("\n"));
+            });
+            Ok(())
+        });
     }
 
     #[test]

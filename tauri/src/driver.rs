@@ -114,7 +114,7 @@ impl Driver {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::assert_some;
+    use claims::{assert_some, assert_some_eq};
     use tokio::time::timeout;
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -159,8 +159,8 @@ mod tests {
             .await
             .expect("onboarding topic within the timeout");
 
-        assert_eq!(
-            assert_some!(received),
+        assert_some_eq!(
+            received,
             Topic::Instruments(updraft_core::Instruments::default())
         );
     }
@@ -192,6 +192,6 @@ mod tests {
         let requested = timeout(PATIENCE, receiver.recv())
             .await
             .expect("an open request within the timeout");
-        assert_eq!(assert_some!(requested), LINK);
+        assert_some_eq!(requested, LINK);
     }
 }

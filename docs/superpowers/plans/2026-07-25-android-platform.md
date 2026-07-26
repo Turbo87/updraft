@@ -112,7 +112,7 @@ The altitude field is named for what Android actually gives: height above the WG
 
 A `Fix` carries only what `Instruments` publishes today. Accuracy, GPS timestamp and satellite count are real properties of a fix and all will be needed for arbitration, but nothing consumes them yet.
 
-- [ ] **Step 1: Add the dependencies**
+- [x] **Step 1: Add the dependencies**
 
 In `libs/updraft_core/Cargo.toml`, under `[dependencies]`:
 
@@ -122,7 +122,7 @@ updraft_geo = { path = "../updraft_geo" }
 updraft_units = { path = "../updraft_units" }
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `libs/updraft_core/src/fix.rs`:
 
@@ -207,12 +207,12 @@ Add to the test module in `libs/updraft_core/src/core.rs`:
     }
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `cargo test -p updraft_core`
 Expected: FAIL, `no variant named 'InternalGps' found for enum 'Input'`.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 Add to `Input` in `libs/updraft_core/src/input.rs`, with `use crate::fix::Fix;` in that file's imports:
 
@@ -274,12 +274,12 @@ fn msl_meters(position: LatLon, ellipsoidal_meters: f64) -> f64 {
 
 A `None` field leaves the previous value in place, matching how a partial NMEA sentence behaves. Wire `mod fix;` and `pub use fix::Fix;` into `lib.rs` in alphabetical position.
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cargo test -p updraft_core --all-features`
 Expected: PASS.
 
-- [ ] **Step 6: Pin that both position sources agree**
+- [x] **Step 6: Pin that both position sources agree**
 
 `Input::InternalGps` is a second path into the same state and nothing yet checks the two agree. Add to `libs/updraft_core/tests/scenario.rs`, reusing the existing `describe` helper rather than writing a second formatter:
 
@@ -322,7 +322,7 @@ fn gnss_fix_and_an_equivalent_sentence_agree() {
 
 Add `Fix` and `LatLon` to the file's `use updraft_core::{…}` list. `describe` rounds to quantity-appropriate precision, which is what makes comparing a parsed sentence against a floating-point fix meaningful rather than brittle.
 
-- [ ] **Step 7: Run and commit**
+- [x] **Step 7: Run and commit**
 
 Run: `cargo test -p updraft_core --all-features && cargo clippy -p updraft_core --all-targets --all-features -- -D warnings`
 Expected: PASS, clean.

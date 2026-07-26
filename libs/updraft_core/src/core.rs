@@ -1,6 +1,7 @@
 use crate::connection::{ConnectionId, ConnectionSpec};
 use crate::decoder::Decoder;
 use crate::effect::Effect;
+use crate::fix::Fix;
 use crate::input::Input;
 use crate::time::Timestamp;
 use crate::topic::{Instruments, LatLon, Topic};
@@ -60,6 +61,7 @@ impl Core {
             Input::Bytes { connection, data } => self.decode(connection, &data),
             Input::ConnectionChanged { .. } => Vec::new(),
             Input::Tick => Vec::new(),
+            Input::InternalGps(fix) => self.apply_fix(fix),
         }
     }
 
@@ -84,6 +86,27 @@ impl Core {
         let before = self.instruments;
         for message in messages {
             self.handle_message(message);
+        }
+
+        if self.instruments == before {
+            return Vec::new();
+        }
+
+        vec![Effect::emit(Topic::Instruments(self.instruments))]
+    }
+
+    fn apply_fix(&mut self, fix: Fix) -> Vec<Effect> {
+        let before = self.instruments;
+
+        self.instruments.position = Some(fix.position);
+        if let Some(ellipsoidal) = fix.altitude_ellipsoid_meters {
+            self.instruments.altitude_msl_meters = Some(msl_meters(fix.position, ellipsoidal));
+        }
+        if let Some(track) = fix.track_degrees {
+            self.instruments.track_degrees = Some(track);
+        }
+        if let Some(speed) = fix.ground_speed_meters_per_second {
+            self.instruments.ground_speed_meters_per_second = Some(speed);
         }
 
         if self.instruments == before {
@@ -120,6 +143,21 @@ impl Core {
     }
 }
 
+/// GNSS receivers report height above the WGS84 ellipsoid. The geoid differs
+/// from it by up to about 107 m, far more than any altimetry the app will do
+/// can tolerate.
+fn msl_meters(position: LatLon, ellipsoidal_meters: f64) -> f64 {
+    let at =
+        updraft_geo::LatLon::from_degrees(position.latitude_degrees, position.longitude_degrees);
+    let ellipsoidal = updraft_units::EllipsoidAltitude::new(updraft_units::Length::from_meters(
+        ellipsoidal_meters,
+    ));
+
+    updraft_egm96::ellipsoidal_to_msl(at, ellipsoidal)
+        .into_inner()
+        .as_meters()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,6 +176,18 @@ mod tests {
 
     fn at(millis: u64) -> Timestamp {
         Timestamp::from_millis(millis)
+    }
+
+    fn fix(latitude_degrees: f64, longitude_degrees: f64) -> Fix {
+        Fix {
+            position: LatLon {
+                latitude_degrees,
+                longitude_degrees,
+            },
+            altitude_ellipsoid_meters: Some(247.0),
+            track_degrees: Some(90.0),
+            ground_speed_meters_per_second: Some(30.0),
+        }
     }
 
     #[test]
@@ -213,5 +263,54 @@ mod tests {
         );
 
         assert_eq!(effects, vec![]);
+    }
+
+    #[test]
+    fn internal_gps_emits_instruments_immediately() {
+        let mut core = Core::new(config());
+
+        let effects = core.apply(Input::InternalGps(fix(50.823, 6.186)), at(100));
+
+        assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+        let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
+            unreachable!()
+        };
+        let position = assert_some!(instruments.position);
+        assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-9);
+        assert_some_eq!(instruments.track_degrees, 90.0);
+    }
+
+    #[test]
+    fn internal_gps_altitude_is_converted_to_msl() {
+        let mut core = Core::new(config());
+
+        core.apply(Input::InternalGps(fix(50.823, 6.186)), at(100));
+
+        let topics = core.topics();
+        let [Topic::Instruments(instruments)] = topics.as_slice() else {
+            unreachable!()
+        };
+        // The geoid sits 46.54 m above the ellipsoid at this position, so the
+        // 247 m the fix carries lands here. Pinned to the centimetre: a change
+        // in what the pilot reads as altitude is a change worth seeing.
+        assert_abs_diff_eq!(
+            assert_some!(instruments.altitude_msl_meters),
+            200.46,
+            epsilon = 0.01
+        );
+    }
+
+    #[test]
+    fn repeated_identical_fixes_emit_only_once() {
+        let mut core = Core::new(config());
+        let mut emissions = 0;
+
+        for _ in 0..5 {
+            emissions += core
+                .apply(Input::InternalGps(fix(50.823, 6.186)), at(100))
+                .len();
+        }
+
+        assert_eq!(emissions, 1, "only the first fix changed any value");
     }
 }

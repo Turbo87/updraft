@@ -4619,7 +4619,10 @@ dependencies = [
  "serde",
  "tempfile",
  "ts-rs",
+ "updraft_egm96",
+ "updraft_geo",
  "updraft_nmea",
+ "updraft_units",
 ]
 
 [[package]]

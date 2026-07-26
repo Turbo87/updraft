@@ -1,4 +1,5 @@
 use crate::connection::{ConnectionId, ConnectionState};
+use crate::fix::Fix;
 
 /// Anything that may change core state.
 ///
@@ -23,6 +24,10 @@ pub enum Input {
         connection: ConnectionId,
         state: ConnectionState,
     },
+    /// A fix from the device's own GNSS receiver rather than a connected
+    /// instrument. Which source a position came from is what later lets
+    /// them be ranked against each other.
+    InternalGps(Fix),
 }
 
 impl Input {

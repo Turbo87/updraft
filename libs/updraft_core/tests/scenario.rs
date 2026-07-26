@@ -1,5 +1,5 @@
 use updraft_core::{
-    ConnectionId, ConnectionSpec, Core, CoreConfig, Effect, Input, Timestamp, Topic,
+    ConnectionId, ConnectionSpec, Core, CoreConfig, Effect, Fix, Input, LatLon, Timestamp, Topic,
 };
 
 const LINK: ConnectionId = ConnectionId(1);
@@ -83,4 +83,39 @@ fn sentences_the_core_ignores_produce_no_effects() {
         replay(FIXTURE),
         "the ignored sentences changed the effect stream"
     );
+}
+
+/// A GNSS fix and the equivalent NMEA sentence must leave the core in the
+/// same state, or the two position sources disagree about what the aircraft
+/// is doing.
+#[test]
+fn gnss_fix_and_equivalent_sentence_agree() {
+    let mut from_sentence = Core::new(CoreConfig {
+        connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
+    });
+    let effects = from_sentence.apply(
+        Input::bytes(
+            LINK,
+            b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n".as_slice(),
+        ),
+        Timestamp::from_millis(0),
+    );
+
+    let mut from_fix = Core::new(CoreConfig::default());
+    let equivalent = from_fix.apply(
+        Input::InternalGps(Fix {
+            position: LatLon {
+                latitude_degrees: 50.823,
+                longitude_degrees: 6.186,
+            },
+            // RMC carries no altitude, so neither may this fix.
+            altitude_ellipsoid_meters: None,
+            track_degrees: Some(270.0),
+            ground_speed_meters_per_second: Some(45.0 * 1852.0 / 3600.0),
+        }),
+        Timestamp::from_millis(0),
+    );
+
+    let rendered = |effects: &[Effect]| effects.iter().map(describe).collect::<Vec<_>>();
+    assert_eq!(rendered(&effects), rendered(&equivalent));
 }

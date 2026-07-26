@@ -494,7 +494,7 @@ Without this the previous task's service dies two seconds after the user swipes 
 
 - Modify: `tauri/src/lib.rs`
 
-- [ ] **Step 1: Handle `ExitRequested`**
+- [x] **Step 1: Handle `ExitRequested`**
 
 `run()` currently ends with `.run(tauri::generate_context!())`. Change it to build, then run with an event handler:
 
@@ -511,7 +511,7 @@ Without this the previous task's service dies two seconds after the user swipes 
         });
 ```
 
-- [ ] **Step 2: Verify the process survives a recents swipe**
+- [x] **Step 2: Verify the process survives a recents swipe**
 
 Start a session, note `adb shell pidof aero.updraft`, swipe the app from recents, then re-check both the pid and:
 
@@ -521,7 +521,7 @@ adb shell dumpsys activity services aero.updraft | grep -i isForeground
 
 Expected: unchanged pid, still foreground. Before this task the process would be gone.
 
-- [ ] **Step 3: Verify the other destruction path**
+- [x] **Step 3: Verify the other destruction path**
 
 ```bash
 adb shell settings put global always_finish_activities 1
@@ -529,7 +529,7 @@ adb shell settings put global always_finish_activities 1
 
 Repeat step 2, then set it back to `0`. Both paths destroy the activity and both must now leave the process alive.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tauri

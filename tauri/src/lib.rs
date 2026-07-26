@@ -103,6 +103,18 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| match event {
+            #[cfg(target_os = "android")]
+            tauri::RunEvent::ExitRequested {
+                code: None, api, ..
+            } => {
+                // tao's Android event loop calls `std::process::exit` when the
+                // last window closes, which kills the foreground service with
+                // it. A session has to outlive the activity that started it.
+                api.prevent_exit();
+            }
+            _ => {}
+        });
 }

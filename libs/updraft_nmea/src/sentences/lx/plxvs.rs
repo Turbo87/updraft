@@ -77,8 +77,8 @@ mod tests {
 
     #[test]
     fn maps_mode_values() {
-        assert_eq!(PlxvsMode::from_field(b"0"), Some(PlxvsMode::Vario));
-        assert_eq!(PlxvsMode::from_field(b"1"), Some(PlxvsMode::SpeedCommand));
-        assert_eq!(PlxvsMode::from_field(b"5"), Some(PlxvsMode::Other(5)));
+        assert_some_eq!(PlxvsMode::from_field(b"0"), PlxvsMode::Vario);
+        assert_some_eq!(PlxvsMode::from_field(b"1"), PlxvsMode::SpeedCommand);
+        assert_some_eq!(PlxvsMode::from_field(b"5"), PlxvsMode::Other(5));
     }
 }

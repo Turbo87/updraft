@@ -276,16 +276,16 @@ mod tests {
 
     #[test]
     fn maps_id_types_and_sources() {
-        assert_eq!(FlarmIdType::from_field(b"0"), Some(FlarmIdType::Random));
-        assert_eq!(FlarmIdType::from_field(b"1"), Some(FlarmIdType::Icao));
-        assert_eq!(FlarmIdType::from_field(b"2"), Some(FlarmIdType::Flarm));
-        assert_eq!(FlarmIdType::from_field(b"3"), Some(FlarmIdType::Other(3)));
+        assert_some_eq!(FlarmIdType::from_field(b"0"), FlarmIdType::Random);
+        assert_some_eq!(FlarmIdType::from_field(b"1"), FlarmIdType::Icao);
+        assert_some_eq!(FlarmIdType::from_field(b"2"), FlarmIdType::Flarm);
+        assert_some_eq!(FlarmIdType::from_field(b"3"), FlarmIdType::Other(3));
 
-        assert_eq!(FlarmSource::from_field(b"0"), Some(FlarmSource::Flarm));
-        assert_eq!(FlarmSource::from_field(b"1"), Some(FlarmSource::AdsB));
-        assert_eq!(FlarmSource::from_field(b"3"), Some(FlarmSource::AdsR));
-        assert_eq!(FlarmSource::from_field(b"4"), Some(FlarmSource::TisB));
-        assert_eq!(FlarmSource::from_field(b"6"), Some(FlarmSource::ModeS));
-        assert_eq!(FlarmSource::from_field(b"2"), Some(FlarmSource::Other(2)));
+        assert_some_eq!(FlarmSource::from_field(b"0"), FlarmSource::Flarm);
+        assert_some_eq!(FlarmSource::from_field(b"1"), FlarmSource::AdsB);
+        assert_some_eq!(FlarmSource::from_field(b"3"), FlarmSource::AdsR);
+        assert_some_eq!(FlarmSource::from_field(b"4"), FlarmSource::TisB);
+        assert_some_eq!(FlarmSource::from_field(b"6"), FlarmSource::ModeS);
+        assert_some_eq!(FlarmSource::from_field(b"2"), FlarmSource::Other(2));
     }
 }

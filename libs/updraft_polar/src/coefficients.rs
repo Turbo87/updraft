@@ -94,6 +94,7 @@ impl PolarCoefficients {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+    use claims::assert_none;
 
     fn kmh(value: f64) -> Speed {
         Speed::from_kilometers_per_hour(value)
@@ -136,11 +137,11 @@ mod tests {
 
     #[test]
     fn rejects_invalid_polars() {
-        assert!(PolarCoefficients::new(-1e-3, -0.2, 3.).is_none());
-        assert!(PolarCoefficients::new(1e-3, 0.2, 3.).is_none());
-        assert!(PolarCoefficients::new(f64::INFINITY, -0.2, 3.).is_none());
-        assert!(PolarCoefficients::new(1e-3, f64::NEG_INFINITY, 3.).is_none());
-        assert!(PolarCoefficients::new(1e-3, -0.2, f64::NAN).is_none());
+        assert_none!(PolarCoefficients::new(-1e-3, -0.2, 3.));
+        assert_none!(PolarCoefficients::new(1e-3, 0.2, 3.));
+        assert_none!(PolarCoefficients::new(f64::INFINITY, -0.2, 3.));
+        assert_none!(PolarCoefficients::new(1e-3, f64::NEG_INFINITY, 3.));
+        assert_none!(PolarCoefficients::new(1e-3, -0.2, f64::NAN));
 
         // Duplicate speeds cannot be fitted.
         let duplicate = [
@@ -148,7 +149,7 @@ mod tests {
             (kmh(100.), mps(1.45)),
             (kmh(185.), mps(2.5)),
         ];
-        assert!(PolarCoefficients::from_points(duplicate).is_none());
+        assert_none!(PolarCoefficients::from_points(duplicate));
 
         // Sink flattening out at high speed curves the wrong way (a < 0).
         let concave = [
@@ -156,7 +157,7 @@ mod tests {
             (kmh(140.), mps(1.5)),
             (kmh(180.), mps(1.8)),
         ];
-        assert!(PolarCoefficients::from_points(concave).is_none());
+        assert_none!(PolarCoefficients::from_points(concave));
 
         // Published polar files quote sink as negative vertical speed.
         // Passing those values unnegated must not produce a "climbing"
@@ -166,7 +167,7 @@ mod tests {
             (kmh(155.), mps(-1.45)),
             (kmh(185.), mps(-2.5)),
         ];
-        assert!(PolarCoefficients::from_points(unnegated).is_none());
+        assert_none!(PolarCoefficients::from_points(unnegated));
     }
 
     #[test]

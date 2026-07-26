@@ -167,6 +167,7 @@ fn span_degrees(west: f64, east: f64) -> f64 {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+    use claims::assert_none;
 
     fn degrees(south: f64, north: f64, west: f64, east: f64) -> BoundingBox {
         BoundingBox::new(
@@ -191,7 +192,7 @@ mod tests {
 
     #[test]
     fn from_points_empty_and_single() {
-        assert_eq!(BoundingBox::from_points([]), None);
+        assert_none!(BoundingBox::from_points([]));
 
         let bbox = BoundingBox::from_points([LatLon::from_degrees(47., 8.)]).unwrap();
         assert_abs_diff_eq!(bbox, degrees(47., 47., 8., 8.));
@@ -209,10 +210,10 @@ mod tests {
         let nan_longitude = LatLon::from_degrees(47., f64::NAN);
         let infinite = LatLon::from_degrees(f64::INFINITY, 8.);
 
-        assert_eq!(BoundingBox::from_points([nan_latitude, good]), None);
-        assert_eq!(BoundingBox::from_points([good, nan_latitude]), None);
-        assert_eq!(BoundingBox::from_points([good, nan_longitude]), None);
-        assert_eq!(BoundingBox::from_points([infinite]), None);
+        assert_none!(BoundingBox::from_points([nan_latitude, good]));
+        assert_none!(BoundingBox::from_points([good, nan_latitude]));
+        assert_none!(BoundingBox::from_points([good, nan_longitude]));
+        assert_none!(BoundingBox::from_points([infinite]));
     }
 
     #[test]

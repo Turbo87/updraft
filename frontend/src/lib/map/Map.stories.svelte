@@ -1,23 +1,20 @@
 <script module lang="ts">
   import type { ComponentProps } from 'svelte';
-  import type { GnssData } from '$lib/protocol/generated/GnssData';
+  import type { Instruments } from '$lib/protocol/generated/Instruments';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
   import Map from './Map.svelte';
 
-  const gnss = {
+  const instruments = {
     position: {
-      status: 'current',
-      value: {
-        latitudeDegrees: 50.823,
-        longitudeDegrees: 6.186,
-      },
+      latitudeDegrees: 50.823,
+      longitudeDegrees: 6.186,
     },
-    altitudeMeters: { status: 'current', value: 190 },
-    trackDegrees: { status: 'current', value: 45 },
-    groundSpeedMetersPerSecond: { status: 'current', value: 30 },
-  } satisfies GnssData;
+    altitudeMslMeters: 190,
+    trackDegrees: 45,
+    groundSpeedMetersPerSecond: 30,
+  } satisfies Instruments;
 
   const { Story } = defineMeta({
     title: 'Map/Map',
@@ -37,17 +34,17 @@
 <Story
   name="No position"
   args={{
-    gnss: {
-      position: { status: 'unavailable' },
-      altitudeMeters: { status: 'unavailable' },
-      trackDegrees: { status: 'unavailable' },
-      groundSpeedMetersPerSecond: { status: 'unavailable' },
+    instruments: {
+      position: null,
+      altitudeMslMeters: null,
+      trackDegrees: null,
+      groundSpeedMetersPerSecond: null,
     },
   }}
   {template}
 />
-<Story name="Position" args={{ gnss }} {template} />
-<Story name="Test mode" args={{ gnss, testMode: true }} {template} />
+<Story name="Position" args={{ instruments }} {template} />
+<Story name="Test mode" args={{ instruments, testMode: true }} {template} />
 
 <style>
   .map-story {

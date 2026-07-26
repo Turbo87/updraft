@@ -1,0 +1,16 @@
+---
+source: libs/updraft_core/src/topic.rs
+expression: topic
+---
+{
+  "topic": "instruments",
+  "value": {
+    "position": {
+      "latitudeDegrees": 50.823,
+      "longitudeDegrees": 6.186
+    },
+    "trackDegrees": 270.0,
+    "groundSpeedMetersPerSecond": 45.0,
+    "altitudeMslMeters": null
+  }
+}

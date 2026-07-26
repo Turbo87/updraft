@@ -1,0 +1,126 @@
+use crate::driver::DriverHandle;
+use std::time::Duration;
+use tokio::io::AsyncReadExt as _;
+use tokio::net::TcpStream;
+use updraft_core::{ConnectionId, ConnectionState, Input};
+
+const INITIAL_BACKOFF: Duration = Duration::from_millis(250);
+const MAX_BACKOFF: Duration = Duration::from_secs(10);
+const READ_BUFFER_BYTES: usize = 4_096;
+
+/// Maintains a TCP link until the process ends.
+///
+/// The core asked for this link to exist, so reconnection and backoff are
+/// this task's business, not the core's. The core only learns the current
+/// state through [`Input::ConnectionChanged`].
+pub fn run(connection: ConnectionId, host: String, port: u16, handle: DriverHandle) {
+    tokio::spawn(async move {
+        let mut backoff = INITIAL_BACKOFF;
+
+        loop {
+            handle.send(Input::connection_changed(
+                connection,
+                ConnectionState::Connecting,
+            ));
+
+            match TcpStream::connect((host.as_str(), port)).await {
+                Ok(stream) => {
+                    handle.send(Input::connection_changed(
+                        connection,
+                        ConnectionState::Connected,
+                    ));
+                    // Reset only once the link has actually carried data. A
+                    // peer that accepts and immediately drops would otherwise
+                    // retry at the floor forever.
+                    if pump(connection, stream, &handle).await {
+                        backoff = INITIAL_BACKOFF;
+                    }
+                }
+                Err(error) => {
+                    tracing::warn!(%host, port, %error, "TCP connect failed");
+                }
+            }
+
+            handle.send(Input::connection_changed(
+                connection,
+                ConnectionState::Disconnected,
+            ));
+
+            tokio::time::sleep(backoff).await;
+            backoff = (backoff * 2).min(MAX_BACKOFF);
+        }
+    });
+}
+
+/// Reads until the link closes or errors. Returns whether any bytes
+/// arrived, which is what tells the caller the connection was real.
+async fn pump(connection: ConnectionId, mut stream: TcpStream, handle: &DriverHandle) -> bool {
+    let mut buffer = vec![0_u8; READ_BUFFER_BYTES];
+    let mut received = false;
+
+    loop {
+        match stream.read(&mut buffer).await {
+            Ok(0) => return received,
+            Ok(read) => {
+                received = true;
+                handle.send(Input::bytes(connection, &buffer[..read]));
+            }
+            Err(error) => {
+                tracing::warn!(%error, "TCP read failed");
+                return received;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::driver::Driver;
+    use claims::assert_some;
+    use tokio::io::AsyncWriteExt as _;
+    use tokio::net::TcpListener;
+    use tokio::sync::mpsc;
+    use tokio::time::timeout;
+    use updraft_core::{ConnectionSpec, CoreConfig, Topic};
+
+    const PATIENCE: Duration = Duration::from_secs(5);
+
+    #[tokio::test]
+    async fn bytes_from_a_listening_peer_reach_the_core() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
+        let port = listener.local_addr().expect("has an address").port();
+        let connection = ConnectionId(1);
+
+        let handle = Driver::spawn(
+            CoreConfig {
+                connections: vec![(connection, ConnectionSpec::tcp("127.0.0.1", port))],
+            },
+            Box::new(|_, _, _| {}),
+            Duration::from_millis(100),
+        );
+
+        let (sender, mut topics) = mpsc::unbounded_channel();
+        handle.subscribe(Box::new(move |topic: &Topic| {
+            sender.send(topic.clone()).is_ok()
+        }));
+
+        run(connection, "127.0.0.1".to_owned(), port, handle.clone());
+
+        let (mut stream, _) = listener.accept().await.expect("accepts");
+        stream
+            .write_all(b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n")
+            .await
+            .expect("writes");
+
+        loop {
+            let received = timeout(PATIENCE, topics.recv())
+                .await
+                .expect("a topic within the timeout");
+            let Topic::Instruments(instruments) = assert_some!(received);
+            if instruments.position.is_some() {
+                return;
+            }
+        }
+    }
+}

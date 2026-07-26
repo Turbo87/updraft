@@ -8,8 +8,19 @@ license = "MIT OR Apache-2.0"
 workspace = true
 
 [dependencies]
-updraft_geo = { path = "../updraft_geo" }
-updraft_units = { path = "../updraft_units" }
+serde = { version = "=1.0.229", features = ["derive"] }
+ts-rs = { version = "=12.0.1", optional = true }
+updraft_nmea = { path = "../updraft_nmea" }
+
+[features]
+ts = ["dep:ts-rs"]
 
 [dev-dependencies]
+approx = "=0.6.0-rc2"
 claims = "=0.8.0"
+insta = { version = "=1.48.0", features = ["json"] }
+tempfile = "=3.27.0"
+
+[[example]]
+name = "generate_protocol_bindings"
+required-features = ["ts"]

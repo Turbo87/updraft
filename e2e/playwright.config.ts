@@ -1,7 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 const PORT = 4450;
-const BASE_URL = `http://127.0.0.1:${PORT}`;
+const HOST = '127.0.0.1';
+const BASE_URL = `http://${HOST}:${PORT}`;
 
 export default defineConfig({
   testDir: './tests',
@@ -11,11 +12,13 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: `cargo run -p updraft_server -- --port ${PORT} --simulation --static-dir frontend/build`,
+    // `--host` is required: vite preview otherwise binds ::1 only, which the
+    // IPv4 `url` below can never reach.
+    command: `pnpm --filter @updraft/frontend preview --port ${PORT} --strictPort --host ${HOST}`,
     cwd: '..',
     gracefulShutdown: { signal: 'SIGINT', timeout: 5_000 },
     reuseExistingServer: false,
     timeout: 120_000,
-    url: `${BASE_URL}/api/health`,
+    url: BASE_URL,
   },
 });

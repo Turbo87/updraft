@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["libs/*", "server", "tauri"]
+members = ["libs/*", "tauri"]
 
 [workspace.lints.rust]
 future_incompatible = "warn"

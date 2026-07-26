@@ -61,7 +61,7 @@ mod tests {
         let plxv0 = Plxv0::parse(fields);
         assert_some_eq!(plxv0.setting, "POLAR".into());
         assert_some_eq!(plxv0.direction, Plxv0Direction::Write);
-        assert_eq!(plxv0.values.first(), Some(&"1.780".into()));
+        assert_some_eq!(plxv0.values.first(), &"1.780".into());
         assert_eq!(plxv0.values.len(), 11);
     }
 

@@ -187,6 +187,7 @@ impl GlidePolar {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+    use claims::assert_none;
 
     fn kmh(value: f64) -> Speed {
         Speed::from_kilometers_per_hour(value)
@@ -220,9 +221,12 @@ mod tests {
     #[test]
     fn rejects_invalid_reference_mass() {
         let coefficients = ls8().ideal_coefficients();
-        assert!(GlidePolar::new(coefficients, Mass::ZERO).is_none());
-        assert!(GlidePolar::new(coefficients, Mass::from_kilograms(-1.)).is_none());
-        assert!(GlidePolar::new(coefficients, Mass::from_kilograms(f64::NAN)).is_none());
+        assert_none!(GlidePolar::new(coefficients, Mass::ZERO));
+        assert_none!(GlidePolar::new(coefficients, Mass::from_kilograms(-1.)));
+        assert_none!(GlidePolar::new(
+            coefficients,
+            Mass::from_kilograms(f64::NAN)
+        ));
     }
 
     #[test]

@@ -17,6 +17,24 @@ import androidx.core.content.ContextCompat
 import app.tauri.Logger
 import app.tauri.plugin.Channel
 
+internal fun foregroundServiceTypes(location: Boolean, spp: Boolean): Int =
+    (if (location) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0) or
+        (if (spp) ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0)
+
+internal class ForegroundServiceTypeState {
+    var current = 0
+        private set
+
+    fun activate(location: Boolean, spp: Boolean): Int {
+        current = current or foregroundServiceTypes(location, spp)
+        return current
+    }
+
+    fun reset() {
+        current = 0
+    }
+}
+
 /**
  * Keeps the flight computer running while the pilot is not looking at the app.
  *
@@ -27,6 +45,7 @@ import app.tauri.plugin.Channel
 class SessionService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var gps: GpsSource? = null
+    private val foregroundServiceTypeState = ForegroundServiceTypeState()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -44,7 +63,11 @@ class SessionService : Service() {
             return START_STICKY
         }
 
-        val failure = doStartForeground() ?: startFixes()
+        val location = intent.getBooleanExtra(EXTRA_LOCATION, false)
+        val spp = intent.getBooleanExtra(EXTRA_SPP, false)
+        val foregroundServiceTypes = foregroundServiceTypeState.activate(location, spp)
+
+        val failure = doStartForeground(foregroundServiceTypes) ?: startFixes(location)
         if (failure != null) {
             reportStart(failure)
             stopSelf()
@@ -60,6 +83,7 @@ class SessionService : Service() {
         gps?.stop()
         gps = null
         fixes = null
+        foregroundServiceTypeState.reset()
         releaseWakeLock()
         super.onDestroy()
     }
@@ -70,7 +94,11 @@ class SessionService : Service() {
      * call that asked for it rather than looking like a receiver with no
      * signal.
      */
-    private fun startFixes(): Exception? {
+    private fun startFixes(location: Boolean): Exception? {
+        if (!location) {
+            return null
+        }
+
         gps?.stop()
         gps = null
 
@@ -91,7 +119,7 @@ class SessionService : Service() {
      * service instead of raising the usual ANR, so the failure has to travel
      * back to the caller to be distinguishable from a working session.
      */
-    private fun doStartForeground(): Exception? {
+    private fun doStartForeground(types: Int): Exception? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(
@@ -109,7 +137,7 @@ class SessionService : Service() {
                 startForeground(
                     NOTIFICATION_ID,
                     notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    types
                 )
             } else {
                 startForeground(NOTIFICATION_ID, notification)
@@ -179,6 +207,8 @@ class SessionService : Service() {
         private val TAG = Logger.tags("SessionService")
 
         private const val ACTION_START = "aero.updraft.mobile.SESSION_START"
+        private const val EXTRA_LOCATION = "location"
+        private const val EXTRA_SPP = "spp"
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "session"
         private const val NOTIFICATION_CHANNEL_NAME = "Flight session"
@@ -207,15 +237,24 @@ class SessionService : Service() {
 
         /**
          * Starts a session that reports every fix on [fixes], calling
-         * [onStarted] with null once the service is in the foreground and
-         * subscribed to the receiver, or with the reason it could not get
+         * [onStarted] with null once the service is in the foreground and its
+         * permitted sources have started, or with the reason it could not get
          * there.
          */
-        fun start(context: Context, fixes: Channel, onStarted: (Exception?) -> Unit) {
+        fun start(
+            context: Context,
+            fixes: Channel,
+            location: Boolean,
+            spp: Boolean,
+            onStarted: (Exception?) -> Unit
+        ) {
             startListener = onStarted
             this.fixes = fixes
 
-            val intent = Intent(context, SessionService::class.java).setAction(ACTION_START)
+            val intent = Intent(context, SessionService::class.java)
+                .setAction(ACTION_START)
+                .putExtra(EXTRA_LOCATION, location)
+                .putExtra(EXTRA_SPP, spp)
             try {
                 ContextCompat.startForegroundService(context, intent)
             } catch (e: IllegalStateException) {

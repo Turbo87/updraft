@@ -15,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "=2.6.3", features = [] }
 
 [dependencies]
-base64 = "=0.22.1"
+base64 = "=0.23.0"
 tauri = { version = "=2.11.5", features = [] }
 tauri-plugin-updraft = { path = "../libs/tauri_plugin_updraft" }
 tracing = "=0.1.44"

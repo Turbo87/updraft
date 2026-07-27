@@ -15,7 +15,7 @@ val tauriProperties = Properties().apply {
 }
 
 android {
-    compileSdk = 36
+    compileSdk = 37
     namespace = "aero.updraft"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"

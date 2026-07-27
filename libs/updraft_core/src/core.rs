@@ -182,6 +182,7 @@ mod tests {
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
     const LINK: ConnectionId = ConnectionId(1);
+    const SPP_LINK: ConnectionId = ConnectionId(2);
     const TRACE_TIMESTAMP_FILTER: (&str, &str) =
         (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", "[TIME]");
 
@@ -209,14 +210,34 @@ mod tests {
 
     #[test]
     fn start_opens_every_configured_connection() {
-        let mut core = Core::new(config());
+        let tcp = ConnectionSpec::tcp("127.0.0.1", 4353);
+        let spp = ConnectionSpec::bluetooth_spp("00:00:00:00:00:00");
+        let mut core = Core::new(CoreConfig {
+            connections: vec![(LINK, tcp.clone()), (SPP_LINK, spp.clone())],
+        });
 
         let effects = core.apply(Input::Start, at(0));
 
         assert_eq!(
             effects,
-            vec![Effect::open(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))]
+            vec![Effect::open(LINK, tcp), Effect::open(SPP_LINK, spp)]
         );
+    }
+
+    #[test]
+    #[traced_test]
+    fn spp_lifecycle_reports_the_mac_address() {
+        let mut core = Core::new(CoreConfig {
+            connections: vec![(SPP_LINK, ConnectionSpec::bluetooth_spp("00:00:00:00:00:00"))],
+        });
+
+        core.apply(
+            Input::connection_changed(SPP_LINK, ConnectionState::Connecting),
+            at(0),
+        );
+
+        assert!(logs_contain("ConnectionId(2)"));
+        assert!(logs_contain("00:00:00:00:00:00"));
     }
 
     #[test]

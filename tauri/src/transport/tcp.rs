@@ -32,12 +32,12 @@ pub fn run(connection: ConnectionId, host: String, port: u16, handle: DriverHand
                     // Reset only once the link has actually carried data. A
                     // peer that accepts and immediately drops would otherwise
                     // retry at the floor forever.
-                    if pump(connection, stream, &handle).await {
+                    if pump(connection, &host, port, stream, &handle).await {
                         backoff = INITIAL_BACKOFF;
                     }
                 }
                 Err(error) => {
-                    tracing::warn!(%host, port, %error, "TCP connect failed");
+                    tracing::warn!(?connection, %host, port, %error, "TCP connect failed");
                 }
             }
 
@@ -54,7 +54,13 @@ pub fn run(connection: ConnectionId, host: String, port: u16, handle: DriverHand
 
 /// Reads until the link closes or errors. Returns whether any bytes
 /// arrived, which is what tells the caller the connection was real.
-async fn pump(connection: ConnectionId, mut stream: TcpStream, handle: &DriverHandle) -> bool {
+async fn pump(
+    connection: ConnectionId,
+    host: &str,
+    port: u16,
+    mut stream: TcpStream,
+    handle: &DriverHandle,
+) -> bool {
     let mut buffer = vec![0_u8; READ_BUFFER_BYTES];
     let mut received = false;
 
@@ -66,7 +72,7 @@ async fn pump(connection: ConnectionId, mut stream: TcpStream, handle: &DriverHa
                 handle.send(Input::bytes(connection, &buffer[..read]));
             }
             Err(error) => {
-                tracing::warn!(%error, "TCP read failed");
+                tracing::warn!(?connection, %host, port, %error, "TCP read failed");
                 return received;
             }
         }
@@ -81,10 +87,101 @@ mod tests {
     use tokio::io::AsyncWriteExt as _;
     use tokio::net::TcpListener;
     use tokio::sync::mpsc;
-    use tokio::time::timeout;
+    use tokio::time::{sleep, timeout};
+    use tracing_test::traced_test;
     use updraft_core::{ConnectionSpec, CoreConfig, Topic};
 
     const PATIENCE: Duration = Duration::from_secs(5);
+
+    fn driver() -> DriverHandle {
+        Driver::spawn(
+            CoreConfig::default(),
+            Box::new(|_, _, _| {}),
+            Duration::from_millis(100),
+        )
+    }
+
+    fn assert_warning_context(
+        line: &str,
+        connection: ConnectionId,
+        port: u16,
+    ) -> Result<(), String> {
+        let missing: Vec<_> = [
+            format!(" connection={connection:?}"),
+            " host=127.0.0.1".to_owned(),
+            format!(" port={port}"),
+            " error=".to_owned(),
+        ]
+        .into_iter()
+        .filter(|field| !line.contains(field))
+        .collect();
+
+        if missing.is_empty() {
+            Ok(())
+        } else {
+            Err(format!("warning lacks {missing:?}: {line:?}"))
+        }
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn failed_connect_logs_connection_endpoint_and_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
+        let port = listener.local_addr().expect("has an address").port();
+        drop(listener);
+        let connection = ConnectionId(1);
+
+        run(connection, "127.0.0.1".to_owned(), port, driver());
+
+        timeout(PATIENCE, async {
+            while !logs_contain("TCP connect failed") {
+                sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("a connection failure warning within the timeout");
+
+        logs_assert(|lines| {
+            let Some(line) = lines
+                .iter()
+                .find(|line| line.contains("TCP connect failed"))
+            else {
+                return Err("missing connection failure warning".to_owned());
+            };
+            assert_warning_context(line, connection, port)
+        });
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn failed_read_logs_connection_endpoint_and_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
+        let port = listener.local_addr().expect("has an address").port();
+        let connection = ConnectionId(1);
+
+        let (client, accepted) =
+            tokio::join!(TcpStream::connect(("127.0.0.1", port)), listener.accept());
+        let client = client.expect("connects");
+        let stream = accepted.expect("accepts").0;
+
+        stream.set_zero_linger().expect("sets zero linger");
+        drop(stream);
+
+        let handle = driver();
+        timeout(
+            PATIENCE,
+            pump(connection, "127.0.0.1", port, client, &handle),
+        )
+        .await
+        .expect("a read failure within the timeout");
+
+        logs_assert(|lines| {
+            let Some(line) = lines.iter().find(|line| line.contains("TCP read failed")) else {
+                return Err("missing read failure warning".to_owned());
+            };
+            assert_warning_context(line, connection, port)
+        });
+    }
 
     #[tokio::test]
     async fn bytes_from_a_listening_peer_reach_the_core() {

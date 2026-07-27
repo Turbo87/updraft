@@ -102,11 +102,14 @@ pub fn run() {
             // runtime for the call rather than making the driver depend on
             // Tauri to spawn itself.
             let handle = {
+                let app_handle = app.handle().clone();
                 let runtime = tauri::async_runtime::handle();
                 let _guard = runtime.inner().enter();
                 driver::Driver::spawn(
                     config,
-                    Box::new(transport::open),
+                    Box::new(move |connection, spec, handle| {
+                        transport::open(connection, spec, handle, app_handle.clone());
+                    }),
                     std::time::Duration::from_millis(100),
                 )
             };

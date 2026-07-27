@@ -21,8 +21,15 @@ internal fun foregroundServiceTypes(location: Boolean, spp: Boolean): Int =
     (if (location) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0) or
         (if (spp) ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0)
 
+internal enum class FailedSppServiceStart(val startMode: Int) {
+    Keep(Service.START_STICKY),
+    Stop(Service.START_NOT_STICKY)
+}
+
 internal class ForegroundServiceTypeState {
     var current = 0
+        private set
+    var isForeground = false
         private set
 
     fun activate(location: Boolean, spp: Boolean): Int {
@@ -30,8 +37,16 @@ internal class ForegroundServiceTypeState {
         return current
     }
 
+    fun markForeground() {
+        isForeground = true
+    }
+
+    fun failedSppStart(): FailedSppServiceStart =
+        if (isForeground) FailedSppServiceStart.Keep else FailedSppServiceStart.Stop
+
     fun reset() {
         current = 0
+        isForeground = false
     }
 }
 
@@ -59,10 +74,16 @@ class SessionService : Service() {
             return START_NOT_STICKY
         }
 
+        if (intent.action == ACTION_SPP_ATTEMPT) {
+            return startSppAttempt()
+        }
         if (intent.action != ACTION_START) {
             return START_STICKY
         }
+        return startSession(intent)
+    }
 
+    private fun startSession(intent: Intent): Int {
         val location = intent.getBooleanExtra(EXTRA_LOCATION, false)
         val spp = intent.getBooleanExtra(EXTRA_SPP, false)
         val foregroundServiceTypes = foregroundServiceTypeState.activate(location, spp)
@@ -79,7 +100,56 @@ class SessionService : Service() {
         return START_STICKY
     }
 
+    private fun startSppAttempt(): Int {
+        val request = sppRequest ?: return finishFailedSppStart()
+        sppRequest = null
+        val failure = doStartForeground(
+            foregroundServiceTypeState.activate(location = false, spp = true)
+        )
+        if (failure != null) {
+            sppAttemptOwner.abandon(request)
+            request.onStarted(failure)
+            return finishFailedSppStart()
+        }
+
+        val (_, attempt) = sppAttemptOwner.activate {
+            SppSource(this, it.address, it.events)
+        } ?: run {
+            request.onStarted(IllegalStateException("SPP attempt reservation was lost"))
+            return finishFailedSppStart()
+        }
+        Thread(
+            {
+                try {
+                    attempt.run()
+                } finally {
+                    sppAttemptOwner.clear(attempt)
+                }
+            },
+            "updraft-spp"
+        ).start()
+        acquireWakeLock()
+        request.onStarted(null)
+        return START_STICKY
+    }
+
+    private fun finishFailedSppStart(): Int {
+        val failure = foregroundServiceTypeState.failedSppStart()
+        if (failure == FailedSppServiceStart.Stop) {
+            stopSelf()
+        }
+        return failure.startMode
+    }
+
     override fun onDestroy() {
+        sppRequest?.let { request ->
+            sppRequest = null
+            sppAttemptOwner.abandon(request)
+            request.onStarted(IllegalStateException("session service was destroyed"))
+        }
+        sppAttemptOwner.cancel()?.let {
+            Logger.error(TAG, "Could not close the SPP socket", it)
+        }
         gps?.stop()
         gps = null
         fixes = null
@@ -142,6 +212,7 @@ class SessionService : Service() {
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
+            foregroundServiceTypeState.markForeground()
             null
         } catch (e: SecurityException) {
             e
@@ -207,6 +278,7 @@ class SessionService : Service() {
         private val TAG = Logger.tags("SessionService")
 
         private const val ACTION_START = "aero.updraft.mobile.SESSION_START"
+        private const val ACTION_SPP_ATTEMPT = "aero.updraft.mobile.SPP_ATTEMPT"
         private const val EXTRA_LOCATION = "location"
         private const val EXTRA_SPP = "spp"
         private const val NOTIFICATION_ID = 1
@@ -235,11 +307,17 @@ class SessionService : Service() {
         @Volatile
         private var fixes: Channel? = null
 
+        private val sppAttemptOwner = SppAttemptOwner()
+
+        @Volatile
+        private var sppRequest: SppRequest? = null
+
         /**
          * Starts a session that reports every fix on [fixes], calling
          * [onStarted] with null once the service is in the foreground and its
-         * permitted sources have started, or with the reason it could not get
-         * there.
+         * permitted Location source has started, or with the reason it could
+         * not get there. The SPP flag reserves foreground support while
+         * attempts start separately through [startSppAttempt].
          */
         fun start(
             context: Context,
@@ -266,5 +344,34 @@ class SessionService : Service() {
         fun stop(context: Context) {
             context.stopService(Intent(context, SessionService::class.java))
         }
+
+        internal fun startSppAttempt(context: Context, request: SppRequest) {
+            if (!sppAttemptOwner.reserve(request)) {
+                request.onStarted(IllegalStateException("an SPP attempt is already active"))
+                return
+            }
+            sppRequest = request
+
+            try {
+                ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, SessionService::class.java).setAction(ACTION_SPP_ATTEMPT)
+                )
+            } catch (e: IllegalStateException) {
+                if (sppRequest === request) {
+                    sppRequest = null
+                }
+                sppAttemptOwner.abandon(request)
+                request.onStarted(e)
+            } catch (e: SecurityException) {
+                if (sppRequest === request) {
+                    sppRequest = null
+                }
+                sppAttemptOwner.abandon(request)
+                request.onStarted(e)
+            }
+        }
+
+        internal fun cancelSppAttempt(): Exception? = sppAttemptOwner.cancel()
     }
 }

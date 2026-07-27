@@ -88,6 +88,12 @@ class StartSessionArgs {
 }
 
 @InvokeArg
+class StartSppAttemptArgs {
+    lateinit var address: String
+    lateinit var events: Channel
+}
+
+@InvokeArg
 class WatchActivitiesArgs {
     lateinit var activities: Channel
 }
@@ -122,10 +128,10 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     private val application = activity.application
 
     /**
-     * Starts a foreground session using every source the pilot permits.
+     * Starts foreground support for every source the pilot permits.
      *
-     * Resolves once the service is in the foreground and its requested Android
-     * sources have initialized. Task 4 does not establish an SPP connection.
+     * Resolves once the service is in the foreground and its requested
+     * Location source has initialized. SPP attempts start separately.
      */
     @Command
     fun startSession(invoke: Invoke) {
@@ -136,6 +142,39 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     fun stopSession(invoke: Invoke) {
         SessionService.stop(application)
         invoke.resolve()
+    }
+
+    @Command
+    fun startSppAttempt(invoke: Invoke) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            getPermissionState(NEARBY_DEVICES_ALIAS) != PermissionState.GRANTED
+        ) {
+            invoke.reject("Nearby Devices permission is not granted", "permissionDenied")
+            return
+        }
+
+        val args = invoke.parseArgs(StartSppAttemptArgs::class.java)
+        SessionService.startSppAttempt(
+            application,
+            SppRequest(args.address, args.events) { failure ->
+                if (failure == null) {
+                    invoke.resolve()
+                } else {
+                    invoke.reject(failure.toString(), "sppStartFailed")
+                }
+            }
+        )
+    }
+
+    @Command
+    fun cancelSppAttempt(invoke: Invoke) {
+        val failure = SessionService.cancelSppAttempt()
+        if (failure == null) {
+            invoke.resolve()
+        } else {
+            invoke.reject(failure.toString(), "sppCancelFailed")
+        }
     }
 
     /**

@@ -3,13 +3,52 @@ use crate::driver::DriverHandle;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::sync::Arc;
 use tauri::ipc::{Channel, InvokeResponseBody};
+#[cfg(target_os = "android")]
+use tauri::{AppHandle, Runtime};
 use tauri_plugin_updraft::SppEvent;
+#[cfg(target_os = "android")]
+use tauri_plugin_updraft::UpdraftMobileExt;
 use tokio::sync::mpsc;
 use updraft_core::{ConnectionId, ConnectionState, Input};
 
 trait SppPlatform: Send + Sync + 'static {
     fn start_attempt(&self, address: &str, events: Channel) -> Result<(), String>;
     fn cancel_attempt(&self) -> Result<(), String>;
+}
+
+#[cfg(target_os = "android")]
+struct AndroidSppPlatform<R: Runtime>(AppHandle<R>);
+
+#[cfg(target_os = "android")]
+impl<R: Runtime> SppPlatform for AndroidSppPlatform<R> {
+    fn start_attempt(&self, address: &str, events: Channel) -> Result<(), String> {
+        self.0
+            .updraft_mobile()
+            .start_spp_attempt(address, events)
+            .map_err(|error| error.to_string())
+    }
+
+    fn cancel_attempt(&self) -> Result<(), String> {
+        self.0
+            .updraft_mobile()
+            .cancel_spp_attempt()
+            .map_err(|error| error.to_string())
+    }
+}
+
+#[cfg(target_os = "android")]
+pub fn run<R: Runtime>(
+    connection: ConnectionId,
+    address: String,
+    handle: DriverHandle,
+    app: AppHandle<R>,
+) {
+    tokio::spawn(maintain(
+        connection,
+        address,
+        handle,
+        Arc::new(AndroidSppPlatform(app)),
+    ));
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

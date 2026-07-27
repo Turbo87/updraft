@@ -1,8 +1,11 @@
 package aero.updraft.mobile
 
+import android.app.Service
 import android.content.pm.ServiceInfo
 import android.os.Build
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SessionServiceTest {
@@ -158,5 +161,31 @@ class SessionServiceTest {
         types.reset()
 
         assertEquals(0, types.current)
+        assertFalse(types.isForeground)
+    }
+
+    @Test
+    fun `requested SPP type still stops a fresh failed service start`() {
+        val state = ForegroundServiceTypeState()
+
+        state.activate(location = false, spp = true)
+
+        assertFalse(state.isForeground)
+        val failure = state.failedSppStart()
+        assertEquals(FailedSppServiceStart.Stop, failure)
+        assertEquals(Service.START_NOT_STICKY, failure.startMode)
+    }
+
+    @Test
+    fun `existing foreground session survives a failed SPP type upgrade`() {
+        val state = ForegroundServiceTypeState()
+        state.markForeground()
+
+        state.activate(location = false, spp = true)
+
+        assertTrue(state.isForeground)
+        val failure = state.failedSppStart()
+        assertEquals(FailedSppServiceStart.Keep, failure)
+        assertEquals(Service.START_STICKY, failure.startMode)
     }
 }

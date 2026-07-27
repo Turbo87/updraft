@@ -98,7 +98,7 @@ mod tests {
     }
 
     #[test]
-    fn a_non_yes_no_logger_field_is_absent() {
+    fn non_yes_no_logger_field_is_absent() {
         assert_none!(yes_no(Some(b"1")));
         assert_none!(yes_no(Some(b"")));
         assert_none!(yes_no(None));

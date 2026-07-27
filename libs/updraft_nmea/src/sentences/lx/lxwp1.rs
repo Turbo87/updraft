@@ -48,7 +48,7 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_license_reads_as_absent() {
+    fn missing_license_reads_as_absent() {
         // Many devices omit the license field entirely.
         let lxwp1 = Lxwp1::parse(FieldsIter::new(b"V7,12345,1.0,1.0"));
         assert_some_eq!(lxwp1.product, "V7".into());

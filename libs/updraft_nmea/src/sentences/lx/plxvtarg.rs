@@ -44,7 +44,7 @@ mod tests {
     }
 
     #[test]
-    fn a_target_without_a_position_still_decodes() {
+    fn target_without_a_position_still_decodes() {
         let plxvtarg = Plxvtarg::parse(FieldsIter::new(b"KOLN,,,,,268.0"));
         assert_some_eq!(plxvtarg.name, "KOLN".into());
         assert_none!(plxvtarg.position);

@@ -1,11 +1,11 @@
+use super::reconnect::ReconnectBackoff;
 use crate::driver::DriverHandle;
+#[cfg(test)]
 use std::time::Duration;
 use tokio::io::AsyncReadExt as _;
 use tokio::net::TcpStream;
 use updraft_core::{ConnectionId, ConnectionState, Input};
 
-const INITIAL_BACKOFF: Duration = Duration::from_millis(250);
-const MAX_BACKOFF: Duration = Duration::from_secs(10);
 const READ_BUFFER_BYTES: usize = 4_096;
 
 /// Maintains a TCP link until the process ends.
@@ -15,7 +15,7 @@ const READ_BUFFER_BYTES: usize = 4_096;
 /// state through [`Input::ConnectionChanged`].
 pub fn run(connection: ConnectionId, host: String, port: u16, handle: DriverHandle) {
     tokio::spawn(async move {
-        let mut backoff = INITIAL_BACKOFF;
+        let mut backoff = ReconnectBackoff::default();
 
         loop {
             handle.send(Input::connection_changed(
@@ -23,31 +23,26 @@ pub fn run(connection: ConnectionId, host: String, port: u16, handle: DriverHand
                 ConnectionState::Connecting,
             ));
 
-            match TcpStream::connect((host.as_str(), port)).await {
+            let delivered_bytes = match TcpStream::connect((host.as_str(), port)).await {
                 Ok(stream) => {
                     handle.send(Input::connection_changed(
                         connection,
                         ConnectionState::Connected,
                     ));
-                    // Reset only once the link has actually carried data. A
-                    // peer that accepts and immediately drops would otherwise
-                    // retry at the floor forever.
-                    if pump(connection, &host, port, stream, &handle).await {
-                        backoff = INITIAL_BACKOFF;
-                    }
+                    pump(connection, &host, port, stream, &handle).await
                 }
                 Err(error) => {
                     tracing::warn!(?connection, %host, port, %error, "TCP connect failed");
+                    false
                 }
-            }
+            };
 
             handle.send(Input::connection_changed(
                 connection,
                 ConnectionState::Disconnected,
             ));
 
-            tokio::time::sleep(backoff).await;
-            backoff = (backoff * 2).min(MAX_BACKOFF);
+            tokio::time::sleep(backoff.after_attempt(delivered_bytes)).await;
         }
     });
 }

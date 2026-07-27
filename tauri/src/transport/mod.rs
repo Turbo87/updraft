@@ -1,3 +1,4 @@
+mod reconnect;
 pub mod tcp;
 
 use crate::driver::DriverHandle;

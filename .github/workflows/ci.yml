@@ -170,6 +170,8 @@ jobs:
       - run: pnpm tauri android build --target aarch64 --apk --debug
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+      - run: ./gradlew :tauri-plugin-updraft:testDebugUnitTest
+        working-directory: tauri/gen/android
 
   zizmor:
     runs-on: ubuntu-latest

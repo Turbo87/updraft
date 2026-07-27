@@ -13,6 +13,8 @@ pub enum ConnectionSpec {
     /// instruments, and any device exposing a TCP server, as well as for
     /// feeding recorded NMEA during development.
     Tcp { host: String, port: u16 },
+    /// A Bluetooth Classic Serial Port Profile link.
+    BluetoothSpp { address: String },
 }
 
 impl ConnectionSpec {
@@ -20,6 +22,12 @@ impl ConnectionSpec {
         Self::Tcp {
             host: host.into(),
             port,
+        }
+    }
+
+    pub fn bluetooth_spp(address: impl Into<String>) -> Self {
+        Self::BluetoothSpp {
+            address: address.into(),
         }
     }
 }

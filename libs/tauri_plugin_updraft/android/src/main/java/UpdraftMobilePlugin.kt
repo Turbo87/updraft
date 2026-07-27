@@ -17,11 +17,80 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.Plugin
 
 private const val LOCATION_ALIAS = "location"
+private const val NEARBY_DEVICES_ALIAS = "nearbyDevices"
 private const val NOTIFICATIONS_ALIAS = "notifications"
+
+internal data class SourcePermissions(val location: Boolean, val spp: Boolean)
+
+internal enum class StartupStage {
+    Location,
+    NearbyDevices,
+    Notifications,
+    Finalize
+}
+
+internal sealed class StartupAction {
+    object RequestLocation : StartupAction()
+    object RequestNearbyDevices : StartupAction()
+    object RequestNotifications : StartupAction()
+    data class StartService(val sources: SourcePermissions) : StartupAction()
+    object Reject : StartupAction()
+}
+
+internal fun sourcePermissions(
+    locationGranted: Boolean,
+    nearbyDevicesGranted: Boolean,
+    sdkInt: Int
+): SourcePermissions = SourcePermissions(
+    location = locationGranted,
+    spp = sdkInt < Build.VERSION_CODES.S || nearbyDevicesGranted
+)
+
+internal fun startupAction(
+    stage: StartupStage,
+    sources: SourcePermissions,
+    notificationsGranted: Boolean,
+    sdkInt: Int
+): StartupAction = when (stage) {
+    StartupStage.Location -> {
+        if (!sources.location) {
+            StartupAction.RequestLocation
+        } else {
+            startupAction(StartupStage.NearbyDevices, sources, notificationsGranted, sdkInt)
+        }
+    }
+    StartupStage.NearbyDevices -> {
+        if (!sources.spp) {
+            StartupAction.RequestNearbyDevices
+        } else {
+            startupAction(StartupStage.Notifications, sources, notificationsGranted, sdkInt)
+        }
+    }
+    StartupStage.Notifications -> {
+        if (sdkInt >= Build.VERSION_CODES.TIRAMISU && !notificationsGranted) {
+            StartupAction.RequestNotifications
+        } else {
+            startupAction(StartupStage.Finalize, sources, notificationsGranted, sdkInt)
+        }
+    }
+    StartupStage.Finalize -> {
+        if (sources.location || sources.spp) {
+            StartupAction.StartService(sources)
+        } else {
+            StartupAction.Reject
+        }
+    }
+}
 
 @InvokeArg
 class StartSessionArgs {
     lateinit var fixes: Channel
+}
+
+@InvokeArg
+class StartSppAttemptArgs {
+    lateinit var address: String
+    lateinit var events: Channel
 }
 
 @InvokeArg
@@ -41,6 +110,7 @@ class WatchActivitiesArgs {
             ],
             alias = LOCATION_ALIAS
         ),
+        Permission(strings = [Manifest.permission.BLUETOOTH_CONNECT], alias = NEARBY_DEVICES_ALIAS),
         Permission(strings = [Manifest.permission.POST_NOTIFICATIONS], alias = NOTIFICATIONS_ALIAS)
     ]
 )
@@ -58,26 +128,53 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     private val application = activity.application
 
     /**
-     * Starts a foreground session reporting the receiver's fixes on the
-     * caller's channel, collecting the permissions it needs on the way.
+     * Starts foreground support for every source the pilot permits.
      *
-     * Resolves only once the service is in the foreground and subscribed to
-     * the receiver, so a refusal on either count reaches the caller instead of
-     * leaving behind a session that looks started but can never report a fix.
+     * Resolves once the service is in the foreground and its requested
+     * Location source has initialized. SPP attempts start separately.
      */
     @Command
     fun startSession(invoke: Invoke) {
-        if (getPermissionState(LOCATION_ALIAS) == PermissionState.GRANTED) {
-            promptForNotifications(invoke)
-        } else {
-            requestPermissionForAlias(LOCATION_ALIAS, invoke, "locationPermissionResult")
-        }
+        advanceStartup(invoke, StartupStage.Location)
     }
 
     @Command
     fun stopSession(invoke: Invoke) {
         SessionService.stop(application)
         invoke.resolve()
+    }
+
+    @Command
+    fun startSppAttempt(invoke: Invoke) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            getPermissionState(NEARBY_DEVICES_ALIAS) != PermissionState.GRANTED
+        ) {
+            invoke.reject("Nearby Devices permission is not granted", "permissionDenied")
+            return
+        }
+
+        val args = invoke.parseArgs(StartSppAttemptArgs::class.java)
+        SessionService.startSppAttempt(
+            application,
+            SppRequest(args.address, args.events) { failure ->
+                if (failure == null) {
+                    invoke.resolve()
+                } else {
+                    invoke.reject(failure.toString(), "sppStartFailed")
+                }
+            }
+        )
+    }
+
+    @Command
+    fun cancelSppAttempt(invoke: Invoke) {
+        val failure = SessionService.cancelSppAttempt()
+        if (failure == null) {
+            invoke.resolve()
+        } else {
+            invoke.reject(failure.toString(), "sppCancelFailed")
+        }
     }
 
     /**
@@ -137,49 +234,67 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     }
 
     /**
-     * Location is the one permission a session cannot do without: refused, there
-     * are no fixes and the session would navigate on nothing.
+     * Continues to the independent Nearby Devices request after the location
+     * prompt, whether or not Android granted precise location.
      */
     @PermissionCallback
     fun locationPermissionResult(invoke: Invoke) {
-        val state = getPermissionState(LOCATION_ALIAS)
-        if (state == PermissionState.GRANTED) {
-            promptForNotifications(invoke)
-        } else {
-            invoke.reject("location permission $state", "permissionDenied")
-        }
+        advanceStartup(invoke, StartupStage.NearbyDevices)
+    }
+
+    /**
+     * Continues to the optional notification request after the Nearby Devices
+     * prompt, whether or not Android granted Bluetooth access.
+     */
+    @PermissionCallback
+    fun nearbyDevicesPermissionResult(invoke: Invoke) {
+        advanceStartup(invoke, StartupStage.Notifications)
     }
 
     /**
      * Starts the session whatever the pilot answered.
      *
-     * Refusing the notification only costs the ongoing notification, and a
-     * session running unseen still navigates. Treating this like the location
-     * refusal would trade a working session for a visible one.
+     * Refusing the notification only costs its visibility. A session with an
+     * available source still runs, so treating that refusal like either source
+     * permission would trade a working session for a visible one.
      */
     @PermissionCallback
     fun notificationPermissionResult(invoke: Invoke) {
-        startService(invoke)
+        advanceStartup(invoke, StartupStage.Finalize)
     }
 
-    /**
-     * Asks for the permission the foreground service notification needs to
-     * appear at all, which Android 13 turned into a runtime permission that
-     * starts out denied.
-     */
-    private fun promptForNotifications(invoke: Invoke) {
-        val prompt = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            getPermissionState(NOTIFICATIONS_ALIAS) != PermissionState.GRANTED
-        if (prompt) {
-            requestPermissionForAlias(NOTIFICATIONS_ALIAS, invoke, "notificationPermissionResult")
-        } else {
-            startService(invoke)
+    private fun advanceStartup(invoke: Invoke, stage: StartupStage) {
+        when (
+            val action = startupAction(
+                stage,
+                currentSourcePermissions(),
+                notificationsGranted(),
+                Build.VERSION.SDK_INT
+            )
+        ) {
+            StartupAction.RequestLocation ->
+                requestPermissionForAlias(LOCATION_ALIAS, invoke, "locationPermissionResult")
+            StartupAction.RequestNearbyDevices ->
+                requestPermissionForAlias(
+                    NEARBY_DEVICES_ALIAS,
+                    invoke,
+                    "nearbyDevicesPermissionResult"
+                )
+            StartupAction.RequestNotifications ->
+                requestPermissionForAlias(
+                    NOTIFICATIONS_ALIAS,
+                    invoke,
+                    "notificationPermissionResult"
+                )
+            is StartupAction.StartService -> startService(invoke, action.sources)
+            StartupAction.Reject ->
+                invoke.reject("location and Nearby Devices permissions are not granted", "permissionDenied")
         }
     }
 
-    private fun startService(invoke: Invoke) {
+    private fun startService(invoke: Invoke, sources: SourcePermissions) {
         val fixes = invoke.parseArgs(StartSessionArgs::class.java).fixes
-        SessionService.start(application, fixes) { failure ->
+        SessionService.start(application, fixes, sources.location, sources.spp) { failure ->
             if (failure == null) {
                 invoke.resolve()
             } else {
@@ -187,6 +302,15 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
             }
         }
     }
+
+    private fun currentSourcePermissions(): SourcePermissions = sourcePermissions(
+        locationGranted = getPermissionState(LOCATION_ALIAS) == PermissionState.GRANTED,
+        nearbyDevicesGranted = getPermissionState(NEARBY_DEVICES_ALIAS) == PermissionState.GRANTED,
+        sdkInt = Build.VERSION.SDK_INT
+    )
+
+    private fun notificationsGranted(): Boolean =
+        getPermissionState(NOTIFICATIONS_ALIAS) == PermissionState.GRANTED
 
     companion object {
         private val TAG = Logger.tags("UpdraftMobilePlugin")

@@ -1,0 +1,21 @@
+---
+source: libs/tauri_plugin_updraft/src/models.rs
+expression: events
+---
+[
+  {
+    "type": "connected"
+  },
+  {
+    "type": "bytes",
+    "data": "JEc="
+  },
+  {
+    "type": "disconnected",
+    "error": "socket closed"
+  },
+  {
+    "type": "disconnected",
+    "error": null
+  }
+]

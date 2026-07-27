@@ -69,6 +69,22 @@ fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc:
     });
 }
 
+fn configured_core(android: bool) -> updraft_core::CoreConfig {
+    let mut connections = vec![(
+        updraft_core::ConnectionId(1),
+        updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
+    )];
+
+    if android {
+        connections.push((
+            updraft_core::ConnectionId(2),
+            updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
+        ));
+    }
+
+    updraft_core::CoreConfig { connections }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -78,25 +94,22 @@ pub fn run() {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);
             }
-
             // Connections become runtime-mutable settings in milestone 5.
-            let config = updraft_core::CoreConfig {
-                connections: vec![(
-                    updraft_core::ConnectionId(1),
-                    updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
-                )],
-            };
+            let config = configured_core(cfg!(target_os = "android"));
 
             // `setup` runs on the main thread outside any runtime context,
             // so `tokio::spawn` inside the driver would panic. Enter Tauri's
             // runtime for the call rather than making the driver depend on
             // Tauri to spawn itself.
             let handle = {
+                let app_handle = app.handle().clone();
                 let runtime = tauri::async_runtime::handle();
                 let _guard = runtime.inner().enter();
                 driver::Driver::spawn(
                     config,
-                    Box::new(transport::open),
+                    Box::new(move |connection, spec, handle| {
+                        transport::open(connection, spec, handle, app_handle.clone());
+                    }),
                     std::time::Duration::from_millis(100),
                 )
             };
@@ -128,4 +141,37 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn android_configuration_keeps_tcp_and_adds_spp() {
+        assert_eq!(
+            configured_core(true).connections,
+            vec![
+                (
+                    updraft_core::ConnectionId(1),
+                    updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
+                ),
+                (
+                    updraft_core::ConnectionId(2),
+                    updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn desktop_configuration_keeps_tcp_only() {
+        assert_eq!(
+            configured_core(false).connections,
+            vec![(
+                updraft_core::ConnectionId(1),
+                updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
+            )]
+        );
+    }
 }

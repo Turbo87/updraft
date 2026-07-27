@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A position report from the device's own GNSS receiver.
 ///
@@ -29,4 +29,47 @@ pub struct Fix {
     pub altitude_ellipsoid_meters: Option<f64>,
     pub track_degrees: Option<f64>,
     pub ground_speed_meters_per_second: Option<f64>,
+}
+
+/// One event from an Android Bluetooth SPP connection attempt.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "camelCase", deny_unknown_fields)]
+pub enum SppEvent {
+    Connected,
+    Bytes { data: String },
+    Disconnected { error: Option<String> },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SppEvent;
+    use tauri::ipc::InvokeResponseBody;
+
+    fn event(payload: &str) -> SppEvent {
+        InvokeResponseBody::Json(payload.to_owned())
+            .deserialize()
+            .expect("payload is a valid SPP event")
+    }
+
+    #[test]
+    fn spp_events_use_a_tagged_camel_case_contract() {
+        let events = [
+            event(r#"{"type":"connected"}"#),
+            event(r#"{"type":"bytes","data":"JEc="}"#),
+            event(r#"{"type":"disconnected","error":"socket closed"}"#),
+            event(r#"{"type":"disconnected"}"#),
+        ];
+
+        insta::assert_json_snapshot!(events);
+    }
+
+    #[test]
+    fn spp_events_reject_unknown_fields() {
+        let result = InvokeResponseBody::Json(
+            r#"{"type":"bytes","data":"JEc=","unexpected":true}"#.to_owned(),
+        )
+        .deserialize::<SppEvent>();
+
+        assert!(result.is_err());
+    }
 }

@@ -19,6 +19,12 @@ struct StartSessionArgs {
 }
 
 #[derive(Serialize)]
+struct StartSppAttemptArgs<'a> {
+    address: &'a str,
+    events: Channel,
+}
+
+#[derive(Serialize)]
 struct WatchActivitiesArgs {
     activities: Channel,
 }
@@ -38,6 +44,18 @@ impl<R: Runtime> UpdraftMobile<R> {
     pub fn stop_session(&self) -> crate::Result<()> {
         self.0
             .run_mobile_plugin("stopSession", ())
+            .map_err(Into::into)
+    }
+
+    pub fn start_spp_attempt(&self, address: &str, events: Channel) -> crate::Result<()> {
+        self.0
+            .run_mobile_plugin("startSppAttempt", StartSppAttemptArgs { address, events })
+            .map_err(Into::into)
+    }
+
+    pub fn cancel_spp_attempt(&self) -> crate::Result<()> {
+        self.0
+            .run_mobile_plugin("cancelSppAttempt", ())
             .map_err(Into::into)
     }
 

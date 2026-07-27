@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn an_absent_mode_field_reads_as_absent() {
+    fn absent_mode_field_reads_as_absent() {
         let fields = FieldsIter::new(b"0,,,,,,,,,,,,");
         let lxwp3 = Lxwp3::parse(fields);
         assert_none!(lxwp3.speed_command_mode);

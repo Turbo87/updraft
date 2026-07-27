@@ -78,7 +78,7 @@ fn configured_core(android: bool) -> updraft_core::CoreConfig {
     if android {
         connections.push((
             updraft_core::ConnectionId(2),
-            updraft_core::ConnectionSpec::bluetooth_spp("00:00:00:00:00:00"),
+            updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
         ));
     }
 
@@ -158,7 +158,7 @@ mod tests {
                 ),
                 (
                     updraft_core::ConnectionId(2),
-                    updraft_core::ConnectionSpec::bluetooth_spp("00:00:00:00:00:00"),
+                    updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
                 ),
             ]
         );

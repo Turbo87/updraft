@@ -53,7 +53,7 @@ The MVP ships as six plans, each producing working, testable software.
 | # | Milestone | Deliverable |
 | --- | --- | --- |
 | 1 | Core and shell rewrite | Walking skeleton on macOS: TCP transport to NMEA to core to topic to ownship on the map |
-| 2 | Android platform | Foreground service and location through the mobile plugin. The app survives backgrounding |
+| 2 | Android platform | Foreground service, wake lock and internal GPS through the mobile plugin, plus the two Tauri-level fixes background execution needs. The app survives backgrounding, activity destruction and relaunch |
 | 3 | Devices and traffic | Bluetooth SPP transport, FLARM targets rendered on the map |
 | 4 | Airspace | OpenAir file parsed into core types, airspace layer served over `updraft://` |
 | 5 | Settings and data fields | Persistent settings, units wired through, a hardcoded data field set |
@@ -185,6 +185,11 @@ The shell feeds a tick input at 10 Hz. This is what lets a clockless core expres
 
 ## The shell
 
+Two Tauri-level fixes belong to the shell rather than the plugin, both root-caused by emulator spikes and recorded in the milestone 2 plan:
+
+- **`prevent_exit()`.** Stock Tauri exits the process when the last window closes, because tao's Android event loop calls `std::process::exit`. When the activity is destroyed the process dies about two seconds after `onTaskRemoved` and takes the foreground service with it. Handling `RunEvent::ExitRequested` with `api.prevent_exit()` is not optional for an app that must keep recording after the user leaves it.
+- **Webview re-creation on relaunch.** After the activity is destroyed while the service holds the process alive, relaunching shows a blank webview and JS never runs. `tauri-runtime-wry` drops the mobile `Resumed` event when no windows exist, so the app never learns about the relaunch. Reported upstream as [tauri#15671](https://github.com/tauri-apps/tauri/issues/15671) with a fix in [tauri#15678](https://github.com/tauri-apps/tauri/pull/15678), both unanswered. Milestone 2 tries a public-API path first, watching the activity lifecycle from Kotlin and rebuilding the window through `run_on_main_thread`, and falls back to carrying the patch through `[patch.crates-io]`.
+
 The `tauri` crate holds:
 
 - The effect executor.
@@ -194,10 +199,17 @@ The `tauri` crate holds:
 - Settings persistence.
 - The `updraft://` URI scheme handler.
 - Tauri commands and the update channel.
+- `prevent_exit()` and webview re-creation, per the two fixes above.
 
 ### Mobile plugin
 
 Bluetooth SPP, the foreground service and the Android location provider all need Kotlin, so they live in a single Tauri v2 mobile plugin rather than plain Rust. This is the part of the MVP least testable on macOS and most likely to be slow, so the seam is drawn such that the Rust side never knows which platform it is talking to.
+
+A two-plugin split was considered and rejected for now: one for background execution and internal GPS, one for device byte streams. The platform matrices do diverge, iOS has no SPP at all, and the two would change at different rates. But the boundary cannot be drawn well until milestone 3 shows how the transport code actually wants to be shaped, and the coupling runs the wrong way for a clean split: the foreground-service type mask depends on whether a device is connected, while the service itself would live in the other plugin.
+
+Splitting later is a contained rename of the crate, the Android package and the plugin identifier in capabilities. The trigger to do it: if milestone 3's transport code ends up sharing nothing with the session code beyond the type mask.
+
+The control plane is `run_mobile_plugin` with JSON. The data plane is a `tauri::ipc::Channel` handed to Kotlin, surfaced on the Rust side as a receiver. Fixes arrive as typed values, never as synthesised NMEA.
 
 The MVP covers Bluetooth Classic SPP only. Modern FLARM devices do also offer BLE, and that follows later.
 

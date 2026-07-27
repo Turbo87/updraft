@@ -1,0 +1,17 @@
+[package]
+name = "tauri-plugin-updraft"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+links = "tauri-plugin-updraft"
+
+[lints]
+workspace = true
+
+[build-dependencies]
+tauri-plugin = { version = "=2.6.3", features = ["build"] }
+
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+tauri = { version = "=2.11.5", features = [] }
+thiserror = "=2.0.19"

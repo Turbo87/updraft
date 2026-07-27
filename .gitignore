@@ -23,6 +23,7 @@ vite.config.ts.timestamp-*
 
 # Gradle
 .gradle
+/libs/*/android/build
 
 # Tauri
 /tauri/gen/schemas
@@ -41,3 +42,4 @@ vite.config.ts.timestamp-*
 /tauri/gen/android/app/src/main/**/generated
 /tauri/gen/android/app/src/main/assets/tauri.conf.json
 /tauri/gen/android/app/src/main/jniLibs/**/*.so
+/libs/*/android/.tauri

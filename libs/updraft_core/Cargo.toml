@@ -10,7 +10,10 @@ workspace = true
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
 ts-rs = { version = "=12.0.1", optional = true }
+updraft_egm96 = { path = "../updraft_egm96" }
+updraft_geo = { path = "../updraft_geo" }
 updraft_nmea = { path = "../updraft_nmea" }
+updraft_units = { path = "../updraft_units" }
 
 [features]
 ts = ["dep:ts-rs"]

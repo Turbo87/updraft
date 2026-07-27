@@ -16,6 +16,7 @@ tauri-build = { version = "=2.6.3", features = [] }
 
 [dependencies]
 tauri = { version = "=2.11.5", features = [] }
+tauri-plugin-updraft = { path = "../libs/tauri_plugin_updraft" }
 tracing = "=0.1.44"
 tracing-appender = "=0.2.5"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
@@ -25,3 +26,5 @@ tokio = { version = "=1.53.1", features = ["macros", "net", "rt-multi-thread", "
 [dev-dependencies]
 approx = "=0.6.0-rc2"
 claims = "=0.8.0"
+tokio = { version = "=1.53.1", features = ["test-util"] }
+tracing-test = "=0.2.6"

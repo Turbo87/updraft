@@ -3,8 +3,13 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
+mod activity;
 mod driver;
 mod ipc;
+// A session only exists on Android. `test` keeps the adapter, and the tests
+// that pin the wire contract it implements, compiling on the host.
+#[cfg(any(target_os = "android", test))]
+mod session;
 mod transport;
 
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
@@ -46,10 +51,29 @@ fn init_tracing<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WorkerGu
     guard
 }
 
+/// Asks the platform plugin for a foreground session, prompting for location
+/// access on the way. The session reports every fix its receiver produces on
+/// `fixes`.
+///
+/// Android only allows a foreground service to start while an activity is
+/// visible, which is why this runs from `setup` rather than from wherever the
+/// first fix is needed. The call blocks until the pilot has answered the
+/// permission prompt, so it cannot run on the thread that has to show it.
+#[cfg(target_os = "android")]
+fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc::Channel) {
+    use tauri_plugin_updraft::UpdraftMobileExt;
+
+    tauri::async_runtime::spawn_blocking(move || match app.updraft_mobile().start_session(fixes) {
+        Ok(()) => tracing::info!("Background session started"),
+        Err(error) => tracing::error!(%error, "Failed to start the background session"),
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![ipc::subscribe])
+        .plugin(tauri_plugin_updraft::init())
         .setup(|app| {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);
@@ -77,11 +101,31 @@ pub fn run() {
                 )
             };
 
+            #[cfg(target_os = "android")]
+            let fixes = session::fix_channel(handle.clone());
+
             handle.send(updraft_core::Input::Start);
             app.manage(handle);
 
+            #[cfg(target_os = "android")]
+            start_session(app.handle().clone(), fixes);
+
+            activity::watch(app.handle().clone());
+
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| match event {
+            #[cfg(target_os = "android")]
+            tauri::RunEvent::ExitRequested {
+                code: None, api, ..
+            } => {
+                // tao's Android event loop calls `std::process::exit` when the
+                // last window closes, which kills the foreground service with
+                // it. A session has to outlive the activity that started it.
+                api.prevent_exit();
+            }
+            _ => {}
+        });
 }

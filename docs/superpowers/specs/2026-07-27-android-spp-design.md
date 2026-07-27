@@ -135,14 +135,19 @@ and event loop.
 
 ## Android attempt contract
 
+When the maintained connection starts, Rust creates one Tauri channel and one
+receiver for the lifetime of that connection. Reusing the channel avoids
+accumulating Tauri's process-lifetime mobile channel registrations across
+retries.
+
 For each attempt, Rust:
 
 1. Sends `Connecting` to the core.
-2. Creates a fresh Tauri channel.
-3. Invokes the mobile plugin with the MAC address and channel.
-4. Translates channel events into core inputs.
-5. Tracks whether the attempt delivered bytes.
-6. Sends `Disconnected` when the attempt terminates.
+2. Invokes the mobile plugin with the MAC address and maintained channel.
+3. Translates channel events into core inputs.
+4. Tracks whether the attempt delivered bytes.
+5. Waits for the terminal `Disconnected` event.
+6. Sends `Disconnected` to the core.
 7. Waits for the current backoff and tries again.
 
 The channel carries a tagged event union:
@@ -151,11 +156,14 @@ The channel carries a tagged event union:
 - `Bytes`, containing Base64-encoded raw bytes.
 - `Disconnected`, optionally containing a failure description.
 
-Each attempt receives a new channel, so late events cannot be mistaken for a
-later socket. RFCOMM read boundaries are preserved. The existing core decoder
-continues to own framing, resynchronization, and sentence parsing.
+The terminal event is the attempt boundary. The Android plugin permits only one
+pending or active attempt, emits events from that worker in order, and emits
+exactly one `Disconnected` event last. Rust does not start another attempt
+before receiving it. RFCOMM read boundaries are preserved. The existing core
+decoder continues to own framing, resynchronization, and sentence parsing.
+The wire contract does not carry an attempt generation.
 
-The Android plugin permits one active SPP attempt. The worker:
+The worker:
 
 1. Obtains `BluetoothAdapter` from `BluetoothManager`.
 2. Verifies that Bluetooth is enabled.
@@ -174,7 +182,8 @@ can be reconsidered with that evidence.
 
 The service retains the active socket so service destruction or an explicit
 attempt cancellation can abort a blocked `connect()` or read. A malformed
-channel event causes Rust to cancel the active attempt before applying backoff.
+channel event causes Rust to cancel the active attempt and wait for its terminal
+event before applying backoff.
 
 ## Permissions and foreground service
 
@@ -213,7 +222,8 @@ through the normal bounded backoff.
 Every failed attempt converges on one cleanup path:
 
 1. Kotlin closes the socket.
-2. Kotlin sends a terminal event with the concrete failure when possible.
+2. Kotlin sends exactly one terminal event with the concrete failure when
+   possible.
 3. Rust logs that failure with the MAC address.
 4. Rust sends `Disconnected` to the core.
 5. The core emits the lifecycle and byte-count summary.
@@ -230,6 +240,19 @@ The same path covers:
 - EOF or read failure.
 - Malformed channel data.
 - Service destruction.
+
+Malformed channel data or invalid Base64 moves Rust into a cancelling state.
+Rust logs the first protocol failure without payload content, requests
+cancellation once, stops forwarding subsequent connection and byte events, and
+waits for the terminal event. A cancellation-command failure is logged, but
+does not permit another attempt. If no terminal event arrives, the maintained
+SPP connection remains stalled until process restart.
+
+The maintained Rust channel cannot close while its supervisor owns it. If the
+receiver nevertheless closes, Rust reports the invariant failure, sends a final
+`Disconnected` input, and stops the supervisor instead of creating another
+channel. Process shutdown does not invoke a blocking mobile command from a
+destructor.
 
 Routine retries must not emit payloads or per-chunk logs. Process death ends
 the Rust supervisor and Android worker together. A later launch starts a new
@@ -260,9 +283,18 @@ PR 2 adds host-side coverage for:
 - Explicit failure on malformed events.
 - A fake Android attempt that connects, sends chunks, reaches EOF, fails, and
   reconnects.
+- Reuse of one channel across retries.
+- Cancellation waits for the active worker's terminal event.
+- Events received while cancelling are not forwarded.
+- A failed cancellation command does not permit another attempt.
 - Exponential delay progression.
 - Backoff reset only after bytes.
 - TCP behavior through the shared backoff helper.
+
+Android unit tests additionally cover one pending or active source at a time,
+cancellation closing the active socket, active-source cleanup before the next
+attempt, and exactly one terminal event after EOF, connect failure, read
+failure, or cancellation.
 
 Repository tests, Clippy, formatting, frontend checks, and the Android debug
 build must remain green.

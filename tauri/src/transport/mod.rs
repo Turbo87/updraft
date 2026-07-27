@@ -1,4 +1,6 @@
 mod reconnect;
+#[cfg(any(target_os = "android", test))]
+mod spp;
 pub mod tcp;
 
 use crate::driver::DriverHandle;

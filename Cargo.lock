@@ -3925,6 +3925,7 @@ dependencies = [
 name = "tauri-plugin-updraft"
 version = "0.0.0"
 dependencies = [
+ "insta",
  "serde",
  "tauri",
  "tauri-plugin",
@@ -4747,6 +4748,7 @@ name = "updraft_tauri"
 version = "0.0.0"
 dependencies = [
  "approx 0.6.0-rc2",
+ "base64 0.22.1",
  "claims",
  "tauri",
  "tauri-build",

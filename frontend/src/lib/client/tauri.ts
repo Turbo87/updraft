@@ -1,9 +1,14 @@
+import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { TopicListener, UpdraftClient } from './index';
 
 import { Channel, invoke } from '@tauri-apps/api/core';
 
 export class TauriClient implements UpdraftClient {
+  setLocale(locale: Locale): Promise<void> {
+    return invoke('set_locale', { locale });
+  }
+
   subscribe(onTopic: TopicListener): () => void {
     let channel = new Channel<Topic>();
     channel.onmessage = onTopic;

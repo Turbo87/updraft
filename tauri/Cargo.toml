@@ -16,6 +16,7 @@ tauri-build = { version = "=2.6.3", features = [] }
 
 [dependencies]
 base64 = "=0.23.0"
+serde_json = "=1.0.151"
 tauri = { version = "=2.11.5", features = [] }
 tauri-plugin-updraft = { path = "../libs/tauri_plugin_updraft" }
 tracing = "=0.1.44"
@@ -27,5 +28,6 @@ tokio = { version = "=1.53.1", features = ["macros", "net", "rt-multi-thread", "
 [dev-dependencies]
 approx = "=0.6.0-rc2"
 claims = "=0.8.0"
+tempfile = "=3.27.0"
 tokio = { version = "=1.53.1", features = ["test-util"] }
 tracing-test = "=0.2.6"

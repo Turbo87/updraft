@@ -2,10 +2,12 @@ use tauri::Manager;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+use updraft_core::Settings;
 
 mod activity;
 mod driver;
 mod ipc;
+mod settings;
 // A session only exists on Android. `test` keeps the adapter, and the tests
 // that pin the wire contract it implements, compiling on the host.
 #[cfg(any(target_os = "android", test))]
@@ -69,7 +71,7 @@ fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc:
     });
 }
 
-fn configured_core(android: bool) -> updraft_core::CoreConfig {
+fn configured_core(android: bool, settings: Settings) -> updraft_core::CoreConfig {
     let mut connections = vec![(
         updraft_core::ConnectionId(1),
         updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
@@ -83,8 +85,8 @@ fn configured_core(android: bool) -> updraft_core::CoreConfig {
     }
 
     updraft_core::CoreConfig {
+        settings,
         connections,
-        ..updraft_core::CoreConfig::default()
     }
 }
 
@@ -97,9 +99,10 @@ pub fn run() {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);
             }
+            let settings_file = settings::SettingsFile::new(app.path().app_config_dir()?);
             // Connections are temporary startup configuration. They will move
             // into runtime-mutable settings.
-            let config = configured_core(cfg!(target_os = "android"));
+            let config = configured_core(cfg!(target_os = "android"), settings_file.load());
 
             // `setup` runs on the main thread outside any runtime context,
             // so `tokio::spawn` inside the driver would panic. Enter Tauri's
@@ -154,7 +157,7 @@ mod tests {
     #[test]
     fn android_configuration_keeps_tcp_and_adds_spp() {
         assert_eq!(
-            configured_core(true).connections,
+            configured_core(true, Settings::default()).connections,
             vec![
                 (
                     updraft_core::ConnectionId(1),
@@ -171,11 +174,17 @@ mod tests {
     #[test]
     fn desktop_configuration_keeps_tcp_only() {
         assert_eq!(
-            configured_core(false).connections,
+            configured_core(false, Settings::default()).connections,
             vec![(
                 updraft_core::ConnectionId(1),
                 updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
             )]
         );
+
+        let settings = Settings {
+            locale: Some(updraft_core::Locale::De),
+        };
+
+        assert_eq!(configured_core(false, settings).settings, settings);
     }
 }

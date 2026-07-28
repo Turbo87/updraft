@@ -124,6 +124,7 @@ mod tests {
     fn config() -> CoreConfig {
         CoreConfig {
             connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
+            ..CoreConfig::default()
         }
     }
 
@@ -143,7 +144,9 @@ mod tests {
             let received = timeout(PATIENCE, receiver.recv())
                 .await
                 .expect("a topic within the timeout");
-            let Topic::Instruments(instruments) = assert_some!(received);
+            let Topic::Instruments(instruments) = assert_some!(received) else {
+                continue;
+            };
             if let Some(position) = instruments.position {
                 return position;
             }

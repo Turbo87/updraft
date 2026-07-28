@@ -4,6 +4,7 @@ use crate::decoder::Decoder;
 use crate::effect::Effect;
 use crate::fix::Fix;
 use crate::input::Input;
+use crate::settings::Settings;
 use crate::time::Timestamp;
 use crate::topic::{Instruments, LatLon, Topic};
 use std::collections::BTreeMap;
@@ -11,10 +12,10 @@ use updraft_nmea::{Message, RmcStatus};
 
 /// Static configuration the core is built with.
 ///
-/// `connections` is temporary. It becomes runtime-mutable through a core
-/// input driven by the settings UI in milestone 5.
+/// `connections` is temporary. It will move into runtime-mutable settings.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CoreConfig {
+    pub settings: Settings,
     pub connections: Vec<(ConnectionId, ConnectionSpec)>,
 }
 
@@ -25,7 +26,8 @@ pub struct CoreConfig {
 /// with no runtime, sleeps or wall clock.
 #[derive(Debug)]
 pub struct Core {
-    config: CoreConfig,
+    connections: Vec<(ConnectionId, ConnectionSpec)>,
+    settings: Settings,
     decoders: BTreeMap<ConnectionId, Decoder>,
     diagnostics: ConnectionDiagnostics,
     instruments: Instruments,
@@ -33,9 +35,12 @@ pub struct Core {
 
 impl Core {
     pub fn new(config: CoreConfig) -> Self {
+        let CoreConfig {
+            settings,
+            connections,
+        } = config;
         let mut diagnostics = ConnectionDiagnostics::default();
-        let decoders = config
-            .connections
+        let decoders = connections
             .iter()
             .map(|(id, spec)| {
                 diagnostics.insert(*id, spec.clone());
@@ -44,7 +49,8 @@ impl Core {
             .collect();
 
         Self {
-            config,
+            connections,
+            settings,
             decoders,
             diagnostics,
             instruments: Instruments::default(),
@@ -60,7 +66,6 @@ impl Core {
 
         match input {
             Input::Start => self
-                .config
                 .connections
                 .iter()
                 .map(|(connection, spec)| Effect::open(*connection, spec.clone()))
@@ -81,7 +86,10 @@ impl Core {
     /// The current value of every topic, for a client that has just
     /// subscribed and holds no state yet.
     pub fn topics(&self) -> Vec<Topic> {
-        vec![Topic::Instruments(self.instruments)]
+        vec![
+            Topic::Instruments(self.instruments),
+            Topic::Settings(self.settings),
+        ]
     }
 
     fn decode(&mut self, connection: ConnectionId, data: &[u8]) -> Vec<Effect> {
@@ -175,6 +183,7 @@ fn msl_meters(position: LatLon, ellipsoidal_meters: f64) -> f64 {
 mod tests {
     use super::*;
     use crate::connection::ConnectionState;
+    use crate::settings::Locale;
     use approx::assert_abs_diff_eq;
     use claims::{assert_some, assert_some_eq};
     use std::assert_matches;
@@ -189,6 +198,7 @@ mod tests {
     fn config() -> CoreConfig {
         CoreConfig {
             connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
+            ..CoreConfig::default()
         }
     }
 
@@ -214,6 +224,7 @@ mod tests {
         let spp = ConnectionSpec::bluetooth_spp("00:00:00:00:00:00");
         let mut core = Core::new(CoreConfig {
             connections: vec![(LINK, tcp.clone()), (SPP_LINK, spp.clone())],
+            ..CoreConfig::default()
         });
 
         let effects = core.apply(Input::Start, at(0));
@@ -229,6 +240,7 @@ mod tests {
     fn spp_lifecycle_reports_the_mac_address() {
         let mut core = Core::new(CoreConfig {
             connections: vec![(SPP_LINK, ConnectionSpec::bluetooth_spp("00:00:00:00:00:00"))],
+            ..CoreConfig::default()
         });
 
         core.apply(
@@ -422,7 +434,7 @@ mod tests {
         core.apply(Input::InternalGps(fix(50.823, 6.186)), at(100));
 
         let topics = core.topics();
-        let [Topic::Instruments(instruments)] = topics.as_slice() else {
+        let [Topic::Instruments(instruments), Topic::Settings(_)] = topics.as_slice() else {
             unreachable!()
         };
         // The geoid sits 46.54 m above the ellipsoid at this position, so the
@@ -447,5 +459,24 @@ mod tests {
         }
 
         assert_eq!(emissions, 1, "only the first fix changed any value");
+    }
+
+    #[test]
+    fn topics_include_configured_settings() {
+        let settings = Settings {
+            locale: Some(Locale::De),
+        };
+        let core = Core::new(CoreConfig {
+            settings,
+            ..CoreConfig::default()
+        });
+
+        assert_eq!(
+            core.topics(),
+            vec![
+                Topic::Instruments(Instruments::default()),
+                Topic::Settings(settings),
+            ]
+        );
     }
 }

@@ -187,6 +187,7 @@ mod tests {
         let handle = Driver::spawn(
             CoreConfig {
                 connections: vec![(connection, ConnectionSpec::tcp("127.0.0.1", port))],
+                ..CoreConfig::default()
             },
             Box::new(|_, _, _| {}),
             Duration::from_millis(100),
@@ -209,7 +210,9 @@ mod tests {
             let received = timeout(PATIENCE, topics.recv())
                 .await
                 .expect("a topic within the timeout");
-            let Topic::Instruments(instruments) = assert_some!(received);
+            let Topic::Instruments(instruments) = assert_some!(received) else {
+                continue;
+            };
             if instruments.position.is_some() {
                 return;
             }

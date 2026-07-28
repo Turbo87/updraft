@@ -1,3 +1,4 @@
+use crate::settings::Settings;
 use serde::Serialize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
@@ -35,11 +36,13 @@ pub struct Instruments {
 #[serde(tag = "topic", content = "value", rename_all = "camelCase")]
 pub enum Topic {
     Instruments(Instruments),
+    Settings(Settings),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings::Locale;
 
     #[test]
     fn topic_serializes_to_tagged_camel_case_json() {
@@ -54,5 +57,21 @@ mod tests {
         });
 
         insta::assert_json_snapshot!(topic);
+    }
+
+    #[test]
+    fn settings_locale_serializes_in_lowercase() {
+        let topic = Topic::Settings(Settings {
+            locale: Some(Locale::De),
+        });
+
+        insta::assert_json_snapshot!(topic, @r###"
+        {
+          "topic": "settings",
+          "value": {
+            "locale": "de"
+          }
+        }
+        "###);
     }
 }

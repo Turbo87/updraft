@@ -12,6 +12,7 @@ mod decoder;
 mod effect;
 mod fix;
 mod input;
+mod settings;
 mod time;
 mod topic;
 
@@ -21,5 +22,6 @@ pub use decoder::Decoder;
 pub use effect::Effect;
 pub use fix::Fix;
 pub use input::Input;
+pub use settings::{Locale, Settings};
 pub use time::Timestamp;
 pub use topic::{Instruments, LatLon, Topic};

@@ -82,7 +82,10 @@ fn configured_core(android: bool) -> updraft_core::CoreConfig {
         ));
     }
 
-    updraft_core::CoreConfig { connections }
+    updraft_core::CoreConfig {
+        connections,
+        ..updraft_core::CoreConfig::default()
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -94,7 +97,8 @@ pub fn run() {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);
             }
-            // Connections become runtime-mutable settings in milestone 5.
+            // Connections are temporary startup configuration. They will move
+            // into runtime-mutable settings.
             let config = configured_core(cfg!(target_os = "android"));
 
             // `setup` runs on the main thread outside any runtime context,

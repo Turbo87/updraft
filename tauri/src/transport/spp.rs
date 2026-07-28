@@ -376,6 +376,7 @@ mod tests {
         Driver::spawn(
             CoreConfig {
                 connections: vec![(LINK, ConnectionSpec::bluetooth_spp(ADDRESS))],
+                ..CoreConfig::default()
             },
             Box::new(|_, _, _| {}),
             Duration::from_secs(60),
@@ -395,7 +396,9 @@ mod tests {
             let received = timeout(PATIENCE, receiver.recv())
                 .await
                 .expect("a topic within the timeout");
-            let Topic::Instruments(instruments) = assert_some!(received);
+            let Topic::Instruments(instruments) = assert_some!(received) else {
+                continue;
+            };
             if instruments.position.is_some() {
                 return;
             }
@@ -404,11 +407,15 @@ mod tests {
 
     async fn current_instruments(handle: &DriverHandle) -> updraft_core::Instruments {
         let mut topics = topic_stream(handle);
-        let received = timeout(PATIENCE, topics.recv())
-            .await
-            .expect("current instruments within the timeout");
-        let Topic::Instruments(instruments) = assert_some!(received);
-        instruments
+        loop {
+            let received = timeout(PATIENCE, topics.recv())
+                .await
+                .expect("current instruments within the timeout");
+            let Topic::Instruments(instruments) = assert_some!(received) else {
+                continue;
+            };
+            return instruments;
+        }
     }
 
     fn warning_context(lines: &[&str], message: &str, reason: &str) -> Result<(), String> {

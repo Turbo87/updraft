@@ -79,6 +79,7 @@ mod tests {
         Driver::spawn(
             CoreConfig {
                 connections: Vec::new(),
+                ..CoreConfig::default()
             },
             Box::new(|_, _, _| {}),
             Duration::from_millis(100),
@@ -99,6 +100,18 @@ mod tests {
             .expect("the channel accepts the payload");
     }
 
+    async fn next_instruments(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> Instruments {
+        loop {
+            let received = timeout(PATIENCE, receiver.recv())
+                .await
+                .expect("an instruments topic within the timeout");
+            let Topic::Instruments(instruments) = assert_some!(received) else {
+                continue;
+            };
+            return instruments;
+        }
+    }
+
     /// Awaits topics until one reports the given latitude, so neither the
     /// onboarding emission of empty state nor an earlier fix is counted.
     ///
@@ -114,7 +127,9 @@ mod tests {
             let received = timeout_at(deadline, receiver.recv())
                 .await
                 .expect("a topic at that latitude within the timeout");
-            let Topic::Instruments(instruments) = assert_some!(received);
+            let Topic::Instruments(instruments) = assert_some!(received) else {
+                continue;
+            };
             if instruments
                 .position
                 .is_some_and(|position| position.latitude_degrees == latitude_degrees)
@@ -188,13 +203,10 @@ mod tests {
 
         // A driver that emitted nothing at all, for any reason, would also
         // pass a bare timeout on the malformed payload. Sending a well-formed
-        // fix right behind it and requiring it to be the very next topic
+        // fix right behind it and requiring it to be the next instruments topic
         // proves both that the malformed payload reached no topic of its own
         // and that the driver kept running.
-        let received = timeout(PATIENCE, topics.recv())
-            .await
-            .expect("the well-formed fix's topic within the timeout");
-        let Topic::Instruments(instruments) = assert_some!(received);
+        let instruments = next_instruments(&mut topics).await;
         assert_eq!(assert_some!(instruments.position).latitude_degrees, 50.823);
 
         assert!(logs_contain("Discarded an unreadable GNSS fix"));
@@ -219,13 +231,10 @@ mod tests {
         report(&channel, RENAMED_OPTIONAL);
         report(&channel, COMPLETE);
 
-        // The well-formed fix behind it must be the very next topic: anything
+        // The well-formed fix behind it must be the next instruments topic: anything
         // the renamed payload published would arrive first and carry a track
         // of `None`.
-        let received = timeout(PATIENCE, topics.recv())
-            .await
-            .expect("the well-formed fix's topic within the timeout");
-        let Topic::Instruments(instruments) = assert_some!(received);
+        let instruments = next_instruments(&mut topics).await;
         assert_some_eq!(instruments.track_degrees, 270.0_f64);
 
         assert!(logs_contain("Discarded an unreadable GNSS fix"));

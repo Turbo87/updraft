@@ -32,6 +32,7 @@ fn describe(effect: &Effect) -> String {
         Effect::Emit(Topic::Settings(settings)) => format!("settings {settings:?}"),
         Effect::OpenConnection { connection, spec } => format!("open {connection:?} {spec:?}"),
         Effect::CloseConnection { connection } => format!("close {connection:?}"),
+        Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),
     }
 }
 

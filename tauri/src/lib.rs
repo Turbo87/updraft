@@ -93,7 +93,7 @@ fn configured_core(android: bool, settings: Settings) -> updraft_core::CoreConfi
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![ipc::subscribe])
+        .invoke_handler(tauri::generate_handler![ipc::set_locale, ipc::subscribe])
         .plugin(tauri_plugin_updraft::init())
         .setup(|app| {
             if let Some(guard) = init_tracing(app.handle()) {
@@ -112,11 +112,13 @@ pub fn run() {
                 let app_handle = app.handle().clone();
                 let runtime = tauri::async_runtime::handle();
                 let _guard = runtime.inner().enter();
+                let persist = Box::new(settings_file.writer());
                 driver::Driver::spawn(
                     config,
                     Box::new(move |connection, spec, handle| {
                         transport::open(connection, spec, handle, app_handle.clone());
                     }),
+                    persist,
                     std::time::Duration::from_millis(100),
                 )
             };

@@ -82,6 +82,7 @@ mod tests {
                 ..CoreConfig::default()
             },
             Box::new(|_, _, _| {}),
+            Box::new(|_| {}),
             Duration::from_millis(100),
         )
     }

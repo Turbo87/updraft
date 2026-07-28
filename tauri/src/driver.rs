@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use updraft_core::{
-    ConnectionId, ConnectionSpec, Core, CoreConfig, Effect, Input, Timestamp, Topic,
+    ConnectionId, ConnectionSpec, Core, CoreConfig, Effect, Input, Settings, Timestamp, Topic,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is
@@ -13,6 +13,8 @@ pub type Sink = Box<dyn Fn(&Topic) -> bool + Send>;
 /// Injected rather than called directly so the driver carries no
 /// dependency on the transport layer and can be tested with a stub.
 pub type OpenFn = Box<dyn Fn(ConnectionId, ConnectionSpec, DriverHandle) + Send>;
+
+pub type PersistFn = Box<dyn Fn(Settings) + Send>;
 
 enum Message {
     Input(Input),
@@ -54,7 +56,12 @@ impl DriverHandle {
 pub struct Driver;
 
 impl Driver {
-    pub fn spawn(config: CoreConfig, open: OpenFn, tick_interval: Duration) -> DriverHandle {
+    pub fn spawn(
+        config: CoreConfig,
+        open: OpenFn,
+        persist: PersistFn,
+        tick_interval: Duration,
+    ) -> DriverHandle {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let handle = DriverHandle { messages: sender };
         let driver_handle = handle.clone();
@@ -92,6 +99,7 @@ impl Driver {
                 for effect in core.apply(input, at) {
                     match effect {
                         Effect::Emit(topic) => sinks.retain(|sink| sink(&topic)),
+                        Effect::PersistSettings(settings) => persist(settings),
                         Effect::OpenConnection { connection, spec } => {
                             open(connection, spec, driver_handle.clone());
                         }
@@ -155,7 +163,12 @@ mod tests {
 
     #[tokio::test]
     async fn subscribing_delivers_current_state_immediately() {
-        let handle = Driver::spawn(config(), Box::new(|_, _, _| {}), Duration::from_millis(100));
+        let handle = Driver::spawn(
+            config(),
+            Box::new(|_, _, _| {}),
+            Box::new(|_| {}),
+            Duration::from_millis(100),
+        );
         let mut topics = topic_stream(&handle);
 
         let received = timeout(PATIENCE, topics.recv())
@@ -169,8 +182,48 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn locale_changes_reach_subscribers_and_persistence() {
+        let (persisted_tx, mut persisted_rx) = mpsc::unbounded_channel();
+        let handle = Driver::spawn(
+            config(),
+            Box::new(|_, _, _| {}),
+            Box::new(move |settings| {
+                let _ = persisted_tx.send(settings);
+            }),
+            Duration::from_millis(100),
+        );
+        let mut topics = topic_stream(&handle);
+
+        handle.send(Input::SetLocale(updraft_core::Locale::De));
+
+        let settings = loop {
+            let topic = timeout(PATIENCE, topics.recv())
+                .await
+                .expect("a settings topic within the timeout")
+                .expect("the driver remains active");
+            if let Topic::Settings(settings) = topic
+                && settings.locale == Some(updraft_core::Locale::De)
+            {
+                break settings;
+            }
+        };
+
+        assert_eq!(
+            timeout(PATIENCE, persisted_rx.recv())
+                .await
+                .expect("a persisted snapshot within the timeout"),
+            Some(settings)
+        );
+    }
+
+    #[tokio::test]
     async fn decoded_fixes_reach_subscribers() {
-        let handle = Driver::spawn(config(), Box::new(|_, _, _| {}), Duration::from_millis(100));
+        let handle = Driver::spawn(
+            config(),
+            Box::new(|_, _, _| {}),
+            Box::new(|_| {}),
+            Duration::from_millis(100),
+        );
         let mut topics = topic_stream(&handle);
 
         handle.send(Input::bytes(LINK, RMC));
@@ -187,6 +240,7 @@ mod tests {
             Box::new(move |connection, _spec, _handle| {
                 let _ = sender.send(connection);
             }),
+            Box::new(|_| {}),
             Duration::from_millis(100),
         );
 

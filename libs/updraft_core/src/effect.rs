@@ -1,4 +1,5 @@
 use crate::connection::{ConnectionId, ConnectionSpec};
+use crate::settings::Settings;
 use crate::topic::Topic;
 
 /// A request for work that crosses the process boundary.
@@ -17,7 +18,10 @@ pub enum Effect {
         spec: ConnectionSpec,
     },
     /// Tear a link down and stop reconnecting it.
-    CloseConnection { connection: ConnectionId },
+    CloseConnection {
+        connection: ConnectionId,
+    },
+    PersistSettings(Settings),
 }
 
 impl Effect {
@@ -31,5 +35,9 @@ impl Effect {
 
     pub fn close(connection: ConnectionId) -> Self {
         Self::CloseConnection { connection }
+    }
+
+    pub fn persist_settings(settings: Settings) -> Self {
+        Self::PersistSettings(settings)
     }
 }

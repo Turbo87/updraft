@@ -80,6 +80,17 @@ impl Core {
             }
             Input::Tick => Vec::new(),
             Input::InternalGps(fix) => self.apply_fix(fix),
+            Input::SetLocale(locale) => {
+                if self.settings.locale == Some(locale) {
+                    return Vec::new();
+                }
+
+                self.settings.locale = Some(locale);
+                vec![
+                    Effect::emit(Topic::Settings(self.settings)),
+                    Effect::persist_settings(self.settings),
+                ]
+            }
         }
     }
 
@@ -478,5 +489,40 @@ mod tests {
                 Topic::Settings(settings),
             ]
         );
+    }
+
+    #[test]
+    fn setting_locale_updates_the_topic_and_requests_persistence() {
+        let mut core = Core::new(CoreConfig::default());
+        let settings = Settings {
+            locale: Some(Locale::De),
+        };
+
+        assert_eq!(
+            core.apply(Input::SetLocale(Locale::De), at(0)),
+            vec![
+                Effect::emit(Topic::Settings(settings)),
+                Effect::persist_settings(settings),
+            ]
+        );
+        assert_eq!(
+            core.topics(),
+            vec![
+                Topic::Instruments(Instruments::default()),
+                Topic::Settings(settings),
+            ]
+        );
+    }
+
+    #[test]
+    fn setting_the_active_explicit_locale_is_a_no_op() {
+        let mut core = Core::new(CoreConfig {
+            settings: Settings {
+                locale: Some(Locale::De),
+            },
+            ..CoreConfig::default()
+        });
+
+        assert_eq!(core.apply(Input::SetLocale(Locale::De), at(0)), vec![]);
     }
 }

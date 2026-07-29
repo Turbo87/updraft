@@ -9,7 +9,7 @@ use tauri_plugin_updraft::SppEvent;
 #[cfg(target_os = "android")]
 use tauri_plugin_updraft::UpdraftMobileExt;
 use tokio::sync::mpsc;
-use updraft_core::{ConnectionId, ConnectionState, Input};
+use updraft_core::{ConnectionState, ExternalDeviceId, Input};
 
 trait SppPlatform: Send + Sync + 'static {
     fn start_attempt(&self, address: &str, events: Channel) -> Result<(), String>;
@@ -38,13 +38,13 @@ impl<R: Runtime> SppPlatform for AndroidSppPlatform<R> {
 
 #[cfg(target_os = "android")]
 pub fn run<R: Runtime>(
-    connection: ConnectionId,
+    device_id: ExternalDeviceId,
     address: String,
     handle: DriverHandle,
     app: AppHandle<R>,
 ) {
     tokio::spawn(maintain(
-        connection,
+        device_id,
         address,
         handle,
         Arc::new(AndroidSppPlatform(app)),
@@ -58,7 +58,7 @@ enum AttemptResult {
 }
 
 async fn run_attempt(
-    connection: ConnectionId,
+    device_id: ExternalDeviceId,
     address: &str,
     handle: &DriverHandle,
     platform: &dyn SppPlatform,
@@ -66,14 +66,14 @@ async fn run_attempt(
     receiver: &mut mpsc::UnboundedReceiver<InvokeResponseBody>,
 ) -> AttemptResult {
     handle.send(Input::connection_changed(
-        connection,
+        device_id,
         ConnectionState::Connecting,
     ));
 
     let result = match platform.start_attempt(address, events.clone()) {
         Err(reason) => {
             tracing::warn!(
-                ?connection,
+                ?device_id,
                 %address,
                 %reason,
                 "SPP attempt failed to start"
@@ -88,7 +88,7 @@ async fn run_attempt(
             loop {
                 let Some(body) = receiver.recv().await else {
                     tracing::warn!(
-                        ?connection,
+                        ?device_id,
                         %address,
                         reason = "channel closed",
                         "SPP event channel closed"
@@ -100,12 +100,12 @@ async fn run_attempt(
                     Err(_) if cancelling => continue,
                     Err(_) => {
                         tracing::warn!(
-                            ?connection,
+                            ?device_id,
                             %address,
                             reason = "malformed channel data",
                             "Malformed SPP event"
                         );
-                        cancel_attempt(connection, address, platform);
+                        cancel_attempt(device_id, address, platform);
                         cancelling = true;
                         continue;
                     }
@@ -115,7 +115,7 @@ async fn run_attempt(
                     if let SppEvent::Disconnected { error } = event {
                         if let Some(reason) = error {
                             tracing::warn!(
-                                ?connection,
+                                ?device_id,
                                 %address,
                                 %reason,
                                 "SPP attempt disconnected"
@@ -128,29 +128,29 @@ async fn run_attempt(
 
                 match event {
                     SppEvent::Connected => handle.send(Input::connection_changed(
-                        connection,
+                        device_id,
                         ConnectionState::Connected,
                     )),
                     SppEvent::Bytes { data } => match STANDARD.decode(data) {
                         Ok(bytes) => {
                             delivered_bytes |= !bytes.is_empty();
-                            handle.send(Input::bytes(connection, bytes));
+                            handle.send(Input::bytes(device_id, bytes));
                         }
                         Err(_) => {
                             tracing::warn!(
-                                ?connection,
+                                ?device_id,
                                 %address,
                                 reason = "invalid Base64 data",
                                 "Invalid Base64 SPP bytes"
                             );
-                            cancel_attempt(connection, address, platform);
+                            cancel_attempt(device_id, address, platform);
                             cancelling = true;
                         }
                     },
                     SppEvent::Disconnected { error } => {
                         if let Some(reason) = error {
                             tracing::warn!(
-                                ?connection,
+                                ?device_id,
                                 %address,
                                 %reason,
                                 "SPP attempt disconnected"
@@ -164,16 +164,16 @@ async fn run_attempt(
     };
 
     handle.send(Input::connection_changed(
-        connection,
+        device_id,
         ConnectionState::Disconnected,
     ));
     result
 }
 
-fn cancel_attempt(connection: ConnectionId, address: &str, platform: &dyn SppPlatform) {
+fn cancel_attempt(device_id: ExternalDeviceId, address: &str, platform: &dyn SppPlatform) {
     if let Err(reason) = platform.cancel_attempt() {
         tracing::warn!(
-            ?connection,
+            ?device_id,
             %address,
             %reason,
             "SPP attempt cancellation failed"
@@ -182,7 +182,7 @@ fn cancel_attempt(connection: ConnectionId, address: &str, platform: &dyn SppPla
 }
 
 async fn maintain(
-    connection: ConnectionId,
+    device_id: ExternalDeviceId,
     address: String,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
@@ -192,11 +192,11 @@ async fn maintain(
         let _ = sender.send(body);
         Ok(())
     });
-    maintain_on_channel(connection, address, handle, platform, events, receiver).await;
+    maintain_on_channel(device_id, address, handle, platform, events, receiver).await;
 }
 
 async fn maintain_on_channel(
-    connection: ConnectionId,
+    device_id: ExternalDeviceId,
     address: String,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
@@ -207,7 +207,7 @@ async fn maintain_on_channel(
 
     loop {
         match run_attempt(
-            connection,
+            device_id,
             &address,
             &handle,
             platform.as_ref(),
@@ -238,10 +238,10 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::timeout;
     use tracing_test::traced_test;
-    use updraft_core::{ConnectionId, ConnectionSpec, CoreConfig, Topic};
+    use updraft_core::{ConnectionSpec, CoreConfig, ExternalDeviceId, Topic};
 
     const ADDRESS: &str = "00:11:22:33:44:55";
-    const LINK: ConnectionId = ConnectionId(1);
+    const LINK: ExternalDeviceId = ExternalDeviceId(1);
     const PATIENCE: Duration = Duration::from_secs(5);
     const RMC_EVENT: &str = r#"{"type":"bytes","data":"JEdQUk1DLDEyMDAwMC4wMCxBLDUwNDkuMzgsTiwwMDYxMS4xNixFLDQ1LjAsMjcwLjAsMDEwMTI2LCwsQQ0K"}"#;
 
@@ -424,7 +424,7 @@ mod tests {
             return Err(format!("missing {message:?} warning"));
         };
         let missing: Vec<_> = [
-            format!(" connection={LINK:?}"),
+            format!(" device_id={LINK:?}"),
             format!(" address={ADDRESS}"),
             " reason=".to_owned(),
             reason.to_owned(),

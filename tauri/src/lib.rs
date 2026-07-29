@@ -73,13 +73,13 @@ fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc:
 
 fn configured_core(android: bool, settings: Settings) -> updraft_core::CoreConfig {
     let mut connections = vec![(
-        updraft_core::ConnectionId(1),
+        updraft_core::ExternalDeviceId(1),
         updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
     )];
 
     if android {
         connections.push((
-            updraft_core::ConnectionId(2),
+            updraft_core::ExternalDeviceId(2),
             updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
         ));
     }
@@ -115,8 +115,8 @@ pub fn run() {
                 let persist = Box::new(settings_file.writer());
                 driver::Driver::spawn(
                     config,
-                    Box::new(move |connection, spec, handle| {
-                        transport::open(connection, spec, handle, app_handle.clone());
+                    Box::new(move |device_id, spec, handle| {
+                        transport::open(device_id, spec, handle, app_handle.clone());
                     }),
                     persist,
                     std::time::Duration::from_millis(100),
@@ -162,11 +162,11 @@ mod tests {
             configured_core(true, Settings::default()).connections,
             vec![
                 (
-                    updraft_core::ConnectionId(1),
+                    updraft_core::ExternalDeviceId(1),
                     updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
                 ),
                 (
-                    updraft_core::ConnectionId(2),
+                    updraft_core::ExternalDeviceId(2),
                     updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
                 ),
             ]
@@ -178,7 +178,7 @@ mod tests {
         assert_eq!(
             configured_core(false, Settings::default()).connections,
             vec![(
-                updraft_core::ConnectionId(1),
+                updraft_core::ExternalDeviceId(1),
                 updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
             )]
         );

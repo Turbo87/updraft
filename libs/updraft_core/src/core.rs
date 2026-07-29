@@ -1,4 +1,4 @@
-use crate::connection::{ConnectionId, ConnectionSpec};
+use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
 use crate::effect::Effect;
@@ -16,7 +16,7 @@ use updraft_nmea::{Message, RmcStatus};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CoreConfig {
     pub settings: Settings,
-    pub connections: Vec<(ConnectionId, ConnectionSpec)>,
+    pub connections: Vec<(ExternalDeviceId, ConnectionSpec)>,
 }
 
 /// The deterministic application core.
@@ -26,9 +26,9 @@ pub struct CoreConfig {
 /// with no runtime, sleeps or wall clock.
 #[derive(Debug)]
 pub struct Core {
-    connections: Vec<(ConnectionId, ConnectionSpec)>,
+    connections: Vec<(ExternalDeviceId, ConnectionSpec)>,
     settings: Settings,
-    decoders: BTreeMap<ConnectionId, Decoder>,
+    decoders: BTreeMap<ExternalDeviceId, Decoder>,
     diagnostics: ConnectionDiagnostics,
     instruments: Instruments,
 }
@@ -42,9 +42,9 @@ impl Core {
         let mut diagnostics = ConnectionDiagnostics::default();
         let decoders = connections
             .iter()
-            .map(|(id, spec)| {
-                diagnostics.insert(*id, spec.clone());
-                (*id, Decoder::default())
+            .map(|(device_id, spec)| {
+                diagnostics.insert(*device_id, spec.clone());
+                (*device_id, Decoder::default())
             })
             .collect();
 
@@ -68,14 +68,14 @@ impl Core {
             Input::Start => self
                 .connections
                 .iter()
-                .map(|(connection, spec)| Effect::open(*connection, spec.clone()))
+                .map(|(device_id, spec)| Effect::open(*device_id, spec.clone()))
                 .collect(),
-            Input::Bytes { connection, data } => {
-                self.diagnostics.bytes(connection, data.len());
-                self.decode(connection, &data)
+            Input::Bytes { device_id, data } => {
+                self.diagnostics.bytes(device_id, data.len());
+                self.decode(device_id, &data)
             }
-            Input::ConnectionChanged { connection, state } => {
-                self.diagnostics.changed(connection, state);
+            Input::ConnectionChanged { device_id, state } => {
+                self.diagnostics.changed(device_id, state);
                 Vec::new()
             }
             Input::Tick => Vec::new(),
@@ -103,8 +103,8 @@ impl Core {
         ]
     }
 
-    fn decode(&mut self, connection: ConnectionId, data: &[u8]) -> Vec<Effect> {
-        let Some(decoder) = self.decoders.get_mut(&connection) else {
+    fn decode(&mut self, device_id: ExternalDeviceId, data: &[u8]) -> Vec<Effect> {
+        let Some(decoder) = self.decoders.get_mut(&device_id) else {
             return Vec::new();
         };
 
@@ -201,8 +201,8 @@ mod tests {
     use tracing_test::traced_test;
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
-    const LINK: ConnectionId = ConnectionId(1);
-    const SPP_LINK: ConnectionId = ConnectionId(2);
+    const LINK: ExternalDeviceId = ExternalDeviceId(1);
+    const SPP_LINK: ExternalDeviceId = ExternalDeviceId(2);
     const TRACE_TIMESTAMP_FILTER: (&str, &str) =
         (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", "[TIME]");
 
@@ -259,7 +259,7 @@ mod tests {
             at(0),
         );
 
-        assert!(logs_contain("ConnectionId(2)"));
+        assert!(logs_contain("ExternalDeviceId(2)"));
         assert!(logs_contain("00:00:00:00:00:00"));
     }
 
@@ -329,7 +329,7 @@ mod tests {
     fn unknown_and_empty_bytes_produce_no_delivery_log() {
         let mut core = Core::new(config());
 
-        core.apply(Input::bytes(ConnectionId(99), b"abc"), at(0));
+        core.apply(Input::bytes(ExternalDeviceId(99), b"abc"), at(0));
         core.apply(Input::bytes(LINK, b""), at(1));
 
         assert!(!logs_contain("First bytes"));
@@ -400,7 +400,7 @@ mod tests {
     fn bytes_from_an_unknown_connection_are_ignored() {
         let mut core = Core::new(config());
 
-        let effects = core.apply(Input::bytes(ConnectionId(99), RMC), at(100));
+        let effects = core.apply(Input::bytes(ExternalDeviceId(99), RMC), at(100));
 
         assert_eq!(effects, vec![]);
     }

@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use updraft_core::{
-    ConnectionId, ConnectionSpec, Core, CoreConfig, Effect, Input, Settings, Timestamp, Topic,
+    ConnectionSpec, Core, CoreConfig, Effect, ExternalDeviceId, Input, Settings, Timestamp, Topic,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is
@@ -12,7 +12,7 @@ pub type Sink = Box<dyn Fn(&Topic) -> bool + Send>;
 ///
 /// Injected rather than called directly so the driver carries no
 /// dependency on the transport layer and can be tested with a stub.
-pub type OpenFn = Box<dyn Fn(ConnectionId, ConnectionSpec, DriverHandle) + Send>;
+pub type OpenFn = Box<dyn Fn(ExternalDeviceId, ConnectionSpec, DriverHandle) + Send>;
 
 pub type PersistFn = Box<dyn Fn(Settings) + Send>;
 
@@ -100,12 +100,12 @@ impl Driver {
                     match effect {
                         Effect::Emit(topic) => sinks.retain(|sink| sink(&topic)),
                         Effect::PersistSettings(settings) => persist(settings),
-                        Effect::OpenConnection { connection, spec } => {
-                            open(connection, spec, driver_handle.clone());
+                        Effect::OpenConnection { device_id, spec } => {
+                            open(device_id, spec, driver_handle.clone());
                         }
-                        Effect::CloseConnection { connection } => {
+                        Effect::CloseConnection { device_id } => {
                             tracing::warn!(
-                                ?connection,
+                                ?device_id,
                                 "close requested, but transports run for the process lifetime in this milestone"
                             );
                         }
@@ -126,7 +126,7 @@ mod tests {
     use tokio::time::timeout;
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
-    const LINK: ConnectionId = ConnectionId(1);
+    const LINK: ExternalDeviceId = ExternalDeviceId(1);
     const PATIENCE: Duration = Duration::from_secs(5);
 
     fn config() -> CoreConfig {
@@ -237,8 +237,8 @@ mod tests {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let handle = Driver::spawn(
             config(),
-            Box::new(move |connection, _spec, _handle| {
-                let _ = sender.send(connection);
+            Box::new(move |device_id, _spec, _handle| {
+                let _ = sender.send(device_id);
             }),
             Box::new(|_| {}),
             Duration::from_millis(100),

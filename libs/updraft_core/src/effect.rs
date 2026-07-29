@@ -1,4 +1,4 @@
-use crate::connection::{ConnectionId, ConnectionSpec};
+use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::settings::Settings;
 use crate::topic::Topic;
 
@@ -14,12 +14,12 @@ pub enum Effect {
     /// Bring up and keep up a link. The shell owns reconnection and
     /// backoff until a matching [`Effect::CloseConnection`].
     OpenConnection {
-        connection: ConnectionId,
+        device_id: ExternalDeviceId,
         spec: ConnectionSpec,
     },
     /// Tear a link down and stop reconnecting it.
     CloseConnection {
-        connection: ConnectionId,
+        device_id: ExternalDeviceId,
     },
     PersistSettings(Settings),
 }
@@ -29,12 +29,12 @@ impl Effect {
         Self::Emit(topic)
     }
 
-    pub fn open(connection: ConnectionId, spec: ConnectionSpec) -> Self {
-        Self::OpenConnection { connection, spec }
+    pub fn open(device_id: ExternalDeviceId, spec: ConnectionSpec) -> Self {
+        Self::OpenConnection { device_id, spec }
     }
 
-    pub fn close(connection: ConnectionId) -> Self {
-        Self::CloseConnection { connection }
+    pub fn close(device_id: ExternalDeviceId) -> Self {
+        Self::CloseConnection { device_id }
     }
 
     pub fn persist_settings(settings: Settings) -> Self {

@@ -4,7 +4,7 @@ use crate::driver::DriverHandle;
 use std::time::Duration;
 use tokio::io::AsyncReadExt as _;
 use tokio::net::TcpStream;
-use updraft_core::{ConnectionId, ConnectionState, Input};
+use updraft_core::{ConnectionState, ExternalDeviceId, Input};
 
 const READ_BUFFER_BYTES: usize = 4_096;
 
@@ -13,32 +13,32 @@ const READ_BUFFER_BYTES: usize = 4_096;
 /// The core asked for this link to exist, so reconnection and backoff are
 /// this task's business, not the core's. The core only learns the current
 /// state through [`Input::ConnectionChanged`].
-pub fn run(connection: ConnectionId, host: String, port: u16, handle: DriverHandle) {
+pub fn run(device_id: ExternalDeviceId, host: String, port: u16, handle: DriverHandle) {
     tokio::spawn(async move {
         let mut backoff = ReconnectBackoff::default();
 
         loop {
             handle.send(Input::connection_changed(
-                connection,
+                device_id,
                 ConnectionState::Connecting,
             ));
 
             let delivered_bytes = match TcpStream::connect((host.as_str(), port)).await {
                 Ok(stream) => {
                     handle.send(Input::connection_changed(
-                        connection,
+                        device_id,
                         ConnectionState::Connected,
                     ));
-                    pump(connection, &host, port, stream, &handle).await
+                    pump(device_id, &host, port, stream, &handle).await
                 }
                 Err(error) => {
-                    tracing::warn!(?connection, %host, port, %error, "TCP connect failed");
+                    tracing::warn!(?device_id, %host, port, %error, "TCP connect failed");
                     false
                 }
             };
 
             handle.send(Input::connection_changed(
-                connection,
+                device_id,
                 ConnectionState::Disconnected,
             ));
 
@@ -50,7 +50,7 @@ pub fn run(connection: ConnectionId, host: String, port: u16, handle: DriverHand
 /// Reads until the link closes or errors. Returns whether any bytes
 /// arrived, which is what tells the caller the connection was real.
 async fn pump(
-    connection: ConnectionId,
+    device_id: ExternalDeviceId,
     host: &str,
     port: u16,
     mut stream: TcpStream,
@@ -64,10 +64,10 @@ async fn pump(
             Ok(0) => return received,
             Ok(read) => {
                 received = true;
-                handle.send(Input::bytes(connection, &buffer[..read]));
+                handle.send(Input::bytes(device_id, &buffer[..read]));
             }
             Err(error) => {
-                tracing::warn!(?connection, %host, port, %error, "TCP read failed");
+                tracing::warn!(?device_id, %host, port, %error, "TCP read failed");
                 return received;
             }
         }
@@ -99,11 +99,11 @@ mod tests {
 
     fn assert_warning_context(
         line: &str,
-        connection: ConnectionId,
+        device_id: ExternalDeviceId,
         port: u16,
     ) -> Result<(), String> {
         let missing: Vec<_> = [
-            format!(" connection={connection:?}"),
+            format!(" device_id={device_id:?}"),
             " host=127.0.0.1".to_owned(),
             format!(" port={port}"),
             " error=".to_owned(),
@@ -125,9 +125,9 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
         let port = listener.local_addr().expect("has an address").port();
         drop(listener);
-        let connection = ConnectionId(1);
+        let device_id = ExternalDeviceId(1);
 
-        run(connection, "127.0.0.1".to_owned(), port, driver());
+        run(device_id, "127.0.0.1".to_owned(), port, driver());
 
         timeout(PATIENCE, async {
             while !logs_contain("TCP connect failed") {
@@ -144,7 +144,7 @@ mod tests {
             else {
                 return Err("missing connection failure warning".to_owned());
             };
-            assert_warning_context(line, connection, port)
+            assert_warning_context(line, device_id, port)
         });
     }
 
@@ -153,7 +153,7 @@ mod tests {
     async fn failed_read_logs_connection_endpoint_and_error() {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
         let port = listener.local_addr().expect("has an address").port();
-        let connection = ConnectionId(1);
+        let device_id = ExternalDeviceId(1);
 
         let (client, accepted) =
             tokio::join!(TcpStream::connect(("127.0.0.1", port)), listener.accept());
@@ -166,7 +166,7 @@ mod tests {
         let handle = driver();
         timeout(
             PATIENCE,
-            pump(connection, "127.0.0.1", port, client, &handle),
+            pump(device_id, "127.0.0.1", port, client, &handle),
         )
         .await
         .expect("a read failure within the timeout");
@@ -175,7 +175,7 @@ mod tests {
             let Some(line) = lines.iter().find(|line| line.contains("TCP read failed")) else {
                 return Err("missing read failure warning".to_owned());
             };
-            assert_warning_context(line, connection, port)
+            assert_warning_context(line, device_id, port)
         });
     }
 
@@ -183,11 +183,11 @@ mod tests {
     async fn bytes_from_a_listening_peer_reach_the_core() {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
         let port = listener.local_addr().expect("has an address").port();
-        let connection = ConnectionId(1);
+        let device_id = ExternalDeviceId(1);
 
         let handle = Driver::spawn(
             CoreConfig {
-                connections: vec![(connection, ConnectionSpec::tcp("127.0.0.1", port))],
+                connections: vec![(device_id, ConnectionSpec::tcp("127.0.0.1", port))],
                 ..CoreConfig::default()
             },
             Box::new(|_, _, _| {}),
@@ -200,7 +200,7 @@ mod tests {
             sender.send(topic.clone()).is_ok()
         }));
 
-        run(connection, "127.0.0.1".to_owned(), port, handle.clone());
+        run(device_id, "127.0.0.1".to_owned(), port, handle.clone());
 
         let (mut stream, _) = listener.accept().await.expect("accepts");
         stream

@@ -4,7 +4,7 @@
 /// position-source arbitration and failover need to know which device a
 /// value came from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ConnectionId(pub u32);
+pub struct ExternalDeviceId(pub u32);
 
 /// How the shell should reach a device.
 #[derive(Clone, Debug, PartialEq, Eq)]

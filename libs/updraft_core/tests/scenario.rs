@@ -1,8 +1,9 @@
 use updraft_core::{
-    ConnectionId, ConnectionSpec, Core, CoreConfig, Effect, Fix, Input, LatLon, Timestamp, Topic,
+    ConnectionSpec, Core, CoreConfig, Effect, ExternalDeviceId, Fix, Input, LatLon, Timestamp,
+    Topic,
 };
 
-const LINK: ConnectionId = ConnectionId(1);
+const LINK: ExternalDeviceId = ExternalDeviceId(1);
 const FIXTURE: &str = include_str!("../../../testdata/nmea/basic.nmea");
 /// Sentences the core must not act on: a verbatim repeat of the last line
 /// of `basic.nmea`, then a `V`-status fix carrying plausible values.
@@ -30,8 +31,8 @@ fn describe(effect: &Effect) -> String {
             )
         }
         Effect::Emit(Topic::Settings(settings)) => format!("settings {settings:?}"),
-        Effect::OpenConnection { connection, spec } => format!("open {connection:?} {spec:?}"),
-        Effect::CloseConnection { connection } => format!("close {connection:?}"),
+        Effect::OpenConnection { device_id, spec } => format!("open {device_id:?} {spec:?}"),
+        Effect::CloseConnection { device_id } => format!("close {device_id:?}"),
         Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),
     }
 }

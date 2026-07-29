@@ -38,7 +38,7 @@
     "lightningcss": "1.33.0",
     "maplibre-gl": "6.0.0",
     "normalize.css": "8.0.1",
-    "playwright": "1.61.1",
+    "playwright": "1.62.0",
     "storybook": "10.5.4",
     "svelte": "5.56.8",
     "svelte-check": "4.7.3",

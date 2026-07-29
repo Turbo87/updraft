@@ -1,14 +1,14 @@
 use super::reconnect::ReconnectBackoff;
-use crate::driver::DriverHandle;
+use crate::driver::{DriverHandle, StopFn};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 use tauri::ipc::{Channel, InvokeResponseBody};
 #[cfg(target_os = "android")]
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_updraft::SppEvent;
 #[cfg(target_os = "android")]
 use tauri_plugin_updraft::UpdraftMobileExt;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use updraft_core::{ConnectionState, ExternalDeviceId, Input};
 
 trait SppPlatform: Send + Sync + 'static {
@@ -42,19 +42,21 @@ pub fn run<R: Runtime>(
     address: String,
     handle: DriverHandle,
     app: AppHandle<R>,
-) {
-    tokio::spawn(maintain(
+) -> StopFn {
+    let Maintained { stop, task: _task } = spawn_maintained(
         device_id,
         address,
         handle,
         Arc::new(AndroidSppPlatform(app)),
-    ));
+    );
+    stop
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum AttemptResult {
     Completed { delivered_bytes: bool },
     EventStreamClosed,
+    Stopped,
 }
 
 async fn run_attempt(
@@ -64,7 +66,13 @@ async fn run_attempt(
     platform: &dyn SppPlatform,
     events: &Channel,
     receiver: &mut mpsc::UnboundedReceiver<InvokeResponseBody>,
+    mut stop_receiver: Pin<&mut oneshot::Receiver<()>>,
 ) -> AttemptResult {
+    match stop_receiver.as_mut().get_mut().try_recv() {
+        Ok(()) | Err(oneshot::error::TryRecvError::Closed) => return AttemptResult::Stopped,
+        Err(oneshot::error::TryRecvError::Empty) => {}
+    }
+
     handle.send(Input::connection_changed(
         device_id,
         ConnectionState::Connecting,
@@ -85,8 +93,25 @@ async fn run_attempt(
         Ok(()) => {
             let mut delivered_bytes = false;
             let mut cancelling = false;
+            let mut stopping = false;
             loop {
-                let Some(body) = receiver.recv().await else {
+                let body = if stopping {
+                    receiver.recv().await
+                } else {
+                    tokio::select! {
+                        biased;
+                        _ = stop_receiver.as_mut() => {
+                            if !cancelling {
+                                cancel_attempt(device_id, address, platform);
+                                cancelling = true;
+                            }
+                            stopping = true;
+                            continue;
+                        }
+                        body = receiver.recv() => body,
+                    }
+                };
+                let Some(body) = body else {
                     tracing::warn!(
                         ?device_id,
                         %address,
@@ -113,7 +138,9 @@ async fn run_attempt(
 
                 if cancelling {
                     if let SppEvent::Disconnected { error } = event {
-                        if let Some(reason) = error {
+                        if let Some(reason) = error
+                            && !stopping
+                        {
                             tracing::warn!(
                                 ?device_id,
                                 %address,
@@ -121,7 +148,11 @@ async fn run_attempt(
                                 "SPP attempt disconnected"
                             );
                         }
-                        break AttemptResult::Completed { delivered_bytes };
+                        break if stopping {
+                            AttemptResult::Stopped
+                        } else {
+                            AttemptResult::Completed { delivered_bytes }
+                        };
                     }
                     continue;
                 }
@@ -186,13 +217,24 @@ async fn maintain(
     address: String,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
+    stop_receiver: oneshot::Receiver<()>,
 ) {
     let (sender, receiver) = mpsc::unbounded_channel::<InvokeResponseBody>();
     let events = Channel::new(move |body| {
         let _ = sender.send(body);
         Ok(())
     });
-    maintain_on_channel(device_id, address, handle, platform, events, receiver).await;
+    tokio::pin!(stop_receiver);
+    maintain_on_channel(
+        device_id,
+        address,
+        handle,
+        platform,
+        events,
+        receiver,
+        stop_receiver.as_mut(),
+    )
+    .await;
 }
 
 async fn maintain_on_channel(
@@ -202,6 +244,7 @@ async fn maintain_on_channel(
     platform: Arc<dyn SppPlatform>,
     events: Channel,
     mut receiver: mpsc::UnboundedReceiver<InvokeResponseBody>,
+    mut stop_receiver: Pin<&mut oneshot::Receiver<()>>,
 ) {
     let mut backoff = ReconnectBackoff::default();
 
@@ -213,20 +256,54 @@ async fn maintain_on_channel(
             platform.as_ref(),
             &events,
             &mut receiver,
+            stop_receiver.as_mut(),
         )
         .await
         {
             AttemptResult::Completed { delivered_bytes } => {
-                tokio::time::sleep(backoff.after_attempt(delivered_bytes)).await;
+                tokio::select! {
+                    biased;
+                    _ = stop_receiver.as_mut() => return,
+                    _ = tokio::time::sleep(backoff.after_attempt(delivered_bytes)) => {}
+                }
             }
-            AttemptResult::EventStreamClosed => return,
+            AttemptResult::EventStreamClosed | AttemptResult::Stopped => return,
         }
+    }
+}
+
+struct Maintained {
+    stop: StopFn,
+    task: tokio::task::JoinHandle<()>,
+}
+
+fn spawn_maintained(
+    device_id: ExternalDeviceId,
+    address: String,
+    handle: DriverHandle,
+    platform: Arc<dyn SppPlatform>,
+) -> Maintained {
+    let (stop_sender, stop_receiver) = oneshot::channel();
+    let task = tokio::spawn(maintain(
+        device_id,
+        address,
+        handle,
+        platform,
+        stop_receiver,
+    ));
+    Maintained {
+        stop: Box::new(move || {
+            let _ = stop_sender.send(());
+        }),
+        task,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{AttemptResult, SppPlatform, maintain, maintain_on_channel, run_attempt};
+    use super::{
+        AttemptResult, SppPlatform, maintain, maintain_on_channel, run_attempt, spawn_maintained,
+    };
     use crate::driver::{Driver, DriverHandle};
     use claims::assert_some;
     use std::sync::{
@@ -235,7 +312,7 @@ mod tests {
     };
     use std::time::Duration;
     use tauri::ipc::{Channel, InvokeResponseBody};
-    use tokio::sync::mpsc;
+    use tokio::sync::{mpsc, oneshot};
     use tokio::time::timeout;
     use tracing_test::traced_test;
     use updraft_core::{
@@ -361,7 +438,10 @@ mod tests {
         handle: DriverHandle,
     ) -> tokio::task::JoinHandle<AttemptResult> {
         let (events, mut receiver) = event_stream();
+        let (stop_sender, stop_receiver) = oneshot::channel();
         tokio::spawn(async move {
+            let _stop_sender = stop_sender;
+            tokio::pin!(stop_receiver);
             run_attempt(
                 DEVICE_ID,
                 ADDRESS,
@@ -369,6 +449,7 @@ mod tests {
                 platform.as_ref(),
                 &events,
                 &mut receiver,
+                stop_receiver.as_mut(),
             )
             .await
         })
@@ -383,7 +464,7 @@ mod tests {
                     spec: ConnectionSpec::bluetooth_spp(ADDRESS),
                 }],
             },
-            Box::new(|_, _, _| {}),
+            Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_secs(60),
         )
@@ -455,6 +536,8 @@ mod tests {
         let handle = driver();
         let mut topics = topic_stream(&handle);
         let (events, mut receiver) = event_stream();
+        let (_stop_sender, stop_receiver) = oneshot::channel();
+        tokio::pin!(stop_receiver);
 
         let device_id = loop {
             let received = timeout(PATIENCE, topics.recv())
@@ -473,6 +556,7 @@ mod tests {
             &platform,
             &events,
             &mut receiver,
+            stop_receiver.as_mut(),
         )
         .await;
 
@@ -571,11 +655,13 @@ mod tests {
             r#"{"type":"connected"}"#,
             r#"{"type":"disconnected"}"#,
         ]));
+        let (_stop_sender, stop_receiver) = oneshot::channel();
         let task = tokio::spawn(maintain(
             DEVICE_ID,
             ADDRESS.to_owned(),
             driver(),
             platform.clone(),
+            stop_receiver,
         ));
         tokio::task::yield_now().await;
         assert_eq!(platform.attempts(), 1);
@@ -606,6 +692,8 @@ mod tests {
     async fn synchronous_start_failure_logs_connection_address_and_reason() {
         let platform = FakePlatform::failing_with("Nearby Devices unavailable");
         let (events, mut receiver) = event_stream();
+        let (_stop_sender, stop_receiver) = oneshot::channel();
+        tokio::pin!(stop_receiver);
 
         let result = run_attempt(
             DEVICE_ID,
@@ -614,6 +702,7 @@ mod tests {
             &platform,
             &events,
             &mut receiver,
+            stop_receiver.as_mut(),
         )
         .await;
 
@@ -638,6 +727,8 @@ mod tests {
         let platform =
             FakePlatform::with_events(vec![r#"{"type":"disconnected","error":"socket closed"}"#]);
         let (events, mut receiver) = event_stream();
+        let (_stop_sender, stop_receiver) = oneshot::channel();
+        tokio::pin!(stop_receiver);
 
         let result = run_attempt(
             DEVICE_ID,
@@ -646,6 +737,7 @@ mod tests {
             &platform,
             &events,
             &mut receiver,
+            stop_receiver.as_mut(),
         )
         .await;
 
@@ -662,11 +754,13 @@ mod tests {
     #[traced_test]
     async fn failed_cancellation_does_not_start_another_attempt() {
         let platform = Arc::new(FakePlatform::with_cancel_error("cancel command failed"));
+        let (_stop_sender, stop_receiver) = oneshot::channel();
         let task = tokio::spawn(maintain(
             DEVICE_ID,
             ADDRESS.to_owned(),
             driver(),
             platform.clone(),
+            stop_receiver,
         ));
         tokio::task::yield_now().await;
         assert_eq!(platform.attempts(), 1);
@@ -700,6 +794,8 @@ mod tests {
         let events = Channel::new(|_| Ok(()));
         let (sender, receiver) = mpsc::unbounded_channel::<InvokeResponseBody>();
         drop(sender);
+        let (_stop_sender, stop_receiver) = oneshot::channel();
+        tokio::pin!(stop_receiver);
 
         timeout(
             PATIENCE,
@@ -710,6 +806,7 @@ mod tests {
                 platform.clone(),
                 events,
                 receiver,
+                stop_receiver.as_mut(),
             ),
         )
         .await
@@ -717,5 +814,108 @@ mod tests {
 
         assert_eq!(platform.attempts(), 1);
         logs_assert(|lines| warning_context(lines, "SPP event channel closed", "channel closed"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn stopping_before_the_task_starts_does_not_acquire_the_platform() {
+        let platform = Arc::new(FakePlatform::with_events(vec![
+            r#"{"type":"disconnected"}"#,
+        ]));
+        let maintained =
+            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+
+        (maintained.stop)();
+        timeout(PATIENCE, maintained.task)
+            .await
+            .expect("supervisor stops before starting an attempt")
+            .expect("supervisor task succeeds");
+
+        assert_eq!(platform.attempts(), 0);
+        assert_eq!(platform.cancellations(), 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn stopping_an_active_spp_attempt_cancels_and_waits_for_disconnection() {
+        let platform = Arc::new(FakePlatform::with_events(Vec::new()));
+        let maintained =
+            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        tokio::task::yield_now().await;
+        assert_eq!(platform.attempts(), 1);
+
+        (maintained.stop)();
+        platform.send(r#"{"type":"connected"}"#);
+        tokio::task::yield_now().await;
+
+        assert_eq!(platform.cancellations(), 1);
+        assert!(!maintained.task.is_finished());
+
+        platform.send(r#"{"type":"disconnected"}"#);
+        timeout(PATIENCE, maintained.task)
+            .await
+            .expect("supervisor finishes after disconnection")
+            .expect("supervisor task succeeds");
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn intentional_stop_suppresses_terminal_disconnect_warning() {
+        let platform = Arc::new(FakePlatform::with_cancel_error("cancel command failed"));
+        let maintained =
+            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        tokio::task::yield_now().await;
+
+        (maintained.stop)();
+        platform.send(r#"{"type":"disconnected","error":"socket closed"}"#);
+        timeout(PATIENCE, maintained.task)
+            .await
+            .expect("supervisor finishes after disconnection")
+            .expect("supervisor task succeeds");
+
+        assert_eq!(platform.cancellations(), 1);
+        logs_assert(|lines| {
+            warning_context(
+                lines,
+                "SPP attempt cancellation failed",
+                "cancel command failed",
+            )
+        });
+        assert!(!logs_contain("SPP attempt disconnected"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn stopping_after_spp_start_rejection_does_not_cancel_another_attempt() {
+        let platform = Arc::new(FakePlatform::failing_with("already active"));
+        let maintained =
+            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        tokio::task::yield_now().await;
+        assert_eq!(platform.attempts(), 1);
+
+        (maintained.stop)();
+        tokio::time::advance(Duration::from_millis(250)).await;
+        tokio::task::yield_now().await;
+        timeout(PATIENCE, maintained.task)
+            .await
+            .expect("supervisor stops during backoff")
+            .expect("supervisor task succeeds");
+
+        assert_eq!(platform.attempts(), 1);
+        assert_eq!(platform.cancellations(), 0);
+    }
+
+    #[tokio::test]
+    async fn stopping_wins_when_a_terminal_spp_event_is_already_ready() {
+        let platform = Arc::new(FakePlatform::with_events(Vec::new()));
+        let maintained =
+            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        tokio::task::yield_now().await;
+
+        (maintained.stop)();
+        platform.send(r#"{"type":"disconnected"}"#);
+        timeout(PATIENCE, maintained.task)
+            .await
+            .expect("supervisor finishes")
+            .expect("supervisor task succeeds");
+
+        assert_eq!(platform.cancellations(), 1);
     }
 }

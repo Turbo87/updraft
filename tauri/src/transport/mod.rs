@@ -3,7 +3,7 @@ mod reconnect;
 mod spp;
 pub mod tcp;
 
-use crate::driver::DriverHandle;
+use crate::driver::{DriverHandle, StopFn};
 use tauri::{AppHandle, Runtime};
 use updraft_core::{ConnectionSpec, ExternalDeviceId};
 #[cfg(not(target_os = "android"))]
@@ -18,12 +18,14 @@ pub fn open<R: Runtime>(
     spec: ConnectionSpec,
     handle: DriverHandle,
     app: AppHandle<R>,
-) {
+) -> StopFn {
     match spec {
         ConnectionSpec::Tcp { host, port } => tcp::run(device_id, host, port, handle),
         ConnectionSpec::BluetoothSpp { address } => {
             #[cfg(target_os = "android")]
-            spp::run(device_id, address, handle, app);
+            {
+                spp::run(device_id, address, handle, app)
+            }
             #[cfg(not(target_os = "android"))]
             {
                 let _ = app;
@@ -32,6 +34,7 @@ pub fn open<R: Runtime>(
                     device_id,
                     ConnectionState::Disconnected,
                 ));
+                Box::new(|| {})
             }
         }
     }

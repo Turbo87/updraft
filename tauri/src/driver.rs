@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::BTreeMap,
+    time::{Duration, Instant},
+};
 use tokio::sync::mpsc;
 use updraft_core::{
     ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Timestamp, Topic,
@@ -8,13 +11,40 @@ use updraft_core::{
 /// gone, which is how the driver prunes dead subscribers.
 pub type Sink = Box<dyn Fn(&Topic) -> bool + Send>;
 
+pub type StopFn = Box<dyn FnOnce() + Send>;
+
 /// Brings up the transport for a connection the core asked for.
 ///
 /// Injected rather than called directly so the driver carries no
 /// dependency on the transport layer and can be tested with a stub.
-pub type OpenFn = Box<dyn Fn(ExternalDeviceId, ConnectionSpec, DriverHandle) + Send>;
+pub type OpenFn = Box<dyn Fn(ExternalDeviceId, ConnectionSpec, DriverHandle) -> StopFn + Send>;
 
 pub type PersistFn = Box<dyn Fn(SettingsSnapshot) + Send>;
+
+#[derive(Default)]
+struct ActiveTransports {
+    workers: BTreeMap<ExternalDeviceId, StopFn>,
+}
+
+impl ActiveTransports {
+    fn open(
+        &mut self,
+        device_id: ExternalDeviceId,
+        spec: ConnectionSpec,
+        handle: DriverHandle,
+        open: &OpenFn,
+    ) {
+        self.close(device_id);
+        self.workers
+            .insert(device_id, open(device_id, spec, handle));
+    }
+
+    fn close(&mut self, device_id: ExternalDeviceId) {
+        if let Some(stop) = self.workers.remove(&device_id) {
+            stop();
+        }
+    }
+}
 
 enum Message {
     Input(Input),
@@ -70,6 +100,7 @@ impl Driver {
             let started = Instant::now();
             let mut core = Core::new(snapshot);
             let mut sinks: Vec<Sink> = Vec::new();
+            let mut transports = ActiveTransports::default();
             let mut ticker = tokio::time::interval(tick_interval);
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
@@ -101,13 +132,10 @@ impl Driver {
                         Effect::Emit(topic) => sinks.retain(|sink| sink(&topic)),
                         Effect::PersistSettings(snapshot) => persist(snapshot),
                         Effect::OpenConnection { device_id, spec } => {
-                            open(device_id, spec, driver_handle.clone());
+                            transports.open(device_id, spec, driver_handle.clone(), &open);
                         }
                         Effect::CloseConnection { device_id } => {
-                            tracing::warn!(
-                                ?device_id,
-                                "close requested, but transports run for the process lifetime in this milestone"
-                            );
+                            transports.close(device_id);
                         }
                     }
                 }
@@ -123,6 +151,10 @@ mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
     use claims::{assert_some, assert_some_eq};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
     use tokio::time::timeout;
     use updraft_core::ExternalDeviceConfig;
 
@@ -176,11 +208,16 @@ mod tests {
         }
     }
 
+    fn inactive_driver_handle() -> DriverHandle {
+        let (messages, _) = mpsc::unbounded_channel();
+        DriverHandle { messages }
+    }
+
     #[tokio::test]
     async fn subscribing_delivers_current_state_immediately() {
         let handle = Driver::spawn(
             snapshot(),
-            Box::new(|_, _, _| {}),
+            Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),
         );
@@ -201,7 +238,7 @@ mod tests {
         let (persisted_tx, mut persisted_rx) = mpsc::unbounded_channel();
         let handle = Driver::spawn(
             snapshot(),
-            Box::new(|_, _, _| {}),
+            Box::new(|_, _, _| Box::new(|| {})),
             Box::new(move |snapshot| {
                 let _ = persisted_tx.send(snapshot);
             }),
@@ -238,7 +275,7 @@ mod tests {
     async fn decoded_fixes_reach_subscribers() {
         let handle = Driver::spawn(
             snapshot(),
-            Box::new(|_, _, _| {}),
+            Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),
         );
@@ -258,6 +295,7 @@ mod tests {
             snapshot(),
             Box::new(move |device_id, spec, _handle| {
                 let _ = sender.send((device_id, spec));
+                Box::new(|| {})
             }),
             Box::new(|_| {}),
             Duration::from_millis(100),
@@ -274,5 +312,88 @@ mod tests {
             requested,
             (expected_device_id, ConnectionSpec::tcp("127.0.0.1", 4353))
         );
+    }
+
+    #[test]
+    fn active_transports_opening_the_same_id_stops_and_replaces_its_worker() {
+        let first_stops = Arc::new(AtomicUsize::new(0));
+        let second_stops = Arc::new(AtomicUsize::new(0));
+        let next_stops = Arc::new(std::sync::Mutex::new(vec![
+            first_stops.clone(),
+            second_stops.clone(),
+        ]));
+        let open: OpenFn = Box::new(move |_, _, _| {
+            let stops = next_stops.lock().expect("stop counters lock").remove(0);
+            Box::new(move || {
+                stops.fetch_add(1, Ordering::SeqCst);
+            })
+        });
+        let mut transports = ActiveTransports::default();
+        let device_id = ExternalDeviceId(1);
+        let spec = ConnectionSpec::tcp("127.0.0.1", 4353);
+        let handle = inactive_driver_handle();
+
+        transports.open(device_id, spec.clone(), handle.clone(), &open);
+        transports.open(device_id, spec, handle, &open);
+
+        assert_eq!(first_stops.load(Ordering::SeqCst), 1);
+        assert_eq!(second_stops.load(Ordering::SeqCst), 0);
+
+        transports.close(device_id);
+
+        assert_eq!(first_stops.load(Ordering::SeqCst), 1);
+        assert_eq!(second_stops.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn active_transports_closing_an_active_id_stops_and_removes_its_worker() {
+        let stops = Arc::new(AtomicUsize::new(0));
+        let open_stops = stops.clone();
+        let open: OpenFn = Box::new(move |_, _, _| {
+            let stops = open_stops.clone();
+            Box::new(move || {
+                stops.fetch_add(1, Ordering::SeqCst);
+            })
+        });
+        let mut transports = ActiveTransports::default();
+        let device_id = ExternalDeviceId(1);
+        let handle = inactive_driver_handle();
+
+        transports.open(
+            device_id,
+            ConnectionSpec::tcp("127.0.0.1", 4353),
+            handle,
+            &open,
+        );
+        transports.close(device_id);
+        transports.close(device_id);
+
+        assert_eq!(stops.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn active_transports_closing_an_unknown_id_is_a_no_op() {
+        let stops = Arc::new(AtomicUsize::new(0));
+        let open_stops = stops.clone();
+        let open: OpenFn = Box::new(move |_, _, _| {
+            let stops = open_stops.clone();
+            Box::new(move || {
+                stops.fetch_add(1, Ordering::SeqCst);
+            })
+        });
+        let mut transports = ActiveTransports::default();
+        let device_id = ExternalDeviceId(1);
+
+        transports.open(
+            device_id,
+            ConnectionSpec::tcp("127.0.0.1", 4353),
+            inactive_driver_handle(),
+            &open,
+        );
+        transports.close(ExternalDeviceId(99));
+        assert_eq!(stops.load(Ordering::SeqCst), 0);
+
+        transports.close(device_id);
+        assert_eq!(stops.load(Ordering::SeqCst), 1);
     }
 }

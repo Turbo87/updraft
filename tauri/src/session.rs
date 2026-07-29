@@ -78,7 +78,7 @@ mod tests {
     fn driver() -> DriverHandle {
         Driver::spawn(
             SettingsSnapshot::default(),
-            Box::new(|_, _, _| {}),
+            Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),
         )

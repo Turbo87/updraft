@@ -94,7 +94,7 @@ pub fn run() {
                 driver::Driver::spawn(
                     snapshot,
                     Box::new(move |device_id, spec, handle| {
-                        transport::open(device_id, spec, handle, app_handle.clone());
+                        transport::open(device_id, spec, handle, app_handle.clone())
                     }),
                     persist,
                     std::time::Duration::from_millis(100),

@@ -48,9 +48,9 @@ impl Core {
     /// subscribed and holds no state yet.
     pub fn topics(&self) -> Vec<Topic> {
         vec![
-            Topic::Instruments(self.instruments),
-            Topic::Settings(self.settings),
-            Topic::ExternalDevices(self.external_devices.published_devices()),
+            self.instruments.as_topic(),
+            self.settings.as_topic(),
+            self.external_devices.as_topic(),
         ]
     }
 
@@ -84,7 +84,7 @@ impl Core {
             return Vec::new();
         }
 
-        vec![Effect::emit(Topic::Instruments(self.instruments))]
+        vec![Effect::emit(self.instruments.as_topic())]
     }
 
     fn settings_snapshot(&self) -> SettingsSnapshot {
@@ -112,7 +112,7 @@ impl Core {
             return Vec::new();
         }
 
-        vec![Effect::emit(Topic::Instruments(self.instruments))]
+        vec![Effect::emit(self.instruments.as_topic())]
     }
 
     fn handle_message(&mut self, message: Message) {
@@ -206,7 +206,7 @@ impl Input for SetLocale {
         } else {
             core.settings.locale = Some(self.locale);
             vec![
-                Effect::emit(Topic::Settings(core.settings)),
+                Effect::emit(core.settings.as_topic()),
                 Effect::persist_settings(core.settings_snapshot()),
             ]
         };
@@ -220,9 +220,7 @@ impl Input for AddExternalDevice {
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
         let device_id = core.external_devices.add(self.spec.clone());
         let mut effects = vec![Effect::open(device_id, self.spec)];
-        effects.push(Effect::emit(Topic::ExternalDevices(
-            core.external_devices.published_devices(),
-        )));
+        effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(device_id)
     }
@@ -241,9 +239,7 @@ impl Input for DeleteExternalDevice {
         if device.config.enabled {
             effects.push(Effect::close(self.device_id));
         }
-        effects.push(Effect::emit(Topic::ExternalDevices(
-            core.external_devices.published_devices(),
-        )));
+        effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))
     }
@@ -259,9 +255,7 @@ impl Input for ReorderExternalDevices {
             Err(error) => return Update::empty().with_response(Err(error)),
         }
         Update::effects(vec![
-            Effect::emit(Topic::ExternalDevices(
-                core.external_devices.published_devices(),
-            )),
+            Effect::emit(core.external_devices.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
         ])
         .with_response(Ok(()))
@@ -289,9 +283,7 @@ impl Input for EditExternalDevice {
             effects.push(Effect::close(self.device_id));
             effects.push(Effect::open(self.device_id, self.spec));
         }
-        effects.push(Effect::emit(Topic::ExternalDevices(
-            core.external_devices.published_devices(),
-        )));
+        effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))
     }
@@ -318,9 +310,7 @@ impl Input for SetExternalDeviceEnabled {
         } else {
             vec![Effect::close(self.device_id)]
         };
-        effects.push(Effect::emit(Topic::ExternalDevices(
-            core.external_devices.published_devices(),
-        )));
+        effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))
     }

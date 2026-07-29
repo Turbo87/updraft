@@ -1,3 +1,4 @@
+use crate::Topic;
 use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
@@ -147,6 +148,10 @@ impl ExternalDevices {
             })
             .collect();
         Ok(true)
+    }
+
+    pub fn as_topic(&self) -> Topic {
+        Topic::ExternalDevices(self.published_devices())
     }
 
     pub fn published_devices(&self) -> Vec<PublishedExternalDevice> {

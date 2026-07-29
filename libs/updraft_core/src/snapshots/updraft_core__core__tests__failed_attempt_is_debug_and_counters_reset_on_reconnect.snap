@@ -2,12 +2,12 @@
 source: libs/updraft_core/src/core.rs
 expression: "lines.join(\"\\n\")"
 ---
-[TIME] DEBUG failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Disconnected connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME] DEBUG failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connecting connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connected connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: First bytes connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Disconnected connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 } delivered_bytes=3
-[TIME] DEBUG failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connecting connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connected connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: First bytes connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Disconnected connection=ConnectionId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 } delivered_bytes=2
+[TIME] DEBUG failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Disconnected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
+[TIME] DEBUG failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connecting device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
+[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
+[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: First bytes device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
+[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Disconnected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 } delivered_bytes=3
+[TIME] DEBUG failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connecting device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
+[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Connected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
+[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: First bytes device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
+[TIME]  INFO failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Disconnected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 } delivered_bytes=2

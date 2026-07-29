@@ -1,4 +1,4 @@
-use crate::connection::{ConnectionId, ConnectionState};
+use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
 use crate::fix::Fix;
 use crate::settings::Locale;
 
@@ -17,12 +17,12 @@ pub enum Input {
     Tick,
     /// Raw bytes from a device link, tagged with which link produced them.
     Bytes {
-        connection: ConnectionId,
+        device_id: ExternalDeviceId,
         data: Vec<u8>,
     },
     /// The shell reporting what happened to a link it was asked to maintain.
     ConnectionChanged {
-        connection: ConnectionId,
+        device_id: ExternalDeviceId,
         state: ConnectionState,
     },
     /// A fix from the device's own GNSS receiver rather than a connected
@@ -30,17 +30,30 @@ pub enum Input {
     /// them be ranked against each other.
     InternalGps(Fix),
     SetLocale(Locale),
+    AddExternalDevice {
+        spec: ConnectionSpec,
+    },
+    DeleteExternalDevice(ExternalDeviceId),
+    ReorderExternalDevices(Vec<ExternalDeviceId>),
+    EditExternalDevice {
+        device_id: ExternalDeviceId,
+        spec: ConnectionSpec,
+    },
+    SetExternalDeviceEnabled {
+        device_id: ExternalDeviceId,
+        enabled: bool,
+    },
 }
 
 impl Input {
-    pub fn bytes(connection: ConnectionId, data: impl Into<Vec<u8>>) -> Self {
+    pub fn bytes(device_id: ExternalDeviceId, data: impl Into<Vec<u8>>) -> Self {
         Self::Bytes {
-            connection,
+            device_id,
             data: data.into(),
         }
     }
 
-    pub fn connection_changed(connection: ConnectionId, state: ConnectionState) -> Self {
-        Self::ConnectionChanged { connection, state }
+    pub fn connection_changed(device_id: ExternalDeviceId, state: ConnectionState) -> Self {
+        Self::ConnectionChanged { device_id, state }
     }
 }

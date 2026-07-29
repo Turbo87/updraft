@@ -1,24 +1,8 @@
-use crate::connection::{ConnectionId, ConnectionSpec, ConnectionState};
-use std::collections::BTreeMap;
+use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
 
 #[derive(Debug, Default)]
 pub struct ConnectionDiagnostics {
-    connections: BTreeMap<ConnectionId, Connection>,
-}
-
-#[derive(Debug)]
-struct Connection {
-    endpoint: ConnectionSpec,
     attempt: Attempt,
-}
-
-impl Connection {
-    pub fn new(endpoint: ConnectionSpec) -> Self {
-        Self {
-            endpoint,
-            attempt: Attempt::default(),
-        }
-    }
 }
 
 #[derive(Debug, Default)]
@@ -29,62 +13,49 @@ struct Attempt {
 }
 
 impl ConnectionDiagnostics {
-    pub fn insert(&mut self, connection: ConnectionId, endpoint: ConnectionSpec) {
-        self.connections
-            .insert(connection, Connection::new(endpoint));
-    }
-
-    #[cfg_attr(not(test), expect(dead_code))]
-    pub fn remove(&mut self, connection: ConnectionId) {
-        self.connections.remove(&connection);
-    }
-
-    pub fn changed(&mut self, connection: ConnectionId, state: ConnectionState) {
-        let Some(entry) = self.connections.get_mut(&connection) else {
-            return;
-        };
-
+    pub fn changed(
+        &mut self,
+        device_id: ExternalDeviceId,
+        spec: &ConnectionSpec,
+        state: ConnectionState,
+    ) {
         match state {
             ConnectionState::Connecting => {
-                entry.attempt = Attempt::default();
-                tracing::debug!(connection = ?connection, endpoint = ?entry.endpoint, "Connecting");
+                self.attempt = Attempt::default();
+                tracing::debug!(device_id = ?device_id, endpoint = ?spec, "Connecting");
             }
             ConnectionState::Connected => {
-                entry.attempt = Attempt {
+                self.attempt = Attempt {
                     connected: true,
                     ..Attempt::default()
                 };
-                tracing::info!(connection = ?connection, endpoint = ?entry.endpoint, "Connected");
+                tracing::info!(device_id = ?device_id, endpoint = ?spec, "Connected");
             }
             ConnectionState::Disconnected => {
-                if entry.attempt.connected {
+                if self.attempt.connected {
                     tracing::info!(
-                        connection = ?connection,
-                        endpoint = ?entry.endpoint,
-                        delivered_bytes = entry.attempt.delivered_bytes,
+                        device_id = ?device_id,
+                        endpoint = ?spec,
+                        delivered_bytes = self.attempt.delivered_bytes,
                         "Disconnected"
                     );
                 } else {
-                    tracing::debug!(connection = ?connection, endpoint = ?entry.endpoint, "Disconnected");
+                    tracing::debug!(device_id = ?device_id, endpoint = ?spec, "Disconnected");
                 }
-                entry.attempt = Attempt::default();
+                self.attempt = Attempt::default();
             }
         }
     }
 
-    pub fn bytes(&mut self, connection: ConnectionId, count: usize) {
+    pub fn bytes(&mut self, device_id: ExternalDeviceId, spec: &ConnectionSpec, count: usize) {
         if count == 0 {
             return;
         }
 
-        let Some(entry) = self.connections.get_mut(&connection) else {
-            return;
-        };
-
-        if !entry.attempt.first_bytes_reported {
-            tracing::info!(connection = ?connection, endpoint = ?entry.endpoint, "First bytes");
-            entry.attempt.first_bytes_reported = true;
+        if !self.attempt.first_bytes_reported {
+            tracing::info!(device_id = ?device_id, endpoint = ?spec, "First bytes");
+            self.attempt.first_bytes_reported = true;
         }
-        entry.attempt.delivered_bytes += count;
+        self.attempt.delivered_bytes += count;
     }
 }

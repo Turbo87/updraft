@@ -1,0 +1,1252 @@
+# External Device Settings Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Persist an ordered list of enabled or disabled external device connection specifications and make that list mutable through deterministic core inputs, without adding a user interface.
+
+**Architecture:** `updraft_core` owns one `ExternalDevices` aggregate containing each device's session identity, persisted configuration, decoder, and diagnostics. The core publishes the ordered configured-device list and emits complete `SettingsSnapshot` persistence effects. The Tauri shell loads and writes those snapshots, and a driver-owned transport manager starts, replaces, and cancels one maintained worker per `ExternalDeviceId`.
+
+**Tech Stack:** Rust 2024, Tauri 2.11.5, Tokio 1.53.1, Serde 1.0.229, serde_json 1.0.151, ts-rs 12.0.1, Insta 1.48.0
+
+## Global Constraints
+
+- Follow red-green-refactor for every behavior change. Run each new test before implementation and confirm that it fails for the expected missing behavior.
+- Make the `ConnectionId` to `ExternalDeviceId` rename and the matching
+  `connection` to `device_id` field rename a dedicated first commit with no
+  connection behavior changes. The diagnostics log key intentionally changes
+  from `connection` to `device_id`.
+- Preserve the existing core behavior while consolidating the parallel connection, decoder, and diagnostics collections.
+- Keep `ExternalDeviceId` session-local. Do not serialize it or make it stable across application restarts.
+- Allocate unique IDs from `ExternalDevices` and keep each ID stable for the
+  lifetime of its device within one core session. Treat the concrete ID values
+  and allocation strategy as internal implementation details. Do not use
+  process-global or static mutable state.
+- Add devices at the end of the list and make them enabled immediately.
+- Accept reordering only when the supplied IDs are an exact permutation of the current IDs.
+- Treat identical edits, repeated enable or disable inputs, unknown IDs, and unchanged reorder order as no-ops.
+- Reset decoder and diagnostics state after a changed specification or enabled-state transition. Preserve both while reordering.
+- Persist flat device rows. Serialize TCP as `"type": "tcp"` and Bluetooth Classic SPP as `"type": "bluetooth"`.
+- Load a missing or locale-only settings file with an empty device list. Do not seed platform defaults.
+- Keep the current Android singleton SPP behavior. Do not add deterministic arbitration or parallel SPP support in this slice.
+- Do not add worker-generation tokens. Accept the narrow late-event race documented in the approved design.
+- Add no frontend controls, Tauri device-mutation commands, connection-status topic, discovery, pairing, BLE transport, source selection, or migration from the hardcoded connections.
+- Within private modules, use raw `pub` for items shared across the crate rather
+  than `pub(crate)` or `pub(super)`.
+- Keep every commit green and single-purpose.
+
+---
+
+## File Responsibilities
+
+### Core
+
+- Modify `libs/updraft_core/src/connection.rs`: rename the ID, add Serde and TypeScript derives to wire-visible connection types, and use the internally tagged transport representation.
+- Create `libs/updraft_core/src/external_device.rs`: define
+  `ExternalDeviceConfig` and `PublishedExternalDevice` plus the private
+  `ExternalDevice` and `ExternalDevices` runtime aggregate.
+- Modify `libs/updraft_core/src/connection_diagnostics.rs`: turn the diagnostics registry into state for one device.
+- Modify `libs/updraft_core/src/core.rs`: replace parallel collections, load session IDs, publish devices, build complete snapshots, enforce enabled state, and apply device mutations.
+- Modify `libs/updraft_core/src/settings.rs`: define `SettingsSnapshot` by flattening `Settings` and defaulting `external_devices`.
+- Modify `libs/updraft_core/src/input.rs`: rename runtime fields and add the five device mutation inputs.
+- Modify `libs/updraft_core/src/effect.rs`: rename runtime fields and persist `SettingsSnapshot`.
+- Modify `libs/updraft_core/src/topic.rs`: publish the complete ordered configured-device list.
+- Modify `libs/updraft_core/src/lib.rs`: register and re-export the new types.
+- Modify `libs/updraft_core/tests/scenario.rs`: keep effect rendering exhaustive and construct configured devices through the persisted representation.
+- Modify core snapshots containing the old debug type name.
+
+### Generated protocol
+
+- Create `frontend/src/lib/protocol/generated/ConnectionSpec.ts`.
+- Create `frontend/src/lib/protocol/generated/PublishedExternalDevice.ts`.
+- Create `frontend/src/lib/protocol/generated/ExternalDeviceId.ts`.
+- Modify `frontend/src/lib/protocol/generated/Topic.ts`.
+
+These files are generated by the existing binding command. Do not edit their contents by hand.
+
+### Tauri shell
+
+- Modify `tauri/src/settings.rs`: load, write, and queue complete `SettingsSnapshot` values.
+- Modify `tauri/src/lib.rs`: remove hardcoded platform devices, construct the core from the loaded snapshot, and inject a cancellable transport opener.
+- Modify `tauri/src/driver.rs`: retain one stop function per active device and execute open, replace, close, and snapshot persistence effects.
+- Modify `tauri/src/transport/mod.rs`: return a stop function for every supported or unsupported transport.
+- Modify `tauri/src/transport/tcp.rs`: make connect, read, and backoff interruptible.
+- Modify `tauri/src/transport/spp.rs`: cancel only an acquired Android SPP attempt and stop retrying after closure.
+- Modify tests and imports in `tauri/src/session.rs` only where the renamed ID
+  or direct `SettingsSnapshot` construction requires it.
+
+---
+
+### Task 1: Rename the runtime identity and its ID-bearing fields
+
+**Files:**
+
+- Modify: `libs/updraft_core/src/connection.rs`
+- Modify: `libs/updraft_core/src/connection_diagnostics.rs`
+- Modify: `libs/updraft_core/src/core.rs`
+- Modify: `libs/updraft_core/src/effect.rs`
+- Modify: `libs/updraft_core/src/input.rs`
+- Modify: `libs/updraft_core/src/lib.rs`
+- Modify: `libs/updraft_core/tests/scenario.rs`
+- Modify: `libs/updraft_core/src/snapshots/*.snap`
+- Modify: `libs/updraft_core/tests/snapshots/*.snap`
+- Modify: `tauri/src/driver.rs`
+- Modify: `tauri/src/lib.rs`
+- Modify: `tauri/src/session.rs`
+- Modify: `tauri/src/transport/mod.rs`
+- Modify: `tauri/src/transport/tcp.rs`
+- Modify: `tauri/src/transport/spp.rs`
+
+**Produces:**
+
+```rust
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ExternalDeviceId(pub u32);
+```
+
+- [ ] **Step 1: Establish the behavior-preserving baseline**
+
+Run:
+
+```bash
+cargo test -p updraft_core
+cargo test -p updraft_tauri
+```
+
+Expected: both commands pass before the rename.
+
+- [ ] **Step 2: Pin the diagnostics field rename**
+
+In the existing
+`connection_lifecycle_reports_endpoint_and_delivered_bytes` snapshot, replace
+the diagnostics field key `connection` with `device_id` while leaving the
+existing `ConnectionId` rendering intact. Run the focused test before changing
+production code:
+
+```bash
+cargo test -p updraft_core \
+  core::tests::connection_lifecycle_reports_endpoint_and_delivered_bytes \
+  -- --exact
+```
+
+Expected: the test fails because diagnostics still emit `connection`.
+
+- [ ] **Step 3: Rename the Rust type, ID-bearing fields, and log key**
+
+Rename `ConnectionId` to `ExternalDeviceId` across core, shell, tests, helper
+signatures, imports, and constants. Rename every field, parameter, and local
+that holds an `ExternalDeviceId` from `connection` or a bare `id` to
+`device_id`. This includes:
+
+```rust
+Input::Bytes { device_id, data }
+Input::ConnectionChanged { device_id, state }
+Effect::OpenConnection { device_id, spec }
+Effect::CloseConnection { device_id }
+```
+
+Rename the matching helper parameters and tracing field to `device_id`. Keep
+connection-oriented type and variant names such as `ConnectionSpec`,
+`ConnectionDiagnostics`, `ConnectionChanged`, `OpenConnection`, and
+`CloseConnection`.
+
+Verify that the old type name is gone:
+
+```bash
+rg -n "ConnectionId" libs/updraft_core tauri
+```
+
+Expected: only snapshot files still contain the old debug rendering before snapshot acceptance.
+
+Run the complete core suite. Expected: snapshot tests fail only because they
+still contain the old type name and log field key.
+
+```bash
+cargo test -p updraft_core
+```
+
+Accept the mechanical snapshot updates, then run the complete core suite:
+
+```bash
+cargo insta accept
+cargo test -p updraft_core
+```
+
+Inspect them:
+
+```bash
+git diff -- libs/updraft_core/src/snapshots libs/updraft_core/tests/snapshots
+```
+
+Expected: the suite passes. Every changed type rendering replaces
+`ConnectionId` with `ExternalDeviceId`, and every diagnostics field key
+replaces `connection` with `device_id`.
+
+- [ ] **Step 4: Verify the rename commit**
+
+Run:
+
+```bash
+cargo fmt --all --check
+cargo test -p updraft_core
+cargo test -p updraft_tauri
+cargo clippy -p updraft_core -p updraft_tauri --all-targets --all-features -- -D warnings
+git diff --check
+```
+
+Expected: all commands pass.
+
+- [ ] **Step 5: Commit the dedicated rename**
+
+```bash
+git add libs/updraft_core tauri
+git commit -m 'core: Rename `ConnectionId` to `ExternalDeviceId`'
+```
+
+---
+
+### Task 2: Consolidate connection-local runtime state
+
+**Files:**
+
+- Create: `libs/updraft_core/src/external_device.rs`
+- Modify: `libs/updraft_core/src/lib.rs`
+- Modify: `libs/updraft_core/src/core.rs`
+- Modify: `libs/updraft_core/src/connection_diagnostics.rs`
+
+**Preserves:**
+
+- `CoreConfig { settings, connections }`
+- Startup opening every configured connection
+- Existing byte decoding and lifecycle diagnostics
+- Existing effects, topics, and persistence payloads
+
+**Produces internally:**
+
+```rust
+#[derive(Debug)]
+pub struct ExternalDevice {
+    pub device_id: ExternalDeviceId,
+    pub spec: ConnectionSpec,
+    pub decoder: Decoder,
+    pub diagnostics: ConnectionDiagnostics,
+}
+
+#[derive(Debug, Default)]
+pub struct ExternalDevices {
+    entries: Vec<ExternalDevice>,
+}
+```
+
+- [ ] **Step 1: Pin the current connection-local behavior**
+
+Keep the existing diagnostics snapshots green and add this characterization test in `libs/updraft_core/src/core.rs`:
+
+```rust
+#[test]
+fn bytes_are_decoded_by_their_configured_device() {
+    let mut core = Core::new(CoreConfig {
+        connections: vec![
+            (LINK, ConnectionSpec::tcp("127.0.0.1", 4353)),
+            (SPP_LINK, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
+        ],
+        ..CoreConfig::default()
+    });
+
+    assert!(core.apply(Input::bytes(LINK, &RMC[..24]), at(0)).is_empty());
+    assert!(core.apply(Input::bytes(SPP_LINK, &RMC[24..]), at(1)).is_empty());
+    let effects = core.apply(Input::bytes(LINK, &RMC[24..]), at(2));
+    let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
+        panic!("the completed sentence should emit instruments");
+    };
+    let position = instruments.position.expect("RMC position");
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+    assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
+}
+```
+
+- [ ] **Step 2: Run the characterization test**
+
+Run:
+
+```bash
+cargo test -p updraft_core bytes_are_decoded_by_their_configured_device
+```
+
+Expected: the test passes against the current parallel maps.
+
+- [ ] **Step 3: Make diagnostics state local to one device**
+
+Replace the `BTreeMap` in `ConnectionDiagnostics` with one `Attempt`:
+
+```rust
+#[derive(Debug, Default)]
+pub struct ConnectionDiagnostics {
+    attempt: Attempt,
+}
+```
+
+Change `changed()` to accept `ExternalDeviceId`, `&ConnectionSpec`, and
+`ConnectionState`. Change `bytes()` to accept `ExternalDeviceId`,
+`&ConnectionSpec`, and the byte count. Preserve the exact logging levels,
+messages, and reset behavior. Record the ID as `device_id = ?device_id`.
+
+- [ ] **Step 4: Add the aggregate and replace the three core collections**
+
+Implement `ExternalDevices::from_connections()`, `iter()`, and `get_mut()` in `external_device.rs`:
+
+```rust
+impl ExternalDevices {
+    pub fn from_connections(
+        connections: Vec<(ExternalDeviceId, ConnectionSpec)>,
+    ) -> Self {
+        Self {
+            entries: connections
+                .into_iter()
+                .map(|(device_id, spec)| ExternalDevice {
+                    device_id,
+                    spec,
+                    decoder: Decoder::default(),
+                    diagnostics: ConnectionDiagnostics::default(),
+                })
+                .collect(),
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &ExternalDevice> {
+        self.entries.iter()
+    }
+
+    pub fn get_mut(
+        &mut self,
+        device_id: ExternalDeviceId,
+    ) -> Option<&mut ExternalDevice> {
+        self.entries
+            .iter_mut()
+            .find(|device| device.device_id == device_id)
+    }
+}
+```
+
+Replace `Core::connections`, `Core::decoders`, and the diagnostics registry with:
+
+```rust
+external_devices: ExternalDevices,
+```
+
+Route `Start`, `Bytes`, `ConnectionChanged`, and `decode()` through the matching aggregate entry. Unknown IDs must retain their existing no-op behavior.
+
+- [ ] **Step 5: Verify the behavior-preserving refactor**
+
+Run:
+
+```bash
+cargo fmt --all --check
+cargo test -p updraft_core
+cargo test -p updraft_tauri
+cargo clippy -p updraft_core -p updraft_tauri --all-targets --all-features -- -D warnings
+git diff --check
+```
+
+Expected: all commands pass with no snapshot changes.
+
+- [ ] **Step 6: Commit the runtime-state refactor**
+
+```bash
+git add libs/updraft_core
+git commit -m 'core: Consolidate external device runtime state'
+```
+
+---
+
+### Task 3: Persist and publish the initial device list
+
+**Files:**
+
+- Modify: `libs/updraft_core/src/connection.rs`
+- Modify: `libs/updraft_core/src/external_device.rs`
+- Modify: `libs/updraft_core/src/settings.rs`
+- Modify: `libs/updraft_core/src/core.rs`
+- Modify: `libs/updraft_core/src/effect.rs`
+- Modify: `libs/updraft_core/src/topic.rs`
+- Modify: `libs/updraft_core/src/lib.rs`
+- Modify: `libs/updraft_core/tests/scenario.rs`
+- Modify: `tauri/src/settings.rs`
+- Modify: `tauri/src/driver.rs`
+- Modify: `tauri/src/lib.rs`
+- Modify: test-only core construction in `tauri/src/session.rs`
+- Modify: test-only core construction in `tauri/src/transport/tcp.rs`
+- Modify: test-only core construction in `tauri/src/transport/spp.rs`
+- Generate: `frontend/src/lib/protocol/generated/*.ts`
+
+**Produces:**
+
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalDeviceConfig {
+    pub enabled: bool,
+    #[serde(flatten)]
+    pub spec: ConnectionSpec,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct PublishedExternalDevice {
+    pub device_id: ExternalDeviceId,
+    #[serde(flatten)]
+    pub config: ExternalDeviceConfig,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsSnapshot {
+    #[serde(flatten)]
+    pub settings: Settings,
+    #[serde(default)]
+    pub external_devices: Vec<ExternalDeviceConfig>,
+}
+```
+
+- [ ] **Step 1: Extend the existing settings, topic, and startup tests**
+
+Do not duplicate existing settings coverage. Update and, where necessary, rename
+the existing tests in `tauri/src/settings.rs`:
+
+- Rename `valid_file_loads_the_explicit_locale` to describe that a locale-only
+  file loads its locale and defaults `external_devices` to an empty list.
+- Update `missing_file_loads_default_settings` to expect
+  `SettingsSnapshot::default()` and keep its assertion that no file is created.
+- Update `malformed_file_warns_and_loads_defaults` to expect
+  `SettingsSnapshot::default()` and keep its assertions that the warning is
+  emitted and the malformed file is untouched.
+- Extend `writing_creates_the_directory_and_settings_file` with enabled TCP and
+  disabled Bluetooth rows. Assert the exact flat JSON, stored order, enabled
+  states, and round trip through `load()`. This test proves that persisted rows
+  contain no runtime ID.
+- Update `writing_atomically_replaces_the_previous_snapshot` and
+  `writing_fails_when_the_configuration_path_is_not_a_directory` to use
+  complete snapshots.
+
+The extended writing test expects this exact file:
+
+```json
+{
+  "locale": "de",
+  "externalDevices": [
+    {
+      "enabled": true,
+      "type": "tcp",
+      "host": "127.0.0.1",
+      "port": 4353
+    },
+    {
+      "enabled": false,
+      "type": "bluetooth",
+      "address": "00:11:22:33:44:55"
+    }
+  ]
+}
+```
+
+Do not add parallel core coverage either:
+
+- Rename `topics_include_configured_settings` to
+  `topics_include_settings_and_external_devices`, then extend it to assert the
+  complete topic order and both published device rows in stored order.
+- Rename `start_opens_every_configured_connection` to
+  `start_opens_only_enabled_external_devices`, then change its configuration
+  to contain one disabled and one enabled device.
+
+Treat allocated IDs as opaque values obtained from the published topic. The
+updated startup test follows this pattern:
+
+```rust
+#[test]
+fn start_opens_only_enabled_external_devices() {
+    let tcp = ConnectionSpec::tcp("127.0.0.1", 4353);
+    let bluetooth = ConnectionSpec::bluetooth_spp("00:11:22:33:44:55");
+    let mut core = Core::new(SettingsSnapshot {
+        settings: Settings {
+            locale: Some(Locale::De),
+        },
+        external_devices: vec![
+            ExternalDeviceConfig {
+                enabled: false,
+                spec: tcp.clone(),
+            },
+            ExternalDeviceConfig {
+                enabled: true,
+                spec: bluetooth.clone(),
+            },
+        ],
+    });
+
+    let topics = core.topics();
+    let Some(Topic::ExternalDevices(devices)) = topics.last() else {
+        panic!("the configured external devices topic should be published");
+    };
+    assert_eq!(devices.len(), 2);
+    assert_eq!(
+        (devices[0].config.enabled, &devices[0].config.spec),
+        (false, &tcp),
+    );
+    assert_eq!(
+        (devices[1].config.enabled, &devices[1].config.spec),
+        (true, &bluetooth),
+    );
+    assert_ne!(devices[0].device_id, devices[1].device_id);
+
+    let enabled_device_id = devices[1].device_id;
+    assert_eq!(
+        core.apply(Input::Start, at(0)),
+        vec![Effect::open(enabled_device_id, bluetooth)]
+    );
+}
+```
+
+- [ ] **Step 2: Run the new tests and confirm the expected failures**
+
+Run:
+
+```bash
+cargo test -p updraft_core topics_include_settings_and_external_devices
+cargo test -p updraft_core start_opens_only_enabled_external_devices
+cargo test -p updraft_tauri settings::
+```
+
+Expected: compilation fails because the configuration and published device
+types, complete snapshot handling, external-device topic, and direct snapshot
+core API do not exist yet.
+
+- [ ] **Step 3: Add wire types and session-local allocation**
+
+Add Serde and TypeScript support to the existing connection types:
+
+```rust
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize,
+)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct ExternalDeviceId(pub u32);
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(tag = "type")]
+pub enum ConnectionSpec {
+    #[serde(rename = "tcp")]
+    Tcp { host: String, port: u16 },
+    #[serde(rename = "bluetooth")]
+    BluetoothSpp { address: String },
+}
+```
+
+Change the internal runtime types to:
+
+```rust
+pub struct ExternalDevice {
+    pub device_id: ExternalDeviceId,
+    pub config: ExternalDeviceConfig,
+    pub decoder: Decoder,
+    pub diagnostics: ConnectionDiagnostics,
+}
+
+pub struct ExternalDevices {
+    entries: Vec<ExternalDevice>,
+}
+```
+
+Construct `ExternalDevices` from device configurations in their stored order.
+Allocate one unique session ID per row and keep it stable for that runtime
+entry. The allocator state belongs to the aggregate, but its representation and
+allocation strategy are implementation details. Add projections named by their
+representation boundary:
+
+```rust
+pub fn from_device_configs(devices: Vec<ExternalDeviceConfig>) -> ExternalDevices;
+pub fn published_devices(&self) -> Vec<PublishedExternalDevice>;
+pub fn device_configs(&self) -> Vec<ExternalDeviceConfig>;
+```
+
+Neither projection may expose decoder or diagnostics state. Only
+`published_devices()` includes the session ID.
+
+- [ ] **Step 4: Change core configuration, topics, and persistence effects**
+
+Remove `CoreConfig` and construct `Core` directly from the complete snapshot:
+
+```rust
+pub fn new(snapshot: SettingsSnapshot) -> Self
+```
+
+Add:
+
+```rust
+Topic::ExternalDevices(Vec<PublishedExternalDevice>)
+```
+
+Return topics in this order:
+
+```rust
+vec![
+    Topic::Instruments(self.instruments),
+    Topic::Settings(self.settings),
+    Topic::ExternalDevices(self.external_devices.published_devices()),
+]
+```
+
+Change `Effect::PersistSettings` and its helper to carry `SettingsSnapshot`. Add:
+
+```rust
+fn settings_snapshot(&self) -> SettingsSnapshot {
+    SettingsSnapshot {
+        settings: self.settings,
+        external_devices: self.external_devices.device_configs(),
+    }
+}
+```
+
+Use this complete snapshot for locale persistence. Make `Input::Start`, byte input, and lifecycle input skip disabled entries.
+
+- [ ] **Step 5: Load and write complete snapshots in the shell**
+
+Change `SettingsFile::load()`, `write()`, and `writer()` from `Settings` to `SettingsSnapshot`. Preserve the existing missing-file, malformed-file, FIFO, temporary-file, and atomic-replacement behavior.
+
+Delete `configured_core()` and its hardcoded TCP and Android SPP tests from `tauri/src/lib.rs`. Construct the driver from:
+
+```rust
+let snapshot = settings_file.load();
+let driver = Driver::spawn(snapshot, open, persist, tick_interval);
+```
+
+Change `Driver::spawn()` and its test helpers to accept `SettingsSnapshot`
+directly. No platform-specific default connection remains.
+
+- [ ] **Step 6: Regenerate and verify the TypeScript protocol**
+
+Run:
+
+```bash
+cargo run -p updraft_core --features ts --example generate_protocol_bindings
+cargo test -p updraft_core --features ts bindings::tests::committed_bindings_are_up_to_date
+```
+
+Inspect the generated files. Confirm:
+
+- `Topic.ts` contains the `externalDevices` topic.
+- `PublishedExternalDevice.ts` contains `deviceId`, `enabled`, and a flattened
+  `ConnectionSpec`.
+- `ConnectionSpec.ts` uses `type: "tcp"` and `type: "bluetooth"`.
+- No generated persisted settings type contains `ExternalDeviceId`.
+
+- [ ] **Step 7: Run the focused persistence and startup suite**
+
+Run:
+
+```bash
+cargo fmt --all --check
+cargo test -p updraft_core
+cargo test -p updraft_tauri
+cargo test -p updraft_core --features ts
+cargo clippy -p updraft_core -p updraft_tauri --all-targets --all-features -- -D warnings
+git diff --check
+```
+
+Expected: all commands pass.
+
+- [ ] **Step 8: Commit persisted device loading and publication**
+
+```bash
+git add libs/updraft_core tauri frontend/src/lib/protocol/generated
+git commit -m 'settings: Persist external device configurations'
+```
+
+---
+
+### Task 4: Make maintained transport workers cancellable
+
+**Files:**
+
+- Modify: `tauri/src/driver.rs`
+- Modify: `tauri/src/lib.rs`
+- Modify: `tauri/src/transport/mod.rs`
+- Modify: `tauri/src/transport/tcp.rs`
+- Modify: `tauri/src/transport/spp.rs`
+
+**Produces:**
+
+```rust
+pub type StopFn = Box<dyn FnOnce() + Send>;
+pub type OpenFn = Box<
+    dyn Fn(ExternalDeviceId, ConnectionSpec, DriverHandle) -> StopFn + Send,
+>;
+```
+
+- [ ] **Step 1: Add failing transport-manager tests**
+
+Extract a private driver-owned manager:
+
+```rust
+#[derive(Default)]
+struct ActiveTransports {
+    workers: BTreeMap<ExternalDeviceId, StopFn>,
+}
+```
+
+Before implementing it, add tests that prove:
+
+```rust
+#[test]
+fn active_transports_opening_the_same_id_stops_and_replaces_its_worker();
+
+#[test]
+fn active_transports_closing_an_active_id_stops_and_removes_its_worker();
+
+#[test]
+fn active_transports_closing_an_unknown_id_is_a_no_op();
+```
+
+Use `Arc<AtomicUsize>` counters in returned stop closures. The replacement test must assert that the first stop closure ran once, the replacement remains active, and a later close runs the second stop closure once.
+
+- [ ] **Step 2: Run the manager tests and confirm the expected failure**
+
+Run:
+
+```bash
+cargo test -p updraft_tauri active_transports
+```
+
+Expected: compilation fails because `StopFn` and `ActiveTransports` do not exist.
+
+- [ ] **Step 3: Implement driver ownership and real close handling**
+
+Implement:
+
+```rust
+impl ActiveTransports {
+    fn open(
+        &mut self,
+        device_id: ExternalDeviceId,
+        spec: ConnectionSpec,
+        handle: DriverHandle,
+        open: &OpenFn,
+    ) {
+        self.close(device_id);
+        self.workers
+            .insert(device_id, open(device_id, spec, handle));
+    }
+
+    fn close(&mut self, device_id: ExternalDeviceId) {
+        if let Some(stop) = self.workers.remove(&device_id) {
+            stop();
+        }
+    }
+}
+```
+
+Create the manager inside the driver task. Route `OpenConnection` through `open()` and `CloseConnection` through `close()`. Remove the current close warning.
+
+- [ ] **Step 4: Add failing TCP cancellation and parallelism tests**
+
+Add Tokio tests in `tauri/src/transport/tcp.rs`:
+
+```rust
+#[tokio::test]
+async fn stopping_tcp_drops_the_active_socket_and_prevents_reconnect();
+
+#[tokio::test]
+async fn two_tcp_workers_connect_independently();
+```
+
+For the first test, accept one socket, invoke the returned stop function, assert that the peer reaches EOF, and assert that no second connection is accepted after a paused backoff advance. For the second, start two listeners and two workers with distinct IDs, then assert both listeners accept within `PATIENCE`.
+
+- [ ] **Step 5: Run the TCP tests and confirm the expected failure**
+
+Run:
+
+```bash
+cargo test -p updraft_tauri transport::tcp::tests::stopping_tcp
+cargo test -p updraft_tauri transport::tcp::tests::two_tcp_workers
+```
+
+Expected: compilation fails because `tcp::run()` returns `()` and provides no cancellation path.
+
+- [ ] **Step 6: Make every TCP wait interruptible**
+
+Have `tcp::run()` create a Tokio `oneshot` channel, spawn the supervisor, and return a `StopFn` that sends once. Select the receiver against:
+
+- `TcpStream::connect()`
+- Each socket read in `pump()`
+- Reconnect backoff sleep
+
+Use a small internal result enum so cancellation exits without scheduling another retry:
+
+```rust
+enum PumpResult {
+    Disconnected { delivered_bytes: bool },
+    Stopped,
+}
+```
+
+Cancellation drops the active `TcpStream`. Keep independent state per `run()` call so any number of TCP workers can operate concurrently.
+
+- [ ] **Step 7: Add failing SPP ownership-aware cancellation tests**
+
+Extend the existing fake platform tests:
+
+```rust
+#[tokio::test]
+async fn stopping_an_active_spp_attempt_cancels_and_waits_for_disconnection();
+
+#[tokio::test]
+async fn stopping_after_spp_start_rejection_does_not_cancel_another_attempt();
+```
+
+The first test must:
+
+1. Start an attempt successfully.
+2. Invoke its stop function.
+3. Assert `cancellations() == 1`.
+4. Assert the task remains alive until the fake sends `Disconnected`.
+5. Assert no retry occurs.
+
+The second test must use `FakePlatform::failing_with(...)`, stop during backoff, and assert `cancellations() == 0`. This pins that a supervisor which failed to acquire the Android singleton cannot cancel another device's attempt.
+
+- [ ] **Step 8: Run the SPP tests and confirm the expected failure**
+
+Run:
+
+```bash
+cargo test -p updraft_tauri stopping_an_active_spp_attempt
+cargo test -p updraft_tauri stopping_after_spp_start_rejection
+```
+
+Expected: compilation fails because the SPP supervisor has no stop signal.
+
+- [ ] **Step 9: Make the SPP supervisor cancellable**
+
+Pass one pinned `oneshot::Receiver<()>` through `maintain()`, `maintain_on_channel()`, and `run_attempt()`.
+
+Add a shared `spawn_maintained()` helper which creates the channel, spawns
+`maintain()`, and returns the matching `StopFn`. The Android `run()` adapter and
+the two ownership tests both call this helper, so the host tests exercise the
+same cancellation path used on Android.
+
+Add:
+
+```rust
+enum AttemptResult {
+    Completed { delivered_bytes: bool },
+    EventStreamClosed,
+    Stopped,
+}
+```
+
+When the stop signal wins:
+
+- If `start_attempt()` succeeded, call `cancel_attempt()` exactly once and keep consuming only until the terminal `Disconnected` event.
+- If `start_attempt()` failed or the supervisor is in backoff, return without calling platform cancellation.
+- Do not retry after `Stopped`.
+
+Keep the existing malformed-event and invalid-Base64 cancellation behavior. Adapt their helpers to pass a stop receiver which remains pending.
+
+- [ ] **Step 10: Return a stop function from the transport dispatcher**
+
+Change `transport::open()` to return `StopFn`. TCP and Android SPP return their real stop closures. Unsupported desktop Bluetooth still reports `Disconnected` and returns:
+
+```rust
+Box::new(|| {})
+```
+
+Update the injected closure in `tauri/src/lib.rs` to return the dispatcher result.
+
+- [ ] **Step 11: Verify transport lifecycle behavior**
+
+Run:
+
+```bash
+cargo fmt --all --check
+cargo test -p updraft_tauri driver::
+cargo test -p updraft_tauri transport::tcp::
+cargo test -p updraft_tauri transport::spp::
+cargo test -p updraft_tauri
+cargo clippy -p updraft_tauri --all-targets --all-features -- -D warnings
+git diff --check
+```
+
+Expected: all commands pass. Existing retry, logging, malformed-event, and byte-delivery tests remain green.
+
+- [ ] **Step 12: Commit cancellable shell workers**
+
+```bash
+git add tauri
+git commit -m 'tauri: Make external device transports cancellable'
+```
+
+---
+
+### Task 5: Add deterministic external-device mutation inputs
+
+**Files:**
+
+- Modify: `libs/updraft_core/src/input.rs`
+- Modify: `libs/updraft_core/src/external_device.rs`
+- Modify: `libs/updraft_core/src/core.rs`
+- Modify: `libs/updraft_core/tests/scenario.rs`
+- Modify: `tauri/src/driver.rs`
+
+**Produces:**
+
+```rust
+Input::AddExternalDevice {
+    spec: ConnectionSpec,
+}
+Input::DeleteExternalDevice(ExternalDeviceId)
+Input::ReorderExternalDevices(Vec<ExternalDeviceId>)
+Input::EditExternalDevice {
+    device_id: ExternalDeviceId,
+    spec: ConnectionSpec,
+}
+Input::SetExternalDeviceEnabled {
+    device_id: ExternalDeviceId,
+    enabled: bool,
+}
+```
+
+**Effect order for successful mutations:**
+
+1. Required `CloseConnection` or `OpenConnection` effects
+2. `Topic::ExternalDevices` with the complete ordered list
+3. `PersistSettings` with the complete locale and device snapshot
+
+- [ ] **Step 1: Use the existing effect renderer for mutation snapshots**
+
+Extend the existing exhaustive `describe()` match in
+`libs/updraft_core/tests/scenario.rs` for
+`Topic::ExternalDevices`. In each mutation behavior test, use that formatter to
+render the complete effect list and snapshot the joined lines. Normalize the
+opaque numeric ID so the allocator output is not part of the contract. Where a
+behavior depends on IDs being equal or distinct, add a direct structural
+assertion using IDs captured from the effects or published topic.
+
+Keep effect-contract tests in `scenario.rs` so they reuse this renderer. Keep
+tests that inspect decoder or diagnostics preservation in `core.rs`, next to
+the existing connection-local tests.
+
+```rust
+let rendered = effects.iter().map(describe).collect::<Vec<_>>().join("\n");
+insta::with_settings!({
+    filters => vec![(
+        r"ExternalDeviceId\(\d+\)",
+        "ExternalDeviceId([ID])",
+    )]
+}, {
+    insta::assert_snapshot!(rendered);
+});
+```
+
+Do not build parallel expected-effect constructors solely for these assertions.
+The snapshots must contain the whole effect stream because effect order,
+published rows, and complete persistence snapshots are part of the contract.
+
+- [ ] **Step 2: Add failing add and delete tests**
+
+Cover:
+
+- Adding to an empty list allocates an opaque ID, appends an enabled device,
+  opens it, publishes it, and persists it.
+- Adding after loaded devices allocates an ID distinct from every live device
+  ID.
+- Deleting an enabled device closes it before publication and persistence.
+- Deleting a disabled device produces no close effect.
+- Deleting an unknown ID warns and produces no effects.
+
+Representative add assertion:
+
+```rust
+let effects = core.apply(
+    Input::AddExternalDevice { spec: tcp.clone() },
+    at(0),
+);
+let [
+    Effect::OpenConnection { device_id, .. },
+    Effect::Emit(Topic::ExternalDevices(devices)),
+    Effect::PersistSettings(_),
+] = effects.as_slice()
+else {
+    panic!("addition should open, publish, and persist");
+};
+assert_eq!(*device_id, devices[0].device_id);
+```
+
+Then render and snapshot the complete effect list with the Step 1 formatter.
+
+- [ ] **Step 3: Run add and delete tests and confirm the expected failure**
+
+Run:
+
+```bash
+cargo test -p updraft_core add_external_device
+cargo test -p updraft_core delete_external_device
+```
+
+Expected: compilation fails because the inputs do not exist.
+
+- [ ] **Step 4: Implement addition, removal, and shared success effects**
+
+Add `ExternalDevices::add()` and `ExternalDevices::remove()`. `add()` must
+allocate a fresh opaque ID through the aggregate-owned allocator, create enabled
+configuration, and initialize fresh decoder and diagnostics state.
+
+Do not add a helper for the two common trailing effects. In each successful
+mutation branch, append them directly after any transport effects:
+
+```rust
+effects.push(Effect::emit(Topic::ExternalDevices(
+    self.external_devices.published_devices(),
+)));
+effects.push(Effect::persist_settings(self.settings_snapshot()));
+```
+
+Unknown deletion logs a warning containing the device ID and returns no effects.
+
+- [ ] **Step 5: Add failing exact-reorder tests**
+
+Cover:
+
+- Reversing two IDs publishes and persists the new order with no transport effect.
+- Supplying the current order is a no-op.
+- Unknown, missing, and duplicate IDs each warn and produce no effects.
+- Reordering preserves a partially filled decoder.
+- Reordering preserves diagnostic attempt state and delivered-byte count.
+
+For decoder preservation, obtain both opaque IDs from the initial
+`Topic::ExternalDevices`, feed the first half of `RMC` to the first device,
+reverse the two IDs, then feed the remainder to the same device ID and assert
+that an instruments topic is emitted.
+
+For diagnostics preservation, obtain the target ID from the initial topic,
+mark that device connected, deliver bytes, reorder, then disconnect the same
+device and snapshot the existing log fields including the accumulated byte
+count.
+
+- [ ] **Step 6: Run reorder tests and confirm the expected failure**
+
+Run:
+
+```bash
+cargo test -p updraft_core reorder_external_devices
+```
+
+Expected: compilation fails because `Input::ReorderExternalDevices` does not exist.
+
+- [ ] **Step 7: Implement exact permutation validation and aggregate movement**
+
+Implement:
+
+```rust
+fn reorder(
+    &mut self,
+    order: &[ExternalDeviceId],
+) -> Result<bool, ReorderError>;
+```
+
+Return `Ok(false)` for the current order. Return an error unless length matches and every current ID occurs exactly once. For valid changed order, move existing `ExternalDevice` values into the requested order rather than reconstructing them. This preserves decoder and diagnostics state.
+
+Map any `ReorderError` to one warning and no effects in `Core::apply()`.
+
+- [ ] **Step 8: Add failing edit tests**
+
+Cover:
+
+- An identical specification is a no-op.
+- Editing an enabled TCP device to another TCP endpoint closes and reopens it with the same ID.
+- Editing enabled TCP to Bluetooth and Bluetooth to TCP both close then open with the new specification.
+- Editing a disabled device publishes and persists but does not open or close.
+- A changed specification resets the decoder and diagnostics.
+- Editing an unknown ID warns and produces no effects.
+
+- [ ] **Step 9: Run edit tests and confirm the expected failure**
+
+Run:
+
+```bash
+cargo test -p updraft_core edit_external_device
+```
+
+Expected: compilation fails because `Input::EditExternalDevice` does not exist.
+
+- [ ] **Step 10: Implement changed-specification editing**
+
+Add:
+
+```rust
+impl ExternalDevice {
+    pub fn reset_runtime(&mut self) {
+        self.decoder = Decoder::default();
+        self.diagnostics = ConnectionDiagnostics::default();
+    }
+}
+```
+
+Look up the device through `ExternalDevices`. Compare the complete `ConnectionSpec` before mutation. For a changed spec:
+
+1. Retain the existing `device_id` and enabled state.
+2. Replace the spec.
+3. Reset runtime state.
+4. Emit close then open only when enabled.
+5. Publish and persist the complete updated list.
+
+- [ ] **Step 11: Add failing enable and disable tests**
+
+Cover:
+
+- Disabling an enabled device closes it, resets runtime state, publishes, and persists.
+- Enabling a disabled device resets runtime state, opens it, publishes, and persists.
+- Repeating the current enabled state is a no-op.
+- Enabling or disabling an unknown ID warns and produces no effects.
+- Byte and lifecycle inputs for disabled devices are ignored.
+
+- [ ] **Step 12: Run enabled-state tests and confirm the expected failure**
+
+Run:
+
+```bash
+cargo test -p updraft_core set_external_device_enabled
+cargo test -p updraft_core disabled_external_device
+```
+
+Expected: compilation fails because `Input::SetExternalDeviceEnabled` does not exist.
+
+- [ ] **Step 13: Implement enabled-state transitions**
+
+For a changed state:
+
+1. Set `config.enabled`.
+2. Reset decoder and diagnostics.
+3. Emit `OpenConnection` when enabling or `CloseConnection` when disabling.
+4. Publish and persist the complete updated list.
+
+Keep disabled byte and lifecycle inputs as no-ops. Do not add a status topic.
+
+- [ ] **Step 14: Add a driver integration test for mutation lifecycle**
+
+Spawn a driver with an empty device list and fake open and stop closures. Send:
+
+1. `AddExternalDevice`
+2. `EditExternalDevice` with a changed spec
+3. `SetExternalDeviceEnabled { enabled: false }`
+4. `SetExternalDeviceEnabled { enabled: true }`
+5. `DeleteExternalDevice`
+
+Capture the opaque `ExternalDeviceId` from the first open call. Assert that the
+same ID is used throughout, the expected workers are started and stopped
+exactly once, and every persisted snapshot matches the corresponding complete
+published list without runtime IDs.
+
+- [ ] **Step 15: Verify all mutation behavior**
+
+Run:
+
+```bash
+cargo fmt --all --check
+cargo test -p updraft_core
+cargo test -p updraft_tauri
+cargo test -p updraft_core --features ts
+cargo clippy -p updraft_core -p updraft_tauri --all-targets --all-features -- -D warnings
+git diff --check
+```
+
+Expected: all commands pass.
+
+- [ ] **Step 16: Commit core device mutations**
+
+```bash
+git add libs/updraft_core tauri
+git commit -m 'core: Add external device mutations'
+```
+
+---
+
+### Task 6: Validate the complete backend slice
+
+**Files:**
+
+- Review all files changed by Tasks 1 through 5.
+- Modify only files required to fix validation failures caused by this work.
+
+- [ ] **Step 1: Review scope and commit structure**
+
+Run:
+
+```bash
+git status --short
+git log --oneline --decorate -6
+git diff HEAD~5..HEAD --stat
+git diff HEAD~5..HEAD
+```
+
+Confirm:
+
+- The ID rename is isolated in its own commit.
+- The runtime aggregation commit is behavior-preserving.
+- No UI, IPC mutation commands, BLE, SPP arbitration, worker tokens, or source-selection changes entered the diff.
+- No hardcoded default TCP or Bluetooth device remains.
+- Stored JSON never contains `ExternalDeviceId`.
+
+- [ ] **Step 2: Run repository formatting and Rust validation**
+
+Run:
+
+```bash
+cargo fmt --all --check
+cargo test --workspace --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+```
+
+Expected: all commands pass without unexpected warnings or logs.
+
+- [ ] **Step 3: Run generated protocol and frontend validation**
+
+Run:
+
+```bash
+cargo test -p updraft_core --features ts bindings::tests::committed_bindings_are_up_to_date
+pnpm check
+pnpm test
+pnpm test:e2e
+pnpm build
+pnpm build:storybook
+pnpm lint
+```
+
+Expected: all commands pass. No frontend behavior changes are expected beyond the generated topic union.
+
+- [ ] **Step 4: Validate desktop and Android shell builds**
+
+Run:
+
+```bash
+pnpm tauri build --no-bundle
+pnpm tauri android build --target aarch64 --apk --debug
+```
+
+Expected: both builds pass when the local Android toolchain is configured. If the Android command is unavailable for environmental reasons, record the exact error and distinguish it from a code failure.
+
+- [ ] **Step 5: Perform final hygiene checks**
+
+Run:
+
+```bash
+rg -n "ConnectionId|configured_core|78:21:84:7C:3E:06" libs/updraft_core tauri
+rg -n '"deviceId"\\s*:' tauri/src/settings.rs libs/updraft_core/src/settings.rs
+git diff --check
+git status --short
+```
+
+Expected:
+
+- The old ID type and hardcoded Bluetooth address are absent.
+- Persisted settings code and JSON expectations contain no `deviceId`.
+- The worktree is clean.

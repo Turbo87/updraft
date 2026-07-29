@@ -1,3 +1,4 @@
+use crate::external_device::PublishedExternalDevice;
 use crate::settings::Settings;
 use serde::Serialize;
 
@@ -37,6 +38,7 @@ pub struct Instruments {
 pub enum Topic {
     Instruments(Instruments),
     Settings(Settings),
+    ExternalDevices(Vec<PublishedExternalDevice>),
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use crate::connection::{ConnectionState, ExternalDeviceId};
+use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
 use crate::fix::Fix;
 use crate::settings::Locale;
 
@@ -30,6 +30,19 @@ pub enum Input {
     /// them be ranked against each other.
     InternalGps(Fix),
     SetLocale(Locale),
+    AddExternalDevice {
+        spec: ConnectionSpec,
+    },
+    DeleteExternalDevice(ExternalDeviceId),
+    ReorderExternalDevices(Vec<ExternalDeviceId>),
+    EditExternalDevice {
+        device_id: ExternalDeviceId,
+        spec: ConnectionSpec,
+    },
+    SetExternalDeviceEnabled {
+        device_id: ExternalDeviceId,
+        enabled: bool,
+    },
 }
 
 impl Input {

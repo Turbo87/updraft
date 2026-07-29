@@ -1,0 +1,6 @@
+---
+source: libs/updraft_core/tests/scenario.rs
+expression: mutation_effects(&effects)
+---
+external devices [PublishedExternalDevice { device_id: ExternalDeviceId([ID]), config: ExternalDeviceConfig { enabled: false, spec: Tcp { host: "192.0.2.1", port: 10110 } } }]
+persist settings SettingsSnapshot { settings: Settings { locale: None }, external_devices: [ExternalDeviceConfig { enabled: false, spec: Tcp { host: "192.0.2.1", port: 10110 } }] }

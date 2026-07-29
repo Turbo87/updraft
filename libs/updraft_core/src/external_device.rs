@@ -2,6 +2,7 @@ use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -29,11 +30,21 @@ pub struct ExternalDevice {
     pub diagnostics: ConnectionDiagnostics,
 }
 
+impl ExternalDevice {
+    pub fn reset_runtime(&mut self) {
+        self.decoder = Decoder::default();
+        self.diagnostics = ConnectionDiagnostics::default();
+    }
+}
+
 #[derive(Debug)]
 pub struct ExternalDevices {
     next_device_id: u32,
     entries: Vec<ExternalDevice>,
 }
+
+#[derive(Debug)]
+pub struct ReorderError;
 
 impl Default for ExternalDevices {
     fn default() -> Self {
@@ -69,13 +80,63 @@ impl ExternalDevices {
             .find(|device| device.device_id == device_id)
     }
 
-    #[cfg_attr(not(test), expect(dead_code))]
+    pub fn add(&mut self, spec: ConnectionSpec) -> ExternalDeviceId {
+        let device_id = self.allocate_device_id();
+        self.entries.push(ExternalDevice {
+            device_id,
+            config: ExternalDeviceConfig {
+                enabled: true,
+                spec,
+            },
+            decoder: Decoder::default(),
+            diagnostics: ConnectionDiagnostics::default(),
+        });
+        device_id
+    }
+
     pub fn remove(&mut self, device_id: ExternalDeviceId) -> Option<ExternalDevice> {
         let index = self
             .entries
             .iter()
             .position(|device| device.device_id == device_id)?;
         Some(self.entries.remove(index))
+    }
+
+    pub fn reorder(&mut self, order: &[ExternalDeviceId]) -> Result<bool, ReorderError> {
+        if self
+            .entries
+            .iter()
+            .map(|device| device.device_id)
+            .eq(order.iter().copied())
+        {
+            return Ok(false);
+        }
+
+        let current = self
+            .entries
+            .iter()
+            .map(|device| device.device_id)
+            .collect::<BTreeSet<_>>();
+        let requested = order.iter().copied().collect::<BTreeSet<_>>();
+        if order.len() != self.entries.len()
+            || requested.len() != order.len()
+            || requested != current
+        {
+            return Err(ReorderError);
+        }
+
+        let mut entries = std::mem::take(&mut self.entries);
+        self.entries = order
+            .iter()
+            .map(|device_id| {
+                let index = entries
+                    .iter()
+                    .position(|device| device.device_id == *device_id)
+                    .expect("validated external device order");
+                entries.remove(index)
+            })
+            .collect();
+        Ok(true)
     }
 
     pub fn published_devices(&self) -> Vec<PublishedExternalDevice> {

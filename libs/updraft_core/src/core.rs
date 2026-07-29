@@ -73,6 +73,92 @@ impl Core {
                     Effect::persist_settings(self.settings_snapshot()),
                 ]
             }
+            Input::AddExternalDevice { spec } => {
+                let device_id = self.external_devices.add(spec.clone());
+                let mut effects = vec![Effect::open(device_id, spec)];
+                effects.push(Effect::emit(Topic::ExternalDevices(
+                    self.external_devices.published_devices(),
+                )));
+                effects.push(Effect::persist_settings(self.settings_snapshot()));
+                effects
+            }
+            Input::DeleteExternalDevice(device_id) => {
+                let Some(device) = self.external_devices.remove(device_id) else {
+                    tracing::warn!(device_id = ?device_id, "Unknown external device");
+                    return Vec::new();
+                };
+                let mut effects = Vec::new();
+                if device.config.enabled {
+                    effects.push(Effect::close(device_id));
+                }
+                effects.push(Effect::emit(Topic::ExternalDevices(
+                    self.external_devices.published_devices(),
+                )));
+                effects.push(Effect::persist_settings(self.settings_snapshot()));
+                effects
+            }
+            Input::ReorderExternalDevices(order) => {
+                match self.external_devices.reorder(&order) {
+                    Ok(false) => return Vec::new(),
+                    Ok(true) => {}
+                    Err(error) => {
+                        tracing::warn!(?error, "Invalid external device order");
+                        return Vec::new();
+                    }
+                }
+                vec![
+                    Effect::emit(Topic::ExternalDevices(
+                        self.external_devices.published_devices(),
+                    )),
+                    Effect::persist_settings(self.settings_snapshot()),
+                ]
+            }
+            Input::EditExternalDevice { device_id, spec } => {
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    tracing::warn!(device_id = ?device_id, "Unknown external device");
+                    return Vec::new();
+                };
+                if device.config.spec == spec {
+                    return Vec::new();
+                }
+                let enabled = device.config.enabled;
+                device.config.spec = spec.clone();
+                device.reset_runtime();
+
+                let mut effects = Vec::new();
+                if enabled {
+                    effects.push(Effect::close(device_id));
+                    effects.push(Effect::open(device_id, spec));
+                }
+                effects.push(Effect::emit(Topic::ExternalDevices(
+                    self.external_devices.published_devices(),
+                )));
+                effects.push(Effect::persist_settings(self.settings_snapshot()));
+                effects
+            }
+            Input::SetExternalDeviceEnabled { device_id, enabled } => {
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    tracing::warn!(device_id = ?device_id, "Unknown external device");
+                    return Vec::new();
+                };
+                if device.config.enabled == enabled {
+                    return Vec::new();
+                }
+                device.config.enabled = enabled;
+                device.reset_runtime();
+                let spec = device.config.spec.clone();
+
+                let mut effects = if enabled {
+                    vec![Effect::open(device_id, spec)]
+                } else {
+                    vec![Effect::close(device_id)]
+                };
+                effects.push(Effect::emit(Topic::ExternalDevices(
+                    self.external_devices.published_devices(),
+                )));
+                effects.push(Effect::persist_settings(self.settings_snapshot()));
+                effects
+            }
         }
     }
 
@@ -670,5 +756,287 @@ mod tests {
 
         assert!(core.apply(Input::bytes(device_id, RMC), at(0)).is_empty());
         assert_eq!(core.topics()[0], Topic::Instruments(Instruments::default()));
+    }
+
+    #[test]
+    fn reorder_external_devices_preserves_partial_decoder_state() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(true, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
+            ],
+        });
+        let first = device_id(&core, 0);
+        let second = device_id(&core, 1);
+
+        assert!(
+            core.apply(Input::bytes(first, &RMC[..24]), at(0))
+                .is_empty()
+        );
+        core.apply(Input::ReorderExternalDevices(vec![second, first]), at(1));
+        let effects = core.apply(Input::bytes(first, &RMC[24..]), at(2));
+
+        assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    }
+
+    #[test]
+    #[traced_test]
+    fn reorder_external_devices_preserves_diagnostics_state() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(true, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
+            ],
+        });
+        let first = device_id(&core, 0);
+        let second = device_id(&core, 1);
+
+        core.apply(
+            Input::connection_changed(first, ConnectionState::Connected),
+            at(0),
+        );
+        core.apply(Input::bytes(first, b"abc"), at(1));
+        core.apply(Input::ReorderExternalDevices(vec![second, first]), at(2));
+        core.apply(
+            Input::connection_changed(first, ConnectionState::Disconnected),
+            at(3),
+        );
+
+        logs_assert(|lines| {
+            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
+                insta::assert_snapshot!(lines.join("\n"));
+            });
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn edit_external_device_resets_partial_decoder_state() {
+        let (mut core, device_id) = core_with_external_device();
+
+        assert!(
+            core.apply(Input::bytes(device_id, &RMC[..24]), at(0))
+                .is_empty()
+        );
+        core.apply(
+            Input::EditExternalDevice {
+                device_id,
+                spec: ConnectionSpec::tcp("192.0.2.1", 10110),
+            },
+            at(1),
+        );
+
+        assert!(
+            core.apply(Input::bytes(device_id, &RMC[24..]), at(2))
+                .is_empty()
+        );
+        assert_eq!(core.topics()[0], Topic::Instruments(Instruments::default()));
+    }
+
+    #[test]
+    #[traced_test]
+    fn edit_external_device_resets_diagnostics_state() {
+        let (mut core, device_id) = core_with_external_device();
+
+        core.apply(
+            Input::connection_changed(device_id, ConnectionState::Connected),
+            at(0),
+        );
+        core.apply(Input::bytes(device_id, b"abc"), at(1));
+        core.apply(
+            Input::EditExternalDevice {
+                device_id,
+                spec: ConnectionSpec::tcp("192.0.2.1", 10110),
+            },
+            at(2),
+        );
+        core.apply(
+            Input::connection_changed(device_id, ConnectionState::Disconnected),
+            at(3),
+        );
+
+        logs_assert(|lines| {
+            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
+                insta::assert_snapshot!(lines.join("\n"));
+            });
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn set_external_device_enabled_resets_partial_decoder_state() {
+        let (mut core, device_id) = core_with_external_device();
+
+        assert!(
+            core.apply(Input::bytes(device_id, &RMC[..24]), at(0))
+                .is_empty()
+        );
+        core.apply(
+            Input::SetExternalDeviceEnabled {
+                device_id,
+                enabled: false,
+            },
+            at(1),
+        );
+        core.apply(
+            Input::SetExternalDeviceEnabled {
+                device_id,
+                enabled: true,
+            },
+            at(2),
+        );
+
+        assert!(
+            core.apply(Input::bytes(device_id, &RMC[24..]), at(3))
+                .is_empty()
+        );
+        assert_eq!(core.topics()[0], Topic::Instruments(Instruments::default()));
+    }
+
+    #[test]
+    #[traced_test]
+    fn set_external_device_enabled_resets_diagnostics_state() {
+        let (mut core, device_id) = core_with_external_device();
+
+        core.apply(
+            Input::connection_changed(device_id, ConnectionState::Connected),
+            at(0),
+        );
+        core.apply(Input::bytes(device_id, b"abc"), at(1));
+        core.apply(
+            Input::SetExternalDeviceEnabled {
+                device_id,
+                enabled: false,
+            },
+            at(2),
+        );
+        core.apply(
+            Input::SetExternalDeviceEnabled {
+                device_id,
+                enabled: true,
+            },
+            at(3),
+        );
+        core.apply(
+            Input::connection_changed(device_id, ConnectionState::Disconnected),
+            at(4),
+        );
+
+        logs_assert(|lines| {
+            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
+                insta::assert_snapshot!(lines.join("\n"));
+            });
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[traced_test]
+    fn invalid_external_device_mutations_warn() {
+        let mut core = Core::new(SettingsSnapshot::default());
+        let unknown = ExternalDeviceId(u32::MAX);
+
+        core.apply(Input::DeleteExternalDevice(unknown), at(0));
+        core.apply(
+            Input::EditExternalDevice {
+                device_id: unknown,
+                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
+            },
+            at(1),
+        );
+        core.apply(
+            Input::SetExternalDeviceEnabled {
+                device_id: unknown,
+                enabled: true,
+            },
+            at(2),
+        );
+
+        logs_assert(|lines| {
+            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
+                insta::assert_snapshot!(lines.join("\n"));
+            });
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[traced_test]
+    fn reorder_external_devices_with_an_unknown_id_warns_once() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(false, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
+            ],
+        });
+        let first = device_id(&core, 0);
+
+        assert!(
+            core.apply(
+                Input::ReorderExternalDevices(vec![first, ExternalDeviceId(u32::MAX)]),
+                at(0),
+            )
+            .is_empty()
+        );
+        logs_assert(|lines| {
+            if lines.len() == 1 && lines[0].contains("Invalid external device order") {
+                Ok(())
+            } else {
+                Err(format!("expected one invalid-order warning, got {lines:?}"))
+            }
+        });
+    }
+
+    #[test]
+    #[traced_test]
+    fn reorder_external_devices_with_a_missing_id_warns_once() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(false, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
+            ],
+        });
+        let first = device_id(&core, 0);
+
+        assert!(
+            core.apply(Input::ReorderExternalDevices(vec![first]), at(0))
+                .is_empty()
+        );
+        logs_assert(|lines| {
+            if lines.len() == 1 && lines[0].contains("Invalid external device order") {
+                Ok(())
+            } else {
+                Err(format!("expected one invalid-order warning, got {lines:?}"))
+            }
+        });
+    }
+
+    #[test]
+    #[traced_test]
+    fn reorder_external_devices_with_a_duplicate_id_warns_once() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(false, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
+            ],
+        });
+        let first = device_id(&core, 0);
+
+        assert!(
+            core.apply(Input::ReorderExternalDevices(vec![first, first]), at(0),)
+                .is_empty()
+        );
+        logs_assert(|lines| {
+            if lines.len() == 1 && lines[0].contains("Invalid external device order") {
+                Ok(())
+            } else {
+                Err(format!("expected one invalid-order warning, got {lines:?}"))
+            }
+        });
     }
 }

@@ -208,6 +208,32 @@ mod tests {
         }
     }
 
+    async fn next_external_devices(
+        receiver: &mut mpsc::UnboundedReceiver<Topic>,
+        matches: impl Fn(&[updraft_core::PublishedExternalDevice]) -> bool,
+    ) -> Vec<updraft_core::PublishedExternalDevice> {
+        loop {
+            let received = timeout(PATIENCE, receiver.recv())
+                .await
+                .expect("an external devices topic within the timeout");
+            let Topic::ExternalDevices(devices) = assert_some!(received) else {
+                continue;
+            };
+            if matches(&devices) {
+                return devices;
+            }
+        }
+    }
+
+    async fn next_persisted_snapshot(
+        receiver: &mut mpsc::UnboundedReceiver<SettingsSnapshot>,
+    ) -> SettingsSnapshot {
+        timeout(PATIENCE, receiver.recv())
+            .await
+            .expect("a persisted snapshot within the timeout")
+            .expect("the driver remains active")
+    }
+
     fn inactive_driver_handle() -> DriverHandle {
         let (messages, _) = mpsc::unbounded_channel();
         DriverHandle { messages }
@@ -312,6 +338,136 @@ mod tests {
             requested,
             (expected_device_id, ConnectionSpec::tcp("127.0.0.1", 4353))
         );
+    }
+
+    #[tokio::test]
+    async fn external_device_mutations_drive_one_worker_and_complete_snapshots() {
+        let opens = Arc::new(AtomicUsize::new(0));
+        let stops = Arc::new(AtomicUsize::new(0));
+        let (opened_tx, mut opened_rx) = mpsc::unbounded_channel();
+        let (persisted_tx, mut persisted_rx) = mpsc::unbounded_channel();
+        let open_count = opens.clone();
+        let stop_count = stops.clone();
+        let handle = Driver::spawn(
+            SettingsSnapshot::default(),
+            Box::new(move |device_id, spec, _handle| {
+                open_count.fetch_add(1, Ordering::SeqCst);
+                let _ = opened_tx.send((device_id, spec));
+                let stops = stop_count.clone();
+                Box::new(move || {
+                    stops.fetch_add(1, Ordering::SeqCst);
+                })
+            }),
+            Box::new(move |snapshot| {
+                let _ = persisted_tx.send(snapshot);
+            }),
+            Duration::from_millis(100),
+        );
+        let mut topics = topic_stream(&handle);
+
+        let first_spec = ConnectionSpec::tcp("127.0.0.1", 4353);
+        handle.send(Input::AddExternalDevice {
+            spec: first_spec.clone(),
+        });
+        let (device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
+            .await
+            .expect("an add open within the timeout")
+            .expect("the driver remains active");
+        assert_eq!(opened_spec, first_spec);
+        let published = next_external_devices(&mut topics, |devices| {
+            devices.len() == 1 && devices[0].config.spec == first_spec
+        })
+        .await;
+        assert_eq!(published[0].device_id, device_id);
+        assert_eq!(
+            next_persisted_snapshot(&mut persisted_rx).await,
+            SettingsSnapshot {
+                settings: Default::default(),
+                external_devices: vec![published[0].config.clone()],
+            }
+        );
+        assert_eq!(opens.load(Ordering::SeqCst), 1);
+        assert_eq!(stops.load(Ordering::SeqCst), 0);
+
+        let edited_spec = ConnectionSpec::bluetooth_spp("00:11:22:33:44:55");
+        handle.send(Input::EditExternalDevice {
+            device_id,
+            spec: edited_spec.clone(),
+        });
+        let (edited_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
+            .await
+            .expect("an edit open within the timeout")
+            .expect("the driver remains active");
+        assert_eq!(edited_device_id, device_id);
+        assert_eq!(opened_spec, edited_spec);
+        let published = next_external_devices(&mut topics, |devices| {
+            devices.len() == 1 && devices[0].config.spec == edited_spec
+        })
+        .await;
+        assert_eq!(published[0].device_id, device_id);
+        assert_eq!(
+            next_persisted_snapshot(&mut persisted_rx).await,
+            SettingsSnapshot {
+                settings: Default::default(),
+                external_devices: vec![published[0].config.clone()],
+            }
+        );
+        assert_eq!(opens.load(Ordering::SeqCst), 2);
+        assert_eq!(stops.load(Ordering::SeqCst), 1);
+
+        handle.send(Input::SetExternalDeviceEnabled {
+            device_id,
+            enabled: false,
+        });
+        let published = next_external_devices(&mut topics, |devices| {
+            devices.len() == 1 && !devices[0].config.enabled
+        })
+        .await;
+        assert_eq!(published[0].device_id, device_id);
+        assert_eq!(
+            next_persisted_snapshot(&mut persisted_rx).await,
+            SettingsSnapshot {
+                settings: Default::default(),
+                external_devices: vec![published[0].config.clone()],
+            }
+        );
+        assert_eq!(opens.load(Ordering::SeqCst), 2);
+        assert_eq!(stops.load(Ordering::SeqCst), 2);
+
+        handle.send(Input::SetExternalDeviceEnabled {
+            device_id,
+            enabled: true,
+        });
+        let (enabled_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
+            .await
+            .expect("an enable open within the timeout")
+            .expect("the driver remains active");
+        assert_eq!(enabled_device_id, device_id);
+        assert_eq!(opened_spec, edited_spec);
+        let published = next_external_devices(&mut topics, |devices| {
+            devices.len() == 1 && devices[0].config.enabled
+        })
+        .await;
+        assert_eq!(published[0].device_id, device_id);
+        assert_eq!(
+            next_persisted_snapshot(&mut persisted_rx).await,
+            SettingsSnapshot {
+                settings: Default::default(),
+                external_devices: vec![published[0].config.clone()],
+            }
+        );
+        assert_eq!(opens.load(Ordering::SeqCst), 3);
+        assert_eq!(stops.load(Ordering::SeqCst), 2);
+
+        handle.send(Input::DeleteExternalDevice(device_id));
+        let published = next_external_devices(&mut topics, |devices| devices.is_empty()).await;
+        assert!(published.is_empty());
+        assert_eq!(
+            next_persisted_snapshot(&mut persisted_rx).await,
+            SettingsSnapshot::default()
+        );
+        assert_eq!(opens.load(Ordering::SeqCst), 3);
+        assert_eq!(stops.load(Ordering::SeqCst), 3);
     }
 
     #[test]

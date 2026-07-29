@@ -22,6 +22,7 @@ describe('FakeClient', () => {
     let received: Topic[] = [];
 
     client.subscribe((topic) => received.push(topic));
+    received = [];
     client.emit(instruments(270));
 
     expect(received).toEqual([instruments(270)]);
@@ -32,9 +33,48 @@ describe('FakeClient', () => {
     let onTopic = vi.fn();
 
     let unsubscribe = client.subscribe(onTopic);
+    onTopic.mockClear();
     unsubscribe();
     client.emit(instruments(90));
 
     expect(onTopic).not.toHaveBeenCalled();
+  });
+
+  it('delivers default settings when a subscriber connects', () => {
+    let client = new FakeClient();
+    let received: Topic[] = [];
+
+    client.subscribe((topic) => received.push(topic));
+
+    expect(received).toEqual([
+      {
+        topic: 'settings',
+        value: { locale: null },
+      },
+    ]);
+  });
+
+  it('publishes an explicit locale through the settings topic', async () => {
+    let client = new FakeClient();
+    let received: Topic[] = [];
+    client.subscribe((topic) => received.push(topic));
+
+    await client.setLocale('de');
+
+    expect(received.at(-1)).toEqual({
+      topic: 'settings',
+      value: { locale: 'de' },
+    });
+  });
+
+  it('does not republish the active explicit locale', async () => {
+    let client = new FakeClient();
+    let received: Topic[] = [];
+    client.subscribe((topic) => received.push(topic));
+
+    await client.setLocale('de');
+    await client.setLocale('de');
+
+    expect(received).toHaveLength(2);
   });
 });

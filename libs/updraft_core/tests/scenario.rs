@@ -29,8 +29,10 @@ fn describe(effect: &Effect) -> String {
                 number(instruments.altitude_msl_meters, 1),
             )
         }
+        Effect::Emit(Topic::Settings(settings)) => format!("settings {settings:?}"),
         Effect::OpenConnection { connection, spec } => format!("open {connection:?} {spec:?}"),
         Effect::CloseConnection { connection } => format!("close {connection:?}"),
+        Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),
     }
 }
 
@@ -39,6 +41,7 @@ fn describe(effect: &Effect) -> String {
 fn replay(sentences: &str) -> Vec<String> {
     let mut core = Core::new(CoreConfig {
         connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
+        ..CoreConfig::default()
     });
 
     let mut log: Vec<String> = core
@@ -92,6 +95,7 @@ fn sentences_the_core_ignores_produce_no_effects() {
 fn gnss_fix_and_equivalent_sentence_agree() {
     let mut from_sentence = Core::new(CoreConfig {
         connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
+        ..CoreConfig::default()
     });
     let effects = from_sentence.apply(
         Input::bytes(

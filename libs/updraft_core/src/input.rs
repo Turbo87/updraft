@@ -1,5 +1,6 @@
 use crate::connection::{ConnectionId, ConnectionState};
 use crate::fix::Fix;
+use crate::settings::Locale;
 
 /// Anything that may change core state.
 ///
@@ -28,6 +29,7 @@ pub enum Input {
     /// instrument. Which source a position came from is what later lets
     /// them be ranked against each other.
     InternalGps(Fix),
+    SetLocale(Locale),
 }
 
 impl Input {

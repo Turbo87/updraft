@@ -1,3 +1,4 @@
+import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Topic } from '$lib/protocol/generated/Topic';
 
 export type TopicListener = (topic: Topic) => void;
@@ -18,4 +19,5 @@ export interface UpdraftClient {
    * while the layout owns the only subscription and never unmounts.
    */
   subscribe(onTopic: TopicListener): () => void;
+  setLocale(locale: Locale): Promise<void>;
 }

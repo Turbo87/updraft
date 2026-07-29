@@ -27,7 +27,7 @@ export default defineConfig({
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/lib/paraglide',
-      strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
+      strategy: ['preferredLanguage', 'baseLocale'],
     }),
     sveltekit({
       compilerOptions: {

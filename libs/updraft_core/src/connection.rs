@@ -1,19 +1,26 @@
+use serde::{Deserialize, Serialize};
+
 /// Identifies one link to an external device.
 ///
 /// The identity travels with every byte the link produces, because
 /// position-source arbitration and failover need to know which device a
 /// value came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct ExternalDeviceId(pub u32);
 
 /// How the shell should reach a device.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(tag = "type")]
 pub enum ConnectionSpec {
     /// A TCP client link. Used for flight simulators, WiFi-attached
     /// instruments, and any device exposing a TCP server, as well as for
     /// feeding recorded NMEA during development.
+    #[serde(rename = "tcp")]
     Tcp { host: String, port: u16 },
     /// A Bluetooth Classic Serial Port Profile link.
+    #[serde(rename = "bluetooth")]
     BluetoothSpp { address: String },
 }
 

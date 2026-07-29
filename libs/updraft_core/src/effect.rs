@@ -1,5 +1,5 @@
 use crate::connection::{ConnectionSpec, ExternalDeviceId};
-use crate::settings::Settings;
+use crate::settings::SettingsSnapshot;
 use crate::topic::Topic;
 
 /// A request for work that crosses the process boundary.
@@ -21,7 +21,7 @@ pub enum Effect {
     CloseConnection {
         device_id: ExternalDeviceId,
     },
-    PersistSettings(Settings),
+    PersistSettings(SettingsSnapshot),
 }
 
 impl Effect {
@@ -37,7 +37,7 @@ impl Effect {
         Self::CloseConnection { device_id }
     }
 
-    pub fn persist_settings(settings: Settings) -> Self {
-        Self::PersistSettings(settings)
+    pub fn persist_settings(snapshot: SettingsSnapshot) -> Self {
+        Self::PersistSettings(snapshot)
     }
 }

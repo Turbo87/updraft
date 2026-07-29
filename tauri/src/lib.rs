@@ -2,7 +2,6 @@ use tauri::Manager;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
-use updraft_core::Settings;
 
 mod activity;
 mod driver;
@@ -71,25 +70,6 @@ fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc:
     });
 }
 
-fn configured_core(android: bool, settings: Settings) -> updraft_core::CoreConfig {
-    let mut connections = vec![(
-        updraft_core::ExternalDeviceId(1),
-        updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
-    )];
-
-    if android {
-        connections.push((
-            updraft_core::ExternalDeviceId(2),
-            updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
-        ));
-    }
-
-    updraft_core::CoreConfig {
-        settings,
-        connections,
-    }
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -100,9 +80,7 @@ pub fn run() {
                 app.manage(guard);
             }
             let settings_file = settings::SettingsFile::new(app.path().app_config_dir()?);
-            // Connections are temporary startup configuration. They will move
-            // into runtime-mutable settings.
-            let config = configured_core(cfg!(target_os = "android"), settings_file.load());
+            let snapshot = settings_file.load();
 
             // `setup` runs on the main thread outside any runtime context,
             // so `tokio::spawn` inside the driver would panic. Enter Tauri's
@@ -114,7 +92,7 @@ pub fn run() {
                 let _guard = runtime.inner().enter();
                 let persist = Box::new(settings_file.writer());
                 driver::Driver::spawn(
-                    config,
+                    snapshot,
                     Box::new(move |device_id, spec, handle| {
                         transport::open(device_id, spec, handle, app_handle.clone());
                     }),
@@ -150,43 +128,4 @@ pub fn run() {
             }
             _ => {}
         });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn android_configuration_keeps_tcp_and_adds_spp() {
-        assert_eq!(
-            configured_core(true, Settings::default()).connections,
-            vec![
-                (
-                    updraft_core::ExternalDeviceId(1),
-                    updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
-                ),
-                (
-                    updraft_core::ExternalDeviceId(2),
-                    updraft_core::ConnectionSpec::bluetooth_spp("78:21:84:7C:3E:06"),
-                ),
-            ]
-        );
-    }
-
-    #[test]
-    fn desktop_configuration_keeps_tcp_only() {
-        assert_eq!(
-            configured_core(false, Settings::default()).connections,
-            vec![(
-                updraft_core::ExternalDeviceId(1),
-                updraft_core::ConnectionSpec::tcp("127.0.0.1", 4353),
-            )]
-        );
-
-        let settings = Settings {
-            locale: Some(updraft_core::Locale::De),
-        };
-
-        assert_eq!(configured_core(false, settings).settings, settings);
-    }
 }

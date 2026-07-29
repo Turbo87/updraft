@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use updraft_core::{
-    ConnectionSpec, Core, CoreConfig, Effect, ExternalDeviceId, Input, Settings, Timestamp, Topic,
+    ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Timestamp, Topic,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is
@@ -14,7 +14,7 @@ pub type Sink = Box<dyn Fn(&Topic) -> bool + Send>;
 /// dependency on the transport layer and can be tested with a stub.
 pub type OpenFn = Box<dyn Fn(ExternalDeviceId, ConnectionSpec, DriverHandle) + Send>;
 
-pub type PersistFn = Box<dyn Fn(Settings) + Send>;
+pub type PersistFn = Box<dyn Fn(SettingsSnapshot) + Send>;
 
 enum Message {
     Input(Input),
@@ -57,7 +57,7 @@ pub struct Driver;
 
 impl Driver {
     pub fn spawn(
-        config: CoreConfig,
+        snapshot: SettingsSnapshot,
         open: OpenFn,
         persist: PersistFn,
         tick_interval: Duration,
@@ -68,7 +68,7 @@ impl Driver {
 
         tokio::spawn(async move {
             let started = Instant::now();
-            let mut core = Core::new(config);
+            let mut core = Core::new(snapshot);
             let mut sinks: Vec<Sink> = Vec::new();
             let mut ticker = tokio::time::interval(tick_interval);
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -99,7 +99,7 @@ impl Driver {
                 for effect in core.apply(input, at) {
                     match effect {
                         Effect::Emit(topic) => sinks.retain(|sink| sink(&topic)),
-                        Effect::PersistSettings(settings) => persist(settings),
+                        Effect::PersistSettings(snapshot) => persist(snapshot),
                         Effect::OpenConnection { device_id, spec } => {
                             open(device_id, spec, driver_handle.clone());
                         }
@@ -124,15 +124,18 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use claims::{assert_some, assert_some_eq};
     use tokio::time::timeout;
+    use updraft_core::ExternalDeviceConfig;
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
-    const LINK: ExternalDeviceId = ExternalDeviceId(1);
     const PATIENCE: Duration = Duration::from_secs(5);
 
-    fn config() -> CoreConfig {
-        CoreConfig {
-            connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
-            ..CoreConfig::default()
+    fn snapshot() -> SettingsSnapshot {
+        SettingsSnapshot {
+            settings: Default::default(),
+            external_devices: vec![ExternalDeviceConfig {
+                enabled: true,
+                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
+            }],
         }
     }
 
@@ -161,10 +164,22 @@ mod tests {
         }
     }
 
+    async fn next_device_id(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> ExternalDeviceId {
+        loop {
+            let received = timeout(PATIENCE, receiver.recv())
+                .await
+                .expect("a topic within the timeout");
+            let Topic::ExternalDevices(devices) = assert_some!(received) else {
+                continue;
+            };
+            return devices[0].device_id;
+        }
+    }
+
     #[tokio::test]
     async fn subscribing_delivers_current_state_immediately() {
         let handle = Driver::spawn(
-            config(),
+            snapshot(),
             Box::new(|_, _, _| {}),
             Box::new(|_| {}),
             Duration::from_millis(100),
@@ -185,10 +200,10 @@ mod tests {
     async fn locale_changes_reach_subscribers_and_persistence() {
         let (persisted_tx, mut persisted_rx) = mpsc::unbounded_channel();
         let handle = Driver::spawn(
-            config(),
+            snapshot(),
             Box::new(|_, _, _| {}),
-            Box::new(move |settings| {
-                let _ = persisted_tx.send(settings);
+            Box::new(move |snapshot| {
+                let _ = persisted_tx.send(snapshot);
             }),
             Duration::from_millis(100),
         );
@@ -212,21 +227,25 @@ mod tests {
             timeout(PATIENCE, persisted_rx.recv())
                 .await
                 .expect("a persisted snapshot within the timeout"),
-            Some(settings)
+            Some(SettingsSnapshot {
+                settings,
+                external_devices: snapshot().external_devices,
+            })
         );
     }
 
     #[tokio::test]
     async fn decoded_fixes_reach_subscribers() {
         let handle = Driver::spawn(
-            config(),
+            snapshot(),
             Box::new(|_, _, _| {}),
             Box::new(|_| {}),
             Duration::from_millis(100),
         );
         let mut topics = topic_stream(&handle);
+        let device_id = next_device_id(&mut topics).await;
 
-        handle.send(Input::bytes(LINK, RMC));
+        handle.send(Input::bytes(device_id, RMC));
 
         let position = next_position(&mut topics).await;
         assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
@@ -236,19 +255,24 @@ mod tests {
     async fn start_asks_for_a_transport_per_configured_connection() {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let handle = Driver::spawn(
-            config(),
-            Box::new(move |device_id, _spec, _handle| {
-                let _ = sender.send(device_id);
+            snapshot(),
+            Box::new(move |device_id, spec, _handle| {
+                let _ = sender.send((device_id, spec));
             }),
             Box::new(|_| {}),
             Duration::from_millis(100),
         );
+        let mut topics = topic_stream(&handle);
+        let expected_device_id = next_device_id(&mut topics).await;
 
         handle.send(Input::Start);
 
         let requested = timeout(PATIENCE, receiver.recv())
             .await
             .expect("an open request within the timeout");
-        assert_some_eq!(requested, LINK);
+        assert_some_eq!(
+            requested,
+            (expected_device_id, ConnectionSpec::tcp("127.0.0.1", 4353))
+        );
     }
 }

@@ -84,13 +84,13 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{sleep, timeout};
     use tracing_test::traced_test;
-    use updraft_core::{ConnectionSpec, CoreConfig, Topic};
+    use updraft_core::{ConnectionSpec, ExternalDeviceConfig, SettingsSnapshot, Topic};
 
     const PATIENCE: Duration = Duration::from_secs(5);
 
     fn driver() -> DriverHandle {
         Driver::spawn(
-            CoreConfig::default(),
+            SettingsSnapshot::default(),
             Box::new(|_, _, _| {}),
             Box::new(|_| {}),
             Duration::from_millis(100),
@@ -183,12 +183,13 @@ mod tests {
     async fn bytes_from_a_listening_peer_reach_the_core() {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
         let port = listener.local_addr().expect("has an address").port();
-        let device_id = ExternalDeviceId(1);
-
         let handle = Driver::spawn(
-            CoreConfig {
-                connections: vec![(device_id, ConnectionSpec::tcp("127.0.0.1", port))],
-                ..CoreConfig::default()
+            SettingsSnapshot {
+                settings: Default::default(),
+                external_devices: vec![ExternalDeviceConfig {
+                    enabled: true,
+                    spec: ConnectionSpec::tcp("127.0.0.1", port),
+                }],
             },
             Box::new(|_, _, _| {}),
             Box::new(|_| {}),
@@ -200,6 +201,15 @@ mod tests {
             sender.send(topic.clone()).is_ok()
         }));
 
+        let device_id = loop {
+            let received = timeout(PATIENCE, topics.recv())
+                .await
+                .expect("a topic within the timeout");
+            let Topic::ExternalDevices(devices) = assert_some!(received) else {
+                continue;
+            };
+            break devices[0].device_id;
+        };
         run(device_id, "127.0.0.1".to_owned(), port, handle.clone());
 
         let (mut stream, _) = listener.accept().await.expect("accepts");

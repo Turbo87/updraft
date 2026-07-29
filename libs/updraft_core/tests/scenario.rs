@@ -1,9 +1,8 @@
 use updraft_core::{
-    ConnectionSpec, Core, CoreConfig, Effect, ExternalDeviceId, Fix, Input, LatLon, Timestamp,
-    Topic,
+    ConnectionSpec, Core, Effect, ExternalDeviceConfig, ExternalDeviceId, Fix, Input, LatLon,
+    SettingsSnapshot, Timestamp, Topic,
 };
 
-const LINK: ExternalDeviceId = ExternalDeviceId(1);
 const FIXTURE: &str = include_str!("../../../testdata/nmea/basic.nmea");
 /// Sentences the core must not act on: a verbatim repeat of the last line
 /// of `basic.nmea`, then a `V`-status fix carrying plausible values.
@@ -31,19 +30,34 @@ fn describe(effect: &Effect) -> String {
             )
         }
         Effect::Emit(Topic::Settings(settings)) => format!("settings {settings:?}"),
+        Effect::Emit(Topic::ExternalDevices(devices)) => {
+            format!("external devices {devices:?}")
+        }
         Effect::OpenConnection { device_id, spec } => format!("open {device_id:?} {spec:?}"),
         Effect::CloseConnection { device_id } => format!("close {device_id:?}"),
         Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),
     }
 }
 
+fn core_with_external_device() -> (Core, ExternalDeviceId) {
+    let core = Core::new(SettingsSnapshot {
+        settings: Default::default(),
+        external_devices: vec![ExternalDeviceConfig {
+            enabled: true,
+            spec: ConnectionSpec::tcp("127.0.0.1", 4353),
+        }],
+    });
+    let topics = core.topics();
+    let Some(Topic::ExternalDevices(devices)) = topics.last() else {
+        panic!("the configured external devices topic should be published");
+    };
+    (core, devices[0].device_id)
+}
+
 /// Replays `sentences` through a fresh core and returns the whole effect
 /// stream, rendered.
 fn replay(sentences: &str) -> Vec<String> {
-    let mut core = Core::new(CoreConfig {
-        connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
-        ..CoreConfig::default()
-    });
+    let (mut core, device_id) = core_with_external_device();
 
     let mut log: Vec<String> = core
         .apply(Input::Start, Timestamp::from_millis(0))
@@ -55,7 +69,7 @@ fn replay(sentences: &str) -> Vec<String> {
         let at = Timestamp::from_millis(1_000 + index as u64 * 1_000);
         let sentence = format!("{line}\r\n");
         log.extend(
-            core.apply(Input::bytes(LINK, sentence.into_bytes()), at)
+            core.apply(Input::bytes(device_id, sentence.into_bytes()), at)
                 .iter()
                 .map(describe),
         );
@@ -94,19 +108,16 @@ fn sentences_the_core_ignores_produce_no_effects() {
 /// is doing.
 #[test]
 fn gnss_fix_and_equivalent_sentence_agree() {
-    let mut from_sentence = Core::new(CoreConfig {
-        connections: vec![(LINK, ConnectionSpec::tcp("127.0.0.1", 4353))],
-        ..CoreConfig::default()
-    });
+    let (mut from_sentence, device_id) = core_with_external_device();
     let effects = from_sentence.apply(
         Input::bytes(
-            LINK,
+            device_id,
             b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n".as_slice(),
         ),
         Timestamp::from_millis(0),
     );
 
-    let mut from_fix = Core::new(CoreConfig::default());
+    let mut from_fix = Core::new(SettingsSnapshot::default());
     let equivalent = from_fix.apply(
         Input::InternalGps(Fix {
             position: LatLon {

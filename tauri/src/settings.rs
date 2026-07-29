@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-use updraft_core::Settings;
+use updraft_core::SettingsSnapshot;
 
 const FILE_NAME: &str = "settings.json";
 
@@ -18,25 +18,25 @@ impl SettingsFile {
         }
     }
 
-    pub fn load(&self) -> Settings {
+    pub fn load(&self) -> SettingsSnapshot {
         let file = match File::open(&self.path) {
             Ok(file) => file,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return Settings::default();
+                return SettingsSnapshot::default();
             }
             Err(error) => {
                 tracing::warn!(path = %self.path.display(), %error, "Could not load settings");
-                return Settings::default();
+                return SettingsSnapshot::default();
             }
         };
 
         serde_json::from_reader(BufReader::new(file)).unwrap_or_else(|error| {
             tracing::warn!(path = %self.path.display(), %error, "Could not load settings");
-            Settings::default()
+            SettingsSnapshot::default()
         })
     }
 
-    fn write(&self, settings: Settings) -> std::io::Result<()> {
+    fn write(&self, snapshot: SettingsSnapshot) -> std::io::Result<()> {
         let directory = self
             .path
             .parent()
@@ -44,19 +44,19 @@ impl SettingsFile {
         std::fs::create_dir_all(directory)?;
 
         let mut temporary = NamedTempFile::new_in(directory)?;
-        serde_json::to_writer_pretty(&mut temporary, &settings).map_err(std::io::Error::other)?;
+        serde_json::to_writer_pretty(&mut temporary, &snapshot).map_err(std::io::Error::other)?;
         writeln!(temporary)?;
         temporary.persist(&self.path).map_err(|error| error.error)?;
 
         Ok(())
     }
 
-    pub fn writer(self) -> impl Fn(Settings) + Send + 'static {
+    pub fn writer(self) -> impl Fn(SettingsSnapshot) + Send + 'static {
         let (sender, receiver) = std::sync::mpsc::channel();
 
         tauri::async_runtime::spawn_blocking(move || {
-            for settings in receiver {
-                if let Err(error) = self.write(settings) {
+            for snapshot in receiver {
+                if let Err(error) = self.write(snapshot) {
                     tracing::warn!(
                         path = %self.path.display(),
                         %error,
@@ -66,8 +66,8 @@ impl SettingsFile {
             }
         });
 
-        move |settings| {
-            if sender.send(settings).is_err() {
+        move |snapshot| {
+            if sender.send(snapshot).is_err() {
                 tracing::warn!("Could not queue settings persistence");
             }
         }
@@ -80,19 +80,19 @@ mod tests {
     use claims::{assert_err, assert_ok};
     use tempfile::tempdir;
     use tracing_test::traced_test;
-    use updraft_core::Locale;
+    use updraft_core::{ConnectionSpec, ExternalDeviceConfig, Locale, Settings, SettingsSnapshot};
 
     #[test]
     fn missing_file_loads_default_settings() {
         let directory = assert_ok!(tempdir());
         let file = SettingsFile::new(directory.path());
 
-        assert_eq!(file.load(), Settings::default());
+        assert_eq!(file.load(), SettingsSnapshot::default());
         assert!(!directory.path().join("settings.json").exists());
     }
 
     #[test]
-    fn valid_file_loads_the_explicit_locale() {
+    fn locale_only_file_loads_its_locale_and_defaults_external_devices() {
         let directory = assert_ok!(tempdir());
         assert_ok!(std::fs::write(
             directory.path().join("settings.json"),
@@ -102,8 +102,11 @@ mod tests {
 
         assert_eq!(
             file.load(),
-            Settings {
-                locale: Some(Locale::De),
+            SettingsSnapshot {
+                settings: Settings {
+                    locale: Some(Locale::De),
+                },
+                external_devices: Vec::new(),
             }
         );
     }
@@ -118,7 +121,7 @@ mod tests {
         ));
         let file = SettingsFile::new(directory.path());
 
-        assert_eq!(file.load(), Settings::default());
+        assert_eq!(file.load(), SettingsSnapshot::default());
         assert!(logs_contain("Could not load settings"));
         assert_eq!(
             assert_ok!(std::fs::read_to_string(
@@ -133,13 +136,45 @@ mod tests {
         let parent = assert_ok!(tempdir());
         let config_dir = parent.path().join("missing");
         let file = SettingsFile::new(&config_dir);
-        let settings = Settings {
-            locale: Some(Locale::De),
+        let snapshot = SettingsSnapshot {
+            settings: Settings {
+                locale: Some(Locale::De),
+            },
+            external_devices: vec![
+                ExternalDeviceConfig {
+                    enabled: true,
+                    spec: ConnectionSpec::tcp("127.0.0.1", 4353),
+                },
+                ExternalDeviceConfig {
+                    enabled: false,
+                    spec: ConnectionSpec::bluetooth_spp("00:11:22:33:44:55"),
+                },
+            ],
         };
 
-        assert_ok!(file.write(settings));
-        assert_eq!(file.load(), settings);
-        assert!(config_dir.join("settings.json").exists());
+        assert_ok!(file.write(snapshot.clone()));
+        assert_eq!(
+            assert_ok!(std::fs::read_to_string(config_dir.join("settings.json"))),
+            concat!(
+                "{\n",
+                "  \"locale\": \"de\",\n",
+                "  \"externalDevices\": [\n",
+                "    {\n",
+                "      \"enabled\": true,\n",
+                "      \"type\": \"tcp\",\n",
+                "      \"host\": \"127.0.0.1\",\n",
+                "      \"port\": 4353\n",
+                "    },\n",
+                "    {\n",
+                "      \"enabled\": false,\n",
+                "      \"type\": \"bluetooth\",\n",
+                "      \"address\": \"00:11:22:33:44:55\"\n",
+                "    }\n",
+                "  ]\n",
+                "}\n",
+            )
+        );
+        assert_eq!(file.load(), snapshot);
     }
 
     #[test]
@@ -147,17 +182,29 @@ mod tests {
         let directory = assert_ok!(tempdir());
         let file = SettingsFile::new(directory.path());
 
-        assert_ok!(file.write(Settings {
-            locale: Some(Locale::De),
+        assert_ok!(file.write(SettingsSnapshot {
+            settings: Settings {
+                locale: Some(Locale::De),
+            },
+            external_devices: vec![ExternalDeviceConfig {
+                enabled: true,
+                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
+            }],
         }));
-        assert_ok!(file.write(Settings {
-            locale: Some(Locale::En),
+        assert_ok!(file.write(SettingsSnapshot {
+            settings: Settings {
+                locale: Some(Locale::En),
+            },
+            external_devices: Vec::new(),
         }));
 
         assert_eq!(
             file.load(),
-            Settings {
-                locale: Some(Locale::En),
+            SettingsSnapshot {
+                settings: Settings {
+                    locale: Some(Locale::En),
+                },
+                external_devices: Vec::new(),
             }
         );
     }
@@ -169,6 +216,6 @@ mod tests {
         assert_ok!(std::fs::write(&config_dir, b"file"));
         let file = SettingsFile::new(config_dir);
 
-        assert_err!(file.write(Settings::default()));
+        assert_err!(file.write(SettingsSnapshot::default()));
     }
 }

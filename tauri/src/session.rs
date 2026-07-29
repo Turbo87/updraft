@@ -43,7 +43,7 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{Instant, timeout, timeout_at};
     use tracing_test::traced_test;
-    use updraft_core::{CoreConfig, Instruments, Topic};
+    use updraft_core::{Instruments, SettingsSnapshot, Topic};
 
     const PATIENCE: Duration = Duration::from_secs(5);
 
@@ -77,10 +77,7 @@ mod tests {
 
     fn driver() -> DriverHandle {
         Driver::spawn(
-            CoreConfig {
-                connections: Vec::new(),
-                ..CoreConfig::default()
-            },
+            SettingsSnapshot::default(),
             Box::new(|_, _, _| {}),
             Box::new(|_| {}),
             Duration::from_millis(100),

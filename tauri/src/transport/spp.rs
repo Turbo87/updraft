@@ -238,10 +238,12 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::timeout;
     use tracing_test::traced_test;
-    use updraft_core::{ConnectionSpec, CoreConfig, ExternalDeviceId, Topic};
+    use updraft_core::{
+        ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId, SettingsSnapshot, Topic,
+    };
 
     const ADDRESS: &str = "00:11:22:33:44:55";
-    const LINK: ExternalDeviceId = ExternalDeviceId(1);
+    const DEVICE_ID: ExternalDeviceId = ExternalDeviceId(1);
     const PATIENCE: Duration = Duration::from_secs(5);
     const RMC_EVENT: &str = r#"{"type":"bytes","data":"JEdQUk1DLDEyMDAwMC4wMCxBLDUwNDkuMzgsTiwwMDYxMS4xNixFLDQ1LjAsMjcwLjAsMDEwMTI2LCwsQQ0K"}"#;
 
@@ -361,7 +363,7 @@ mod tests {
         let (events, mut receiver) = event_stream();
         tokio::spawn(async move {
             run_attempt(
-                LINK,
+                DEVICE_ID,
                 ADDRESS,
                 &handle,
                 platform.as_ref(),
@@ -374,9 +376,12 @@ mod tests {
 
     fn driver() -> DriverHandle {
         Driver::spawn(
-            CoreConfig {
-                connections: vec![(LINK, ConnectionSpec::bluetooth_spp(ADDRESS))],
-                ..CoreConfig::default()
+            SettingsSnapshot {
+                settings: Default::default(),
+                external_devices: vec![ExternalDeviceConfig {
+                    enabled: true,
+                    spec: ConnectionSpec::bluetooth_spp(ADDRESS),
+                }],
             },
             Box::new(|_, _, _| {}),
             Box::new(|_| {}),
@@ -424,7 +429,7 @@ mod tests {
             return Err(format!("missing {message:?} warning"));
         };
         let missing: Vec<_> = [
-            format!(" device_id={LINK:?}"),
+            format!(" device_id={DEVICE_ID:?}"),
             format!(" address={ADDRESS}"),
             " reason=".to_owned(),
             reason.to_owned(),
@@ -451,7 +456,25 @@ mod tests {
         let mut topics = topic_stream(&handle);
         let (events, mut receiver) = event_stream();
 
-        let result = run_attempt(LINK, ADDRESS, &handle, &platform, &events, &mut receiver).await;
+        let device_id = loop {
+            let received = timeout(PATIENCE, topics.recv())
+                .await
+                .expect("a topic within the timeout");
+            let Topic::ExternalDevices(devices) = assert_some!(received) else {
+                continue;
+            };
+            break devices[0].device_id;
+        };
+
+        let result = run_attempt(
+            device_id,
+            ADDRESS,
+            &handle,
+            &platform,
+            &events,
+            &mut receiver,
+        )
+        .await;
 
         assert_eq!(
             result,
@@ -549,7 +572,7 @@ mod tests {
             r#"{"type":"disconnected"}"#,
         ]));
         let task = tokio::spawn(maintain(
-            LINK,
+            DEVICE_ID,
             ADDRESS.to_owned(),
             driver(),
             platform.clone(),
@@ -584,7 +607,15 @@ mod tests {
         let platform = FakePlatform::failing_with("Nearby Devices unavailable");
         let (events, mut receiver) = event_stream();
 
-        let result = run_attempt(LINK, ADDRESS, &driver(), &platform, &events, &mut receiver).await;
+        let result = run_attempt(
+            DEVICE_ID,
+            ADDRESS,
+            &driver(),
+            &platform,
+            &events,
+            &mut receiver,
+        )
+        .await;
 
         assert_eq!(
             result,
@@ -608,7 +639,15 @@ mod tests {
             FakePlatform::with_events(vec![r#"{"type":"disconnected","error":"socket closed"}"#]);
         let (events, mut receiver) = event_stream();
 
-        let result = run_attempt(LINK, ADDRESS, &driver(), &platform, &events, &mut receiver).await;
+        let result = run_attempt(
+            DEVICE_ID,
+            ADDRESS,
+            &driver(),
+            &platform,
+            &events,
+            &mut receiver,
+        )
+        .await;
 
         assert_eq!(
             result,
@@ -624,7 +663,7 @@ mod tests {
     async fn failed_cancellation_does_not_start_another_attempt() {
         let platform = Arc::new(FakePlatform::with_cancel_error("cancel command failed"));
         let task = tokio::spawn(maintain(
-            LINK,
+            DEVICE_ID,
             ADDRESS.to_owned(),
             driver(),
             platform.clone(),
@@ -665,7 +704,7 @@ mod tests {
         timeout(
             PATIENCE,
             maintain_on_channel(
-                LINK,
+                DEVICE_ID,
                 ADDRESS.to_owned(),
                 driver(),
                 platform.clone(),

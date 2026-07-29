@@ -19,7 +19,8 @@ export default defineConfig({
     cssMinify: 'lightningcss',
   },
   optimizeDeps: {
-    exclude: ['svelte-maplibre-gl/vite'],
+    // This package contains a Vite worker import that breaks when prebundled.
+    exclude: ['svelte-maplibre-gl'],
   },
   plugins: [
     UnoCSS(),

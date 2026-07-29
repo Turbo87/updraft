@@ -1,13 +1,11 @@
 use crate::connection::{ConnectionSpec, ExternalDeviceId};
-use crate::connection_diagnostics::ConnectionDiagnostics;
-use crate::decoder::Decoder;
 use crate::effect::Effect;
+use crate::external_device::ExternalDevices;
 use crate::fix::Fix;
 use crate::input::Input;
 use crate::settings::Settings;
 use crate::time::Timestamp;
 use crate::topic::{Instruments, LatLon, Topic};
-use std::collections::BTreeMap;
 use updraft_nmea::{Message, RmcStatus};
 
 /// Static configuration the core is built with.
@@ -26,10 +24,8 @@ pub struct CoreConfig {
 /// with no runtime, sleeps or wall clock.
 #[derive(Debug)]
 pub struct Core {
-    connections: Vec<(ExternalDeviceId, ConnectionSpec)>,
     settings: Settings,
-    decoders: BTreeMap<ExternalDeviceId, Decoder>,
-    diagnostics: ConnectionDiagnostics,
+    external_devices: ExternalDevices,
     instruments: Instruments,
 }
 
@@ -39,20 +35,9 @@ impl Core {
             settings,
             connections,
         } = config;
-        let mut diagnostics = ConnectionDiagnostics::default();
-        let decoders = connections
-            .iter()
-            .map(|(device_id, spec)| {
-                diagnostics.insert(*device_id, spec.clone());
-                (*device_id, Decoder::default())
-            })
-            .collect();
-
         Self {
-            connections,
             settings,
-            decoders,
-            diagnostics,
+            external_devices: ExternalDevices::from_connections(connections),
             instruments: Instruments::default(),
         }
     }
@@ -66,16 +51,16 @@ impl Core {
 
         match input {
             Input::Start => self
-                .connections
+                .external_devices
                 .iter()
-                .map(|(device_id, spec)| Effect::open(*device_id, spec.clone()))
+                .map(|device| Effect::open(device.device_id, device.spec.clone()))
                 .collect(),
-            Input::Bytes { device_id, data } => {
-                self.diagnostics.bytes(device_id, data.len());
-                self.decode(device_id, &data)
-            }
+            Input::Bytes { device_id, data } => self.decode(device_id, &data),
             Input::ConnectionChanged { device_id, state } => {
-                self.diagnostics.changed(device_id, state);
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    return Vec::new();
+                };
+                device.diagnostics.changed(device_id, &device.spec, state);
                 Vec::new()
             }
             Input::Tick => Vec::new(),
@@ -104,16 +89,22 @@ impl Core {
     }
 
     fn decode(&mut self, device_id: ExternalDeviceId, data: &[u8]) -> Vec<Effect> {
-        let Some(decoder) = self.decoders.get_mut(&device_id) else {
-            return Vec::new();
+        let messages = {
+            let Some(device) = self.external_devices.get_mut(device_id) else {
+                return Vec::new();
+            };
+
+            device
+                .diagnostics
+                .bytes(device_id, &device.spec, data.len());
+            device.decoder.push(data);
+
+            let mut messages = Vec::new();
+            while let Some(message) = device.decoder.next_message() {
+                messages.push(message);
+            }
+            messages
         };
-
-        decoder.push(data);
-
-        let mut messages = Vec::new();
-        while let Some(message) = decoder.next_message() {
-            messages.push(message);
-        }
 
         let before = self.instruments;
         for message in messages {
@@ -247,6 +238,30 @@ mod tests {
     }
 
     #[test]
+    fn bytes_are_decoded_by_their_configured_device() {
+        let mut core = Core::new(CoreConfig {
+            connections: vec![
+                (LINK, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                (SPP_LINK, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
+            ],
+            ..CoreConfig::default()
+        });
+
+        assert!(core.apply(Input::bytes(LINK, &RMC[..24]), at(0)).is_empty());
+        assert!(
+            core.apply(Input::bytes(SPP_LINK, &RMC[24..]), at(1))
+                .is_empty()
+        );
+        let effects = core.apply(Input::bytes(LINK, &RMC[24..]), at(2));
+        let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
+            panic!("the completed sentence should emit instruments");
+        };
+        let position = instruments.position.expect("RMC position");
+        assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+        assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
+    }
+
+    #[test]
     #[traced_test]
     fn spp_lifecycle_reports_the_mac_address() {
         let mut core = Core::new(CoreConfig {
@@ -260,6 +275,25 @@ mod tests {
         );
 
         assert!(logs_contain("ExternalDeviceId(2)"));
+        assert!(logs_contain("00:00:00:00:00:00"));
+    }
+
+    #[test]
+    #[traced_test]
+    fn duplicate_device_ids_use_the_last_configured_connection() {
+        let mut core = Core::new(CoreConfig {
+            connections: vec![
+                (LINK, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                (LINK, ConnectionSpec::bluetooth_spp("00:00:00:00:00:00")),
+            ],
+            ..CoreConfig::default()
+        });
+
+        core.apply(
+            Input::connection_changed(LINK, ConnectionState::Connecting),
+            at(0),
+        );
+
         assert!(logs_contain("00:00:00:00:00:00"));
     }
 
@@ -345,7 +379,7 @@ mod tests {
             at(0),
         );
         core.apply(Input::bytes(LINK, b"abc"), at(1));
-        core.diagnostics.remove(LINK);
+        assert!(core.external_devices.remove(LINK).is_some());
         core.apply(
             Input::connection_changed(LINK, ConnectionState::Connecting),
             at(2),

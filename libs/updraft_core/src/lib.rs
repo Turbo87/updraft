@@ -10,6 +10,7 @@ mod connection_diagnostics;
 mod core;
 mod decoder;
 mod effect;
+mod external_device;
 mod fix;
 mod input;
 mod settings;

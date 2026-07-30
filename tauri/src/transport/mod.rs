@@ -23,15 +23,15 @@ pub fn open<R: Runtime>(
         ConnectionSpec::Tcp { host, port } => tcp::run(device_id, host, port, handle),
         ConnectionSpec::BluetoothSpp {
             address,
-            service_uuid: _,
+            service_uuid,
         } => {
             #[cfg(target_os = "android")]
             {
-                spp::run(device_id, address, handle, app)
+                spp::run(device_id, address, service_uuid, handle, app)
             }
             #[cfg(not(target_os = "android"))]
             {
-                let _ = app;
+                let _ = (app, service_uuid);
                 tracing::warn!(?device_id, %address, "Bluetooth SPP transport is unsupported");
                 tauri::async_runtime::spawn(async move {
                     let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);

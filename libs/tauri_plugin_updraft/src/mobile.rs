@@ -19,8 +19,10 @@ struct StartSessionArgs {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct StartSppAttemptArgs<'a> {
     address: &'a str,
+    service_uuid: &'a str,
     events: Channel,
 }
 
@@ -47,9 +49,20 @@ impl<R: Runtime> UpdraftMobile<R> {
             .map_err(Into::into)
     }
 
-    pub fn start_spp_attempt(&self, address: &str, events: Channel) -> crate::Result<()> {
+    pub fn start_spp_attempt(
+        &self,
+        address: &str,
+        service_uuid: &str,
+        events: Channel,
+    ) -> crate::Result<()> {
+        let args = StartSppAttemptArgs {
+            address,
+            service_uuid,
+            events,
+        };
+
         self.0
-            .run_mobile_plugin("startSppAttempt", StartSppAttemptArgs { address, events })
+            .run_mobile_plugin("startSppAttempt", args)
             .map_err(Into::into)
     }
 

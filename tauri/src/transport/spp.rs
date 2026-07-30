@@ -12,7 +12,12 @@ use tokio::sync::{mpsc, oneshot};
 use updraft_core::{Bytes, ConnectionChanged, ConnectionState, ExternalDeviceId};
 
 trait SppPlatform: Send + Sync + 'static {
-    fn start_attempt(&self, address: &str, events: Channel) -> Result<(), String>;
+    fn start_attempt(
+        &self,
+        address: &str,
+        service_uuid: &str,
+        events: Channel,
+    ) -> Result<(), String>;
     fn cancel_attempt(&self) -> Result<(), String>;
 }
 
@@ -21,10 +26,15 @@ struct AndroidSppPlatform<R: Runtime>(AppHandle<R>);
 
 #[cfg(target_os = "android")]
 impl<R: Runtime> SppPlatform for AndroidSppPlatform<R> {
-    fn start_attempt(&self, address: &str, events: Channel) -> Result<(), String> {
+    fn start_attempt(
+        &self,
+        address: &str,
+        service_uuid: &str,
+        events: Channel,
+    ) -> Result<(), String> {
         self.0
             .updraft_mobile()
-            .start_spp_attempt(address, events)
+            .start_spp_attempt(address, service_uuid, events)
             .map_err(|error| error.to_string())
     }
 
@@ -40,12 +50,14 @@ impl<R: Runtime> SppPlatform for AndroidSppPlatform<R> {
 pub fn run<R: Runtime>(
     device_id: ExternalDeviceId,
     address: String,
+    service_uuid: String,
     handle: DriverHandle,
     app: AppHandle<R>,
 ) -> StopFn {
     let Maintained { stop, task: _task } = spawn_maintained(
         device_id,
         address,
+        service_uuid,
         handle,
         Arc::new(AndroidSppPlatform(app)),
     );
@@ -60,9 +72,11 @@ enum AttemptResult {
     DriverStopped,
 }
 
+#[expect(clippy::too_many_arguments)]
 async fn run_attempt(
     device_id: ExternalDeviceId,
     address: &str,
+    service_uuid: &str,
     handle: &DriverHandle,
     platform: &dyn SppPlatform,
     events: &Channel,
@@ -79,7 +93,7 @@ async fn run_attempt(
         return AttemptResult::DriverStopped;
     }
 
-    let result = match platform.start_attempt(address, events.clone()) {
+    let result = match platform.start_attempt(address, service_uuid, events.clone()) {
         Err(reason) => {
             tracing::warn!(
                 ?device_id,
@@ -223,6 +237,7 @@ fn cancel_attempt(device_id: ExternalDeviceId, address: &str, platform: &dyn Spp
 async fn maintain(
     device_id: ExternalDeviceId,
     address: String,
+    service_uuid: String,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
     stop_receiver: oneshot::Receiver<()>,
@@ -236,6 +251,7 @@ async fn maintain(
     maintain_on_channel(
         device_id,
         address,
+        service_uuid,
         handle,
         platform,
         events,
@@ -245,9 +261,11 @@ async fn maintain(
     .await;
 }
 
+#[expect(clippy::too_many_arguments)]
 async fn maintain_on_channel(
     device_id: ExternalDeviceId,
     address: String,
+    service_uuid: String,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
     events: Channel,
@@ -260,6 +278,7 @@ async fn maintain_on_channel(
         match run_attempt(
             device_id,
             &address,
+            &service_uuid,
             &handle,
             platform.as_ref(),
             &events,
@@ -290,6 +309,7 @@ struct Maintained {
 fn spawn_maintained(
     device_id: ExternalDeviceId,
     address: String,
+    service_uuid: String,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
 ) -> Maintained {
@@ -297,6 +317,7 @@ fn spawn_maintained(
     let task = tokio::spawn(maintain(
         device_id,
         address,
+        service_uuid,
         handle,
         platform,
         stop_receiver,
@@ -326,7 +347,8 @@ mod tests {
     use tokio::time::timeout;
     use tracing_test::traced_test;
     use updraft_core::{
-        ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId, SettingsSnapshot, Topic,
+        ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
+        SettingsSnapshot, Topic,
     };
 
     const ADDRESS: &str = "00:11:22:33:44:55";
@@ -342,6 +364,7 @@ mod tests {
         cancellations: AtomicUsize,
         channel_ids: Mutex<Vec<u32>>,
         channels: Mutex<Vec<Channel>>,
+        service_uuids: Mutex<Vec<String>>,
     }
 
     impl FakePlatform {
@@ -354,6 +377,7 @@ mod tests {
                 cancellations: AtomicUsize::new(0),
                 channel_ids: Mutex::new(Vec::new()),
                 channels: Mutex::new(Vec::new()),
+                service_uuids: Mutex::new(Vec::new()),
             }
         }
 
@@ -366,6 +390,7 @@ mod tests {
                 cancellations: AtomicUsize::new(0),
                 channel_ids: Mutex::new(Vec::new()),
                 channels: Mutex::new(Vec::new()),
+                service_uuids: Mutex::new(Vec::new()),
             }
         }
 
@@ -388,6 +413,13 @@ mod tests {
             self.channel_ids.lock().expect("channel IDs lock").clone()
         }
 
+        fn service_uuids(&self) -> Vec<String> {
+            self.service_uuids
+                .lock()
+                .expect("service UUIDs lock")
+                .clone()
+        }
+
         fn send(&self, payload: &str) {
             let channel = self
                 .channels
@@ -403,8 +435,17 @@ mod tests {
     }
 
     impl SppPlatform for FakePlatform {
-        fn start_attempt(&self, address: &str, events: Channel) -> Result<(), String> {
+        fn start_attempt(
+            &self,
+            address: &str,
+            service_uuid: &str,
+            events: Channel,
+        ) -> Result<(), String> {
             assert_eq!(address, ADDRESS);
+            self.service_uuids
+                .lock()
+                .expect("service UUIDs lock")
+                .push(service_uuid.to_owned());
             self.attempts.fetch_add(1, Ordering::SeqCst);
             self.channel_ids
                 .lock()
@@ -455,6 +496,7 @@ mod tests {
             run_attempt(
                 DEVICE_ID,
                 ADDRESS,
+                STANDARD_SPP_SERVICE_UUID,
                 &handle,
                 platform.as_ref(),
                 &events,
@@ -562,6 +604,7 @@ mod tests {
         let result = run_attempt(
             device_id,
             ADDRESS,
+            STANDARD_SPP_SERVICE_UUID,
             &handle,
             &platform,
             &events,
@@ -577,6 +620,29 @@ mod tests {
             }
         );
         next_position(&mut topics).await;
+    }
+
+    #[tokio::test]
+    async fn attempt_passes_the_service_uuid_to_the_platform() {
+        const CUSTOM_UUID: &str = "e56617bf-f548-4f7c-9cef-4a26eec19b04";
+        let platform = FakePlatform::with_events(vec![r#"{"type":"disconnected"}"#]);
+        let (events, mut receiver) = event_stream();
+        let (_stop_sender, stop_receiver) = oneshot::channel();
+        tokio::pin!(stop_receiver);
+
+        run_attempt(
+            DEVICE_ID,
+            ADDRESS,
+            CUSTOM_UUID,
+            &driver(),
+            &platform,
+            &events,
+            &mut receiver,
+            stop_receiver.as_mut(),
+        )
+        .await;
+
+        assert_eq!(platform.service_uuids(), vec![CUSTOM_UUID.to_owned()]);
     }
 
     #[tokio::test]
@@ -669,6 +735,7 @@ mod tests {
         let task = tokio::spawn(maintain(
             DEVICE_ID,
             ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID.to_owned(),
             driver(),
             platform.clone(),
             stop_receiver,
@@ -693,6 +760,10 @@ mod tests {
         assert_eq!(platform.attempts(), 3);
         let channel_ids = platform.channel_ids();
         assert!(channel_ids.windows(2).all(|ids| ids[0] == ids[1]));
+        assert_eq!(
+            platform.service_uuids(),
+            vec![STANDARD_SPP_SERVICE_UUID.to_owned(); 3]
+        );
 
         task.abort();
     }
@@ -708,6 +779,7 @@ mod tests {
         let result = run_attempt(
             DEVICE_ID,
             ADDRESS,
+            STANDARD_SPP_SERVICE_UUID,
             &driver(),
             &platform,
             &events,
@@ -743,6 +815,7 @@ mod tests {
         let result = run_attempt(
             DEVICE_ID,
             ADDRESS,
+            STANDARD_SPP_SERVICE_UUID,
             &driver(),
             &platform,
             &events,
@@ -768,6 +841,7 @@ mod tests {
         let task = tokio::spawn(maintain(
             DEVICE_ID,
             ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID.to_owned(),
             driver(),
             platform.clone(),
             stop_receiver,
@@ -812,6 +886,7 @@ mod tests {
             maintain_on_channel(
                 DEVICE_ID,
                 ADDRESS.to_owned(),
+                STANDARD_SPP_SERVICE_UUID.to_owned(),
                 driver(),
                 platform.clone(),
                 events,
@@ -831,8 +906,13 @@ mod tests {
         let platform = Arc::new(FakePlatform::with_events(vec![
             r#"{"type":"disconnected"}"#,
         ]));
-        let maintained =
-            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        let maintained = spawn_maintained(
+            DEVICE_ID,
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            driver(),
+            platform.clone(),
+        );
 
         (maintained.stop)();
         timeout(PATIENCE, maintained.task)
@@ -847,8 +927,13 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn stopping_an_active_spp_attempt_cancels_and_waits_for_disconnection() {
         let platform = Arc::new(FakePlatform::with_events(Vec::new()));
-        let maintained =
-            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        let maintained = spawn_maintained(
+            DEVICE_ID,
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            driver(),
+            platform.clone(),
+        );
         tokio::task::yield_now().await;
         assert_eq!(platform.attempts(), 1);
 
@@ -885,6 +970,7 @@ mod tests {
             let maintained = spawn_maintained(
                 DEVICE_ID,
                 ADDRESS.to_owned(),
+                STANDARD_SPP_SERVICE_UUID.to_owned(),
                 driver.handle.clone(),
                 platform.clone(),
             );
@@ -909,8 +995,13 @@ mod tests {
     #[traced_test]
     async fn intentional_stop_suppresses_terminal_disconnect_warning() {
         let platform = Arc::new(FakePlatform::with_cancel_error("cancel command failed"));
-        let maintained =
-            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        let maintained = spawn_maintained(
+            DEVICE_ID,
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            driver(),
+            platform.clone(),
+        );
         tokio::task::yield_now().await;
 
         (maintained.stop)();
@@ -934,8 +1025,13 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn stopping_after_spp_start_rejection_does_not_cancel_another_attempt() {
         let platform = Arc::new(FakePlatform::failing_with("already active"));
-        let maintained =
-            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        let maintained = spawn_maintained(
+            DEVICE_ID,
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            driver(),
+            platform.clone(),
+        );
         tokio::task::yield_now().await;
         assert_eq!(platform.attempts(), 1);
 
@@ -954,8 +1050,13 @@ mod tests {
     #[tokio::test]
     async fn stopping_wins_when_a_terminal_spp_event_is_already_ready() {
         let platform = Arc::new(FakePlatform::with_events(Vec::new()));
-        let maintained =
-            spawn_maintained(DEVICE_ID, ADDRESS.to_owned(), driver(), platform.clone());
+        let maintained = spawn_maintained(
+            DEVICE_ID,
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            driver(),
+            platform.clone(),
+        );
         tokio::task::yield_now().await;
 
         (maintained.stop)();

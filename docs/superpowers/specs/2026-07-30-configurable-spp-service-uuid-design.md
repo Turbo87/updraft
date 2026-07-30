@@ -37,11 +37,13 @@ This change does not provide these items:
 ## Stored configuration
 
 The stored Bluetooth object adds one optional JSON field.
-`ConnectionSpec` stores the selected UUID as a required string:
+`ConnectionSpec` stores the selected UUID as a required `Uuid`:
 
 ```rust
-const STANDARD_SPP_SERVICE_UUID: &str =
-    "00001101-0000-1000-8000-00805F9B34FB";
+use uuid::{Uuid, uuid};
+
+pub const STANDARD_SPP_SERVICE_UUID: Uuid =
+    uuid!("00001101-0000-1000-8000-00805F9B34FB");
 
 #[serde(tag = "type", rename_all_fields = "camelCase")]
 pub enum ConnectionSpec {
@@ -56,16 +58,16 @@ pub enum ConnectionSpec {
             default = "default_spp_service_uuid",
             skip_serializing_if = "is_standard_spp_service_uuid"
         )]
-        service_uuid: String,
+        service_uuid: Uuid,
     },
 }
 
-fn default_spp_service_uuid() -> String {
-    STANDARD_SPP_SERVICE_UUID.to_owned()
+fn default_spp_service_uuid() -> Uuid {
+    STANDARD_SPP_SERVICE_UUID
 }
 
-fn is_standard_spp_service_uuid(service_uuid: &str) -> bool {
-    service_uuid == STANDARD_SPP_SERVICE_UUID
+fn is_standard_spp_service_uuid(service_uuid: &Uuid) -> bool {
+    *service_uuid == STANDARD_SPP_SERVICE_UUID
 }
 ```
 
@@ -75,8 +77,12 @@ The comparison function checks for the same value.
 The existing `bluetooth_spp()` constructor sets the standard UUID.
 Code can construct the variant directly for a custom service.
 
+The `uuid` crate parses the JSON field during deserialization.
+Its Serde implementation writes a lowercase, hyphenated string.
+
 The generated TypeScript field is `serviceUuid?: string`.
-The Serde attributes make this field optional in the generated type.
+The `ts-rs` UUID implementation maps `Uuid` to `string`.
+The Serde attributes make this field optional.
 
 An existing standard SPP row stays unchanged:
 
@@ -103,9 +109,11 @@ The address in these examples is not a real device address.
 
 ## Data flow
 
-The Tauri shell sends the selected UUID through the existing SPP transport.
-The mobile plugin sends the same value to `SessionService`.
-`SessionService` sends the value to `SppSource`.
+The core sends the selected `Uuid` through the existing Rust SPP transport.
+The Rust mobile plugin keeps this type in `StartSppAttemptArgs`.
+Serde converts the `Uuid` to a string in the mobile invocation payload.
+Kotlin sends the string to `SessionService`.
+`SessionService` sends the string to `SppSource`.
 
 The change does not change SPP attempt ownership.
 Android still permits only one pending or active SPP attempt.
@@ -122,29 +130,24 @@ The standard SPP UUID is:
 
 `00001101-0000-1000-8000-00805F9B34FB`
 
-An empty string is a configured value.
-It is not the same as an absent value.
-
 ## Error behavior
 
-An invalid UUID stops the current connection attempt.
-The Android worker sends the error through the existing terminal event.
-The Rust supervisor applies the existing retry delay.
+An invalid UUID makes the complete settings file invalid.
+`SettingsFile` writes a warning and loads the default settings snapshot.
+It does not replace an invalid UUID with the standard SPP UUID.
+An invalid UUID does not reach the Android worker.
 
-Updraft does not replace an invalid UUID with the standard SPP UUID.
-This rule prevents a connection to an unintended service.
-
-A UUID failure does not change stored settings.
 Routine diagnostics do not contain NMEA payload data.
 
 ## Compatibility
 
 Existing settings files do not contain `serviceUuid`.
-Serde replaces the absent field with the standard SPP UUID.
+Serde replaces the absent field with the typed standard SPP UUID.
 Serialization omits the field when it contains the standard SPP UUID.
 
-Rust always stores the selected UUID as a string.
-The core and driver do not contain optional UUID state.
+Rust stores and sends the selected UUID as `Uuid`.
+The core, driver, and Rust mobile plugin do not contain raw UUID strings.
+Serialization normalizes a configured UUID to lowercase hyphenated form.
 
 The ESP32 simulator continues to use the standard SPP UUID.
 Its stored configuration does not require a change.
@@ -154,11 +157,12 @@ Its stored configuration does not require a change.
 Rust tests check these behaviors:
 
 - Old Bluetooth JSON loads the standard SPP UUID.
+- Invalid Bluetooth UUID JSON makes the settings file invalid.
 - Standard Bluetooth JSON does not contain `serviceUuid`.
-- Custom Bluetooth JSON contains the configured UUID.
+- Custom Bluetooth JSON contains the normalized UUID.
 - Settings round trips preserve the selected UUID.
 - The generated TypeScript field is optional.
-- The transport sends the selected UUID to the mobile plugin boundary.
+- The transport sends the selected `Uuid` to the mobile plugin boundary.
 
 Android tests check these behaviors:
 

@@ -24,6 +24,12 @@ pub struct Instruments {
     pub altitude_msl_meters: Option<f64>,
 }
 
+impl Instruments {
+    pub fn as_topic(&self) -> Topic {
+        Topic::Instruments(*self)
+    }
+}
+
 /// One group of client-visible state, sent whole rather than as a delta.
 ///
 /// Topics are grouped by how often they change, so a fast instrument
@@ -48,7 +54,7 @@ mod tests {
 
     #[test]
     fn topic_serializes_to_tagged_camel_case_json() {
-        let topic = Topic::Instruments(Instruments {
+        let topic = Instruments {
             position: Some(LatLon {
                 latitude_degrees: 50.823,
                 longitude_degrees: 6.186,
@@ -56,16 +62,18 @@ mod tests {
             track_degrees: Some(270.0),
             ground_speed_meters_per_second: Some(45.0),
             altitude_msl_meters: None,
-        });
+        }
+        .as_topic();
 
         insta::assert_json_snapshot!(topic);
     }
 
     #[test]
     fn settings_locale_serializes_in_lowercase() {
-        let topic = Topic::Settings(Settings {
+        let topic = Settings {
             locale: Some(Locale::De),
-        });
+        }
+        .as_topic();
 
         insta::assert_json_snapshot!(topic, @r###"
         {

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::Topic;
 use crate::external_device::ExternalDeviceConfig;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -15,6 +16,12 @@ pub enum Locale {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub locale: Option<Locale>,
+}
+
+impl Settings {
+    pub fn as_topic(&self) -> Topic {
+        Topic::Settings(*self)
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]

@@ -1,9 +1,14 @@
 import type * as GeoJSON from 'geojson';
-import type { GeoJSONSourceDiff } from 'maplibre-gl';
+import type { ErrorEvent, GeoJSONSource, GeoJSONSourceDiff, Subscription } from 'maplibre-gl';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
 import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
 import type { TrafficDelta } from '$lib/protocol/generated/TrafficDelta';
 import type { TrafficType } from '$lib/protocol/generated/TrafficType';
+import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
+
+type TrafficGeoJSONSource = Pick<GeoJSONSource, 'setData' | 'updateData'> & {
+  on(type: 'error', listener: (event: ErrorEvent) => void): Subscription;
+};
 
 export type TrafficFeatureProperties = {
   trafficType: TrafficType;
@@ -47,4 +52,33 @@ export function trafficSourceDiff(delta: TrafficDelta): GeoJSONSourceDiff {
     ...(delta.removed.length > 0 && { remove: delta.removed }),
     ...(delta.upserts.length > 0 && { add: delta.upserts.map(trafficFeature) }),
   };
+}
+
+export async function applyTrafficSourceUpdate(
+  source: TrafficGeoJSONSource,
+  update: TrafficUpdate,
+  currentTargets: ReadonlyMap<string, PublishedTrafficTarget>,
+): Promise<void> {
+  if (update.type === 'snapshot') {
+    await source.setData(trafficFeatureCollection(currentTargets.values()));
+    return;
+  }
+
+  let sourceError: unknown;
+  let errorSubscription = source.on('error', (event) => {
+    sourceError ??= event.error;
+  });
+
+  try {
+    await source.updateData(trafficSourceDiff(update.value));
+  } catch (error) {
+    sourceError ??= error;
+  } finally {
+    errorSubscription.unsubscribe();
+  }
+
+  if (!sourceError) return;
+
+  console.warn('Traffic source update failed. Rebuilding the source.', sourceError);
+  await source.setData(trafficFeatureCollection(currentTargets.values()));
 }

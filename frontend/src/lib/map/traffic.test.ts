@@ -1,8 +1,14 @@
+import type { ErrorEvent } from 'maplibre-gl';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { trafficFeature, trafficFeatureCollection, trafficSourceDiff } from './traffic';
+import {
+  applyTrafficSourceUpdate,
+  trafficFeature,
+  trafficFeatureCollection,
+  trafficSourceDiff,
+} from './traffic';
 
 function target(
   id: string,
@@ -126,5 +132,104 @@ describe('trafficSourceDiff', () => {
     expect(trafficSourceDiff({ upserts: [], removed: [removed] })).toEqual({
       remove: ['flarm:000001'],
     });
+  });
+});
+
+describe('applyTrafficSourceUpdate', () => {
+  it('rebuilds the complete current map for a snapshot', async () => {
+    let current = target('flarm:000002');
+    let source = {
+      setData: vi.fn(async () => {}),
+      updateData: vi.fn(async () => {}),
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+    };
+
+    await applyTrafficSourceUpdate(
+      source,
+      { type: 'snapshot', value: [current] },
+      new Map([['flarm:000002', current]]),
+    );
+
+    expect(source.setData).toHaveBeenCalledExactlyOnceWith(trafficFeatureCollection([current]));
+    expect(source.updateData).not.toHaveBeenCalled();
+  });
+
+  it('applies a delta without reading previous source state', async () => {
+    let updated = target('flarm:000001', { trackDegrees: 90 });
+    let delta = { upserts: [updated], removed: [] };
+    let source = {
+      setData: vi.fn(async () => {}),
+      updateData: vi.fn(async () => {}),
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+    };
+
+    await applyTrafficSourceUpdate(
+      source,
+      { type: 'delta', value: delta },
+      new Map([['flarm:000001', updated]]),
+    );
+
+    expect(source.updateData).toHaveBeenCalledExactlyOnceWith(trafficSourceDiff(delta));
+    expect(source.setData).not.toHaveBeenCalled();
+  });
+
+  it('warns once and rebuilds the exact current map after a rejected delta', async () => {
+    let updated = target('flarm:000001', { trackDegrees: 90 });
+    let error = new Error('worker update failed');
+    let source = {
+      setData: vi.fn(async () => {}),
+      updateData: vi.fn(async () => {
+        throw error;
+      }),
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+    };
+    let warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await applyTrafficSourceUpdate(
+      source,
+      { type: 'delta', value: { upserts: [updated], removed: [] } },
+      new Map([['flarm:000001', updated]]),
+    );
+
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      'Traffic source update failed. Rebuilding the source.',
+      error,
+    );
+    expect(source.setData).toHaveBeenCalledExactlyOnceWith(trafficFeatureCollection([updated]));
+
+    warn.mockRestore();
+  });
+
+  it('warns once and rebuilds when a resolved delta emits a source error', async () => {
+    let updated = target('flarm:000001', { trackDegrees: 90 });
+    let error = new Error('worker update failed');
+    let errorListener: ((event: ErrorEvent) => void) | undefined;
+    let unsubscribe = vi.fn();
+    let source = {
+      setData: vi.fn(async () => {}),
+      updateData: vi.fn(async () => {
+        errorListener?.({ error, type: 'error' });
+      }),
+      on: vi.fn((_type: 'error', listener: (event: ErrorEvent) => void) => {
+        errorListener = listener;
+        return { unsubscribe };
+      }),
+    };
+    let warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await applyTrafficSourceUpdate(
+      source,
+      { type: 'delta', value: { upserts: [updated], removed: [] } },
+      new Map([['flarm:000001', updated]]),
+    );
+
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      'Traffic source update failed. Rebuilding the source.',
+      error,
+    );
+    expect(source.setData).toHaveBeenCalledExactlyOnceWith(trafficFeatureCollection([updated]));
+    expect(unsubscribe).toHaveBeenCalledOnce();
+
+    warn.mockRestore();
   });
 });

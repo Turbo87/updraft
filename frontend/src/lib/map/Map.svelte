@@ -4,12 +4,14 @@
 
   import type { Map, StyleSpecification } from 'maplibre-gl';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
+  import Traffic from './Traffic.svelte';
 
   type TestWindow = Window & {
     __updraftTest?: { map: Map };
@@ -22,8 +24,11 @@
     layers: [],
   };
 
-  let { instruments, testMode = false }: { instruments: Instruments; testMode?: boolean } =
-    $props();
+  let {
+    instruments,
+    traffic,
+    testMode = false,
+  }: { instruments: Instruments; traffic: TrafficStore; testMode?: boolean } = $props();
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
@@ -63,8 +68,11 @@
     {center}
     zoom={11}
   >
-    {#if spritesLoaded && position}
-      <Ownship {position} trackDegrees={instruments.trackDegrees} />
+    {#if spritesLoaded}
+      <Traffic {traffic} />
+      {#if position}
+        <Ownship {position} trackDegrees={instruments.trackDegrees} />
+      {/if}
     {/if}
   </MapLibre>
   <MapDebugOverlay {map} />

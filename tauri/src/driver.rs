@@ -471,11 +471,12 @@ mod tests {
 
         let first_spec = ConnectionSpec::tcp("127.0.0.1", 4353);
         let input = AddExternalDevice::new(first_spec.clone());
-        handle.send(input).await.expect("driver remains active");
-        let (device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
+        let device_id = handle.send(input).await.expect("driver remains active");
+        let (opened_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
             .await
             .expect("an add open within the timeout")
             .expect("the driver remains active");
+        assert_eq!(opened_device_id, device_id);
         assert_eq!(opened_spec, first_spec);
         let published = next_external_devices(&mut topics, |devices| {
             devices.len() == 1 && devices[0].config.spec == first_spec
@@ -494,7 +495,11 @@ mod tests {
 
         let edited_spec = ConnectionSpec::bluetooth_spp("00:11:22:33:44:55");
         let input = EditExternalDevice::new(device_id, edited_spec.clone());
-        handle.send(input).await.expect("driver remains active");
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device edit succeeds");
         let (edited_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
             .await
             .expect("an edit open within the timeout")
@@ -517,7 +522,11 @@ mod tests {
         assert_eq!(stops.load(Ordering::SeqCst), 1);
 
         let input = SetExternalDeviceEnabled::disabled(device_id);
-        handle.send(input).await.expect("driver remains active");
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device disable succeeds");
         let published = next_external_devices(&mut topics, |devices| {
             devices.len() == 1 && !devices[0].config.enabled
         })
@@ -534,7 +543,11 @@ mod tests {
         assert_eq!(stops.load(Ordering::SeqCst), 2);
 
         let input = SetExternalDeviceEnabled::enabled(device_id);
-        handle.send(input).await.expect("driver remains active");
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device enable succeeds");
         let (enabled_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
             .await
             .expect("an enable open within the timeout")
@@ -557,7 +570,11 @@ mod tests {
         assert_eq!(stops.load(Ordering::SeqCst), 2);
 
         let input = DeleteExternalDevice::new(device_id);
-        handle.send(input).await.expect("driver remains active");
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device deletion succeeds");
         let published = next_external_devices(&mut topics, |devices| devices.is_empty()).await;
         assert!(published.is_empty());
         assert_eq!(

@@ -22,6 +22,26 @@ pub struct Update<R> {
     pub response: R,
 }
 
+impl Update<()> {
+    pub fn empty() -> Self {
+        Self::effects(Vec::new())
+    }
+
+    pub fn effects(effects: Vec<Effect>) -> Self {
+        Self {
+            effects,
+            response: (),
+        }
+    }
+
+    pub fn with_response<R>(self, response: R) -> Update<R> {
+        Update {
+            effects: self.effects,
+            response,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Start;
 

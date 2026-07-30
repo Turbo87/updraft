@@ -4683,6 +4683,7 @@ dependencies = [
  "insta",
  "serde",
  "tempfile",
+ "thiserror 2.0.19",
  "tracing",
  "tracing-test",
  "ts-rs",

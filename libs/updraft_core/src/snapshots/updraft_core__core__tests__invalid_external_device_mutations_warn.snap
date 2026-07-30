@@ -1,7 +1,0 @@
----
-source: libs/updraft_core/src/core.rs
-expression: "lines.join(\"\\n\")"
----
-[TIME]  WARN invalid_external_device_mutations_warn: updraft_core::core: Unknown external device device_id=ExternalDeviceId(4294967295)
-[TIME]  WARN invalid_external_device_mutations_warn: updraft_core::core: Unknown external device device_id=ExternalDeviceId(4294967295)
-[TIME]  WARN invalid_external_device_mutations_warn: updraft_core::core: Unknown external device device_id=ExternalDeviceId(4294967295)

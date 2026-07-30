@@ -1,6 +1,6 @@
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
-use crate::external_device::ExternalDevices;
+use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
 use crate::fix::Fix;
 use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
@@ -142,18 +142,11 @@ impl Core {
     }
 }
 
-fn update(effects: Vec<Effect>) -> Update<()> {
-    Update {
-        effects,
-        response: (),
-    }
-}
-
 impl Input for Start {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        update(
+        Update::effects(
             core.external_devices
                 .iter()
                 .filter(|device| device.config.enabled)
@@ -167,7 +160,7 @@ impl Input for Tick {
     type Response = ();
 
     fn apply_to(self, _core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        update(Vec::new())
+        Update::empty()
     }
 }
 
@@ -175,7 +168,7 @@ impl Input for Bytes {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        update(core.decode(self.device_id, &self.data))
+        Update::effects(core.decode(self.device_id, &self.data))
     }
 }
 
@@ -184,15 +177,15 @@ impl Input for ConnectionChanged {
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
-            return update(Vec::new());
+            return Update::empty();
         };
         if !device.config.enabled {
-            return update(Vec::new());
+            return Update::empty();
         }
         device
             .diagnostics
             .changed(self.device_id, &device.config.spec, self.state);
-        update(Vec::new())
+        Update::empty()
     }
 }
 
@@ -200,7 +193,7 @@ impl Input for InternalGps {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        update(core.apply_fix(self.fix))
+        Update::effects(core.apply_fix(self.fix))
     }
 }
 
@@ -217,12 +210,12 @@ impl Input for SetLocale {
                 Effect::persist_settings(core.settings_snapshot()),
             ]
         };
-        update(effects)
+        Update::effects(effects)
     }
 }
 
 impl Input for AddExternalDevice {
-    type Response = ();
+    type Response = ExternalDeviceId;
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
         let device_id = core.external_devices.add(self.spec.clone());
@@ -231,17 +224,18 @@ impl Input for AddExternalDevice {
             core.external_devices.published_devices(),
         )));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
-        update(effects)
+        Update::effects(effects).with_response(device_id)
     }
 }
 
 impl Input for DeleteExternalDevice {
-    type Response = ();
+    type Response = Result<(), UnknownExternalDevice>;
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
         let Some(device) = core.external_devices.remove(self.device_id) else {
-            tracing::warn!(device_id = ?self.device_id, "Unknown external device");
-            return update(Vec::new());
+            return Update::empty().with_response(Err(UnknownExternalDevice {
+                device_id: self.device_id,
+            }));
         };
         let mut effects = Vec::new();
         if device.config.enabled {
@@ -251,41 +245,40 @@ impl Input for DeleteExternalDevice {
             core.external_devices.published_devices(),
         )));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
-        update(effects)
+        Update::effects(effects).with_response(Ok(()))
     }
 }
 
 impl Input for ReorderExternalDevices {
-    type Response = ();
+    type Response = Result<(), InvalidExternalDeviceOrder>;
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
         match core.external_devices.reorder(&self.order) {
-            Ok(false) => return update(Vec::new()),
+            Ok(false) => return Update::empty().with_response(Ok(())),
             Ok(true) => {}
-            Err(error) => {
-                tracing::warn!(?error, "Invalid external device order");
-                return update(Vec::new());
-            }
+            Err(error) => return Update::empty().with_response(Err(error)),
         }
-        update(vec![
+        Update::effects(vec![
             Effect::emit(Topic::ExternalDevices(
                 core.external_devices.published_devices(),
             )),
             Effect::persist_settings(core.settings_snapshot()),
         ])
+        .with_response(Ok(()))
     }
 }
 
 impl Input for EditExternalDevice {
-    type Response = ();
+    type Response = Result<(), UnknownExternalDevice>;
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
-            tracing::warn!(device_id = ?self.device_id, "Unknown external device");
-            return update(Vec::new());
+            return Update::empty().with_response(Err(UnknownExternalDevice {
+                device_id: self.device_id,
+            }));
         };
         if device.config.spec == self.spec {
-            return update(Vec::new());
+            return Update::empty().with_response(Ok(()));
         }
         let enabled = device.config.enabled;
         device.config.spec = self.spec.clone();
@@ -300,20 +293,21 @@ impl Input for EditExternalDevice {
             core.external_devices.published_devices(),
         )));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
-        update(effects)
+        Update::effects(effects).with_response(Ok(()))
     }
 }
 
 impl Input for SetExternalDeviceEnabled {
-    type Response = ();
+    type Response = Result<(), UnknownExternalDevice>;
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
-            tracing::warn!(device_id = ?self.device_id, "Unknown external device");
-            return update(Vec::new());
+            return Update::empty().with_response(Err(UnknownExternalDevice {
+                device_id: self.device_id,
+            }));
         };
         if device.config.enabled == self.enabled {
-            return update(Vec::new());
+            return Update::empty().with_response(Ok(()));
         }
         device.config.enabled = self.enabled;
         device.reset_runtime();
@@ -328,7 +322,7 @@ impl Input for SetExternalDeviceEnabled {
             core.external_devices.published_devices(),
         )));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
-        update(effects)
+        Update::effects(effects).with_response(Ok(()))
     }
 }
 
@@ -951,96 +945,6 @@ mod tests {
                 insta::assert_snapshot!(lines.join("\n"));
             });
             Ok(())
-        });
-    }
-
-    #[test]
-    #[traced_test]
-    fn invalid_external_device_mutations_warn() {
-        let mut core = Core::new(SettingsSnapshot::default());
-        let unknown = ExternalDeviceId(u32::MAX);
-
-        core.apply(DeleteExternalDevice::new(unknown), at(0));
-
-        let input = EditExternalDevice::new(unknown, ConnectionSpec::tcp("127.0.0.1", 4353));
-        core.apply(input, at(1));
-
-        core.apply(SetExternalDeviceEnabled::enabled(unknown), at(2));
-
-        logs_assert(|lines| {
-            insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
-                insta::assert_snapshot!(lines.join("\n"));
-            });
-            Ok(())
-        });
-    }
-
-    #[test]
-    #[traced_test]
-    fn reorder_external_devices_with_an_unknown_id_warns_once() {
-        let mut core = Core::new(SettingsSnapshot {
-            settings: Settings::default(),
-            external_devices: vec![
-                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-                device_config(false, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
-            ],
-        });
-        let first = device_id(&core, 0);
-
-        let input = ReorderExternalDevices::new(vec![first, ExternalDeviceId(u32::MAX)]);
-        assert!(core.apply(input, at(0)).effects.is_empty());
-        logs_assert(|lines| {
-            if lines.len() == 1 && lines[0].contains("Invalid external device order") {
-                Ok(())
-            } else {
-                Err(format!("expected one invalid-order warning, got {lines:?}"))
-            }
-        });
-    }
-
-    #[test]
-    #[traced_test]
-    fn reorder_external_devices_with_a_missing_id_warns_once() {
-        let mut core = Core::new(SettingsSnapshot {
-            settings: Settings::default(),
-            external_devices: vec![
-                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-                device_config(false, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
-            ],
-        });
-        let first = device_id(&core, 0);
-
-        let input = ReorderExternalDevices::new(vec![first]);
-        assert!(core.apply(input, at(0)).effects.is_empty());
-        logs_assert(|lines| {
-            if lines.len() == 1 && lines[0].contains("Invalid external device order") {
-                Ok(())
-            } else {
-                Err(format!("expected one invalid-order warning, got {lines:?}"))
-            }
-        });
-    }
-
-    #[test]
-    #[traced_test]
-    fn reorder_external_devices_with_a_duplicate_id_warns_once() {
-        let mut core = Core::new(SettingsSnapshot {
-            settings: Settings::default(),
-            external_devices: vec![
-                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-                device_config(false, ConnectionSpec::bluetooth_spp("00:11:22:33:44:55")),
-            ],
-        });
-        let first = device_id(&core, 0);
-
-        let input = ReorderExternalDevices::new(vec![first, first]);
-        assert!(core.apply(input, at(0)).effects.is_empty());
-        logs_assert(|lines| {
-            if lines.len() == 1 && lines[0].contains("Invalid external device order") {
-                Ok(())
-            } else {
-                Err(format!("expected one invalid-order warning, got {lines:?}"))
-            }
         });
     }
 }

@@ -43,8 +43,15 @@ pub struct ExternalDevices {
     entries: Vec<ExternalDevice>,
 }
 
-#[derive(Debug)]
-pub struct ReorderError;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("unknown external device: {device_id:?}")]
+pub struct UnknownExternalDevice {
+    pub device_id: ExternalDeviceId,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("invalid external device order")]
+pub struct InvalidExternalDeviceOrder;
 
 impl Default for ExternalDevices {
     fn default() -> Self {
@@ -102,7 +109,10 @@ impl ExternalDevices {
         Some(self.entries.remove(index))
     }
 
-    pub fn reorder(&mut self, order: &[ExternalDeviceId]) -> Result<bool, ReorderError> {
+    pub fn reorder(
+        &mut self,
+        order: &[ExternalDeviceId],
+    ) -> Result<bool, InvalidExternalDeviceOrder> {
         if self
             .entries
             .iter()
@@ -122,7 +132,7 @@ impl ExternalDevices {
             || requested.len() != order.len()
             || requested != current
         {
-            return Err(ReorderError);
+            return Err(InvalidExternalDeviceOrder);
         }
 
         let mut entries = std::mem::take(&mut self.entries);

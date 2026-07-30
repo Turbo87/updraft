@@ -1,5 +1,6 @@
 use crate::external_device::PublishedExternalDevice;
 use crate::settings::Settings;
+use crate::traffic::TrafficUpdate;
 use serde::Serialize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
@@ -30,10 +31,12 @@ impl Instruments {
     }
 }
 
-/// One group of client-visible state, sent whole rather than as a delta.
+/// One group of client-visible state.
 ///
 /// Topics are grouped by how often they change, so a fast instrument
 /// update does not pay to re-serialize slow-changing state.
+/// Most topics carry complete state. Traffic sends a complete onboarding
+/// snapshot and then sends deltas.
 ///
 /// Adjacently tagged so the wire form is `{ topic, value }` in both JSON
 /// and the generated TypeScript. An internally tagged enum would generate
@@ -45,12 +48,35 @@ pub enum Topic {
     Instruments(Instruments),
     Settings(Settings),
     ExternalDevices(Vec<PublishedExternalDevice>),
+    Traffic(TrafficUpdate),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::settings::Locale;
+    use crate::traffic::{
+        PublishedTrafficTarget, TrafficAlarmLevel, TrafficDelta, TrafficTarget, TrafficTargetId,
+        TrafficTargetIdType, TrafficType, TrafficUpdate,
+    };
+    use updraft_geo::LatLon as GeoLatLon;
+    use updraft_units::{Angle, Length, MslAltitude};
+
+    fn published_target(id_type: TrafficTargetIdType) -> PublishedTrafficTarget {
+        TrafficTarget {
+            id: TrafficTargetId {
+                id_type,
+                value: 0xABC123,
+            },
+            position: GeoLatLon::from_degrees(50.832, 6.189),
+            altitude_msl: Some(MslAltitude::new(Length::from_meters(350.0))),
+            traffic_type: TrafficType::Glider,
+            track: Some(Angle::from_degrees(90.0)),
+            alarm_level: TrafficAlarmLevel::Low,
+            stale: false,
+        }
+        .into()
+    }
 
     #[test]
     fn topic_serializes_to_tagged_camel_case_json() {
@@ -83,5 +109,40 @@ mod tests {
           }
         }
         "###);
+    }
+
+    #[test]
+    fn empty_traffic_snapshot_serializes_to_json() {
+        let topic = Topic::Traffic(TrafficUpdate::Snapshot(Vec::new()));
+
+        insta::assert_json_snapshot!(topic);
+    }
+
+    #[test]
+    fn non_empty_traffic_snapshot_serializes_typed_values_as_scalars() {
+        let topic = Topic::Traffic(TrafficUpdate::Snapshot(vec![published_target(
+            TrafficTargetIdType::Flarm,
+        )]));
+
+        insta::assert_json_snapshot!(topic);
+    }
+
+    #[test]
+    fn traffic_delta_serializes_complete_upserts_and_id_removals() {
+        let topic = Topic::Traffic(TrafficUpdate::Delta(TrafficDelta {
+            upserts: vec![published_target(TrafficTargetIdType::Flarm)],
+            removed: vec!["icao:DEF456".into()],
+        }));
+
+        insta::assert_json_snapshot!(topic);
+    }
+
+    #[test]
+    fn other_traffic_target_id_type_serializes_its_value() {
+        let topic = Topic::Traffic(TrafficUpdate::Snapshot(vec![published_target(
+            TrafficTargetIdType::Other(7),
+        )]));
+
+        insta::assert_json_snapshot!(topic);
     }
 }

@@ -196,6 +196,13 @@ impl TrafficState {
     pub fn snapshot(&self) -> Vec<TrafficTarget> {
         self.targets.values().map(|stored| stored.target).collect()
     }
+
+    pub fn published_targets(&self) -> Vec<PublishedTrafficTarget> {
+        self.targets
+            .values()
+            .map(|stored| stored.target.into())
+            .collect()
+    }
 }
 
 impl TrafficChanges {
@@ -207,6 +214,14 @@ impl TrafficChanges {
     fn remove(&mut self, id: TrafficTargetId) {
         self.upserts.remove(&id);
         self.removed.insert(id);
+    }
+
+    pub fn into_delta(self) -> Option<TrafficDelta> {
+        if self.upserts.is_empty() && self.removed.is_empty() {
+            None
+        } else {
+            Some(self.into())
+        }
     }
 }
 

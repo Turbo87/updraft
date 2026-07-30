@@ -80,9 +80,8 @@ impl DriverHandle {
         response.await.map_err(|_| DriverStopped)
     }
 
-    /// Registers a sink. It immediately receives the current value of
-    /// every topic, so a client that reloads mid-flight resyncs without
-    /// needing a distinct snapshot message.
+    /// Registers a sink. It immediately receives the current onboarding
+    /// value for each topic. Traffic uses a `TrafficUpdate::Snapshot` update.
     pub fn subscribe(&self, sink: Sink) {
         let _ = self.messages.send(Message::Subscribe(sink));
     }
@@ -253,7 +252,7 @@ mod tests {
     use tokio::time::timeout;
     use updraft_core::{
         AddExternalDevice, Bytes, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
-        SetExternalDeviceEnabled, SetLocale,
+        SetExternalDeviceEnabled, SetLocale, TrafficUpdate,
     };
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -355,6 +354,27 @@ mod tests {
             received,
             Topic::Instruments(updraft_core::Instruments::default())
         );
+    }
+
+    #[tokio::test]
+    async fn subscription_includes_a_traffic_snapshot() {
+        let handle = Driver::spawn(
+            snapshot(),
+            Box::new(|_, _, _| Box::new(|| {})),
+            Box::new(|_| {}),
+            Duration::from_millis(100),
+        );
+        let mut topics = topic_stream(&handle);
+
+        loop {
+            let received = timeout(PATIENCE, topics.recv())
+                .await
+                .expect("an onboarding topic within the timeout")
+                .expect("the driver remains active");
+            if received == Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())) {
+                break;
+            }
+        }
     }
 
     #[tokio::test]

@@ -1,0 +1,11 @@
+---
+source: libs/updraft_core/src/topic.rs
+expression: topic
+---
+{
+  "topic": "traffic",
+  "value": {
+    "type": "snapshot",
+    "value": []
+  }
+}

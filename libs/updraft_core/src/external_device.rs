@@ -86,6 +86,12 @@ impl ExternalDevices {
         self.entries.iter()
     }
 
+    pub fn get(&self, device_id: ExternalDeviceId) -> Option<&ExternalDevice> {
+        self.entries
+            .iter()
+            .find(|device| device.device_id == device_id)
+    }
+
     pub fn get_mut(&mut self, device_id: ExternalDeviceId) -> Option<&mut ExternalDevice> {
         self.entries
             .iter_mut()

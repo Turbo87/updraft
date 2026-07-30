@@ -10,6 +10,7 @@ use crate::ownship::OwnshipState;
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::Topic;
+use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_nmea::{Message, RmcStatus};
 use updraft_units::MslAltitude;
@@ -24,6 +25,7 @@ pub struct Core {
     settings: Settings,
     external_devices: ExternalDevices,
     ownship: OwnshipState,
+    traffic: TrafficState,
 }
 
 impl Core {
@@ -36,6 +38,7 @@ impl Core {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
             ownship: OwnshipState::default(),
+            traffic: TrafficState::default(),
         }
     }
 
@@ -54,10 +57,11 @@ impl Core {
             self.ownship.published().as_topic(),
             self.settings.as_topic(),
             self.external_devices.as_topic(),
+            Topic::Traffic(TrafficUpdate::Snapshot(self.traffic.published_targets())),
         ]
     }
 
-    fn decode(&mut self, device_id: ExternalDeviceId, data: &[u8]) -> Vec<Effect> {
+    fn decode(&mut self, device_id: ExternalDeviceId, data: &[u8], at: Timestamp) -> Vec<Effect> {
         let messages = {
             let Some(device) = self.external_devices.get_mut(device_id) else {
                 return Vec::new();
@@ -79,15 +83,20 @@ impl Core {
         };
 
         let before = self.ownship;
+        let mut traffic_changes = TrafficChanges::default();
         for message in messages {
-            self.handle_message(device_id, message);
+            self.handle_message(device_id, message, at, &mut traffic_changes);
         }
 
-        if self.ownship == before {
-            return Vec::new();
+        let mut effects = Vec::new();
+        if self.ownship != before {
+            effects.push(Effect::emit(self.ownship.published().as_topic()));
+        }
+        if let Some(delta) = traffic_changes.into_delta() {
+            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
         }
 
-        vec![Effect::emit(self.ownship.published().as_topic())]
+        effects
     }
 
     fn settings_snapshot(&self) -> SettingsSnapshot {
@@ -118,7 +127,13 @@ impl Core {
         vec![Effect::emit(self.ownship.published().as_topic())]
     }
 
-    fn handle_message(&mut self, device_id: ExternalDeviceId, message: Message) {
+    fn handle_message(
+        &mut self,
+        device_id: ExternalDeviceId,
+        message: Message,
+        at: Timestamp,
+        traffic_changes: &mut TrafficChanges,
+    ) {
         match message {
             Message::Rmc(rmc) if rmc.status == RmcStatus::Active => {
                 let Some(device) = self.external_devices.get_mut(device_id) else {
@@ -147,6 +162,20 @@ impl Core {
                     self.ownship.altitude_msl = Some(altitude);
                 }
             }
+            Message::Pflaa(pflaa) => {
+                let Some(device) = self.external_devices.get(device_id) else {
+                    return;
+                };
+                let same_device = device.ownship;
+                let Some(position) = same_device.position.or(self.ownship.position) else {
+                    return;
+                };
+                let altitude = same_device.altitude_msl.or(self.ownship.altitude_msl);
+                let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
+                    return;
+                };
+                self.traffic.observe(target, at, traffic_changes);
+            }
             _ => {}
         }
     }
@@ -169,16 +198,23 @@ impl Input for Start {
 impl Input for Tick {
     type Response = ();
 
-    fn apply_to(self, _core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        Update::empty()
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let changes = core.traffic.expire(at);
+        Update::effects(
+            changes
+                .into_delta()
+                .map(|delta| Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))))
+                .into_iter()
+                .collect(),
+        )
     }
 }
 
 impl Input for Bytes {
     type Response = ();
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        Update::effects(core.decode(self.device_id, &self.data))
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        Update::effects(core.decode(self.device_id, &self.data, at))
     }
 }
 
@@ -333,6 +369,7 @@ mod tests {
     use crate::external_device::ExternalDeviceConfig;
     use crate::settings::{Locale, SettingsSnapshot};
     use crate::topic::{Instruments, LatLon as TopicLatLon};
+    use crate::traffic::{PublishedTrafficTarget, TrafficDelta, TrafficUpdate};
     use approx::assert_abs_diff_eq;
     use claims::{assert_some, assert_some_eq};
     use std::assert_matches;
@@ -346,6 +383,10 @@ mod tests {
     const GGA: &[u8] = b"$GPGGA,120000.00,5049.38,N,00611.16,E,1,08,0.9,200.0,M,0.0,M,,\r\n";
     const GGA_SECOND_DEVICE: &[u8] =
         b"$GPGGA,120000.00,5100.00,N,00700.00,E,1,08,0.9,300.0,M,0.0,M,,\r\n";
+    const PFLAA_A: &[u8] = b"$PFLAA,0,1000,200,50,1,ABC123,90,0,25,0,1,0\r\n";
+    const PFLAA_B: &[u8] = b"$PFLAA,1,-500,300,-20,2,DEF456,225,0,30,0,6,0\r\n";
+    const PFLAA_A_REPLACEMENT: &[u8] = b"$PFLAA,2,2000,400,100,1,ABC123,180,0,30,0,1,0\r\n";
+    const PFLAA_A_MISSING_EAST: &[u8] = b"$PFLAA,3,2000,,100,1,ABC123,180,0,30,0,1,0\r\n";
     const TRACE_TIMESTAMP_FILTER: (&str, &str) =
         (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", "[TIME]");
 
@@ -361,8 +402,11 @@ mod tests {
     }
 
     fn device_id(core: &Core, index: usize) -> ExternalDeviceId {
-        let topics = core.topics();
-        let Some(Topic::ExternalDevices(devices)) = topics.last() else {
+        let Some(Topic::ExternalDevices(devices)) = core
+            .topics()
+            .into_iter()
+            .find(|topic| matches!(topic, Topic::ExternalDevices(_)))
+        else {
             panic!("the configured external devices topic should be published");
         };
         devices[index].device_id
@@ -372,6 +416,30 @@ mod tests {
         let core = Core::new(config());
         let device_id = device_id(&core, 0);
         (core, device_id)
+    }
+
+    fn traffic_delta(effects: &[Effect]) -> &TrafficDelta {
+        effects
+            .iter()
+            .find_map(|effect| {
+                let Effect::Emit(Topic::Traffic(TrafficUpdate::Delta(delta))) = effect else {
+                    return None;
+                };
+                Some(delta)
+            })
+            .expect("a traffic delta")
+    }
+
+    fn traffic_snapshot(core: &Core) -> Vec<PublishedTrafficTarget> {
+        core.topics()
+            .into_iter()
+            .find_map(|topic| {
+                let Topic::Traffic(TrafficUpdate::Snapshot(targets)) = topic else {
+                    return None;
+                };
+                Some(targets)
+            })
+            .expect("a traffic snapshot")
     }
 
     fn at(millis: u64) -> Timestamp {
@@ -407,8 +475,11 @@ mod tests {
             ],
         });
 
-        let topics = core.topics();
-        let Some(Topic::ExternalDevices(devices)) = topics.last() else {
+        let Some(Topic::ExternalDevices(devices)) = core
+            .topics()
+            .into_iter()
+            .find(|topic| matches!(topic, Topic::ExternalDevices(_)))
+        else {
             panic!("the configured external devices topic should be published");
         };
         assert_eq!(devices.len(), 2);
@@ -668,6 +739,293 @@ mod tests {
     }
 
     #[test]
+    fn traffic_prefers_the_sending_devices_ownship_references() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
+            ],
+        });
+        let first_device_id = device_id(&core, 0);
+        let second_device_id = device_id(&core, 1);
+        core.apply(Bytes::new(first_device_id, RMC), at(0));
+        core.apply(Bytes::new(first_device_id, GGA), at(1));
+        core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(2));
+        core.apply(Bytes::new(second_device_id, GGA_SECOND_DEVICE), at(3));
+
+        let effects = core
+            .apply(Bytes::new(first_device_id, PFLAA_A), at(4))
+            .effects;
+        let delta = traffic_delta(&effects);
+        let [target] = delta.upserts.as_slice() else {
+            panic!("one accepted observation should produce one upsert");
+        };
+
+        assert_abs_diff_eq!(target.position.latitude_degrees, 50.832, epsilon = 1e-3);
+        assert_abs_diff_eq!(target.position.longitude_degrees, 6.189, epsilon = 1e-3);
+        assert_some_eq!(target.altitude_msl_meters, 250.0);
+    }
+
+    #[test]
+    fn traffic_falls_back_to_displayed_ownship_references() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
+            ],
+        });
+        let first_device_id = device_id(&core, 0);
+        let second_device_id = device_id(&core, 1);
+        core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(0));
+        core.apply(Bytes::new(second_device_id, GGA_SECOND_DEVICE), at(1));
+
+        let effects = core
+            .apply(Bytes::new(first_device_id, PFLAA_A), at(2))
+            .effects;
+        let delta = traffic_delta(&effects);
+        let [target] = delta.upserts.as_slice() else {
+            panic!("one accepted observation should produce one upsert");
+        };
+
+        assert_abs_diff_eq!(target.position.latitude_degrees, 51.009, epsilon = 1e-3);
+        assert_abs_diff_eq!(target.position.longitude_degrees, 7.003, epsilon = 1e-3);
+        assert_some_eq!(target.altitude_msl_meters, 350.0);
+    }
+
+    #[test]
+    fn traffic_selects_horizontal_and_vertical_references_independently() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
+            ],
+        });
+        let first_device_id = device_id(&core, 0);
+        let second_device_id = device_id(&core, 1);
+        core.apply(Bytes::new(first_device_id, RMC), at(0));
+        core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(1));
+        core.apply(Bytes::new(second_device_id, GGA_SECOND_DEVICE), at(2));
+
+        let effects = core
+            .apply(Bytes::new(first_device_id, PFLAA_A), at(3))
+            .effects;
+        let delta = traffic_delta(&effects);
+        let [target] = delta.upserts.as_slice() else {
+            panic!("one accepted observation should produce one upsert");
+        };
+
+        assert_abs_diff_eq!(target.position.latitude_degrees, 50.832, epsilon = 1e-3);
+        assert_abs_diff_eq!(target.position.longitude_degrees, 6.189, epsilon = 1e-3);
+        assert_some_eq!(target.altitude_msl_meters, 350.0);
+    }
+
+    #[test]
+    fn accepted_traffic_holds_its_absolute_position_when_ownship_moves() {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        core.apply(Bytes::new(device_id, PFLAA_A), at(1));
+        let accepted = traffic_snapshot(&core);
+        let [accepted] = accepted.as_slice() else {
+            panic!("the accepted target should be in the snapshot");
+        };
+        let accepted_position = accepted.position;
+
+        core.apply(Bytes::new(device_id, RMC_SECOND_DEVICE), at(2));
+
+        let held = traffic_snapshot(&core);
+        let [held] = held.as_slice() else {
+            panic!("the accepted target should remain in the snapshot");
+        };
+        assert_eq!(held.position, accepted_position);
+    }
+
+    #[test]
+    fn missing_required_traffic_fields_do_not_change_an_existing_target() {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        core.apply(Bytes::new(device_id, PFLAA_A), at(1));
+        let accepted = traffic_snapshot(&core);
+        let [accepted] = accepted.as_slice() else {
+            panic!("the accepted target should be in the snapshot");
+        };
+        let accepted = accepted.clone();
+
+        let mut input = PFLAA_A_MISSING_EAST.to_vec();
+        input.extend_from_slice(PFLAA_B);
+        let effects = core.apply(Bytes::new(device_id, input), at(2)).effects;
+
+        let delta = traffic_delta(&effects);
+        let [upsert] = delta.upserts.as_slice() else {
+            panic!("the usable observation after the ignored one should be published");
+        };
+        assert_eq!(upsert.id, "flarm:DEF456");
+        let snapshot = traffic_snapshot(&core);
+        assert_eq!(snapshot.len(), 2);
+        assert_eq!(snapshot[0], accepted);
+    }
+
+    #[test]
+    fn batches_all_traffic_changes_from_one_bytes_input() {
+        let (mut core, device_id) = core_with_external_device();
+        let mut input = RMC.to_vec();
+        input.extend_from_slice(PFLAA_A);
+        input.extend_from_slice(PFLAA_B);
+
+        let effects = core.apply(Bytes::new(device_id, input), at(100)).effects;
+
+        let [
+            Effect::Emit(Topic::Instruments(_)),
+            Effect::Emit(Topic::Traffic(TrafficUpdate::Delta(delta))),
+        ] = effects.as_slice()
+        else {
+            panic!("one input should emit instruments before one traffic delta");
+        };
+        assert_eq!(delta.upserts.len(), 2);
+        assert!(delta.removed.is_empty());
+    }
+
+    #[test]
+    fn one_bytes_input_publishes_only_the_final_upsert_for_each_target() {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        let mut input = PFLAA_A.to_vec();
+        input.extend_from_slice(PFLAA_A_REPLACEMENT);
+
+        let effects = core.apply(Bytes::new(device_id, input), at(1)).effects;
+        let delta = traffic_delta(&effects);
+
+        let [target] = delta.upserts.as_slice() else {
+            panic!("the final observation should replace the earlier upsert");
+        };
+        assert_eq!(delta.upserts, traffic_snapshot(&core));
+        assert_eq!(target.id, "icao:ABC123");
+        assert!(delta.removed.is_empty());
+    }
+
+    #[test]
+    fn later_device_input_replaces_the_previous_target_with_the_same_id() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
+            ],
+        });
+        let first_device_id = device_id(&core, 0);
+        let second_device_id = device_id(&core, 1);
+        core.apply(Bytes::new(first_device_id, RMC), at(0));
+        core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(1));
+        core.apply(Bytes::new(first_device_id, PFLAA_A), at(2));
+
+        let effects = core
+            .apply(Bytes::new(second_device_id, PFLAA_A), at(3))
+            .effects;
+        let delta = traffic_delta(&effects);
+        let [target] = delta.upserts.as_slice() else {
+            panic!("the later device input should replace the target");
+        };
+        assert_abs_diff_eq!(target.position.latitude_degrees, 51.009, epsilon = 1e-3);
+        assert_abs_diff_eq!(target.position.longitude_degrees, 7.003, epsilon = 1e-3);
+    }
+
+    #[test]
+    fn device_disconnection_does_not_remove_traffic() {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        core.apply(Bytes::new(device_id, PFLAA_A), at(1));
+
+        let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+        let effects = core.apply(input, at(2)).effects;
+
+        assert!(effects.is_empty());
+        assert_eq!(traffic_snapshot(&core).len(), 1);
+    }
+
+    #[test]
+    fn stale_tick_emits_one_complete_stale_upsert() {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        core.apply(Bytes::new(device_id, PFLAA_A), at(100));
+
+        let effects = core.apply(Tick, at(5_100)).effects;
+        let delta = traffic_delta(&effects);
+
+        let [target] = delta.upserts.as_slice() else {
+            panic!("the stale transition should upsert the complete target");
+        };
+        assert!(target.stale);
+        assert_eq!(target.id, "icao:ABC123");
+        assert_abs_diff_eq!(target.position.latitude_degrees, 50.832, epsilon = 1e-3);
+        assert!(delta.removed.is_empty());
+    }
+
+    #[test]
+    fn removal_tick_emits_one_target_id() {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        core.apply(Bytes::new(device_id, PFLAA_A), at(100));
+
+        let effects = core.apply(Tick, at(30_100)).effects;
+        let delta = traffic_delta(&effects);
+
+        assert!(delta.upserts.is_empty());
+        assert_eq!(delta.removed.len(), 1);
+        assert_eq!(delta.removed, vec!["icao:ABC123"]);
+    }
+
+    #[test]
+    fn fresh_observation_after_a_stale_tick_emits_a_fresh_upsert() {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        core.apply(Bytes::new(device_id, PFLAA_A), at(100));
+        core.apply(Tick, at(5_100));
+
+        let effects = core
+            .apply(Bytes::new(device_id, PFLAA_A), at(5_200))
+            .effects;
+        let delta = traffic_delta(&effects);
+
+        let [target] = delta.upserts.as_slice() else {
+            panic!("the fresh observation should replace the stale target");
+        };
+        assert!(!target.stale);
+    }
+
+    #[test]
+    fn input_without_a_traffic_change_emits_no_traffic_topic() {
+        let (mut core, device_id) = core_with_external_device();
+        let mut input = RMC.to_vec();
+        input.extend_from_slice(PFLAA_A_MISSING_EAST);
+
+        let effects = core.apply(Bytes::new(device_id, input), at(100)).effects;
+
+        assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    }
+
+    #[test]
+    fn traffic_without_an_ownship_position_is_ignored() {
+        let (mut core, device_id) = core_with_external_device();
+
+        let effects = core.apply(Bytes::new(device_id, PFLAA_A), at(100)).effects;
+
+        assert!(effects.is_empty());
+        assert!(traffic_snapshot(&core).is_empty());
+    }
+
+    #[test]
+    fn new_core_exposes_an_empty_traffic_snapshot() {
+        let core = Core::new(SettingsSnapshot::default());
+
+        assert!(
+            core.topics()
+                .contains(&Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())))
+        );
+    }
+
+    #[test]
     fn tick_emits_nothing() {
         let (mut core, device_id) = core_with_external_device();
         core.apply(Bytes::new(device_id, RMC), at(100));
@@ -729,6 +1087,7 @@ mod tests {
             Topic::Instruments(instruments),
             Topic::Settings(_),
             Topic::ExternalDevices(_),
+            Topic::Traffic(_),
         ] = topics.as_slice()
         else {
             unreachable!()
@@ -778,7 +1137,7 @@ mod tests {
         });
 
         let topics = core.topics();
-        assert_eq!(topics.len(), 3);
+        assert_eq!(topics.len(), 4);
         assert_eq!(topics[0], Topic::Instruments(Instruments::default()));
         assert_eq!(topics[1], Topic::Settings(settings));
         let Topic::ExternalDevices(devices) = &topics[2] else {
@@ -821,6 +1180,7 @@ mod tests {
                 Topic::Instruments(Instruments::default()),
                 Topic::Settings(settings),
                 Topic::ExternalDevices(Vec::new()),
+                Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
             ]
         );
     }

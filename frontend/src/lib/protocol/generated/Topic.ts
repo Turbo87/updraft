@@ -2,15 +2,18 @@
 import type { Instruments } from "./Instruments";
 import type { PublishedExternalDevice } from "./PublishedExternalDevice";
 import type { Settings } from "./Settings";
+import type { TrafficUpdate } from "./TrafficUpdate";
 
 /**
- * One group of client-visible state, sent whole rather than as a delta.
+ * One group of client-visible state.
  *
  * Topics are grouped by how often they change, so a fast instrument
  * update does not pay to re-serialize slow-changing state.
+ * Most topics carry complete state. Traffic sends a complete onboarding
+ * snapshot and then sends deltas.
  *
  * Adjacently tagged so the wire form is `{ topic, value }` in both JSON
  * and the generated TypeScript. An internally tagged enum would generate
  * an intersection type, which is awkward to narrow on in the frontend.
  */
-export type Topic = { "topic": "instruments", "value": Instruments } | { "topic": "settings", "value": Settings } | { "topic": "externalDevices", "value": Array<PublishedExternalDevice> };
+export type Topic = { "topic": "instruments", "value": Instruments } | { "topic": "settings", "value": Settings } | { "topic": "externalDevices", "value": Array<PublishedExternalDevice> } | { "topic": "traffic", "value": TrafficUpdate };

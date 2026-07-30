@@ -21,7 +21,10 @@ pub fn open<R: Runtime>(
 ) -> StopFn {
     match spec {
         ConnectionSpec::Tcp { host, port } => tcp::run(device_id, host, port, handle),
-        ConnectionSpec::BluetoothSpp { address } => {
+        ConnectionSpec::BluetoothSpp {
+            address,
+            service_uuid: _,
+        } => {
             #[cfg(target_os = "android")]
             {
                 spp::run(device_id, address, handle, app)

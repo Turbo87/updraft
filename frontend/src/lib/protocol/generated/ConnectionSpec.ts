@@ -3,4 +3,4 @@
 /**
  * How the shell should reach a device.
  */
-export type ConnectionSpec = { "type": "tcp", host: string, port: number, } | { "type": "bluetooth", address: string, };
+export type ConnectionSpec = { "type": "tcp", host: string, port: number, } | { "type": "bluetooth", address: string, serviceUuid?: string, };

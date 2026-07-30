@@ -80,7 +80,10 @@ mod tests {
     use claims::{assert_err, assert_ok};
     use tempfile::tempdir;
     use tracing_test::traced_test;
-    use updraft_core::{ConnectionSpec, ExternalDeviceConfig, Locale, Settings, SettingsSnapshot};
+    use updraft_core::{
+        ConnectionSpec, ExternalDeviceConfig, Locale, STANDARD_SPP_SERVICE_UUID, Settings,
+        SettingsSnapshot,
+    };
 
     #[test]
     fn missing_file_loads_default_settings() {
@@ -107,6 +110,36 @@ mod tests {
                     locale: Some(Locale::De),
                 },
                 external_devices: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn bluetooth_without_service_uuid_loads_the_standard_uuid() {
+        let directory = assert_ok!(tempdir());
+        assert_ok!(std::fs::write(
+            directory.path().join("settings.json"),
+            concat!(
+                "{\"externalDevices\":[{",
+                "\"enabled\":true,",
+                "\"type\":\"bluetooth\",",
+                "\"address\":\"00:11:22:33:44:55\"",
+                "}]}"
+            ),
+        ));
+        let file = SettingsFile::new(directory.path());
+
+        assert_eq!(
+            file.load(),
+            SettingsSnapshot {
+                settings: Settings::default(),
+                external_devices: vec![ExternalDeviceConfig {
+                    enabled: true,
+                    spec: ConnectionSpec::BluetoothSpp {
+                        address: "00:11:22:33:44:55".to_owned(),
+                        service_uuid: STANDARD_SPP_SERVICE_UUID.to_owned(),
+                    },
+                }],
             }
         );
     }
@@ -149,6 +182,13 @@ mod tests {
                     enabled: false,
                     spec: ConnectionSpec::bluetooth_spp("00:11:22:33:44:55"),
                 },
+                ExternalDeviceConfig {
+                    enabled: true,
+                    spec: ConnectionSpec::BluetoothSpp {
+                        address: "00:11:22:33:44:66".to_owned(),
+                        service_uuid: "e56617bf-f548-4f7c-9cef-4a26eec19b04".to_owned(),
+                    },
+                },
             ],
         };
 
@@ -169,6 +209,12 @@ mod tests {
                 "      \"enabled\": false,\n",
                 "      \"type\": \"bluetooth\",\n",
                 "      \"address\": \"00:11:22:33:44:55\"\n",
+                "    },\n",
+                "    {\n",
+                "      \"enabled\": true,\n",
+                "      \"type\": \"bluetooth\",\n",
+                "      \"address\": \"00:11:22:33:44:66\",\n",
+                "      \"serviceUuid\": \"e56617bf-f548-4f7c-9cef-4a26eec19b04\"\n",
                 "    }\n",
                 "  ]\n",
                 "}\n",

@@ -17,7 +17,9 @@ mod settings;
 mod time;
 mod topic;
 
-pub use connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
+pub use connection::{
+    ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
+};
 pub use core::Core;
 pub use decoder::Decoder;
 pub use effect::Effect;

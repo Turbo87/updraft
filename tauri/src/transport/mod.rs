@@ -5,9 +5,9 @@ pub mod tcp;
 
 use crate::driver::{DriverHandle, StopFn};
 use tauri::{AppHandle, Runtime};
-use updraft_core::{ConnectionSpec, ExternalDeviceId};
 #[cfg(not(target_os = "android"))]
-use updraft_core::{ConnectionState, Input};
+use updraft_core::{ConnectionChanged, ConnectionState};
+use updraft_core::{ConnectionSpec, ExternalDeviceId};
 
 /// Brings up the transport for one connection spec.
 ///
@@ -30,10 +30,10 @@ pub fn open<R: Runtime>(
             {
                 let _ = app;
                 tracing::warn!(?device_id, %address, "Bluetooth SPP transport is unsupported");
-                handle.send(Input::connection_changed(
-                    device_id,
-                    ConnectionState::Disconnected,
-                ));
+                tauri::async_runtime::spawn(async move {
+                    let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+                    let _ = handle.send(input).await;
+                });
                 Box::new(|| {})
             }
         }

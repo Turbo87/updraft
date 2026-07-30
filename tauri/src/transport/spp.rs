@@ -9,7 +9,7 @@ use tauri_plugin_updraft::SppEvent;
 #[cfg(target_os = "android")]
 use tauri_plugin_updraft::UpdraftMobileExt;
 use tokio::sync::{mpsc, oneshot};
-use updraft_core::{ConnectionState, ExternalDeviceId, Input};
+use updraft_core::{Bytes, ConnectionChanged, ConnectionState, ExternalDeviceId};
 
 trait SppPlatform: Send + Sync + 'static {
     fn start_attempt(&self, address: &str, events: Channel) -> Result<(), String>;
@@ -57,6 +57,7 @@ enum AttemptResult {
     Completed { delivered_bytes: bool },
     EventStreamClosed,
     Stopped,
+    DriverStopped,
 }
 
 async fn run_attempt(
@@ -73,10 +74,10 @@ async fn run_attempt(
         Err(oneshot::error::TryRecvError::Empty) => {}
     }
 
-    handle.send(Input::connection_changed(
-        device_id,
-        ConnectionState::Connecting,
-    ));
+    let input = ConnectionChanged::new(device_id, ConnectionState::Connecting);
+    if handle.send(input).await.is_err() {
+        return AttemptResult::DriverStopped;
+    }
 
     let result = match platform.start_attempt(address, events.clone()) {
         Err(reason) => {
@@ -158,14 +159,19 @@ async fn run_attempt(
                 }
 
                 match event {
-                    SppEvent::Connected => handle.send(Input::connection_changed(
-                        device_id,
-                        ConnectionState::Connected,
-                    )),
+                    SppEvent::Connected => {
+                        let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
+                        if handle.send(input).await.is_err() {
+                            return AttemptResult::DriverStopped;
+                        }
+                    }
                     SppEvent::Bytes { data } => match STANDARD.decode(data) {
                         Ok(bytes) => {
                             delivered_bytes |= !bytes.is_empty();
-                            handle.send(Input::bytes(device_id, bytes));
+                            let input = Bytes::new(device_id, bytes);
+                            if handle.send(input).await.is_err() {
+                                return AttemptResult::DriverStopped;
+                            }
                         }
                         Err(_) => {
                             tracing::warn!(
@@ -194,10 +200,10 @@ async fn run_attempt(
         }
     };
 
-    handle.send(Input::connection_changed(
-        device_id,
-        ConnectionState::Disconnected,
-    ));
+    let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+    if handle.send(input).await.is_err() {
+        return AttemptResult::DriverStopped;
+    }
     result
 }
 
@@ -267,7 +273,9 @@ async fn maintain_on_channel(
                     _ = tokio::time::sleep(backoff.after_attempt(delivered_bytes)) => {}
                 }
             }
-            AttemptResult::EventStreamClosed | AttemptResult::Stopped => return,
+            AttemptResult::EventStreamClosed
+            | AttemptResult::Stopped
+            | AttemptResult::DriverStopped => return,
         }
     }
 }

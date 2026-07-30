@@ -2,7 +2,10 @@ use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::ExternalDevices;
 use crate::fix::Fix;
-use crate::input::Input;
+use crate::input::{
+    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
+    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Start, Tick, Update,
+};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, LatLon, Topic};
@@ -37,129 +40,8 @@ impl Core {
     ///
     /// `at` is supplied by the shell rather than read, which is what keeps
     /// the core deterministic.
-    pub fn apply(&mut self, input: Input, at: Timestamp) -> Vec<Effect> {
-        let _ = at;
-
-        match input {
-            Input::Start => self
-                .external_devices
-                .iter()
-                .filter(|device| device.config.enabled)
-                .map(|device| Effect::open(device.device_id, device.config.spec.clone()))
-                .collect(),
-            Input::Bytes { device_id, data } => self.decode(device_id, &data),
-            Input::ConnectionChanged { device_id, state } => {
-                let Some(device) = self.external_devices.get_mut(device_id) else {
-                    return Vec::new();
-                };
-                if !device.config.enabled {
-                    return Vec::new();
-                }
-                device
-                    .diagnostics
-                    .changed(device_id, &device.config.spec, state);
-                Vec::new()
-            }
-            Input::Tick => Vec::new(),
-            Input::InternalGps(fix) => self.apply_fix(fix),
-            Input::SetLocale(locale) => {
-                if self.settings.locale == Some(locale) {
-                    return Vec::new();
-                }
-
-                self.settings.locale = Some(locale);
-                vec![
-                    Effect::emit(Topic::Settings(self.settings)),
-                    Effect::persist_settings(self.settings_snapshot()),
-                ]
-            }
-            Input::AddExternalDevice { spec } => {
-                let device_id = self.external_devices.add(spec.clone());
-                let mut effects = vec![Effect::open(device_id, spec)];
-                effects.push(Effect::emit(Topic::ExternalDevices(
-                    self.external_devices.published_devices(),
-                )));
-                effects.push(Effect::persist_settings(self.settings_snapshot()));
-                effects
-            }
-            Input::DeleteExternalDevice(device_id) => {
-                let Some(device) = self.external_devices.remove(device_id) else {
-                    tracing::warn!(device_id = ?device_id, "Unknown external device");
-                    return Vec::new();
-                };
-                let mut effects = Vec::new();
-                if device.config.enabled {
-                    effects.push(Effect::close(device_id));
-                }
-                effects.push(Effect::emit(Topic::ExternalDevices(
-                    self.external_devices.published_devices(),
-                )));
-                effects.push(Effect::persist_settings(self.settings_snapshot()));
-                effects
-            }
-            Input::ReorderExternalDevices(order) => {
-                match self.external_devices.reorder(&order) {
-                    Ok(false) => return Vec::new(),
-                    Ok(true) => {}
-                    Err(error) => {
-                        tracing::warn!(?error, "Invalid external device order");
-                        return Vec::new();
-                    }
-                }
-                vec![
-                    Effect::emit(Topic::ExternalDevices(
-                        self.external_devices.published_devices(),
-                    )),
-                    Effect::persist_settings(self.settings_snapshot()),
-                ]
-            }
-            Input::EditExternalDevice { device_id, spec } => {
-                let Some(device) = self.external_devices.get_mut(device_id) else {
-                    tracing::warn!(device_id = ?device_id, "Unknown external device");
-                    return Vec::new();
-                };
-                if device.config.spec == spec {
-                    return Vec::new();
-                }
-                let enabled = device.config.enabled;
-                device.config.spec = spec.clone();
-                device.reset_runtime();
-
-                let mut effects = Vec::new();
-                if enabled {
-                    effects.push(Effect::close(device_id));
-                    effects.push(Effect::open(device_id, spec));
-                }
-                effects.push(Effect::emit(Topic::ExternalDevices(
-                    self.external_devices.published_devices(),
-                )));
-                effects.push(Effect::persist_settings(self.settings_snapshot()));
-                effects
-            }
-            Input::SetExternalDeviceEnabled { device_id, enabled } => {
-                let Some(device) = self.external_devices.get_mut(device_id) else {
-                    tracing::warn!(device_id = ?device_id, "Unknown external device");
-                    return Vec::new();
-                };
-                if device.config.enabled == enabled {
-                    return Vec::new();
-                }
-                device.config.enabled = enabled;
-                device.reset_runtime();
-                let spec = device.config.spec.clone();
-
-                let mut effects = if enabled {
-                    vec![Effect::open(device_id, spec)]
-                } else {
-                    vec![Effect::close(device_id)]
-                };
-                effects.push(Effect::emit(Topic::ExternalDevices(
-                    self.external_devices.published_devices(),
-                )));
-                effects.push(Effect::persist_settings(self.settings_snapshot()));
-                effects
-            }
-        }
+    pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
+        input.apply_to(self, at)
     }
 
     /// The current value of every topic, for a client that has just
@@ -257,6 +139,196 @@ impl Core {
             }
             _ => {}
         }
+    }
+}
+
+fn update(effects: Vec<Effect>) -> Update<()> {
+    Update {
+        effects,
+        response: (),
+    }
+}
+
+impl Input for Start {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        update(
+            core.external_devices
+                .iter()
+                .filter(|device| device.config.enabled)
+                .map(|device| Effect::open(device.device_id, device.config.spec.clone()))
+                .collect(),
+        )
+    }
+}
+
+impl Input for Tick {
+    type Response = ();
+
+    fn apply_to(self, _core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        update(Vec::new())
+    }
+}
+
+impl Input for Bytes {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        update(core.decode(self.device_id, &self.data))
+    }
+}
+
+impl Input for ConnectionChanged {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let Some(device) = core.external_devices.get_mut(self.device_id) else {
+            return update(Vec::new());
+        };
+        if !device.config.enabled {
+            return update(Vec::new());
+        }
+        device
+            .diagnostics
+            .changed(self.device_id, &device.config.spec, self.state);
+        update(Vec::new())
+    }
+}
+
+impl Input for InternalGps {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        update(core.apply_fix(self.fix))
+    }
+}
+
+impl Input for SetLocale {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let effects = if core.settings.locale == Some(self.locale) {
+            Vec::new()
+        } else {
+            core.settings.locale = Some(self.locale);
+            vec![
+                Effect::emit(Topic::Settings(core.settings)),
+                Effect::persist_settings(core.settings_snapshot()),
+            ]
+        };
+        update(effects)
+    }
+}
+
+impl Input for AddExternalDevice {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let device_id = core.external_devices.add(self.spec.clone());
+        let mut effects = vec![Effect::open(device_id, self.spec)];
+        effects.push(Effect::emit(Topic::ExternalDevices(
+            core.external_devices.published_devices(),
+        )));
+        effects.push(Effect::persist_settings(core.settings_snapshot()));
+        update(effects)
+    }
+}
+
+impl Input for DeleteExternalDevice {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let Some(device) = core.external_devices.remove(self.device_id) else {
+            tracing::warn!(device_id = ?self.device_id, "Unknown external device");
+            return update(Vec::new());
+        };
+        let mut effects = Vec::new();
+        if device.config.enabled {
+            effects.push(Effect::close(self.device_id));
+        }
+        effects.push(Effect::emit(Topic::ExternalDevices(
+            core.external_devices.published_devices(),
+        )));
+        effects.push(Effect::persist_settings(core.settings_snapshot()));
+        update(effects)
+    }
+}
+
+impl Input for ReorderExternalDevices {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        match core.external_devices.reorder(&self.order) {
+            Ok(false) => return update(Vec::new()),
+            Ok(true) => {}
+            Err(error) => {
+                tracing::warn!(?error, "Invalid external device order");
+                return update(Vec::new());
+            }
+        }
+        update(vec![
+            Effect::emit(Topic::ExternalDevices(
+                core.external_devices.published_devices(),
+            )),
+            Effect::persist_settings(core.settings_snapshot()),
+        ])
+    }
+}
+
+impl Input for EditExternalDevice {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let Some(device) = core.external_devices.get_mut(self.device_id) else {
+            tracing::warn!(device_id = ?self.device_id, "Unknown external device");
+            return update(Vec::new());
+        };
+        if device.config.spec == self.spec {
+            return update(Vec::new());
+        }
+        let enabled = device.config.enabled;
+        device.config.spec = self.spec.clone();
+        device.reset_runtime();
+
+        let mut effects = Vec::new();
+        if enabled {
+            effects.push(Effect::close(self.device_id));
+            effects.push(Effect::open(self.device_id, self.spec));
+        }
+        effects.push(Effect::emit(Topic::ExternalDevices(
+            core.external_devices.published_devices(),
+        )));
+        effects.push(Effect::persist_settings(core.settings_snapshot()));
+        update(effects)
+    }
+}
+
+impl Input for SetExternalDeviceEnabled {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let Some(device) = core.external_devices.get_mut(self.device_id) else {
+            tracing::warn!(device_id = ?self.device_id, "Unknown external device");
+            return update(Vec::new());
+        };
+        if device.config.enabled == self.enabled {
+            return update(Vec::new());
+        }
+        device.config.enabled = self.enabled;
+        device.reset_runtime();
+        let spec = device.config.spec.clone();
+
+        let mut effects = if self.enabled {
+            vec![Effect::open(self.device_id, spec)]
+        } else {
+            vec![Effect::close(self.device_id)]
+        };
+        effects.push(Effect::emit(Topic::ExternalDevices(
+            core.external_devices.published_devices(),
+        )));
+        effects.push(Effect::persist_settings(core.settings_snapshot()));
+        update(effects)
     }
 }
 
@@ -368,7 +440,7 @@ mod tests {
 
         let enabled_device_id = devices[1].device_id;
         assert_eq!(
-            core.apply(Input::Start, at(0)),
+            core.apply(Start, at(0)).effects,
             vec![Effect::open(enabled_device_id, bluetooth)]
         );
     }
@@ -385,15 +457,14 @@ mod tests {
         let tcp_device_id = device_id(&core, 0);
         let bluetooth_device_id = device_id(&core, 1);
 
-        assert!(
-            core.apply(Input::bytes(tcp_device_id, &RMC[..24]), at(0))
-                .is_empty()
-        );
-        assert!(
-            core.apply(Input::bytes(bluetooth_device_id, &RMC[24..]), at(1))
-                .is_empty()
-        );
-        let effects = core.apply(Input::bytes(tcp_device_id, &RMC[24..]), at(2));
+        let input = Bytes::new(tcp_device_id, &RMC[..24]);
+        assert!(core.apply(input, at(0)).effects.is_empty());
+
+        let input = Bytes::new(bluetooth_device_id, &RMC[24..]);
+        assert!(core.apply(input, at(1)).effects.is_empty());
+
+        let input = Bytes::new(tcp_device_id, &RMC[24..]);
+        let effects = core.apply(input, at(2)).effects;
         let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
             panic!("the completed sentence should emit instruments");
         };
@@ -414,10 +485,8 @@ mod tests {
         });
         let device_id = device_id(&core, 0);
 
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Connecting),
-            at(0),
-        );
+        let input = ConnectionChanged::new(device_id, ConnectionState::Connecting);
+        core.apply(input, at(0));
 
         assert!(logs_contain(&format!("{device_id:?}")));
         assert!(logs_contain("00:00:00:00:00:00"));
@@ -428,20 +497,17 @@ mod tests {
     fn connection_lifecycle_reports_endpoint_and_delivered_bytes() {
         let (mut core, device_id) = core_with_external_device();
 
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Connecting),
-            at(0),
-        );
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Connected),
-            at(1),
-        );
-        core.apply(Input::bytes(device_id, b"abc"), at(2));
-        core.apply(Input::bytes(device_id, b"de"), at(3));
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Disconnected),
-            at(4),
-        );
+        let input = ConnectionChanged::new(device_id, ConnectionState::Connecting);
+        core.apply(input, at(0));
+
+        let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
+        core.apply(input, at(1));
+
+        core.apply(Bytes::new(device_id, b"abc"), at(2));
+        core.apply(Bytes::new(device_id, b"de"), at(3));
+
+        let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+        core.apply(input, at(4));
 
         logs_assert(|lines| {
             insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
@@ -456,24 +522,20 @@ mod tests {
     fn failed_attempt_is_debug_and_counters_reset_on_reconnect() {
         let (mut core, device_id) = core_with_external_device();
 
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Disconnected),
-            at(0),
-        );
+        let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+        core.apply(input, at(0));
+
         for (millis, bytes) in [(1, b"abc".as_slice()), (4, b"de".as_slice())] {
-            core.apply(
-                Input::connection_changed(device_id, ConnectionState::Connecting),
-                at(millis),
-            );
-            core.apply(
-                Input::connection_changed(device_id, ConnectionState::Connected),
-                at(millis + 1),
-            );
-            core.apply(Input::bytes(device_id, bytes), at(millis + 2));
-            core.apply(
-                Input::connection_changed(device_id, ConnectionState::Disconnected),
-                at(millis + 3),
-            );
+            let input = ConnectionChanged::new(device_id, ConnectionState::Connecting);
+            core.apply(input, at(millis));
+
+            let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
+            core.apply(input, at(millis + 1));
+
+            core.apply(Bytes::new(device_id, bytes), at(millis + 2));
+
+            let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+            core.apply(input, at(millis + 3));
         }
 
         logs_assert(|lines| {
@@ -489,8 +551,8 @@ mod tests {
     fn unknown_and_empty_bytes_produce_no_delivery_log() {
         let (mut core, device_id) = core_with_external_device();
 
-        core.apply(Input::bytes(ExternalDeviceId(99), b"abc"), at(0));
-        core.apply(Input::bytes(device_id, b""), at(1));
+        core.apply(Bytes::new(ExternalDeviceId(99), b"abc"), at(0));
+        core.apply(Bytes::new(device_id, b""), at(1));
 
         assert!(!logs_contain("First bytes"));
     }
@@ -500,17 +562,16 @@ mod tests {
     fn removed_connection_produces_no_further_diagnostics() {
         let (mut core, device_id) = core_with_external_device();
 
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Connected),
-            at(0),
-        );
-        core.apply(Input::bytes(device_id, b"abc"), at(1));
+        let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
+        core.apply(input, at(0));
+
+        core.apply(Bytes::new(device_id, b"abc"), at(1));
         assert!(core.external_devices.remove(device_id).is_some());
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Connecting),
-            at(2),
-        );
-        core.apply(Input::bytes(device_id, b"de"), at(3));
+
+        let input = ConnectionChanged::new(device_id, ConnectionState::Connecting);
+        core.apply(input, at(2));
+
+        core.apply(Bytes::new(device_id, b"de"), at(3));
 
         logs_assert(|lines| {
             insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
@@ -524,7 +585,7 @@ mod tests {
     fn fix_emits_instruments_immediately() {
         let (mut core, device_id) = core_with_external_device();
 
-        let effects = core.apply(Input::bytes(device_id, RMC), at(100));
+        let effects = core.apply(Bytes::new(device_id, RMC), at(100)).effects;
 
         assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
         let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
@@ -542,7 +603,8 @@ mod tests {
         let mut emissions = 0;
 
         for _ in 0..5 {
-            emissions += core.apply(Input::bytes(device_id, RMC), at(100)).len();
+            let input = Bytes::new(device_id, RMC);
+            emissions += core.apply(input, at(100)).effects.len();
         }
 
         assert_eq!(emissions, 1, "only the first sentence changed any value");
@@ -551,16 +613,17 @@ mod tests {
     #[test]
     fn tick_emits_nothing() {
         let (mut core, device_id) = core_with_external_device();
-        core.apply(Input::bytes(device_id, RMC), at(100));
+        core.apply(Bytes::new(device_id, RMC), at(100));
 
-        assert_eq!(core.apply(Input::Tick, at(200)), vec![]);
+        assert_eq!(core.apply(Tick, at(200)).effects, vec![]);
     }
 
     #[test]
     fn bytes_from_an_unknown_connection_are_ignored() {
         let mut core = Core::new(config());
 
-        let effects = core.apply(Input::bytes(ExternalDeviceId(99), RMC), at(100));
+        let input = Bytes::new(ExternalDeviceId(99), RMC);
+        let effects = core.apply(input, at(100)).effects;
 
         assert_eq!(effects, vec![]);
     }
@@ -572,13 +635,11 @@ mod tests {
 
         let (mut core, device_id) = core_with_external_device();
 
-        let effects = core.apply(
-            Input::bytes(
-                device_id,
-                b"$GPRMC,120000.00,V,5049.38,N,00611.16,E,45.0,270.0,010126,,,N\r\n".as_slice(),
-            ),
-            at(100),
+        let input = Bytes::new(
+            device_id,
+            b"$GPRMC,120000.00,V,5049.38,N,00611.16,E,45.0,270.0,010126,,,N\r\n".as_slice(),
         );
+        let effects = core.apply(input, at(100)).effects;
 
         assert_eq!(effects, vec![]);
     }
@@ -587,7 +648,8 @@ mod tests {
     fn internal_gps_emits_instruments_immediately() {
         let mut core = Core::new(config());
 
-        let effects = core.apply(Input::InternalGps(fix(50.823, 6.186)), at(100));
+        let input = InternalGps::new(fix(50.823, 6.186));
+        let effects = core.apply(input, at(100)).effects;
 
         assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
         let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
@@ -602,7 +664,8 @@ mod tests {
     fn internal_gps_altitude_is_converted_to_msl() {
         let mut core = Core::new(config());
 
-        core.apply(Input::InternalGps(fix(50.823, 6.186)), at(100));
+        let input = InternalGps::new(fix(50.823, 6.186));
+        core.apply(input, at(100));
 
         let topics = core.topics();
         let [
@@ -629,9 +692,8 @@ mod tests {
         let mut emissions = 0;
 
         for _ in 0..5 {
-            emissions += core
-                .apply(Input::InternalGps(fix(50.823, 6.186)), at(100))
-                .len();
+            let input = InternalGps::new(fix(50.823, 6.186));
+            emissions += core.apply(input, at(100)).effects.len();
         }
 
         assert_eq!(emissions, 1, "only the first fix changed any value");
@@ -688,8 +750,9 @@ mod tests {
             external_devices: Vec::new(),
         };
 
+        let input = SetLocale::new(Locale::De);
         assert_eq!(
-            core.apply(Input::SetLocale(Locale::De), at(0)),
+            core.apply(input, at(0)).effects,
             vec![
                 Effect::emit(Topic::Settings(settings)),
                 Effect::persist_settings(snapshot),
@@ -714,7 +777,8 @@ mod tests {
             external_devices: Vec::new(),
         });
 
-        assert_eq!(core.apply(Input::SetLocale(Locale::De), at(0)), vec![]);
+        let input = SetLocale::new(Locale::De);
+        assert_eq!(core.apply(input, at(0)).effects, vec![]);
     }
 
     #[test]
@@ -731,10 +795,8 @@ mod tests {
             (1, ConnectionState::Connected),
             (2, ConnectionState::Disconnected),
         ] {
-            assert!(
-                core.apply(Input::connection_changed(device_id, state), at(millis))
-                    .is_empty()
-            );
+            let input = ConnectionChanged::new(device_id, state);
+            assert!(core.apply(input, at(millis)).effects.is_empty());
         }
 
         logs_assert(|lines| {
@@ -754,7 +816,8 @@ mod tests {
         });
         let device_id = device_id(&core, 0);
 
-        assert!(core.apply(Input::bytes(device_id, RMC), at(0)).is_empty());
+        let input = Bytes::new(device_id, RMC);
+        assert!(core.apply(input, at(0)).effects.is_empty());
         assert_eq!(core.topics()[0], Topic::Instruments(Instruments::default()));
     }
 
@@ -770,12 +833,14 @@ mod tests {
         let first = device_id(&core, 0);
         let second = device_id(&core, 1);
 
-        assert!(
-            core.apply(Input::bytes(first, &RMC[..24]), at(0))
-                .is_empty()
-        );
-        core.apply(Input::ReorderExternalDevices(vec![second, first]), at(1));
-        let effects = core.apply(Input::bytes(first, &RMC[24..]), at(2));
+        let input = Bytes::new(first, &RMC[..24]);
+        assert!(core.apply(input, at(0)).effects.is_empty());
+
+        let input = ReorderExternalDevices::new(vec![second, first]);
+        core.apply(input, at(1));
+
+        let input = Bytes::new(first, &RMC[24..]);
+        let effects = core.apply(input, at(2)).effects;
 
         assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
     }
@@ -793,16 +858,16 @@ mod tests {
         let first = device_id(&core, 0);
         let second = device_id(&core, 1);
 
-        core.apply(
-            Input::connection_changed(first, ConnectionState::Connected),
-            at(0),
-        );
-        core.apply(Input::bytes(first, b"abc"), at(1));
-        core.apply(Input::ReorderExternalDevices(vec![second, first]), at(2));
-        core.apply(
-            Input::connection_changed(first, ConnectionState::Disconnected),
-            at(3),
-        );
+        let input = ConnectionChanged::new(first, ConnectionState::Connected);
+        core.apply(input, at(0));
+
+        core.apply(Bytes::new(first, b"abc"), at(1));
+
+        let input = ReorderExternalDevices::new(vec![second, first]);
+        core.apply(input, at(2));
+
+        let input = ConnectionChanged::new(first, ConnectionState::Disconnected);
+        core.apply(input, at(3));
 
         logs_assert(|lines| {
             insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
@@ -816,22 +881,14 @@ mod tests {
     fn edit_external_device_resets_partial_decoder_state() {
         let (mut core, device_id) = core_with_external_device();
 
-        assert!(
-            core.apply(Input::bytes(device_id, &RMC[..24]), at(0))
-                .is_empty()
-        );
-        core.apply(
-            Input::EditExternalDevice {
-                device_id,
-                spec: ConnectionSpec::tcp("192.0.2.1", 10110),
-            },
-            at(1),
-        );
+        let input = Bytes::new(device_id, &RMC[..24]);
+        assert!(core.apply(input, at(0)).effects.is_empty());
 
-        assert!(
-            core.apply(Input::bytes(device_id, &RMC[24..]), at(2))
-                .is_empty()
-        );
+        let input = EditExternalDevice::new(device_id, ConnectionSpec::tcp("192.0.2.1", 10110));
+        core.apply(input, at(1));
+
+        let input = Bytes::new(device_id, &RMC[24..]);
+        assert!(core.apply(input, at(2)).effects.is_empty());
         assert_eq!(core.topics()[0], Topic::Instruments(Instruments::default()));
     }
 
@@ -840,22 +897,16 @@ mod tests {
     fn edit_external_device_resets_diagnostics_state() {
         let (mut core, device_id) = core_with_external_device();
 
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Connected),
-            at(0),
-        );
-        core.apply(Input::bytes(device_id, b"abc"), at(1));
-        core.apply(
-            Input::EditExternalDevice {
-                device_id,
-                spec: ConnectionSpec::tcp("192.0.2.1", 10110),
-            },
-            at(2),
-        );
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Disconnected),
-            at(3),
-        );
+        let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
+        core.apply(input, at(0));
+
+        core.apply(Bytes::new(device_id, b"abc"), at(1));
+
+        let input = EditExternalDevice::new(device_id, ConnectionSpec::tcp("192.0.2.1", 10110));
+        core.apply(input, at(2));
+
+        let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+        core.apply(input, at(3));
 
         logs_assert(|lines| {
             insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
@@ -869,29 +920,14 @@ mod tests {
     fn set_external_device_enabled_resets_partial_decoder_state() {
         let (mut core, device_id) = core_with_external_device();
 
-        assert!(
-            core.apply(Input::bytes(device_id, &RMC[..24]), at(0))
-                .is_empty()
-        );
-        core.apply(
-            Input::SetExternalDeviceEnabled {
-                device_id,
-                enabled: false,
-            },
-            at(1),
-        );
-        core.apply(
-            Input::SetExternalDeviceEnabled {
-                device_id,
-                enabled: true,
-            },
-            at(2),
-        );
+        let input = Bytes::new(device_id, &RMC[..24]);
+        assert!(core.apply(input, at(0)).effects.is_empty());
 
-        assert!(
-            core.apply(Input::bytes(device_id, &RMC[24..]), at(3))
-                .is_empty()
-        );
+        core.apply(SetExternalDeviceEnabled::disabled(device_id), at(1));
+        core.apply(SetExternalDeviceEnabled::enabled(device_id), at(2));
+
+        let input = Bytes::new(device_id, &RMC[24..]);
+        assert!(core.apply(input, at(3)).effects.is_empty());
         assert_eq!(core.topics()[0], Topic::Instruments(Instruments::default()));
     }
 
@@ -900,29 +936,15 @@ mod tests {
     fn set_external_device_enabled_resets_diagnostics_state() {
         let (mut core, device_id) = core_with_external_device();
 
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Connected),
-            at(0),
-        );
-        core.apply(Input::bytes(device_id, b"abc"), at(1));
-        core.apply(
-            Input::SetExternalDeviceEnabled {
-                device_id,
-                enabled: false,
-            },
-            at(2),
-        );
-        core.apply(
-            Input::SetExternalDeviceEnabled {
-                device_id,
-                enabled: true,
-            },
-            at(3),
-        );
-        core.apply(
-            Input::connection_changed(device_id, ConnectionState::Disconnected),
-            at(4),
-        );
+        let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
+        core.apply(input, at(0));
+
+        core.apply(Bytes::new(device_id, b"abc"), at(1));
+        core.apply(SetExternalDeviceEnabled::disabled(device_id), at(2));
+        core.apply(SetExternalDeviceEnabled::enabled(device_id), at(3));
+
+        let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+        core.apply(input, at(4));
 
         logs_assert(|lines| {
             insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
@@ -938,21 +960,12 @@ mod tests {
         let mut core = Core::new(SettingsSnapshot::default());
         let unknown = ExternalDeviceId(u32::MAX);
 
-        core.apply(Input::DeleteExternalDevice(unknown), at(0));
-        core.apply(
-            Input::EditExternalDevice {
-                device_id: unknown,
-                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-            },
-            at(1),
-        );
-        core.apply(
-            Input::SetExternalDeviceEnabled {
-                device_id: unknown,
-                enabled: true,
-            },
-            at(2),
-        );
+        core.apply(DeleteExternalDevice::new(unknown), at(0));
+
+        let input = EditExternalDevice::new(unknown, ConnectionSpec::tcp("127.0.0.1", 4353));
+        core.apply(input, at(1));
+
+        core.apply(SetExternalDeviceEnabled::enabled(unknown), at(2));
 
         logs_assert(|lines| {
             insta::with_settings!({ filters => vec![TRACE_TIMESTAMP_FILTER] }, {
@@ -974,13 +987,8 @@ mod tests {
         });
         let first = device_id(&core, 0);
 
-        assert!(
-            core.apply(
-                Input::ReorderExternalDevices(vec![first, ExternalDeviceId(u32::MAX)]),
-                at(0),
-            )
-            .is_empty()
-        );
+        let input = ReorderExternalDevices::new(vec![first, ExternalDeviceId(u32::MAX)]);
+        assert!(core.apply(input, at(0)).effects.is_empty());
         logs_assert(|lines| {
             if lines.len() == 1 && lines[0].contains("Invalid external device order") {
                 Ok(())
@@ -1002,10 +1010,8 @@ mod tests {
         });
         let first = device_id(&core, 0);
 
-        assert!(
-            core.apply(Input::ReorderExternalDevices(vec![first]), at(0))
-                .is_empty()
-        );
+        let input = ReorderExternalDevices::new(vec![first]);
+        assert!(core.apply(input, at(0)).effects.is_empty());
         logs_assert(|lines| {
             if lines.len() == 1 && lines[0].contains("Invalid external device order") {
                 Ok(())
@@ -1027,10 +1033,8 @@ mod tests {
         });
         let first = device_id(&core, 0);
 
-        assert!(
-            core.apply(Input::ReorderExternalDevices(vec![first, first]), at(0),)
-                .is_empty()
-        );
+        let input = ReorderExternalDevices::new(vec![first, first]);
+        assert!(core.apply(input, at(0)).effects.is_empty());
         logs_assert(|lines| {
             if lines.len() == 1 && lines[0].contains("Invalid external device order") {
                 Ok(())

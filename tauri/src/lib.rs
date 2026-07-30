@@ -104,7 +104,6 @@ pub fn run() {
             #[cfg(target_os = "android")]
             let fixes = session::fix_channel(handle.clone());
 
-            handle.send(updraft_core::Input::Start);
             app.manage(handle);
 
             #[cfg(target_os = "android")]

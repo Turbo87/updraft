@@ -1,10 +1,24 @@
 use crate::driver::DriverHandle;
+use serde::Serialize;
 use tauri::ipc::Channel;
-use updraft_core::Topic;
+use updraft_core::{SetLocale, Topic};
+
+#[derive(Debug, Serialize, thiserror::Error)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum DriverCommandError {
+    #[error("driver stopped")]
+    DriverStopped,
+}
 
 #[tauri::command]
-pub fn set_locale(locale: updraft_core::Locale, handle: tauri::State<'_, DriverHandle>) {
-    handle.send(updraft_core::Input::SetLocale(locale));
+pub async fn set_locale(
+    locale: updraft_core::Locale,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(SetLocale::new(locale))
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
 }
 
 /// Registers the webview's channel as a subscriber.

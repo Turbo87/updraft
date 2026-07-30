@@ -1,7 +1,8 @@
 use crate::driver::DriverHandle;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri_plugin_updraft::Fix;
-use updraft_core::{Input, LatLon};
+use tokio::sync::mpsc;
+use updraft_core::{InternalGps, LatLon};
 
 /// Builds the channel a platform session reports its GNSS fixes on.
 ///
@@ -10,9 +11,21 @@ use updraft_core::{Input, LatLon};
 /// there is no framing to defer to the core: the platform already delivers
 /// structure.
 pub fn fix_channel(handle: DriverHandle) -> Channel {
+    let (sender, mut receiver) = mpsc::unbounded_channel();
+    tauri::async_runtime::spawn(async move {
+        while let Some(fix) = receiver.recv().await {
+            let input = InternalGps::new(fix);
+            if handle.send(input).await.is_err() {
+                break;
+            }
+        }
+    });
+
     Channel::new(move |body: InvokeResponseBody| {
         match body.deserialize::<Fix>() {
-            Ok(reported) => handle.send(Input::InternalGps(fix(reported))),
+            Ok(reported) => {
+                let _ = sender.send(fix(reported));
+            }
             // A fix that cannot be read is a map that stops moving, which
             // looks exactly like a receiver with no signal.
             Err(error) => tracing::error!(%error, "Discarded an unreadable GNSS fix"),
@@ -182,6 +195,22 @@ mod tests {
             flying.ground_speed_meters_per_second
         );
         assert_eq!(landed.altitude_msl_meters, flying.altitude_msl_meters);
+    }
+
+    #[tokio::test]
+    async fn back_to_back_reported_fixes_preserve_channel_order() {
+        let handle = driver();
+        let mut topics = topic_stream(&handle);
+        let channel = fix_channel(handle);
+
+        report(&channel, COMPLETE);
+        report(&channel, POSITION_ONLY);
+
+        let first = instruments_at(&mut topics, 50.823).await;
+        let second = instruments_at(&mut topics, 51.0).await;
+
+        assert_eq!(assert_some!(first.position).latitude_degrees, 50.823);
+        assert_eq!(assert_some!(second.position).latitude_degrees, 51.0);
     }
 
     #[tokio::test]

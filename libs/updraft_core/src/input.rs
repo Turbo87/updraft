@@ -1,59 +1,159 @@
 use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
+use crate::core::Core;
+use crate::effect::Effect;
 use crate::fix::Fix;
 use crate::settings::Locale;
+use crate::time::Timestamp;
 
-/// Anything that may change core state.
-///
-/// Input kinds stay distinct rather than being flattened into one record
-/// type, because they differ in trust, in semantics, and in what the
-/// domain needs to know about their origin.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Input {
-    /// The first input the shell sends. Produces the effects needed to
-    /// bring configured connections up.
-    Start,
-    /// A periodic wake-up, for policy that depends on elapsed time rather
-    /// than on new data. Nothing uses it yet.
-    Tick,
-    /// Raw bytes from a device link, tagged with which link produced them.
-    Bytes {
-        device_id: ExternalDeviceId,
-        data: Vec<u8>,
-    },
-    /// The shell reporting what happened to a link it was asked to maintain.
-    ConnectionChanged {
-        device_id: ExternalDeviceId,
-        state: ConnectionState,
-    },
-    /// A fix from the device's own GNSS receiver rather than a connected
-    /// instrument. Which source a position came from is what later lets
-    /// them be ranked against each other.
-    InternalGps(Fix),
-    SetLocale(Locale),
-    AddExternalDevice {
-        spec: ConnectionSpec,
-    },
-    DeleteExternalDevice(ExternalDeviceId),
-    ReorderExternalDevices(Vec<ExternalDeviceId>),
-    EditExternalDevice {
-        device_id: ExternalDeviceId,
-        spec: ConnectionSpec,
-    },
-    SetExternalDeviceEnabled {
-        device_id: ExternalDeviceId,
-        enabled: bool,
-    },
+mod private {
+    pub trait Sealed {}
 }
 
-impl Input {
-    pub fn bytes(device_id: ExternalDeviceId, data: impl Into<Vec<u8>>) -> Self {
-        Self::Bytes {
+pub trait Input: private::Sealed + Send + 'static {
+    type Response: Send + 'static;
+
+    #[doc(hidden)]
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response>;
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Update<R> {
+    pub effects: Vec<Effect>,
+    pub response: R,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Start;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Tick;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Bytes {
+    pub device_id: ExternalDeviceId,
+    pub data: Vec<u8>,
+}
+
+impl Bytes {
+    pub fn new(device_id: ExternalDeviceId, data: impl Into<Vec<u8>>) -> Self {
+        Self {
             device_id,
             data: data.into(),
         }
     }
+}
 
-    pub fn connection_changed(device_id: ExternalDeviceId, state: ConnectionState) -> Self {
-        Self::ConnectionChanged { device_id, state }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ConnectionChanged {
+    pub device_id: ExternalDeviceId,
+    pub state: ConnectionState,
+}
+
+impl ConnectionChanged {
+    pub fn new(device_id: ExternalDeviceId, state: ConnectionState) -> Self {
+        Self { device_id, state }
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InternalGps {
+    pub fix: Fix,
+}
+
+impl InternalGps {
+    pub fn new(fix: Fix) -> Self {
+        Self { fix }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetLocale {
+    pub locale: Locale,
+}
+
+impl SetLocale {
+    pub fn new(locale: Locale) -> Self {
+        Self { locale }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AddExternalDevice {
+    pub spec: ConnectionSpec,
+}
+
+impl AddExternalDevice {
+    pub fn new(spec: ConnectionSpec) -> Self {
+        Self { spec }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DeleteExternalDevice {
+    pub device_id: ExternalDeviceId,
+}
+
+impl DeleteExternalDevice {
+    pub fn new(device_id: ExternalDeviceId) -> Self {
+        Self { device_id }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReorderExternalDevices {
+    pub order: Vec<ExternalDeviceId>,
+}
+
+impl ReorderExternalDevices {
+    pub fn new(order: impl Into<Vec<ExternalDeviceId>>) -> Self {
+        Self {
+            order: order.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EditExternalDevice {
+    pub device_id: ExternalDeviceId,
+    pub spec: ConnectionSpec,
+}
+
+impl EditExternalDevice {
+    pub fn new(device_id: ExternalDeviceId, spec: ConnectionSpec) -> Self {
+        Self { device_id, spec }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetExternalDeviceEnabled {
+    pub device_id: ExternalDeviceId,
+    pub enabled: bool,
+}
+
+impl SetExternalDeviceEnabled {
+    pub fn enabled(device_id: ExternalDeviceId) -> Self {
+        Self {
+            device_id,
+            enabled: true,
+        }
+    }
+
+    pub fn disabled(device_id: ExternalDeviceId) -> Self {
+        Self {
+            device_id,
+            enabled: false,
+        }
+    }
+}
+
+impl private::Sealed for Start {}
+impl private::Sealed for Tick {}
+impl private::Sealed for Bytes {}
+impl private::Sealed for ConnectionChanged {}
+impl private::Sealed for InternalGps {}
+impl private::Sealed for SetLocale {}
+impl private::Sealed for AddExternalDevice {}
+impl private::Sealed for DeleteExternalDevice {}
+impl private::Sealed for ReorderExternalDevices {}
+impl private::Sealed for EditExternalDevice {}
+impl private::Sealed for SetExternalDeviceEnabled {}

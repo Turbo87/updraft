@@ -23,7 +23,10 @@ pub use decoder::Decoder;
 pub use effect::Effect;
 pub use external_device::{ExternalDeviceConfig, PublishedExternalDevice};
 pub use fix::Fix;
-pub use input::Input;
+pub use input::{
+    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
+    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Start, Tick, Update,
+};
 pub use settings::{Locale, Settings, SettingsSnapshot};
 pub use time::Timestamp;
 pub use topic::{Instruments, LatLon, Topic};

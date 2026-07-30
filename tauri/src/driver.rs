@@ -154,11 +154,20 @@ impl Driver {
         persist: PersistFn,
         tick_interval: Duration,
     ) -> DriverHandle {
+        Self::spawn_task(snapshot, open, persist, tick_interval).0
+    }
+
+    fn spawn_task(
+        snapshot: SettingsSnapshot,
+        open: OpenFn,
+        persist: PersistFn,
+        tick_interval: Duration,
+    ) -> (DriverHandle, tokio::task::JoinHandle<()>) {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let handle = DriverHandle { messages: sender };
         let driver_handle = handle.clone();
 
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             let started = Instant::now();
             let mut state = DriverState {
                 core: Core::new(snapshot),
@@ -199,7 +208,35 @@ impl Driver {
             }
         });
 
-        handle
+        (handle, task)
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_support {
+    use super::{Driver, DriverHandle, OpenFn, PersistFn, SettingsSnapshot};
+    use std::time::Duration;
+
+    pub(crate) struct TestDriver {
+        pub(crate) handle: DriverHandle,
+        task: tokio::task::JoinHandle<()>,
+    }
+
+    impl TestDriver {
+        pub(crate) async fn terminate(self) {
+            self.task.abort();
+            let _ = self.task.await;
+        }
+    }
+
+    pub(crate) fn spawn(
+        snapshot: SettingsSnapshot,
+        open: OpenFn,
+        persist: PersistFn,
+        tick_interval: Duration,
+    ) -> TestDriver {
+        let (handle, task) = Driver::spawn_task(snapshot, open, persist, tick_interval);
+        TestDriver { handle, task }
     }
 }
 

@@ -162,6 +162,7 @@ async fn run_attempt(
                     SppEvent::Connected => {
                         let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
                         if handle.send(input).await.is_err() {
+                            cancel_attempt(device_id, address, platform);
                             return AttemptResult::DriverStopped;
                         }
                     }
@@ -170,6 +171,7 @@ async fn run_attempt(
                             delivered_bytes |= !bytes.is_empty();
                             let input = Bytes::new(device_id, bytes);
                             if handle.send(input).await.is_err() {
+                                cancel_attempt(device_id, address, platform);
                                 return AttemptResult::DriverStopped;
                             }
                         }
@@ -312,7 +314,7 @@ mod tests {
     use super::{
         AttemptResult, SppPlatform, maintain, maintain_on_channel, run_attempt, spawn_maintained,
     };
-    use crate::driver::{Driver, DriverHandle};
+    use crate::driver::{Driver, DriverHandle, test_support};
     use claims::assert_some;
     use std::sync::{
         Arc, Mutex,
@@ -862,6 +864,45 @@ mod tests {
             .await
             .expect("supervisor finishes after disconnection")
             .expect("supervisor task succeeds");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn driver_termination_cancels_an_active_attempt_without_reconnecting() {
+        for event in [r#"{"type":"connected"}"#, RMC_EVENT] {
+            let platform = Arc::new(FakePlatform::with_events(Vec::new()));
+            let driver = test_support::spawn(
+                SettingsSnapshot {
+                    settings: Default::default(),
+                    external_devices: vec![ExternalDeviceConfig {
+                        enabled: true,
+                        spec: ConnectionSpec::bluetooth_spp(ADDRESS),
+                    }],
+                },
+                Box::new(|_, _, _| Box::new(|| {})),
+                Box::new(|_| {}),
+                Duration::from_secs(60),
+            );
+            let maintained = spawn_maintained(
+                DEVICE_ID,
+                ADDRESS.to_owned(),
+                driver.handle.clone(),
+                platform.clone(),
+            );
+            tokio::task::yield_now().await;
+            assert_eq!(platform.attempts(), 1);
+
+            driver.terminate().await;
+            platform.send(event);
+            timeout(PATIENCE, maintained.task)
+                .await
+                .expect("supervisor finishes after driver termination")
+                .expect("supervisor task succeeds");
+
+            tokio::time::advance(Duration::from_secs(10)).await;
+            tokio::task::yield_now().await;
+            assert_eq!(platform.cancellations(), 1);
+            assert_eq!(platform.attempts(), 1);
+        }
     }
 
     #[tokio::test]

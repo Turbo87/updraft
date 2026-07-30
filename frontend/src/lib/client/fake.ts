@@ -11,6 +11,7 @@ export class FakeClient implements UpdraftClient {
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'settings', value: this.#settings });
+    onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
 
     return () => {
       this.#listeners.delete(onTopic);

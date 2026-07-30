@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// The identity travels with every byte the link produces, because
 /// position-source arbitration and failover need to know which device a
 /// value came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct ExternalDeviceId(pub u32);
 

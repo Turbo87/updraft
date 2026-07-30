@@ -20,7 +20,12 @@ impl<R: Runtime> UpdraftMobile<R> {
         Ok(())
     }
 
-    pub fn start_spp_attempt(&self, _address: &str, _events: Channel) -> crate::Result<()> {
+    pub fn start_spp_attempt(
+        &self,
+        _address: &str,
+        _service_uuid: &str,
+        _events: Channel,
+    ) -> crate::Result<()> {
         Ok(())
     }
 

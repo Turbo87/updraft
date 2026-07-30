@@ -16,7 +16,7 @@ class SppSourceTest {
     @Test
     fun `EOF emits connected and bytes in order followed by one terminal event`() {
         val events = EventCollector()
-        val source = source(events) { connected, bytes ->
+        val source = source(events) { _, connected, bytes ->
             SppReader(
                 FakeSocket(ChunkedInputStream(byteArrayOf(1, 2), byteArrayOf(3))),
                 connected,
@@ -40,7 +40,7 @@ class SppSourceTest {
     @Test
     fun `connect failure emits one terminal event carrying the error`() {
         val events = EventCollector()
-        val source = source(events) { connected, bytes ->
+        val source = source(events) { _, connected, bytes ->
             SppReader(
                 FakeSocket(
                     ByteArrayInputStream(byteArrayOf()),
@@ -60,7 +60,7 @@ class SppSourceTest {
     @Test
     fun `read failure emits one terminal event carrying the error`() {
         val events = EventCollector()
-        val source = source(events) { connected, bytes ->
+        val source = source(events) { _, connected, bytes ->
             SppReader(FakeSocket(FailingInputStream()), connected, bytes)
         }
 
@@ -75,7 +75,7 @@ class SppSourceTest {
         val events = EventCollector()
         lateinit var socket: FakeSocket
         lateinit var source: SppSource
-        source = source(events) { connected, bytes ->
+        source = source(events) { _, connected, bytes ->
             source.stop()
             socket = FakeSocket(ByteArrayInputStream(byteArrayOf()))
             SppReader(socket, connected, bytes)
@@ -94,7 +94,7 @@ class SppSourceTest {
         lateinit var source: SppSource
         lateinit var connected: () -> Unit
         lateinit var bytes: (ByteArray) -> Unit
-        source = source(events) { reportConnected, reportBytes ->
+        source = source(events) { _, reportConnected, reportBytes ->
             connected = reportConnected
             bytes = reportBytes
             SppReader(
@@ -120,10 +120,49 @@ class SppSourceTest {
         assertEquals(terminalEvents, events.size)
     }
 
+    @Test
+    fun `custom service UUID reaches the reader factory`() {
+        val events = EventCollector()
+        val customUuid = "e56617bf-f548-4f7c-9cef-4a26eec19b04"
+        var receivedUuid: String? = null
+        val source = source(events, customUuid) { serviceUuid, connected, bytes ->
+            receivedUuid = serviceUuid
+            SppReader(
+                FakeSocket(ByteArrayInputStream(byteArrayOf())),
+                connected,
+                bytes
+            )
+        }
+
+        source.run()
+
+        assertEquals(customUuid, receivedUuid)
+        assertEquals(listOf("connected", "disconnected"), events.types())
+    }
+
+    @Test
+    fun `reader creation failure emits one terminal event`() {
+        val events = EventCollector()
+        val source = source(events) { _, _, _ ->
+            throw IllegalArgumentException("invalid service UUID")
+        }
+
+        source.run()
+
+        assertEquals(listOf("disconnected"), events.types())
+        assertTrue(events.last()["error"].asText().contains("invalid service UUID"))
+    }
+
     private fun source(
         events: EventCollector,
-        readerFactory: (onConnected: () -> Unit, onBytes: (ByteArray) -> Unit) -> SppReader
+        serviceUuid: String = "00001101-0000-1000-8000-00805F9B34FB",
+        readerFactory: (
+            serviceUuid: String,
+            onConnected: () -> Unit,
+            onBytes: (ByteArray) -> Unit
+        ) -> SppReader
     ): SppSource = SppSource(
+        serviceUuid,
         events.channel,
         readerFactory,
         encoder = Base64.getEncoder()::encodeToString

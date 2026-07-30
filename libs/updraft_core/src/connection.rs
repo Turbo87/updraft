@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub const STANDARD_SPP_SERVICE_UUID: &str = "00001101-0000-1000-8000-00805F9B34FB";
+
 /// Identifies one link to an external device.
 ///
 /// The identity travels with every byte the link produces, because
@@ -12,7 +14,7 @@ pub struct ExternalDeviceId(pub u32);
 /// How the shell should reach a device.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
-#[serde(tag = "type")]
+#[serde(tag = "type", rename_all_fields = "camelCase")]
 pub enum ConnectionSpec {
     /// A TCP client link. Used for flight simulators, WiFi-attached
     /// instruments, and any device exposing a TCP server, as well as for
@@ -21,7 +23,23 @@ pub enum ConnectionSpec {
     Tcp { host: String, port: u16 },
     /// A Bluetooth Classic Serial Port Profile link.
     #[serde(rename = "bluetooth")]
-    BluetoothSpp { address: String },
+    BluetoothSpp {
+        address: String,
+
+        #[serde(
+            default = "default_spp_service_uuid",
+            skip_serializing_if = "is_standard_spp_service_uuid"
+        )]
+        service_uuid: String,
+    },
+}
+
+fn default_spp_service_uuid() -> String {
+    STANDARD_SPP_SERVICE_UUID.to_owned()
+}
+
+fn is_standard_spp_service_uuid(service_uuid: &str) -> bool {
+    service_uuid == STANDARD_SPP_SERVICE_UUID
 }
 
 impl ConnectionSpec {
@@ -35,6 +53,7 @@ impl ConnectionSpec {
     pub fn bluetooth_spp(address: impl Into<String>) -> Self {
         Self::BluetoothSpp {
             address: address.into(),
+            service_uuid: default_spp_service_uuid(),
         }
     }
 }

@@ -14,17 +14,24 @@ import app.tauri.plugin.Channel
 import java.util.UUID
 
 internal class SppSource(
+    private val serviceUuid: String,
     private val events: Channel,
     private val readerFactory: (
+        serviceUuid: String,
         onConnected: () -> Unit,
         onBytes: (ByteArray) -> Unit
     ) -> SppReader,
     private val encoder: (ByteArray) -> String
 ) : SppAttempt {
-    constructor(context: Context, address: String, events: Channel) : this(
+    constructor(context: Context, address: String, serviceUuid: String, events: Channel) : this(
+        serviceUuid,
         events,
-        { onConnected, onBytes ->
-            SppReader(createSocket(context, address), onConnected, onBytes)
+        { selectedServiceUuid, onConnected, onBytes ->
+            SppReader(
+                createSocket(context, address, selectedServiceUuid),
+                onConnected,
+                onBytes
+            )
         },
         { bytes -> Base64.encodeToString(bytes, Base64.NO_WRAP) }
     )
@@ -38,6 +45,7 @@ internal class SppSource(
         var failure: Exception? = null
         try {
             val assigned = readerFactory(
+                serviceUuid,
                 { send(mapOf("type" to "connected")) },
                 { bytes ->
                     send(
@@ -91,10 +99,8 @@ internal class SppSource(
     }
 
     companion object {
-        private val SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-
         @SuppressLint("MissingPermission")
-        private fun createSocket(context: Context, address: String): SppSocket {
+        private fun createSocket(context: Context, address: String, serviceUuid: String): SppSocket {
             if (
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                 ContextCompat.checkSelfPermission(
@@ -115,7 +121,9 @@ internal class SppSource(
             check(device.bondState == BluetoothDevice.BOND_BONDED) {
                 "Bluetooth device $address is not bonded"
             }
-            return AndroidSppSocket(device.createRfcommSocketToServiceRecord(SPP_UUID))
+            return AndroidSppSocket(
+                device.createRfcommSocketToServiceRecord(UUID.fromString(serviceUuid))
+            )
         }
     }
 }

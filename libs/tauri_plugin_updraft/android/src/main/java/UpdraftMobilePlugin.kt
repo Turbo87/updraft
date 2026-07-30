@@ -90,6 +90,7 @@ class StartSessionArgs {
 @InvokeArg
 class StartSppAttemptArgs {
     lateinit var address: String
+    lateinit var serviceUuid: String
     lateinit var events: Channel
 }
 
@@ -157,7 +158,7 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
         val args = invoke.parseArgs(StartSppAttemptArgs::class.java)
         SessionService.startSppAttempt(
             application,
-            SppRequest(args.address, args.events) { failure ->
+            SppRequest(args.address, args.serviceUuid, args.events) { failure ->
                 if (failure == null) {
                     invoke.resolve()
                 } else {

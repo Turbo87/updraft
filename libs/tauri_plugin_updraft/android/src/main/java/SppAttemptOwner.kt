@@ -9,6 +9,7 @@ internal interface SppAttempt {
 
 internal data class SppRequest(
     val address: String,
+    val serviceUuid: String,
     val events: Channel,
     val onStarted: (Exception?) -> Unit
 )

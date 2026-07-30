@@ -2,9 +2,10 @@ use std::{
     collections::BTreeMap,
     time::{Duration, Instant},
 };
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use updraft_core::{
-    ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Timestamp, Topic,
+    ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Tick, Timestamp,
+    Topic, Update,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is
@@ -46,10 +47,23 @@ impl ActiveTransports {
     }
 }
 
+struct Request<I: Input> {
+    input: I,
+    reply: oneshot::Sender<I::Response>,
+}
+
+trait ErasedInput: Send {
+    fn run(self: Box<Self>, driver: &mut DriverState, at: Timestamp);
+}
+
 enum Message {
-    Input(Input),
+    Input(Box<dyn ErasedInput>),
     Subscribe(Sink),
 }
+
+#[derive(Clone, Copy, Debug, thiserror::Error, PartialEq, Eq)]
+#[error("driver stopped")]
+pub struct DriverStopped;
 
 #[derive(Clone)]
 pub struct DriverHandle {
@@ -57,10 +71,13 @@ pub struct DriverHandle {
 }
 
 impl DriverHandle {
-    /// Queues an input. A dropped driver makes this a no-op rather than an
-    /// error, because shutdown races are expected during teardown.
-    pub fn send(&self, input: Input) {
-        let _ = self.messages.send(Message::Input(input));
+    /// Queues an input and waits until its effects are dispatched.
+    pub async fn send<I: Input>(&self, input: I) -> Result<I::Response, DriverStopped> {
+        let (reply, response) = oneshot::channel();
+        self.messages
+            .send(Message::Input(Box::new(Request { input, reply })))
+            .map_err(|_| DriverStopped)?;
+        response.await.map_err(|_| DriverStopped)
     }
 
     /// Registers a sink. It immediately receives the current value of
@@ -68,6 +85,51 @@ impl DriverHandle {
     /// needing a distinct snapshot message.
     pub fn subscribe(&self, sink: Sink) {
         let _ = self.messages.send(Message::Subscribe(sink));
+    }
+}
+
+impl<I: Input> ErasedInput for Request<I> {
+    fn run(self: Box<Self>, driver: &mut DriverState, at: Timestamp) {
+        let Request { input, reply } = *self;
+        let response = driver.apply(input, at);
+        let _ = reply.send(response);
+    }
+}
+
+struct DriverState {
+    core: Core,
+    sinks: Vec<Sink>,
+    transports: ActiveTransports,
+    open: OpenFn,
+    persist: PersistFn,
+    handle: DriverHandle,
+}
+
+impl DriverState {
+    fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> I::Response {
+        let Update { effects, response } = self.core.apply(input, at);
+        for effect in effects {
+            self.dispatch(effect);
+        }
+        response
+    }
+
+    fn subscribe(&mut self, sink: Sink) {
+        if self.core.topics().iter().all(&sink) {
+            self.sinks.push(sink);
+        }
+    }
+
+    fn dispatch(&mut self, effect: Effect) {
+        match effect {
+            Effect::Emit(topic) => self.sinks.retain(|sink| sink(&topic)),
+            Effect::PersistSettings(snapshot) => (self.persist)(snapshot),
+            Effect::OpenConnection { device_id, spec } => {
+                self.transports
+                    .open(device_id, spec, self.handle.clone(), &self.open);
+            }
+            Effect::CloseConnection { device_id } => self.transports.close(device_id),
+        }
     }
 }
 
@@ -92,21 +154,41 @@ impl Driver {
         persist: PersistFn,
         tick_interval: Duration,
     ) -> DriverHandle {
+        Self::spawn_task(snapshot, open, persist, tick_interval).0
+    }
+
+    fn spawn_task(
+        snapshot: SettingsSnapshot,
+        open: OpenFn,
+        persist: PersistFn,
+        tick_interval: Duration,
+    ) -> (DriverHandle, tokio::task::JoinHandle<()>) {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let handle = DriverHandle { messages: sender };
         let driver_handle = handle.clone();
 
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             let started = Instant::now();
-            let mut core = Core::new(snapshot);
-            let mut sinks: Vec<Sink> = Vec::new();
-            let mut transports = ActiveTransports::default();
+            let mut state = DriverState {
+                core: Core::new(snapshot),
+                sinks: Vec::new(),
+                transports: ActiveTransports::default(),
+                open,
+                persist,
+                handle: driver_handle,
+            };
             let mut ticker = tokio::time::interval(tick_interval);
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
+            state.apply(updraft_core::Start, Timestamp::from_millis(0));
+
             loop {
                 let message = tokio::select! {
-                    _ = ticker.tick() => Message::Input(Input::Tick),
+                    _ = ticker.tick() => {
+                        let at = Timestamp::from_millis(started.elapsed().as_millis() as u64);
+                        state.apply(Tick, at);
+                        continue;
+                    }
                     received = receiver.recv() => match received {
                         Some(message) => message,
                         // Unreachable while the driver holds its own
@@ -116,33 +198,45 @@ impl Driver {
                     },
                 };
 
-                let input = match message {
-                    Message::Subscribe(sink) => {
-                        if core.topics().iter().all(&sink) {
-                            sinks.push(sink);
-                        }
-                        continue;
-                    }
-                    Message::Input(input) => input,
-                };
-
-                let at = Timestamp::from_millis(started.elapsed().as_millis() as u64);
-                for effect in core.apply(input, at) {
-                    match effect {
-                        Effect::Emit(topic) => sinks.retain(|sink| sink(&topic)),
-                        Effect::PersistSettings(snapshot) => persist(snapshot),
-                        Effect::OpenConnection { device_id, spec } => {
-                            transports.open(device_id, spec, driver_handle.clone(), &open);
-                        }
-                        Effect::CloseConnection { device_id } => {
-                            transports.close(device_id);
-                        }
+                match message {
+                    Message::Subscribe(sink) => state.subscribe(sink),
+                    Message::Input(input) => {
+                        let at = Timestamp::from_millis(started.elapsed().as_millis() as u64);
+                        input.run(&mut state, at);
                     }
                 }
             }
         });
 
-        handle
+        (handle, task)
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_support {
+    use super::{Driver, DriverHandle, OpenFn, PersistFn, SettingsSnapshot};
+    use std::time::Duration;
+
+    pub(crate) struct TestDriver {
+        pub(crate) handle: DriverHandle,
+        task: tokio::task::JoinHandle<()>,
+    }
+
+    impl TestDriver {
+        pub(crate) async fn terminate(self) {
+            self.task.abort();
+            let _ = self.task.await;
+        }
+    }
+
+    pub(crate) fn spawn(
+        snapshot: SettingsSnapshot,
+        open: OpenFn,
+        persist: PersistFn,
+        tick_interval: Duration,
+    ) -> TestDriver {
+        let (handle, task) = Driver::spawn_task(snapshot, open, persist, tick_interval);
+        TestDriver { handle, task }
     }
 }
 
@@ -155,8 +249,12 @@ mod tests {
         Arc,
         atomic::{AtomicUsize, Ordering},
     };
+    use tokio::sync::oneshot;
     use tokio::time::timeout;
-    use updraft_core::ExternalDeviceConfig;
+    use updraft_core::{
+        AddExternalDevice, Bytes, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
+        SetExternalDeviceEnabled, SetLocale,
+    };
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
     const PATIENCE: Duration = Duration::from_secs(5);
@@ -272,13 +370,13 @@ mod tests {
         );
         let mut topics = topic_stream(&handle);
 
-        handle.send(Input::SetLocale(updraft_core::Locale::De));
+        let input = SetLocale::new(updraft_core::Locale::De);
+        assert_eq!(handle.send(input).await, Ok(()));
 
         let settings = loop {
-            let topic = timeout(PATIENCE, topics.recv())
-                .await
-                .expect("a settings topic within the timeout")
-                .expect("the driver remains active");
+            let topic = topics
+                .try_recv()
+                .expect("a topic emitted before the response");
             if let Topic::Settings(settings) = topic
                 && settings.locale == Some(updraft_core::Locale::De)
             {
@@ -287,13 +385,13 @@ mod tests {
         };
 
         assert_eq!(
-            timeout(PATIENCE, persisted_rx.recv())
-                .await
-                .expect("a persisted snapshot within the timeout"),
-            Some(SettingsSnapshot {
+            persisted_rx
+                .try_recv()
+                .expect("a persisted snapshot emitted before the response"),
+            SettingsSnapshot {
                 settings,
                 external_devices: snapshot().external_devices,
-            })
+            }
         );
     }
 
@@ -308,7 +406,8 @@ mod tests {
         let mut topics = topic_stream(&handle);
         let device_id = next_device_id(&mut topics).await;
 
-        handle.send(Input::bytes(device_id, RMC));
+        let input = Bytes::new(device_id, RMC);
+        handle.send(input).await.expect("driver remains active");
 
         let position = next_position(&mut topics).await;
         assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
@@ -329,14 +428,56 @@ mod tests {
         let mut topics = topic_stream(&handle);
         let expected_device_id = next_device_id(&mut topics).await;
 
-        handle.send(Input::Start);
-
         let requested = timeout(PATIENCE, receiver.recv())
             .await
             .expect("an open request within the timeout");
         assert_some_eq!(
             requested,
             (expected_device_id, ConnectionSpec::tcp("127.0.0.1", 4353))
+        );
+    }
+
+    #[tokio::test]
+    async fn admitted_input_survives_a_dropped_response_receiver() {
+        let (persisted_tx, mut persisted_rx) = mpsc::unbounded_channel();
+        let handle = Driver::spawn(
+            snapshot(),
+            Box::new(|_, _, _| Box::new(|| {})),
+            Box::new(move |snapshot| {
+                let _ = persisted_tx.send(snapshot);
+            }),
+            Duration::from_millis(100),
+        );
+        let (reply, response) = oneshot::channel();
+        drop(response);
+
+        handle
+            .messages
+            .send(Message::Input(Box::new(Request {
+                input: SetLocale::new(updraft_core::Locale::De),
+                reply,
+            })))
+            .expect("request is admitted");
+
+        assert_eq!(
+            timeout(PATIENCE, persisted_rx.recv())
+                .await
+                .expect("a persisted snapshot within the timeout"),
+            Some(SettingsSnapshot {
+                settings: updraft_core::Settings {
+                    locale: Some(updraft_core::Locale::De),
+                },
+                external_devices: snapshot().external_devices,
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn send_to_a_stopped_driver_fails() {
+        let input = SetLocale::new(updraft_core::Locale::De);
+        assert_eq!(
+            inactive_driver_handle().send(input).await,
+            Err(DriverStopped)
         );
     }
 
@@ -366,13 +507,13 @@ mod tests {
         let mut topics = topic_stream(&handle);
 
         let first_spec = ConnectionSpec::tcp("127.0.0.1", 4353);
-        handle.send(Input::AddExternalDevice {
-            spec: first_spec.clone(),
-        });
-        let (device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
+        let input = AddExternalDevice::new(first_spec.clone());
+        let device_id = handle.send(input).await.expect("driver remains active");
+        let (opened_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
             .await
             .expect("an add open within the timeout")
             .expect("the driver remains active");
+        assert_eq!(opened_device_id, device_id);
         assert_eq!(opened_spec, first_spec);
         let published = next_external_devices(&mut topics, |devices| {
             devices.len() == 1 && devices[0].config.spec == first_spec
@@ -390,10 +531,12 @@ mod tests {
         assert_eq!(stops.load(Ordering::SeqCst), 0);
 
         let edited_spec = ConnectionSpec::bluetooth_spp("00:11:22:33:44:55");
-        handle.send(Input::EditExternalDevice {
-            device_id,
-            spec: edited_spec.clone(),
-        });
+        let input = EditExternalDevice::new(device_id, edited_spec.clone());
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device edit succeeds");
         let (edited_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
             .await
             .expect("an edit open within the timeout")
@@ -415,10 +558,12 @@ mod tests {
         assert_eq!(opens.load(Ordering::SeqCst), 2);
         assert_eq!(stops.load(Ordering::SeqCst), 1);
 
-        handle.send(Input::SetExternalDeviceEnabled {
-            device_id,
-            enabled: false,
-        });
+        let input = SetExternalDeviceEnabled::disabled(device_id);
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device disable succeeds");
         let published = next_external_devices(&mut topics, |devices| {
             devices.len() == 1 && !devices[0].config.enabled
         })
@@ -434,10 +579,12 @@ mod tests {
         assert_eq!(opens.load(Ordering::SeqCst), 2);
         assert_eq!(stops.load(Ordering::SeqCst), 2);
 
-        handle.send(Input::SetExternalDeviceEnabled {
-            device_id,
-            enabled: true,
-        });
+        let input = SetExternalDeviceEnabled::enabled(device_id);
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device enable succeeds");
         let (enabled_device_id, opened_spec) = timeout(PATIENCE, opened_rx.recv())
             .await
             .expect("an enable open within the timeout")
@@ -459,7 +606,12 @@ mod tests {
         assert_eq!(opens.load(Ordering::SeqCst), 3);
         assert_eq!(stops.load(Ordering::SeqCst), 2);
 
-        handle.send(Input::DeleteExternalDevice(device_id));
+        let input = DeleteExternalDevice::new(device_id);
+        handle
+            .send(input)
+            .await
+            .expect("driver remains active")
+            .expect("external device deletion succeeds");
         let published = next_external_devices(&mut topics, |devices| devices.is_empty()).await;
         assert!(published.is_empty());
         assert_eq!(

@@ -5,7 +5,7 @@ use std::time::Duration;
 use tokio::io::AsyncReadExt as _;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
-use updraft_core::{ConnectionState, ExternalDeviceId, Input};
+use updraft_core::{Bytes, ConnectionChanged, ConnectionState, ExternalDeviceId};
 
 const READ_BUFFER_BYTES: usize = 4_096;
 
@@ -13,7 +13,7 @@ const READ_BUFFER_BYTES: usize = 4_096;
 ///
 /// The core asked for this link to exist, so reconnection and backoff are
 /// this task's business, not the core's. The core only learns the current
-/// state through [`Input::ConnectionChanged`].
+/// state through [`ConnectionChanged`].
 pub fn run(device_id: ExternalDeviceId, host: String, port: u16, handle: DriverHandle) -> StopFn {
     let (stop_sender, mut stop_receiver) = oneshot::channel();
 
@@ -21,18 +21,17 @@ pub fn run(device_id: ExternalDeviceId, host: String, port: u16, handle: DriverH
         let mut backoff = ReconnectBackoff::default();
 
         loop {
-            handle.send(Input::connection_changed(
-                device_id,
-                ConnectionState::Connecting,
-            ));
+            let input = ConnectionChanged::new(device_id, ConnectionState::Connecting);
+            if handle.send(input).await.is_err() {
+                return;
+            }
 
             let stream = tokio::select! {
                 biased;
                 _ = &mut stop_receiver => {
-                    handle.send(Input::connection_changed(
-                        device_id,
-                        ConnectionState::Disconnected,
-                    ));
+                    let input =
+                        ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+                    let _ = handle.send(input).await;
                     return;
                 }
                 result = TcpStream::connect((host.as_str(), port)) => result,
@@ -40,19 +39,19 @@ pub fn run(device_id: ExternalDeviceId, host: String, port: u16, handle: DriverH
 
             let delivered_bytes = match stream {
                 Ok(stream) => {
-                    handle.send(Input::connection_changed(
-                        device_id,
-                        ConnectionState::Connected,
-                    ));
+                    let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
+                    if handle.send(input).await.is_err() {
+                        return;
+                    }
                     match pump(device_id, &host, port, stream, &handle, &mut stop_receiver).await {
                         PumpResult::Disconnected { delivered_bytes } => delivered_bytes,
                         PumpResult::Stopped => {
-                            handle.send(Input::connection_changed(
-                                device_id,
-                                ConnectionState::Disconnected,
-                            ));
+                            let input =
+                                ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+                            let _ = handle.send(input).await;
                             return;
                         }
+                        PumpResult::DriverStopped => return,
                     }
                 }
                 Err(error) => {
@@ -61,10 +60,10 @@ pub fn run(device_id: ExternalDeviceId, host: String, port: u16, handle: DriverH
                 }
             };
 
-            handle.send(Input::connection_changed(
-                device_id,
-                ConnectionState::Disconnected,
-            ));
+            let input = ConnectionChanged::new(device_id, ConnectionState::Disconnected);
+            if handle.send(input).await.is_err() {
+                return;
+            }
 
             tokio::select! {
                 biased;
@@ -82,6 +81,7 @@ pub fn run(device_id: ExternalDeviceId, host: String, port: u16, handle: DriverH
 enum PumpResult {
     Disconnected { delivered_bytes: bool },
     Stopped,
+    DriverStopped,
 }
 
 /// Reads until the link closes, errors, or is stopped. A disconnection
@@ -111,7 +111,10 @@ async fn pump(
             }
             Ok(read) => {
                 received = true;
-                handle.send(Input::bytes(device_id, &buffer[..read]));
+                let input = Bytes::new(device_id, &buffer[..read]);
+                if handle.send(input).await.is_err() {
+                    return PumpResult::DriverStopped;
+                }
             }
             Err(error) => {
                 tracing::warn!(?device_id, %host, port, %error, "TCP read failed");

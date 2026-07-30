@@ -73,7 +73,15 @@ fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc:
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![ipc::set_locale, ipc::subscribe])
+        .invoke_handler(tauri::generate_handler![
+            ipc::set_locale,
+            ipc::add_external_device,
+            ipc::delete_external_device,
+            ipc::reorder_external_devices,
+            ipc::edit_external_device,
+            ipc::set_external_device_enabled,
+            ipc::subscribe,
+        ])
         .plugin(tauri_plugin_updraft::init())
         .setup(|app| {
             if let Some(guard) = init_tracing(app.handle()) {
@@ -104,7 +112,6 @@ pub fn run() {
             #[cfg(target_os = "android")]
             let fixes = session::fix_channel(handle.clone());
 
-            handle.send(updraft_core::Input::Start);
             app.manage(handle);
 
             #[cfg(target_os = "android")]

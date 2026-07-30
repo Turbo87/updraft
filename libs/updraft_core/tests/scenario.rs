@@ -1,6 +1,8 @@
 use updraft_core::{
-    ConnectionSpec, Core, Effect, ExternalDeviceConfig, ExternalDeviceId, Fix, Input, LatLon,
-    SettingsSnapshot, Timestamp, Topic,
+    AddExternalDevice, Bytes, ConnectionSpec, Core, DeleteExternalDevice, EditExternalDevice,
+    Effect, ExternalDeviceConfig, ExternalDeviceId, Fix, InternalGps, InvalidExternalDeviceOrder,
+    LatLon, ReorderExternalDevices, SetExternalDeviceEnabled, SettingsSnapshot, Start, Timestamp,
+    Topic, UnknownExternalDevice, Update,
 };
 
 const FIXTURE: &str = include_str!("../../../testdata/nmea/basic.nmea");
@@ -90,7 +92,8 @@ fn replay(sentences: &str) -> Vec<String> {
     let (mut core, device_id) = core_with_external_device();
 
     let mut log: Vec<String> = core
-        .apply(Input::Start, Timestamp::from_millis(0))
+        .apply(Start, Timestamp::from_millis(0))
+        .effects
         .iter()
         .map(describe)
         .collect();
@@ -98,11 +101,8 @@ fn replay(sentences: &str) -> Vec<String> {
     for (index, line) in sentences.lines().enumerate() {
         let at = Timestamp::from_millis(1_000 + index as u64 * 1_000);
         let sentence = format!("{line}\r\n");
-        log.extend(
-            core.apply(Input::bytes(device_id, sentence.into_bytes()), at)
-                .iter()
-                .map(describe),
-        );
+        let input = Bytes::new(device_id, sentence.into_bytes());
+        log.extend(core.apply(input, at).effects.iter().map(describe));
     }
 
     log
@@ -139,28 +139,25 @@ fn sentences_the_core_ignores_produce_no_effects() {
 #[test]
 fn gnss_fix_and_equivalent_sentence_agree() {
     let (mut from_sentence, device_id) = core_with_external_device();
-    let effects = from_sentence.apply(
-        Input::bytes(
-            device_id,
-            b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n".as_slice(),
-        ),
-        Timestamp::from_millis(0),
-    );
+    let sentence = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n".as_slice();
+    let input = Bytes::new(device_id, sentence);
+    let effects = from_sentence
+        .apply(input, Timestamp::from_millis(0))
+        .effects;
 
     let mut from_fix = Core::new(SettingsSnapshot::default());
-    let equivalent = from_fix.apply(
-        Input::InternalGps(Fix {
-            position: LatLon {
-                latitude_degrees: 50.823,
-                longitude_degrees: 6.186,
-            },
-            // RMC carries no altitude, so neither may this fix.
-            altitude_ellipsoid_meters: None,
-            track_degrees: Some(270.0),
-            ground_speed_meters_per_second: Some(45.0 * 1852.0 / 3600.0),
-        }),
-        Timestamp::from_millis(0),
-    );
+    let fix = Fix {
+        position: LatLon {
+            latitude_degrees: 50.823,
+            longitude_degrees: 6.186,
+        },
+        // RMC carries no altitude, so neither may this fix.
+        altitude_ellipsoid_meters: None,
+        track_degrees: Some(270.0),
+        ground_speed_meters_per_second: Some(45.0 * 1852.0 / 3600.0),
+    };
+    let input = InternalGps::new(fix);
+    let equivalent = from_fix.apply(input, Timestamp::from_millis(0)).effects;
 
     let rendered = |effects: &[Effect]| effects.iter().map(describe).collect::<Vec<_>>();
     assert_eq!(rendered(&effects), rendered(&equivalent));
@@ -171,10 +168,9 @@ fn add_external_device_to_an_empty_list() {
     let mut core = Core::new(SettingsSnapshot::default());
     let spec = ConnectionSpec::tcp("127.0.0.1", 4353);
 
-    let effects = core.apply(
-        Input::AddExternalDevice { spec: spec.clone() },
-        Timestamp::from_millis(0),
-    );
+    let input = AddExternalDevice::new(spec.clone());
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, ExternalDeviceId(1));
 
     let [
         Effect::OpenConnection { device_id, .. },
@@ -184,7 +180,8 @@ fn add_external_device_to_an_empty_list() {
     else {
         panic!("addition should open, publish, and persist");
     };
-    assert_eq!(*device_id, devices[0].device_id);
+    assert_eq!(*device_id, response);
+    assert_eq!(devices[0].device_id, response);
 
     insta::with_settings!({ filters => vec![EXTERNAL_DEVICE_ID_FILTER] }, {
         insta::assert_snapshot!(mutation_effects(&effects));
@@ -196,12 +193,9 @@ fn add_external_device_after_loaded_devices_uses_a_fresh_id() {
     let mut core = core_with_two_external_devices();
     let existing = external_device_ids(&core);
 
-    let effects = core.apply(
-        Input::AddExternalDevice {
-            spec: ConnectionSpec::tcp("192.0.2.1", 10110),
-        },
-        Timestamp::from_millis(0),
-    );
+    let input = AddExternalDevice::new(ConnectionSpec::tcp("192.0.2.1", 10110));
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, ExternalDeviceId(3));
 
     let [
         Effect::OpenConnection { device_id, .. },
@@ -214,8 +208,9 @@ fn add_external_device_after_loaded_devices_uses_a_fresh_id() {
     assert_ne!(existing[0], existing[1]);
     assert_eq!(devices[0].device_id, existing[0]);
     assert_eq!(devices[1].device_id, existing[1]);
-    assert_eq!(devices[2].device_id, *device_id);
-    assert!(existing.iter().all(|existing| existing != device_id));
+    assert_eq!(devices[2].device_id, response);
+    assert_eq!(*device_id, response);
+    assert!(existing.iter().all(|existing| existing != &response));
 
     insta::with_settings!({ filters => vec![EXTERNAL_DEVICE_ID_FILTER] }, {
         insta::assert_snapshot!(mutation_effects(&effects));
@@ -226,10 +221,9 @@ fn add_external_device_after_loaded_devices_uses_a_fresh_id() {
 fn delete_external_device_closes_an_enabled_device() {
     let (mut core, device_id) = core_with_external_device();
 
-    let effects = core.apply(
-        Input::DeleteExternalDevice(device_id),
-        Timestamp::from_millis(0),
-    );
+    let input = DeleteExternalDevice::new(device_id);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
 
     let Effect::CloseConnection {
         device_id: closed_id,
@@ -255,10 +249,9 @@ fn delete_external_device_does_not_close_a_disabled_device() {
     });
     let device_id = external_device_ids(&core)[0];
 
-    let effects = core.apply(
-        Input::DeleteExternalDevice(device_id),
-        Timestamp::from_millis(0),
-    );
+    let input = DeleteExternalDevice::new(device_id);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
 
     insta::with_settings!({ filters => vec![EXTERNAL_DEVICE_ID_FILTER] }, {
         insta::assert_snapshot!(mutation_effects(&effects));
@@ -268,14 +261,12 @@ fn delete_external_device_does_not_close_a_disabled_device() {
 #[test]
 fn delete_external_device_with_an_unknown_id_is_a_no_op() {
     let mut core = Core::new(SettingsSnapshot::default());
+    let unknown = ExternalDeviceId(u32::MAX);
 
-    assert!(
-        core.apply(
-            Input::DeleteExternalDevice(ExternalDeviceId(u32::MAX)),
-            Timestamp::from_millis(0),
-        )
-        .is_empty()
-    );
+    let input = DeleteExternalDevice::new(unknown);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Err(UnknownExternalDevice { device_id: unknown }));
+    assert!(effects.is_empty());
 }
 
 #[test]
@@ -296,10 +287,9 @@ fn reorder_external_devices_publishes_and_persists_the_new_order() {
     let original = external_device_ids(&core);
     let order = vec![original[1], original[0]];
 
-    let effects = core.apply(
-        Input::ReorderExternalDevices(order.clone()),
-        Timestamp::from_millis(0),
-    );
+    let input = ReorderExternalDevices::new(order.clone());
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
 
     let [
         Effect::Emit(Topic::ExternalDevices(devices)),
@@ -338,78 +328,53 @@ fn reorder_external_devices_with_the_current_order_is_a_no_op() {
     });
     let order = external_device_ids(&core);
 
-    assert!(
-        core.apply(
-            Input::ReorderExternalDevices(order),
-            Timestamp::from_millis(0),
-        )
-        .is_empty()
-    );
+    let input = ReorderExternalDevices::new(order);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
+    assert!(effects.is_empty());
 }
 
 #[test]
 fn reorder_external_devices_rejects_unknown_missing_and_duplicate_ids() {
     let mut unknown = core_with_two_external_devices();
     let unknown_ids = external_device_ids(&unknown);
-    assert!(
-        unknown
-            .apply(
-                Input::ReorderExternalDevices(vec![unknown_ids[0], ExternalDeviceId(u32::MAX),]),
-                Timestamp::from_millis(0),
-            )
-            .is_empty()
-    );
+    let input = ReorderExternalDevices::new(vec![unknown_ids[0], ExternalDeviceId(u32::MAX)]);
+    let Update { effects, response } = unknown.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Err(InvalidExternalDeviceOrder));
+    assert!(effects.is_empty());
 
     let mut missing = core_with_two_external_devices();
     let missing_ids = external_device_ids(&missing);
-    assert!(
-        missing
-            .apply(
-                Input::ReorderExternalDevices(vec![missing_ids[0]]),
-                Timestamp::from_millis(0),
-            )
-            .is_empty()
-    );
+    let input = ReorderExternalDevices::new(vec![missing_ids[0]]);
+    let Update { effects, response } = missing.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Err(InvalidExternalDeviceOrder));
+    assert!(effects.is_empty());
 
     let mut duplicate = core_with_two_external_devices();
     let duplicate_ids = external_device_ids(&duplicate);
-    assert!(
-        duplicate
-            .apply(
-                Input::ReorderExternalDevices(vec![duplicate_ids[0], duplicate_ids[0]]),
-                Timestamp::from_millis(0),
-            )
-            .is_empty()
-    );
+    let input = ReorderExternalDevices::new(vec![duplicate_ids[0], duplicate_ids[0]]);
+    let Update { effects, response } = duplicate.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Err(InvalidExternalDeviceOrder));
+    assert!(effects.is_empty());
 }
 
 #[test]
 fn edit_external_device_with_an_identical_spec_is_a_no_op() {
     let (mut core, device_id) = core_with_external_device();
 
-    assert!(
-        core.apply(
-            Input::EditExternalDevice {
-                device_id,
-                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-            },
-            Timestamp::from_millis(0),
-        )
-        .is_empty()
-    );
+    let input = EditExternalDevice::new(device_id, ConnectionSpec::tcp("127.0.0.1", 4353));
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
+    assert!(effects.is_empty());
 }
 
 #[test]
 fn edit_external_device_restarts_an_enabled_device_with_the_same_id() {
     let (mut core, device_id) = core_with_external_device();
 
-    let effects = core.apply(
-        Input::EditExternalDevice {
-            device_id,
-            spec: ConnectionSpec::tcp("192.0.2.1", 10110),
-        },
-        Timestamp::from_millis(0),
-    );
+    let input = EditExternalDevice::new(device_id, ConnectionSpec::tcp("192.0.2.1", 10110));
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
 
     let [
         Effect::CloseConnection {
@@ -437,13 +402,15 @@ fn edit_external_device_restarts_an_enabled_device_with_the_same_id() {
 #[test]
 fn edit_external_device_switches_between_transport_types() {
     let (mut tcp_core, tcp_device_id) = core_with_external_device();
-    let tcp_to_bluetooth = tcp_core.apply(
-        Input::EditExternalDevice {
-            device_id: tcp_device_id,
-            spec: ConnectionSpec::bluetooth_spp("00:11:22:33:44:55"),
-        },
-        Timestamp::from_millis(0),
+    let input = EditExternalDevice::new(
+        tcp_device_id,
+        ConnectionSpec::bluetooth_spp("00:11:22:33:44:55"),
     );
+    let Update {
+        effects: tcp_to_bluetooth,
+        response,
+    } = tcp_core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
     let [
         Effect::CloseConnection {
             device_id: tcp_closed_id,
@@ -470,13 +437,13 @@ fn edit_external_device_switches_between_transport_types() {
         }],
     });
     let bluetooth_device_id = external_device_ids(&bluetooth_core)[0];
-    let bluetooth_to_tcp = bluetooth_core.apply(
-        Input::EditExternalDevice {
-            device_id: bluetooth_device_id,
-            spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-        },
-        Timestamp::from_millis(0),
-    );
+    let input =
+        EditExternalDevice::new(bluetooth_device_id, ConnectionSpec::tcp("127.0.0.1", 4353));
+    let Update {
+        effects: bluetooth_to_tcp,
+        response,
+    } = bluetooth_core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
     let [
         Effect::CloseConnection {
             device_id: bluetooth_closed_id,
@@ -518,13 +485,9 @@ fn edit_external_device_updates_a_disabled_device_without_transport_effects() {
     });
     let device_id = external_device_ids(&core)[0];
 
-    let effects = core.apply(
-        Input::EditExternalDevice {
-            device_id,
-            spec: ConnectionSpec::tcp("192.0.2.1", 10110),
-        },
-        Timestamp::from_millis(0),
-    );
+    let input = EditExternalDevice::new(device_id, ConnectionSpec::tcp("192.0.2.1", 10110));
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
 
     let [
         Effect::Emit(Topic::ExternalDevices(devices)),
@@ -543,30 +506,21 @@ fn edit_external_device_updates_a_disabled_device_without_transport_effects() {
 #[test]
 fn edit_external_device_with_an_unknown_id_is_a_no_op() {
     let mut core = Core::new(SettingsSnapshot::default());
+    let unknown = ExternalDeviceId(u32::MAX);
 
-    assert!(
-        core.apply(
-            Input::EditExternalDevice {
-                device_id: ExternalDeviceId(u32::MAX),
-                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-            },
-            Timestamp::from_millis(0),
-        )
-        .is_empty()
-    );
+    let input = EditExternalDevice::new(unknown, ConnectionSpec::tcp("127.0.0.1", 4353));
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Err(UnknownExternalDevice { device_id: unknown }));
+    assert!(effects.is_empty());
 }
 
 #[test]
 fn set_external_device_enabled_disables_an_enabled_device() {
     let (mut core, device_id) = core_with_external_device();
 
-    let effects = core.apply(
-        Input::SetExternalDeviceEnabled {
-            device_id,
-            enabled: false,
-        },
-        Timestamp::from_millis(0),
-    );
+    let input = SetExternalDeviceEnabled::disabled(device_id);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
 
     let [
         Effect::CloseConnection {
@@ -597,13 +551,9 @@ fn set_external_device_enabled_enables_a_disabled_device() {
     });
     let device_id = external_device_ids(&core)[0];
 
-    let effects = core.apply(
-        Input::SetExternalDeviceEnabled {
-            device_id,
-            enabled: true,
-        },
-        Timestamp::from_millis(0),
-    );
+    let input = SetExternalDeviceEnabled::enabled(device_id);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
 
     let [
         Effect::OpenConnection {
@@ -628,30 +578,19 @@ fn set_external_device_enabled_enables_a_disabled_device() {
 fn set_external_device_enabled_with_the_current_state_is_a_no_op() {
     let (mut core, device_id) = core_with_external_device();
 
-    assert!(
-        core.apply(
-            Input::SetExternalDeviceEnabled {
-                device_id,
-                enabled: true,
-            },
-            Timestamp::from_millis(0),
-        )
-        .is_empty()
-    );
+    let input = SetExternalDeviceEnabled::enabled(device_id);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Ok(()));
+    assert!(effects.is_empty());
 }
 
 #[test]
 fn set_external_device_enabled_with_an_unknown_id_is_a_no_op() {
     let mut core = Core::new(SettingsSnapshot::default());
+    let unknown = ExternalDeviceId(u32::MAX);
 
-    assert!(
-        core.apply(
-            Input::SetExternalDeviceEnabled {
-                device_id: ExternalDeviceId(u32::MAX),
-                enabled: true,
-            },
-            Timestamp::from_millis(0),
-        )
-        .is_empty()
-    );
+    let input = SetExternalDeviceEnabled::enabled(unknown);
+    let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
+    assert_eq!(response, Err(UnknownExternalDevice { device_id: unknown }));
+    assert!(effects.is_empty());
 }

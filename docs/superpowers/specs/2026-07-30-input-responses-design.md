@@ -31,8 +31,11 @@ This design:
 - preserves topics as the only shared-state update path,
 - adapts existing asynchronous and callback-based producers to the new
   completion contract,
-- exposes natural mutation results through concrete Tauri commands and
-  frontend client methods.
+- exposes natural mutation results through concrete Tauri commands.
+
+This branch ends at those concrete Tauri commands. External-device frontend
+client methods and corresponding fake-client behavior remain deferred until
+frontend code needs them.
 
 This design does not:
 
@@ -246,8 +249,11 @@ arbitrary core input:
 async fn set_locale(
     locale: Locale,
     handle: State<'_, DriverHandle>,
-) -> Result<(), DriverStopped> {
-    handle.send(SetLocale { locale }).await
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(SetLocale { locale })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
 }
 ```
 
@@ -256,11 +262,6 @@ domain errors to rejected invocations. A command-specific serializable host
 error distinguishes a core rejection from `DriverStopped`, flattening the
 runtime's outer result and the input's domain result at the IPC boundary.
 Adding a device returns its allocated ID.
-
-The frontend client retains concrete methods such as `setLocale()`,
-`addExternalDevice()`, and `deleteExternalDevice()`. Their promises control
-pending and error presentation. Shared stores continue applying topics only.
-The fake client mirrors both the natural command results and topic publication.
 
 ## Recording and replay
 
@@ -298,12 +299,5 @@ Host tests cover:
 - TCP, SPP, and GNSS producers preserving input order while awaiting
   completion,
 - real Tauri IPC deserialization for concrete commands,
-- typed domain rejections reaching the invoking frontend,
-- generated device IDs reaching the invoking frontend.
-
-Frontend tests cover:
-
-- concrete client method results and rejections,
-- fake-client parity,
-- stores changing only in response to topics,
-- a successful response not being treated as a second state update.
+- typed domain rejections serialized as rejected invocations,
+- generated device IDs serialized in successful invocation responses.

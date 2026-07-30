@@ -113,7 +113,7 @@ class SessionService : Service() {
         }
 
         val (_, attempt) = sppAttemptOwner.activate {
-            SppSource(this, it.address, it.events)
+            SppSource(this, it.address, it.serviceUuid, it.events)
         } ?: run {
             request.onStarted(IllegalStateException("SPP attempt reservation was lost"))
             return finishFailedSppStart()

@@ -1,4 +1,5 @@
-use crate::topic::LatLon;
+use updraft_geo::LatLon;
+use updraft_units::{Angle, EllipsoidAltitude, Speed};
 
 /// A position report from the device's own GNSS receiver.
 ///
@@ -8,7 +9,7 @@ use crate::topic::LatLon;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Fix {
     pub position: LatLon,
-    pub altitude_ellipsoid_meters: Option<f64>,
-    pub track_degrees: Option<f64>,
-    pub ground_speed_meters_per_second: Option<f64>,
+    pub altitude_ellipsoid: Option<EllipsoidAltitude>,
+    pub track: Option<Angle>,
+    pub ground_speed: Option<Speed>,
 }

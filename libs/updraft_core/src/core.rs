@@ -6,10 +6,13 @@ use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
     InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Start, Tick, Update,
 };
+use crate::ownship::OwnshipState;
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
-use crate::topic::{Instruments, LatLon, Topic};
+use crate::topic::Topic;
+use updraft_egm96::ellipsoidal_to_msl;
 use updraft_nmea::{Message, RmcStatus};
+use updraft_units::MslAltitude;
 
 /// The deterministic application core.
 ///
@@ -20,7 +23,7 @@ use updraft_nmea::{Message, RmcStatus};
 pub struct Core {
     settings: Settings,
     external_devices: ExternalDevices,
-    instruments: Instruments,
+    ownship: OwnshipState,
 }
 
 impl Core {
@@ -32,7 +35,7 @@ impl Core {
         Self {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
-            instruments: Instruments::default(),
+            ownship: OwnshipState::default(),
         }
     }
 
@@ -48,7 +51,7 @@ impl Core {
     /// subscribed and holds no state yet.
     pub fn topics(&self) -> Vec<Topic> {
         vec![
-            self.instruments.as_topic(),
+            self.ownship.published().as_topic(),
             self.settings.as_topic(),
             self.external_devices.as_topic(),
         ]
@@ -75,16 +78,16 @@ impl Core {
             messages
         };
 
-        let before = self.instruments;
+        let before = self.ownship;
         for message in messages {
-            self.handle_message(message);
+            self.handle_message(device_id, message);
         }
 
-        if self.instruments == before {
+        if self.ownship == before {
             return Vec::new();
         }
 
-        vec![Effect::emit(self.instruments.as_topic())]
+        vec![Effect::emit(self.ownship.published().as_topic())]
     }
 
     fn settings_snapshot(&self) -> SettingsSnapshot {
@@ -95,46 +98,53 @@ impl Core {
     }
 
     fn apply_fix(&mut self, fix: Fix) -> Vec<Effect> {
-        let before = self.instruments;
+        let before = self.ownship;
 
-        self.instruments.position = Some(fix.position);
-        if let Some(ellipsoidal) = fix.altitude_ellipsoid_meters {
-            self.instruments.altitude_msl_meters = Some(msl_meters(fix.position, ellipsoidal));
+        self.ownship.position = Some(fix.position);
+        if let Some(altitude) = fix.altitude_ellipsoid {
+            self.ownship.altitude_msl = Some(ellipsoidal_to_msl(fix.position, altitude));
         }
-        if let Some(track) = fix.track_degrees {
-            self.instruments.track_degrees = Some(track);
+        if let Some(track) = fix.track {
+            self.ownship.track = Some(track);
         }
-        if let Some(speed) = fix.ground_speed_meters_per_second {
-            self.instruments.ground_speed_meters_per_second = Some(speed);
+        if let Some(speed) = fix.ground_speed {
+            self.ownship.ground_speed = Some(speed);
         }
 
-        if self.instruments == before {
+        if self.ownship == before {
             return Vec::new();
         }
 
-        vec![Effect::emit(self.instruments.as_topic())]
+        vec![Effect::emit(self.ownship.published().as_topic())]
     }
 
-    fn handle_message(&mut self, message: Message) {
+    fn handle_message(&mut self, device_id: ExternalDeviceId, message: Message) {
         match message {
             Message::Rmc(rmc) if rmc.status == RmcStatus::Active => {
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    return;
+                };
                 if let Some(position) = rmc.position {
-                    self.instruments.position = Some(LatLon {
-                        latitude_degrees: position.latitude().as_degrees(),
-                        longitude_degrees: position.longitude().as_degrees(),
-                    });
+                    device.ownship.position = Some(position);
+                    self.ownship.position = Some(position);
                 }
                 if let Some(course) = rmc.course_over_ground {
-                    self.instruments.track_degrees = Some(course.as_degrees());
+                    device.ownship.track = Some(course);
+                    self.ownship.track = Some(course);
                 }
                 if let Some(speed) = rmc.speed_over_ground {
-                    self.instruments.ground_speed_meters_per_second =
-                        Some(speed.as_meters_per_second());
+                    device.ownship.ground_speed = Some(speed);
+                    self.ownship.ground_speed = Some(speed);
                 }
             }
             Message::Gga(gga) => {
                 if let Some(altitude) = gga.altitude {
-                    self.instruments.altitude_msl_meters = Some(altitude.as_meters());
+                    let Some(device) = self.external_devices.get_mut(device_id) else {
+                        return;
+                    };
+                    let altitude = MslAltitude::new(altitude);
+                    device.ownship.altitude_msl = Some(altitude);
+                    self.ownship.altitude_msl = Some(altitude);
                 }
             }
             _ => {}
@@ -316,33 +326,26 @@ impl Input for SetExternalDeviceEnabled {
     }
 }
 
-/// GNSS receivers report height above the WGS84 ellipsoid. The geoid differs
-/// from it by up to about 107 m, far more than any altimetry the app will do
-/// can tolerate.
-fn msl_meters(position: LatLon, ellipsoidal_meters: f64) -> f64 {
-    let at =
-        updraft_geo::LatLon::from_degrees(position.latitude_degrees, position.longitude_degrees);
-    let ellipsoidal = updraft_units::EllipsoidAltitude::new(updraft_units::Length::from_meters(
-        ellipsoidal_meters,
-    ));
-
-    updraft_egm96::ellipsoidal_to_msl(at, ellipsoidal)
-        .into_inner()
-        .as_meters()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::connection::{ConnectionSpec, ConnectionState};
     use crate::external_device::ExternalDeviceConfig;
     use crate::settings::{Locale, SettingsSnapshot};
+    use crate::topic::{Instruments, LatLon as TopicLatLon};
     use approx::assert_abs_diff_eq;
     use claims::{assert_some, assert_some_eq};
     use std::assert_matches;
     use tracing_test::traced_test;
+    use updraft_geo::LatLon;
+    use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, Speed};
 
     const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
+    const RMC_SECOND_DEVICE: &[u8] =
+        b"$GPRMC,120000.00,A,5100.00,N,00700.00,E,40.0,180.0,010126,,,A\r\n";
+    const GGA: &[u8] = b"$GPGGA,120000.00,5049.38,N,00611.16,E,1,08,0.9,200.0,M,0.0,M,,\r\n";
+    const GGA_SECOND_DEVICE: &[u8] =
+        b"$GPGGA,120000.00,5100.00,N,00700.00,E,1,08,0.9,300.0,M,0.0,M,,\r\n";
     const TRACE_TIMESTAMP_FILTER: (&str, &str) =
         (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", "[TIME]");
 
@@ -377,13 +380,10 @@ mod tests {
 
     fn fix(latitude_degrees: f64, longitude_degrees: f64) -> Fix {
         Fix {
-            position: LatLon {
-                latitude_degrees,
-                longitude_degrees,
-            },
-            altitude_ellipsoid_meters: Some(247.0),
-            track_degrees: Some(90.0),
-            ground_speed_meters_per_second: Some(30.0),
+            position: LatLon::from_degrees(latitude_degrees, longitude_degrees),
+            altitude_ellipsoid: Some(EllipsoidAltitude::new(Length::from_meters(247.0))),
+            track: Some(Angle::from_degrees(90.0)),
+            ground_speed: Some(Speed::from_meters_per_second(30.0)),
         }
     }
 
@@ -592,6 +592,79 @@ mod tests {
         }
 
         assert_eq!(emissions, 1, "only the first sentence changed any value");
+    }
+
+    #[test]
+    fn external_devices_keep_their_ownship_values() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings::default(),
+            external_devices: vec![
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
+                device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
+            ],
+        });
+        let first_device_id = device_id(&core, 0);
+        let second_device_id = device_id(&core, 1);
+
+        core.apply(Bytes::new(first_device_id, RMC), at(0));
+        core.apply(Bytes::new(first_device_id, GGA), at(1));
+        core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(2));
+        core.apply(Bytes::new(second_device_id, GGA_SECOND_DEVICE), at(3));
+
+        let first = core
+            .external_devices
+            .iter()
+            .next()
+            .expect("the first configured external device");
+        let first_position = assert_some!(first.ownship.position);
+        assert_abs_diff_eq!(
+            first_position.latitude().as_degrees(),
+            50.823,
+            epsilon = 1e-3
+        );
+        assert_abs_diff_eq!(
+            first_position.longitude().as_degrees(),
+            6.186,
+            epsilon = 1e-3
+        );
+        assert_some_eq!(
+            first.ownship.altitude_msl,
+            MslAltitude::new(Length::from_meters(200.0))
+        );
+
+        let second = core
+            .external_devices
+            .iter()
+            .nth(1)
+            .expect("the second configured external device");
+        let second_position = assert_some!(second.ownship.position);
+        assert_abs_diff_eq!(
+            second_position.latitude().as_degrees(),
+            51.0,
+            epsilon = 1e-3
+        );
+        assert_abs_diff_eq!(
+            second_position.longitude().as_degrees(),
+            7.0,
+            epsilon = 1e-3
+        );
+        assert_some_eq!(
+            second.ownship.altitude_msl,
+            MslAltitude::new(Length::from_meters(300.0))
+        );
+
+        let topics = core.topics();
+        let [Topic::Instruments(instruments), ..] = topics.as_slice() else {
+            unreachable!()
+        };
+        assert_some_eq!(
+            instruments.position,
+            TopicLatLon {
+                latitude_degrees: 51.0,
+                longitude_degrees: 7.0,
+            }
+        );
+        assert_some_eq!(instruments.altitude_msl_meters, 300.0);
     }
 
     #[test]
@@ -874,6 +947,24 @@ mod tests {
         let input = Bytes::new(device_id, &RMC[24..]);
         assert!(core.apply(input, at(2)).effects.is_empty());
         assert_eq!(core.topics()[0], Topic::Instruments(Instruments::default()));
+    }
+
+    #[test]
+    fn edit_external_device_resets_ownship_state() {
+        let (mut core, device_id) = core_with_external_device();
+
+        core.apply(Bytes::new(device_id, RMC), at(0));
+        core.apply(Bytes::new(device_id, GGA), at(1));
+
+        let input = EditExternalDevice::new(device_id, ConnectionSpec::tcp("192.0.2.1", 10110));
+        core.apply(input, at(2));
+
+        let device = core
+            .external_devices
+            .iter()
+            .find(|device| device.device_id == device_id)
+            .expect("the edited external device");
+        assert_eq!(device.ownship, OwnshipState::default());
     }
 
     #[test]

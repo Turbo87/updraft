@@ -1,8 +1,10 @@
 use crate::driver::DriverHandle;
 use tauri::ipc::{Channel, InvokeResponseBody};
-use tauri_plugin_updraft::Fix;
+use tauri_plugin_updraft::Fix as ReportedFix;
 use tokio::sync::mpsc;
-use updraft_core::{InternalGps, LatLon};
+use updraft_core::{Fix as CoreFix, InternalGps};
+use updraft_geo::LatLon;
+use updraft_units::{Angle, EllipsoidAltitude, Length, Speed};
 
 /// Builds the channel a platform session reports its GNSS fixes on.
 ///
@@ -22,7 +24,7 @@ pub fn fix_channel(handle: DriverHandle) -> Channel {
     });
 
     Channel::new(move |body: InvokeResponseBody| {
-        match body.deserialize::<Fix>() {
+        match body.deserialize::<ReportedFix>() {
             Ok(reported) => {
                 let _ = sender.send(fix(reported));
             }
@@ -34,15 +36,17 @@ pub fn fix_channel(handle: DriverHandle) -> Channel {
     })
 }
 
-fn fix(reported: Fix) -> updraft_core::Fix {
-    updraft_core::Fix {
-        position: LatLon {
-            latitude_degrees: reported.latitude_degrees,
-            longitude_degrees: reported.longitude_degrees,
-        },
-        altitude_ellipsoid_meters: reported.altitude_ellipsoid_meters,
-        track_degrees: reported.track_degrees,
-        ground_speed_meters_per_second: reported.ground_speed_meters_per_second,
+fn fix(reported: ReportedFix) -> CoreFix {
+    CoreFix {
+        position: LatLon::from_degrees(reported.latitude_degrees, reported.longitude_degrees),
+        altitude_ellipsoid: reported
+            .altitude_ellipsoid_meters
+            .map(Length::from_meters)
+            .map(EllipsoidAltitude::new),
+        track: reported.track_degrees.map(Angle::from_degrees),
+        ground_speed: reported
+            .ground_speed_meters_per_second
+            .map(Speed::from_meters_per_second),
     }
 }
 

@@ -1,9 +1,11 @@
 use updraft_core::{
     AddExternalDevice, Bytes, ConnectionSpec, Core, DeleteExternalDevice, EditExternalDevice,
     Effect, ExternalDeviceConfig, ExternalDeviceId, Fix, InternalGps, InvalidExternalDeviceOrder,
-    LatLon, ReorderExternalDevices, SetExternalDeviceEnabled, SettingsSnapshot, Start, Timestamp,
-    Topic, UnknownExternalDevice, Update,
+    ReorderExternalDevices, SetExternalDeviceEnabled, SettingsSnapshot, Start, Timestamp, Topic,
+    UnknownExternalDevice, Update,
 };
+use updraft_geo::LatLon;
+use updraft_units::{Angle, Speed};
 
 const FIXTURE: &str = include_str!("../../../testdata/nmea/basic.nmea");
 /// Sentences the core must not act on: a verbatim repeat of the last line
@@ -147,14 +149,11 @@ fn gnss_fix_and_equivalent_sentence_agree() {
 
     let mut from_fix = Core::new(SettingsSnapshot::default());
     let fix = Fix {
-        position: LatLon {
-            latitude_degrees: 50.823,
-            longitude_degrees: 6.186,
-        },
+        position: LatLon::from_degrees(50.823, 6.186),
         // RMC carries no altitude, so neither may this fix.
-        altitude_ellipsoid_meters: None,
-        track_degrees: Some(270.0),
-        ground_speed_meters_per_second: Some(45.0 * 1852.0 / 3600.0),
+        altitude_ellipsoid: None,
+        track: Some(Angle::from_degrees(270.0)),
+        ground_speed: Some(Speed::from_meters_per_second(45.0 * 1852.0 / 3600.0)),
     };
     let input = InternalGps::new(fix);
     let equivalent = from_fix.apply(input, Timestamp::from_millis(0)).effects;

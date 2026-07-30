@@ -4912,6 +4912,8 @@ dependencies = [
  "tracing-subscriber",
  "tracing-test",
  "updraft_core",
+ "updraft_geo",
+ "updraft_units",
  "uuid",
 ]
 

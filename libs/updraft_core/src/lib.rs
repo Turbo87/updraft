@@ -13,6 +13,7 @@ mod effect;
 mod external_device;
 mod fix;
 mod input;
+mod ownship;
 mod settings;
 mod time;
 mod topic;

@@ -84,6 +84,7 @@ mod tests {
         ConnectionSpec, ExternalDeviceConfig, Locale, STANDARD_SPP_SERVICE_UUID, Settings,
         SettingsSnapshot,
     };
+    use uuid::uuid;
 
     #[test]
     fn missing_file_loads_default_settings() {
@@ -137,11 +138,32 @@ mod tests {
                     enabled: true,
                     spec: ConnectionSpec::BluetoothSpp {
                         address: "00:11:22:33:44:55".to_owned(),
-                        service_uuid: STANDARD_SPP_SERVICE_UUID.to_owned(),
+                        service_uuid: STANDARD_SPP_SERVICE_UUID,
                     },
                 }],
             }
         );
+    }
+
+    #[test]
+    #[traced_test]
+    fn bluetooth_with_invalid_service_uuid_warns_and_loads_defaults() {
+        let directory = assert_ok!(tempdir());
+        assert_ok!(std::fs::write(
+            directory.path().join("settings.json"),
+            concat!(
+                "{\"externalDevices\":[{",
+                "\"enabled\":true,",
+                "\"type\":\"bluetooth\",",
+                "\"address\":\"00:11:22:33:44:55\",",
+                "\"serviceUuid\":\"invalid\"",
+                "}]}"
+            ),
+        ));
+        let file = SettingsFile::new(directory.path());
+
+        assert_eq!(file.load(), SettingsSnapshot::default());
+        assert!(logs_contain("Could not load settings"));
     }
 
     #[test]
@@ -186,7 +208,7 @@ mod tests {
                     enabled: true,
                     spec: ConnectionSpec::BluetoothSpp {
                         address: "00:11:22:33:44:66".to_owned(),
-                        service_uuid: "e56617bf-f548-4f7c-9cef-4a26eec19b04".to_owned(),
+                        service_uuid: uuid!("e56617bf-f548-4f7c-9cef-4a26eec19b04"),
                     },
                 },
             ],

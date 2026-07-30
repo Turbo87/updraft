@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use uuid::{Uuid, uuid};
 
-pub const STANDARD_SPP_SERVICE_UUID: &str = "00001101-0000-1000-8000-00805F9B34FB";
+pub const STANDARD_SPP_SERVICE_UUID: Uuid = uuid!("00001101-0000-1000-8000-00805F9B34FB");
 
 /// Identifies one link to an external device.
 ///
@@ -30,16 +31,16 @@ pub enum ConnectionSpec {
             default = "default_spp_service_uuid",
             skip_serializing_if = "is_standard_spp_service_uuid"
         )]
-        service_uuid: String,
+        service_uuid: Uuid,
     },
 }
 
-fn default_spp_service_uuid() -> String {
-    STANDARD_SPP_SERVICE_UUID.to_owned()
+fn default_spp_service_uuid() -> Uuid {
+    STANDARD_SPP_SERVICE_UUID
 }
 
-fn is_standard_spp_service_uuid(service_uuid: &str) -> bool {
-    service_uuid == STANDARD_SPP_SERVICE_UUID
+fn is_standard_spp_service_uuid(service_uuid: &Uuid) -> bool {
+    *service_uuid == STANDARD_SPP_SERVICE_UUID
 }
 
 impl ConnectionSpec {

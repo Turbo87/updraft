@@ -3936,6 +3936,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.19",
+ "uuid",
 ]
 
 [[package]]
@@ -4544,6 +4545,7 @@ checksum = "756050066659291d47a554a9f558125db17428b073c5ffce1daf5dcb0f7231d8"
 dependencies = [
  "thiserror 2.0.19",
  "ts-rs-macros",
+ "uuid",
 ]
 
 [[package]]
@@ -4691,6 +4693,7 @@ dependencies = [
  "updraft_geo",
  "updraft_nmea",
  "updraft_units",
+ "uuid",
 ]
 
 [[package]]
@@ -4770,6 +4773,7 @@ dependencies = [
  "tracing-subscriber",
  "tracing-test",
  "updraft_core",
+ "uuid",
 ]
 
 [[package]]

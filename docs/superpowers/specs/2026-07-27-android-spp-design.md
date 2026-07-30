@@ -6,7 +6,9 @@ This design delivers the Bluetooth Serial Port Profile transport portion of
 milestone 3 from the [application architecture](2026-07-25-app-architecture-design.md).
 It builds on the foreground service, wake lock, permission flow, internal GPS,
 and activity-relaunch handling delivered by the
-[Android platform milestone](../plans/2026-07-25-android-platform.md).
+[Android platform milestone](2026-07-25-app-architecture-design.md#mobile-plugin).
+The [Android platform verification](../verification/2026-07-26-android-platform.md)
+records the lifecycle evidence.
 
 The first hardware target is
 [`Turbo87/esp32-bt-nmea-simulator`](https://github.com/Turbo87/esp32-bt-nmea-simulator/tree/83fb543aae7aeb153dc3829fa22b408aae295660)

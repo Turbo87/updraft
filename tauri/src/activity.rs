@@ -76,8 +76,8 @@ const OFFER_INTERVAL: Duration = Duration::from_millis(200);
 /// and the burst is over in milliseconds. Ten offers is an order of magnitude
 /// past that. Waiting longer buys nothing a pilot would notice, and it keeps
 /// offers pending across a relaunch, where the only thing holding them back
-/// from wry's abort is [`DETACHED`]. The measurements and the hardware they
-/// were taken on are in `docs/superpowers/plans/2026-07-25-android-platform.md`.
+/// from wry's abort is [`DETACHED`]. The measurements are in
+/// `docs/superpowers/verification/2026-07-26-android-platform.md`.
 ///
 /// Giving up is not a dead end. The offers already queued in tao's channel stay
 /// there, and the loop drains all of them at its next wake from any source, so

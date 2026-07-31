@@ -185,10 +185,19 @@ The shell feeds a tick input at 10 Hz. This is what lets a clockless core expres
 
 ## The shell
 
-Two Tauri-level fixes belong to the shell rather than the plugin, both root-caused by emulator spikes and recorded in the milestone 2 plan:
+Two Tauri-level fixes belong to the shell rather than the plugin. Emulator
+spikes identified both causes. The
+[Android platform verification](../verification/2026-07-26-android-platform.md)
+records the measured results.
 
 - **`prevent_exit()`.** Stock Tauri exits the process when the last window closes, because tao's Android event loop calls `std::process::exit`. When the activity is destroyed the process dies about two seconds after `onTaskRemoved` and takes the foreground service with it. Handling `RunEvent::ExitRequested` with `api.prevent_exit()` is not optional for an app that must keep recording after the user leaves it.
-- **Webview re-creation on relaunch.** After the activity is destroyed while the service holds the process alive, relaunching shows a blank webview and JS never runs. `tauri-runtime-wry` drops the mobile `Resumed` event when no windows exist, so the app never learns about the relaunch. Reported upstream as [tauri#15671](https://github.com/tauri-apps/tauri/issues/15671) with a fix in [tauri#15678](https://github.com/tauri-apps/tauri/pull/15678), both unanswered. Milestone 2 tries a public-API path first, watching the activity lifecycle from Kotlin and rebuilding the window through `run_on_main_thread`, and falls back to carrying the patch through `[patch.crates-io]`.
+- **Webview re-creation on relaunch.** After activity destruction, the service
+  keeps the process alive but no webview remains. `tauri-runtime-wry` drops the
+  mobile `Resumed` event when no window exists. The shell watches the Android
+  activity lifecycle and rebuilds the window through `run_on_main_thread`.
+  It repeats the offer because tao can lose the first event-loop wake. The
+  upstream reports are [tauri#15671](https://github.com/tauri-apps/tauri/issues/15671)
+  and [tauri#15678](https://github.com/tauri-apps/tauri/pull/15678).
 
 The `tauri` crate holds:
 
@@ -214,6 +223,14 @@ The control plane is `run_mobile_plugin` with JSON. The data plane is a `tauri::
 The MVP covers Bluetooth Classic SPP only. Modern FLARM devices do also offer BLE, and that follows later.
 
 Verification splits three ways. The NMEA data path is fully exercisable on macOS through the TCP transport, which is why that transport exists. The Android emulator covers foreground service behaviour, permissions and lifecycle, interactively rather than in CI, where emulator startup is too slow to be worth it. Bluetooth SPP against a real instrument needs a physical device and stays a manual check.
+
+Two Android lifecycle limits remain:
+
+- Production code does not call `stop_session()`. The location subscription
+  and partial wake lock remain active until the process stops.
+- Tauri 2.11.5 retains the first activity and its activity result launchers.
+  Updraft requests its current permissions before activity destruction. Future
+  permission prompts after a relaunch must not use the stale activity.
 
 ## The boundary
 

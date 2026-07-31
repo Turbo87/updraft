@@ -10,12 +10,13 @@ use tauri_plugin_updraft::SppEvent;
 use tauri_plugin_updraft::UpdraftMobileExt;
 use tokio::sync::{mpsc, oneshot};
 use updraft_core::{Bytes, ConnectionChanged, ConnectionState, ExternalDeviceId};
+use uuid::Uuid;
 
 trait SppPlatform: Send + Sync + 'static {
     fn start_attempt(
         &self,
         address: &str,
-        service_uuid: &str,
+        service_uuid: Uuid,
         events: Channel,
     ) -> Result<(), String>;
     fn cancel_attempt(&self) -> Result<(), String>;
@@ -29,7 +30,7 @@ impl<R: Runtime> SppPlatform for AndroidSppPlatform<R> {
     fn start_attempt(
         &self,
         address: &str,
-        service_uuid: &str,
+        service_uuid: Uuid,
         events: Channel,
     ) -> Result<(), String> {
         self.0
@@ -50,7 +51,7 @@ impl<R: Runtime> SppPlatform for AndroidSppPlatform<R> {
 pub fn run<R: Runtime>(
     device_id: ExternalDeviceId,
     address: String,
-    service_uuid: String,
+    service_uuid: Uuid,
     handle: DriverHandle,
     app: AppHandle<R>,
 ) -> StopFn {
@@ -76,7 +77,7 @@ enum AttemptResult {
 async fn run_attempt(
     device_id: ExternalDeviceId,
     address: &str,
-    service_uuid: &str,
+    service_uuid: Uuid,
     handle: &DriverHandle,
     platform: &dyn SppPlatform,
     events: &Channel,
@@ -237,7 +238,7 @@ fn cancel_attempt(device_id: ExternalDeviceId, address: &str, platform: &dyn Spp
 async fn maintain(
     device_id: ExternalDeviceId,
     address: String,
-    service_uuid: String,
+    service_uuid: Uuid,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
     stop_receiver: oneshot::Receiver<()>,
@@ -265,7 +266,7 @@ async fn maintain(
 async fn maintain_on_channel(
     device_id: ExternalDeviceId,
     address: String,
-    service_uuid: String,
+    service_uuid: Uuid,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
     events: Channel,
@@ -278,7 +279,7 @@ async fn maintain_on_channel(
         match run_attempt(
             device_id,
             &address,
-            &service_uuid,
+            service_uuid,
             &handle,
             platform.as_ref(),
             &events,
@@ -309,7 +310,7 @@ struct Maintained {
 fn spawn_maintained(
     device_id: ExternalDeviceId,
     address: String,
-    service_uuid: String,
+    service_uuid: Uuid,
     handle: DriverHandle,
     platform: Arc<dyn SppPlatform>,
 ) -> Maintained {
@@ -350,8 +351,10 @@ mod tests {
         ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
         SettingsSnapshot, Topic,
     };
+    use uuid::{Uuid, uuid};
 
     const ADDRESS: &str = "00:11:22:33:44:55";
+    const CUSTOM_UUID: Uuid = uuid!("e56617bf-f548-4f7c-9cef-4a26eec19b04");
     const DEVICE_ID: ExternalDeviceId = ExternalDeviceId(1);
     const PATIENCE: Duration = Duration::from_secs(5);
     const RMC_EVENT: &str = r#"{"type":"bytes","data":"JEdQUk1DLDEyMDAwMC4wMCxBLDUwNDkuMzgsTiwwMDYxMS4xNixFLDQ1LjAsMjcwLjAsMDEwMTI2LCwsQQ0K"}"#;
@@ -364,7 +367,7 @@ mod tests {
         cancellations: AtomicUsize,
         channel_ids: Mutex<Vec<u32>>,
         channels: Mutex<Vec<Channel>>,
-        service_uuids: Mutex<Vec<String>>,
+        service_uuids: Mutex<Vec<Uuid>>,
     }
 
     impl FakePlatform {
@@ -413,7 +416,7 @@ mod tests {
             self.channel_ids.lock().expect("channel IDs lock").clone()
         }
 
-        fn service_uuids(&self) -> Vec<String> {
+        fn service_uuids(&self) -> Vec<Uuid> {
             self.service_uuids
                 .lock()
                 .expect("service UUIDs lock")
@@ -438,14 +441,14 @@ mod tests {
         fn start_attempt(
             &self,
             address: &str,
-            service_uuid: &str,
+            service_uuid: Uuid,
             events: Channel,
         ) -> Result<(), String> {
             assert_eq!(address, ADDRESS);
             self.service_uuids
                 .lock()
                 .expect("service UUIDs lock")
-                .push(service_uuid.to_owned());
+                .push(service_uuid);
             self.attempts.fetch_add(1, Ordering::SeqCst);
             self.channel_ids
                 .lock()
@@ -624,7 +627,6 @@ mod tests {
 
     #[tokio::test]
     async fn attempt_passes_the_service_uuid_to_the_platform() {
-        const CUSTOM_UUID: &str = "e56617bf-f548-4f7c-9cef-4a26eec19b04";
         let platform = FakePlatform::with_events(vec![r#"{"type":"disconnected"}"#]);
         let (events, mut receiver) = event_stream();
         let (_stop_sender, stop_receiver) = oneshot::channel();
@@ -642,7 +644,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(platform.service_uuids(), vec![CUSTOM_UUID.to_owned()]);
+        assert_eq!(platform.service_uuids(), vec![CUSTOM_UUID]);
     }
 
     #[tokio::test]
@@ -735,7 +737,7 @@ mod tests {
         let task = tokio::spawn(maintain(
             DEVICE_ID,
             ADDRESS.to_owned(),
-            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
             driver(),
             platform.clone(),
             stop_receiver,
@@ -760,10 +762,7 @@ mod tests {
         assert_eq!(platform.attempts(), 3);
         let channel_ids = platform.channel_ids();
         assert!(channel_ids.windows(2).all(|ids| ids[0] == ids[1]));
-        assert_eq!(
-            platform.service_uuids(),
-            vec![STANDARD_SPP_SERVICE_UUID.to_owned(); 3]
-        );
+        assert_eq!(platform.service_uuids(), vec![STANDARD_SPP_SERVICE_UUID; 3]);
 
         task.abort();
     }
@@ -841,7 +840,7 @@ mod tests {
         let task = tokio::spawn(maintain(
             DEVICE_ID,
             ADDRESS.to_owned(),
-            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
             driver(),
             platform.clone(),
             stop_receiver,
@@ -886,7 +885,7 @@ mod tests {
             maintain_on_channel(
                 DEVICE_ID,
                 ADDRESS.to_owned(),
-                STANDARD_SPP_SERVICE_UUID.to_owned(),
+                STANDARD_SPP_SERVICE_UUID,
                 driver(),
                 platform.clone(),
                 events,
@@ -909,7 +908,7 @@ mod tests {
         let maintained = spawn_maintained(
             DEVICE_ID,
             ADDRESS.to_owned(),
-            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
             driver(),
             platform.clone(),
         );
@@ -930,7 +929,7 @@ mod tests {
         let maintained = spawn_maintained(
             DEVICE_ID,
             ADDRESS.to_owned(),
-            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
             driver(),
             platform.clone(),
         );
@@ -970,7 +969,7 @@ mod tests {
             let maintained = spawn_maintained(
                 DEVICE_ID,
                 ADDRESS.to_owned(),
-                STANDARD_SPP_SERVICE_UUID.to_owned(),
+                STANDARD_SPP_SERVICE_UUID,
                 driver.handle.clone(),
                 platform.clone(),
             );
@@ -998,7 +997,7 @@ mod tests {
         let maintained = spawn_maintained(
             DEVICE_ID,
             ADDRESS.to_owned(),
-            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
             driver(),
             platform.clone(),
         );
@@ -1028,7 +1027,7 @@ mod tests {
         let maintained = spawn_maintained(
             DEVICE_ID,
             ADDRESS.to_owned(),
-            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
             driver(),
             platform.clone(),
         );
@@ -1053,7 +1052,7 @@ mod tests {
         let maintained = spawn_maintained(
             DEVICE_ID,
             ADDRESS.to_owned(),
-            STANDARD_SPP_SERVICE_UUID.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
             driver(),
             platform.clone(),
         );

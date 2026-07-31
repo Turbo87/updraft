@@ -4,6 +4,7 @@ use tauri::{
     ipc::Channel,
     plugin::{PluginApi, PluginHandle},
 };
+use uuid::Uuid;
 
 pub fn init<R: Runtime, C: DeserializeOwned>(
     _app: &AppHandle<R>,
@@ -22,7 +23,7 @@ struct StartSessionArgs {
 #[serde(rename_all = "camelCase")]
 struct StartSppAttemptArgs<'a> {
     address: &'a str,
-    service_uuid: &'a str,
+    service_uuid: Uuid,
     events: Channel,
 }
 
@@ -52,7 +53,7 @@ impl<R: Runtime> UpdraftMobile<R> {
     pub fn start_spp_attempt(
         &self,
         address: &str,
-        service_uuid: &str,
+        service_uuid: Uuid,
         events: Channel,
     ) -> crate::Result<()> {
         let args = StartSppAttemptArgs {

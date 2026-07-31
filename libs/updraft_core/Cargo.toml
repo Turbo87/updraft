@@ -11,11 +11,12 @@ workspace = true
 serde = { version = "=1.0.229", features = ["derive"] }
 thiserror = "=2.0.19"
 tracing = "=0.1.44"
-ts-rs = { version = "=12.0.1", optional = true }
+ts-rs = { version = "=12.0.1", features = ["uuid-impl"], optional = true }
 updraft_egm96 = { path = "../updraft_egm96" }
 updraft_geo = { path = "../updraft_geo" }
 updraft_nmea = { path = "../updraft_nmea" }
 updraft_units = { path = "../updraft_units" }
+uuid = { version = "=1.24.0", features = ["serde"] }
 
 [features]
 ts = ["dep:ts-rs"]

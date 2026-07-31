@@ -1,5 +1,6 @@
 use serde::de::DeserializeOwned;
 use tauri::{AppHandle, Runtime, ipc::Channel, plugin::PluginApi};
+use uuid::Uuid;
 
 pub fn init<R: Runtime, C: DeserializeOwned>(
     app: &AppHandle<R>,
@@ -23,7 +24,7 @@ impl<R: Runtime> UpdraftMobile<R> {
     pub fn start_spp_attempt(
         &self,
         _address: &str,
-        _service_uuid: &str,
+        _service_uuid: Uuid,
         _events: Channel,
     ) -> crate::Result<()> {
         Ok(())

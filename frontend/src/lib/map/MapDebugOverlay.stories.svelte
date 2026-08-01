@@ -1,6 +1,7 @@
 <script module lang="ts">
   import type { Map } from 'maplibre-gl';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
@@ -12,6 +13,20 @@
     trackDegrees: 45,
     groundSpeedMetersPerSecond: 30,
   } satisfies Instruments;
+
+  const metricUnits = {
+    altitude: 'm',
+    distance: 'km',
+    speed: 'km/h',
+    verticalSpeed: 'm/s',
+  } satisfies UnitSettings;
+
+  const aviationUnits = {
+    altitude: 'ft',
+    distance: 'nm',
+    speed: 'kt',
+    verticalSpeed: 'ft/min',
+  } satisfies UnitSettings;
 
   const map = {
     getZoom: () => 11.25,
@@ -27,10 +42,17 @@
   });
 </script>
 
-<Story name="Hidden" args={{ map, instruments }} />
+<Story name="Hidden" args={{ map, instruments, units: metricUnits }} />
 <Story
-  name="Visible"
-  args={{ map, instruments }}
+  name="Metric"
+  args={{ map, instruments, units: metricUnits }}
+  play={async ({ userEvent }) => {
+    await userEvent.keyboard('d');
+  }}
+/>
+<Story
+  name="Aviation"
+  args={{ map, instruments, units: aviationUnits }}
   play={async ({ userEvent }) => {
     await userEvent.keyboard('d');
   }}

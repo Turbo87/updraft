@@ -56,7 +56,12 @@
 </svelte:head>
 
 <div class="app">
-  <FlightView instruments={instruments.current} {traffic} {testMode} />
+  <FlightView
+    instruments={instruments.current}
+    {traffic}
+    units={settings.current.units}
+    {testMode}
+  />
   {#if page.url.pathname !== '/'}
     <div class="route-content">
       {@render children()}

@@ -4,6 +4,7 @@
 
   import type { Map, StyleSpecification } from 'maplibre-gl';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { MapLibre } from 'svelte-maplibre-gl';
@@ -27,8 +28,14 @@
   let {
     instruments,
     traffic,
+    units,
     testMode = false,
-  }: { instruments: Instruments; traffic: TrafficStore; testMode?: boolean } = $props();
+  }: {
+    instruments: Instruments;
+    traffic: TrafficStore;
+    units: UnitSettings;
+    testMode?: boolean;
+  } = $props();
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
@@ -75,7 +82,7 @@
       {/if}
     {/if}
   </MapLibre>
-  <MapDebugOverlay {map} {instruments} />
+  <MapDebugOverlay {map} {instruments} {units} />
 </div>
 
 <style>

@@ -1,10 +1,15 @@
 <script lang="ts">
   import type { Map } from 'maplibre-gl';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
-  import { convertSpeed } from '$lib/units';
+  import { convertAltitude, convertSpeed } from '$lib/units';
 
-  let { map, instruments }: { map: Map | undefined; instruments: Instruments } = $props();
+  let {
+    map,
+    instruments,
+    units,
+  }: { map: Map | undefined; instruments: Instruments; units: UnitSettings } = $props();
 
   let visible = $state(false);
   let showTileBoundaries = $state(false);
@@ -75,13 +80,13 @@
       <dd>
         {instruments.altitudeMslMeters === null
           ? '–'
-          : `${instruments.altitudeMslMeters.toFixed(0)} m`}
+          : `${convertAltitude(instruments.altitudeMslMeters, units.altitude).toFixed(0)} ${units.altitude}`}
       </dd>
       <dt>Ground speed</dt>
       <dd>
         {instruments.groundSpeedMetersPerSecond === null
           ? '–'
-          : `${convertSpeed(instruments.groundSpeedMetersPerSecond, 'km/h').toFixed(1)} km/h`}
+          : `${convertSpeed(instruments.groundSpeedMetersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
       </dd>
     </dl>
     <label>

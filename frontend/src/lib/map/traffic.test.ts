@@ -27,8 +27,8 @@ function target(
 }
 
 describe('trafficFeature', () => {
-  it('projects a target as a point with complete properties', () => {
-    let feature = trafficFeature(target('flarm:000123'));
+  it('projects a target with a whole-meter altitude label', () => {
+    let feature = trafficFeature(target('flarm:000123', { altitudeMslMeters: 200.4 }), 'm');
 
     expect(feature).toMatchInlineSnapshot(`
       {
@@ -42,7 +42,7 @@ describe('trafficFeature', () => {
         "id": "flarm:000123",
         "properties": {
           "alarmLevel": "none",
-          "altitudeMslMeters": 200,
+          "altitudeLabel": "200 m",
           "stale": false,
           "trackDegrees": 270,
           "trafficType": "glider",
@@ -55,6 +55,7 @@ describe('trafficFeature', () => {
   it('projects unknown track and altitude properties as null', () => {
     let feature = trafficFeature(
       target('flarm:000123', { trackDegrees: null, altitudeMslMeters: null }),
+      'm',
     );
 
     expect(feature).toMatchInlineSnapshot(`
@@ -69,7 +70,7 @@ describe('trafficFeature', () => {
         "id": "flarm:000123",
         "properties": {
           "alarmLevel": "none",
-          "altitudeMslMeters": null,
+          "altitudeLabel": null,
           "stale": false,
           "trackDegrees": null,
           "trafficType": "glider",
@@ -85,7 +86,7 @@ describe('trafficFeatureCollection', () => {
     let first = target('flarm:000001');
     let second = target('icao:000002');
 
-    expect(trafficFeatureCollection([first, second]).features.length).toEqual(2);
+    expect(trafficFeatureCollection([first, second], 'm').features.length).toEqual(2);
   });
 });
 
@@ -93,8 +94,8 @@ describe('trafficSourceDiff', () => {
   it('adds a new target', () => {
     let added = target('flarm:000001');
 
-    expect(trafficSourceDiff({ upserts: [added], removed: [] })).toEqual({
-      add: [trafficFeature(added)],
+    expect(trafficSourceDiff({ upserts: [added], removed: [] }, 'm')).toEqual({
+      add: [trafficFeature(added, 'm')],
     });
   });
 
@@ -108,8 +109,8 @@ describe('trafficSourceDiff', () => {
       altitudeMslMeters: 500,
     });
 
-    expect(trafficSourceDiff({ upserts: [updated], removed: [] })).toEqual({
-      add: [trafficFeature(updated)],
+    expect(trafficSourceDiff({ upserts: [updated], removed: [] }, 'm')).toEqual({
+      add: [trafficFeature(updated, 'm')],
     });
   });
 
@@ -119,17 +120,17 @@ describe('trafficSourceDiff', () => {
       altitudeMslMeters: null,
     });
 
-    let diff = trafficSourceDiff({ upserts: [updated], removed: [] });
+    let diff = trafficSourceDiff({ upserts: [updated], removed: [] }, 'm');
 
     expect(diff).toEqual({
-      add: [trafficFeature(updated)],
+      add: [trafficFeature(updated, 'm')],
     });
   });
 
   it('removes a target without another source operation', () => {
     let removed = 'flarm:000001';
 
-    expect(trafficSourceDiff({ upserts: [], removed: [removed] })).toEqual({
+    expect(trafficSourceDiff({ upserts: [], removed: [removed] }, 'm')).toEqual({
       remove: ['flarm:000001'],
     });
   });
@@ -148,9 +149,12 @@ describe('applyTrafficSourceUpdate', () => {
       source,
       { type: 'snapshot', value: [current] },
       new Map([['flarm:000002', current]]),
+      'm',
     );
 
-    expect(source.setData).toHaveBeenCalledExactlyOnceWith(trafficFeatureCollection([current]));
+    expect(source.setData).toHaveBeenCalledExactlyOnceWith(
+      trafficFeatureCollection([current], 'm'),
+    );
     expect(source.updateData).not.toHaveBeenCalled();
   });
 
@@ -167,9 +171,10 @@ describe('applyTrafficSourceUpdate', () => {
       source,
       { type: 'delta', value: delta },
       new Map([['flarm:000001', updated]]),
+      'm',
     );
 
-    expect(source.updateData).toHaveBeenCalledExactlyOnceWith(trafficSourceDiff(delta));
+    expect(source.updateData).toHaveBeenCalledExactlyOnceWith(trafficSourceDiff(delta, 'm'));
     expect(source.setData).not.toHaveBeenCalled();
   });
 
@@ -189,13 +194,16 @@ describe('applyTrafficSourceUpdate', () => {
       source,
       { type: 'delta', value: { upserts: [updated], removed: [] } },
       new Map([['flarm:000001', updated]]),
+      'm',
     );
 
     expect(warn).toHaveBeenCalledExactlyOnceWith(
       'Traffic source update failed. Rebuilding the source.',
       error,
     );
-    expect(source.setData).toHaveBeenCalledExactlyOnceWith(trafficFeatureCollection([updated]));
+    expect(source.setData).toHaveBeenCalledExactlyOnceWith(
+      trafficFeatureCollection([updated], 'm'),
+    );
 
     warn.mockRestore();
   });
@@ -221,13 +229,16 @@ describe('applyTrafficSourceUpdate', () => {
       source,
       { type: 'delta', value: { upserts: [updated], removed: [] } },
       new Map([['flarm:000001', updated]]),
+      'm',
     );
 
     expect(warn).toHaveBeenCalledExactlyOnceWith(
       'Traffic source update failed. Rebuilding the source.',
       error,
     );
-    expect(source.setData).toHaveBeenCalledExactlyOnceWith(trafficFeatureCollection([updated]));
+    expect(source.setData).toHaveBeenCalledExactlyOnceWith(
+      trafficFeatureCollection([updated], 'm'),
+    );
     expect(unsubscribe).toHaveBeenCalledOnce();
 
     warn.mockRestore();

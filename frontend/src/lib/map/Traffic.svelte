@@ -45,12 +45,7 @@
     ],
     'icon-size': 0.75,
     'icon-allow-overlap': true,
-    'text-field': [
-      'case',
-      ['!=', ['get', 'altitudeMslMeters'], null],
-      ['concat', ['to-string', ['round', ['number', ['get', 'altitudeMslMeters']]]], ' m'],
-      '',
-    ],
+    'text-field': ['coalesce', ['get', 'altitudeLabel'], ''],
     'text-size': 11,
     'text-rotation-alignment': 'viewport',
     'text-allow-overlap': true,
@@ -89,7 +84,7 @@
     if (!activeSource) return;
 
     updateQueue = updateQueue.then(() => {
-      activeSource.setData(trafficFeatureCollection(traffic.current.values()));
+      activeSource.setData(trafficFeatureCollection(traffic.current.values(), 'm'));
     });
   }
 
@@ -99,7 +94,7 @@
       if (!activeSource) return;
 
       updateQueue = updateQueue.then(() =>
-        applyTrafficSourceUpdate(activeSource, update, currentTargets),
+        applyTrafficSourceUpdate(activeSource, update, currentTargets, 'm'),
       );
     }),
   );
@@ -108,7 +103,7 @@
 <GeoJSONSource
   id="traffic"
   maxzoom={24}
-  data={trafficFeatureCollection([])}
+  data={trafficFeatureCollection([], 'm')}
   bind:source={getSource, setSource}
 >
   <SymbolLayer

@@ -5,9 +5,9 @@ use std::{pin::Pin, sync::Arc};
 use tauri::ipc::{Channel, InvokeResponseBody};
 #[cfg(target_os = "android")]
 use tauri::{AppHandle, Runtime};
-use tauri_plugin_updraft::SppEvent;
 #[cfg(target_os = "android")]
 use tauri_plugin_updraft::UpdraftMobileExt;
+use tauri_plugin_updraft::{SppConnectionId, SppEvent};
 use tokio::sync::{mpsc, oneshot};
 use updraft_core::{Bytes, ConnectionChanged, ConnectionState, ExternalDeviceId};
 use uuid::Uuid;
@@ -19,7 +19,7 @@ trait SppPlatform: Send + Sync + 'static {
         service_uuid: Uuid,
         events: Channel,
     ) -> Result<(), String>;
-    fn cancel_attempt(&self) -> Result<(), String>;
+    fn cancel_attempt(&self, connection_id: SppConnectionId) -> Result<(), String>;
 }
 
 #[cfg(target_os = "android")]
@@ -39,10 +39,10 @@ impl<R: Runtime> SppPlatform for AndroidSppPlatform<R> {
             .map_err(|error| error.to_string())
     }
 
-    fn cancel_attempt(&self) -> Result<(), String> {
+    fn cancel_attempt(&self, connection_id: SppConnectionId) -> Result<(), String> {
         self.0
             .updraft_mobile()
-            .cancel_spp_attempt()
+            .cancel_spp_attempt(connection_id)
             .map_err(|error| error.to_string())
     }
 }
@@ -84,6 +84,7 @@ async fn run_attempt(
     receiver: &mut mpsc::UnboundedReceiver<InvokeResponseBody>,
     mut stop_receiver: Pin<&mut oneshot::Receiver<()>>,
 ) -> AttemptResult {
+    let connection_id = SppConnectionId::from_channel(events);
     match stop_receiver.as_mut().get_mut().try_recv() {
         Ok(()) | Err(oneshot::error::TryRecvError::Closed) => return AttemptResult::Stopped,
         Err(oneshot::error::TryRecvError::Empty) => {}
@@ -118,7 +119,7 @@ async fn run_attempt(
                         biased;
                         _ = stop_receiver.as_mut() => {
                             if !cancelling {
-                                cancel_attempt(device_id, address, platform);
+                                cancel_attempt(device_id, address, connection_id, platform);
                                 cancelling = true;
                             }
                             stopping = true;
@@ -146,7 +147,7 @@ async fn run_attempt(
                             reason = "malformed channel data",
                             "Malformed SPP event"
                         );
-                        cancel_attempt(device_id, address, platform);
+                        cancel_attempt(device_id, address, connection_id, platform);
                         cancelling = true;
                         continue;
                     }
@@ -177,7 +178,7 @@ async fn run_attempt(
                     SppEvent::Connected => {
                         let input = ConnectionChanged::new(device_id, ConnectionState::Connected);
                         if handle.send(input).await.is_err() {
-                            cancel_attempt(device_id, address, platform);
+                            cancel_attempt(device_id, address, connection_id, platform);
                             return AttemptResult::DriverStopped;
                         }
                     }
@@ -186,7 +187,7 @@ async fn run_attempt(
                             delivered_bytes |= !bytes.is_empty();
                             let input = Bytes::new(device_id, bytes);
                             if handle.send(input).await.is_err() {
-                                cancel_attempt(device_id, address, platform);
+                                cancel_attempt(device_id, address, connection_id, platform);
                                 return AttemptResult::DriverStopped;
                             }
                         }
@@ -197,7 +198,7 @@ async fn run_attempt(
                                 reason = "invalid Base64 data",
                                 "Invalid Base64 SPP bytes"
                             );
-                            cancel_attempt(device_id, address, platform);
+                            cancel_attempt(device_id, address, connection_id, platform);
                             cancelling = true;
                         }
                     },
@@ -224,8 +225,13 @@ async fn run_attempt(
     result
 }
 
-fn cancel_attempt(device_id: ExternalDeviceId, address: &str, platform: &dyn SppPlatform) {
-    if let Err(reason) = platform.cancel_attempt() {
+fn cancel_attempt(
+    device_id: ExternalDeviceId,
+    address: &str,
+    connection_id: SppConnectionId,
+    platform: &dyn SppPlatform,
+) {
+    if let Err(reason) = platform.cancel_attempt(connection_id) {
         tracing::warn!(
             ?device_id,
             %address,
@@ -334,10 +340,12 @@ fn spawn_maintained(
 #[cfg(test)]
 mod tests {
     use super::{
-        AttemptResult, SppPlatform, maintain, maintain_on_channel, run_attempt, spawn_maintained,
+        AttemptResult, SppConnectionId, SppPlatform, maintain, maintain_on_channel, run_attempt,
+        spawn_maintained,
     };
     use crate::driver::{Driver, DriverHandle, test_support};
     use claims::assert_some;
+    use std::assert_matches;
     use std::sync::{
         Arc, Mutex,
         atomic::{AtomicUsize, Ordering},
@@ -354,18 +362,20 @@ mod tests {
     use uuid::{Uuid, uuid};
 
     const ADDRESS: &str = "00:11:22:33:44:55";
+    const SECOND_ADDRESS: &str = "00:11:22:33:44:66";
     const CUSTOM_UUID: Uuid = uuid!("e56617bf-f548-4f7c-9cef-4a26eec19b04");
     const DEVICE_ID: ExternalDeviceId = ExternalDeviceId(1);
     const PATIENCE: Duration = Duration::from_secs(5);
     const RMC_EVENT: &str = r#"{"type":"bytes","data":"JEdQUk1DLDEyMDAwMC4wMCxBLDUwNDkuMzgsTiwwMDYxMS4xNixFLDQ1LjAsMjcwLjAsMDEwMTI2LCwsQQ0K"}"#;
+    const SECOND_RMC_EVENT: &str = r#"{"type":"bytes","data":"JEdQUk1DLDEyMDAwMC4wMCxBLDUxNDkuMzgsTiwwMDYxMS4xNixFLDQ1LjAsMjcwLjAsMDEwMTI2LCwsQQ0K"}"#;
 
     struct FakePlatform {
         events: Vec<&'static str>,
         start_error: Option<&'static str>,
         cancel_error: Option<&'static str>,
         attempts: AtomicUsize,
-        cancellations: AtomicUsize,
-        channel_ids: Mutex<Vec<u32>>,
+        connection_ids: Mutex<Vec<SppConnectionId>>,
+        cancelled_ids: Mutex<Vec<SppConnectionId>>,
         channels: Mutex<Vec<Channel>>,
         service_uuids: Mutex<Vec<Uuid>>,
     }
@@ -377,8 +387,8 @@ mod tests {
                 start_error: None,
                 cancel_error: None,
                 attempts: AtomicUsize::new(0),
-                cancellations: AtomicUsize::new(0),
-                channel_ids: Mutex::new(Vec::new()),
+                connection_ids: Mutex::new(Vec::new()),
+                cancelled_ids: Mutex::new(Vec::new()),
                 channels: Mutex::new(Vec::new()),
                 service_uuids: Mutex::new(Vec::new()),
             }
@@ -390,8 +400,8 @@ mod tests {
                 start_error: Some(reason),
                 cancel_error: None,
                 attempts: AtomicUsize::new(0),
-                cancellations: AtomicUsize::new(0),
-                channel_ids: Mutex::new(Vec::new()),
+                connection_ids: Mutex::new(Vec::new()),
+                cancelled_ids: Mutex::new(Vec::new()),
                 channels: Mutex::new(Vec::new()),
                 service_uuids: Mutex::new(Vec::new()),
             }
@@ -409,11 +419,21 @@ mod tests {
         }
 
         fn cancellations(&self) -> usize {
-            self.cancellations.load(Ordering::SeqCst)
+            self.cancelled_ids.lock().expect("cancelled IDs lock").len()
         }
 
-        fn channel_ids(&self) -> Vec<u32> {
-            self.channel_ids.lock().expect("channel IDs lock").clone()
+        fn connection_ids(&self) -> Vec<SppConnectionId> {
+            self.connection_ids
+                .lock()
+                .expect("connection IDs lock")
+                .clone()
+        }
+
+        fn cancelled_ids(&self) -> Vec<SppConnectionId> {
+            self.cancelled_ids
+                .lock()
+                .expect("cancelled IDs lock")
+                .clone()
         }
 
         fn service_uuids(&self) -> Vec<Uuid> {
@@ -424,12 +444,23 @@ mod tests {
         }
 
         fn send(&self, payload: &str) {
+            let index = self
+                .channels
+                .lock()
+                .expect("channels lock")
+                .len()
+                .checked_sub(1)
+                .expect("an active attempt channel");
+            self.send_on(index, payload);
+        }
+
+        fn send_on(&self, index: usize, payload: &str) {
             let channel = self
                 .channels
                 .lock()
                 .expect("channels lock")
-                .last()
-                .expect("an active attempt channel")
+                .get(index)
+                .expect("an attempt channel at the selected index")
                 .clone();
             channel
                 .send(InvokeResponseBody::Json(payload.to_owned()))
@@ -444,16 +475,16 @@ mod tests {
             service_uuid: Uuid,
             events: Channel,
         ) -> Result<(), String> {
-            assert_eq!(address, ADDRESS);
+            assert_matches!(address, ADDRESS | SECOND_ADDRESS);
             self.service_uuids
                 .lock()
                 .expect("service UUIDs lock")
                 .push(service_uuid);
             self.attempts.fetch_add(1, Ordering::SeqCst);
-            self.channel_ids
+            self.connection_ids
                 .lock()
-                .expect("channel IDs lock")
-                .push(events.id());
+                .expect("connection IDs lock")
+                .push(SppConnectionId::from_channel(&events));
             self.channels
                 .lock()
                 .expect("channels lock")
@@ -471,8 +502,11 @@ mod tests {
             Ok(())
         }
 
-        fn cancel_attempt(&self) -> Result<(), String> {
-            self.cancellations.fetch_add(1, Ordering::SeqCst);
+        fn cancel_attempt(&self, connection_id: SppConnectionId) -> Result<(), String> {
+            self.cancelled_ids
+                .lock()
+                .expect("cancelled IDs lock")
+                .push(connection_id);
             self.cancel_error
                 .map_or(Ok(()), |reason| Err(reason.to_owned()))
         }
@@ -511,13 +545,20 @@ mod tests {
     }
 
     fn driver() -> DriverHandle {
+        driver_with_spp_addresses(&[ADDRESS])
+    }
+
+    fn driver_with_spp_addresses(addresses: &[&str]) -> DriverHandle {
         Driver::spawn(
             SettingsSnapshot {
                 settings: Default::default(),
-                external_devices: vec![ExternalDeviceConfig {
-                    enabled: true,
-                    spec: ConnectionSpec::bluetooth_spp(ADDRESS),
-                }],
+                external_devices: addresses
+                    .iter()
+                    .map(|address| ExternalDeviceConfig {
+                        enabled: true,
+                        spec: ConnectionSpec::bluetooth_spp(*address),
+                    })
+                    .collect(),
             },
             Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
@@ -533,7 +574,7 @@ mod tests {
         receiver
     }
 
-    async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) {
+    async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> updraft_core::LatLon {
         loop {
             let received = timeout(PATIENCE, receiver.recv())
                 .await
@@ -541,8 +582,8 @@ mod tests {
             let Topic::Instruments(instruments) = assert_some!(received) else {
                 continue;
             };
-            if instruments.position.is_some() {
-                return;
+            if let Some(position) = instruments.position {
+                return position;
             }
         }
     }
@@ -760,8 +801,8 @@ mod tests {
         tokio::time::advance(Duration::from_millis(1)).await;
         tokio::task::yield_now().await;
         assert_eq!(platform.attempts(), 3);
-        let channel_ids = platform.channel_ids();
-        assert!(channel_ids.windows(2).all(|ids| ids[0] == ids[1]));
+        let connection_ids = platform.connection_ids();
+        assert_eq!(connection_ids, vec![connection_ids[0]; 3]);
         assert_eq!(platform.service_uuids(), vec![STANDARD_SPP_SERVICE_UUID; 3]);
 
         task.abort();
@@ -948,6 +989,147 @@ mod tests {
             .await
             .expect("supervisor finishes after disconnection")
             .expect("supervisor task succeeds");
+    }
+
+    #[tokio::test]
+    async fn two_active_spp_connections_deliver_bytes_to_their_own_device_ids() {
+        let platform = Arc::new(FakePlatform::with_events(Vec::new()));
+        let handle = driver_with_spp_addresses(&[ADDRESS, SECOND_ADDRESS]);
+        let mut topics = topic_stream(&handle);
+        let first = spawn_maintained(
+            ExternalDeviceId(1),
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
+            handle.clone(),
+            platform.clone(),
+        );
+        tokio::task::yield_now().await;
+        let second = spawn_maintained(
+            ExternalDeviceId(2),
+            SECOND_ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
+            handle,
+            platform.clone(),
+        );
+        tokio::task::yield_now().await;
+
+        platform.send_on(0, r#"{"type":"connected"}"#);
+        platform.send_on(0, RMC_EVENT);
+        assert_eq!(next_position(&mut topics).await.latitude_degrees, 50.823);
+
+        platform.send_on(1, r#"{"type":"connected"}"#);
+        platform.send_on(1, SECOND_RMC_EVENT);
+        assert_eq!(next_position(&mut topics).await.latitude_degrees, 51.823);
+
+        (first.stop)();
+        (second.stop)();
+        tokio::task::yield_now().await;
+        platform.send_on(0, r#"{"type":"disconnected"}"#);
+        platform.send_on(1, r#"{"type":"disconnected"}"#);
+        timeout(PATIENCE, first.task)
+            .await
+            .expect("first supervisor finishes")
+            .expect("first supervisor task succeeds");
+        timeout(PATIENCE, second.task)
+            .await
+            .expect("second supervisor finishes")
+            .expect("second supervisor task succeeds");
+    }
+
+    #[tokio::test]
+    async fn stopping_one_of_two_active_spp_connections_cancels_only_its_channel() {
+        let platform = Arc::new(FakePlatform::with_events(Vec::new()));
+        let first = spawn_maintained(
+            ExternalDeviceId(1),
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
+            driver(),
+            platform.clone(),
+        );
+        tokio::task::yield_now().await;
+        assert_eq!(platform.attempts(), 1);
+
+        let second = spawn_maintained(
+            ExternalDeviceId(2),
+            SECOND_ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
+            driver(),
+            platform.clone(),
+        );
+        tokio::task::yield_now().await;
+        assert_eq!(platform.attempts(), 2);
+
+        let connection_ids = platform.connection_ids();
+        assert_ne!(connection_ids[0], connection_ids[1]);
+
+        (first.stop)();
+        tokio::task::yield_now().await;
+        assert_eq!(platform.cancelled_ids(), vec![connection_ids[0]]);
+        assert!(!second.task.is_finished());
+
+        platform.send_on(0, r#"{"type":"disconnected"}"#);
+        timeout(PATIENCE, first.task)
+            .await
+            .expect("first supervisor finishes")
+            .expect("first supervisor task succeeds");
+
+        (second.stop)();
+        tokio::task::yield_now().await;
+        assert_eq!(
+            platform.cancelled_ids(),
+            vec![connection_ids[0], connection_ids[1]]
+        );
+        platform.send_on(1, r#"{"type":"disconnected"}"#);
+        timeout(PATIENCE, second.task)
+            .await
+            .expect("second supervisor finishes")
+            .expect("second supervisor task succeeds");
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn malformed_event_on_one_spp_connection_does_not_cancel_the_other() {
+        let platform = Arc::new(FakePlatform::with_events(Vec::new()));
+        let first = spawn_maintained(
+            ExternalDeviceId(1),
+            ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
+            driver(),
+            platform.clone(),
+        );
+        tokio::task::yield_now().await;
+        let second = spawn_maintained(
+            ExternalDeviceId(2),
+            SECOND_ADDRESS.to_owned(),
+            STANDARD_SPP_SERVICE_UUID,
+            driver(),
+            platform.clone(),
+        );
+        tokio::task::yield_now().await;
+        let connection_ids = platform.connection_ids();
+
+        platform.send_on(0, r#"{"type":"secret-payload","data":"do-not-log"}"#);
+        tokio::task::yield_now().await;
+
+        assert_eq!(platform.cancelled_ids(), vec![connection_ids[0]]);
+        assert!(!second.task.is_finished());
+        assert!(!logs_contain("do-not-log"));
+
+        (first.stop)();
+        tokio::task::yield_now().await;
+        platform.send_on(0, r#"{"type":"disconnected"}"#);
+        timeout(PATIENCE, first.task)
+            .await
+            .expect("first supervisor finishes")
+            .expect("first supervisor task succeeds");
+
+        (second.stop)();
+        tokio::task::yield_now().await;
+        platform.send_on(1, r#"{"type":"disconnected"}"#);
+        timeout(PATIENCE, second.task)
+            .await
+            .expect("second supervisor finishes")
+            .expect("second supervisor task succeeds");
     }
 
     #[tokio::test(start_paused = true)]

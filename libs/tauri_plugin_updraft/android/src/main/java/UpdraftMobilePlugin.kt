@@ -95,6 +95,11 @@ class StartSppAttemptArgs {
 }
 
 @InvokeArg
+class CancelSppAttemptArgs {
+    var connectionId: Long? = null
+}
+
+@InvokeArg
 class WatchActivitiesArgs {
     lateinit var activities: Channel
 }
@@ -170,7 +175,12 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
 
     @Command
     fun cancelSppAttempt(invoke: Invoke) {
-        val failure = SessionService.cancelSppAttempt()
+        val connectionId = invoke.parseArgs(CancelSppAttemptArgs::class.java).connectionId
+        if (connectionId == null) {
+            invoke.reject("SPP connection ID is missing", "invalidArgs")
+            return
+        }
+        val failure = SessionService.cancelSppAttempt(connectionId)
         if (failure == null) {
             invoke.resolve()
         } else {

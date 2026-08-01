@@ -75,7 +75,7 @@
       {/if}
     {/if}
   </MapLibre>
-  <MapDebugOverlay {map} />
+  <MapDebugOverlay {map} {instruments} />
 </div>
 
 <style>

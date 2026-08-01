@@ -1,7 +1,10 @@
 <script lang="ts">
   import type { Map } from 'maplibre-gl';
+  import type { Instruments } from '$lib/protocol/generated/Instruments';
 
-  let { map }: { map: Map | undefined } = $props();
+  import { convertSpeed } from '$lib/units';
+
+  let { map, instruments }: { map: Map | undefined; instruments: Instruments } = $props();
 
   let visible = $state(false);
   let showTileBoundaries = $state(false);
@@ -59,6 +62,27 @@
       <dd>{zoom.toFixed(2)}</dd>
       <dt>Center</dt>
       <dd>{lat.toFixed(5)}, {lng.toFixed(5)}</dd>
+      <dt>Position</dt>
+      {#if instruments.position}
+        <dd>
+          {instruments.position.latitudeDegrees.toFixed(5)},
+          {instruments.position.longitudeDegrees.toFixed(5)}
+        </dd>
+      {:else}
+        <dd>–</dd>
+      {/if}
+      <dt>MSL altitude</dt>
+      <dd>
+        {instruments.altitudeMslMeters === null
+          ? '–'
+          : `${instruments.altitudeMslMeters.toFixed(0)} m`}
+      </dd>
+      <dt>Ground speed</dt>
+      <dd>
+        {instruments.groundSpeedMetersPerSecond === null
+          ? '–'
+          : `${convertSpeed(instruments.groundSpeedMetersPerSecond, 'km/h').toFixed(1)} km/h`}
+      </dd>
     </dl>
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />

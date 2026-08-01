@@ -28,6 +28,12 @@ struct StartSppAttemptArgs<'a> {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CancelSppAttemptArgs {
+    connection_id: crate::SppConnectionId,
+}
+
+#[derive(Serialize)]
 struct WatchActivitiesArgs {
     activities: Channel,
 }
@@ -67,9 +73,9 @@ impl<R: Runtime> UpdraftMobile<R> {
             .map_err(Into::into)
     }
 
-    pub fn cancel_spp_attempt(&self) -> crate::Result<()> {
+    pub fn cancel_spp_attempt(&self, connection_id: crate::SppConnectionId) -> crate::Result<()> {
         self.0
-            .run_mobile_plugin("cancelSppAttempt", ())
+            .run_mobile_plugin("cancelSppAttempt", CancelSppAttemptArgs { connection_id })
             .map_err(Into::into)
     }
 

@@ -30,7 +30,7 @@ impl<R: Runtime> UpdraftMobile<R> {
         Ok(())
     }
 
-    pub fn cancel_spp_attempt(&self) -> crate::Result<()> {
+    pub fn cancel_spp_attempt(&self, _connection_id: crate::SppConnectionId) -> crate::Result<()> {
         Ok(())
     }
 

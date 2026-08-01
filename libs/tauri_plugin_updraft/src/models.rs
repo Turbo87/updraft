@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tauri::ipc::Channel;
 
 /// A position report from the device's own GNSS receiver.
 ///
@@ -38,6 +39,17 @@ pub enum SppEvent {
     Connected,
     Bytes { data: String },
     Disconnected { error: Option<String> },
+}
+
+/// Identifies one maintained Bluetooth SPP connection by its Tauri channel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+pub struct SppConnectionId(u32);
+
+impl SppConnectionId {
+    pub fn from_channel(channel: &Channel) -> Self {
+        Self(channel.id())
+    }
 }
 
 #[cfg(test)]

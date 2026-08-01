@@ -11,7 +11,7 @@ mod mobile;
 mod models;
 
 pub use error::{Error, Result};
-pub use models::{Fix, SppEvent};
+pub use models::{Fix, SppConnectionId, SppEvent};
 
 #[cfg(desktop)]
 use desktop::UpdraftMobile;

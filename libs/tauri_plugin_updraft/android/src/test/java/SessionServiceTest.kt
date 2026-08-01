@@ -5,10 +5,37 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SessionServiceTest {
+    @Test
+    fun `SPP action selects only its carried connection ID`() {
+        assertEquals(
+            73L,
+            sppAttemptConnectionId(
+                action = ACTION_SPP_ATTEMPT,
+                hasConnectionId = true,
+                connectionId = 73
+            )
+        )
+        assertNull(
+            sppAttemptConnectionId(
+                action = ACTION_SPP_ATTEMPT,
+                hasConnectionId = false,
+                connectionId = 0
+            )
+        )
+        assertNull(
+            sppAttemptConnectionId(
+                action = "aero.updraft.mobile.UNKNOWN",
+                hasConnectionId = true,
+                connectionId = 73
+            )
+        )
+    }
+
     @Test
     fun `uses location foreground type for a location source`() {
         assertEquals(

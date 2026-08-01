@@ -79,6 +79,12 @@ describe('trafficFeature', () => {
       }
     `);
   });
+
+  it('projects a target with a whole-foot altitude label', () => {
+    let feature = trafficFeature(target('flarm:000123'), 'ft');
+
+    expect(feature.properties.altitudeLabel).toBe('656 ft');
+  });
 });
 
 describe('trafficFeatureCollection', () => {

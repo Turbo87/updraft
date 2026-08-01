@@ -4,6 +4,7 @@
     GeoJSONSource as MapLibreGeoJSONSource,
     SymbolLayerSpecification,
   } from 'maplibre-gl';
+  import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { onMount } from 'svelte';
@@ -70,23 +71,20 @@
     'text-opacity': TRAFFIC_OPACITY,
   };
 
-  let { traffic }: { traffic: TrafficStore } = $props();
+  let { traffic, altitudeUnit }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit } = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
 
-  function getSource() {
-    return source;
-  }
-
-  function setSource(activeSource: MapLibreGeoJSONSource | undefined) {
-    source = activeSource;
+  $effect(() => {
+    let activeSource = source;
+    let activeAltitudeUnit = altitudeUnit;
     if (!activeSource) return;
 
-    updateQueue = updateQueue.then(() => {
-      activeSource.setData(trafficFeatureCollection(traffic.current.values(), 'm'));
-    });
-  }
+    updateQueue = updateQueue.then(() =>
+      activeSource.setData(trafficFeatureCollection(traffic.current.values(), activeAltitudeUnit)),
+    );
+  });
 
   onMount(() =>
     traffic.subscribe((update, currentTargets) => {
@@ -94,18 +92,13 @@
       if (!activeSource) return;
 
       updateQueue = updateQueue.then(() =>
-        applyTrafficSourceUpdate(activeSource, update, currentTargets, 'm'),
+        applyTrafficSourceUpdate(activeSource, update, currentTargets, altitudeUnit),
       );
     }),
   );
 </script>
 
-<GeoJSONSource
-  id="traffic"
-  maxzoom={24}
-  data={trafficFeatureCollection([], 'm')}
-  bind:source={getSource, setSource}
->
+<GeoJSONSource id="traffic" maxzoom={24} data={trafficFeatureCollection([], 'm')} bind:source>
   <SymbolLayer
     id="traffic-fixed"
     filter={[

@@ -76,7 +76,7 @@
     zoom={11}
   >
     {#if spritesLoaded}
-      <Traffic {traffic} />
+      <Traffic {traffic} altitudeUnit={units.altitude} />
       {#if position}
         <Ownship {position} trackDegrees={instruments.trackDegrees} />
       {/if}

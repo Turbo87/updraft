@@ -1,5 +1,6 @@
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Topic } from '$lib/protocol/generated/Topic';
+import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
 export type TopicListener = (topic: Topic) => void;
 
@@ -20,4 +21,6 @@ export interface UpdraftClient {
    */
   subscribe(onTopic: TopicListener): () => void;
   setLocale(locale: Locale): Promise<void>;
+  /** Replaces all display-unit selections. */
+  setUnits(units: UnitSettings): Promise<void>;
 }

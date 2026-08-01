@@ -1,5 +1,6 @@
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Topic } from '$lib/protocol/generated/Topic';
+import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { TopicListener, UpdraftClient } from './index';
 
 import { Channel, invoke } from '@tauri-apps/api/core';
@@ -7,6 +8,10 @@ import { Channel, invoke } from '@tauri-apps/api/core';
 export class TauriClient implements UpdraftClient {
   setLocale(locale: Locale): Promise<void> {
     return invoke('set_locale', { locale });
+  }
+
+  setUnits(units: UnitSettings): Promise<void> {
+    return invoke('set_units', { units });
   }
 
   subscribe(onTopic: TopicListener): () => void {

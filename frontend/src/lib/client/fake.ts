@@ -1,6 +1,7 @@
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
+import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { TopicListener, UpdraftClient } from './index';
 
 /** Drives the frontend without a Rust process behind it. */
@@ -25,6 +26,21 @@ export class FakeClient implements UpdraftClient {
     if (this.#settings.locale === locale) return;
 
     this.#settings = { ...this.#settings, locale };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setUnits(units: UnitSettings): Promise<void> {
+    let current = this.#settings.units;
+    if (
+      current.altitude === units.altitude &&
+      current.distance === units.distance &&
+      current.speed === units.speed &&
+      current.verticalSpeed === units.verticalSpeed
+    ) {
+      return;
+    }
+
+    this.#settings = { ...this.#settings, units: { ...units } };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

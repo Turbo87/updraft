@@ -32,7 +32,8 @@ pub use external_device::{
 pub use fix::Fix;
 pub use input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
-    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Start, Tick, Update,
+    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Start,
+    Tick, Update,
 };
 pub use ownship::OwnshipState;
 pub use settings::{

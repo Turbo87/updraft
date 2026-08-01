@@ -3,8 +3,8 @@ use serde::Serialize;
 use tauri::ipc::Channel;
 use updraft_core::{
     AddExternalDevice, ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceId,
-    InvalidExternalDeviceOrder, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Topic,
-    UnknownExternalDevice,
+    InvalidExternalDeviceOrder, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale,
+    SetUnits, Topic, UnitSettings, UnknownExternalDevice,
 };
 
 #[derive(Debug, Serialize, thiserror::Error)]
@@ -42,6 +42,18 @@ pub async fn set_locale(
     handle: tauri::State<'_, DriverHandle>,
 ) -> Result<(), DriverCommandError> {
     let input = SetLocale::new(locale);
+    handle
+        .send(input)
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
+pub async fn set_units(
+    units: UnitSettings,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    let input = SetUnits::new(units);
     handle
         .send(input)
         .await
@@ -157,6 +169,7 @@ mod tests {
             .manage(handle)
             .invoke_handler(tauri::generate_handler![
                 set_locale,
+                set_units,
                 add_external_device,
                 delete_external_device,
                 reorder_external_devices,
@@ -178,6 +191,30 @@ mod tests {
             headers: Default::default(),
             invoke_key: tauri::test::INVOKE_KEY.to_owned(),
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn set_units_deserializes_complete_unit_settings() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+
+        let body = json!({
+            "units": {
+                "altitude": "ft",
+                "distance": "nm",
+                "speed": "kt",
+                "verticalSpeed": "ft/min"
+            }
+        });
+        let request = request("set_units", body);
+        let response = tauri::test::get_ipc_response(&webview, request)
+            .expect("the unit selections should be accepted")
+            .deserialize::<Value>()
+            .expect("the empty command response should deserialize");
+
+        assert_eq!(response, Value::Null);
     }
 
     #[tokio::test(flavor = "multi_thread")]

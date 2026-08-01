@@ -1,19 +1,5 @@
 package aero.updraft.mobile
 
-import app.tauri.plugin.Channel
-
-internal interface SppAttempt {
-    fun run()
-    fun stop(): Exception?
-}
-
-internal data class SppRequest(
-    val address: String,
-    val serviceUuid: String,
-    val events: Channel,
-    val onStarted: (Exception?) -> Unit
-)
-
 internal class SppAttemptOwner {
     private val lock = Any()
     private var pending: SppRequest? = null

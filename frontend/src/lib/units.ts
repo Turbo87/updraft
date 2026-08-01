@@ -1,7 +1,9 @@
-export type AltitudeUnit = 'ft' | 'm';
-export type DistanceUnit = 'km' | 'mi' | 'nm';
-export type SpeedUnit = 'km/h' | 'kt' | 'mph';
-export type VerticalSpeedUnit = 'ft/min' | 'kt' | 'm/s';
+import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
+import type { DistanceUnit } from '$lib/protocol/generated/DistanceUnit';
+import type { SpeedUnit } from '$lib/protocol/generated/SpeedUnit';
+import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
+
+export type { AltitudeUnit, DistanceUnit, SpeedUnit, VerticalSpeedUnit };
 
 const metersPerFoot = 0.3048;
 const metersPerMile = 1_609.344;

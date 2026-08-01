@@ -94,7 +94,13 @@ describe('TrafficStore', () => {
     let store = new TrafficStore();
     let initial = store.current;
 
-    store.apply({ topic: 'settings', value: { locale: 'de' } });
+    store.apply({
+      topic: 'settings',
+      value: {
+        locale: 'de',
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
+    });
 
     expect(store.current).toBe(initial);
   });

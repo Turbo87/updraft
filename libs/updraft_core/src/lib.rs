@@ -35,7 +35,10 @@ pub use input::{
     InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Start, Tick, Update,
 };
 pub use ownship::OwnshipState;
-pub use settings::{Locale, Settings, SettingsSnapshot};
+pub use settings::{
+    AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
+    VerticalSpeedUnit,
+};
 pub use time::Timestamp;
 pub use topic::{Instruments, LatLon, Topic};
 pub use traffic::{

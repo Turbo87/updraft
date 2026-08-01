@@ -462,6 +462,7 @@ mod tests {
         let mut core = Core::new(SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::De),
+                ..Settings::default()
             },
             external_devices: vec![
                 ExternalDeviceConfig {
@@ -1119,6 +1120,7 @@ mod tests {
     fn topics_include_settings_and_external_devices() {
         let settings = Settings {
             locale: Some(Locale::De),
+            ..Settings::default()
         };
         let tcp = ConnectionSpec::tcp("127.0.0.1", 4353);
         let bluetooth = ConnectionSpec::bluetooth_spp("00:11:22:33:44:55");
@@ -1160,6 +1162,7 @@ mod tests {
         let mut core = Core::new(SettingsSnapshot::default());
         let settings = Settings {
             locale: Some(Locale::De),
+            ..Settings::default()
         };
         let snapshot = SettingsSnapshot {
             settings,
@@ -1190,6 +1193,7 @@ mod tests {
         let mut core = Core::new(SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::De),
+                ..Settings::default()
             },
             external_devices: Vec::new(),
         });

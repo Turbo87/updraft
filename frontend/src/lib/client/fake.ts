@@ -6,7 +6,10 @@ import type { TopicListener, UpdraftClient } from './index';
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
   #listeners = new Set<TopicListener>();
-  #settings: Settings = { locale: null };
+  #settings: Settings = {
+    locale: null,
+    units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+  };
 
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
@@ -21,7 +24,7 @@ export class FakeClient implements UpdraftClient {
   async setLocale(locale: Locale): Promise<void> {
     if (this.#settings.locale === locale) return;
 
-    this.#settings = { locale };
+    this.#settings = { ...this.#settings, locale };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

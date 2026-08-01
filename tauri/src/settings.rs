@@ -81,8 +81,9 @@ mod tests {
     use tempfile::tempdir;
     use tracing_test::traced_test;
     use updraft_core::{
-        ConnectionSpec, ExternalDeviceConfig, Locale, STANDARD_SPP_SERVICE_UUID, Settings,
-        SettingsSnapshot,
+        AltitudeUnit, ConnectionSpec, DistanceUnit, ExternalDeviceConfig, Locale,
+        STANDARD_SPP_SERVICE_UUID, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
+        VerticalSpeedUnit,
     };
     use uuid::uuid;
 
@@ -96,11 +97,18 @@ mod tests {
     }
 
     #[test]
-    fn locale_only_file_loads_its_locale_and_defaults_external_devices() {
+    fn file_without_units_keeps_locale_and_external_devices() {
         let directory = assert_ok!(tempdir());
         assert_ok!(std::fs::write(
             directory.path().join("settings.json"),
-            r#"{"locale":"de"}"#,
+            concat!(
+                "{\"locale\":\"de\",\"externalDevices\":[{",
+                "\"enabled\":true,",
+                "\"type\":\"tcp\",",
+                "\"host\":\"127.0.0.1\",",
+                "\"port\":4353",
+                "}]}"
+            ),
         ));
         let file = SettingsFile::new(directory.path());
 
@@ -109,6 +117,34 @@ mod tests {
             SettingsSnapshot {
                 settings: Settings {
                     locale: Some(Locale::De),
+                    units: UnitSettings::default(),
+                },
+                external_devices: vec![ExternalDeviceConfig {
+                    enabled: true,
+                    spec: ConnectionSpec::tcp("127.0.0.1", 4353),
+                }],
+            }
+        );
+    }
+
+    #[test]
+    fn partial_units_file_defaults_missing_selections() {
+        let directory = assert_ok!(tempdir());
+        assert_ok!(std::fs::write(
+            directory.path().join("settings.json"),
+            r#"{"locale":"de","units":{"altitude":"ft"}}"#,
+        ));
+        let file = SettingsFile::new(directory.path());
+
+        assert_eq!(
+            file.load(),
+            SettingsSnapshot {
+                settings: Settings {
+                    locale: Some(Locale::De),
+                    units: UnitSettings {
+                        altitude: AltitudeUnit::Feet,
+                        ..UnitSettings::default()
+                    },
                 },
                 external_devices: Vec::new(),
             }
@@ -187,6 +223,26 @@ mod tests {
     }
 
     #[test]
+    #[traced_test]
+    fn unknown_unit_warns_and_loads_defaults() {
+        let directory = assert_ok!(tempdir());
+        assert_ok!(std::fs::write(
+            directory.path().join("settings.json"),
+            r#"{"locale":"de","units":{"altitude":"yards"}}"#,
+        ));
+        let file = SettingsFile::new(directory.path());
+
+        assert_eq!(file.load(), SettingsSnapshot::default());
+        assert!(logs_contain("Could not load settings"));
+        assert_eq!(
+            assert_ok!(std::fs::read_to_string(
+                directory.path().join("settings.json")
+            )),
+            r#"{"locale":"de","units":{"altitude":"yards"}}"#
+        );
+    }
+
+    #[test]
     fn writing_creates_the_directory_and_settings_file() {
         let parent = assert_ok!(tempdir());
         let config_dir = parent.path().join("missing");
@@ -194,6 +250,12 @@ mod tests {
         let snapshot = SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::De),
+                units: UnitSettings {
+                    altitude: AltitudeUnit::Feet,
+                    distance: DistanceUnit::NauticalMiles,
+                    speed: SpeedUnit::Knots,
+                    vertical_speed: VerticalSpeedUnit::FeetPerMinute,
+                },
             },
             external_devices: vec![
                 ExternalDeviceConfig {
@@ -220,6 +282,12 @@ mod tests {
             concat!(
                 "{\n",
                 "  \"locale\": \"de\",\n",
+                "  \"units\": {\n",
+                "    \"altitude\": \"ft\",\n",
+                "    \"distance\": \"nm\",\n",
+                "    \"speed\": \"kt\",\n",
+                "    \"verticalSpeed\": \"ft/min\"\n",
+                "  },\n",
                 "  \"externalDevices\": [\n",
                 "    {\n",
                 "      \"enabled\": true,\n",
@@ -253,6 +321,7 @@ mod tests {
         assert_ok!(file.write(SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::De),
+                ..Settings::default()
             },
             external_devices: vec![ExternalDeviceConfig {
                 enabled: true,
@@ -262,6 +331,7 @@ mod tests {
         assert_ok!(file.write(SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::En),
+                ..Settings::default()
             },
             external_devices: Vec::new(),
         }));
@@ -271,6 +341,7 @@ mod tests {
             SettingsSnapshot {
                 settings: Settings {
                     locale: Some(Locale::En),
+                    ..Settings::default()
                 },
                 external_devices: Vec::new(),
             }

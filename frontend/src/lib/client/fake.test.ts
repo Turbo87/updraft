@@ -49,7 +49,10 @@ describe('FakeClient', () => {
     expect(received).toEqual([
       {
         topic: 'settings',
-        value: { locale: null },
+        value: {
+          locale: null,
+          units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+        },
       },
       {
         topic: 'traffic',
@@ -67,7 +70,10 @@ describe('FakeClient', () => {
 
     expect(received.at(-1)).toEqual({
       topic: 'settings',
-      value: { locale: 'de' },
+      value: {
+        locale: 'de',
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
     });
   });
 

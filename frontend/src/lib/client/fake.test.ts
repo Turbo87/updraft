@@ -40,7 +40,7 @@ describe('FakeClient', () => {
     expect(onTopic).not.toHaveBeenCalled();
   });
 
-  it('delivers default settings when a subscriber connects', () => {
+  it('delivers onboarding topics when a subscriber connects', () => {
     let client = new FakeClient();
     let received: Topic[] = [];
 
@@ -50,6 +50,10 @@ describe('FakeClient', () => {
       {
         topic: 'settings',
         value: { locale: null },
+      },
+      {
+        topic: 'traffic',
+        value: { type: 'snapshot', value: [] },
       },
     ]);
   });
@@ -71,10 +75,11 @@ describe('FakeClient', () => {
     let client = new FakeClient();
     let received: Topic[] = [];
     client.subscribe((topic) => received.push(topic));
+    received = [];
 
     await client.setLocale('de');
     await client.setLocale('de');
 
-    expect(received).toHaveLength(2);
+    expect(received).toHaveLength(1);
   });
 });

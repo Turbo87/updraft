@@ -1,0 +1,24 @@
+---
+source: libs/updraft_core/src/topic.rs
+expression: topic
+---
+{
+  "topic": "traffic",
+  "value": {
+    "type": "snapshot",
+    "value": [
+      {
+        "id": "flarm:ABC123",
+        "position": {
+          "latitudeDegrees": 50.832,
+          "longitudeDegrees": 6.189
+        },
+        "altitudeMslMeters": 350.0,
+        "trafficType": "glider",
+        "trackDegrees": 90.0,
+        "alarmLevel": "low",
+        "stale": false
+      }
+    ]
+  }
+}

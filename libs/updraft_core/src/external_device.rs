@@ -2,6 +2,7 @@ use crate::Topic;
 use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
+use crate::ownship::OwnshipState;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -29,12 +30,14 @@ pub struct ExternalDevice {
     pub config: ExternalDeviceConfig,
     pub decoder: Decoder,
     pub diagnostics: ConnectionDiagnostics,
+    pub ownship: OwnshipState,
 }
 
 impl ExternalDevice {
     pub fn reset_runtime(&mut self) {
         self.decoder = Decoder::default();
         self.diagnostics = ConnectionDiagnostics::default();
+        self.ownship = OwnshipState::default();
     }
 }
 
@@ -73,6 +76,7 @@ impl ExternalDevices {
                 config,
                 decoder: Decoder::default(),
                 diagnostics: ConnectionDiagnostics::default(),
+                ownship: OwnshipState::default(),
             });
         }
         external_devices
@@ -80,6 +84,12 @@ impl ExternalDevices {
 
     pub fn iter(&self) -> impl Iterator<Item = &ExternalDevice> {
         self.entries.iter()
+    }
+
+    pub fn get(&self, device_id: ExternalDeviceId) -> Option<&ExternalDevice> {
+        self.entries
+            .iter()
+            .find(|device| device.device_id == device_id)
     }
 
     pub fn get_mut(&mut self, device_id: ExternalDeviceId) -> Option<&mut ExternalDevice> {
@@ -98,6 +108,7 @@ impl ExternalDevices {
             },
             decoder: Decoder::default(),
             diagnostics: ConnectionDiagnostics::default(),
+            ownship: OwnshipState::default(),
         });
         device_id
     }

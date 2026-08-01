@@ -1,9 +1,11 @@
 use updraft_core::{
     AddExternalDevice, Bytes, ConnectionSpec, Core, DeleteExternalDevice, EditExternalDevice,
     Effect, ExternalDeviceConfig, ExternalDeviceId, Fix, InternalGps, InvalidExternalDeviceOrder,
-    LatLon, ReorderExternalDevices, SetExternalDeviceEnabled, SettingsSnapshot, Start, Timestamp,
-    Topic, UnknownExternalDevice, Update,
+    ReorderExternalDevices, SetExternalDeviceEnabled, SettingsSnapshot, Start, Timestamp, Topic,
+    UnknownExternalDevice, Update,
 };
+use updraft_geo::LatLon;
+use updraft_units::{Angle, Speed};
 
 const FIXTURE: &str = include_str!("../../../testdata/nmea/basic.nmea");
 /// Sentences the core must not act on: a verbatim repeat of the last line
@@ -37,6 +39,7 @@ fn describe(effect: &Effect) -> String {
         Effect::Emit(Topic::ExternalDevices(devices)) => {
             format!("external devices {devices:?}")
         }
+        Effect::Emit(Topic::Traffic(update)) => format!("traffic {update:?}"),
         Effect::OpenConnection { device_id, spec } => format!("open {device_id:?} {spec:?}"),
         Effect::CloseConnection { device_id } => format!("close {device_id:?}"),
         Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),
@@ -51,8 +54,11 @@ fn core_with_external_device() -> (Core, ExternalDeviceId) {
             spec: ConnectionSpec::tcp("127.0.0.1", 4353),
         }],
     });
-    let topics = core.topics();
-    let Some(Topic::ExternalDevices(devices)) = topics.last() else {
+    let Some(Topic::ExternalDevices(devices)) = core
+        .topics()
+        .into_iter()
+        .find(|topic| matches!(topic, Topic::ExternalDevices(_)))
+    else {
         panic!("the configured external devices topic should be published");
     };
     (core, devices[0].device_id)
@@ -75,8 +81,11 @@ fn core_with_two_external_devices() -> Core {
 }
 
 fn external_device_ids(core: &Core) -> Vec<ExternalDeviceId> {
-    let topics = core.topics();
-    let Some(Topic::ExternalDevices(devices)) = topics.last() else {
+    let Some(Topic::ExternalDevices(devices)) = core
+        .topics()
+        .into_iter()
+        .find(|topic| matches!(topic, Topic::ExternalDevices(_)))
+    else {
         panic!("the configured external devices topic should be published");
     };
     devices.iter().map(|device| device.device_id).collect()
@@ -147,14 +156,11 @@ fn gnss_fix_and_equivalent_sentence_agree() {
 
     let mut from_fix = Core::new(SettingsSnapshot::default());
     let fix = Fix {
-        position: LatLon {
-            latitude_degrees: 50.823,
-            longitude_degrees: 6.186,
-        },
+        position: LatLon::from_degrees(50.823, 6.186),
         // RMC carries no altitude, so neither may this fix.
-        altitude_ellipsoid_meters: None,
-        track_degrees: Some(270.0),
-        ground_speed_meters_per_second: Some(45.0 * 1852.0 / 3600.0),
+        altitude_ellipsoid: None,
+        track: Some(Angle::from_degrees(270.0)),
+        ground_speed: Some(Speed::from_meters_per_second(45.0 * 1852.0 / 3600.0)),
     };
     let input = InternalGps::new(fix);
     let equivalent = from_fix.apply(input, Timestamp::from_millis(0)).effects;

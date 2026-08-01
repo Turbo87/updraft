@@ -13,9 +13,11 @@ mod effect;
 mod external_device;
 mod fix;
 mod input;
+mod ownship;
 mod settings;
 mod time;
 mod topic;
+mod traffic;
 
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
@@ -32,6 +34,12 @@ pub use input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
     InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Start, Tick, Update,
 };
+pub use ownship::OwnshipState;
 pub use settings::{Locale, Settings, SettingsSnapshot};
 pub use time::Timestamp;
 pub use topic::{Instruments, LatLon, Topic};
+pub use traffic::{
+    PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,
+    TrafficTarget, TrafficTargetId, TrafficTargetIdType, TrafficType, TrafficUpdate,
+    target_from_pflaa,
+};

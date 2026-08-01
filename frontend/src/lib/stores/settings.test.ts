@@ -8,10 +8,16 @@ describe('SettingsStore', () => {
 
     store.apply({
       topic: 'settings',
-      value: { locale: 'de' },
+      value: {
+        locale: 'de',
+        units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
+      },
     });
 
-    expect(store.current).toEqual({ locale: 'de' });
+    expect(store.current).toEqual({
+      locale: 'de',
+      units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
+    });
   });
 
   it('ignores unrelated topics', () => {
@@ -27,6 +33,9 @@ describe('SettingsStore', () => {
       },
     });
 
-    expect(store.current).toEqual({ locale: null });
+    expect(store.current).toEqual({
+      locale: null,
+      units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+    });
   });
 });

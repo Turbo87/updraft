@@ -1,10 +1,13 @@
 import type * as GeoJSON from 'geojson';
 import type { ErrorEvent, GeoJSONSource, GeoJSONSourceDiff, Subscription } from 'maplibre-gl';
+import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
 import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
 import type { TrafficDelta } from '$lib/protocol/generated/TrafficDelta';
 import type { TrafficType } from '$lib/protocol/generated/TrafficType';
 import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
+
+import { convertAltitude } from '$lib/units';
 
 type TrafficGeoJSONSource = Pick<GeoJSONSource, 'setData' | 'updateData'> & {
   on(type: 'error', listener: (event: ErrorEvent) => void): Subscription;
@@ -15,11 +18,12 @@ export type TrafficFeatureProperties = {
   alarmLevel: TrafficAlarmLevel;
   stale: boolean;
   trackDegrees: number | null;
-  altitudeMslMeters: number | null;
+  altitudeLabel: string | null;
 };
 
 export function trafficFeature(
   target: PublishedTrafficTarget,
+  altitudeUnit: AltitudeUnit,
 ): GeoJSON.Feature<GeoJSON.Point, TrafficFeatureProperties> {
   return {
     type: 'Feature',
@@ -33,24 +37,33 @@ export function trafficFeature(
       alarmLevel: target.alarmLevel,
       stale: target.stale,
       trackDegrees: target.trackDegrees,
-      altitudeMslMeters: target.altitudeMslMeters,
+      altitudeLabel:
+        target.altitudeMslMeters === null
+          ? null
+          : `${Math.round(convertAltitude(target.altitudeMslMeters, altitudeUnit))} ${altitudeUnit}`,
     },
   };
 }
 
 export function trafficFeatureCollection(
   targets: Iterable<PublishedTrafficTarget>,
+  altitudeUnit: AltitudeUnit,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, TrafficFeatureProperties> {
   return {
     type: 'FeatureCollection',
-    features: Array.from(targets, trafficFeature),
+    features: Array.from(targets, (target) => trafficFeature(target, altitudeUnit)),
   };
 }
 
-export function trafficSourceDiff(delta: TrafficDelta): GeoJSONSourceDiff {
+export function trafficSourceDiff(
+  delta: TrafficDelta,
+  altitudeUnit: AltitudeUnit,
+): GeoJSONSourceDiff {
   return {
     ...(delta.removed.length > 0 && { remove: delta.removed }),
-    ...(delta.upserts.length > 0 && { add: delta.upserts.map(trafficFeature) }),
+    ...(delta.upserts.length > 0 && {
+      add: delta.upserts.map((target) => trafficFeature(target, altitudeUnit)),
+    }),
   };
 }
 
@@ -58,9 +71,10 @@ export async function applyTrafficSourceUpdate(
   source: TrafficGeoJSONSource,
   update: TrafficUpdate,
   currentTargets: ReadonlyMap<string, PublishedTrafficTarget>,
+  altitudeUnit: AltitudeUnit,
 ): Promise<void> {
   if (update.type === 'snapshot') {
-    await source.setData(trafficFeatureCollection(currentTargets.values()));
+    await source.setData(trafficFeatureCollection(currentTargets.values(), altitudeUnit));
     return;
   }
 
@@ -70,7 +84,7 @@ export async function applyTrafficSourceUpdate(
   });
 
   try {
-    await source.updateData(trafficSourceDiff(update.value));
+    await source.updateData(trafficSourceDiff(update.value, altitudeUnit));
   } catch (error) {
     sourceError ??= error;
   } finally {
@@ -80,5 +94,5 @@ export async function applyTrafficSourceUpdate(
   if (!sourceError) return;
 
   console.warn('Traffic source update failed. Rebuilding the source.', sourceError);
-  await source.setData(trafficFeatureCollection(currentTargets.values()));
+  await source.setData(trafficFeatureCollection(currentTargets.values(), altitudeUnit));
 }

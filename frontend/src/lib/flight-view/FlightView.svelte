@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { resolve } from '$app/paths';
@@ -10,12 +11,18 @@
   let {
     instruments,
     traffic,
+    units,
     testMode = false,
-  }: { instruments: Instruments; traffic: TrafficStore; testMode?: boolean } = $props();
+  }: {
+    instruments: Instruments;
+    traffic: TrafficStore;
+    units: UnitSettings;
+    testMode?: boolean;
+  } = $props();
 </script>
 
 <section class="flight-view" aria-label={m.flight_view()}>
-  <Map {instruments} {traffic} {testMode} />
+  <Map {instruments} {traffic} {units} {testMode} />
   <div class="overlay">
     <a href={resolve('/settings')}>{m.settings_heading()}</a>
   </div>

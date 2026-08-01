@@ -1,6 +1,11 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "language_label": "Language",
+  "units_label": "Units",
+  "altitude_label": "Altitude",
+  "distance_label": "Distance",
+  "speed_label": "Speed",
+  "vertical_speed_label": "Vertical speed",
   "flight_view": "Flight view",
   "settings_heading": "Settings",
   "back_to_flight_view": "Back to flight view"

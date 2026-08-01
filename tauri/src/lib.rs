@@ -75,6 +75,7 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             ipc::set_locale,
+            ipc::set_units,
             ipc::add_external_device,
             ipc::delete_external_device,
             ipc::reorder_external_devices,

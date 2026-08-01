@@ -49,7 +49,10 @@ describe('FakeClient', () => {
     expect(received).toEqual([
       {
         topic: 'settings',
-        value: { locale: null },
+        value: {
+          locale: null,
+          units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+        },
       },
       {
         topic: 'traffic',
@@ -67,7 +70,10 @@ describe('FakeClient', () => {
 
     expect(received.at(-1)).toEqual({
       topic: 'settings',
-      value: { locale: 'de' },
+      value: {
+        locale: 'de',
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
     });
   });
 
@@ -81,5 +87,44 @@ describe('FakeClient', () => {
     await client.setLocale('de');
 
     expect(received).toHaveLength(1);
+  });
+
+  it('publishes complete unit selections through the settings topic', async () => {
+    let client = new FakeClient();
+    let received: Topic[] = [];
+    client.subscribe((topic) => received.push(topic));
+    await client.setLocale('de');
+    received = [];
+
+    await client.setUnits({
+      altitude: 'ft',
+      distance: 'nm',
+      speed: 'kt',
+      verticalSpeed: 'ft/min',
+    });
+
+    expect(received.at(-1)).toEqual({
+      topic: 'settings',
+      value: {
+        locale: 'de',
+        units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
+      },
+    });
+  });
+
+  it('does not republish equal unit selections', async () => {
+    let client = new FakeClient();
+    let received: Topic[] = [];
+    client.subscribe((topic) => received.push(topic));
+    received = [];
+
+    await client.setUnits({
+      altitude: 'm',
+      distance: 'km',
+      speed: 'km/h',
+      verticalSpeed: 'm/s',
+    });
+
+    expect(received).toEqual([]);
   });
 });

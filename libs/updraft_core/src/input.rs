@@ -2,7 +2,7 @@ use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
 use crate::core::Core;
 use crate::effect::Effect;
 use crate::fix::Fix;
-use crate::settings::Locale;
+use crate::settings::{Locale, UnitSettings};
 use crate::time::Timestamp;
 
 mod private {
@@ -97,6 +97,18 @@ impl SetLocale {
     }
 }
 
+/// Replaces all application-wide display-unit selections.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetUnits {
+    pub units: UnitSettings,
+}
+
+impl SetUnits {
+    pub fn new(units: UnitSettings) -> Self {
+        Self { units }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AddExternalDevice {
     pub spec: ConnectionSpec,
@@ -172,6 +184,7 @@ impl private::Sealed for Bytes {}
 impl private::Sealed for ConnectionChanged {}
 impl private::Sealed for InternalGps {}
 impl private::Sealed for SetLocale {}
+impl private::Sealed for SetUnits {}
 impl private::Sealed for AddExternalDevice {}
 impl private::Sealed for DeleteExternalDevice {}
 impl private::Sealed for ReorderExternalDevices {}

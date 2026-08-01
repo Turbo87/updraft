@@ -2,6 +2,7 @@
   import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
   import type { ComponentProps } from 'svelte';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { expect, waitFor } from 'storybook/test';
@@ -18,6 +19,13 @@
     trackDegrees: 45,
     groundSpeedMetersPerSecond: 30,
   } satisfies Instruments;
+
+  const units = {
+    altitude: 'm',
+    distance: 'km',
+    speed: 'km/h',
+    verticalSpeed: 'm/s',
+  } satisfies UnitSettings;
 
   const traffic = new TrafficStore();
   traffic.apply({
@@ -111,13 +119,14 @@
       groundSpeedMetersPerSecond: null,
     },
     traffic,
+    units,
   }}
   {template}
 />
-<Story name="Position" args={{ instruments, traffic }} {template} />
+<Story name="Position" args={{ instruments, traffic, units }} {template} />
 <Story
   name="Test mode"
-  args={{ instruments, traffic, testMode: true }}
+  args={{ instruments, traffic, units, testMode: true }}
   play={async () => {
     await waitFor(async () => {
       let map = (window as TestWindow).__updraftTest?.map;

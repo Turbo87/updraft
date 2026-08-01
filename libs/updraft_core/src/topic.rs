@@ -98,17 +98,24 @@ mod tests {
     fn settings_locale_serializes_in_lowercase() {
         let topic = Settings {
             locale: Some(Locale::De),
+            ..Settings::default()
         }
         .as_topic();
 
-        insta::assert_json_snapshot!(topic, @r###"
+        insta::assert_json_snapshot!(topic, @r#"
         {
           "topic": "settings",
           "value": {
-            "locale": "de"
+            "locale": "de",
+            "units": {
+              "altitude": "m",
+              "distance": "km",
+              "speed": "km/h",
+              "verticalSpeed": "m/s"
+            }
           }
         }
-        "###);
+        "#);
     }
 
     #[test]

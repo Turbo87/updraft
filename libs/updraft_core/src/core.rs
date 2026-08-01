@@ -4,7 +4,8 @@ use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, Unknow
 use crate::fix::Fix;
 use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
-    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, Start, Tick, Update,
+    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Start,
+    Tick, Update,
 };
 use crate::ownship::OwnshipState;
 use crate::settings::{Settings, SettingsSnapshot};
@@ -260,6 +261,23 @@ impl Input for SetLocale {
     }
 }
 
+impl Input for SetUnits {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let effects = if core.settings.units == self.units {
+            Vec::new()
+        } else {
+            core.settings.units = self.units;
+            vec![
+                Effect::emit(core.settings.as_topic()),
+                Effect::persist_settings(core.settings_snapshot()),
+            ]
+        };
+        Update::effects(effects)
+    }
+}
+
 impl Input for AddExternalDevice {
     type Response = ExternalDeviceId;
 
@@ -367,7 +385,10 @@ mod tests {
     use super::*;
     use crate::connection::{ConnectionSpec, ConnectionState};
     use crate::external_device::ExternalDeviceConfig;
-    use crate::settings::{Locale, SettingsSnapshot};
+    use crate::settings::{
+        AltitudeUnit, DistanceUnit, Locale, SettingsSnapshot, SpeedUnit, UnitSettings,
+        VerticalSpeedUnit,
+    };
     use crate::topic::{Instruments, LatLon as TopicLatLon};
     use crate::traffic::{PublishedTrafficTarget, TrafficDelta, TrafficUpdate};
     use approx::assert_abs_diff_eq;
@@ -462,6 +483,7 @@ mod tests {
         let mut core = Core::new(SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::De),
+                ..Settings::default()
             },
             external_devices: vec![
                 ExternalDeviceConfig {
@@ -1119,6 +1141,7 @@ mod tests {
     fn topics_include_settings_and_external_devices() {
         let settings = Settings {
             locale: Some(Locale::De),
+            ..Settings::default()
         };
         let tcp = ConnectionSpec::tcp("127.0.0.1", 4353);
         let bluetooth = ConnectionSpec::bluetooth_spp("00:11:22:33:44:55");
@@ -1160,6 +1183,7 @@ mod tests {
         let mut core = Core::new(SettingsSnapshot::default());
         let settings = Settings {
             locale: Some(Locale::De),
+            ..Settings::default()
         };
         let snapshot = SettingsSnapshot {
             settings,
@@ -1190,11 +1214,75 @@ mod tests {
         let mut core = Core::new(SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::De),
+                ..Settings::default()
             },
             external_devices: Vec::new(),
         });
 
         let input = SetLocale::new(Locale::De);
+        assert_eq!(core.apply(input, at(0)).effects, vec![]);
+    }
+
+    #[test]
+    fn setting_units_updates_the_topic_and_requests_persistence() {
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings {
+                locale: Some(Locale::De),
+                ..Settings::default()
+            },
+            external_devices: Vec::new(),
+        });
+        let units = UnitSettings {
+            altitude: AltitudeUnit::Feet,
+            distance: DistanceUnit::NauticalMiles,
+            speed: SpeedUnit::Knots,
+            vertical_speed: VerticalSpeedUnit::FeetPerMinute,
+        };
+        let settings = Settings {
+            locale: Some(Locale::De),
+            units,
+        };
+        let snapshot = SettingsSnapshot {
+            settings,
+            external_devices: Vec::new(),
+        };
+
+        let input = SetUnits::new(units);
+        assert_eq!(
+            core.apply(input, at(0)).effects,
+            vec![
+                Effect::emit(Topic::Settings(settings)),
+                Effect::persist_settings(snapshot),
+            ]
+        );
+        assert_eq!(
+            core.topics(),
+            vec![
+                Topic::Instruments(Instruments::default()),
+                Topic::Settings(settings),
+                Topic::ExternalDevices(Vec::new()),
+                Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
+            ]
+        );
+    }
+
+    #[test]
+    fn setting_the_active_unit_selections_is_a_no_op() {
+        let units = UnitSettings {
+            altitude: AltitudeUnit::Feet,
+            distance: DistanceUnit::NauticalMiles,
+            speed: SpeedUnit::Knots,
+            vertical_speed: VerticalSpeedUnit::FeetPerMinute,
+        };
+        let mut core = Core::new(SettingsSnapshot {
+            settings: Settings {
+                units,
+                ..Settings::default()
+            },
+            external_devices: Vec::new(),
+        });
+
+        let input = SetUnits::new(units);
         assert_eq!(core.apply(input, at(0)).effects, vec![]);
     }
 

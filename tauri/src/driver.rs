@@ -486,6 +486,7 @@ mod tests {
             Some(SettingsSnapshot {
                 settings: updraft_core::Settings {
                     locale: Some(updraft_core::Locale::De),
+                    ..updraft_core::Settings::default()
                 },
                 external_devices: snapshot().external_devices,
             })

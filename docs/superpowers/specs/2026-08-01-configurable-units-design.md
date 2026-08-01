@@ -181,22 +181,19 @@ Units fieldset with four labeled native `select` controls:
 The labels use the existing localization system. Each option displays its unit
 symbol. Unit symbols do not use translated forms.
 
-The unit component receives the published `UnitSettings` value. It also keeps
-the latest intended value while one `setUnits()` call is in progress. Each
-selection replaces one field in that intended value.
+The settings route keeps the latest intended `UnitSettings` value. It passes
+that optimistic value to the unit component. Each selection replaces one field
+and immediately sends one complete value through `setUnits()`.
 
-The component serializes `setUnits()` calls. If another selection occurs, the
-component queues the latest complete intended value. It sends that value after
-the active call completes. This prevents a command from an older settings
-topic from undoing a newer selection.
+The frontend does not serialize `setUnits()` calls. The core driver applies the
+received inputs through its existing input queue. An older command completion
+does not clear a newer optimistic value.
 
-Settings topics remain authoritative. When no unit command is in progress, a
-settings topic replaces the intended value.
-
-The native control shows a selection immediately. Translations and other
-settings still change only through their existing topic paths. If `setUnits()`
-fails, the route logs the error. This slice does not add settings error or
-persistence status UI.
+Settings topics remain authoritative. The route clears its optimistic value
+when the corresponding command completes, after the shell has dispatched its
+effects. The component then receives the published settings. If `setUnits()`
+fails, the route also clears that optimistic value and logs the error. This
+slice does not add settings error or persistence status UI.
 
 The fake client owns the same complete unit-settings value. `setUnits()` emits
 a settings topic when the value changes. An equal value remains a no-op.
@@ -284,7 +281,8 @@ Frontend tests cover:
 
 - Four labeled selects with the active choices.
 - One selection reporting one complete `UnitSettings` value.
-- Two rapid selections composing into one intended value.
+- Two rapid optimistic selections reporting complete values without frontend
+  serialization.
 - Fake-client topic publication and equal-value no-op behavior.
 - Debug-overlay altitude and speed formatting with non-default units.
 - Meter and foot traffic labels.

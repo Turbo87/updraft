@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Locale } from '$lib/protocol/generated/Locale';
+  import type { UnitSettings as UnitSettingsValue } from '$lib/protocol/generated/UnitSettings';
 
   import { resolve } from '$app/paths';
 
@@ -7,20 +8,38 @@
   import LanguageSetting from '$lib/LanguageSetting.svelte';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
+  import UnitSettings from '$lib/UnitSettings.svelte';
 
   const { client, settings } = getAppContext();
   const activeLocale = $derived(settings.current.locale ?? getLocale());
+  let optimisticUnits = $state.raw<UnitSettingsValue | null>(null);
+  const activeUnits = $derived(optimisticUnits ?? settings.current.units);
 
   function selectLocale(locale: Locale): void {
     void client.setLocale(locale).catch((error: unknown) => {
       console.error('Failed to set locale', error);
     });
   }
+
+  function selectUnits(units: UnitSettingsValue): void {
+    optimisticUnits = units;
+    void client
+      .setUnits(units)
+      .catch((error: unknown) => {
+        console.error('Failed to set units', error);
+      })
+      .finally(() => {
+        if (optimisticUnits === units) optimisticUnits = null;
+      });
+  }
 </script>
 
 <main>
   <h1>{m.settings_heading()}</h1>
-  <LanguageSetting locale={activeLocale} onLocaleChange={selectLocale} />
+  <div class="settings">
+    <LanguageSetting locale={activeLocale} onLocaleChange={selectLocale} />
+    <UnitSettings units={activeUnits} onUnitsChange={selectUnits} />
+  </div>
   <a href={resolve('/')}>{m.back_to_flight_view()}</a>
 </main>
 
@@ -34,6 +53,11 @@
 
   h1 {
     margin-block-start: 0;
+  }
+
+  .settings {
+    display: grid;
+    gap: 2rem;
   }
 
   a {

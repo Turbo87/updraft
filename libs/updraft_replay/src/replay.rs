@@ -46,7 +46,7 @@ pub enum ReplayError {
 }
 
 impl Replay {
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self, ReplayError> {
+    pub fn from_nmea(bytes: Vec<u8>) -> Result<Self, ReplayError> {
         let source = Bytes::from(bytes);
         let source_len = source.len();
         let mut input = source.as_ref();
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn builds_a_byte_preserving_schedule_and_applies_skip() {
-        let replay = assert_ok!(Replay::from_bytes(BASIC.to_vec()));
+        let replay = assert_ok!(Replay::from_nmea(BASIC.to_vec()));
 
         assert_eq!(
             replay
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn rejects_a_file_without_a_timestamp() {
-        let error = Replay::from_bytes(b"$PGRMZ,1000,f,3\r\n".to_vec());
+        let error = Replay::from_nmea(b"$PGRMZ,1000,f,3\r\n".to_vec());
         assert_matches!(error, Err(ReplayError::MissingTimestamp));
     }
 }

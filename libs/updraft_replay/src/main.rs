@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     let bytes = tokio::fs::read(&args.file)
         .await
         .with_context(|| format!("failed to read {}", args.file.display()))?;
-    let replay = Replay::from_bytes(bytes)?;
+    let replay = Replay::from_nmea(bytes)?;
     let skip = Duration::from_secs(args.skip);
     replay.events_from(skip)?;
 

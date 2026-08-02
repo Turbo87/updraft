@@ -12,8 +12,8 @@
     "windows": [
       {
         "title": "Updraft",
-        "width": 800,
-        "height": 600,
+        "width": 360,
+        "height": 780,
         "resizable": true,
         "fullscreen": false
       }

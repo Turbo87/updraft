@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use igc::records::{BRecord, Extendable as _, Extension, FixValid, Record};
+use igc::records::{BRecord, Extendable, Extension, FixValid, Record};
 use indicatif::ProgressStyle;
 use std::{str::FromStr, time::Duration};
 use thiserror::Error;
@@ -41,6 +41,130 @@ pub struct Replay {
     events: Vec<ReplayEvent>,
     duration: Duration,
     timestamp_regression: bool,
+}
+
+struct IgcEventBuilder {
+    absolute: u64,
+    at: Duration,
+    payload: Vec<u8>,
+    pressure_altitude: Option<Length>,
+    lxwp0: Option<Lxwp0>,
+}
+
+impl IgcEventBuilder {
+    fn new(absolute: u64, at: Duration) -> Self {
+        Self {
+            absolute,
+            at,
+            payload: Vec::new(),
+            pressure_altitude: None,
+            lxwp0: None,
+        }
+    }
+
+    fn add_fix(
+        &mut self,
+        fix: &BRecord<'_>,
+        extensions: &[Extension<'_>],
+        time: Time,
+        date: Option<Date>,
+    ) -> Result<(), EncodeError> {
+        let position = LatLon::from_degrees(f64::from(fix.pos.lat), f64::from(fix.pos.lon));
+        let (rmc_status, fix_quality, fix_dimension) = match fix.fix_valid {
+            FixValid::Valid => (
+                RmcStatus::Active,
+                GgaFixQuality::Gps,
+                PgrmzFixDimension::ThreeDimensional,
+            ),
+            FixValid::NavWarning => (
+                RmcStatus::Void,
+                GgaFixQuality::Invalid,
+                PgrmzFixDimension::NoFix,
+            ),
+        };
+
+        self.payload.extend(Vec::<u8>::try_from(&Rmc {
+            talker: Talker::Gps,
+            utc_time: Some(time),
+            status: rmc_status,
+            position: Some(position),
+            speed_over_ground: extension_value::<f64>(fix, extensions, "GSP")
+                .map(|value| Speed::from_kilometers_per_hour(value / 100.0)),
+            course_over_ground: extension_value(fix, extensions, "TRT").map(Angle::from_degrees),
+            date,
+            magnetic_variation: None,
+            mode: None,
+        })?);
+
+        let (altitude, geoid_separation) = if fix.gps_alt == 0 {
+            (None, None)
+        } else {
+            let ellipsoid_altitude =
+                EllipsoidAltitude::new(Length::from_meters(f64::from(fix.gps_alt)));
+            (
+                Some(updraft_egm96::ellipsoidal_to_msl(position, ellipsoid_altitude).into_inner()),
+                Some(updraft_egm96::undulation(position)),
+            )
+        };
+        self.payload.extend(Vec::<u8>::try_from(&Gga {
+            talker: Talker::Gps,
+            utc_time: Some(time),
+            position: Some(position),
+            fix_quality,
+            satellites_used: extension_value(fix, extensions, "SIU"),
+            hdop: None,
+            altitude,
+            geoid_separation,
+            dgps_age: None,
+            dgps_station: None,
+        })?);
+
+        self.pressure_altitude =
+            (fix.pressure_alt != 0).then(|| Length::from_meters(f64::from(fix.pressure_alt)));
+        if let Some(pressure_altitude) = self.pressure_altitude {
+            self.payload.extend(Vec::<u8>::try_from(&Pgrmz {
+                altitude: Some(pressure_altitude),
+                fix_dimension,
+            })?);
+        }
+
+        let true_airspeed = extension_value::<f64>(fix, extensions, "TAS")
+            .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
+        let vario = extension_value::<f64>(fix, extensions, "VAT")
+            .map(|value| Speed::from_meters_per_second(value / 100.0));
+        if true_airspeed.is_some() || vario.is_some() || self.lxwp0.is_some() {
+            let lxwp0 = self.lxwp0.get_or_insert_with(empty_lxwp0);
+            lxwp0.true_airspeed = true_airspeed;
+            lxwp0.pressure_altitude = self.pressure_altitude;
+            lxwp0.vario_samples = vario.into_iter().collect();
+        }
+
+        if let Some(outside_air_temperature) = extension_value::<f64>(fix, extensions, "OAT") {
+            self.payload.extend(Vec::<u8>::try_from(&Plxvs {
+                outside_air_temperature: Some(outside_air_temperature / 10.0),
+                mode: None,
+                supply_voltage: None,
+                igc_pressure_altitude: self.pressure_altitude,
+                flap_position: None,
+            })?);
+        }
+
+        Ok(())
+    }
+
+    fn add_wind(&mut self, wind_direction: Option<Angle>, wind_speed: Option<Speed>) {
+        let lxwp0 = self.lxwp0.get_or_insert_with(empty_lxwp0);
+        lxwp0.pressure_altitude = self.pressure_altitude;
+        lxwp0.wind_direction = wind_direction;
+        lxwp0.wind_speed = wind_speed;
+    }
+
+    fn finish(mut self) -> Result<ReplayEvent, EncodeError> {
+        if let Some(lxwp0) = self.lxwp0 {
+            self.payload.extend(Vec::<u8>::try_from(&lxwp0)?);
+        }
+        Ok(ReplayEvent::new(self.at, Bytes::from(self.payload)))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Error, PartialEq, Eq)]
@@ -128,12 +252,15 @@ impl Replay {
 
     pub fn from_igc(input: &str) -> Result<Self, ReplayError> {
         let mut events = Vec::<ReplayEvent>::new();
+        let mut event_builder = None;
         let mut first_absolute = None;
         let mut previous_time = None;
         let mut day_offset = 0;
         let mut current_time = None;
         let mut current_date = None;
         let mut fix_extensions = Vec::new();
+        let mut wind_extensions = Vec::new();
+        let mut has_fix = false;
         let mut timestamp_regression = false;
 
         for line in input.lines() {
@@ -148,6 +275,7 @@ impl Replay {
                     });
                 }
                 Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
+                Ok(Record::J(definition)) => wind_extensions = definition.0.extensions,
                 Ok(Record::B(fix)) => {
                     let Some(time) = Time::from_hms_millis(
                         fix.timestamp.hours,
@@ -157,9 +285,10 @@ impl Replay {
                     ) else {
                         continue;
                     };
+                    has_fix = true;
 
                     let previous_day_offset = day_offset;
-                    let absolute = schedule_millis(
+                    let scheduled = schedule_millis(
                         time,
                         &mut previous_time,
                         &mut day_offset,
@@ -170,25 +299,57 @@ impl Replay {
                         current_date = current_date.map(next_date);
                     }
 
-                    let first_absolute = *first_absolute.get_or_insert(absolute);
-                    let at = Duration::from_millis(absolute - first_absolute);
-                    let payload = encode_fix(&fix, &fix_extensions, time, current_date)?;
-
-                    if let Some(event) = events.last_mut()
-                        && event.at == at
-                    {
-                        let mut combined = Vec::with_capacity(event.payload.len() + payload.len());
-                        combined.extend_from_slice(&event.payload);
-                        combined.extend_from_slice(&payload);
-                        event.payload = Bytes::from(combined);
-                    } else {
-                        events.push(ReplayEvent::new(at, Bytes::from(payload)));
+                    let absolute = day_offset + u64::from(time.milliseconds_since_midnight());
+                    let first_absolute = *first_absolute.get_or_insert(scheduled);
+                    let at = Duration::from_millis(scheduled - first_absolute);
+                    current_igc_event_builder(&mut events, &mut event_builder, absolute, at)?
+                        .add_fix(&fix, &fix_extensions, time, current_date)?;
+                }
+                Ok(Record::K(record)) => {
+                    let wind_direction = extension_value::<f64>(&record, &wind_extensions, "WDI")
+                        .map(Angle::from_degrees);
+                    let wind_speed = extension_value::<f64>(&record, &wind_extensions, "WSP")
+                        .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
+                    if wind_direction.is_none() && wind_speed.is_none() {
+                        continue;
                     }
+                    let Some(time) = Time::from_hms_millis(
+                        record.time.hours,
+                        record.time.minutes,
+                        record.time.seconds,
+                        0,
+                    ) else {
+                        continue;
+                    };
+
+                    let previous_day_offset = day_offset;
+                    let scheduled = schedule_millis(
+                        time,
+                        &mut previous_time,
+                        &mut day_offset,
+                        &mut current_time,
+                        &mut timestamp_regression,
+                    );
+                    if day_offset > previous_day_offset {
+                        current_date = current_date.map(next_date);
+                    }
+
+                    let absolute = day_offset + u64::from(time.milliseconds_since_midnight());
+                    let first_absolute = *first_absolute.get_or_insert(scheduled);
+                    let at = Duration::from_millis(scheduled - first_absolute);
+                    current_igc_event_builder(&mut events, &mut event_builder, absolute, at)?
+                        .add_wind(wind_direction, wind_speed);
                 }
                 _ => {}
             }
         }
 
+        if !has_fix {
+            return Err(ReplayError::MissingFix);
+        }
+        if let Some(event) = event_builder {
+            push_or_merge_igc_event(&mut events, event.finish()?);
+        }
         let duration = events
             .last()
             .map(ReplayEvent::at)
@@ -264,109 +425,53 @@ impl Replay {
     }
 }
 
-fn encode_fix(
-    fix: &BRecord<'_>,
-    extensions: &[Extension<'_>],
-    time: Time,
-    date: Option<Date>,
-) -> Result<Vec<u8>, EncodeError> {
-    let position = LatLon::from_degrees(f64::from(fix.pos.lat), f64::from(fix.pos.lon));
-    let (rmc_status, fix_quality, fix_dimension) = match fix.fix_valid {
-        FixValid::Valid => (
-            RmcStatus::Active,
-            GgaFixQuality::Gps,
-            PgrmzFixDimension::ThreeDimensional,
-        ),
-        FixValid::NavWarning => (
-            RmcStatus::Void,
-            GgaFixQuality::Invalid,
-            PgrmzFixDimension::NoFix,
-        ),
-    };
+fn current_igc_event_builder<'a>(
+    events: &mut Vec<ReplayEvent>,
+    current: &'a mut Option<IgcEventBuilder>,
+    absolute: u64,
+    at: Duration,
+) -> Result<&'a mut IgcEventBuilder, EncodeError> {
+    if let Some(event) = current.take_if(|event| event.absolute != absolute) {
+        push_or_merge_igc_event(events, event.finish()?);
+    }
 
-    let rmc = Rmc {
-        talker: Talker::Gps,
-        utc_time: Some(time),
-        status: rmc_status,
-        position: Some(position),
-        speed_over_ground: extension_value::<f64>(fix, extensions, "GSP")
-            .map(|value| Speed::from_kilometers_per_hour(value / 100.0)),
-        course_over_ground: extension_value(fix, extensions, "TRT").map(Angle::from_degrees),
-        date,
-        magnetic_variation: None,
-        mode: None,
-    };
+    Ok(current.get_or_insert_with(|| IgcEventBuilder::new(absolute, at)))
+}
 
-    let (altitude, geoid_separation) = if fix.gps_alt == 0 {
-        (None, None)
+fn push_or_merge_igc_event(events: &mut Vec<ReplayEvent>, event: ReplayEvent) {
+    if let Some(previous) = events.last_mut()
+        && previous.at == event.at
+    {
+        let mut combined = Vec::with_capacity(previous.payload.len() + event.payload.len());
+        combined.extend_from_slice(&previous.payload);
+        combined.extend_from_slice(&event.payload);
+        previous.payload = Bytes::from(combined);
     } else {
-        let ellipsoid_altitude =
-            EllipsoidAltitude::new(Length::from_meters(f64::from(fix.gps_alt)));
-        (
-            Some(updraft_egm96::ellipsoidal_to_msl(position, ellipsoid_altitude).into_inner()),
-            Some(updraft_egm96::undulation(position)),
-        )
-    };
-    let gga = Gga {
-        talker: Talker::Gps,
-        utc_time: Some(time),
-        position: Some(position),
-        fix_quality,
-        satellites_used: extension_value(fix, extensions, "SIU"),
-        hdop: None,
-        altitude,
-        geoid_separation,
-        dgps_age: None,
-        dgps_station: None,
-    };
+        events.push(event);
+    }
+}
 
-    let pressure_altitude =
-        (fix.pressure_alt != 0).then(|| Length::from_meters(f64::from(fix.pressure_alt)));
-    let mut payload = Vec::new();
-    payload.extend(Vec::<u8>::try_from(&rmc)?);
-    payload.extend(Vec::<u8>::try_from(&gga)?);
-    if let Some(pressure_altitude) = pressure_altitude {
-        payload.extend(Vec::<u8>::try_from(&Pgrmz {
-            altitude: Some(pressure_altitude),
-            fix_dimension,
-        })?);
+fn empty_lxwp0() -> Lxwp0 {
+    Lxwp0 {
+        logger_running: None,
+        true_airspeed: None,
+        pressure_altitude: None,
+        vario_samples: Vec::new(),
+        heading: None,
+        wind_direction: None,
+        wind_speed: None,
     }
-    let true_airspeed = extension_value::<f64>(fix, extensions, "TAS")
-        .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
-    let vario = extension_value::<f64>(fix, extensions, "VAT")
-        .map(|value| Speed::from_meters_per_second(value / 100.0));
-    if true_airspeed.is_some() || vario.is_some() {
-        payload.extend(Vec::<u8>::try_from(&Lxwp0 {
-            logger_running: None,
-            true_airspeed,
-            pressure_altitude,
-            vario_samples: vario.into_iter().collect(),
-            heading: None,
-            wind_direction: None,
-            wind_speed: None,
-        })?);
-    }
-    if let Some(outside_air_temperature) = extension_value::<f64>(fix, extensions, "OAT") {
-        payload.extend(Vec::<u8>::try_from(&Plxvs {
-            outside_air_temperature: Some(outside_air_temperature / 10.0),
-            mode: None,
-            supply_voltage: None,
-            igc_pressure_altitude: pressure_altitude,
-            flap_position: None,
-        })?);
-    }
-    Ok(payload)
 }
 
 fn extension_value<T: FromStr>(
-    fix: &BRecord<'_>,
+    record: &impl Extendable,
     extensions: &[Extension<'_>],
     mnemonic: &str,
 ) -> Option<T> {
     extensions
         .iter()
         .find(|extension| extension.mnemonic == mnemonic)
-        .and_then(|extension| fix.get_extension(extension).ok())
+        .and_then(|extension| record.get_extension(extension).ok())
         .and_then(|value| value.parse().ok())
 }
 
@@ -568,6 +673,114 @@ mod tests {
     }
 
     #[test]
+    fn maps_j_defined_wind_extensions_from_an_unmatched_k_record() {
+        let replay = assert_ok!(Replay::from_igc(
+            "J020810WDI1115WSP\n\
+             K13474927118520\n\
+             B1347505200000N00700000EA0304801000\n"
+        ));
+
+        assert_eq!(
+            replay
+                .events()
+                .iter()
+                .map(ReplayEvent::at)
+                .collect::<Vec<_>>(),
+            [Duration::ZERO, Duration::from_secs(1)]
+        );
+        let wind = first_lxwp0(&replay.events()[0]);
+        assert_some_eq!(
+            wind.wind_direction.map(|direction| direction.as_degrees()),
+            271.0
+        );
+        assert_some_eq!(
+            wind.wind_speed.map(|speed| speed.as_kilometers_per_hour()),
+            185.2
+        );
+    }
+
+    #[test]
+    fn merges_equal_time_b_and_k_values_into_one_lxwp0_sentence() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I013640TAS\n\
+             J020810WDI1115WSP\n\
+             B1347495200000N00700000EA030480100036000\n\
+             K13474927118520\n"
+        ));
+        let event = &replay.events()[0];
+
+        assert_eq!(
+            payload_text(event)
+                .lines()
+                .filter(|sentence| sentence.starts_with("$LXWP0"))
+                .count(),
+            1
+        );
+        let flight_data = first_lxwp0(event);
+        assert_some_eq!(
+            flight_data
+                .true_airspeed
+                .map(|speed| speed.as_kilometers_per_hour()),
+            360.0
+        );
+        assert_some_eq!(
+            flight_data
+                .pressure_altitude
+                .map(|altitude| altitude.as_meters()),
+            3048.0
+        );
+        assert_some_eq!(
+            flight_data
+                .wind_direction
+                .map(|direction| direction.as_degrees()),
+            271.0
+        );
+        assert_some_eq!(
+            flight_data
+                .wind_speed
+                .map(|speed| speed.as_kilometers_per_hour()),
+            185.2
+        );
+    }
+
+    #[test]
+    fn does_not_carry_igc_wind_into_a_later_fix() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I013640TAS\n\
+             J020810WDI1115WSP\n\
+             B1347495200000N00700000EA030480100036000\n\
+             K13474927118520\n\
+             B1347505200000N00700000EA030480100036000\n"
+        ));
+
+        let first = first_lxwp0(&replay.events()[0]);
+        assert_some!(first.wind_direction);
+        assert_some!(first.wind_speed);
+        let second = first_lxwp0(&replay.events()[1]);
+        assert_none!(second.wind_direction);
+        assert_none!(second.wind_speed);
+    }
+
+    #[test]
+    fn does_not_merge_wind_from_a_different_clamped_timestamp() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I013640TAS\n\
+             J020810WDI1115WSP\n\
+             B1347505200000N00700000EA030480100036000\n\
+             K13474927118520\n"
+        ));
+
+        assert_eq!(replay.events().len(), 1);
+        assert!(replay.has_timestamp_regression());
+        let flight_data = lxwp0_messages(&replay.events()[0]);
+        assert_eq!(flight_data.len(), 2);
+        assert_none!(flight_data[0].wind_direction);
+        assert_none!(flight_data[0].wind_speed);
+        assert_some!(flight_data[1].wind_direction);
+        assert_some!(flight_data[1].wind_speed);
+    }
+
+    #[test]
     fn omits_zero_igc_altitudes() {
         let replay = assert_ok!(Replay::from_igc(
             "HFDTE040726,1\nB1347495200000N00700000EA0000000000\n"
@@ -705,12 +918,21 @@ mod tests {
     }
 
     fn first_lxwp0(event: &ReplayEvent) -> Lxwp0 {
+        lxwp0_messages(event)
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| panic!("expected LXWP0 frame"))
+    }
+
+    fn lxwp0_messages(event: &ReplayEvent) -> Vec<Lxwp0> {
         let mut input = event.payload().as_ref();
+        let mut messages = Vec::new();
         loop {
             match parse(&mut input) {
-                Step::Frame(Message::Lxwp0(lxwp0)) => return lxwp0,
+                Step::Frame(Message::Lxwp0(lxwp0)) => messages.push(lxwp0),
                 Step::Frame(_) => {}
-                step => panic!("expected LXWP0 frame, got {step:?}"),
+                Step::Incomplete => return messages,
+                step => panic!("expected NMEA frame, got {step:?}"),
             }
         }
     }

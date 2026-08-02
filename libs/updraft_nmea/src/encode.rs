@@ -54,6 +54,10 @@ pub fn talker_code(talker: &Talker) -> Result<&str, EncodeError> {
     Ok(code)
 }
 
+pub fn optional_field<T: ToString>(value: Option<T>) -> String {
+    value.map_or_else(String::new, |value| value.to_string())
+}
+
 pub fn position_fields(position: Option<LatLon>) -> [String; 4] {
     let Some(position) = position else {
         return std::array::from_fn(|_| String::new());

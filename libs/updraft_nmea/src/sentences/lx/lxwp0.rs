@@ -1,3 +1,4 @@
+use crate::encode::{EncodeError, SentenceEncoder, optional_field};
 use crate::field::FieldsIter;
 use updraft_units::{Angle, Length, Speed};
 
@@ -41,6 +42,46 @@ impl Lxwp0 {
     }
 }
 
+impl TryFrom<&Lxwp0> for Vec<u8> {
+    type Error = EncodeError;
+
+    fn try_from(lxwp0: &Lxwp0) -> Result<Self, Self::Error> {
+        let mut sentence = SentenceEncoder::new("LXWP0");
+        sentence.field(match lxwp0.logger_running {
+            Some(true) => "Y",
+            Some(false) => "N",
+            None => "",
+        });
+        sentence.field(&optional_field(
+            lxwp0
+                .true_airspeed
+                .map(|speed| speed.as_kilometers_per_hour()),
+        ));
+        sentence.field(&optional_field(
+            lxwp0.pressure_altitude.map(|altitude| altitude.as_meters()),
+        ));
+
+        let vario_sample_count = lxwp0.vario_samples.len().min(6);
+        for sample in lxwp0.vario_samples.iter().take(6) {
+            sentence.field(&sample.as_meters_per_second().to_string());
+        }
+        for _ in vario_sample_count..6 {
+            sentence.field("");
+        }
+
+        sentence.field(&optional_field(
+            lxwp0.heading.map(|heading| heading.as_degrees()),
+        ));
+        sentence.field(&optional_field(
+            lxwp0.wind_direction.map(|direction| direction.as_degrees()),
+        ));
+        sentence.field(&optional_field(
+            lxwp0.wind_speed.map(|speed| speed.as_kilometers_per_hour()),
+        ));
+        Ok(sentence.finish())
+    }
+}
+
 /// An LXNAV `Y`/`N` status field. Any other value, including an absent
 /// field, reads as absent.
 fn yes_no(value: Option<&[u8]>) -> Option<bool> {
@@ -54,7 +95,61 @@ fn yes_no(value: Option<&[u8]>) -> Option<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some_eq};
+    use crate::{Message, Step, parse};
+    use claims::{assert_none, assert_ok, assert_some_eq};
+
+    #[test]
+    fn encodes_complete_lxwp0_sentence() {
+        insta::assert_snapshot!(encode_lxwp0_sentence(&complete_lxwp0()));
+    }
+
+    #[test]
+    fn encodes_lxwp0_sentence_with_empty_optional_fields() {
+        let lxwp0 = Lxwp0 {
+            logger_running: Some(false),
+            true_airspeed: None,
+            pressure_altitude: Some(Length::from_meters(1266.5)),
+            vario_samples: Vec::new(),
+            heading: None,
+            wind_direction: Some(Angle::from_degrees(248.0)),
+            wind_speed: Some(Speed::from_kilometers_per_hour(23.1)),
+        };
+
+        insta::assert_snapshot!(encode_lxwp0_sentence(&lxwp0));
+    }
+
+    #[test]
+    fn parses_encoded_lxwp0_sentence() {
+        let expected = complete_lxwp0();
+        let sentence = assert_ok!(Vec::<u8>::try_from(&expected));
+        let mut input = sentence.as_slice();
+
+        let actual = match parse(&mut input) {
+            Step::Frame(Message::Lxwp0(lxwp0)) => lxwp0,
+            step => panic!("expected encoded LXWP0 frame, got {step:?}"),
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    fn complete_lxwp0() -> Lxwp0 {
+        Lxwp0 {
+            logger_running: Some(true),
+            true_airspeed: Some(Speed::from_kilometers_per_hour(222.3)),
+            pressure_altitude: Some(Length::from_meters(1665.5)),
+            vario_samples: vec![Speed::from_meters_per_second(1.71); 6],
+            heading: Some(Angle::from_degrees(239.0)),
+            wind_direction: Some(Angle::from_degrees(174.0)),
+            wind_speed: Some(Speed::from_kilometers_per_hour(10.1)),
+        }
+    }
+
+    fn encode_lxwp0_sentence(lxwp0: &Lxwp0) -> String {
+        let sentence = assert_ok!(Vec::<u8>::try_from(lxwp0));
+        let sentence = assert_ok!(String::from_utf8(sentence));
+        assert!(sentence.ends_with("\r\n"));
+        sentence
+    }
 
     #[test]
     fn parses_a_full_flight_data_sentence() {

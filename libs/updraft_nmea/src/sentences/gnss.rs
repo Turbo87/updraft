@@ -1,7 +1,7 @@
 //! Standard GNSS sentences: `GGA`, `RMC`, `GSA`, for any talker.
 
 use crate::datetime::{Date, Time};
-use crate::encode::{EncodeError, SentenceEncoder, position_fields, talker_code};
+use crate::encode::{EncodeError, SentenceEncoder, optional_field, position_fields, talker_code};
 use crate::field::FieldsIter;
 use crate::message::Talker;
 use updraft_geo::LatLon;
@@ -222,10 +222,6 @@ impl TryFrom<&Rmc> for Vec<u8> {
         sentence.field(&mode);
         Ok(sentence.finish())
     }
-}
-
-fn optional_field<T: ToString>(value: Option<T>) -> String {
-    value.map_or_else(String::new, |value| value.to_string())
 }
 
 /// The signed magnetic variation from a magnitude field and its `E`/`W`

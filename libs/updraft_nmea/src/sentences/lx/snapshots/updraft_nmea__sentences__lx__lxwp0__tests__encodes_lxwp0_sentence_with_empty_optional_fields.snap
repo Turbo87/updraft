@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/lx/lxwp0.rs
+expression: encode_lxwp0_sentence(&lxwp0)
+---
+$LXWP0,N,,1266.5,,,,,,,,248,23.1*55

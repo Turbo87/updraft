@@ -6,6 +6,7 @@ use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 mod activity;
 mod airspace_storage;
 mod driver;
+mod file_picker;
 mod ipc;
 mod settings;
 // A session only exists on Android. `test` keeps the adapter, and the tests
@@ -76,6 +77,8 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
+            ipc::import_airspace,
+            ipc::remove_airspace,
             ipc::set_locale,
             ipc::set_units,
             ipc::add_external_device,
@@ -85,6 +88,8 @@ pub fn run() {
             ipc::set_external_device_enabled,
             ipc::subscribe,
         ])
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updraft::init())
         .setup(|app| {
             if let Some(guard) = init_tracing(app.handle()) {
@@ -92,8 +97,9 @@ pub fn run() {
             }
             let settings_file = settings::SettingsFile::new(app.path().app_config_dir()?);
             let snapshot = settings_file.load();
-            let airspace =
-                airspace_storage::AirspaceStorage::new(app.path().app_data_dir()?).load();
+            let airspace_storage =
+                airspace_storage::AirspaceStorage::new(app.path().app_data_dir()?);
+            let airspace = airspace_storage.load();
 
             // `setup` runs on the main thread outside any runtime context,
             // so `tokio::spawn` inside the driver would panic. Enter Tauri's
@@ -118,7 +124,11 @@ pub fn run() {
             #[cfg(target_os = "android")]
             let fixes = session::fix_channel(handle.clone());
 
+            let file_picker: file_picker::FileBytesPickerState =
+                Box::new(file_picker::TauriFileBytesPicker::new(app.handle().clone()));
             app.manage(handle);
+            app.manage(file_picker);
+            app.manage(ipc::AirspaceCommandState::new(airspace_storage));
 
             #[cfg(target_os = "android")]
             start_session(app.handle().clone(), fixes);

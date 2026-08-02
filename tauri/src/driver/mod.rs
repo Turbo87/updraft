@@ -71,6 +71,13 @@ pub struct DriverHandle {
 }
 
 impl DriverHandle {
+    #[cfg(test)]
+    pub fn stopped() -> Self {
+        let (messages, receiver) = mpsc::unbounded_channel();
+        drop(receiver);
+        Self { messages }
+    }
+
     /// Queues an input and waits until its effects are dispatched.
     pub async fn send<I: Input>(&self, input: I) -> Result<I::Response, DriverStopped> {
         let (reply, response) = oneshot::channel();

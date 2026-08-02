@@ -1,5 +1,6 @@
 //! Garmin proprietary sentences.
 
+use crate::encode::{EncodeError, SentenceEncoder};
 use crate::field::FieldsIter;
 use updraft_units::Length;
 
@@ -29,6 +30,26 @@ impl Pgrmz {
     }
 }
 
+impl TryFrom<&Pgrmz> for Vec<u8> {
+    type Error = EncodeError;
+
+    fn try_from(pgrmz: &Pgrmz) -> Result<Self, Self::Error> {
+        let mut sentence = SentenceEncoder::new("PGRMZ");
+        match pgrmz.altitude {
+            Some(altitude) => {
+                sentence.field(&altitude.as_feet().to_string());
+                sentence.field("f");
+            }
+            None => {
+                sentence.field("");
+                sentence.field("");
+            }
+        }
+        sentence.field(&pgrmz.fix_dimension.to_nmea_field());
+        Ok(sentence.finish())
+    }
+}
+
 /// The fix dimensionality reported in the third `$PGRMZ` field.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PgrmzFixDimension {
@@ -48,12 +69,75 @@ impl PgrmzFixDimension {
             field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
         }
     }
+
+    fn to_nmea_field(self) -> String {
+        match self {
+            Self::NoFix => "1".to_owned(),
+            Self::TwoDimensional => "2".to_owned(),
+            Self::ThreeDimensional => "3".to_owned(),
+            Self::Other(value) => value.to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::assert_some_eq;
+    use crate::{Message, Step, parse};
+    use claims::{assert_ok, assert_some_eq};
+
+    #[test]
+    fn encodes_pgrmz_sentence_in_default_feet() {
+        let pgrmz = Pgrmz {
+            altitude: Some(Length::from_feet(4395.0)),
+            fix_dimension: PgrmzFixDimension::ThreeDimensional,
+        };
+
+        insta::assert_snapshot!(encode_pgrmz_sentence(&pgrmz));
+    }
+
+    #[test]
+    fn encodes_every_pgrmz_fix_dimension() {
+        let sentences = [
+            PgrmzFixDimension::NoFix,
+            PgrmzFixDimension::TwoDimensional,
+            PgrmzFixDimension::ThreeDimensional,
+            PgrmzFixDimension::Other(9),
+        ]
+        .map(|fix_dimension| {
+            encode_pgrmz_sentence(&Pgrmz {
+                altitude: Some(Length::from_feet(4395.0)),
+                fix_dimension,
+            })
+        })
+        .concat();
+
+        insta::assert_snapshot!(sentences);
+    }
+
+    #[test]
+    fn parses_encoded_pgrmz_sentence() {
+        let expected = Pgrmz {
+            altitude: Some(Length::from_feet(4395.0)),
+            fix_dimension: PgrmzFixDimension::ThreeDimensional,
+        };
+        let sentence = assert_ok!(Vec::<u8>::try_from(&expected));
+        let mut input = sentence.as_slice();
+
+        let actual = match parse(&mut input) {
+            Step::Frame(Message::Pgrmz(pgrmz)) => pgrmz,
+            step => panic!("expected encoded PGRMZ frame, got {step:?}"),
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    fn encode_pgrmz_sentence(pgrmz: &Pgrmz) -> String {
+        let sentence = assert_ok!(Vec::<u8>::try_from(pgrmz));
+        let sentence = assert_ok!(String::from_utf8(sentence));
+        assert!(sentence.ends_with("\r\n"));
+        sentence
+    }
 
     #[test]
     fn reads_altitude_in_feet_by_default() {

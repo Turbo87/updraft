@@ -1,0 +1,8 @@
+---
+source: libs/updraft_nmea/src/sentences/garmin.rs
+expression: sentences
+---
+$PGRMZ,4395,f,1*22
+$PGRMZ,4395,f,2*21
+$PGRMZ,4395,f,3*20
+$PGRMZ,4395,f,9*2A

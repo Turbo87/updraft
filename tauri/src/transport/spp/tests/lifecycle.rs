@@ -1,6 +1,6 @@
 use super::super::supervisor::{maintain, spawn_maintained};
 use super::support::*;
-use crate::driver::test_support;
+use crate::driver::tests as driver_tests;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
@@ -104,7 +104,7 @@ async fn stopping_an_active_spp_attempt_cancels_and_waits_for_disconnection() {
 async fn driver_termination_cancels_an_active_attempt_without_reconnecting() {
     for event in [r#"{"type":"connected"}"#, RMC_EVENT] {
         let platform = Arc::new(FakePlatform::with_events(Vec::new()));
-        let driver = test_support::spawn(
+        let driver = driver_tests::spawn(
             SettingsSnapshot {
                 settings: Default::default(),
                 external_devices: vec![ExternalDeviceConfig {

@@ -25,6 +25,7 @@
   "airspace_command_driver_stopped": "Der Luftraumdienst ist nicht verfügbar.",
   "airspace_command_busy": "Eine andere Luftraumänderung wird bereits ausgeführt.",
   "airspace_command_unknown": "Die Lufträume konnten nicht aktualisiert werden.",
+  "return_to_position": "Zur Position zurückkehren",
   "flight_view": "Flugansicht",
   "settings_heading": "Einstellungen",
   "back_to_flight_view": "Zurück zur Flugansicht",

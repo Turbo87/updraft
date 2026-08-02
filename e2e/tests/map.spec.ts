@@ -18,6 +18,11 @@ type MapState = {
   sourceCoordinates: number[];
 };
 
+type MapCenter = {
+  latitudeDegrees: number;
+  longitudeDegrees: number;
+};
+
 type AirspaceMapState = {
   featureCount: number;
   layerOrder: string[];
@@ -44,15 +49,38 @@ const POSITION_B: Instruments = {
   altitudeMslMeters: 410,
 };
 
-test('renders the ownship position and follows live updates', async ({ page }) => {
+const POSITION_C: Instruments = {
+  position: { latitudeDegrees: 50.825, longitudeDegrees: 6.188 },
+  trackDegrees: 135,
+  groundSpeedMetersPerSecond: 32,
+  altitudeMslMeters: 420,
+};
+
+test('follows live positions until the user pans and returns', async ({ page }) => {
   await page.goto('/?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
 
   await emitInstruments(page, POSITION_A);
   await expectMapPosition(page, POSITION_A);
 
+  let followedCenter = await readMapCenter(page);
+  await panMap(page);
+  let returnButton = page.getByRole('button', { name: 'Return to position' });
+  await expect(returnButton).toBeVisible();
+  let manualCenter = await expectFullPan(page, followedCenter);
+
+  await panMap(page);
+  manualCenter = await expectFullPan(page, manualCenter);
+
   await emitInstruments(page, POSITION_B);
+  await expectMapPosition(page, POSITION_B, manualCenter);
+
+  await returnButton.click();
+  await expect(returnButton).not.toBeVisible();
   await expectMapPosition(page, POSITION_B);
+
+  await emitInstruments(page, POSITION_C);
+  await expectMapPosition(page, POSITION_C);
 });
 
 test('renders active airspace below traffic and ownship', async ({ page }) => {
@@ -96,7 +124,11 @@ async function emitInstruments(page: Page, instruments: Instruments) {
   }, instruments);
 }
 
-async function expectMapPosition(page: Page, instruments: Instruments) {
+async function expectMapPosition(
+  page: Page,
+  instruments: Instruments,
+  expectedCenter = instruments.position,
+) {
   let { latitudeDegrees, longitudeDegrees } = instruments.position;
 
   await expect
@@ -104,13 +136,59 @@ async function expectMapPosition(page: Page, instruments: Instruments) {
       message: `map to render position ${latitudeDegrees}, ${longitudeDegrees}`,
     })
     .toEqual({
-      center: [expect.closeTo(longitudeDegrees, 6), expect.closeTo(latitudeDegrees, 6)],
+      center: [
+        expect.closeTo(expectedCenter.longitudeDegrees, 6),
+        expect.closeTo(expectedCenter.latitudeDegrees, 6),
+      ],
       renderedCoordinates: [
         expect.closeTo(longitudeDegrees, 4),
         expect.closeTo(latitudeDegrees, 4),
       ],
       sourceCoordinates: [expect.closeTo(longitudeDegrees, 6), expect.closeTo(latitudeDegrees, 6)],
     });
+}
+
+async function panMap(page: Page) {
+  let bounds = await page.locator('.maplibregl-canvas').boundingBox();
+  if (!bounds) throw new Error('Map canvas is not visible');
+
+  let centerX = bounds.x + bounds.width / 2;
+  let centerY = bounds.y + bounds.height / 2;
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(centerX + 120, centerY, { steps: 5 });
+  await page.mouse.up();
+}
+
+async function readMapCenter(page: Page): Promise<MapCenter> {
+  return page.evaluate(() => {
+    let map = (window as TestWindow).__updraftTest?.map;
+    if (!map) throw new Error('Map is not available');
+
+    let center = map.getCenter();
+    return { latitudeDegrees: center.lat, longitudeDegrees: center.lng };
+  });
+}
+
+async function expectFullPan(page: Page, previousCenter: MapCenter): Promise<MapCenter> {
+  await expect
+    .poll(() => page.evaluate(() => (window as TestWindow).__updraftTest?.map.isMoving()))
+    .toBe(false);
+
+  let { center, displacementPixels } = await page.evaluate((previous) => {
+    let map = (window as TestWindow).__updraftTest?.map;
+    if (!map) throw new Error('Map is not available');
+
+    let current = map.getCenter();
+    let previousPoint = map.project([previous.longitudeDegrees, previous.latitudeDegrees]);
+    let currentPoint = map.project(current);
+    return {
+      center: { latitudeDegrees: current.lat, longitudeDegrees: current.lng },
+      displacementPixels: Math.abs(previousPoint.x - currentPoint.x),
+    };
+  }, previousCenter);
+  expect(displacementPixels).toBeGreaterThan(100);
+  return center;
 }
 
 async function readMapState(page: Page): Promise<MapState | null> {

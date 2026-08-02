@@ -3,6 +3,7 @@ import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 
 import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { page } from 'vitest/browser';
 
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
@@ -17,6 +18,13 @@ const instruments = {
   altitudeMslMeters: null,
   trackDegrees: null,
   groundSpeedMetersPerSecond: null,
+};
+
+const positionInstruments = {
+  position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
+  altitudeMslMeters: 410,
+  trackDegrees: 90,
+  groundSpeedMetersPerSecond: 31,
 };
 
 const units = {
@@ -72,4 +80,64 @@ it('adds the airspace source and both layers for the active state', async () => 
     expect(map.getLayer('airspace-outline')).toBeDefined();
   });
   expect(consoleError).not.toHaveBeenCalled();
+});
+
+it('returns to follow mode without a position and follows the next position', async () => {
+  let traffic = new TrafficStore();
+  let view = await render(MapComponent, {
+    instruments,
+    traffic,
+    units,
+    airspace: { type: 'none' },
+    testMode: true,
+  });
+  await vi.waitFor(() => {
+    expect((window as TestWindow).__updraftTest?.map).toBeDefined();
+  });
+  let map = (window as TestWindow).__updraftTest!.map;
+  await vi.waitFor(() => {
+    expect(map.isStyleLoaded()).toBe(true);
+    expect(map.hasImage('updraft-sdf:glider')).toBe(true);
+  });
+  let initialCenter = map.getCenter().toArray();
+
+  map.fire('dragstart');
+  let returnButton = page.getByRole('button', { name: 'Return to position' });
+  await expect.element(returnButton).toBeVisible();
+
+  let button = document.querySelector<HTMLButtonElement>('button[aria-label="Return to position"]');
+  if (!button) throw new Error('Return to position button is not available');
+  button.click();
+  await expect.element(returnButton).not.toBeInTheDocument();
+  expect(map.getCenter().toArray()).toEqual(initialCenter);
+
+  map.jumpTo({ zoom: 9, bearing: 15, pitch: 20 });
+  await view.rerender({
+    instruments: positionInstruments,
+    traffic,
+    units,
+    airspace: { type: 'none' },
+    testMode: true,
+  });
+  await vi.waitFor(() => {
+    expect(map.getCenter().toArray()).toEqual([
+      expect.closeTo(positionInstruments.position.longitudeDegrees, 6),
+      expect.closeTo(positionInstruments.position.latitudeDegrees, 6),
+    ]);
+    expect(map.getZoom()).toBe(9);
+    expect(map.getBearing()).toBe(15);
+    expect(map.getPitch()).toBe(20);
+  });
+
+  await view.rerender({
+    instruments,
+    traffic,
+    units,
+    airspace: { type: 'none' },
+    testMode: true,
+  });
+  await vi.waitFor(() => {
+    expect(map.getLayer('ownship-symbol')).toBeUndefined();
+    expect(map.getSource('ownship')).toBeUndefined();
+  });
 });

@@ -1,5 +1,5 @@
 ---
-source: libs/updraft_core/tests/scenario.rs
+source: libs/updraft_core/tests/scenario/external_devices.rs
 expression: mutation_effects(&effects)
 ---
 external devices [PublishedExternalDevice { device_id: ExternalDeviceId([ID]), config: ExternalDeviceConfig { enabled: false, spec: BluetoothSpp { address: "00:11:22:33:44:55", service_uuid: 00001101-0000-1000-8000-00805f9b34fb } } }, PublishedExternalDevice { device_id: ExternalDeviceId([ID]), config: ExternalDeviceConfig { enabled: true, spec: Tcp { host: "127.0.0.1", port: 4353 } } }]

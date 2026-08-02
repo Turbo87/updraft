@@ -1,5 +1,5 @@
 ---
-source: libs/updraft_core/tests/scenario.rs
+source: libs/updraft_core/tests/scenario/external_devices.rs
 expression: mutation_effects(&effects)
 ---
 open ExternalDeviceId([ID]) Tcp { host: "192.0.2.1", port: 10110 }

@@ -1,6 +1,6 @@
 ---
-source: libs/updraft_core/tests/scenario.rs
-expression: "replay_fixture().join(\"\\n\")"
+source: libs/updraft_core/tests/scenario/replay.rs
+expression: "replay(FIXTURE).join(\"\\n\")"
 ---
 open ExternalDeviceId(1) Tcp { host: "127.0.0.1", port: 4353 }
 instruments pos=50.82300,6.18600 track=270.00 gs=23.15 alt=none

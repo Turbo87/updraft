@@ -13,6 +13,11 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
 pub struct UpdraftMobile<R: Runtime>(AppHandle<R>);
 
 impl<R: Runtime> UpdraftMobile<R> {
+    /// Reports that desktop cannot configure Android Bluetooth SPP devices.
+    pub fn bonded_bluetooth_devices(&self) -> crate::Result<crate::BondedBluetoothDevices> {
+        Ok(crate::BondedBluetoothDevices::Unsupported)
+    }
+
     pub fn start_session(&self, _fixes: Channel) -> crate::Result<()> {
         Ok(())
     }

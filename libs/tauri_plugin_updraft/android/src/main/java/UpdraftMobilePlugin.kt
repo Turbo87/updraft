@@ -133,6 +133,17 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
      */
     private val application = activity.application
 
+    /** Returns the current bonded Bluetooth devices without starting discovery. */
+    @Command
+    fun bondedBluetoothDevices(invoke: Invoke) {
+        val result = queryBondedBluetoothDevices(
+            application,
+            Build.VERSION.SDK_INT,
+            getPermissionState(NEARBY_DEVICES_ALIAS) == PermissionState.GRANTED
+        )
+        invoke.resolve(result.toJsObject())
+    }
+
     /**
      * Starts foreground support for every source the pilot permits.
      *

@@ -1,0 +1,28 @@
+---
+source: libs/tauri_plugin_updraft/src/models.rs
+expression: results
+---
+[
+  {
+    "status": "unsupported"
+  },
+  {
+    "status": "permissionDenied"
+  },
+  {
+    "status": "disabled"
+  },
+  {
+    "status": "available",
+    "devices": [
+      {
+        "address": "00:11:22:33:44:55",
+        "name": "Flight recorder"
+      },
+      {
+        "address": "AA:BB:CC:DD:EE:FF",
+        "name": null
+      }
+    ]
+  }
+]

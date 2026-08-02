@@ -1,6 +1,24 @@
 use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 
+/// One device in the Android bonded Bluetooth set.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BondedBluetoothDevice {
+    pub address: String,
+    pub name: Option<String>,
+}
+
+/// The current bonded Bluetooth devices or the reason they are unavailable.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "status", rename_all = "camelCase", deny_unknown_fields)]
+pub enum BondedBluetoothDevices {
+    Unsupported,
+    PermissionDenied,
+    Disabled,
+    Available { devices: Vec<BondedBluetoothDevice> },
+}
+
 /// A position report from the device's own GNSS receiver.
 ///
 /// Fielded as `Location.toFix()` fields it in
@@ -54,8 +72,38 @@ impl SppConnectionId {
 
 #[cfg(test)]
 mod tests {
-    use super::SppEvent;
+    use super::{BondedBluetoothDevices, SppEvent};
     use tauri::ipc::InvokeResponseBody;
+
+    fn bonded_devices(payload: &str) -> BondedBluetoothDevices {
+        InvokeResponseBody::Json(payload.to_owned())
+            .deserialize()
+            .expect("payload is a valid bonded-device result")
+    }
+
+    #[test]
+    fn bonded_device_results_use_a_tagged_camel_case_contract() {
+        let results = [
+            bonded_devices(r#"{"status":"unsupported"}"#),
+            bonded_devices(r#"{"status":"permissionDenied"}"#),
+            bonded_devices(r#"{"status":"disabled"}"#),
+            bonded_devices(
+                r#"{"status":"available","devices":[{"address":"00:11:22:33:44:55","name":"Flight recorder"},{"address":"AA:BB:CC:DD:EE:FF","name":null}]}"#,
+            ),
+        ];
+
+        insta::assert_json_snapshot!(results);
+    }
+
+    #[test]
+    fn bonded_device_results_reject_unknown_fields() {
+        let result = InvokeResponseBody::Json(
+            r#"{"status":"available","devices":[],"unexpected":true}"#.to_owned(),
+        )
+        .deserialize::<BondedBluetoothDevices>();
+
+        result.expect_err("unknown bonded-device fields should be rejected");
+    }
 
     fn event(payload: &str) -> SppEvent {
         InvokeResponseBody::Json(payload.to_owned())

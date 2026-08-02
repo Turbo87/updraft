@@ -11,7 +11,7 @@ mod mobile;
 mod models;
 
 pub use error::{Error, Result};
-pub use models::{Fix, SppConnectionId, SppEvent};
+pub use models::{BondedBluetoothDevice, BondedBluetoothDevices, Fix, SppConnectionId, SppEvent};
 
 #[cfg(desktop)]
 use desktop::UpdraftMobile;

@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/lx/lxwp1.rs
+expression: encode_lxwp1_sentence(&lxwp1)
+---
+$LXWP1,,,,,*0E

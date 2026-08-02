@@ -29,6 +29,23 @@ impl SentenceEncoder {
         self.body.push_str(value);
     }
 
+    pub fn text_field(
+        &mut self,
+        value: Option<&str>,
+        field: &'static str,
+    ) -> Result<(), EncodeError> {
+        let value = value.unwrap_or_default();
+        if !value.is_ascii()
+            || value
+                .bytes()
+                .any(|byte| matches!(byte, b',' | b'*' | b'\r' | b'\n'))
+        {
+            return Err(EncodeError::InvalidField(field));
+        }
+        self.field(value);
+        Ok(())
+    }
+
     pub fn finish(self) -> Vec<u8> {
         let checksum = self.body.bytes().fold(0, |checksum, byte| checksum ^ byte);
         format!("${}*{checksum:02X}\r\n", self.body).into_bytes()

@@ -40,7 +40,7 @@ impl ReplayEvent {
 pub struct Replay {
     events: Vec<ReplayEvent>,
     duration: Duration,
-    timestamp_regression: bool,
+    warnings: Vec<String>,
 }
 
 struct IgcEventBuilder {
@@ -49,6 +49,7 @@ struct IgcEventBuilder {
     payload: Vec<u8>,
     pressure_altitude: Option<Length>,
     lxwp0: Option<Lxwp0>,
+    lxwp0_line: Option<usize>,
 }
 
 impl IgcEventBuilder {
@@ -59,6 +60,7 @@ impl IgcEventBuilder {
             payload: Vec::new(),
             pressure_altitude: None,
             lxwp0: None,
+            lxwp0_line: None,
         }
     }
 
@@ -66,9 +68,11 @@ impl IgcEventBuilder {
         &mut self,
         fix: &BRecord<'_>,
         extensions: &[Extension<'_>],
+        line_number: usize,
+        warnings: &mut Vec<String>,
         time: Time,
         date: Option<Date>,
-    ) -> Result<(), EncodeError> {
+    ) {
         let position = LatLon::from_degrees(f64::from(fix.pos.lat), f64::from(fix.pos.lon));
         let (rmc_status, fix_quality, fix_dimension) = match fix.fix_valid {
             FixValid::Valid => (
@@ -83,18 +87,31 @@ impl IgcEventBuilder {
             ),
         };
 
-        self.payload.extend(Vec::<u8>::try_from(&Rmc {
-            talker: Talker::Gps,
-            utc_time: Some(time),
-            status: rmc_status,
-            position: Some(position),
-            speed_over_ground: extension_value::<f64>(fix, extensions, "GSP")
+        append_igc_sentence(
+            &mut self.payload,
+            Vec::<u8>::try_from(&Rmc {
+                talker: Talker::Gps,
+                utc_time: Some(time),
+                status: rmc_status,
+                position: Some(position),
+                speed_over_ground: extension_value::<f64>(
+                    fix,
+                    extensions,
+                    "GSP",
+                    line_number,
+                    warnings,
+                )
                 .map(|value| Speed::from_kilometers_per_hour(value / 100.0)),
-            course_over_ground: extension_value(fix, extensions, "TRT").map(Angle::from_degrees),
-            date,
-            magnetic_variation: None,
-            mode: None,
-        })?);
+                course_over_ground: extension_value(fix, extensions, "TRT", line_number, warnings)
+                    .map(Angle::from_degrees),
+                date,
+                magnetic_variation: None,
+                mode: None,
+            }),
+            "RMC",
+            line_number,
+            warnings,
+        );
 
         let (altitude, geoid_separation) = if fix.gps_alt == 0 {
             (None, None)
@@ -106,64 +123,95 @@ impl IgcEventBuilder {
                 Some(updraft_egm96::undulation(position)),
             )
         };
-        self.payload.extend(Vec::<u8>::try_from(&Gga {
-            talker: Talker::Gps,
-            utc_time: Some(time),
-            position: Some(position),
-            fix_quality,
-            satellites_used: extension_value(fix, extensions, "SIU"),
-            hdop: None,
-            altitude,
-            geoid_separation,
-            dgps_age: None,
-            dgps_station: None,
-        })?);
+        append_igc_sentence(
+            &mut self.payload,
+            Vec::<u8>::try_from(&Gga {
+                talker: Talker::Gps,
+                utc_time: Some(time),
+                position: Some(position),
+                fix_quality,
+                satellites_used: extension_value(fix, extensions, "SIU", line_number, warnings),
+                hdop: None,
+                altitude,
+                geoid_separation,
+                dgps_age: None,
+                dgps_station: None,
+            }),
+            "GGA",
+            line_number,
+            warnings,
+        );
 
         self.pressure_altitude =
             (fix.pressure_alt != 0).then(|| Length::from_meters(f64::from(fix.pressure_alt)));
         if let Some(pressure_altitude) = self.pressure_altitude {
-            self.payload.extend(Vec::<u8>::try_from(&Pgrmz {
-                altitude: Some(pressure_altitude),
-                fix_dimension,
-            })?);
+            append_igc_sentence(
+                &mut self.payload,
+                Vec::<u8>::try_from(&Pgrmz {
+                    altitude: Some(pressure_altitude),
+                    fix_dimension,
+                }),
+                "PGRMZ",
+                line_number,
+                warnings,
+            );
         }
 
-        let true_airspeed = extension_value::<f64>(fix, extensions, "TAS")
+        let true_airspeed = extension_value::<f64>(fix, extensions, "TAS", line_number, warnings)
             .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
-        let vario = extension_value::<f64>(fix, extensions, "VAT")
+        let vario = extension_value::<f64>(fix, extensions, "VAT", line_number, warnings)
             .map(|value| Speed::from_meters_per_second(value / 100.0));
         if true_airspeed.is_some() || vario.is_some() || self.lxwp0.is_some() {
             let lxwp0 = self.lxwp0.get_or_insert_with(empty_lxwp0);
             lxwp0.true_airspeed = true_airspeed;
             lxwp0.pressure_altitude = self.pressure_altitude;
             lxwp0.vario_samples = vario.into_iter().collect();
+            self.lxwp0_line = Some(line_number);
         }
 
-        if let Some(outside_air_temperature) = extension_value::<f64>(fix, extensions, "OAT") {
-            self.payload.extend(Vec::<u8>::try_from(&Plxvs {
-                outside_air_temperature: Some(outside_air_temperature / 10.0),
-                mode: None,
-                supply_voltage: None,
-                igc_pressure_altitude: self.pressure_altitude,
-                flap_position: None,
-            })?);
+        if let Some(outside_air_temperature) =
+            extension_value::<f64>(fix, extensions, "OAT", line_number, warnings)
+        {
+            append_igc_sentence(
+                &mut self.payload,
+                Vec::<u8>::try_from(&Plxvs {
+                    outside_air_temperature: Some(outside_air_temperature / 10.0),
+                    mode: None,
+                    supply_voltage: None,
+                    igc_pressure_altitude: self.pressure_altitude,
+                    flap_position: None,
+                }),
+                "PLXVS",
+                line_number,
+                warnings,
+            );
         }
-
-        Ok(())
     }
 
-    fn add_wind(&mut self, wind_direction: Option<Angle>, wind_speed: Option<Speed>) {
+    fn add_wind(
+        &mut self,
+        wind_direction: Option<Angle>,
+        wind_speed: Option<Speed>,
+        line_number: usize,
+    ) {
         let lxwp0 = self.lxwp0.get_or_insert_with(empty_lxwp0);
         lxwp0.pressure_altitude = self.pressure_altitude;
         lxwp0.wind_direction = wind_direction;
         lxwp0.wind_speed = wind_speed;
+        self.lxwp0_line = Some(line_number);
     }
 
-    fn finish(mut self) -> Result<ReplayEvent, EncodeError> {
+    fn finish(mut self, warnings: &mut Vec<String>) -> ReplayEvent {
         if let Some(lxwp0) = self.lxwp0 {
-            self.payload.extend(Vec::<u8>::try_from(&lxwp0)?);
+            append_igc_sentence(
+                &mut self.payload,
+                Vec::<u8>::try_from(&lxwp0),
+                "LXWP0",
+                self.lxwp0_line.expect("LXWP0 source line exists"),
+                warnings,
+            );
         }
-        Ok(ReplayEvent::new(self.at, Bytes::from(self.payload)))
+        ReplayEvent::new(self.at, Bytes::from(self.payload))
     }
 }
 
@@ -246,7 +294,10 @@ impl Replay {
         Ok(Self {
             events,
             duration,
-            timestamp_regression,
+            warnings: timestamp_regression
+                .then(|| "NMEA replay timestamps moved backward".to_owned())
+                .into_iter()
+                .collect(),
         })
     }
 
@@ -263,28 +314,60 @@ impl Replay {
         let mut identification = empty_lxwp1();
         let mut has_fix = false;
         let mut timestamp_regression = false;
+        let mut warnings = Vec::new();
 
-        for line in input.lines() {
+        for (line_index, line) in input.lines().enumerate() {
+            let line_number = line_index + 1;
             match Record::parse_line(line) {
                 Ok(Record::A(record)) => {
                     identification.serial = nonempty_text(record.unique_id);
+                    omit_invalid_igc_identification_field(
+                        &mut identification,
+                        "A",
+                        line_number,
+                        &mut warnings,
+                    );
                 }
                 Ok(Record::H(header)) => match header.mnemonic {
                     "DTE" => {
-                        current_date = current_date.or_else(|| {
-                            header
-                                .data
-                                .split(',')
-                                .next()
-                                .and_then(|date| Date::parse_ddmmyy(date.as_bytes()))
-                        });
+                        let date = header
+                            .data
+                            .split(',')
+                            .next()
+                            .and_then(|date| Date::parse_ddmmyy(date.as_bytes()));
+                        if date.is_none() {
+                            warnings.push(format!("IGC line {line_number}: invalid DTE field"));
+                        }
+                        current_date = current_date.or(date);
                     }
                     "FTY" => {
                         identification.product =
                             header.data.rsplit(',').next().and_then(nonempty_text);
+                        omit_invalid_igc_identification_field(
+                            &mut identification,
+                            "FTY",
+                            line_number,
+                            &mut warnings,
+                        );
                     }
-                    "RFW" => identification.software_version = nonempty_text(header.data),
-                    "RHW" => identification.hardware_version = nonempty_text(header.data),
+                    "RFW" => {
+                        identification.software_version = nonempty_text(header.data);
+                        omit_invalid_igc_identification_field(
+                            &mut identification,
+                            "RFW",
+                            line_number,
+                            &mut warnings,
+                        );
+                    }
+                    "RHW" => {
+                        identification.hardware_version = nonempty_text(header.data);
+                        omit_invalid_igc_identification_field(
+                            &mut identification,
+                            "RHW",
+                            line_number,
+                            &mut warnings,
+                        );
+                    }
                     _ => {}
                 },
                 Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
@@ -296,11 +379,13 @@ impl Replay {
                         fix.timestamp.seconds,
                         0,
                     ) else {
+                        warnings.push(format!("IGC line {line_number}: invalid B record"));
                         continue;
                     };
                     has_fix = true;
 
                     let previous_day_offset = day_offset;
+                    let had_timestamp_regression = timestamp_regression;
                     let scheduled = schedule_millis(
                         time,
                         &mut previous_time,
@@ -308,6 +393,9 @@ impl Replay {
                         &mut current_time,
                         &mut timestamp_regression,
                     );
+                    if !had_timestamp_regression && timestamp_regression {
+                        warnings.push(format!("IGC line {line_number}: timestamp moved backward"));
+                    }
                     if day_offset > previous_day_offset {
                         current_date = current_date.map(next_date);
                     }
@@ -315,14 +403,39 @@ impl Replay {
                     let absolute = day_offset + u64::from(time.milliseconds_since_midnight());
                     let first_absolute = *first_absolute.get_or_insert(scheduled);
                     let at = Duration::from_millis(scheduled - first_absolute);
-                    current_igc_event_builder(&mut events, &mut event_builder, absolute, at)?
-                        .add_fix(&fix, &fix_extensions, time, current_date)?;
+                    current_igc_event_builder(
+                        &mut events,
+                        &mut event_builder,
+                        absolute,
+                        at,
+                        &mut warnings,
+                    )
+                    .add_fix(
+                        &fix,
+                        &fix_extensions,
+                        line_number,
+                        &mut warnings,
+                        time,
+                        current_date,
+                    );
                 }
                 Ok(Record::K(record)) => {
-                    let wind_direction = extension_value::<f64>(&record, &wind_extensions, "WDI")
-                        .map(Angle::from_degrees);
-                    let wind_speed = extension_value::<f64>(&record, &wind_extensions, "WSP")
-                        .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
+                    let wind_direction = extension_value::<f64>(
+                        &record,
+                        &wind_extensions,
+                        "WDI",
+                        line_number,
+                        &mut warnings,
+                    )
+                    .map(Angle::from_degrees);
+                    let wind_speed = extension_value::<f64>(
+                        &record,
+                        &wind_extensions,
+                        "WSP",
+                        line_number,
+                        &mut warnings,
+                    )
+                    .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
                     if wind_direction.is_none() && wind_speed.is_none() {
                         continue;
                     }
@@ -332,10 +445,12 @@ impl Replay {
                         record.time.seconds,
                         0,
                     ) else {
+                        warnings.push(format!("IGC line {line_number}: invalid K record"));
                         continue;
                     };
 
                     let previous_day_offset = day_offset;
+                    let had_timestamp_regression = timestamp_regression;
                     let scheduled = schedule_millis(
                         time,
                         &mut previous_time,
@@ -343,6 +458,9 @@ impl Replay {
                         &mut current_time,
                         &mut timestamp_regression,
                     );
+                    if !had_timestamp_regression && timestamp_regression {
+                        warnings.push(format!("IGC line {line_number}: timestamp moved backward"));
+                    }
                     if day_offset > previous_day_offset {
                         current_date = current_date.map(next_date);
                     }
@@ -350,8 +468,21 @@ impl Replay {
                     let absolute = day_offset + u64::from(time.milliseconds_since_midnight());
                     let first_absolute = *first_absolute.get_or_insert(scheduled);
                     let at = Duration::from_millis(scheduled - first_absolute);
-                    current_igc_event_builder(&mut events, &mut event_builder, absolute, at)?
-                        .add_wind(wind_direction, wind_speed);
+                    current_igc_event_builder(
+                        &mut events,
+                        &mut event_builder,
+                        absolute,
+                        at,
+                        &mut warnings,
+                    )
+                    .add_wind(wind_direction, wind_speed, line_number);
+                }
+                Err(_) => {
+                    if let Some(record_type) = mapped_igc_record_type(line) {
+                        warnings.push(format!(
+                            "IGC line {line_number}: invalid {record_type} record"
+                        ));
+                    }
                 }
                 _ => {}
             }
@@ -361,7 +492,7 @@ impl Replay {
             return Err(ReplayError::MissingFix);
         }
         if let Some(event) = event_builder {
-            push_or_merge_igc_event(&mut events, event.finish()?);
+            push_or_merge_igc_event(&mut events, event.finish(&mut warnings));
         }
         let duration = events
             .last()
@@ -376,7 +507,7 @@ impl Replay {
         Ok(Self {
             events,
             duration,
-            timestamp_regression,
+            warnings,
         })
     }
 
@@ -388,8 +519,8 @@ impl Replay {
         self.duration
     }
 
-    pub fn has_timestamp_regression(&self) -> bool {
-        self.timestamp_regression
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
     }
 
     pub fn events_from(&self, skip: Duration) -> Result<&[ReplayEvent], ReplayError> {
@@ -448,12 +579,13 @@ fn current_igc_event_builder<'a>(
     current: &'a mut Option<IgcEventBuilder>,
     absolute: u64,
     at: Duration,
-) -> Result<&'a mut IgcEventBuilder, EncodeError> {
+    warnings: &mut Vec<String>,
+) -> &'a mut IgcEventBuilder {
     if let Some(event) = current.take_if(|event| event.absolute != absolute) {
-        push_or_merge_igc_event(events, event.finish()?);
+        push_or_merge_igc_event(events, event.finish(warnings));
     }
 
-    Ok(current.get_or_insert_with(|| IgcEventBuilder::new(absolute, at)))
+    current.get_or_insert_with(|| IgcEventBuilder::new(absolute, at))
 }
 
 fn push_or_merge_igc_event(events: &mut Vec<ReplayEvent>, event: ReplayEvent) {
@@ -466,6 +598,21 @@ fn push_or_merge_igc_event(events: &mut Vec<ReplayEvent>, event: ReplayEvent) {
         previous.payload = Bytes::from(combined);
     } else {
         events.push(event);
+    }
+}
+
+fn append_igc_sentence(
+    payload: &mut Vec<u8>,
+    sentence: Result<Vec<u8>, EncodeError>,
+    sentence_name: &str,
+    line_number: usize,
+    warnings: &mut Vec<String>,
+) {
+    match sentence {
+        Ok(sentence) => payload.extend(sentence),
+        Err(_) => warnings.push(format!(
+            "IGC line {line_number}: {sentence_name} sentence cannot be encoded"
+        )),
     }
 }
 
@@ -487,6 +634,14 @@ fn insert_periodic_igc_identification(
             Err(index) => events.insert(index, ReplayEvent::new(at, identification.clone())),
         }
     }
+}
+
+fn mapped_igc_record_type(line: &str) -> Option<char> {
+    line.as_bytes()
+        .first()
+        .copied()
+        .filter(|record_type| matches!(record_type, b'A' | b'H' | b'I' | b'J' | b'B' | b'K'))
+        .map(char::from)
 }
 
 fn empty_lxwp0() -> Lxwp0 {
@@ -515,16 +670,49 @@ fn nonempty_text(value: &str) -> Option<Box<str>> {
     (!value.is_empty()).then(|| value.into())
 }
 
+fn omit_invalid_igc_identification_field(
+    identification: &mut Lxwp1,
+    field: &'static str,
+    line_number: usize,
+    warnings: &mut Vec<String>,
+) {
+    if Vec::<u8>::try_from(&*identification).is_ok() {
+        return;
+    }
+
+    match field {
+        "A" => identification.serial = None,
+        "FTY" => identification.product = None,
+        "RFW" => identification.software_version = None,
+        "RHW" => identification.hardware_version = None,
+        _ => unreachable!("mapped IGC identification field"),
+    }
+    warnings.push(format!("IGC line {line_number}: invalid {field} field"));
+}
+
 fn extension_value<T: FromStr>(
     record: &impl Extendable,
     extensions: &[Extension<'_>],
     mnemonic: &str,
+    line_number: usize,
+    warnings: &mut Vec<String>,
 ) -> Option<T> {
-    extensions
+    let extension = extensions
         .iter()
-        .find(|extension| extension.mnemonic == mnemonic)
-        .and_then(|extension| record.get_extension(extension).ok())
+        .find(|extension| extension.mnemonic == mnemonic)?;
+    match record
+        .get_extension(extension)
+        .ok()
         .and_then(|value| value.parse().ok())
+    {
+        Some(value) => Some(value),
+        None => {
+            warnings.push(format!(
+                "IGC line {line_number}: invalid {mnemonic} extension"
+            ));
+            None
+        }
+    }
 }
 
 fn next_date(date: Date) -> Date {
@@ -899,7 +1087,7 @@ mod tests {
         ));
 
         assert_eq!(replay.events().len(), 1);
-        assert!(replay.has_timestamp_regression());
+        assert_eq!(replay.warnings(), ["IGC line 4: timestamp moved backward"]);
         let flight_data = lxwp0_messages(&replay.events()[0]);
         assert_eq!(flight_data.len(), 2);
         assert_none!(flight_data[0].wind_direction);
@@ -976,7 +1164,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             [Duration::ZERO, Duration::from_secs(1)]
         );
-        assert!(replay.has_timestamp_regression());
+        assert_eq!(replay.warnings(), ["IGC line 2: timestamp moved backward"]);
     }
 
     #[test]
@@ -984,6 +1172,92 @@ mod tests {
         let error = Replay::from_igc("HFDTE040726\nB2400005200000N00700000EA0304801000\n");
 
         assert_matches!(error, Err(ReplayError::MissingFix));
+    }
+
+    #[test]
+    fn warns_and_continues_after_a_malformed_mapped_record() {
+        let replay = assert_ok!(Replay::from_igc(
+            "Binvalid\n\
+             B1347495200000N00700000EA0304801000\n"
+        ));
+
+        assert_eq!(replay.warnings(), ["IGC line 1: invalid B record"]);
+        first_rmc(&replay.events()[0]);
+    }
+
+    #[test]
+    fn ignores_unsupported_igc_records_without_warnings() {
+        let replay = assert_ok!(Replay::from_igc(
+            "Zunsupported\n\
+             B1347495200000N00700000EA0304801000\n"
+        ));
+
+        assert!(replay.warnings().is_empty());
+    }
+
+    #[test]
+    fn warns_and_omits_a_malformed_mapped_extension() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I013640GSP\n\
+             B1347495200000N00700000EA0304801000abcde\n"
+        ));
+
+        assert_eq!(replay.warnings(), ["IGC line 2: invalid GSP extension"]);
+        assert_none!(first_rmc(&replay.events()[0]).speed_over_ground);
+    }
+
+    #[test]
+    fn warns_about_a_malformed_date_and_preserves_rmc() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFDTEinvalid\n\
+             B1347495200000N00700000EA0304801000\n"
+        ));
+
+        assert_eq!(replay.warnings(), ["IGC line 1: invalid DTE field"]);
+        assert_none!(first_rmc(&replay.events()[0]).date);
+    }
+
+    #[test]
+    fn warns_and_omits_only_the_invalid_recorder_field() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFFTYFRTYPE:LXNAV,LX9070PF\n\
+             HFRFWFIRMWAREVERSION:9*54\n\
+             B1347495200000N00700000EA0304801000\n"
+        ));
+
+        assert_eq!(replay.warnings(), ["IGC line 2: invalid RFW field"]);
+        let identification = first_lxwp1(&replay.events()[0]);
+        assert_some_eq!(identification.product, "LX9070PF".into());
+        assert_none!(identification.software_version);
+    }
+
+    #[test]
+    fn a_malformed_k_record_does_not_remove_its_matching_b_record() {
+        let replay = assert_ok!(Replay::from_igc(
+            "J020810WDI1115WSP\n\
+             B1347495200000N00700000EA0304801000\n\
+             Kinvalid\n"
+        ));
+
+        assert_eq!(replay.warnings(), ["IGC line 3: invalid K record"]);
+        first_rmc(&replay.events()[0]);
+        assert!(lxwp0_messages(&replay.events()[0]).is_empty());
+    }
+
+    #[test]
+    fn skips_only_a_generated_sentence_that_cannot_be_encoded() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFDTE311299\n\
+             B2359595200000N00700000EA0304801000\n\
+             B0000005200000N00700000EA0304801000\n"
+        ));
+
+        assert_eq!(
+            replay.warnings(),
+            ["IGC line 3: RMC sentence cannot be encoded"]
+        );
+        assert!(rmc_messages(&replay.events()[1]).is_empty());
+        first_gga(&replay.events()[1]);
     }
 
     #[test]
@@ -1004,7 +1278,7 @@ mod tests {
             ]
         );
         assert_eq!(replay.duration(), Duration::from_secs(3));
-        assert!(!replay.has_timestamp_regression());
+        assert!(replay.warnings().is_empty());
 
         let reconstructed = replay
             .events()
@@ -1029,12 +1303,21 @@ mod tests {
     }
 
     fn first_rmc(event: &ReplayEvent) -> Rmc {
+        rmc_messages(event)
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| panic!("expected RMC frame"))
+    }
+
+    fn rmc_messages(event: &ReplayEvent) -> Vec<Rmc> {
         let mut input = event.payload().as_ref();
+        let mut messages = Vec::new();
         loop {
             match parse(&mut input) {
-                Step::Frame(Message::Rmc(rmc)) => return rmc,
+                Step::Frame(Message::Rmc(rmc)) => messages.push(rmc),
                 Step::Frame(_) => {}
-                step => panic!("expected RMC frame, got {step:?}"),
+                Step::Incomplete => return messages,
+                step => panic!("expected NMEA frame, got {step:?}"),
             }
         }
     }

@@ -51,8 +51,8 @@ async fn main() -> Result<()> {
     let skip = Duration::from_secs(args.skip);
     replay.events_from(skip)?;
 
-    if replay.has_timestamp_regression() {
-        warn!("NMEA replay timestamps moved backward");
+    for warning in replay.warnings() {
+        warn!("{warning}");
     }
 
     let listener = TcpListener::bind(args.listen)

@@ -1,3 +1,4 @@
+use crate::airspace::AirspaceStatus;
 use crate::external_device::PublishedExternalDevice;
 use crate::settings::Settings;
 use crate::traffic::TrafficUpdate;
@@ -48,12 +49,14 @@ pub enum Topic {
     Instruments(Instruments),
     Settings(Settings),
     ExternalDevices(Vec<PublishedExternalDevice>),
+    Airspace(AirspaceStatus),
     Traffic(TrafficUpdate),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::airspace::{AirspaceLoadError, AirspaceStatus};
     use crate::settings::Locale;
     use crate::traffic::{
         PublishedTrafficTarget, TrafficAlarmLevel, TrafficDelta, TrafficTarget, TrafficTargetId,
@@ -113,6 +116,60 @@ mod tests {
               "speed": "km/h",
               "verticalSpeed": "m/s"
             }
+          }
+        }
+        "#);
+    }
+
+    #[test]
+    fn airspace_none_status_serializes_to_json() {
+        let topic = Topic::Airspace(AirspaceStatus::None);
+
+        insta::assert_json_snapshot!(topic, @r#"
+        {
+          "topic": "airspace",
+          "value": {
+            "type": "none"
+          }
+        }
+        "#);
+    }
+
+    #[test]
+    fn airspace_active_status_serializes_to_json() {
+        let topic = Topic::Airspace(AirspaceStatus::Active {
+            source_name: Some("Local airspace.txt".into()),
+            airspace_count: 42,
+            generation: 7,
+        });
+
+        insta::assert_json_snapshot!(topic, @r#"
+        {
+          "topic": "airspace",
+          "value": {
+            "type": "active",
+            "sourceName": "Local airspace.txt",
+            "airspaceCount": 42,
+            "generation": 7
+          }
+        }
+        "#);
+    }
+
+    #[test]
+    fn airspace_unavailable_status_serializes_to_json() {
+        let topic = Topic::Airspace(AirspaceStatus::Unavailable {
+            source_name: None,
+            error: AirspaceLoadError::GeometryFailed,
+        });
+
+        insta::assert_json_snapshot!(topic, @r#"
+        {
+          "topic": "airspace",
+          "value": {
+            "type": "unavailable",
+            "sourceName": null,
+            "error": "geometryFailed"
           }
         }
         "#);

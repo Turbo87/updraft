@@ -11,9 +11,9 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use updraft_core::{
-    AddExternalDevice, Bytes, ConnectionSpec, DeleteExternalDevice, EditExternalDevice,
-    ExternalDeviceConfig, ExternalDeviceId, SetExternalDeviceEnabled, SetLocale, SettingsSnapshot,
-    Topic, TrafficUpdate,
+    ActivateAirspaceDataset, AddExternalDevice, AirspaceDataset, AirspaceStatus, Bytes,
+    ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
+    ExternalDeviceId, SetExternalDeviceEnabled, SetLocale, SettingsSnapshot, Topic, TrafficUpdate,
 };
 
 const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -136,6 +136,41 @@ async fn subscribing_delivers_current_state_immediately() {
     assert_some_eq!(
         received,
         Topic::Instruments(updraft_core::Instruments::default())
+    );
+}
+
+#[tokio::test]
+async fn new_subscriber_receives_current_airspace_status() {
+    let handle = Driver::spawn(
+        snapshot(),
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    );
+    let dataset = Arc::new(AirspaceDataset::default());
+    handle
+        .send(ActivateAirspaceDataset::new(dataset, None))
+        .await
+        .expect("driver remains active");
+    let mut topics = topic_stream(&handle);
+
+    let status = loop {
+        let received = timeout(PATIENCE, topics.recv())
+            .await
+            .expect("an onboarding topic within the timeout");
+        let Topic::Airspace(status) = assert_some!(received) else {
+            continue;
+        };
+        break status;
+    };
+
+    assert_eq!(
+        status,
+        AirspaceStatus::Active {
+            source_name: None,
+            airspace_count: 0,
+            generation: 1,
+        }
     );
 }
 

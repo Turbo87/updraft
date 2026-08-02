@@ -1,5 +1,40 @@
+use serde::Serialize;
 use updraft_geo::LatLon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
+
+/// A safe machine-readable failure from loading a stored airspace source.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub enum AirspaceLoadError {
+    ReadFailed,
+    ParseFailed,
+    GeometryFailed,
+}
+
+/// The client-visible state of the local airspace source.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum AirspaceStatus {
+    /// No local airspace source is selected.
+    None,
+    /// A canonical dataset is active in this process.
+    Active {
+        source_name: Option<String>,
+        airspace_count: usize,
+        generation: u32,
+    },
+    /// A stored source exists but could not become a canonical dataset.
+    Unavailable {
+        source_name: Option<String>,
+        error: AirspaceLoadError,
+    },
+}
 
 /// A stable sequence number within one parsed airspace dataset.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

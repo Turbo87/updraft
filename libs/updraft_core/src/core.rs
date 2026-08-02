@@ -1,17 +1,20 @@
+use crate::airspace::{AirspaceDataset, AirspaceState};
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
 use crate::fix::Fix;
 use crate::input::{
-    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
-    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Start,
-    Tick, Update,
+    ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
+    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
+    Start, Tick, Update,
 };
 use crate::ownship::OwnshipState;
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::Topic;
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
+use std::sync::Arc;
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_nmea::{Message, RmcStatus};
 use updraft_units::MslAltitude;
@@ -25,6 +28,7 @@ use updraft_units::MslAltitude;
 pub struct Core {
     settings: Settings,
     external_devices: ExternalDevices,
+    airspace: AirspaceState,
     ownship: OwnshipState,
     traffic: TrafficState,
 }
@@ -38,6 +42,7 @@ impl Core {
         Self {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
+            airspace: AirspaceState::default(),
             ownship: OwnshipState::default(),
             traffic: TrafficState::default(),
         }
@@ -58,6 +63,7 @@ impl Core {
             self.ownship.published().as_topic(),
             self.settings.as_topic(),
             self.external_devices.as_topic(),
+            Topic::Airspace(self.airspace.status()),
             Topic::Traffic(TrafficUpdate::Snapshot(self.traffic.published_targets())),
         ]
     }
@@ -179,6 +185,41 @@ impl Core {
             }
             _ => {}
         }
+    }
+}
+
+impl Input for ActivateAirspaceDataset {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let status = core.airspace.activate(self.dataset, self.source_name);
+        Update::effects(vec![Effect::emit(Topic::Airspace(status))])
+    }
+}
+
+impl Input for ClearAirspaceDataset {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let status = core.airspace.clear();
+        Update::effects(vec![Effect::emit(Topic::Airspace(status))])
+    }
+}
+
+impl Input for SetAirspaceUnavailable {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        let status = core.airspace.mark_unavailable(self.source_name, self.error);
+        Update::effects(vec![Effect::emit(Topic::Airspace(status))])
+    }
+}
+
+impl Input for GetAirspaceSnapshot {
+    type Response = Option<Arc<AirspaceDataset>>;
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.airspace.snapshot())
     }
 }
 

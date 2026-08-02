@@ -22,7 +22,8 @@ mod traffic;
 
 pub use airspace::{
     Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
-    AirspaceImportError, AirspaceParseError, AirspacePolygon, AirspaceType,
+    AirspaceImportError, AirspaceLoadError, AirspaceParseError, AirspacePolygon, AirspaceStatus,
+    AirspaceType,
 };
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
@@ -36,9 +37,10 @@ pub use external_device::{
 };
 pub use fix::Fix;
 pub use input::{
-    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
-    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Start,
-    Tick, Update,
+    ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
+    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
+    Start, Tick, Update,
 };
 pub use ownship::OwnshipState;
 pub use settings::{

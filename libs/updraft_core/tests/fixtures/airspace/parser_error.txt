@@ -1,0 +1,6 @@
+AC D
+AN Parser error
+AL GND
+AH 5000 FT
+DP 50:00:00 N 010:00:00 E
+ZZ unsupported record

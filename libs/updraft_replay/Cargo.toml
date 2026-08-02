@@ -24,6 +24,7 @@ updraft_nmea = { path = "../updraft_nmea" }
 updraft_units = { path = "../updraft_units" }
 
 [dev-dependencies]
+approx = "=0.6.0-rc2"
 claims = "=0.8.0"
 insta = "=1.48.0"
 tokio = { version = "=1.53.1", features = ["test-util"] }

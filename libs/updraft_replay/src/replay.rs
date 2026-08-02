@@ -1,17 +1,17 @@
 use bytes::Bytes;
-use igc::records::{BRecord, FixValid, Record};
+use igc::records::{BRecord, Extendable as _, Extension, FixValid, Record};
 use indicatif::ProgressStyle;
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 use thiserror::Error;
 use tokio::sync::broadcast;
 use tracing::{Instrument as _, Span, info, info_span};
 use tracing_indicatif::span_ext::IndicatifSpanExt as _;
 use updraft_geo::LatLon;
 use updraft_nmea::{
-    Date, EncodeError, Gga, GgaFixQuality, Message, Pgrmz, PgrmzFixDimension, Rmc, RmcStatus, Step,
-    Talker, Time, parse,
+    Date, EncodeError, Gga, GgaFixQuality, Lxwp0, Message, Pgrmz, PgrmzFixDimension, Plxvs, Rmc,
+    RmcStatus, Step, Talker, Time, parse,
 };
-use updraft_units::{EllipsoidAltitude, Length};
+use updraft_units::{Angle, EllipsoidAltitude, Length, Speed};
 
 const DAY_MILLIS: u64 = 24 * 60 * 60 * 1_000;
 const HALF_DAY_MILLIS: u64 = 12 * 60 * 60 * 1_000;
@@ -133,6 +133,7 @@ impl Replay {
         let mut day_offset = 0;
         let mut current_time = None;
         let mut current_date = None;
+        let mut fix_extensions = Vec::new();
         let mut timestamp_regression = false;
 
         for line in input.lines() {
@@ -146,6 +147,7 @@ impl Replay {
                             .and_then(|date| Date::parse_ddmmyy(date.as_bytes()))
                     });
                 }
+                Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
                 Ok(Record::B(fix)) => {
                     let Some(time) = Time::from_hms_millis(
                         fix.timestamp.hours,
@@ -170,7 +172,7 @@ impl Replay {
 
                     let first_absolute = *first_absolute.get_or_insert(absolute);
                     let at = Duration::from_millis(absolute - first_absolute);
-                    let payload = encode_fix(&fix, time, current_date)?;
+                    let payload = encode_fix(&fix, &fix_extensions, time, current_date)?;
 
                     if let Some(event) = events.last_mut()
                         && event.at == at
@@ -262,7 +264,12 @@ impl Replay {
     }
 }
 
-fn encode_fix(fix: &BRecord<'_>, time: Time, date: Option<Date>) -> Result<Vec<u8>, EncodeError> {
+fn encode_fix(
+    fix: &BRecord<'_>,
+    extensions: &[Extension<'_>],
+    time: Time,
+    date: Option<Date>,
+) -> Result<Vec<u8>, EncodeError> {
     let position = LatLon::from_degrees(f64::from(fix.pos.lat), f64::from(fix.pos.lon));
     let (rmc_status, fix_quality, fix_dimension) = match fix.fix_valid {
         FixValid::Valid => (
@@ -282,8 +289,9 @@ fn encode_fix(fix: &BRecord<'_>, time: Time, date: Option<Date>) -> Result<Vec<u
         utc_time: Some(time),
         status: rmc_status,
         position: Some(position),
-        speed_over_ground: None,
-        course_over_ground: None,
+        speed_over_ground: extension_value::<f64>(fix, extensions, "GSP")
+            .map(|value| Speed::from_kilometers_per_hour(value / 100.0)),
+        course_over_ground: extension_value(fix, extensions, "TRT").map(Angle::from_degrees),
         date,
         magnetic_variation: None,
         mode: None,
@@ -304,7 +312,7 @@ fn encode_fix(fix: &BRecord<'_>, time: Time, date: Option<Date>) -> Result<Vec<u
         utc_time: Some(time),
         position: Some(position),
         fix_quality,
-        satellites_used: None,
+        satellites_used: extension_value(fix, extensions, "SIU"),
         hdop: None,
         altitude,
         geoid_separation,
@@ -312,16 +320,54 @@ fn encode_fix(fix: &BRecord<'_>, time: Time, date: Option<Date>) -> Result<Vec<u
         dgps_station: None,
     };
 
+    let pressure_altitude =
+        (fix.pressure_alt != 0).then(|| Length::from_meters(f64::from(fix.pressure_alt)));
     let mut payload = Vec::new();
     payload.extend(Vec::<u8>::try_from(&rmc)?);
     payload.extend(Vec::<u8>::try_from(&gga)?);
-    if fix.pressure_alt != 0 {
+    if let Some(pressure_altitude) = pressure_altitude {
         payload.extend(Vec::<u8>::try_from(&Pgrmz {
-            altitude: Some(Length::from_meters(f64::from(fix.pressure_alt))),
+            altitude: Some(pressure_altitude),
             fix_dimension,
         })?);
     }
+    let true_airspeed = extension_value::<f64>(fix, extensions, "TAS")
+        .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
+    let vario = extension_value::<f64>(fix, extensions, "VAT")
+        .map(|value| Speed::from_meters_per_second(value / 100.0));
+    if true_airspeed.is_some() || vario.is_some() {
+        payload.extend(Vec::<u8>::try_from(&Lxwp0 {
+            logger_running: None,
+            true_airspeed,
+            pressure_altitude,
+            vario_samples: vario.into_iter().collect(),
+            heading: None,
+            wind_direction: None,
+            wind_speed: None,
+        })?);
+    }
+    if let Some(outside_air_temperature) = extension_value::<f64>(fix, extensions, "OAT") {
+        payload.extend(Vec::<u8>::try_from(&Plxvs {
+            outside_air_temperature: Some(outside_air_temperature / 10.0),
+            mode: None,
+            supply_voltage: None,
+            igc_pressure_altitude: pressure_altitude,
+            flap_position: None,
+        })?);
+    }
     Ok(payload)
+}
+
+fn extension_value<T: FromStr>(
+    fix: &BRecord<'_>,
+    extensions: &[Extension<'_>],
+    mnemonic: &str,
+) -> Option<T> {
+    extensions
+        .iter()
+        .find(|extension| extension.mnemonic == mnemonic)
+        .and_then(|extension| fix.get_extension(extension).ok())
+        .and_then(|value| value.parse().ok())
 }
 
 fn next_date(date: Date) -> Date {
@@ -408,7 +454,8 @@ fn display_duration(duration: Duration) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_ok, assert_some_eq};
+    use approx::assert_abs_diff_eq;
+    use claims::{assert_none, assert_ok, assert_some, assert_some_eq};
     use std::assert_matches;
 
     const BASIC: &[u8] = include_bytes!("../../../testdata/nmea/basic.nmea");
@@ -430,6 +477,94 @@ mod tests {
 
         let first_payload = assert_ok!(str::from_utf8(replay.events()[0].payload()));
         insta::assert_snapshot!(first_payload);
+    }
+
+    #[test]
+    fn maps_igc_siu_extension_to_gga() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I023638FXA3940SIU\nB1347495200000N00700000EA030480100012309\n"
+        ));
+
+        assert_some_eq!(first_gga(&replay.events()[0]).satellites_used, 9);
+    }
+
+    #[test]
+    fn maps_igc_gsp_and_trt_extensions_to_rmc() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I023640GSP4143TRT\nB1347495200000N00700000EA030480100018520271\n"
+        ));
+        let rmc = first_rmc(&replay.events()[0]);
+
+        let speed = assert_some!(rmc.speed_over_ground);
+        assert_abs_diff_eq!(speed.as_knots(), 100.0, epsilon = 1e-12);
+        assert_some_eq!(
+            rmc.course_over_ground.map(|track| track.as_degrees()),
+            271.0
+        );
+    }
+
+    #[test]
+    fn maps_igc_tas_and_vat_extensions_to_lxwp0() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I023640TAS4145VAT\nB1347495200000N00700000EA03048010003600000123\n"
+        ));
+        let lxwp0 = first_lxwp0(&replay.events()[0]);
+
+        assert_some_eq!(
+            lxwp0
+                .true_airspeed
+                .map(|speed| speed.as_kilometers_per_hour()),
+            360.0
+        );
+        assert_some_eq!(lxwp0.pressure_altitude, Length::from_meters(3048.0));
+        assert_eq!(lxwp0.vario_samples, [Speed::from_meters_per_second(1.23)]);
+    }
+
+    #[test]
+    fn maps_igc_oat_extension_to_plxvs() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I013639OAT\nB1347495200000N00700000EA0304801000-123\n"
+        ));
+        let plxvs = first_plxvs(&replay.events()[0]);
+
+        assert_some_eq!(plxvs.outside_air_temperature, -12.3);
+        assert_some_eq!(plxvs.igc_pressure_altitude, Length::from_meters(3048.0));
+    }
+
+    #[test]
+    fn leaves_zero_pressure_altitude_empty_in_extension_sentences() {
+        let replay = assert_ok!(Replay::from_igc(
+            "I023640TAS4144OAT\nB1347495200000N00700000EA000000100036000-123\n"
+        ));
+        let event = &replay.events()[0];
+
+        assert_none!(first_lxwp0(event).pressure_altitude);
+        assert_none!(first_plxvs(event).igc_pressure_altitude);
+    }
+
+    #[test]
+    fn ignores_igc_extension_bytes_without_an_i_definition() {
+        let replay = assert_ok!(Replay::from_igc(
+            "B1347495200000N00700000EA030480100009185202713600000123-123\n"
+        ));
+        let event = &replay.events()[0];
+
+        let rmc = first_rmc(event);
+        assert_none!(rmc.speed_over_ground);
+        assert_none!(rmc.course_over_ground);
+        assert_none!(first_gga(event).satellites_used);
+        assert_eq!(payload_text(event).lines().count(), 3);
+    }
+
+    #[test]
+    fn emits_all_i_defined_flight_extensions_in_sentence_order() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFDTE040726\n\
+             I063637SIU3842GSP4345TRT4650TAS5155VAT5659OAT\n\
+             B1347495200000N00700000EA030480100009185202713600000123-123\n"
+        ));
+
+        insta::assert_snapshot!(payload_text(&replay.events()[0]));
     }
 
     #[test]
@@ -557,6 +692,37 @@ mod tests {
         match parse(&mut input) {
             Step::Frame(Message::Rmc(rmc)) => rmc,
             step => panic!("expected RMC frame, got {step:?}"),
+        }
+    }
+
+    fn first_gga(event: &ReplayEvent) -> Gga {
+        let mut input = event.payload().as_ref();
+        let _ = parse(&mut input);
+        match parse(&mut input) {
+            Step::Frame(Message::Gga(gga)) => gga,
+            step => panic!("expected GGA frame, got {step:?}"),
+        }
+    }
+
+    fn first_lxwp0(event: &ReplayEvent) -> Lxwp0 {
+        let mut input = event.payload().as_ref();
+        loop {
+            match parse(&mut input) {
+                Step::Frame(Message::Lxwp0(lxwp0)) => return lxwp0,
+                Step::Frame(_) => {}
+                step => panic!("expected LXWP0 frame, got {step:?}"),
+            }
+        }
+    }
+
+    fn first_plxvs(event: &ReplayEvent) -> updraft_nmea::Plxvs {
+        let mut input = event.payload().as_ref();
+        loop {
+            match parse(&mut input) {
+                Step::Frame(Message::Plxvs(plxvs)) => return plxvs,
+                Step::Frame(_) => {}
+                step => panic!("expected PLXVS frame, got {step:?}"),
+            }
         }
     }
 }

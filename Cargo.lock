@@ -4882,6 +4882,7 @@ name = "updraft_replay"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "approx 0.6.0-rc2",
  "bytes",
  "claims",
  "clap",

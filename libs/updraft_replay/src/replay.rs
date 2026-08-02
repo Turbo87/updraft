@@ -805,6 +805,28 @@ mod tests {
 
     const BASIC: &[u8] = include_bytes!("../../../testdata/nmea/basic.nmea");
     const BASIC_IGC: &str = include_str!("../../../testdata/igc/basic.igc");
+    const REPRESENTATIVE_IGC: &str = include_str!("../../../testdata/weglide_1141558.igc");
+
+    #[test]
+    fn loads_the_representative_igc_recording() {
+        let replay = assert_ok!(Replay::from_igc(REPRESENTATIVE_IGC));
+        let events = replay.events();
+        let event_times = events.iter().map(ReplayEvent::at).collect::<Vec<_>>();
+        let mut ordered_times = event_times.clone();
+        ordered_times.sort_unstable();
+        ordered_times.dedup();
+
+        assert_eq!(event_times, ordered_times);
+        assert_some_eq!(event_times.first().copied(), Duration::ZERO);
+        assert_some_eq!(event_times.last().copied(), replay.duration());
+        assert_eq!(replay.duration(), Duration::from_secs(18_817));
+        assert!(replay.warnings().is_empty());
+
+        for index in [0, events.len() / 2, events.len() - 1] {
+            assert_payload_parses(&events[index]);
+        }
+        insta::assert_snapshot!(payload_text(&events[0]));
+    }
 
     #[test]
     fn converts_igc_fixes_to_nmea_events() {
@@ -1300,6 +1322,17 @@ mod tests {
 
     fn payload_text(event: &ReplayEvent) -> &str {
         assert_ok!(str::from_utf8(event.payload()))
+    }
+
+    fn assert_payload_parses(event: &ReplayEvent) {
+        let mut input = event.payload().as_ref();
+        loop {
+            match parse(&mut input) {
+                Step::Frame(_) => {}
+                Step::Incomplete => return,
+                step => panic!("expected NMEA frame, got {step:?}"),
+            }
+        }
     }
 
     fn first_rmc(event: &ReplayEvent) -> Rmc {

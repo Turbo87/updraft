@@ -1,11 +1,35 @@
+import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
+import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type { TopicListener, UpdraftClient } from './index';
 
 import { Channel, invoke } from '@tauri-apps/api/core';
 
+/** Invokes the concrete Tauri commands that form the frontend shell boundary. */
 export class TauriClient implements UpdraftClient {
+  addExternalDevice(spec: ConnectionSpec): Promise<ExternalDeviceId> {
+    return invoke('add_external_device', { spec });
+  }
+
+  getBondedBluetoothDevices(): Promise<BondedBluetoothDevices> {
+    return invoke('bonded_bluetooth_devices');
+  }
+
+  editExternalDevice(deviceId: ExternalDeviceId, spec: ConnectionSpec): Promise<void> {
+    return invoke('edit_external_device', { deviceId, spec });
+  }
+
+  setExternalDeviceEnabled(deviceId: ExternalDeviceId, enabled: boolean): Promise<void> {
+    return invoke('set_external_device_enabled', { deviceId, enabled });
+  }
+
+  deleteExternalDevice(deviceId: ExternalDeviceId): Promise<void> {
+    return invoke('delete_external_device', { deviceId });
+  }
+
   setLocale(locale: Locale): Promise<void> {
     return invoke('set_locale', { locale });
   }

@@ -8,5 +8,14 @@
   "vertical_speed_label": "Vertical speed",
   "flight_view": "Flight view",
   "settings_heading": "Settings",
-  "back_to_flight_view": "Back to flight view"
+  "back_to_flight_view": "Back to flight view",
+  "back_to_settings": "Back to settings",
+  "external_devices_heading": "External devices",
+  "loading_external_devices": "Loading external devices…",
+  "no_external_devices_configured": "No external devices configured.",
+  "tcp_device_type": "TCP",
+  "bluetooth_spp_device_type": "Bluetooth SPP",
+  "custom_service_uuid": "Custom service UUID",
+  "device_enabled": "Enabled",
+  "update_device_error": "Could not update this device."
 }

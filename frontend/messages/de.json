@@ -8,5 +8,14 @@
   "vertical_speed_label": "Steigen",
   "flight_view": "Flugansicht",
   "settings_heading": "Einstellungen",
-  "back_to_flight_view": "Zurück zur Flugansicht"
+  "back_to_flight_view": "Zurück zur Flugansicht",
+  "back_to_settings": "Zurück zu den Einstellungen",
+  "external_devices_heading": "Externe Geräte",
+  "loading_external_devices": "Externe Geräte werden geladen…",
+  "no_external_devices_configured": "Keine externen Geräte konfiguriert.",
+  "tcp_device_type": "TCP",
+  "bluetooth_spp_device_type": "Bluetooth SPP",
+  "custom_service_uuid": "Benutzerdefinierte Service-UUID",
+  "device_enabled": "Aktiviert",
+  "update_device_error": "Dieses Gerät konnte nicht aktualisiert werden."
 }

@@ -89,6 +89,11 @@
             />
             <span>{m.device_enabled()}</span>
           </label>
+          {#if device.type === 'tcp'}
+            <a href={resolve('/devices/[deviceId]', { deviceId: String(device.deviceId) })}
+              >{m.edit_external_device({ endpoint: `${device.host}:${device.port}` })}</a
+            >
+          {/if}
           {#if failedDeviceIds.includes(device.deviceId)}
             <p class="error" role="alert">{m.update_device_error()}</p>
           {/if}
@@ -97,6 +102,7 @@
     </ul>
   {/if}
 
+  <a class="add-link" href={resolve('/devices/new')}>{m.add_external_device()}</a>
   <a class="back-link" href={resolve('/settings')}>{m.back_to_settings()}</a>
 </main>
 
@@ -179,8 +185,13 @@
     color: light-dark(var(--color-red-700), var(--color-red-300));
   }
 
+  .add-link,
   .back-link {
     display: inline-block;
     margin-block-start: 2rem;
+  }
+
+  .back-link {
+    margin-inline-start: 1rem;
   }
 </style>

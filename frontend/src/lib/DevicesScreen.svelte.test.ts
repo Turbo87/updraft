@@ -44,6 +44,22 @@ describe('DevicesScreen.svelte', () => {
       .toHaveAttribute('href', '/settings');
   });
 
+  it('links to device creation and TCP editing', async () => {
+    render(DevicesScreen, {
+      devices: [{ deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 }],
+      initialized: true,
+      bondedBluetoothDevices: { status: 'unsupported' },
+      onEnabledChange: async () => {},
+    });
+
+    await expect
+      .element(page.getByRole('link', { name: 'Add external device' }))
+      .toHaveAttribute('href', '/devices/new');
+    await expect
+      .element(page.getByRole('link', { name: 'Edit 192.0.2.1:4353' }))
+      .toHaveAttribute('href', '/devices/4');
+  });
+
   it('summarizes TCP and Bluetooth devices without showing the standard SPP UUID', async () => {
     render(DevicesScreen, {
       devices: [

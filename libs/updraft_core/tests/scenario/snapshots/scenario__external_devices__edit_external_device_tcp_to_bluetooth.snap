@@ -1,0 +1,8 @@
+---
+source: libs/updraft_core/tests/scenario/external_devices.rs
+expression: mutation_effects(&tcp_to_bluetooth)
+---
+close ExternalDeviceId([ID])
+open ExternalDeviceId([ID]) BluetoothSpp { address: "00:11:22:33:44:55", service_uuid: 00001101-0000-1000-8000-00805f9b34fb }
+external devices [PublishedExternalDevice { device_id: ExternalDeviceId([ID]), config: ExternalDeviceConfig { enabled: true, spec: BluetoothSpp { address: "00:11:22:33:44:55", service_uuid: 00001101-0000-1000-8000-00805f9b34fb } } }]
+persist settings SettingsSnapshot { settings: Settings { locale: None, units: UnitSettings { altitude: Meters, distance: Kilometers, speed: KilometersPerHour, vertical_speed: MetersPerSecond } }, external_devices: [ExternalDeviceConfig { enabled: true, spec: BluetoothSpp { address: "00:11:22:33:44:55", service_uuid: 00001101-0000-1000-8000-00805f9b34fb } }] }

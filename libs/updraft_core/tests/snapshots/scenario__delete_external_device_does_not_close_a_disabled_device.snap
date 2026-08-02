@@ -1,6 +1,0 @@
----
-source: libs/updraft_core/tests/scenario.rs
-expression: mutation_effects(&effects)
----
-external devices []
-persist settings SettingsSnapshot { settings: Settings { locale: None, units: UnitSettings { altitude: Meters, distance: Kilometers, speed: KilometersPerHour, vertical_speed: MetersPerSecond } }, external_devices: [] }

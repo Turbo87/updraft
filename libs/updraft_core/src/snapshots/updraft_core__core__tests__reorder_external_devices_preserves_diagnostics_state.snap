@@ -1,7 +1,0 @@
----
-source: libs/updraft_core/src/core.rs
-expression: "lines.join(\"\\n\")"
----
-[TIME]  INFO reorder_external_devices_preserves_diagnostics_state: updraft_core::connection_diagnostics: Connected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO reorder_external_devices_preserves_diagnostics_state: updraft_core::connection_diagnostics: First bytes device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }
-[TIME]  INFO reorder_external_devices_preserves_diagnostics_state: updraft_core::connection_diagnostics: Disconnected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 } delivered_bytes=3

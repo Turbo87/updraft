@@ -1,5 +1,5 @@
 ---
-source: libs/updraft_core/src/core.rs
+source: libs/updraft_core/src/core_tests/transport.rs
 expression: "lines.join(\"\\n\")"
 ---
 [TIME] DEBUG failed_attempt_is_debug_and_counters_reset_on_reconnect: updraft_core::connection_diagnostics: Disconnected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }

@@ -1,5 +1,5 @@
 ---
-source: libs/updraft_core/src/core.rs
+source: libs/updraft_core/src/core_tests/transport.rs
 expression: "lines.join(\"\\n\")"
 ---
 [TIME]  INFO removed_connection_produces_no_further_diagnostics: updraft_core::connection_diagnostics: Connected device_id=ExternalDeviceId(1) endpoint=Tcp { host: "127.0.0.1", port: 4353 }

@@ -1,11 +1,17 @@
 use bytes::Bytes;
+use igc::records::{BRecord, FixValid, Record};
 use indicatif::ProgressStyle;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::sync::broadcast;
 use tracing::{Instrument as _, Span, info, info_span};
 use tracing_indicatif::span_ext::IndicatifSpanExt as _;
-use updraft_nmea::{Message, Step, Time, parse};
+use updraft_geo::LatLon;
+use updraft_nmea::{
+    Date, EncodeError, Gga, GgaFixQuality, Message, Pgrmz, PgrmzFixDimension, Rmc, RmcStatus, Step,
+    Talker, Time, parse,
+};
+use updraft_units::{EllipsoidAltitude, Length};
 
 const DAY_MILLIS: u64 = 24 * 60 * 60 * 1_000;
 const HALF_DAY_MILLIS: u64 = 12 * 60 * 60 * 1_000;
@@ -41,6 +47,10 @@ pub struct Replay {
 pub enum ReplayError {
     #[error("NMEA file has no valid RMC or GGA timestamp")]
     MissingTimestamp,
+    #[error("IGC file has no usable B record")]
+    MissingFix,
+    #[error(transparent)]
+    Encode(#[from] EncodeError),
     #[error("skip {skip:?} exceeds replay duration {duration:?}")]
     SkipExceedsDuration { skip: Duration, duration: Duration },
 }
@@ -116,6 +126,79 @@ impl Replay {
         })
     }
 
+    pub fn from_igc(input: &str) -> Result<Self, ReplayError> {
+        let mut events = Vec::<ReplayEvent>::new();
+        let mut first_absolute = None;
+        let mut previous_time = None;
+        let mut day_offset = 0;
+        let mut current_time = None;
+        let mut current_date = None;
+        let mut timestamp_regression = false;
+
+        for line in input.lines() {
+            match Record::parse_line(line) {
+                Ok(Record::H(header)) if header.mnemonic == "DTE" => {
+                    current_date = current_date.or_else(|| {
+                        header
+                            .data
+                            .split(',')
+                            .next()
+                            .and_then(|date| Date::parse_ddmmyy(date.as_bytes()))
+                    });
+                }
+                Ok(Record::B(fix)) => {
+                    let Some(time) = Time::from_hms_millis(
+                        fix.timestamp.hours,
+                        fix.timestamp.minutes,
+                        fix.timestamp.seconds,
+                        0,
+                    ) else {
+                        continue;
+                    };
+
+                    let previous_day_offset = day_offset;
+                    let absolute = schedule_millis(
+                        time,
+                        &mut previous_time,
+                        &mut day_offset,
+                        &mut current_time,
+                        &mut timestamp_regression,
+                    );
+                    if day_offset > previous_day_offset {
+                        current_date = current_date.map(next_date);
+                    }
+
+                    let first_absolute = *first_absolute.get_or_insert(absolute);
+                    let at = Duration::from_millis(absolute - first_absolute);
+                    let payload = encode_fix(&fix, time, current_date)?;
+
+                    if let Some(event) = events.last_mut()
+                        && event.at == at
+                    {
+                        let mut combined = Vec::with_capacity(event.payload.len() + payload.len());
+                        combined.extend_from_slice(&event.payload);
+                        combined.extend_from_slice(&payload);
+                        event.payload = Bytes::from(combined);
+                    } else {
+                        events.push(ReplayEvent::new(at, Bytes::from(payload)));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let duration = events
+            .last()
+            .map(ReplayEvent::at)
+            .ok_or(ReplayError::MissingFix)?;
+
+        Ok(Self {
+            events,
+            duration,
+            timestamp_regression,
+        })
+    }
+
     pub fn events(&self) -> &[ReplayEvent] {
         &self.events
     }
@@ -177,6 +260,90 @@ impl Replay {
             first_pass = false;
         }
     }
+}
+
+fn encode_fix(fix: &BRecord<'_>, time: Time, date: Option<Date>) -> Result<Vec<u8>, EncodeError> {
+    let position = LatLon::from_degrees(f64::from(fix.pos.lat), f64::from(fix.pos.lon));
+    let (rmc_status, fix_quality, fix_dimension) = match fix.fix_valid {
+        FixValid::Valid => (
+            RmcStatus::Active,
+            GgaFixQuality::Gps,
+            PgrmzFixDimension::ThreeDimensional,
+        ),
+        FixValid::NavWarning => (
+            RmcStatus::Void,
+            GgaFixQuality::Invalid,
+            PgrmzFixDimension::NoFix,
+        ),
+    };
+
+    let rmc = Rmc {
+        talker: Talker::Gps,
+        utc_time: Some(time),
+        status: rmc_status,
+        position: Some(position),
+        speed_over_ground: None,
+        course_over_ground: None,
+        date,
+        magnetic_variation: None,
+        mode: None,
+    };
+
+    let (altitude, geoid_separation) = if fix.gps_alt == 0 {
+        (None, None)
+    } else {
+        let ellipsoid_altitude =
+            EllipsoidAltitude::new(Length::from_meters(f64::from(fix.gps_alt)));
+        (
+            Some(updraft_egm96::ellipsoidal_to_msl(position, ellipsoid_altitude).into_inner()),
+            Some(updraft_egm96::undulation(position)),
+        )
+    };
+    let gga = Gga {
+        talker: Talker::Gps,
+        utc_time: Some(time),
+        position: Some(position),
+        fix_quality,
+        satellites_used: None,
+        hdop: None,
+        altitude,
+        geoid_separation,
+        dgps_age: None,
+        dgps_station: None,
+    };
+
+    let mut payload = Vec::new();
+    payload.extend(Vec::<u8>::try_from(&rmc)?);
+    payload.extend(Vec::<u8>::try_from(&gga)?);
+    if fix.pressure_alt != 0 {
+        payload.extend(Vec::<u8>::try_from(&Pgrmz {
+            altitude: Some(Length::from_meters(f64::from(fix.pressure_alt))),
+            fix_dimension,
+        })?);
+    }
+    Ok(payload)
+}
+
+fn next_date(date: Date) -> Date {
+    let days_in_month = match date.month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if is_leap_year(date.year) => 29,
+        2 => 28,
+        _ => unreachable!("NMEA dates contain valid months"),
+    };
+
+    if date.day < days_in_month {
+        Date::new(date.year, date.month, date.day + 1)
+    } else if date.month < 12 {
+        Date::new(date.year, date.month + 1, 1)
+    } else {
+        Date::new(date.year + 1, 1, 1)
+    }
+}
+
+fn is_leap_year(year: u16) -> bool {
+    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
 fn schedule_millis(
@@ -241,10 +408,107 @@ fn display_duration(duration: Duration) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_ok, assert_some_eq};
+    use claims::{assert_none, assert_ok, assert_some_eq};
     use std::assert_matches;
 
     const BASIC: &[u8] = include_bytes!("../../../testdata/nmea/basic.nmea");
+    const BASIC_IGC: &str = include_str!("../../../testdata/igc/basic.igc");
+
+    #[test]
+    fn converts_igc_fixes_to_nmea_events() {
+        let replay = assert_ok!(Replay::from_igc(BASIC_IGC));
+
+        assert_eq!(
+            replay
+                .events()
+                .iter()
+                .map(ReplayEvent::at)
+                .collect::<Vec<_>>(),
+            [Duration::ZERO, Duration::from_secs(1)]
+        );
+        assert_eq!(replay.duration(), Duration::from_secs(1));
+
+        let first_payload = assert_ok!(str::from_utf8(replay.events()[0].payload()));
+        insta::assert_snapshot!(first_payload);
+    }
+
+    #[test]
+    fn omits_zero_igc_altitudes() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFDTE040726,1\nB1347495200000N00700000EA0000000000\n"
+        ));
+
+        insta::assert_snapshot!(payload_text(&replay.events()[0]));
+    }
+
+    #[test]
+    fn emits_rmc_without_an_igc_date() {
+        let replay = assert_ok!(Replay::from_igc("B1347495200000N00700000EA0304801000\n"));
+
+        assert_none!(first_rmc(&replay.events()[0]).date);
+        insta::assert_snapshot!(payload_text(&replay.events()[0]));
+    }
+
+    #[test]
+    fn maps_igc_navigation_warnings_to_invalid_fixes() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFDTE040726\nB1347495200000N00700000EV0304801000\n"
+        ));
+
+        insta::assert_snapshot!(payload_text(&replay.events()[0]));
+    }
+
+    #[test]
+    fn advances_the_igc_date_after_midnight() {
+        for (start_date, expected_date) in [
+            ("280224", Date::new(2024, 2, 29)),
+            ("290224", Date::new(2024, 3, 1)),
+            ("311223", Date::new(2024, 1, 1)),
+        ] {
+            let input = format!(
+                "HFDTE{start_date}\n\
+                 B2359595200000N00700000EA0304801000\n\
+                 B0000005200000N00700000EA0304801000\n"
+            );
+            let replay = assert_ok!(Replay::from_igc(&input));
+
+            assert_eq!(
+                replay
+                    .events()
+                    .iter()
+                    .map(ReplayEvent::at)
+                    .collect::<Vec<_>>(),
+                [Duration::ZERO, Duration::from_secs(1)]
+            );
+            assert_some_eq!(first_rmc(&replay.events()[1]).date, expected_date);
+        }
+    }
+
+    #[test]
+    fn clamps_a_small_igc_timestamp_regression() {
+        let replay = assert_ok!(Replay::from_igc(
+            "B1347505200000N00700000EA0304801000\n\
+             B1347495200000N00700000EA0304801000\n\
+             B1347515200000N00700000EA0304801000\n"
+        ));
+
+        assert_eq!(
+            replay
+                .events()
+                .iter()
+                .map(ReplayEvent::at)
+                .collect::<Vec<_>>(),
+            [Duration::ZERO, Duration::from_secs(1)]
+        );
+        assert!(replay.has_timestamp_regression());
+    }
+
+    #[test]
+    fn rejects_igc_without_a_usable_b_record() {
+        let error = Replay::from_igc("HFDTE040726\nB2400005200000N00700000EA0304801000\n");
+
+        assert_matches!(error, Err(ReplayError::MissingFix));
+    }
 
     #[test]
     fn builds_a_byte_preserving_schedule_and_applies_skip() {
@@ -282,5 +546,17 @@ mod tests {
     fn rejects_a_file_without_a_timestamp() {
         let error = Replay::from_nmea(b"$PGRMZ,1000,f,3\r\n".to_vec());
         assert_matches!(error, Err(ReplayError::MissingTimestamp));
+    }
+
+    fn payload_text(event: &ReplayEvent) -> &str {
+        assert_ok!(str::from_utf8(event.payload()))
+    }
+
+    fn first_rmc(event: &ReplayEvent) -> Rmc {
+        let mut input = event.payload().as_ref();
+        match parse(&mut input) {
+            Step::Frame(Message::Rmc(rmc)) => rmc,
+            step => panic!("expected RMC frame, got {step:?}"),
+        }
     }
 }

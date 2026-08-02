@@ -1885,6 +1885,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "igc"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edbf5f99fdf09455902436c6fb6150da421d97da6297d0305bd46c59ea7aa559"
+dependencies = [
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "image-webp"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4876,13 +4885,18 @@ dependencies = [
  "bytes",
  "claims",
  "clap",
+ "igc",
  "indicatif",
+ "insta",
  "thiserror 2.0.19",
  "tokio",
  "tracing",
  "tracing-indicatif",
  "tracing-subscriber",
+ "updraft_egm96",
+ "updraft_geo",
  "updraft_nmea",
+ "updraft_units",
 ]
 
 [[package]]

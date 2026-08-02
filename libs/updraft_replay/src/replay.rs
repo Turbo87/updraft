@@ -8,8 +8,8 @@ use tracing::{Instrument as _, Span, info, info_span};
 use tracing_indicatif::span_ext::IndicatifSpanExt as _;
 use updraft_geo::LatLon;
 use updraft_nmea::{
-    Date, EncodeError, Gga, GgaFixQuality, Lxwp0, Message, Pgrmz, PgrmzFixDimension, Plxvs, Rmc,
-    RmcStatus, Step, Talker, Time, parse,
+    Date, EncodeError, Gga, GgaFixQuality, Lxwp0, Lxwp1, Message, Pgrmz, PgrmzFixDimension, Plxvs,
+    Rmc, RmcStatus, Step, Talker, Time, parse,
 };
 use updraft_units::{Angle, EllipsoidAltitude, Length, Speed};
 
@@ -260,20 +260,33 @@ impl Replay {
         let mut current_date = None;
         let mut fix_extensions = Vec::new();
         let mut wind_extensions = Vec::new();
+        let mut identification = empty_lxwp1();
         let mut has_fix = false;
         let mut timestamp_regression = false;
 
         for line in input.lines() {
             match Record::parse_line(line) {
-                Ok(Record::H(header)) if header.mnemonic == "DTE" => {
-                    current_date = current_date.or_else(|| {
-                        header
-                            .data
-                            .split(',')
-                            .next()
-                            .and_then(|date| Date::parse_ddmmyy(date.as_bytes()))
-                    });
+                Ok(Record::A(record)) => {
+                    identification.serial = nonempty_text(record.unique_id);
                 }
+                Ok(Record::H(header)) => match header.mnemonic {
+                    "DTE" => {
+                        current_date = current_date.or_else(|| {
+                            header
+                                .data
+                                .split(',')
+                                .next()
+                                .and_then(|date| Date::parse_ddmmyy(date.as_bytes()))
+                        });
+                    }
+                    "FTY" => {
+                        identification.product =
+                            header.data.rsplit(',').next().and_then(nonempty_text);
+                    }
+                    "RFW" => identification.software_version = nonempty_text(header.data),
+                    "RHW" => identification.hardware_version = nonempty_text(header.data),
+                    _ => {}
+                },
                 Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
                 Ok(Record::J(definition)) => wind_extensions = definition.0.extensions,
                 Ok(Record::B(fix)) => {
@@ -354,6 +367,11 @@ impl Replay {
             .last()
             .map(ReplayEvent::at)
             .ok_or(ReplayError::MissingFix)?;
+        insert_periodic_igc_identification(
+            &mut events,
+            Bytes::from(Vec::<u8>::try_from(&identification)?),
+            duration,
+        );
 
         Ok(Self {
             events,
@@ -451,6 +469,26 @@ fn push_or_merge_igc_event(events: &mut Vec<ReplayEvent>, event: ReplayEvent) {
     }
 }
 
+fn insert_periodic_igc_identification(
+    events: &mut Vec<ReplayEvent>,
+    identification: Bytes,
+    duration: Duration,
+) {
+    for seconds in (0..=duration.as_secs()).step_by(60) {
+        let at = Duration::from_secs(seconds);
+        match events.binary_search_by_key(&at, ReplayEvent::at) {
+            Ok(index) => {
+                let event = &mut events[index];
+                let mut payload = Vec::with_capacity(identification.len() + event.payload.len());
+                payload.extend_from_slice(&identification);
+                payload.extend_from_slice(&event.payload);
+                event.payload = Bytes::from(payload);
+            }
+            Err(index) => events.insert(index, ReplayEvent::new(at, identification.clone())),
+        }
+    }
+}
+
 fn empty_lxwp0() -> Lxwp0 {
     Lxwp0 {
         logger_running: None,
@@ -461,6 +499,20 @@ fn empty_lxwp0() -> Lxwp0 {
         wind_direction: None,
         wind_speed: None,
     }
+}
+
+fn empty_lxwp1() -> Lxwp1 {
+    Lxwp1 {
+        product: None,
+        serial: None,
+        software_version: None,
+        hardware_version: None,
+        license: None,
+    }
+}
+
+fn nonempty_text(value: &str) -> Option<Box<str>> {
+    (!value.is_empty()).then(|| value.into())
 }
 
 fn extension_value<T: FromStr>(
@@ -658,7 +710,7 @@ mod tests {
         assert_none!(rmc.speed_over_ground);
         assert_none!(rmc.course_over_ground);
         assert_none!(first_gga(event).satellites_used);
-        assert_eq!(payload_text(event).lines().count(), 3);
+        assert_eq!(payload_text(event).lines().count(), 4);
     }
 
     #[test]
@@ -670,6 +722,82 @@ mod tests {
         ));
 
         insta::assert_snapshot!(payload_text(&replay.events()[0]));
+    }
+
+    #[test]
+    fn maps_igc_recorder_identification_to_lxwp1() {
+        let replay = assert_ok!(Replay::from_igc(
+            "ALXV123\n\
+             HFFTYFRTYPE:LXNAV,LX9070PF\n\
+             HFRFWFIRMWAREVERSION:9.54\n\
+             HFRHWHARDWAREVERSION:38\n\
+             B1347495200000N00700000EA0304801000\n"
+        ));
+
+        let identification = first_lxwp1(&replay.events()[0]);
+        assert_some_eq!(identification.product, "LX9070PF".into());
+        assert_some_eq!(identification.serial, "123".into());
+        assert_some_eq!(identification.software_version, "9.54".into());
+        assert_some_eq!(identification.hardware_version, "38".into());
+        assert_none!(identification.license);
+    }
+
+    #[test]
+    fn emits_lxwp1_with_empty_recorder_identification() {
+        let replay = assert_ok!(Replay::from_igc("B1347495200000N00700000EA0304801000\n"));
+
+        let identification = first_lxwp1(&replay.events()[0]);
+        assert_none!(identification.product);
+        assert_none!(identification.serial);
+        assert_none!(identification.software_version);
+        assert_none!(identification.hardware_version);
+        assert_none!(identification.license);
+    }
+
+    #[test]
+    fn repeats_lxwp1_every_minute_through_the_replay_duration() {
+        let replay = assert_ok!(Replay::from_igc(
+            "B1347495200000N00700000EA0304801000\n\
+             B1349495200000N00700000EA0304801000\n"
+        ));
+
+        assert_eq!(
+            replay
+                .events()
+                .iter()
+                .map(ReplayEvent::at)
+                .collect::<Vec<_>>(),
+            [
+                Duration::ZERO,
+                Duration::from_secs(60),
+                Duration::from_secs(120),
+            ]
+        );
+        for event in replay.events() {
+            first_lxwp1(event);
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn restarts_lxwp1_cadence_at_time_zero_when_replay_loops() {
+        let replay = assert_ok!(Replay::from_igc(
+            "B1347495200000N00700000EA0304801000\n\
+             B1347505200000N00700000EA0304801000\n"
+        ));
+        let (sender, mut receiver) = broadcast::channel(4);
+        let playback = tokio::spawn(async move { replay.play(sender, Duration::ZERO, true).await });
+
+        let first = assert_ok!(receiver.recv().await);
+        parse_first_lxwp1(&first);
+
+        tokio::time::advance(Duration::from_secs(1)).await;
+        let last = assert_ok!(receiver.recv().await);
+        let mut input = last.as_ref();
+        assert_matches!(parse(&mut input), Step::Frame(Message::Rmc(_)));
+
+        let restarted = assert_ok!(receiver.recv().await);
+        parse_first_lxwp1(&restarted);
+        playback.abort();
     }
 
     #[test]
@@ -902,18 +1030,23 @@ mod tests {
 
     fn first_rmc(event: &ReplayEvent) -> Rmc {
         let mut input = event.payload().as_ref();
-        match parse(&mut input) {
-            Step::Frame(Message::Rmc(rmc)) => rmc,
-            step => panic!("expected RMC frame, got {step:?}"),
+        loop {
+            match parse(&mut input) {
+                Step::Frame(Message::Rmc(rmc)) => return rmc,
+                Step::Frame(_) => {}
+                step => panic!("expected RMC frame, got {step:?}"),
+            }
         }
     }
 
     fn first_gga(event: &ReplayEvent) -> Gga {
         let mut input = event.payload().as_ref();
-        let _ = parse(&mut input);
-        match parse(&mut input) {
-            Step::Frame(Message::Gga(gga)) => gga,
-            step => panic!("expected GGA frame, got {step:?}"),
+        loop {
+            match parse(&mut input) {
+                Step::Frame(Message::Gga(gga)) => return gga,
+                Step::Frame(_) => {}
+                step => panic!("expected GGA frame, got {step:?}"),
+            }
         }
     }
 
@@ -922,6 +1055,18 @@ mod tests {
             .into_iter()
             .next()
             .unwrap_or_else(|| panic!("expected LXWP0 frame"))
+    }
+
+    fn first_lxwp1(event: &ReplayEvent) -> Lxwp1 {
+        parse_first_lxwp1(event.payload())
+    }
+
+    fn parse_first_lxwp1(payload: &[u8]) -> Lxwp1 {
+        let mut input = payload;
+        match parse(&mut input) {
+            Step::Frame(Message::Lxwp1(lxwp1)) => lxwp1,
+            step => panic!("expected LXWP1 frame, got {step:?}"),
+        }
     }
 
     fn lxwp0_messages(event: &ReplayEvent) -> Vec<Lxwp0> {

@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/gnss.rs
+expression: sentence
+---
+$GPRMC,134749.600,A,4857.88170,N,00705.83929,E,35.9,270.6,281224,,,D*51

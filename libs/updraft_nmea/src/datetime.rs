@@ -1,5 +1,6 @@
 //! Date and time of day carried by NMEA sentences.
 
+use crate::encode::EncodeError;
 use std::fmt;
 
 const MILLISECONDS_PER_SECOND: u32 = 1_000;
@@ -101,6 +102,17 @@ impl Time {
     pub const fn milliseconds_since_midnight(self) -> u32 {
         self.milliseconds_since_midnight
     }
+
+    /// Formats this time as an `HHMMSS.sss` NMEA field.
+    pub fn to_nmea_field(self) -> String {
+        format!(
+            "{:02}{:02}{:02}.{:03}",
+            self.hour(),
+            self.minute(),
+            self.second(),
+            self.millisecond()
+        )
+    }
 }
 
 fn parse_milliseconds(fraction: &[u8]) -> Option<u16> {
@@ -140,6 +152,22 @@ impl Date {
         ((1..=12).contains(&month) && (1..=days_in_month(year, month)).contains(&day))
             .then_some(Self { year, month, day })
     }
+
+    /// Formats this date as a `DDMMYY` NMEA field.
+    ///
+    /// Returns an error for a year outside `2000..=2099`.
+    pub fn to_nmea_field(self) -> Result<String, EncodeError> {
+        if !(2000..=2099).contains(&self.year) {
+            return Err(EncodeError::InvalidField("date"));
+        }
+
+        Ok(format!(
+            "{:02}{:02}{:02}",
+            self.day,
+            self.month,
+            self.year % 100
+        ))
+    }
 }
 
 /// The number of days in `month` of `year`, or `0` for a month outside
@@ -161,7 +189,7 @@ fn is_leap_year(year: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_gt, assert_lt, assert_none, assert_some, assert_some_eq};
+    use claims::{assert_gt, assert_lt, assert_none, assert_ok, assert_some, assert_some_eq};
 
     #[test]
     fn parses_time() {
@@ -242,6 +270,15 @@ mod tests {
     #[test]
     fn parses_date() {
         assert_some_eq!(Date::parse_ddmmyy(b"281224"), Date::new(2024, 12, 28));
+    }
+
+    #[test]
+    fn formats_date_for_nmea() {
+        let date = Date::new(2024, 12, 28);
+        let field = assert_ok!(date.to_nmea_field());
+
+        assert_eq!(field, "281224");
+        assert_some_eq!(Date::parse_ddmmyy(field.as_bytes()), date);
     }
 
     #[test]

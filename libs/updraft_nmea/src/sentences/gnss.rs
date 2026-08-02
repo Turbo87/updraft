@@ -1,6 +1,7 @@
 //! Standard GNSS sentences: `GGA`, `RMC`, `GSA`, for any talker.
 
 use crate::datetime::{Date, Time};
+use crate::encode::{EncodeError, SentenceEncoder, position_fields, talker_code};
 use crate::field::FieldsIter;
 use crate::message::Talker;
 use updraft_geo::LatLon;
@@ -122,6 +123,61 @@ impl Rmc {
                 .map(|byte| PositioningMode::from_char(char::from(byte))),
         }
     }
+}
+
+impl TryFrom<&Rmc> for Vec<u8> {
+    type Error = EncodeError;
+
+    fn try_from(rmc: &Rmc) -> Result<Self, Self::Error> {
+        let mut sentence = SentenceEncoder::new(&format!("{}RMC", talker_code(&rmc.talker)?));
+        sentence.field(&rmc.utc_time.map(Time::to_nmea_field).unwrap_or_default());
+        sentence.field(match rmc.status {
+            RmcStatus::Active => "A",
+            RmcStatus::Void => "V",
+        });
+        for field in position_fields(rmc.position) {
+            sentence.field(&field);
+        }
+        sentence.field(&optional_decimal(
+            rmc.speed_over_ground.map(|speed| speed.as_knots()),
+        ));
+        sentence.field(&optional_decimal(
+            rmc.course_over_ground.map(|course| course.as_degrees()),
+        ));
+        sentence.field(
+            &rmc.date
+                .map(Date::to_nmea_field)
+                .transpose()?
+                .unwrap_or_default(),
+        );
+        match rmc.magnetic_variation {
+            Some(variation) => {
+                let degrees = variation.as_degrees();
+                sentence.field(&degrees.abs().to_string());
+                sentence.field(if degrees.is_sign_negative() { "W" } else { "E" });
+            }
+            None => {
+                sentence.field("");
+                sentence.field("");
+            }
+        }
+        let mode = match rmc.mode {
+            Some(PositioningMode::Autonomous) => "A".to_owned(),
+            Some(PositioningMode::Differential) => "D".to_owned(),
+            Some(PositioningMode::Estimated) => "E".to_owned(),
+            Some(PositioningMode::Manual) => "M".to_owned(),
+            Some(PositioningMode::NotValid) => "N".to_owned(),
+            Some(PositioningMode::Other(mode)) if mode.is_ascii_uppercase() => mode.to_string(),
+            Some(PositioningMode::Other(_)) => return Err(EncodeError::InvalidField("mode")),
+            None => String::new(),
+        };
+        sentence.field(&mode);
+        Ok(sentence.finish())
+    }
+}
+
+fn optional_decimal(value: Option<f64>) -> String {
+    value.map_or_else(String::new, |value| value.to_string())
 }
 
 /// The signed magnetic variation from a magnitude field and its `E`/`W`
@@ -262,7 +318,115 @@ impl GsaFixType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some_eq};
+    use crate::{Message, Step, parse};
+    use approx::assert_abs_diff_eq;
+    use claims::{assert_err_eq, assert_none, assert_ok, assert_some, assert_some_eq};
+
+    #[test]
+    fn encodes_complete_rmc_sentence() {
+        insta::assert_snapshot!(encode_rmc_sentence(&complete_rmc()));
+    }
+
+    #[test]
+    fn encodes_rmc_sentence_without_date() {
+        let mut rmc = complete_rmc();
+        rmc.date = None;
+
+        insta::assert_snapshot!(encode_rmc_sentence(&rmc));
+    }
+
+    #[test]
+    fn parses_encoded_rmc_sentence() {
+        let expected = complete_rmc();
+        let sentence = assert_ok!(Vec::<u8>::try_from(&expected));
+        let mut input = sentence.as_slice();
+
+        let actual = match parse(&mut input) {
+            Step::Frame(Message::Rmc(rmc)) => rmc,
+            step => panic!("expected encoded RMC frame, got {step:?}"),
+        };
+
+        assert_eq!(actual.talker, expected.talker);
+        assert_eq!(actual.utc_time, expected.utc_time);
+        assert_eq!(actual.status, expected.status);
+        assert_abs_diff_eq!(
+            assert_some!(actual.position),
+            assert_some!(expected.position),
+            epsilon = 1e-9
+        );
+        assert_abs_diff_eq!(
+            assert_some!(actual.speed_over_ground),
+            assert_some!(expected.speed_over_ground),
+            epsilon = 1e-9
+        );
+        assert_abs_diff_eq!(
+            assert_some!(actual.course_over_ground),
+            assert_some!(expected.course_over_ground),
+            epsilon = 1e-9
+        );
+        assert_eq!(actual.date, expected.date);
+        assert_eq!(actual.magnetic_variation, expected.magnetic_variation);
+        assert_eq!(actual.mode, expected.mode);
+    }
+
+    #[test]
+    fn rejects_invalid_rmc_talker_codes() {
+        for code in ["G", "GPS", "gP", "G*"] {
+            let mut rmc = complete_rmc();
+            rmc.talker = Talker::Other(code.into());
+
+            assert_err_eq!(
+                Vec::<u8>::try_from(&rmc),
+                EncodeError::InvalidField("talker")
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_rmc_dates_outside_nmea_century() {
+        for date in [Date::new(1999, 1, 1), Date::new(2100, 1, 1)] {
+            let mut rmc = complete_rmc();
+            rmc.date = Some(date);
+
+            assert_err_eq!(Vec::<u8>::try_from(&rmc), EncodeError::InvalidField("date"));
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_rmc_modes() {
+        for mode in [',', 'a', 'Ä'] {
+            let mut rmc = complete_rmc();
+            rmc.mode = Some(PositioningMode::Other(mode));
+
+            assert_err_eq!(Vec::<u8>::try_from(&rmc), EncodeError::InvalidField("mode"));
+        }
+    }
+
+    #[test]
+    fn formats_rmc_numbers_with_default_precision() {
+        assert_eq!(optional_decimal(Some(1.234_567)), "1.234567");
+    }
+
+    fn complete_rmc() -> Rmc {
+        Rmc {
+            talker: Talker::Gps,
+            utc_time: Some(assert_some!(Time::from_hms_millis(13, 47, 49, 600))),
+            status: RmcStatus::Active,
+            position: Some(LatLon::from_degrees(48.964_695, 7.097_321_5)),
+            speed_over_ground: Some(Speed::from_knots(35.9)),
+            course_over_ground: Some(Angle::from_degrees(270.6)),
+            date: Some(Date::new(2024, 12, 28)),
+            magnetic_variation: None,
+            mode: Some(PositioningMode::Differential),
+        }
+    }
+
+    fn encode_rmc_sentence(rmc: &Rmc) -> String {
+        let sentence = assert_ok!(Vec::<u8>::try_from(rmc));
+        let sentence = assert_ok!(String::from_utf8(sentence));
+        assert!(sentence.ends_with("\r\n"));
+        sentence
+    }
 
     #[test]
     fn reads_altitude_and_geoid_separation_in_meters() {

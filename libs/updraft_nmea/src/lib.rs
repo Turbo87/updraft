@@ -13,12 +13,14 @@
 //! dropped.
 
 mod datetime;
+mod encode;
 mod field;
 mod framing;
 mod message;
 mod sentences;
 
 pub use datetime::{Date, Time};
+pub use encode::EncodeError;
 pub use framing::{RejectReason, Step, parse};
 pub use message::{Message, Talker, Unknown};
 pub use sentences::{

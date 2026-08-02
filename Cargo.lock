@@ -4854,6 +4854,7 @@ dependencies = [
  "insta",
  "memchr",
  "proptest",
+ "thiserror 2.0.19",
  "updraft_geo",
  "updraft_units",
 ]

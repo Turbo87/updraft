@@ -4,6 +4,7 @@ use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 mod activity;
+mod airspace_resource;
 mod airspace_storage;
 mod driver;
 mod file_picker;
@@ -14,6 +15,7 @@ mod settings;
 #[cfg(any(target_os = "android", test))]
 mod session;
 mod transport;
+mod updraft_uri;
 
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
 ///
@@ -75,6 +77,7 @@ fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc:
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .register_asynchronous_uri_scheme_protocol("updraft", updraft_uri::handle_updraft_uri)
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
             ipc::import_airspace,

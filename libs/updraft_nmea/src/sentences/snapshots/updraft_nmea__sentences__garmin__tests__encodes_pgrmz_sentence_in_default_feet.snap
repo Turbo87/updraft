@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/garmin.rs
+expression: encode_pgrmz_sentence(&pgrmz)
+---
+$PGRMZ,4395,f,3*20

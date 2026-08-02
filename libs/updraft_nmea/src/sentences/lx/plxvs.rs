@@ -1,3 +1,4 @@
+use crate::encode::{EncodeError, SentenceEncoder, optional_field};
 use crate::field::FieldsIter;
 use updraft_units::Length;
 
@@ -32,6 +33,24 @@ impl Plxvs {
     }
 }
 
+impl TryFrom<&Plxvs> for Vec<u8> {
+    type Error = EncodeError;
+
+    fn try_from(plxvs: &Plxvs) -> Result<Self, Self::Error> {
+        let mut sentence = SentenceEncoder::new("PLXVS");
+        sentence.field(&optional_field(plxvs.outside_air_temperature));
+        sentence.field(&optional_field(plxvs.mode.map(PlxvsMode::to_nmea_field)));
+        sentence.field(&optional_field(plxvs.supply_voltage));
+        sentence.field(&optional_field(
+            plxvs
+                .igc_pressure_altitude
+                .map(|altitude| altitude.as_meters()),
+        ));
+        sentence.text_field(plxvs.flap_position.as_deref(), "flap_position")?;
+        Ok(sentence.finish())
+    }
+}
+
 /// The flight mode reported in a `PLXVS` sentence.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PlxvsMode {
@@ -50,12 +69,81 @@ impl PlxvsMode {
             field => btoi::btou(field).ok().map(Self::Other),
         }
     }
+
+    fn to_nmea_field(self) -> String {
+        match self {
+            Self::Vario => "0".to_owned(),
+            Self::SpeedCommand => "1".to_owned(),
+            Self::Other(value) => value.to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some_eq};
+    use crate::{Message, Step, parse};
+    use claims::{assert_err_eq, assert_none, assert_ok, assert_some_eq};
+
+    #[test]
+    fn encodes_complete_plxvs_sentence() {
+        insta::assert_snapshot!(encode_plxvs_sentence(&complete_plxvs()));
+    }
+
+    #[test]
+    fn encodes_temperature_only_plxvs_sentence() {
+        let plxvs = Plxvs {
+            outside_air_temperature: Some(23.1),
+            mode: None,
+            supply_voltage: None,
+            igc_pressure_altitude: None,
+            flap_position: None,
+        };
+
+        insta::assert_snapshot!(encode_plxvs_sentence(&plxvs));
+    }
+
+    #[test]
+    fn rejects_invalid_plxvs_flap_text() {
+        let mut plxvs = complete_plxvs();
+        plxvs.flap_position = Some("L,R".into());
+
+        assert_err_eq!(
+            Vec::<u8>::try_from(&plxvs),
+            EncodeError::InvalidField("flap_position")
+        );
+    }
+
+    #[test]
+    fn parses_encoded_plxvs_sentence() {
+        let expected = complete_plxvs();
+        let sentence = assert_ok!(Vec::<u8>::try_from(&expected));
+        let mut input = sentence.as_slice();
+
+        let actual = match parse(&mut input) {
+            Step::Frame(Message::Plxvs(plxvs)) => plxvs,
+            step => panic!("expected encoded PLXVS frame, got {step:?}"),
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    fn complete_plxvs() -> Plxvs {
+        Plxvs {
+            outside_air_temperature: Some(18.4),
+            mode: Some(PlxvsMode::SpeedCommand),
+            supply_voltage: Some(12.1),
+            igc_pressure_altitude: Some(Length::from_meters(1543.2)),
+            flap_position: Some("L".into()),
+        }
+    }
+
+    fn encode_plxvs_sentence(plxvs: &Plxvs) -> String {
+        let sentence = assert_ok!(Vec::<u8>::try_from(plxvs));
+        let sentence = assert_ok!(String::from_utf8(sentence));
+        assert!(sentence.ends_with("\r\n"));
+        sentence
+    }
 
     #[test]
     fn parses_the_short_form() {

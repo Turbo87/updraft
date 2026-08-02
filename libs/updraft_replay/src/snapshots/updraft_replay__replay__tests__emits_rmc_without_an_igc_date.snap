@@ -1,0 +1,8 @@
+---
+source: libs/updraft_replay/src/replay.rs
+expression: "payload_text(&replay.events()[0])"
+---
+$LXWP1,,,,,*0E
+$GPRMC,134749.000,A,5200.00000,N,00700.00000,E,,,,,,*23
+$GPGGA,134749.000,5200.00000,N,00700.00000,E,1,,,956,M,44,M,,*74
+$PGRMZ,10000,f,3*1A

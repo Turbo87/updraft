@@ -61,7 +61,7 @@ mod tests {
                 tokio::task::yield_now().await;
             }
         });
-        let replay = assert_ok!(Replay::from_bytes(BASIC.to_vec()));
+        let replay = assert_ok!(Replay::from_nmea(BASIC.to_vec()));
         let second = replay.events()[1].payload().to_vec();
         let third = replay.events()[2].payload().to_vec();
 

@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/gnss.rs
+expression: encode_gga_sentence(&complete_gga())
+---
+$GPGGA,134749.600,4857.88170,N,00705.83929,E,2,25,1,1452,M,47.2,M,1.5,23*48

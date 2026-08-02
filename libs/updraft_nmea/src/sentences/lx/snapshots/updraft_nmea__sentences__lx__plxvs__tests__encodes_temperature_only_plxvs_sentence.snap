@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/lx/plxvs.rs
+expression: encode_plxvs_sentence(&plxvs)
+---
+$PLXVS,23.1,,,,*73

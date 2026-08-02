@@ -1,6 +1,7 @@
 use crate::driver::DriverHandle;
 use serde::Serialize;
 use tauri::ipc::Channel;
+use tauri_plugin_updraft::{BondedBluetoothDevices, UpdraftMobileExt};
 use updraft_core::{
     AddExternalDevice, ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceId,
     InvalidExternalDeviceOrder, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale,
@@ -34,6 +35,22 @@ pub enum ReorderExternalDevicesCommandError {
     DriverStopped,
     #[error("invalid external device order")]
     InvalidExternalDeviceOrder,
+}
+
+#[derive(Debug, Serialize, thiserror::Error)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum BondedBluetoothDevicesCommandError {
+    #[error("bonded Bluetooth device query failed")]
+    QueryFailed,
+}
+
+#[tauri::command]
+pub fn bonded_bluetooth_devices<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<BondedBluetoothDevices, BondedBluetoothDevicesCommandError> {
+    app.updraft_mobile()
+        .bonded_bluetooth_devices()
+        .map_err(|_| BondedBluetoothDevicesCommandError::QueryFailed)
 }
 
 #[tauri::command]
@@ -167,7 +184,9 @@ mod tests {
 
         tauri::test::mock_builder()
             .manage(handle)
+            .plugin(tauri_plugin_updraft::init())
             .invoke_handler(tauri::generate_handler![
+                bonded_bluetooth_devices,
                 set_locale,
                 set_units,
                 add_external_device,
@@ -191,6 +210,22 @@ mod tests {
             headers: Default::default(),
             invoke_key: tauri::test::INVOKE_KEY.to_owned(),
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn bonded_bluetooth_devices_reports_unsupported_on_desktop() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+
+        let request = request("bonded_bluetooth_devices", json!({}));
+        let response = tauri::test::get_ipc_response(&webview, request)
+            .expect("the bonded-device query should succeed")
+            .deserialize::<Value>()
+            .expect("the bonded-device result should deserialize");
+
+        assert_eq!(response, json!({ "status": "unsupported" }));
     }
 
     #[tokio::test(flavor = "multi_thread")]

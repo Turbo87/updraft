@@ -74,6 +74,7 @@ fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>, fixes: tauri::ipc:
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            ipc::bonded_bluetooth_devices,
             ipc::set_locale,
             ipc::set_units,
             ipc::add_external_device,

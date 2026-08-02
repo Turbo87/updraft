@@ -40,6 +40,7 @@
     <LanguageSetting locale={activeLocale} onLocaleChange={selectLocale} />
     <UnitSettings units={activeUnits} onUnitsChange={selectUnits} />
   </div>
+  <a href={resolve('/devices')}>{m.external_devices_heading()}</a>
   <a href={resolve('/')}>{m.back_to_flight_view()}</a>
 </main>
 
@@ -63,5 +64,9 @@
   a {
     display: inline-block;
     margin-block-start: 2rem;
+  }
+
+  a + a {
+    margin-inline-start: 1rem;
   }
 </style>

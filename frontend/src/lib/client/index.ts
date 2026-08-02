@@ -1,6 +1,9 @@
+import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
+import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 
 export type TopicListener = (topic: Topic) => void;
 
@@ -9,8 +12,20 @@ export type TopicListener = (topic: Topic) => void;
  *
  * Components never import an implementation of this. The layout receives
  * one, so tests and browser-only development can substitute the fake.
+ * Mutation promises report command completion. Only topics replace shared
+ * frontend state.
  */
 export interface UpdraftClient {
+  /** Adds an enabled external device. */
+  addExternalDevice(spec: ConnectionSpec): Promise<ExternalDeviceId>;
+  /** Queries the current platform-owned bonded Bluetooth state. */
+  getBondedBluetoothDevices(): Promise<BondedBluetoothDevices>;
+  /** Replaces one external-device connection specification. */
+  editExternalDevice(deviceId: ExternalDeviceId, spec: ConnectionSpec): Promise<void>;
+  /** Enables or disables one external device. */
+  setExternalDeviceEnabled(deviceId: ExternalDeviceId, enabled: boolean): Promise<void>;
+  /** Deletes one configured external device. */
+  deleteExternalDevice(deviceId: ExternalDeviceId): Promise<void>;
   /**
    * Starts delivering topics to `onTopic`.
    *

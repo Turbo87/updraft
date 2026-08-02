@@ -42,6 +42,13 @@ struct WatchActivitiesArgs {
 pub struct UpdraftMobile<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> UpdraftMobile<R> {
+    /// Returns the current Android bonded-device state.
+    pub fn bonded_bluetooth_devices(&self) -> crate::Result<crate::BondedBluetoothDevices> {
+        self.0
+            .run_mobile_plugin("bondedBluetoothDevices", ())
+            .map_err(Into::into)
+    }
+
     /// Starts a session, which reports every [`crate::Fix`] its receiver
     /// produces on `fixes` until the session is stopped.
     pub fn start_session(&self, fixes: Channel) -> crate::Result<()> {

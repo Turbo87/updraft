@@ -1,6 +1,6 @@
 use crate::airspace_resource;
 use crate::driver::DriverHandle;
-use tauri::http::{Request, Response, StatusCode};
+use tauri::http::{HeaderValue, Request, Response, StatusCode, header};
 use tauri::{Manager, UriSchemeContext, UriSchemeResponder};
 
 const UPDRAFT_URI_AUTHORITY: &str = "localhost";
@@ -21,16 +21,22 @@ async fn updraft_uri_response(
     request: Request<Vec<u8>>,
     handle: DriverHandle,
 ) -> Response<Vec<u8>> {
-    if request.uri().scheme_str() != Some("updraft")
+    let mut response = if request.uri().scheme_str() != Some("updraft")
         || request.uri().authority().map(|value| value.as_str()) != Some(UPDRAFT_URI_AUTHORITY)
     {
-        return not_found_response();
-    }
+        not_found_response()
+    } else {
+        match request.uri().path() {
+            "/airspace.geojson" => airspace_resource::airspace_resource_response(handle).await,
+            _ => not_found_response(),
+        }
+    };
 
-    match request.uri().path() {
-        "/airspace.geojson" => airspace_resource::airspace_resource_response(handle).await,
-        _ => not_found_response(),
-    }
+    response.headers_mut().insert(
+        header::ACCESS_CONTROL_ALLOW_ORIGIN,
+        HeaderValue::from_static("*"),
+    );
+    response
 }
 
 fn not_found_response() -> Response<Vec<u8>> {
@@ -45,7 +51,7 @@ mod tests {
     use super::*;
     use crate::driver::{Driver, DriverHandle};
     use std::time::Duration;
-    use tauri::http::{Request, StatusCode};
+    use tauri::http::{Request, StatusCode, header};
     use updraft_core::{AirspaceState, SettingsSnapshot};
 
     fn driver() -> DriverHandle {
@@ -73,6 +79,7 @@ mod tests {
             updraft_uri_response(request("updraft://localhost/airspace.geojson?v=0"), handle).await;
 
         assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
     }
 
     #[tokio::test(flavor = "multi_thread")]

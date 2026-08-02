@@ -63,6 +63,7 @@
 
 <div class="app">
   <FlightView
+    airspace={airspace.current}
     instruments={instruments.current}
     {traffic}
     units={settings.current.units}

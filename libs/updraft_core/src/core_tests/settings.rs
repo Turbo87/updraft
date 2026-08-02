@@ -1,5 +1,6 @@
 use super::super::*;
 use super::support::at;
+use crate::AirspaceStatus;
 use crate::connection::ConnectionSpec;
 use crate::external_device::ExternalDeviceConfig;
 use crate::settings::{
@@ -31,7 +32,7 @@ fn topics_include_settings_and_external_devices() {
     });
 
     let topics = core.topics();
-    assert_eq!(topics.len(), 4);
+    assert_eq!(topics.len(), 5);
     assert_eq!(topics[0], Topic::Instruments(Instruments::default()));
     assert_eq!(topics[1], Topic::Settings(settings));
     let Topic::ExternalDevices(devices) = &topics[2] else {
@@ -75,6 +76,7 @@ fn setting_locale_updates_the_topic_and_requests_persistence() {
             Topic::Instruments(Instruments::default()),
             Topic::Settings(settings),
             Topic::ExternalDevices(Vec::new()),
+            Topic::Airspace(AirspaceStatus::None),
             Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
         ]
     );
@@ -132,6 +134,7 @@ fn setting_units_updates_the_topic_and_requests_persistence() {
             Topic::Instruments(Instruments::default()),
             Topic::Settings(settings),
             Topic::ExternalDevices(Vec::new()),
+            Topic::Airspace(AirspaceStatus::None),
             Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
         ]
     );

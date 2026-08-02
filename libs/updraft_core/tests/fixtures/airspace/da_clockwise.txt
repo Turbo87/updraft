@@ -1,0 +1,7 @@
+AC D
+AN DA clockwise
+AL GND
+AH 5000 FT
+V X=50:00:00 N 010:00:00 E
+V D=+
+DA 1, 20, 140

@@ -3,6 +3,7 @@
 //! The core owns shared application state and the decisions based on it.
 //! It performs no I/O, spawns no threads, and reads no clocks.
 
+mod airspace;
 #[cfg(feature = "ts")]
 pub mod bindings;
 mod connection;
@@ -19,6 +20,11 @@ mod time;
 mod topic;
 mod traffic;
 
+pub use airspace::{
+    Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
+    AirspaceImportError, AirspaceLoadError, AirspaceParseError, AirspacePolygon, AirspaceState,
+    AirspaceStatus, AirspaceType,
+};
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };
@@ -31,9 +37,10 @@ pub use external_device::{
 };
 pub use fix::Fix;
 pub use input::{
-    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice, Input,
-    InternalGps, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Start,
-    Tick, Update,
+    ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
+    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
+    Start, Tick, Update,
 };
 pub use ownship::OwnshipState;
 pub use settings::{

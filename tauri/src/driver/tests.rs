@@ -11,7 +11,8 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use updraft_core::{
-    AddExternalDevice, Bytes, ConnectionSpec, DeleteExternalDevice, EditExternalDevice,
+    ActivateAirspaceDataset, AddExternalDevice, AirspaceDataset, AirspaceLoadError, AirspaceState,
+    AirspaceStatus, Bytes, ConnectionSpec, DeleteExternalDevice, EditExternalDevice,
     ExternalDeviceConfig, ExternalDeviceId, SetExternalDeviceEnabled, SetLocale, SettingsSnapshot,
     Topic, TrafficUpdate,
 };
@@ -37,8 +38,18 @@ pub fn spawn(
     persist: PersistFn,
     tick_interval: Duration,
 ) -> TestDriver {
-    let (handle, task) = Driver::spawn_task(snapshot, open, persist, tick_interval);
+    let (handle, task) = Driver::spawn_task(
+        snapshot,
+        AirspaceState::none_at_startup(),
+        open,
+        persist,
+        tick_interval,
+    );
     TestDriver { handle, task }
+}
+
+fn no_airspace() -> AirspaceState {
+    AirspaceState::none_at_startup()
 }
 
 fn snapshot() -> SettingsSnapshot {
@@ -73,6 +84,18 @@ async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> updraft
         if let Some(position) = instruments.position {
             return position;
         }
+    }
+}
+
+async fn next_airspace_status(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> AirspaceStatus {
+    loop {
+        let received = timeout(PATIENCE, receiver.recv())
+            .await
+            .expect("an airspace topic within the timeout");
+        let Topic::Airspace(status) = assert_some!(received) else {
+            continue;
+        };
+        return status;
     }
 }
 
@@ -123,6 +146,7 @@ fn inactive_driver_handle() -> DriverHandle {
 async fn subscribing_delivers_current_state_immediately() {
     let handle = Driver::spawn(
         snapshot(),
+        no_airspace(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Duration::from_millis(100),
@@ -140,9 +164,86 @@ async fn subscribing_delivers_current_state_immediately() {
 }
 
 #[tokio::test]
+async fn new_subscriber_receives_current_airspace_status() {
+    let handle = Driver::spawn(
+        snapshot(),
+        no_airspace(),
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    );
+    let dataset = Arc::new(AirspaceDataset::default());
+    handle
+        .send(ActivateAirspaceDataset::new(dataset, None))
+        .await
+        .expect("driver remains active");
+    let mut topics = topic_stream(&handle);
+
+    let status = next_airspace_status(&mut topics).await;
+
+    assert_eq!(
+        status,
+        AirspaceStatus::Active {
+            source_name: None,
+            airspace_count: 0,
+            generation: 1,
+        }
+    );
+}
+
+#[tokio::test]
+async fn driver_starts_with_active_airspace_at_generation_zero() {
+    let dataset = Arc::new(AirspaceDataset::default());
+    let initial_airspace =
+        AirspaceState::active_at_startup(dataset, Some("Stored airspace.txt".into()));
+    let handle = Driver::spawn(
+        snapshot(),
+        initial_airspace,
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    );
+    let mut topics = topic_stream(&handle);
+
+    assert_eq!(
+        next_airspace_status(&mut topics).await,
+        AirspaceStatus::Active {
+            source_name: Some("Stored airspace.txt".into()),
+            airspace_count: 0,
+            generation: 0,
+        }
+    );
+}
+
+#[tokio::test]
+async fn driver_starts_with_unavailable_airspace() {
+    let initial_airspace = AirspaceState::unavailable_at_startup(
+        Some("Broken airspace.txt".into()),
+        AirspaceLoadError::ParseFailed,
+    );
+    let handle = Driver::spawn(
+        snapshot(),
+        initial_airspace,
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    );
+    let mut topics = topic_stream(&handle);
+
+    assert_eq!(
+        next_airspace_status(&mut topics).await,
+        AirspaceStatus::Unavailable {
+            source_name: Some("Broken airspace.txt".into()),
+            error: AirspaceLoadError::ParseFailed,
+        }
+    );
+}
+
+#[tokio::test]
 async fn subscription_includes_a_traffic_snapshot() {
     let handle = Driver::spawn(
         snapshot(),
+        no_airspace(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Duration::from_millis(100),
@@ -165,6 +266,7 @@ async fn locale_changes_reach_subscribers_and_persistence() {
     let (persisted_tx, mut persisted_rx) = mpsc::unbounded_channel();
     let handle = Driver::spawn(
         snapshot(),
+        no_airspace(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
@@ -202,6 +304,7 @@ async fn locale_changes_reach_subscribers_and_persistence() {
 async fn decoded_fixes_reach_subscribers() {
     let handle = Driver::spawn(
         snapshot(),
+        no_airspace(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Duration::from_millis(100),
@@ -221,6 +324,7 @@ async fn start_asks_for_a_transport_per_configured_connection() {
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let handle = Driver::spawn(
         snapshot(),
+        no_airspace(),
         Box::new(move |device_id, spec, _handle| {
             let _ = sender.send((device_id, spec));
             Box::new(|| {})
@@ -245,6 +349,7 @@ async fn admitted_input_survives_a_dropped_response_receiver() {
     let (persisted_tx, mut persisted_rx) = mpsc::unbounded_channel();
     let handle = Driver::spawn(
         snapshot(),
+        no_airspace(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
@@ -295,6 +400,7 @@ async fn external_device_mutations_drive_one_worker_and_complete_snapshots() {
     let stop_count = stops.clone();
     let handle = Driver::spawn(
         SettingsSnapshot::default(),
+        no_airspace(),
         Box::new(move |device_id, spec, _handle| {
             open_count.fetch_add(1, Ordering::SeqCst);
             let _ = opened_tx.send((device_id, spec));

@@ -1,9 +1,11 @@
+use crate::airspace::{AirspaceDataset, AirspaceLoadError};
 use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
 use crate::core::Core;
 use crate::effect::Effect;
 use crate::fix::Fix;
 use crate::settings::{Locale, UnitSettings};
 use crate::time::Timestamp;
+use std::sync::Arc;
 
 mod private {
     pub trait Sealed {}
@@ -20,6 +22,43 @@ pub trait Input: private::Sealed + Send + 'static {
 pub struct Update<R> {
     pub effects: Vec<Effect>,
     pub response: R,
+}
+
+/// Activates one immutable canonical airspace dataset.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ActivateAirspaceDataset {
+    pub dataset: Arc<AirspaceDataset>,
+    pub source_name: Option<String>,
+}
+
+impl ActivateAirspaceDataset {
+    pub fn new(dataset: Arc<AirspaceDataset>, source_name: Option<String>) -> Self {
+        Self {
+            dataset,
+            source_name,
+        }
+    }
+}
+
+/// Removes the active canonical airspace dataset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ClearAirspaceDataset;
+
+/// Marks a stored airspace source as unavailable without exposing its technical error.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SetAirspaceUnavailable {
+    pub source_name: Option<String>,
+    pub error: AirspaceLoadError,
+}
+
+/// Requests a shared snapshot of the active canonical airspace dataset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GetAirspaceSnapshot;
+
+impl SetAirspaceUnavailable {
+    pub fn new(source_name: Option<String>, error: AirspaceLoadError) -> Self {
+        Self { source_name, error }
+    }
 }
 
 impl Update<()> {
@@ -179,6 +218,10 @@ impl SetExternalDeviceEnabled {
 }
 
 impl private::Sealed for Start {}
+impl private::Sealed for ActivateAirspaceDataset {}
+impl private::Sealed for ClearAirspaceDataset {}
+impl private::Sealed for SetAirspaceUnavailable {}
+impl private::Sealed for GetAirspaceSnapshot {}
 impl private::Sealed for Tick {}
 impl private::Sealed for Bytes {}
 impl private::Sealed for ConnectionChanged {}

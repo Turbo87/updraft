@@ -1,0 +1,14 @@
+AC D
+AN Valid first airspace
+AL GND
+AH FL100
+DP 50:00:00 N 010:00:00 E
+DP 50:00:00 N 010:01:00 E
+DP 50:01:00 N 010:00:00 E
+
+AC D
+AN Invalid second airspace
+AL GND
+AH FL100
+V X=50:00:00 N 010:00:00 E
+DC 0

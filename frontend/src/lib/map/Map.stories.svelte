@@ -8,6 +8,7 @@
   import { expect, waitFor } from 'storybook/test';
 
   import { TrafficStore } from '$lib/stores/traffic.svelte';
+  import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
   import Map from './Map.svelte';
 
   const instruments = {
@@ -112,6 +113,7 @@
 <Story
   name="No position"
   args={{
+    airspace: { type: 'none' },
     instruments: {
       position: null,
       altitudeMslMeters: null,
@@ -123,10 +125,26 @@
   }}
   {template}
 />
-<Story name="Position" args={{ instruments, traffic, units }} {template} />
+<Story
+  name="Position"
+  args={{ airspace: { type: 'none' }, instruments, traffic, units }}
+  {template}
+/>
 <Story
   name="Test mode"
-  args={{ instruments, traffic, units, testMode: true }}
+  args={{
+    airspace: {
+      type: 'active',
+      sourceName: 'browser-fixture.txt',
+      airspaceCount: 2,
+      generation: 1,
+    },
+    instruments,
+    traffic,
+    units,
+    testMode: true,
+    testAirspaceData: AIRSPACE_BROWSER_FIXTURE,
+  }}
   play={async () => {
     await waitFor(async () => {
       let map = (window as TestWindow).__updraftTest?.map;
@@ -134,6 +152,8 @@
       let featureCount = data && 'features' in data ? data.features.length : 0;
 
       expect(featureCount).toBe(6);
+      expect(map?.getLayer('airspace-fill')).toBeDefined();
+      expect(map?.getLayer('airspace-outline')).toBeDefined();
     });
   }}
   {template}

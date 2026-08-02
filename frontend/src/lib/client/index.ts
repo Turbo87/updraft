@@ -6,6 +6,7 @@ import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 
 export type TopicListener = (topic: Topic) => void;
+export type ImportAirspaceResult = { type: 'imported' } | { type: 'cancelled' };
 
 /**
  * The only boundary between the frontend and the Rust shell.
@@ -38,4 +39,6 @@ export interface UpdraftClient {
   setLocale(locale: Locale): Promise<void>;
   /** Replaces all display-unit selections. */
   setUnits(units: UnitSettings): Promise<void>;
+  importAirspace(): Promise<ImportAirspaceResult>;
+  removeAirspace(): Promise<void>;
 }

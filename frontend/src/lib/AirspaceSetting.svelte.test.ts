@@ -1,0 +1,168 @@
+import { describe, expect, it, vi } from 'vitest';
+import { render } from 'vitest-browser-svelte';
+import { page } from 'vitest/browser';
+
+import AirspaceSetting from './AirspaceSetting.svelte';
+
+describe('AirspaceSetting.svelte', () => {
+  it('shows an import action when no source is selected', async () => {
+    render(AirspaceSetting, {
+      status: { type: 'none' },
+      onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
+      onRemove: vi.fn(async () => {}),
+    });
+
+    await expect.element(page.getByRole('group', { name: 'Airspace' })).toBeVisible();
+    await expect.element(page.getByText('No airspace file selected.')).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Import' })).toBeEnabled();
+  });
+
+  it('shows the active source and wires replacement and removal', async () => {
+    let onImport = vi.fn(async () => ({ type: 'cancelled' as const }));
+    let onRemove = vi.fn(async () => {});
+    render(AirspaceSetting, {
+      status: {
+        type: 'active',
+        sourceName: 'rheinland.txt',
+        airspaceCount: 42,
+        generation: 1,
+      },
+      onImport,
+      onRemove,
+    });
+
+    await expect.element(page.getByText('rheinland.txt')).toBeVisible();
+    await expect.element(page.getByText('42 airspaces')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Replace' }).click();
+    expect(onImport).toHaveBeenCalledOnce();
+
+    await page.getByRole('button', { name: 'Remove' }).click();
+    expect(onRemove).toHaveBeenCalledOnce();
+  });
+
+  it('uses a fallback when the active source has no display name', async () => {
+    render(AirspaceSetting, {
+      status: {
+        type: 'active',
+        sourceName: null,
+        airspaceCount: 1,
+        generation: 0,
+      },
+      onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
+      onRemove: vi.fn(async () => {}),
+    });
+
+    await expect.element(page.getByText('Imported airspace file')).toBeVisible();
+    await expect.element(page.getByText('1 airspace', { exact: true })).toBeVisible();
+  });
+
+  it.each([
+    ['readFailed', 'The airspace file could not be read.'],
+    ['parseFailed', 'The airspace file could not be parsed.'],
+    ['geometryFailed', 'The airspace geometry is invalid.'],
+  ] as const)('shows the %s unavailable state', async (error, message) => {
+    render(AirspaceSetting, {
+      status: {
+        type: 'unavailable',
+        sourceName: 'broken.txt',
+        error,
+      },
+      onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
+      onRemove: vi.fn(async () => {}),
+    });
+
+    await expect.element(page.getByText('broken.txt')).toBeVisible();
+    await expect.element(page.getByText(message)).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Replace' })).toBeEnabled();
+    await expect.element(page.getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
+
+  it('disables all mutation controls while an action is pending', async () => {
+    let finishImport: (result: { type: 'imported' }) => void = () => undefined;
+    let pendingImport = new Promise<{ type: 'imported' }>((resolve) => {
+      finishImport = resolve;
+    });
+    render(AirspaceSetting, {
+      status: {
+        type: 'active',
+        sourceName: 'rheinland.txt',
+        airspaceCount: 42,
+        generation: 1,
+      },
+      onImport: vi.fn(() => pendingImport),
+      onRemove: vi.fn(async () => {}),
+    });
+
+    let replace = page.getByRole('button', { name: 'Replace' });
+    let remove = page.getByRole('button', { name: 'Remove' });
+    await replace.click();
+
+    await expect.element(replace).toBeDisabled();
+    await expect.element(remove).toBeDisabled();
+
+    finishImport({ type: 'imported' });
+    await expect.element(replace).toBeEnabled();
+    await expect.element(remove).toBeEnabled();
+  });
+
+  it.each([
+    {
+      error: { kind: 'pickerFailed' },
+      message: 'Could not open the file picker.',
+    },
+    {
+      error: { kind: 'readFailed', sourceName: 'broken.txt' },
+      message: 'Could not read the selected airspace file.',
+    },
+    {
+      error: { kind: 'parseFailed', sourceName: 'broken.txt' },
+      message: 'The selected airspace file could not be parsed.',
+    },
+    {
+      error: { kind: 'geometryFailed', sourceName: 'broken.txt' },
+      message: 'The selected airspace geometry is invalid.',
+    },
+    {
+      error: { kind: 'storageFailed', sourceName: 'broken.txt' },
+      message: 'Could not save the selected airspace file.',
+    },
+    {
+      error: { kind: 'driverStopped', sourceName: 'broken.txt' },
+      message: 'The airspace service is unavailable.',
+    },
+    {
+      error: { kind: 'busy' },
+      message: 'Another airspace change is already in progress.',
+    },
+  ] as const)('shows the localized $error.kind command error', async ({ error, message }) => {
+    render(AirspaceSetting, {
+      status: { type: 'none' },
+      onImport: vi.fn(async () => {
+        throw error;
+      }),
+      onRemove: vi.fn(async () => {}),
+    });
+
+    let importButton = page.getByRole('button', { name: 'Import' });
+    await importButton.click();
+
+    await expect.element(page.getByRole('alert')).toHaveTextContent(message);
+    await expect.element(importButton).toBeEnabled();
+  });
+
+  it('does not expose an unexpected backend error', async () => {
+    render(AirspaceSetting, {
+      status: { type: 'none' },
+      onImport: vi.fn(async () => {
+        throw new Error('/private/path/airspace.txt');
+      }),
+      onRemove: vi.fn(async () => {}),
+    });
+
+    await page.getByRole('button', { name: 'Import' }).click();
+
+    await expect.element(page.getByRole('alert')).toHaveTextContent('Could not update airspace.');
+    await expect.element(page.getByText('/private/path/airspace.txt')).not.toBeInTheDocument();
+  });
+});

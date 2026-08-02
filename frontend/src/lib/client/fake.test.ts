@@ -37,6 +37,12 @@ function instruments(trackDegrees: number): Topic {
 }
 
 describe('FakeClient', () => {
+  it('cancels native airspace import in browser mode', async () => {
+    let client = new FakeClient();
+
+    await expect(client.importAirspace()).resolves.toEqual({ type: 'cancelled' });
+  });
+
   it('delivers emitted topics to a subscriber', () => {
     let client = new FakeClient();
     let received: Topic[] = [];
@@ -81,6 +87,10 @@ describe('FakeClient', () => {
       {
         topic: 'traffic',
         value: { type: 'snapshot', value: [] },
+      },
+      {
+        topic: 'airspace',
+        value: { type: 'none' },
       },
     ]);
   });

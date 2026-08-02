@@ -4,7 +4,7 @@ import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
-import type { TopicListener, UpdraftClient } from './index';
+import type { ImportAirspaceResult, TopicListener, UpdraftClient } from './index';
 
 import { Channel, invoke } from '@tauri-apps/api/core';
 
@@ -28,6 +28,14 @@ export class TauriClient implements UpdraftClient {
 
   deleteExternalDevice(deviceId: ExternalDeviceId): Promise<void> {
     return invoke('delete_external_device', { deviceId });
+  }
+
+  importAirspace(): Promise<ImportAirspaceResult> {
+    return invoke('import_airspace');
+  }
+
+  removeAirspace(): Promise<void> {
+    return invoke('remove_airspace');
   }
 
   setLocale(locale: Locale): Promise<void> {

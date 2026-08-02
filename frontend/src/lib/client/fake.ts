@@ -6,7 +6,7 @@ import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
-import type { TopicListener, UpdraftClient } from './index';
+import type { ImportAirspaceResult, TopicListener, UpdraftClient } from './index';
 
 /** Initial platform and external-device state for browser development. */
 export type FakeClientOptions = {
@@ -51,11 +51,18 @@ export class FakeClient implements UpdraftClient {
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
   }
 
+  async importAirspace(): Promise<ImportAirspaceResult> {
+    return { type: 'cancelled' };
+  }
+
+  async removeAirspace(): Promise<void> {}
+
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'settings', value: this.#settings });
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });
     onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
+    onTopic({ topic: 'airspace', value: { type: 'none' } });
 
     return () => {
       this.#listeners.delete(onTopic);

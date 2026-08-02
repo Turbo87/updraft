@@ -36,7 +36,7 @@
     "@types/node": "24.13.3",
     "@vitest/browser-playwright": "4.1.10",
     "lightningcss": "1.33.0",
-    "maplibre-gl": "6.0.0",
+    "maplibre-gl": "6.1.0",
     "normalize.css": "8.0.1",
     "playwright": "1.62.0",
     "storybook": "10.5.5",

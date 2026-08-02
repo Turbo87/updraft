@@ -44,9 +44,17 @@ describe('DevicesScreen.svelte', () => {
       .toHaveAttribute('href', '/settings');
   });
 
-  it('links to device creation and TCP editing', async () => {
+  it('links to device creation and configured-device editing', async () => {
     render(DevicesScreen, {
-      devices: [{ deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 }],
+      devices: [
+        { deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
+        {
+          deviceId: 5,
+          enabled: true,
+          type: 'bluetooth',
+          address: '00:11:22:33:44:55',
+        },
+      ],
       initialized: true,
       bondedBluetoothDevices: { status: 'unsupported' },
       onEnabledChange: async () => {},
@@ -58,6 +66,9 @@ describe('DevicesScreen.svelte', () => {
     await expect
       .element(page.getByRole('link', { name: 'Edit 192.0.2.1:4353' }))
       .toHaveAttribute('href', '/devices/4');
+    await expect
+      .element(page.getByRole('link', { name: 'Edit 00:11:22:33:44:55' }))
+      .toHaveAttribute('href', '/devices/5');
   });
 
   it('summarizes TCP and Bluetooth devices without showing the standard SPP UUID', async () => {

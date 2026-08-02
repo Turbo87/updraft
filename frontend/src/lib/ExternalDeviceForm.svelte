@@ -1,20 +1,27 @@
 <script lang="ts">
+  import type { BondedBluetoothDevices } from '$lib/client/bonded-bluetooth-devices';
   import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
   import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 
+  import { onMount } from 'svelte';
+
   import { m } from '$lib/paraglide/messages.js';
 
-  type TcpExternalDevice = Extract<PublishedExternalDevice, { type: 'tcp' }>;
-
   type ExternalDeviceFormProps = {
-    device?: TcpExternalDevice;
+    device?: PublishedExternalDevice;
+    getBondedBluetoothDevices: () => Promise<BondedBluetoothDevices>;
     onSave: (spec: ConnectionSpec) => Promise<void>;
     onDelete?: () => Promise<void>;
   };
 
-  let { device, onSave, onDelete }: ExternalDeviceFormProps = $props();
-  let host = $derived(device?.host ?? '');
-  let port = $derived(device ? String(device.port) : '');
+  let { device, getBondedBluetoothDevices, onSave, onDelete }: ExternalDeviceFormProps = $props();
+  let bondedBluetoothDevices = $state.raw<BondedBluetoothDevices>({ status: 'unsupported' });
+  let connectionType = $derived(device?.type ?? 'tcp');
+  let host = $derived(device?.type === 'tcp' ? device.host : '');
+  let port = $derived(device?.type === 'tcp' ? String(device.port) : '');
+  let bluetoothAddress = $derived(device?.type === 'bluetooth' ? device.address : '');
+  let bluetoothQueryPending = $state(false);
+  let bluetoothQueryFailed = $state(false);
   let submitted = $state(false);
   let pending = $state(false);
   let commandFailed = $state(false);
@@ -24,16 +31,66 @@
   const trimmedHost = $derived(host.trim());
   const numericPort = $derived(Number(port));
   const validPort = $derived(/^\d+$/.test(port) && numericPort >= 1 && numericPort <= 65535);
+  const bluetoothSupported = $derived(bondedBluetoothDevices.status !== 'unsupported');
+  const currentBluetoothAddressUnbonded = $derived.by(() => {
+    if (device?.type !== 'bluetooth' || bondedBluetoothDevices.status !== 'available') {
+      return false;
+    }
+
+    let currentAddress = device.address.toLowerCase();
+    return !bondedBluetoothDevices.devices.some(
+      (bondedDevice) => bondedDevice.address.toLowerCase() === currentAddress,
+    );
+  });
+  let active = false;
+
+  async function refreshBondedBluetoothDevices(): Promise<void> {
+    if (bluetoothQueryPending) return;
+
+    bluetoothQueryFailed = false;
+    bluetoothQueryPending = true;
+    try {
+      let result = await getBondedBluetoothDevices();
+      if (active) bondedBluetoothDevices = result;
+    } catch {
+      if (active) bluetoothQueryFailed = true;
+    } finally {
+      if (active) bluetoothQueryPending = false;
+    }
+  }
+
+  onMount(() => {
+    active = true;
+    void refreshBondedBluetoothDevices();
+    return () => {
+      active = false;
+    };
+  });
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     submitted = true;
-    if (pending || !trimmedHost || !validPort) return;
+    if (
+      pending ||
+      (connectionType === 'tcp' && (!trimmedHost || !validPort)) ||
+      (connectionType === 'bluetooth' && !bluetoothAddress)
+    ) {
+      return;
+    }
 
     commandFailed = false;
     pending = true;
     try {
-      await onSave({ type: 'tcp', host: trimmedHost, port: numericPort });
+      await onSave(
+        connectionType === 'tcp'
+          ? { type: 'tcp', host: trimmedHost, port: numericPort }
+          : {
+              type: 'bluetooth',
+              address: bluetoothAddress,
+              ...(device?.type === 'bluetooth' &&
+                device.serviceUuid && { serviceUuid: device.serviceUuid }),
+            },
+      );
     } catch {
       commandFailed = true;
     } finally {
@@ -60,43 +117,120 @@
     deleteFailed = false;
     confirmingDelete = true;
   }
+
+  function visibleEndpoint(device: PublishedExternalDevice): string {
+    return device.type === 'tcp' ? `${device.host}:${device.port}` : device.address;
+  }
 </script>
 
 <form onsubmit={(event) => void submit(event)}>
   <label>
     <span>{m.connection_type()}</span>
-    <select disabled>
-      <option>{m.tcp_device_type()}</option>
+    <select disabled={!bluetoothSupported} bind:value={connectionType}>
+      {#if bluetoothSupported}
+        <option value="tcp">{m.tcp_device_type()}</option>
+        <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
+      {:else if connectionType === 'bluetooth'}
+        <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
+      {:else}
+        <option value="tcp">{m.tcp_device_type()}</option>
+      {/if}
     </select>
   </label>
-  <label>
-    <span>{m.tcp_host()}</span>
-    <input
-      name="host"
-      aria-invalid={submitted && !trimmedHost}
-      aria-describedby={submitted && !trimmedHost ? 'host-error' : undefined}
-      bind:value={host}
-    />
-    {#if submitted && !trimmedHost}
-      <span id="host-error" class="error" role="alert">{m.tcp_host_error()}</span>
+  {#if connectionType === 'tcp'}
+    <label>
+      <span>{m.tcp_host()}</span>
+      <input
+        name="host"
+        aria-invalid={submitted && !trimmedHost}
+        aria-describedby={submitted && !trimmedHost ? 'host-error' : undefined}
+        bind:value={host}
+      />
+      {#if submitted && !trimmedHost}
+        <span id="host-error" class="error" role="alert">{m.tcp_host_error()}</span>
+      {/if}
+    </label>
+    <label>
+      <span>{m.tcp_port()}</span>
+      <input
+        name="port"
+        inputmode="numeric"
+        aria-invalid={submitted && !validPort}
+        aria-describedby={submitted && !validPort ? 'port-error' : undefined}
+        bind:value={port}
+      />
+      {#if submitted && !validPort}
+        <span id="port-error" class="error" role="alert">{m.tcp_port_error()}</span>
+      {/if}
+    </label>
+  {:else if bondedBluetoothDevices.status === 'available'}
+    {#if bondedBluetoothDevices.devices.length === 0 && !currentBluetoothAddressUnbonded}
+      <p>{m.no_bonded_bluetooth_devices()}</p>
+    {:else}
+      <label>
+        <span>{m.bonded_bluetooth_device()}</span>
+        <select
+          aria-invalid={submitted && !bluetoothAddress}
+          aria-describedby={submitted && !bluetoothAddress ? 'bluetooth-device-error' : undefined}
+          bind:value={bluetoothAddress}
+        >
+          <option value="">{m.select_bonded_bluetooth_device()}</option>
+          {#if currentBluetoothAddressUnbonded && device?.type === 'bluetooth'}
+            <option value={device.address}
+              >{m.bluetooth_device_not_bonded({ address: device.address })}</option
+            >
+          {/if}
+          {#each bondedBluetoothDevices.devices as bondedDevice (bondedDevice.address)}
+            <option value={bondedDevice.address}
+              >{bondedDevice.name
+                ? `${bondedDevice.name} (${bondedDevice.address})`
+                : bondedDevice.address}</option
+            >
+          {/each}
+        </select>
+        {#if submitted && !bluetoothAddress}
+          <span id="bluetooth-device-error" class="error" role="alert"
+            >{m.bonded_bluetooth_device_error()}</span
+          >
+        {/if}
+      </label>
     {/if}
-  </label>
-  <label>
-    <span>{m.tcp_port()}</span>
-    <input
-      name="port"
-      inputmode="numeric"
-      aria-invalid={submitted && !validPort}
-      aria-describedby={submitted && !validPort ? 'port-error' : undefined}
-      bind:value={port}
-    />
-    {#if submitted && !validPort}
-      <span id="port-error" class="error" role="alert">{m.tcp_port_error()}</span>
-    {/if}
-  </label>
-  <button type="submit" disabled={pending}
-    >{device ? m.save_external_device() : m.add_external_device()}</button
-  >
+  {:else if bondedBluetoothDevices.status === 'permissionDenied'}
+    <p>{m.bluetooth_permission_denied()}</p>
+  {:else if bondedBluetoothDevices.status === 'disabled'}
+    <p>{m.bluetooth_disabled()}</p>
+  {/if}
+  {#if connectionType === 'bluetooth' && device?.type === 'bluetooth' && bondedBluetoothDevices.status !== 'available'}
+    <p class="endpoint">{device.address}</p>
+  {/if}
+  {#if connectionType === 'bluetooth' && bluetoothSupported && !bluetoothQueryFailed}
+    <button
+      type="button"
+      disabled={bluetoothQueryPending}
+      onclick={() => void refreshBondedBluetoothDevices()}
+      >{m.refresh_bonded_bluetooth_devices()}</button
+    >
+  {/if}
+  {#if bluetoothQueryFailed}
+    <p class="error" role="alert">{m.bonded_bluetooth_devices_error()}</p>
+    <button
+      type="button"
+      disabled={bluetoothQueryPending}
+      onclick={() => void refreshBondedBluetoothDevices()}
+      >{m.refresh_bonded_bluetooth_devices()}</button
+    >
+  {/if}
+  {#if connectionType === 'bluetooth' && device?.type === 'bluetooth' && device.serviceUuid}
+    <p class="service-uuid">
+      <span>{m.custom_service_uuid()}</span>
+      <code>{device.serviceUuid}</code>
+    </p>
+  {/if}
+  {#if connectionType === 'tcp' || bluetoothSupported}
+    <button type="submit" disabled={pending}
+      >{device ? m.save_external_device() : m.add_external_device()}</button
+    >
+  {/if}
   {#if commandFailed}
     <p class="error" role="alert">{m.save_external_device_error()}</p>
   {/if}
@@ -108,7 +242,7 @@
 {#if confirmingDelete && device}
   <dialog open aria-labelledby="delete-heading">
     <h2 id="delete-heading">
-      {m.confirm_delete_external_device({ endpoint: `${device.host}:${device.port}` })}
+      {m.confirm_delete_external_device({ endpoint: visibleEndpoint(device) })}
     </h2>
     {#if deleteFailed}
       <p class="error" role="alert">{m.delete_external_device_error()}</p>
@@ -142,6 +276,16 @@
   .error {
     margin: 0;
     color: light-dark(var(--color-red-700), var(--color-red-300));
+  }
+
+  .service-uuid {
+    display: grid;
+    gap: 0.125rem;
+  }
+
+  .endpoint {
+    font-size: 1.125rem;
+    font-weight: 600;
   }
 
   input,

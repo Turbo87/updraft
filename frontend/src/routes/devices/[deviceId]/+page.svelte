@@ -62,9 +62,14 @@
   {:else if !device || commandDeviceNotFound}
     <h1>{m.external_device_not_found()}</h1>
     <a href={resolve('/devices')}>{m.back_to_external_devices()}</a>
-  {:else if device.type === 'tcp'}
+  {:else}
     <h1>{m.edit_external_device_heading()}</h1>
-    <ExternalDeviceForm {device} onSave={editExternalDevice} onDelete={deleteExternalDevice} />
+    <ExternalDeviceForm
+      {device}
+      getBondedBluetoothDevices={() => client.getBondedBluetoothDevices()}
+      onSave={editExternalDevice}
+      onDelete={deleteExternalDevice}
+    />
     <a href={resolve('/devices')}>{m.back_to_external_devices()}</a>
   {/if}
 </main>

@@ -32,6 +32,10 @@
     );
   }
 
+  function deviceEndpoint(device: PublishedExternalDevice): string {
+    return device.type === 'tcp' ? `${device.host}:${device.port}` : device.address;
+  }
+
   async function requestEnabledChange(
     event: Event & { currentTarget: HTMLInputElement },
     device: PublishedExternalDevice,
@@ -89,11 +93,9 @@
             />
             <span>{m.device_enabled()}</span>
           </label>
-          {#if device.type === 'tcp'}
-            <a href={resolve('/devices/[deviceId]', { deviceId: String(device.deviceId) })}
-              >{m.edit_external_device({ endpoint: `${device.host}:${device.port}` })}</a
-            >
-          {/if}
+          <a href={resolve('/devices/[deviceId]', { deviceId: String(device.deviceId) })}
+            >{m.edit_external_device({ endpoint: deviceEndpoint(device) })}</a
+          >
           {#if failedDeviceIds.includes(device.deviceId)}
             <p class="error" role="alert">{m.update_device_error()}</p>
           {/if}

@@ -1,13 +1,256 @@
+import type { ComponentProps } from 'svelte';
+
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
 import ExternalDeviceForm from './ExternalDeviceForm.svelte';
 
+type ExternalDeviceFormProps = ComponentProps<typeof ExternalDeviceForm>;
+type RenderExternalDeviceFormProps = Omit<ExternalDeviceFormProps, 'getBondedBluetoothDevices'> &
+  Partial<Pick<ExternalDeviceFormProps, 'getBondedBluetoothDevices'>>;
+
+function renderExternalDeviceForm({
+  getBondedBluetoothDevices = async () => ({ status: 'unsupported' }),
+  ...props
+}: RenderExternalDeviceFormProps): void {
+  render(ExternalDeviceForm, { getBondedBluetoothDevices, ...props });
+}
+
 describe('ExternalDeviceForm.svelte', () => {
+  it('creates a bonded Bluetooth device with the standard service', async () => {
+    let onSave = vi.fn(async () => {});
+    renderExternalDeviceForm({
+      getBondedBluetoothDevices: async () => ({
+        status: 'available',
+        devices: [{ address: '00:11:22:33:44:55', name: 'Flight recorder' }],
+      }),
+      onSave,
+    });
+
+    await page.getByLabelText('Connection type').selectOptions('bluetooth');
+    await page.getByLabelText('Bonded device').selectOptions('00:11:22:33:44:55');
+    await page.getByRole('button', { name: 'Add external device' }).click();
+
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({
+      type: 'bluetooth',
+      address: '00:11:22:33:44:55',
+    });
+    await expect
+      .element(page.getByText('00001101-0000-1000-8000-00805F9B34FB', { exact: true }))
+      .not.toBeInTheDocument();
+  });
+
+  it('refreshes the bonded devices after permission is granted', async () => {
+    let getBondedBluetoothDevices = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'permissionDenied' })
+      .mockResolvedValueOnce({
+        status: 'available',
+        devices: [{ address: '00:11:22:33:44:55', name: null }],
+      });
+    renderExternalDeviceForm({ getBondedBluetoothDevices, onSave: async () => {} });
+
+    await page.getByLabelText('Connection type').selectOptions('bluetooth');
+    await expect
+      .element(page.getByText('Allow Nearby Devices access to select a Bluetooth device.'))
+      .toBeInTheDocument();
+
+    await page.getByRole('button', { name: 'Refresh bonded devices' }).click();
+
+    await expect
+      .element(page.getByRole('option', { name: '00:11:22:33:44:55' }))
+      .toBeInTheDocument();
+    expect(getBondedBluetoothDevices).toHaveBeenCalledTimes(2);
+  });
+
+  it('distinguishes disabled Bluetooth from denied permission', async () => {
+    renderExternalDeviceForm({
+      getBondedBluetoothDevices: async () => ({ status: 'disabled' }),
+      onSave: async () => {},
+    });
+
+    await page.getByLabelText('Connection type').selectOptions('bluetooth');
+
+    await expect
+      .element(page.getByText('Turn on Bluetooth to select a bonded device.'))
+      .toBeInTheDocument();
+    await expect
+      .element(page.getByText('Allow Nearby Devices access to select a Bluetooth device.'))
+      .not.toBeInTheDocument();
+  });
+
+  it('preserves a saved Bluetooth address while Bluetooth is disabled', async () => {
+    let onSave = vi.fn(async () => {});
+    renderExternalDeviceForm({
+      device: {
+        deviceId: 4,
+        enabled: true,
+        type: 'bluetooth',
+        address: '00:11:22:33:44:55',
+      },
+      getBondedBluetoothDevices: async () => ({ status: 'disabled' }),
+      onSave,
+    });
+
+    await expect
+      .element(page.getByText('Turn on Bluetooth to select a bonded device.'))
+      .toBeInTheDocument();
+    await expect.element(page.getByText('00:11:22:33:44:55', { exact: true })).toBeInTheDocument();
+    await page.getByRole('button', { name: 'Save changes' }).click();
+
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({
+      type: 'bluetooth',
+      address: '00:11:22:33:44:55',
+    });
+  });
+
+  it('directs an Android user with no bonded devices to system settings', async () => {
+    let onSave = vi.fn(async () => {});
+    renderExternalDeviceForm({
+      getBondedBluetoothDevices: async () => ({ status: 'available', devices: [] }),
+      onSave,
+    });
+
+    await page.getByLabelText('Connection type').selectOptions('bluetooth');
+
+    await expect
+      .element(
+        page.getByText('Pair a Bluetooth device in Android settings, then refresh this list.'),
+      )
+      .toBeInTheDocument();
+    await page.getByRole('button', { name: 'Add external device' }).click();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('preserves a custom service UUID while replacing an unbonded address', async () => {
+    let onSave = vi.fn(async () => {});
+    renderExternalDeviceForm({
+      device: {
+        deviceId: 4,
+        enabled: true,
+        type: 'bluetooth',
+        address: '00:11:22:33:44:55',
+        serviceUuid: '12345678-1234-1234-1234-123456789abc',
+      },
+      getBondedBluetoothDevices: async () => ({
+        status: 'available',
+        devices: [{ address: 'AA:BB:CC:DD:EE:FF', name: 'New flight recorder' }],
+      }),
+      onSave,
+    });
+
+    await expect
+      .element(page.getByRole('option', { name: '00:11:22:33:44:55 (not currently bonded)' }))
+      .toBeInTheDocument();
+    await expect
+      .element(page.getByText('12345678-1234-1234-1234-123456789abc', { exact: true }))
+      .toBeInTheDocument();
+
+    await page.getByLabelText('Bonded device').selectOptions('AA:BB:CC:DD:EE:FF');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({
+      type: 'bluetooth',
+      address: 'AA:BB:CC:DD:EE:FF',
+      serviceUuid: '12345678-1234-1234-1234-123456789abc',
+    });
+  });
+
+  it('changes a Bluetooth device to TCP on Android', async () => {
+    let onSave = vi.fn(async () => {});
+    renderExternalDeviceForm({
+      device: {
+        deviceId: 4,
+        enabled: true,
+        type: 'bluetooth',
+        address: '00:11:22:33:44:55',
+      },
+      getBondedBluetoothDevices: async () => ({
+        status: 'available',
+        devices: [{ address: '00:11:22:33:44:55', name: null }],
+      }),
+      onSave,
+    });
+
+    await page.getByLabelText('Connection type').selectOptions('tcp');
+    await page.getByLabelText('Host').fill('flight-recorder.local');
+    await page.getByLabelText('Port').fill('4353');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({
+      type: 'tcp',
+      host: 'flight-recorder.local',
+      port: 4353,
+    });
+  });
+
+  it('keeps a saved Bluetooth device read-only on desktop', async () => {
+    renderExternalDeviceForm({
+      device: {
+        deviceId: 4,
+        enabled: true,
+        type: 'bluetooth',
+        address: '00:11:22:33:44:55',
+        serviceUuid: '12345678-1234-1234-1234-123456789abc',
+      },
+      getBondedBluetoothDevices: async () => ({ status: 'unsupported' }),
+      onSave: async () => {},
+      onDelete: async () => {},
+    });
+
+    await expect.element(page.getByLabelText('Connection type')).toBeDisabled();
+    await expect.element(page.getByText('00:11:22:33:44:55', { exact: true })).toBeInTheDocument();
+    await expect
+      .element(page.getByText('12345678-1234-1234-1234-123456789abc', { exact: true }))
+      .toBeInTheDocument();
+    await expect
+      .element(page.getByRole('button', { name: 'Save changes' }))
+      .not.toBeInTheDocument();
+    await expect
+      .element(page.getByRole('button', { name: 'Delete external device' }))
+      .toBeInTheDocument();
+  });
+
+  it('shows a bonded-device query error and permits a retry', async () => {
+    let getBondedBluetoothDevices = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('plugin unavailable'))
+      .mockResolvedValueOnce({
+        status: 'available',
+        devices: [{ address: '00:11:22:33:44:55', name: null }],
+      });
+    renderExternalDeviceForm({ getBondedBluetoothDevices, onSave: async () => {} });
+
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent('Could not load bonded Bluetooth devices.');
+    await page.getByRole('button', { name: 'Refresh bonded devices' }).click();
+
+    await expect.element(page.getByRole('option', { name: 'Bluetooth SPP' })).toBeInTheDocument();
+    expect(getBondedBluetoothDevices).toHaveBeenCalledTimes(2);
+  });
+
+  it('requires one bonded device before saving Bluetooth', async () => {
+    let onSave = vi.fn(async () => {});
+    renderExternalDeviceForm({
+      getBondedBluetoothDevices: async () => ({
+        status: 'available',
+        devices: [{ address: '00:11:22:33:44:55', name: null }],
+      }),
+      onSave,
+    });
+
+    await page.getByLabelText('Connection type').selectOptions('bluetooth');
+    await page.getByRole('button', { name: 'Add external device' }).click();
+
+    await expect.element(page.getByText('Select a bonded Bluetooth device.')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('creates a TCP device with a trimmed host and numeric port', async () => {
     let onSave = vi.fn(async () => {});
-    render(ExternalDeviceForm, { onSave });
+    renderExternalDeviceForm({ onSave });
 
     await page.getByLabelText('Host').fill('  flight-recorder.local  ');
     await page.getByLabelText('Port').fill('4353');
@@ -22,7 +265,7 @@ describe('ExternalDeviceForm.svelte', () => {
 
   it('identifies invalid TCP fields without saving', async () => {
     let onSave = vi.fn(async () => {});
-    render(ExternalDeviceForm, { onSave });
+    renderExternalDeviceForm({ onSave });
 
     await page.getByLabelText('Host').fill('   ');
     await page.getByLabelText('Port').fill('65536');
@@ -37,7 +280,7 @@ describe('ExternalDeviceForm.svelte', () => {
 
   it('rejects ports outside the decimal integer range', async () => {
     let onSave = vi.fn(async () => {});
-    render(ExternalDeviceForm, { onSave });
+    renderExternalDeviceForm({ onSave });
     await page.getByLabelText('Host').fill('192.0.2.1');
 
     for (let port of ['0', '65536', '1.5', 'not-a-port']) {
@@ -53,7 +296,7 @@ describe('ExternalDeviceForm.svelte', () => {
 
   it('prefills and edits a TCP device', async () => {
     let onSave = vi.fn(async () => {});
-    render(ExternalDeviceForm, {
+    renderExternalDeviceForm({
       device: { deviceId: 4, enabled: false, type: 'tcp', host: '192.0.2.1', port: 4353 },
       onSave,
     });
@@ -77,7 +320,7 @@ describe('ExternalDeviceForm.svelte', () => {
     let pendingSave = new Promise<void>((resolve) => {
       finishSave = resolve;
     });
-    render(ExternalDeviceForm, { onSave: () => pendingSave });
+    renderExternalDeviceForm({ onSave: () => pendingSave });
 
     await page.getByLabelText('Host').fill('192.0.2.1');
     await page.getByLabelText('Port').fill('4353');
@@ -90,7 +333,7 @@ describe('ExternalDeviceForm.svelte', () => {
   });
 
   it('keeps the form open and shows an error when Save fails', async () => {
-    render(ExternalDeviceForm, {
+    renderExternalDeviceForm({
       onSave: async () => {
         throw new Error('driver stopped');
       },
@@ -110,7 +353,7 @@ describe('ExternalDeviceForm.svelte', () => {
 
   it('deletes an existing TCP device only after confirmation', async () => {
     let onDelete = vi.fn(async () => {});
-    render(ExternalDeviceForm, {
+    renderExternalDeviceForm({
       device: { deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
       onSave: async () => {},
       onDelete,
@@ -128,7 +371,7 @@ describe('ExternalDeviceForm.svelte', () => {
   });
 
   it('keeps the confirmation open and shows an error when Delete fails', async () => {
-    render(ExternalDeviceForm, {
+    renderExternalDeviceForm({
       device: { deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
       onSave: async () => {},
       onDelete: async () => {

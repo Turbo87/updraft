@@ -18,7 +18,10 @@
 
 <main>
   <h1>{m.add_external_device()}</h1>
-  <ExternalDeviceForm onSave={addExternalDevice} />
+  <ExternalDeviceForm
+    getBondedBluetoothDevices={() => client.getBondedBluetoothDevices()}
+    onSave={addExternalDevice}
+  />
   <a href={resolve('/devices')}>{m.back_to_external_devices()}</a>
 </main>
 

@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/gnss.rs
+expression: encode_gga_sentence(&gga)
+---
+$GNGGA,,,,,,0,,,,,,,,*78

@@ -4,8 +4,8 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 use updraft_core::{
-    ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Tick, Timestamp,
-    Topic, Update,
+    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Tick,
+    Timestamp, Topic, Update,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is
@@ -149,15 +149,17 @@ pub struct Driver;
 impl Driver {
     pub fn spawn(
         snapshot: SettingsSnapshot,
+        airspace: AirspaceState,
         open: OpenFn,
         persist: PersistFn,
         tick_interval: Duration,
     ) -> DriverHandle {
-        Self::spawn_task(snapshot, open, persist, tick_interval).0
+        Self::spawn_task(snapshot, airspace, open, persist, tick_interval).0
     }
 
     fn spawn_task(
         snapshot: SettingsSnapshot,
+        airspace: AirspaceState,
         open: OpenFn,
         persist: PersistFn,
         tick_interval: Duration,
@@ -169,7 +171,7 @@ impl Driver {
         let task = tokio::spawn(async move {
             let started = Instant::now();
             let mut state = DriverState {
-                core: Core::new(snapshot),
+                core: Core::with_airspace(snapshot, airspace),
                 sinks: Vec::new(),
                 transports: ActiveTransports::default(),
                 open,

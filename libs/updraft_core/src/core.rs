@@ -35,6 +35,11 @@ pub struct Core {
 
 impl Core {
     pub fn new(snapshot: SettingsSnapshot) -> Self {
+        Self::with_airspace(snapshot, AirspaceState::none_at_startup())
+    }
+
+    /// Creates the core with an explicit process-local airspace state.
+    pub fn with_airspace(snapshot: SettingsSnapshot, airspace: AirspaceState) -> Self {
         let SettingsSnapshot {
             settings,
             external_devices,
@@ -42,7 +47,7 @@ impl Core {
         Self {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
-            airspace: AirspaceState::default(),
+            airspace,
             ownship: OwnshipState::default(),
             traffic: TrafficState::default(),
         }

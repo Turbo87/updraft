@@ -60,7 +60,7 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{Instant, timeout, timeout_at};
     use tracing_test::traced_test;
-    use updraft_core::{Instruments, SettingsSnapshot, Topic};
+    use updraft_core::{AirspaceState, Instruments, SettingsSnapshot, Topic};
 
     const PATIENCE: Duration = Duration::from_secs(5);
 
@@ -95,6 +95,7 @@ mod tests {
     fn driver() -> DriverHandle {
         Driver::spawn(
             SettingsSnapshot::default(),
+            AirspaceState::none_at_startup(),
             Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),

@@ -4,6 +4,7 @@ use tracing_appender::rolling::Rotation;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 mod activity;
+mod airspace_storage;
 mod driver;
 mod ipc;
 mod settings;
@@ -91,6 +92,8 @@ pub fn run() {
             }
             let settings_file = settings::SettingsFile::new(app.path().app_config_dir()?);
             let snapshot = settings_file.load();
+            let airspace =
+                airspace_storage::AirspaceStorage::new(app.path().app_data_dir()?).load();
 
             // `setup` runs on the main thread outside any runtime context,
             // so `tokio::spawn` inside the driver would panic. Enter Tauri's
@@ -103,6 +106,7 @@ pub fn run() {
                 let persist = Box::new(settings_file.writer());
                 driver::Driver::spawn(
                     snapshot,
+                    airspace,
                     Box::new(move |device_id, spec, handle| {
                         transport::open(device_id, spec, handle, app_handle.clone())
                     }),

@@ -172,11 +172,12 @@ mod tests {
     use crate::driver::Driver;
     use serde_json::{Value, json};
     use std::time::Duration;
-    use updraft_core::SettingsSnapshot;
+    use updraft_core::{AirspaceState, SettingsSnapshot};
 
     fn app() -> tauri::App<tauri::test::MockRuntime> {
         let handle = Driver::spawn(
             SettingsSnapshot::default(),
+            AirspaceState::none_at_startup(),
             Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),

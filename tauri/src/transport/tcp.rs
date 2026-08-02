@@ -136,13 +136,16 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{sleep, timeout};
     use tracing_test::traced_test;
-    use updraft_core::{ConnectionSpec, ExternalDeviceConfig, SettingsSnapshot, Topic};
+    use updraft_core::{
+        AirspaceState, ConnectionSpec, ExternalDeviceConfig, SettingsSnapshot, Topic,
+    };
 
     const PATIENCE: Duration = Duration::from_secs(5);
 
     fn driver() -> DriverHandle {
         Driver::spawn(
             SettingsSnapshot::default(),
+            AirspaceState::none_at_startup(),
             Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),
@@ -251,6 +254,7 @@ mod tests {
                     spec: ConnectionSpec::tcp("127.0.0.1", port),
                 }],
             },
+            AirspaceState::none_at_startup(),
             Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),
@@ -403,6 +407,7 @@ mod tests {
                     spec: ConnectionSpec::tcp("127.0.0.1", port),
                 }],
             },
+            AirspaceState::none_at_startup(),
             Box::new(|_, _, _| Box::new(|| {})),
             Box::new(|_| {}),
             Duration::from_millis(100),

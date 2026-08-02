@@ -12,8 +12,8 @@ use tauri_plugin_updraft::SppConnectionId;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use updraft_core::{
-    ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
-    SettingsSnapshot, Topic,
+    AirspaceState, ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId,
+    STANDARD_SPP_SERVICE_UUID, SettingsSnapshot, Topic,
 };
 use uuid::{Uuid, uuid};
 
@@ -216,6 +216,7 @@ pub fn driver_with_spp_addresses(addresses: &[&str]) -> DriverHandle {
                 })
                 .collect(),
         },
+        AirspaceState::none_at_startup(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Duration::from_secs(60),

@@ -12,6 +12,7 @@
       <li><a href={resolve('/settings/units')}>{m.units_label()}</a></li>
       <li><a href={resolve('/settings/airspace')}>{m.airspace_label()}</a></li>
       <li><a href={resolve('/settings/devices')}>{m.external_devices_heading()}</a></li>
+      <li><a href={resolve('/settings/about')}>{m.about_heading()}</a></li>
     </ul>
   </nav>
   <a class="back-link" href={resolve('/')}>{m.back_to_flight_view()}</a>

@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
@@ -7,8 +9,23 @@ import UnoCSS from 'unocss/vite';
 import { defineConfig } from 'vitest/config';
 
 const cssTargets = browserslistToTargets(['chrome 87', 'android 87', 'safari 14']);
+const buildCommitSha = resolveBuildCommitSha();
+const buildTimestamp = new Date().toISOString();
+
+function resolveBuildCommitSha(): string | undefined {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return undefined;
+  }
+}
 
 export default defineConfig({
+  define: {
+    __BUILD_COMMIT_SHA__:
+      buildCommitSha === undefined ? 'undefined' : JSON.stringify(buildCommitSha),
+    __BUILD_TIMESTAMP__: JSON.stringify(buildTimestamp),
+  },
   css: {
     transformer: 'lightningcss',
     lightningcss: {

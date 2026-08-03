@@ -3,7 +3,7 @@ use super::support::*;
 use std::sync::Arc;
 use tokio::time::timeout;
 use tracing_test::traced_test;
-use updraft_core::{ExternalDeviceId, STANDARD_SPP_SERVICE_UUID};
+use updraft_core::{ExternalDeviceId, ReorderExternalDevices, STANDARD_SPP_SERVICE_UUID};
 
 #[tokio::test]
 async fn two_active_spp_connections_deliver_bytes_to_their_own_device_ids() {
@@ -22,7 +22,7 @@ async fn two_active_spp_connections_deliver_bytes_to_their_own_device_ids() {
         ExternalDeviceId(2),
         SECOND_ADDRESS.to_owned(),
         STANDARD_SPP_SERVICE_UUID,
-        handle,
+        handle.clone(),
         platform.clone(),
     );
     tokio::task::yield_now().await;
@@ -33,6 +33,14 @@ async fn two_active_spp_connections_deliver_bytes_to_their_own_device_ids() {
 
     platform.send_on(1, r#"{"type":"connected"}"#);
     platform.send_on(1, SECOND_RMC_EVENT);
+    handle
+        .send(ReorderExternalDevices::new(vec![
+            ExternalDeviceId(2),
+            ExternalDeviceId(1),
+        ]))
+        .await
+        .expect("the driver should accept the reorder")
+        .expect("the device order should be valid");
     assert_eq!(next_position(&mut topics).await.latitude_degrees, 51.823);
 
     (first.stop)();

@@ -1,8 +1,6 @@
 use super::super::*;
 use super::support::*;
-use crate::connection::ConnectionSpec;
-use crate::settings::SettingsSnapshot;
-use crate::topic::LatLon as TopicLatLon;
+use crate::connection::ConnectionState;
 use approx::assert_abs_diff_eq;
 use claims::{assert_some, assert_some_eq};
 use std::assert_matches;
@@ -25,11 +23,244 @@ fn fix_emits_instruments_immediately() {
 }
 
 #[test]
+fn first_external_gps_source_has_priority() {
+    let (mut core, first, second) = core_with_two_external_devices();
+
+    core.apply(Bytes::new(first, RMC), at(0));
+    core.apply(Bytes::new(second, RMC_SECOND_DEVICE), at(1));
+
+    let position = assert_some!(instruments(&core).position);
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+    assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
+}
+
+#[test]
+fn gps_becomes_last_known_at_the_exact_freshness_boundary() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(0));
+
+    let effects = core.apply(Tick, at(2_999)).effects;
+    assert!(effects.is_empty());
+    assert_matches!(core.gps, DomainState::Current(_));
+
+    let effects = core.apply(Tick, at(3_000)).effects;
+    assert!(effects.is_empty());
+    assert_matches!(core.gps, DomainState::LastKnown(_));
+}
+
+#[test]
+fn valid_gga_position_makes_a_gps_source_eligible() {
+    let (mut core, device_id) = core_with_external_device();
+
+    let effects = core.apply(Bytes::new(device_id, GGA), at(0)).effects;
+
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    let instruments = instruments(&core);
+    let position = assert_some!(instruments.position);
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+    assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
+    assert_some_eq!(instruments.altitude_msl_meters, 200.0);
+}
+
+#[test]
+fn invalid_gga_does_not_replace_or_refresh_valid_data() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, GGA), at(0));
+
+    let effects = core
+        .apply(Bytes::new(device_id, INVALID_GGA), at(2_500))
+        .effects;
+    assert!(effects.is_empty());
+    let position = assert_some!(instruments(&core).position);
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+
+    core.apply(Tick, at(3_000));
+    assert_matches!(core.gps, DomainState::LastKnown(_));
+}
+
+#[test]
+fn not_valid_rmc_mode_does_not_replace_or_refresh_valid_data() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(0));
+
+    let effects = core
+        .apply(Bytes::new(device_id, INVALID_MODE_RMC), at(2_500))
+        .effects;
+    assert!(effects.is_empty());
+    let position = assert_some!(instruments(&core).position);
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+
+    core.apply(Tick, at(3_000));
+    assert_matches!(core.gps, DomainState::LastKnown(_));
+}
+
+#[test]
+fn optional_gps_fields_expire_without_values_from_another_source() {
+    let (mut core, first, second) = core_with_two_external_devices();
+    core.apply(Bytes::new(first, RMC), at(0));
+    core.apply(Bytes::new(first, GGA), at(0));
+    core.apply(Bytes::new(second, RMC_SECOND_DEVICE), at(1_000));
+    core.apply(Bytes::new(second, GGA_SECOND_DEVICE), at(1_000));
+    core.apply(Bytes::new(first, POSITION_ONLY_RMC), at(2_500));
+
+    let effects = core.apply(Tick, at(3_000)).effects;
+
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    let instruments = instruments(&core);
+    assert!(instruments.altitude_msl_meters.is_none());
+    assert!(instruments.track_degrees.is_none());
+    assert!(instruments.ground_speed_meters_per_second.is_none());
+    let position = assert_some!(instruments.position);
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+}
+
+#[test]
+fn optional_fields_without_position_wait_for_their_own_source_position() {
+    let (mut core, first, second) = core_with_two_external_devices();
+    core.apply(Bytes::new(second, RMC_SECOND_DEVICE), at(0));
+
+    let mut optional_fields = OPTIONAL_ONLY_RMC.to_vec();
+    optional_fields.extend_from_slice(ALTITUDE_ONLY_GGA);
+    let effects = core
+        .apply(Bytes::new(first, optional_fields), at(1))
+        .effects;
+    assert!(effects.is_empty());
+    let position = assert_some!(instruments(&core).position);
+    assert_abs_diff_eq!(position.latitude_degrees, 51.0, epsilon = 1e-3);
+
+    let effects = core
+        .apply(Bytes::new(first, POSITION_ONLY_RMC), at(2))
+        .effects;
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    let instruments = instruments(&core);
+    let position = assert_some!(instruments.position);
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+    assert_some_eq!(instruments.altitude_msl_meters, 250.0);
+    assert_some_eq!(instruments.track_degrees, 90.0);
+    assert_some_eq!(
+        instruments.ground_speed_meters_per_second,
+        25.722222222222225
+    );
+}
+
+#[test]
+fn gps_falls_back_then_keeps_the_last_selected_stale_source() {
+    let (mut core, first, second) = core_with_two_external_devices();
+    core.apply(Bytes::new(first, RMC), at(0));
+    core.apply(Bytes::new(second, RMC_SECOND_DEVICE), at(1_000));
+
+    let effects = core.apply(Tick, at(3_000)).effects;
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    let DomainState::Current(selected) = core.gps else {
+        panic!("the fresh fallback should be current");
+    };
+    assert_eq!(selected.source, SourceId::External(second));
+
+    let effects = core.apply(Tick, at(4_000)).effects;
+    assert!(effects.is_empty());
+    let DomainState::LastKnown(selected) = core.gps else {
+        panic!("the last selected source should become last known");
+    };
+    assert_eq!(selected.source, SourceId::External(second));
+    assert_eq!(selected.ingested_at, at(1_000));
+
+    let effects = core.apply(Tick, at(5_000)).effects;
+    assert!(effects.is_empty());
+    let DomainState::LastKnown(selected) = core.gps else {
+        panic!("the last-known source should remain unchanged");
+    };
+    assert_eq!(selected.source, SourceId::External(second));
+    assert_some_eq!(instruments(&core).track_degrees, 180.0);
+}
+
+#[test]
+fn split_gps_sentence_uses_its_first_byte_input_for_freshness() {
+    let (mut core, device_id) = core_with_external_device();
+
+    let effects = core.apply(Bytes::new(device_id, &RMC[..24]), at(0)).effects;
+    assert!(effects.is_empty());
+
+    let effects = core
+        .apply(Bytes::new(device_id, &RMC[24..]), at(3_000))
+        .effects;
+    assert!(effects.is_empty());
+    assert_matches!(core.gps, DomainState::Unavailable);
+}
+
+#[test]
+fn disconnected_gps_source_remains_selected_until_it_is_stale() {
+    let (mut core, first, second) = core_with_two_external_devices();
+    core.apply(Bytes::new(first, RMC), at(0));
+    core.apply(Bytes::new(second, RMC_SECOND_DEVICE), at(1_000));
+
+    let input = ConnectionChanged::new(first, ConnectionState::Disconnected);
+    let effects = core.apply(input, at(2_500)).effects;
+    assert!(effects.is_empty());
+    let DomainState::Current(selected) = core.gps else {
+        panic!("the disconnected source should remain current during its grace period");
+    };
+    assert_eq!(selected.source, SourceId::External(first));
+
+    core.apply(Tick, at(3_000));
+    let DomainState::Current(selected) = core.gps else {
+        panic!("the fresh fallback should become current");
+    };
+    assert_eq!(selected.source, SourceId::External(second));
+}
+
+#[test]
+fn equal_internal_fallback_changes_source_without_an_instruments_effect() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(0));
+    let external = core
+        .external_devices
+        .get(device_id)
+        .expect("the configured external device")
+        .gps;
+    let equivalent_fix = Fix {
+        position: assert_some!(external.position).value,
+        altitude_ellipsoid: None,
+        track: Some(assert_some!(external.track).value),
+        ground_speed: Some(assert_some!(external.ground_speed).value),
+    };
+
+    let effects = core.apply(InternalGps::new(equivalent_fix), at(1)).effects;
+    assert!(effects.is_empty());
+    let DomainState::Current(selected) = core.gps else {
+        panic!("the external source should remain current");
+    };
+    assert_eq!(selected.source, SourceId::External(device_id));
+
+    let effects = core.apply(Tick, at(3_000)).effects;
+    assert!(effects.is_empty());
+    let DomainState::Current(selected) = core.gps else {
+        panic!("the internal fallback should become current");
+    };
+    assert_eq!(selected.source, SourceId::InternalGps);
+}
+
+#[test]
+fn one_byte_input_publishes_only_its_final_gps_snapshot() {
+    let (mut core, device_id) = core_with_external_device();
+    let mut input = RMC.to_vec();
+    input.extend_from_slice(RMC_SECOND_DEVICE);
+
+    let effects = core.apply(Bytes::new(device_id, input), at(0)).effects;
+
+    let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
+        panic!("one byte input should emit one final instruments snapshot");
+    };
+    let position = assert_some!(instruments.position);
+    assert_abs_diff_eq!(position.latitude_degrees, 51.0, epsilon = 1e-3);
+    assert_abs_diff_eq!(position.longitude_degrees, 7.0, epsilon = 1e-3);
+}
+
+#[test]
 fn repeated_identical_sentences_emit_only_once() {
     let (mut core, device_id) = core_with_external_device();
     let mut emissions = 0;
 
-    for millis in 100..105 {
+    for millis in [0, 2_500] {
         let input = Bytes::new(device_id, RMC);
         emissions += core.apply(input, at(millis)).effects.len();
     }
@@ -39,20 +270,17 @@ fn repeated_identical_sentences_emit_only_once() {
         .external_devices
         .get(device_id)
         .expect("the configured external device");
-    assert_eq!(assert_some!(device.gps.position).ingested_at, at(104));
+    assert_eq!(assert_some!(device.gps.position).ingested_at, at(2_500));
+
+    core.apply(Tick, at(3_000));
+    assert_matches!(core.gps, DomainState::Current(_));
+    core.apply(Tick, at(5_500));
+    assert_matches!(core.gps, DomainState::LastKnown(_));
 }
 
 #[test]
 fn external_devices_keep_their_timed_gps_candidates() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Settings::default(),
-        external_devices: vec![
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
-        ],
-    });
-    let first_device_id = device_id(&core, 0);
-    let second_device_id = device_id(&core, 1);
+    let (mut core, first_device_id, second_device_id) = core_with_two_external_devices();
 
     core.apply(Bytes::new(first_device_id, RMC), at(0));
     core.apply(Bytes::new(first_device_id, GGA), at(1));
@@ -75,7 +303,7 @@ fn external_devices_keep_their_timed_gps_candidates() {
         6.186,
         epsilon = 1e-3
     );
-    assert_eq!(first_position.ingested_at, at(0));
+    assert_eq!(first_position.ingested_at, at(1));
     assert_eq!(assert_some!(first.gps.track).ingested_at, at(0));
     assert_eq!(assert_some!(first.gps.ground_speed).ingested_at, at(0));
     let first_altitude = assert_some!(first.gps.altitude);
@@ -101,7 +329,7 @@ fn external_devices_keep_their_timed_gps_candidates() {
         7.0,
         epsilon = 1e-3
     );
-    assert_eq!(second_position.ingested_at, at(2));
+    assert_eq!(second_position.ingested_at, at(3));
     assert_eq!(assert_some!(second.gps.track).ingested_at, at(2));
     assert_eq!(assert_some!(second.gps.ground_speed).ingested_at, at(2));
     let second_altitude = assert_some!(second.gps.altitude);
@@ -115,14 +343,10 @@ fn external_devices_keep_their_timed_gps_candidates() {
     let [Topic::Instruments(instruments), ..] = topics.as_slice() else {
         unreachable!()
     };
-    assert_some_eq!(
-        instruments.position,
-        TopicLatLon {
-            latitude_degrees: 51.0,
-            longitude_degrees: 7.0,
-        }
-    );
-    assert_some_eq!(instruments.altitude_msl_meters, 300.0);
+    let position = assert_some!(instruments.position);
+    assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
+    assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
+    assert_some_eq!(instruments.altitude_msl_meters, 200.0);
 }
 
 #[test]

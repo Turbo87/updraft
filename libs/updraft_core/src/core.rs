@@ -9,14 +9,16 @@ use crate::input::{
     ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
     Start, Tick, Update,
 };
-use crate::ownship::{GpsCandidate, OwnshipState, Timed};
+use crate::ownship::{
+    DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
+};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
-use crate::topic::Topic;
+use crate::topic::{Instruments, Topic};
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use std::sync::Arc;
 use updraft_egm96::ellipsoidal_to_msl;
-use updraft_nmea::{Message, RmcStatus};
+use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
 use updraft_units::MslAltitude;
 
 /// The deterministic application core.
@@ -30,7 +32,7 @@ pub struct Core {
     external_devices: ExternalDevices,
     airspace: AirspaceState,
     internal_gps: GpsCandidate,
-    ownship: OwnshipState,
+    gps: DomainState<GpsSnapshot>,
     traffic: TrafficState,
 }
 
@@ -50,7 +52,7 @@ impl Core {
             external_devices: ExternalDevices::from_device_configs(external_devices),
             airspace,
             internal_gps: GpsCandidate::default(),
-            ownship: OwnshipState::default(),
+            gps: DomainState::Unavailable,
             traffic: TrafficState::default(),
         }
     }
@@ -67,7 +69,7 @@ impl Core {
     /// subscribed and holds no state yet.
     pub fn topics(&self) -> Vec<Topic> {
         vec![
-            self.ownship.published().as_topic(),
+            self.gps_instruments().as_topic(),
             self.settings.as_topic(),
             self.external_devices.as_topic(),
             Topic::Airspace(self.airspace.status()),
@@ -96,15 +98,21 @@ impl Core {
             messages
         };
 
-        let before = self.ownship;
+        let before = self.gps_instruments();
         let mut traffic_changes = TrafficChanges::default();
+        let mut gps_updated = false;
         for (message, ingested_at) in messages {
-            self.handle_message(device_id, message, ingested_at, &mut traffic_changes);
+            gps_updated |=
+                self.handle_message(device_id, message, ingested_at, &mut traffic_changes);
+        }
+        if gps_updated {
+            self.select_gps(at);
         }
 
         let mut effects = Vec::new();
-        if self.ownship != before {
-            effects.push(Effect::emit(self.ownship.published().as_topic()));
+        let after = self.gps_instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
         }
         if let Some(delta) = traffic_changes.into_delta() {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
@@ -121,29 +129,27 @@ impl Core {
     }
 
     fn apply_fix(&mut self, fix: Fix, at: Timestamp) -> Vec<Effect> {
-        let before = self.ownship;
+        let before = self.gps_instruments();
 
         self.internal_gps.position = Some(Timed::new(fix.position, at));
-        self.ownship.position = Some(fix.position);
         if let Some(altitude) = fix.altitude_ellipsoid {
             let altitude = ellipsoidal_to_msl(fix.position, altitude);
             self.internal_gps.altitude = Some(Timed::new(altitude, at));
-            self.ownship.altitude_msl = Some(altitude);
         }
         if let Some(track) = fix.track {
             self.internal_gps.track = Some(Timed::new(track, at));
-            self.ownship.track = Some(track);
         }
         if let Some(speed) = fix.ground_speed {
             self.internal_gps.ground_speed = Some(Timed::new(speed, at));
-            self.ownship.ground_speed = Some(speed);
         }
 
-        if self.ownship == before {
+        self.select_gps(at);
+        let after = self.gps_instruments();
+        if after == before {
             return Vec::new();
         }
 
-        vec![Effect::emit(self.ownship.published().as_topic())]
+        vec![Effect::emit(after.as_topic())]
     }
 
     fn handle_message(
@@ -152,58 +158,102 @@ impl Core {
         message: Message,
         at: Timestamp,
         traffic_changes: &mut TrafficChanges,
-    ) {
+    ) -> bool {
         match message {
-            Message::Rmc(rmc) if rmc.status == RmcStatus::Active => {
+            Message::Rmc(rmc)
+                if rmc.status == RmcStatus::Active
+                    && rmc.mode != Some(PositioningMode::NotValid) =>
+            {
                 let Some(device) = self.external_devices.get_mut(device_id) else {
-                    return;
+                    return false;
                 };
+                let mut updated = false;
                 if let Some(position) = rmc.position {
                     device.gps.position = Some(Timed::new(position, at));
-                    self.ownship.position = Some(position);
+                    updated = true;
                 }
                 if let Some(course) = rmc.course_over_ground {
                     device.gps.track = Some(Timed::new(course, at));
-                    self.ownship.track = Some(course);
+                    updated = true;
                 }
                 if let Some(speed) = rmc.speed_over_ground {
                     device.gps.ground_speed = Some(Timed::new(speed, at));
-                    self.ownship.ground_speed = Some(speed);
+                    updated = true;
                 }
+                updated
             }
-            Message::Gga(gga) => {
+            Message::Gga(gga) if gga.fix_quality != GgaFixQuality::Invalid => {
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    return false;
+                };
+                let mut updated = false;
+                if let Some(position) = gga.position {
+                    device.gps.position = Some(Timed::new(position, at));
+                    updated = true;
+                }
                 if let Some(altitude) = gga.altitude {
-                    let Some(device) = self.external_devices.get_mut(device_id) else {
-                        return;
-                    };
                     let altitude = MslAltitude::new(altitude);
                     device.gps.altitude = Some(Timed::new(altitude, at));
-                    self.ownship.altitude_msl = Some(altitude);
+                    updated = true;
                 }
+                updated
             }
             Message::Pflaa(pflaa) => {
                 let Some(device) = self.external_devices.get(device_id) else {
-                    return;
+                    return false;
                 };
                 let same_device = device.gps;
+                let displayed = self.displayed_gps();
                 let Some(position) = same_device
                     .position
                     .map(|position| position.value)
-                    .or(self.ownship.position)
+                    .or(displayed.map(|gps| gps.position))
                 else {
-                    return;
+                    return false;
                 };
                 let altitude = same_device
                     .altitude
                     .map(|altitude| altitude.value)
-                    .or(self.ownship.altitude_msl);
+                    .or(displayed.and_then(|gps| gps.altitude_msl));
                 let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
-                    return;
+                    return false;
                 };
                 self.traffic.observe(target, at, traffic_changes);
+                false
             }
-            _ => {}
+            _ => false,
         }
+    }
+
+    fn select_gps(&mut self, at: Timestamp) {
+        let selected = self
+            .external_devices
+            .iter()
+            .filter(|device| device.config.enabled)
+            .find_map(|device| {
+                select_gps_candidate(SourceId::External(device.device_id), device.gps, at)
+            })
+            .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at));
+
+        self.gps = match selected {
+            Some(selected) => DomainState::Current(selected),
+            None => match self.gps {
+                DomainState::Unavailable => DomainState::Unavailable,
+                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
+                    DomainState::LastKnown(selected)
+                }
+            },
+        };
+    }
+
+    fn displayed_gps(&self) -> Option<GpsSnapshot> {
+        self.gps.selected().map(|selected| selected.value)
+    }
+
+    fn gps_instruments(&self) -> Instruments {
+        self.displayed_gps()
+            .map(GpsSnapshot::published)
+            .unwrap_or_default()
     }
 }
 
@@ -260,14 +310,19 @@ impl Input for Tick {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.gps_instruments();
+        core.select_gps(at);
+        let after = core.gps_instruments();
+
+        let mut effects = Vec::new();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
         let changes = core.traffic.expire(at);
-        Update::effects(
-            changes
-                .into_delta()
-                .map(|delta| Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))))
-                .into_iter()
-                .collect(),
-        )
+        if let Some(delta) = changes.into_delta() {
+            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
+        }
+        Update::effects(effects)
     }
 }
 

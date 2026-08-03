@@ -4,9 +4,8 @@ use updraft_geo::LatLon;
 use updraft_units::{Angle, Speed};
 
 const FIXTURE: &str = include_str!("../../../../testdata/nmea/basic.nmea");
-/// Sentences the core must not act on: a verbatim repeat of the last line
-/// of `basic.nmea`, then a `V`-status fix carrying plausible values.
-const IGNORED: &str = include_str!("../../../../testdata/nmea/ignored.nmea");
+/// A valid refresh followed by a `V`-status fix with plausible values.
+const REFRESH_THEN_INVALID: &str = include_str!("../../../../testdata/nmea/ignored.nmea");
 
 /// Replays `sentences` through a fresh core and returns the whole effect
 /// stream, rendered.
@@ -40,18 +39,18 @@ fn same_inputs_produce_same_effects() {
     assert_eq!(replay(FIXTURE), replay(FIXTURE));
 }
 
-/// Pins that neither guard can be removed without the snapshot noticing:
-/// a repeated sentence must not re-emit, and a `V`-status fix must not be
-/// applied at all.
 #[test]
-fn sentences_the_core_ignores_produce_no_effects() {
-    let combined = format!("{FIXTURE}{IGNORED}");
-    let with_ignored = replay(&combined);
+fn invalid_sentence_after_a_valid_refresh_produces_no_effects() {
+    let (valid_refresh, _) = REFRESH_THEN_INVALID
+        .split_once('\n')
+        .expect("the fixture should contain two sentences");
+    let without_invalid = format!("{FIXTURE}{valid_refresh}\n");
+    let combined = format!("{FIXTURE}{REFRESH_THEN_INVALID}");
 
     assert_eq!(
-        with_ignored,
-        replay(FIXTURE),
-        "the ignored sentences changed the effect stream"
+        replay(&combined),
+        replay(&without_invalid),
+        "the invalid sentence changed the effect stream"
     );
 }
 

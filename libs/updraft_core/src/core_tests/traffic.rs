@@ -74,20 +74,20 @@ fn traffic_selects_horizontal_and_vertical_references_independently() {
     let first_device_id = device_id(&core, 0);
     let second_device_id = device_id(&core, 1);
     core.apply(Bytes::new(first_device_id, RMC), at(0));
+    core.apply(Bytes::new(first_device_id, GGA), at(1));
     core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(1));
-    core.apply(Bytes::new(second_device_id, GGA_SECOND_DEVICE), at(2));
 
     let effects = core
-        .apply(Bytes::new(first_device_id, PFLAA_A), at(3))
+        .apply(Bytes::new(second_device_id, PFLAA_A), at(3))
         .effects;
     let delta = traffic_delta(&effects);
     let [target] = delta.upserts.as_slice() else {
         panic!("one accepted observation should produce one upsert");
     };
 
-    assert_abs_diff_eq!(target.position.latitude_degrees, 50.832, epsilon = 1e-3);
-    assert_abs_diff_eq!(target.position.longitude_degrees, 6.189, epsilon = 1e-3);
-    assert_some_eq!(target.altitude_msl_meters, 350.0);
+    assert_abs_diff_eq!(target.position.latitude_degrees, 51.009, epsilon = 1e-3);
+    assert_abs_diff_eq!(target.position.longitude_degrees, 7.003, epsilon = 1e-3);
+    assert_some_eq!(target.altitude_msl_meters, 250.0);
 }
 
 #[test]

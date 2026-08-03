@@ -42,7 +42,6 @@ pub use input::{
     ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
     Start, Tick, Update,
 };
-pub use ownship::OwnshipState;
 pub use settings::{
     AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
     VerticalSpeedUnit,

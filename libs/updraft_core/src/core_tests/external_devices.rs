@@ -3,7 +3,6 @@ use super::support::*;
 use crate::connection::{ConnectionSpec, ConnectionState};
 use crate::settings::SettingsSnapshot;
 use crate::topic::Instruments;
-use claims::assert_some_eq;
 use std::assert_matches;
 use tracing_test::traced_test;
 
@@ -81,12 +80,7 @@ fn disabling_selected_device_selects_fresh_fallback() {
 
     let update = core.apply(SetExternalDeviceEnabled::disabled(first), at(2));
 
-    assert_some_eq!(
-        instruments(&core)
-            .position
-            .map(|position| position.latitude_degrees),
-        51.0
-    );
+    assert_eq!(gps_instruments(&core).position.latitude_degrees, 51.0);
     assert_eq!(
         emitted_instruments(&update.effects),
         vec![instruments(&core)]
@@ -183,24 +177,14 @@ fn reorder_external_devices_reselects_fresh_gps() {
 
     let update = core.apply(ReorderExternalDevices::new(vec![second, first]), at(2));
 
-    assert_some_eq!(
-        instruments(&core)
-            .position
-            .map(|position| position.latitude_degrees),
-        51.0
-    );
+    assert_eq!(gps_instruments(&core).position.latitude_degrees, 51.0);
     assert_eq!(
         emitted_instruments(&update.effects),
         vec![instruments(&core)]
     );
 
     core.apply(ReorderExternalDevices::new(vec![first, second]), at(2));
-    assert_some_eq!(
-        instruments(&core)
-            .position
-            .map(|position| position.latitude_degrees),
-        50.823
-    );
+    assert_eq!(gps_instruments(&core).position.latitude_degrees, 50.823);
 }
 
 #[test]

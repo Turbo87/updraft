@@ -47,7 +47,10 @@ pub use settings::{
     VerticalSpeedUnit,
 };
 pub use time::Timestamp;
-pub use topic::{Instruments, LatLon, Topic};
+pub use topic::{
+    FixTime as PublishedFixTime, GpsInstruments, Instruments, LatLon, PressureAltitudeInstruments,
+    Topic,
+};
 pub use traffic::{
     PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,
     TrafficTarget, TrafficTargetId, TrafficTargetIdType, TrafficType, TrafficUpdate,

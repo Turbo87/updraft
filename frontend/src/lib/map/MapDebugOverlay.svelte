@@ -10,6 +10,9 @@
     instruments,
     units,
   }: { map: Map | undefined; instruments: Instruments; units: UnitSettings } = $props();
+  const gps = $derived(instruments.gps);
+  const altitudeMeters = $derived(gps?.altitudeMeters ?? null);
+  const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);
 
   let visible = $state(false);
   let showTileBoundaries = $state(false);
@@ -68,25 +71,25 @@
       <dt>Center</dt>
       <dd>{lat.toFixed(5)}, {lng.toFixed(5)}</dd>
       <dt>Position</dt>
-      {#if instruments.position}
+      {#if gps}
         <dd>
-          {instruments.position.latitudeDegrees.toFixed(5)},
-          {instruments.position.longitudeDegrees.toFixed(5)}
+          {gps.position.latitudeDegrees.toFixed(5)},
+          {gps.position.longitudeDegrees.toFixed(5)}
         </dd>
       {:else}
         <dd>–</dd>
       {/if}
       <dt>MSL altitude</dt>
       <dd>
-        {instruments.altitudeMslMeters === null
+        {altitudeMeters === null
           ? '–'
-          : `${convertAltitude(instruments.altitudeMslMeters, units.altitude).toFixed(0)} ${units.altitude}`}
+          : `${convertAltitude(altitudeMeters, units.altitude).toFixed(0)} ${units.altitude}`}
       </dd>
       <dt>Ground speed</dt>
       <dd>
-        {instruments.groundSpeedMetersPerSecond === null
+        {groundSpeedMetersPerSecond === null
           ? '–'
-          : `${convertSpeed(instruments.groundSpeedMetersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
+          : `${convertSpeed(groundSpeedMetersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
       </dd>
     </dl>
     <label>

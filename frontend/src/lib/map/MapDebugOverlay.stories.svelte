@@ -8,10 +8,15 @@
   import MapDebugOverlay from './MapDebugOverlay.svelte';
 
   const instruments = {
-    position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-    altitudeMslMeters: 190,
-    trackDegrees: 45,
-    groundSpeedMetersPerSecond: 30,
+    gps: {
+      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+      altitudeMeters: 190,
+      groundSpeedMetersPerSecond: 30,
+      trackDegrees: 45,
+      fixTime: null,
+      stale: false,
+    },
+    pressureAltitude: null,
   } satisfies Instruments;
 
   const metricUnits = {

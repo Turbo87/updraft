@@ -1,7 +1,7 @@
 use crate::connection::ExternalDeviceId;
 use crate::fix::{FixTime, UtcInstant, UtcTime};
 use crate::time::Timestamp;
-use crate::topic::{Instruments, LatLon};
+use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments};
 use std::time::Duration;
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
@@ -79,6 +79,34 @@ impl<T> DomainState<T> {
     }
 }
 
+impl DomainState<GpsSnapshot> {
+    /// Projects the selected GPS state without its source metadata.
+    pub fn published(self) -> Option<GpsInstruments> {
+        match self {
+            Self::Unavailable => None,
+            Self::Current(selected) => Some(selected.value.published(false)),
+            Self::LastKnown(selected) => Some(selected.value.published(true)),
+        }
+    }
+}
+
+impl DomainState<PressureAltitude> {
+    /// Projects the selected pressure-altitude state without its source metadata.
+    pub fn published(self) -> Option<PressureAltitudeInstruments> {
+        match self {
+            Self::Unavailable => None,
+            Self::Current(selected) => Some(PressureAltitudeInstruments {
+                meters: selected.value.into_inner().as_meters(),
+                stale: false,
+            }),
+            Self::LastKnown(selected) => Some(PressureAltitudeInstruments {
+                meters: selected.value.into_inner().as_meters(),
+                stale: true,
+            }),
+        }
+    }
+}
+
 /// Stores one source-consistent GPS snapshot with its required position anchor.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsSnapshot {
@@ -91,17 +119,19 @@ pub struct GpsSnapshot {
 
 impl GpsSnapshot {
     /// Projects typed GPS values to the scalar units in the instruments topic.
-    pub fn published(self) -> Instruments {
-        Instruments {
-            position: Some(LatLon {
+    pub fn published(self, stale: bool) -> GpsInstruments {
+        GpsInstruments {
+            position: LatLon {
                 latitude_degrees: self.position.latitude().as_degrees(),
                 longitude_degrees: self.position.longitude().as_degrees(),
-            }),
+            },
             track_degrees: self.track.map(Angle::as_degrees),
             ground_speed_meters_per_second: self.ground_speed.map(Speed::as_meters_per_second),
-            altitude_msl_meters: self
+            altitude_meters: self
                 .altitude_msl
                 .map(|altitude| altitude.into_inner().as_meters()),
+            fix_time: self.fix_time.map(Into::into),
+            stale,
         }
     }
 }
@@ -174,17 +204,18 @@ mod tests {
             fix_time: None,
         };
 
-        let published = snapshot.published();
+        let published = snapshot.published(false);
 
-        assert_some_eq!(published.altitude_msl_meters, 200.0);
+        assert_some_eq!(published.altitude_meters, 200.0);
         assert_some_eq!(published.track_degrees, 270.0);
         assert_some_eq!(published.ground_speed_meters_per_second, 45.0);
-        assert_some_eq!(
+        assert_eq!(
             published.position,
             LatLon {
                 latitude_degrees: 50.823,
                 longitude_degrees: 6.186,
             }
         );
+        assert!(!published.stale);
     }
 }

@@ -81,8 +81,8 @@ async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> updraft
         let Topic::Instruments(instruments) = assert_some!(received) else {
             continue;
         };
-        if let Some(position) = instruments.position {
-            return position;
+        if let Some(gps) = instruments.gps {
+            return gps.position;
         }
     }
 }

@@ -8,10 +8,8 @@ import { page, userEvent } from 'vitest/browser';
 import MapDebugOverlay from './MapDebugOverlay.svelte';
 
 const emptyInstruments: Instruments = {
-  position: null,
-  altitudeMslMeters: null,
-  trackDegrees: null,
-  groundSpeedMetersPerSecond: null,
+  gps: null,
+  pressureAltitude: null,
 };
 
 const metricUnits: UnitSettings = {
@@ -63,10 +61,15 @@ describe('MapDebugOverlay.svelte', () => {
 
   it('shows the current flight values once visible', async () => {
     let instruments: Instruments = {
-      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-      altitudeMslMeters: 190,
-      trackDegrees: 45,
-      groundSpeedMetersPerSecond: 30,
+      gps: {
+        position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+        altitudeMeters: 190,
+        groundSpeedMetersPerSecond: 30,
+        trackDegrees: 45,
+        fixTime: null,
+        stale: false,
+      },
+      pressureAltitude: null,
     };
     render(MapDebugOverlay, { map: undefined, instruments, units: metricUnits });
 
@@ -79,10 +82,15 @@ describe('MapDebugOverlay.svelte', () => {
 
   it('uses the selected altitude and speed units', async () => {
     let instruments: Instruments = {
-      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-      altitudeMslMeters: 190,
-      trackDegrees: 45,
-      groundSpeedMetersPerSecond: 30,
+      gps: {
+        position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+        altitudeMeters: 190,
+        groundSpeedMetersPerSecond: 30,
+        trackDegrees: 45,
+        fixTime: null,
+        stale: false,
+      },
+      pressureAltitude: null,
     };
     let units: UnitSettings = {
       altitude: 'ft',

@@ -2,8 +2,9 @@ use super::super::*;
 use crate::connection::ConnectionSpec;
 use crate::external_device::ExternalDeviceConfig;
 use crate::settings::SettingsSnapshot;
-use crate::topic::Instruments;
+use crate::topic::{GpsInstruments, Instruments};
 use crate::traffic::{PublishedTrafficTarget, TrafficDelta, TrafficUpdate};
+use claims::assert_some;
 use updraft_geo::LatLon;
 use updraft_units::{Angle, EllipsoidAltitude, Length, Speed};
 
@@ -81,6 +82,10 @@ pub fn instruments(core: &Core) -> Instruments {
         panic!("the first topic should contain instruments");
     };
     *instruments
+}
+
+pub fn gps_instruments(core: &Core) -> GpsInstruments {
+    assert_some!(instruments(core).gps)
 }
 
 pub fn traffic_delta(effects: &[Effect]) -> &TrafficDelta {

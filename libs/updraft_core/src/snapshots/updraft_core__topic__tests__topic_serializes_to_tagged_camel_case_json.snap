@@ -5,12 +5,23 @@ expression: topic
 {
   "topic": "instruments",
   "value": {
-    "position": {
-      "latitudeDegrees": 50.823,
-      "longitudeDegrees": 6.186
+    "gps": {
+      "position": {
+        "latitudeDegrees": 50.823,
+        "longitudeDegrees": 6.186
+      },
+      "altitudeMeters": null,
+      "groundSpeedMetersPerSecond": 45.0,
+      "trackDegrees": 270.0,
+      "fixTime": {
+        "type": "utcInstant",
+        "unixMilliseconds": 1767268800000
+      },
+      "stale": false
     },
-    "trackDegrees": 270.0,
-    "groundSpeedMetersPerSecond": 45.0,
-    "altitudeMslMeters": null
+    "pressureAltitude": {
+      "meters": 1000.0,
+      "stale": true
+    }
   }
 }

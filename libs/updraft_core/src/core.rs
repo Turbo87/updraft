@@ -77,7 +77,7 @@ impl Core {
     /// subscribed and holds no state yet.
     pub fn topics(&self) -> Vec<Topic> {
         vec![
-            self.gps_instruments().as_topic(),
+            self.instruments().as_topic(),
             self.settings.as_topic(),
             self.external_devices.as_topic(),
             Topic::Airspace(self.airspace.status()),
@@ -106,7 +106,7 @@ impl Core {
             messages
         };
 
-        let before = self.gps_instruments();
+        let before = self.instruments();
         let mut traffic_changes = TrafficChanges::default();
         let mut gps_updated = false;
         let mut pressure_altitude_updated = false;
@@ -125,7 +125,7 @@ impl Core {
         }
 
         let mut effects = Vec::new();
-        let after = self.gps_instruments();
+        let after = self.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }
@@ -144,7 +144,7 @@ impl Core {
     }
 
     fn apply_fix(&mut self, fix: Fix, at: Timestamp) -> Vec<Effect> {
-        let before = self.gps_instruments();
+        let before = self.instruments();
 
         self.internal_gps.position = Some(Timed::new(fix.position, at));
         if let Some(altitude) = fix.altitude_ellipsoid {
@@ -162,7 +162,7 @@ impl Core {
         }
 
         self.select_gps(at);
-        let after = self.gps_instruments();
+        let after = self.instruments();
         if after == before {
             return Vec::new();
         }
@@ -329,10 +329,11 @@ impl Core {
         self.gps.selected().map(|selected| selected.value)
     }
 
-    fn gps_instruments(&self) -> Instruments {
-        self.displayed_gps()
-            .map(GpsSnapshot::published)
-            .unwrap_or_default()
+    fn instruments(&self) -> Instruments {
+        Instruments {
+            gps: self.gps.published(),
+            pressure_altitude: self.pressure_altitude.published(),
+        }
     }
 }
 
@@ -389,10 +390,10 @@ impl Input for Tick {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
-        let before = core.gps_instruments();
+        let before = core.instruments();
         core.select_gps(at);
         core.select_pressure_altitude(at);
-        let after = core.gps_instruments();
+        let after = core.instruments();
 
         let mut effects = Vec::new();
         if after != before {
@@ -489,7 +490,7 @@ impl Input for DeleteExternalDevice {
     type Response = Result<(), UnknownExternalDevice>;
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
-        let before = core.gps_instruments();
+        let before = core.instruments();
         let Some(device) = core.external_devices.remove(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -501,7 +502,7 @@ impl Input for DeleteExternalDevice {
         }
         core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
         core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
-        let after = core.gps_instruments();
+        let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }
@@ -515,7 +516,7 @@ impl Input for ReorderExternalDevices {
     type Response = Result<(), InvalidExternalDeviceOrder>;
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
-        let before = core.gps_instruments();
+        let before = core.instruments();
         match core.external_devices.reorder(&self.order) {
             Ok(false) => return Update::empty().with_response(Ok(())),
             Ok(true) => {}
@@ -525,7 +526,7 @@ impl Input for ReorderExternalDevices {
         core.select_pressure_altitude(at);
 
         let mut effects = Vec::new();
-        let after = core.gps_instruments();
+        let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }
@@ -539,7 +540,7 @@ impl Input for EditExternalDevice {
     type Response = Result<(), UnknownExternalDevice>;
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
-        let before = core.gps_instruments();
+        let before = core.instruments();
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -559,7 +560,7 @@ impl Input for EditExternalDevice {
         }
         core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
         core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
-        let after = core.gps_instruments();
+        let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }
@@ -573,7 +574,7 @@ impl Input for SetExternalDeviceEnabled {
     type Response = Result<(), UnknownExternalDevice>;
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
-        let before = core.gps_instruments();
+        let before = core.instruments();
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -593,7 +594,7 @@ impl Input for SetExternalDeviceEnabled {
         };
         core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
         core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
-        let after = core.gps_instruments();
+        let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }

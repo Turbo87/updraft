@@ -14,16 +14,26 @@ pub fn describe(effect: &Effect) -> String {
 
     match effect {
         Effect::Emit(Topic::Instruments(instruments)) => {
-            let position = instruments.position.map_or_else(
+            let position = instruments.gps.map_or_else(
                 || "none".to_owned(),
-                |p| format!("{:.5},{:.5}", p.latitude_degrees, p.longitude_degrees),
+                |gps| {
+                    format!(
+                        "{:.5},{:.5}",
+                        gps.position.latitude_degrees, gps.position.longitude_degrees
+                    )
+                },
             );
 
             format!(
                 "instruments pos={position} track={} gs={} alt={}",
-                number(instruments.track_degrees, 2),
-                number(instruments.ground_speed_meters_per_second, 2),
-                number(instruments.altitude_msl_meters, 1),
+                number(instruments.gps.and_then(|gps| gps.track_degrees), 2),
+                number(
+                    instruments
+                        .gps
+                        .and_then(|gps| gps.ground_speed_meters_per_second),
+                    2
+                ),
+                number(instruments.gps.and_then(|gps| gps.altitude_meters), 1),
             )
         }
         Effect::Emit(Topic::Settings(settings)) => format!("settings {settings:?}"),

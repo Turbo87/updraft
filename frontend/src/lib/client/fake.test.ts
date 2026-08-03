@@ -28,10 +28,15 @@ function instruments(trackDegrees: number): Topic {
   return {
     topic: 'instruments',
     value: {
-      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-      trackDegrees,
-      groundSpeedMetersPerSecond: null,
-      altitudeMslMeters: null,
+      gps: {
+        position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+        altitudeMeters: null,
+        groundSpeedMetersPerSecond: null,
+        trackDegrees,
+        fixTime: null,
+        stale: false,
+      },
+      pressureAltitude: null,
     },
   };
 }

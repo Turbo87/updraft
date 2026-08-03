@@ -32,10 +32,11 @@ fn fix_emits_instruments_immediately() {
     let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
         unreachable!()
     };
-    let position = assert_some!(instruments.position);
+    let gps = assert_some!(instruments.gps);
+    let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
-    assert_some_eq!(instruments.track_degrees, 270.0);
+    assert_some_eq!(gps.track_degrees, 270.0);
 }
 
 #[test]
@@ -69,7 +70,8 @@ fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
     };
     assert_some_eq!(selected.value.fix_time, full);
 
-    core.apply(Tick, at(3_000));
+    let effects = core.apply(Tick, at(3_000)).effects;
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 
     let DomainState::Current(selected) = core.gps else {
         panic!("GPS should remain current");
@@ -82,7 +84,7 @@ fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
         panic!("GPS should remain current");
     };
     assert!(selected.value.fix_time.is_none());
-    assert!(effects.is_empty());
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 }
 
 #[test]
@@ -104,7 +106,7 @@ fn first_external_gps_source_has_priority() {
     core.apply(Bytes::new(first, RMC), at(0));
     core.apply(Bytes::new(second, RMC_SECOND_DEVICE), at(1));
 
-    let position = assert_some!(instruments(&core).position);
+    let position = gps_instruments(&core).position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
 }
@@ -119,11 +121,12 @@ fn gps_becomes_last_known_at_the_exact_freshness_boundary() {
     assert_matches!(core.gps, DomainState::Current(_));
 
     let effects = core.apply(Tick, at(3_000)).effects;
-    assert!(effects.is_empty());
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
     let DomainState::LastKnown(selected) = core.gps else {
         panic!("GPS should be last known");
     };
     assert!(selected.value.fix_time.is_some());
+    assert!(gps_instruments(&core).stale);
 }
 
 #[test]
@@ -133,11 +136,11 @@ fn valid_gga_position_makes_a_gps_source_eligible() {
     let effects = core.apply(Bytes::new(device_id, GGA), at(0)).effects;
 
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let instruments = instruments(&core);
-    let position = assert_some!(instruments.position);
+    let gps = gps_instruments(&core);
+    let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
-    assert_some_eq!(instruments.altitude_msl_meters, 200.0);
+    assert_some_eq!(gps.altitude_meters, 200.0);
 }
 
 #[test]
@@ -149,7 +152,7 @@ fn invalid_gga_does_not_replace_or_refresh_valid_data() {
         .apply(Bytes::new(device_id, INVALID_GGA), at(2_500))
         .effects;
     assert!(effects.is_empty());
-    let position = assert_some!(instruments(&core).position);
+    let position = gps_instruments(&core).position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
 
     core.apply(Tick, at(3_000));
@@ -165,7 +168,7 @@ fn not_valid_rmc_mode_does_not_replace_or_refresh_valid_data() {
         .apply(Bytes::new(device_id, INVALID_MODE_RMC), at(2_500))
         .effects;
     assert!(effects.is_empty());
-    let position = assert_some!(instruments(&core).position);
+    let position = gps_instruments(&core).position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
 
     core.apply(Tick, at(3_000));
@@ -184,11 +187,11 @@ fn optional_gps_fields_expire_without_values_from_another_source() {
     let effects = core.apply(Tick, at(3_000)).effects;
 
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let instruments = instruments(&core);
-    assert!(instruments.altitude_msl_meters.is_none());
-    assert!(instruments.track_degrees.is_none());
-    assert!(instruments.ground_speed_meters_per_second.is_none());
-    let position = assert_some!(instruments.position);
+    let gps = gps_instruments(&core);
+    assert!(gps.altitude_meters.is_none());
+    assert!(gps.track_degrees.is_none());
+    assert!(gps.ground_speed_meters_per_second.is_none());
+    let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
 }
 
@@ -203,22 +206,19 @@ fn optional_fields_without_position_wait_for_their_own_source_position() {
         .apply(Bytes::new(first, optional_fields), at(1))
         .effects;
     assert!(effects.is_empty());
-    let position = assert_some!(instruments(&core).position);
+    let position = gps_instruments(&core).position;
     assert_abs_diff_eq!(position.latitude_degrees, 51.0, epsilon = 1e-3);
 
     let effects = core
         .apply(Bytes::new(first, POSITION_ONLY_RMC), at(2))
         .effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let instruments = instruments(&core);
-    let position = assert_some!(instruments.position);
+    let gps = gps_instruments(&core);
+    let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
-    assert_some_eq!(instruments.altitude_msl_meters, 250.0);
-    assert_some_eq!(instruments.track_degrees, 90.0);
-    assert_some_eq!(
-        instruments.ground_speed_meters_per_second,
-        25.722222222222225
-    );
+    assert_some_eq!(gps.altitude_meters, 250.0);
+    assert_some_eq!(gps.track_degrees, 90.0);
+    assert_some_eq!(gps.ground_speed_meters_per_second, 25.722222222222225);
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn gps_falls_back_then_keeps_the_last_selected_stale_source() {
     assert_eq!(selected.source, SourceId::External(second));
 
     let effects = core.apply(Tick, at(4_000)).effects;
-    assert!(effects.is_empty());
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
     let DomainState::LastKnown(selected) = core.gps else {
         panic!("the last selected source should become last known");
     };
@@ -248,7 +248,7 @@ fn gps_falls_back_then_keeps_the_last_selected_stale_source() {
         panic!("the last-known source should remain unchanged");
     };
     assert_eq!(selected.source, SourceId::External(second));
-    assert_some_eq!(instruments(&core).track_degrees, 180.0);
+    assert_some_eq!(gps_instruments(&core).track_degrees, 180.0);
 }
 
 #[test]
@@ -300,7 +300,7 @@ fn equal_internal_fallback_changes_source_without_an_instruments_effect() {
         altitude_ellipsoid: None,
         track: Some(assert_some!(external.track).value),
         ground_speed: Some(assert_some!(external.ground_speed).value),
-        fix_time: None,
+        fix_time: external.fix_time.full.map(|time| time.value),
     };
 
     let effects = core.apply(InternalGps::new(equivalent_fix), at(1)).effects;
@@ -329,7 +329,7 @@ fn one_byte_input_publishes_only_its_final_gps_snapshot() {
     let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
         panic!("one byte input should emit one final instruments snapshot");
     };
-    let position = assert_some!(instruments.position);
+    let position = assert_some!(instruments.gps).position;
     assert_abs_diff_eq!(position.latitude_degrees, 51.0, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 7.0, epsilon = 1e-3);
 }
@@ -422,10 +422,11 @@ fn external_devices_keep_their_timed_gps_candidates() {
     let [Topic::Instruments(instruments), ..] = topics.as_slice() else {
         unreachable!()
     };
-    let position = assert_some!(instruments.position);
+    let gps = assert_some!(instruments.gps);
+    let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
-    assert_some_eq!(instruments.altitude_msl_meters, 200.0);
+    assert_some_eq!(gps.altitude_meters, 200.0);
 }
 
 #[test]
@@ -476,9 +477,10 @@ fn internal_gps_emits_instruments_immediately() {
     let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
         unreachable!()
     };
-    let position = assert_some!(instruments.position);
+    let gps = assert_some!(instruments.gps);
+    let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-9);
-    assert_some_eq!(instruments.track_degrees, 90.0);
+    assert_some_eq!(gps.track_degrees, 90.0);
 }
 
 #[test]
@@ -518,7 +520,7 @@ fn internal_gps_altitude_is_converted_to_msl() {
     // 247 m the fix carries lands here. Pinned to the centimetre: a change
     // in what the pilot reads as altitude is a change worth seeing.
     assert_abs_diff_eq!(
-        assert_some!(instruments.altitude_msl_meters),
+        assert_some!(assert_some!(instruments.gps).altitude_meters),
         200.46,
         epsilon = 0.01
     );

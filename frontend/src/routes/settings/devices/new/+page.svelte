@@ -12,17 +12,17 @@
 
   async function addExternalDevice(spec: ConnectionSpec): Promise<void> {
     await client.addExternalDevice(spec);
-    await goto(resolve('/devices'));
+    await goto(resolve('/settings/devices'));
   }
 </script>
 
 <main>
+  <a class="back-link" href={resolve('/settings/devices')}>{m.back_to_external_devices()}</a>
   <h1>{m.add_external_device()}</h1>
   <ExternalDeviceForm
     getBondedBluetoothDevices={() => client.getBondedBluetoothDevices()}
     onSave={addExternalDevice}
   />
-  <a href={resolve('/devices')}>{m.back_to_external_devices()}</a>
 </main>
 
 <style>
@@ -33,12 +33,12 @@
     color: var(--color-text);
   }
 
-  h1 {
-    margin-block-start: 0;
+  .back-link {
+    display: inline-block;
+    margin-block-end: 1rem;
   }
 
-  a {
-    display: inline-block;
-    margin-block-start: 2rem;
+  h1 {
+    margin-block-start: 0;
   }
 </style>

@@ -16,43 +16,80 @@ test.describe('with an unsupported browser language', () => {
   }) => {
     await page.goto('/?testMode=1');
     await page.getByRole('link', { name: 'Settings' }).click();
+    await page.getByRole('link', { name: 'Language' }).click();
 
-    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page).toHaveURL(/\/settings\/language$/);
     await expect(page.getByRole('radio', { name: 'English' })).toBeChecked();
 
-    let altitude = page.getByRole('combobox', { name: 'Altitude', exact: true });
+    await page.getByRole('radio', { name: 'Deutsch' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Sprache' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+
+    await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
+    await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Einheiten' }).click();
+    let altitude = page.getByRole('combobox', { name: 'Höhe', exact: true });
     await expect(altitude).toHaveValue('m');
     await altitude.selectOption('ft');
     await expect(altitude).toHaveValue('ft');
 
-    await page.getByRole('radio', { name: 'Deutsch' }).click();
-
-    await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible();
-    await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
-    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-
+    await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
     await page.getByRole('link', { name: 'Zurück zur Flugansicht' }).click();
     await expect(page).toHaveURL('/');
   });
+});
+
+test('shows a menu with dedicated settings routes and top back links', async ({ page }) => {
+  await page.goto('/settings?testMode=1');
+
+  let routes = [
+    ['Language', '/settings/language'],
+    ['Units', '/settings/units'],
+    ['Airspace', '/settings/airspace'],
+    ['External devices', '/settings/devices'],
+  ] as const;
+
+  for (let [name, route] of routes) {
+    await expect(page.getByRole('link', { name })).toHaveAttribute('href', route);
+  }
+
+  for (let [name, route] of routes) {
+    await page.getByRole('link', { name }).click();
+    await expect(page).toHaveURL(route);
+    await expect(page.getByRole('main').locator(':scope > a').first()).toHaveAttribute(
+      'href',
+      '/settings',
+    );
+    await page.getByRole('link', { name: 'Back to settings' }).click();
+  }
 });
 
 test.describe('with a supported German browser language', () => {
   test.use({ locale: 'de-DE' });
 
   test('uses German while the backend locale is unset', async ({ page }) => {
-    await page.goto('/settings?testMode=1');
+    await page.goto('/settings/language?testMode=1');
 
-    await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sprache' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
+
+    await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
+    await page.getByRole('link', { name: 'Lufträume' }).click();
     await expect(page.getByText('Keine Luftraumdatei ausgewählt.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Importieren' })).toBeEnabled();
+
+    await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
+    await page.getByRole('link', { name: 'Einheiten' }).click();
     await expect(page.getByRole('combobox', { name: 'Distanz', exact: true })).toHaveValue('km');
     await expect(page.getByRole('combobox', { name: 'Steigen', exact: true })).toHaveValue('m/s');
   });
 });
 
 test('propagates airspace status and invokes import through the fake client', async ({ page }) => {
-  await page.goto('/settings?testMode=1');
+  await page.goto('/settings/airspace?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
     let testWindow = window as TestWindow;

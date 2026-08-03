@@ -39,7 +39,7 @@
       commandDeviceNotFound = true;
       return;
     }
-    await goto(resolve('/devices'));
+    await goto(resolve('/settings/devices'));
   }
 
   async function deleteExternalDevice(): Promise<void> {
@@ -52,16 +52,16 @@
       commandDeviceNotFound = true;
       return;
     }
-    await goto(resolve('/devices'));
+    await goto(resolve('/settings/devices'));
   }
 </script>
 
 <main>
+  <a class="back-link" href={resolve('/settings/devices')}>{m.back_to_external_devices()}</a>
   {#if !externalDevices.initialized}
     <p>{m.loading_external_devices()}</p>
   {:else if !device || commandDeviceNotFound}
     <h1>{m.external_device_not_found()}</h1>
-    <a href={resolve('/devices')}>{m.back_to_external_devices()}</a>
   {:else}
     <h1>{m.edit_external_device_heading()}</h1>
     <ExternalDeviceForm
@@ -70,7 +70,6 @@
       onSave={editExternalDevice}
       onDelete={deleteExternalDevice}
     />
-    <a href={resolve('/devices')}>{m.back_to_external_devices()}</a>
   {/if}
 </main>
 
@@ -82,13 +81,13 @@
     color: var(--color-text);
   }
 
+  .back-link {
+    display: inline-block;
+    margin-block-end: 1rem;
+  }
+
   h1,
   p {
     margin: 0;
-  }
-
-  a {
-    display: inline-block;
-    margin-block-start: 2rem;
   }
 </style>

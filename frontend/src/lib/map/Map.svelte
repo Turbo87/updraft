@@ -93,6 +93,7 @@
     inlineStyle="height: 100%; width: 100%"
     style={mapStyle}
     {...testMode ? { fadeDuration: 0 } : {}}
+    attributionControl={false}
     autoloadGlobalCss={false}
     bind:map={mapState.map}
     bind:bearing={mapState.bearing}

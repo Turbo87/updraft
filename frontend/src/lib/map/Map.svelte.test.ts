@@ -106,6 +106,12 @@ it('publishes the map and camera values through the shared map state', async () 
   });
 });
 
+it('does not show the built-in attribution control', async () => {
+  await renderMap({ type: 'none' });
+
+  expect(document.querySelector('.maplibregl-ctrl-attrib')).toBeNull();
+});
+
 it('returns to follow mode without a position and follows the next position', async () => {
   let mapState = new MapState();
   let traffic = new TrafficStore();

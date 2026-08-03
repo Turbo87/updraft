@@ -85,19 +85,19 @@ impl Core {
             device
                 .diagnostics
                 .bytes(device_id, &device.config.spec, data.len());
-            device.decoder.push(data);
+            device.decoder.push(data, at);
 
             let mut messages = Vec::new();
-            while let Some(message) = device.decoder.next_message() {
-                messages.push(message);
+            while let Some((message, ingested_at)) = device.decoder.next_message() {
+                messages.push((message, ingested_at));
             }
             messages
         };
 
         let before = self.ownship;
         let mut traffic_changes = TrafficChanges::default();
-        for message in messages {
-            self.handle_message(device_id, message, at, &mut traffic_changes);
+        for (message, ingested_at) in messages {
+            self.handle_message(device_id, message, ingested_at, &mut traffic_changes);
         }
 
         let mut effects = Vec::new();

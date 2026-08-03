@@ -118,7 +118,7 @@ fn edit_external_device_resets_partial_decoder_state() {
 }
 
 #[test]
-fn edit_external_device_resets_ownship_state() {
+fn edit_external_device_resets_gps_candidate() {
     let (mut core, device_id) = core_with_external_device();
 
     core.apply(Bytes::new(device_id, RMC), at(0));
@@ -132,7 +132,7 @@ fn edit_external_device_resets_ownship_state() {
         .iter()
         .find(|device| device.device_id == device_id)
         .expect("the edited external device");
-    assert_eq!(device.ownship, OwnshipState::default());
+    assert_eq!(device.gps, GpsCandidate::default());
 }
 
 #[test]

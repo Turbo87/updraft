@@ -2,7 +2,7 @@ use crate::Topic;
 use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
-use crate::ownship::OwnshipState;
+use crate::ownship::GpsCandidate;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -30,14 +30,14 @@ pub struct ExternalDevice {
     pub config: ExternalDeviceConfig,
     pub decoder: Decoder,
     pub diagnostics: ConnectionDiagnostics,
-    pub ownship: OwnshipState,
+    pub gps: GpsCandidate,
 }
 
 impl ExternalDevice {
     pub fn reset_runtime(&mut self) {
         self.decoder = Decoder::default();
         self.diagnostics = ConnectionDiagnostics::default();
-        self.ownship = OwnshipState::default();
+        self.gps = GpsCandidate::default();
     }
 }
 
@@ -76,7 +76,7 @@ impl ExternalDevices {
                 config,
                 decoder: Decoder::default(),
                 diagnostics: ConnectionDiagnostics::default(),
-                ownship: OwnshipState::default(),
+                gps: GpsCandidate::default(),
             });
         }
         external_devices
@@ -108,7 +108,7 @@ impl ExternalDevices {
             },
             decoder: Decoder::default(),
             diagnostics: ConnectionDiagnostics::default(),
-            ownship: OwnshipState::default(),
+            gps: GpsCandidate::default(),
         });
         device_id
     }

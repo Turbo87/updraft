@@ -1,6 +1,30 @@
+use crate::time::Timestamp;
 use crate::topic::{Instruments, LatLon};
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_units::{Angle, MslAltitude, Speed};
+
+/// A source value and the monotonic time when the core ingested it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Timed<T> {
+    pub value: T,
+    pub ingested_at: Timestamp,
+}
+
+impl<T> Timed<T> {
+    /// Uses the supplied monotonic ingestion time without reading a clock.
+    pub fn new(value: T, ingested_at: Timestamp) -> Self {
+        Self { value, ingested_at }
+    }
+}
+
+/// Stores the latest GPS values from one source with independent ingestion times.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GpsCandidate {
+    pub position: Option<Timed<GeoLatLon>>,
+    pub altitude: Option<Timed<MslAltitude>>,
+    pub track: Option<Timed<Angle>>,
+    pub ground_speed: Option<Timed<Speed>>,
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct OwnshipState {

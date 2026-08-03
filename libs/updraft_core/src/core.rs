@@ -9,7 +9,7 @@ use crate::input::{
     ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
     Start, Tick, Update,
 };
-use crate::ownship::OwnshipState;
+use crate::ownship::{GpsCandidate, OwnshipState, Timed};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::Topic;
@@ -29,6 +29,7 @@ pub struct Core {
     settings: Settings,
     external_devices: ExternalDevices,
     airspace: AirspaceState,
+    internal_gps: GpsCandidate,
     ownship: OwnshipState,
     traffic: TrafficState,
 }
@@ -48,6 +49,7 @@ impl Core {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
             airspace,
+            internal_gps: GpsCandidate::default(),
             ownship: OwnshipState::default(),
             traffic: TrafficState::default(),
         }
@@ -118,17 +120,22 @@ impl Core {
         }
     }
 
-    fn apply_fix(&mut self, fix: Fix) -> Vec<Effect> {
+    fn apply_fix(&mut self, fix: Fix, at: Timestamp) -> Vec<Effect> {
         let before = self.ownship;
 
+        self.internal_gps.position = Some(Timed::new(fix.position, at));
         self.ownship.position = Some(fix.position);
         if let Some(altitude) = fix.altitude_ellipsoid {
-            self.ownship.altitude_msl = Some(ellipsoidal_to_msl(fix.position, altitude));
+            let altitude = ellipsoidal_to_msl(fix.position, altitude);
+            self.internal_gps.altitude = Some(Timed::new(altitude, at));
+            self.ownship.altitude_msl = Some(altitude);
         }
         if let Some(track) = fix.track {
+            self.internal_gps.track = Some(Timed::new(track, at));
             self.ownship.track = Some(track);
         }
         if let Some(speed) = fix.ground_speed {
+            self.internal_gps.ground_speed = Some(Timed::new(speed, at));
             self.ownship.ground_speed = Some(speed);
         }
 
@@ -152,15 +159,15 @@ impl Core {
                     return;
                 };
                 if let Some(position) = rmc.position {
-                    device.ownship.position = Some(position);
+                    device.gps.position = Some(Timed::new(position, at));
                     self.ownship.position = Some(position);
                 }
                 if let Some(course) = rmc.course_over_ground {
-                    device.ownship.track = Some(course);
+                    device.gps.track = Some(Timed::new(course, at));
                     self.ownship.track = Some(course);
                 }
                 if let Some(speed) = rmc.speed_over_ground {
-                    device.ownship.ground_speed = Some(speed);
+                    device.gps.ground_speed = Some(Timed::new(speed, at));
                     self.ownship.ground_speed = Some(speed);
                 }
             }
@@ -170,7 +177,7 @@ impl Core {
                         return;
                     };
                     let altitude = MslAltitude::new(altitude);
-                    device.ownship.altitude_msl = Some(altitude);
+                    device.gps.altitude = Some(Timed::new(altitude, at));
                     self.ownship.altitude_msl = Some(altitude);
                 }
             }
@@ -178,11 +185,18 @@ impl Core {
                 let Some(device) = self.external_devices.get(device_id) else {
                     return;
                 };
-                let same_device = device.ownship;
-                let Some(position) = same_device.position.or(self.ownship.position) else {
+                let same_device = device.gps;
+                let Some(position) = same_device
+                    .position
+                    .map(|position| position.value)
+                    .or(self.ownship.position)
+                else {
                     return;
                 };
-                let altitude = same_device.altitude_msl.or(self.ownship.altitude_msl);
+                let altitude = same_device
+                    .altitude
+                    .map(|altitude| altitude.value)
+                    .or(self.ownship.altitude_msl);
                 let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
                     return;
                 };
@@ -285,8 +299,8 @@ impl Input for ConnectionChanged {
 impl Input for InternalGps {
     type Response = ();
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        Update::effects(core.apply_fix(self.fix))
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        Update::effects(core.apply_fix(self.fix, at))
     }
 }
 

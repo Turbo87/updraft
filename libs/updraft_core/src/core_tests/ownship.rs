@@ -29,16 +29,21 @@ fn repeated_identical_sentences_emit_only_once() {
     let (mut core, device_id) = core_with_external_device();
     let mut emissions = 0;
 
-    for _ in 0..5 {
+    for millis in 100..105 {
         let input = Bytes::new(device_id, RMC);
-        emissions += core.apply(input, at(100)).effects.len();
+        emissions += core.apply(input, at(millis)).effects.len();
     }
 
     assert_eq!(emissions, 1, "only the first sentence changed any value");
+    let device = core
+        .external_devices
+        .get(device_id)
+        .expect("the configured external device");
+    assert_eq!(assert_some!(device.gps.position).ingested_at, at(104));
 }
 
 #[test]
-fn external_devices_keep_their_ownship_values() {
+fn external_devices_keep_their_timed_gps_candidates() {
     let mut core = Core::new(SettingsSnapshot {
         settings: Settings::default(),
         external_devices: vec![
@@ -59,42 +64,52 @@ fn external_devices_keep_their_ownship_values() {
         .iter()
         .next()
         .expect("the first configured external device");
-    let first_position = assert_some!(first.ownship.position);
+    let first_position = assert_some!(first.gps.position);
     assert_abs_diff_eq!(
-        first_position.latitude().as_degrees(),
+        first_position.value.latitude().as_degrees(),
         50.823,
         epsilon = 1e-3
     );
     assert_abs_diff_eq!(
-        first_position.longitude().as_degrees(),
+        first_position.value.longitude().as_degrees(),
         6.186,
         epsilon = 1e-3
     );
-    assert_some_eq!(
-        first.ownship.altitude_msl,
+    assert_eq!(first_position.ingested_at, at(0));
+    assert_eq!(assert_some!(first.gps.track).ingested_at, at(0));
+    assert_eq!(assert_some!(first.gps.ground_speed).ingested_at, at(0));
+    let first_altitude = assert_some!(first.gps.altitude);
+    assert_eq!(
+        first_altitude.value,
         MslAltitude::new(Length::from_meters(200.0))
     );
+    assert_eq!(first_altitude.ingested_at, at(1));
 
     let second = core
         .external_devices
         .iter()
         .nth(1)
         .expect("the second configured external device");
-    let second_position = assert_some!(second.ownship.position);
+    let second_position = assert_some!(second.gps.position);
     assert_abs_diff_eq!(
-        second_position.latitude().as_degrees(),
+        second_position.value.latitude().as_degrees(),
         51.0,
         epsilon = 1e-3
     );
     assert_abs_diff_eq!(
-        second_position.longitude().as_degrees(),
+        second_position.value.longitude().as_degrees(),
         7.0,
         epsilon = 1e-3
     );
-    assert_some_eq!(
-        second.ownship.altitude_msl,
+    assert_eq!(second_position.ingested_at, at(2));
+    assert_eq!(assert_some!(second.gps.track).ingested_at, at(2));
+    assert_eq!(assert_some!(second.gps.ground_speed).ingested_at, at(2));
+    let second_altitude = assert_some!(second.gps.altitude);
+    assert_eq!(
+        second_altitude.value,
         MslAltitude::new(Length::from_meters(300.0))
     );
+    assert_eq!(second_altitude.ingested_at, at(3));
 
     let topics = core.topics();
     let [Topic::Instruments(instruments), ..] = topics.as_slice() else {
@@ -143,6 +158,17 @@ fn internal_gps_emits_instruments_immediately() {
     let input = InternalGps::new(fix(50.823, 6.186));
     let effects = core.apply(input, at(100)).effects;
 
+    let candidate = assert_some!(core.internal_gps.position);
+    assert_eq!(candidate.ingested_at, at(100));
+    assert_eq!(
+        assert_some!(core.internal_gps.altitude).ingested_at,
+        at(100)
+    );
+    assert_eq!(assert_some!(core.internal_gps.track).ingested_at, at(100));
+    assert_eq!(
+        assert_some!(core.internal_gps.ground_speed).ingested_at,
+        at(100)
+    );
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
     let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
         unreachable!()
@@ -185,10 +211,14 @@ fn repeated_identical_fixes_emit_only_once() {
     let mut core = Core::new(config());
     let mut emissions = 0;
 
-    for _ in 0..5 {
+    for millis in 100..105 {
         let input = InternalGps::new(fix(50.823, 6.186));
-        emissions += core.apply(input, at(100)).effects.len();
+        emissions += core.apply(input, at(millis)).effects.len();
     }
 
     assert_eq!(emissions, 1, "only the first fix changed any value");
+    assert_eq!(
+        assert_some!(core.internal_gps.position).ingested_at,
+        at(104)
+    );
 }

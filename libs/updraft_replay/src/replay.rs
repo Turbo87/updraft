@@ -43,6 +43,92 @@ pub struct Replay {
     warnings: Vec<String>,
 }
 
+/// Builds one monotonic replay timeline from UTC times that have no date.
+///
+/// [`ReplayTimeline::schedule_timestamp()`] processes timestamps in input order:
+///
+/// 1. It compares the raw time of day with the previous raw time. A backward
+///    jump of more than 12 hours crosses midnight and adds one day.
+/// 2. It adds the day offset to the raw time. This produces a day-extended
+///    source timestamp. IGC uses it to decide whether B and K records have the
+///    same recorded time.
+/// 3. It clamps a smaller backward jump to the last scheduled timestamp. This
+///    keeps replay event times monotonic.
+/// 4. It subtracts the first scheduled timestamp. This makes the first event
+///    replay position zero.
+///
+/// [`TimelinePoint`] returns both the source timestamp and the replay position.
+/// `current_igc_event_builder()` groups record data by the source timestamp.
+/// `push_or_merge_igc_event()` later combines finished payloads that have the
+/// same replay position. Thus, a regression can deliver two source times in one
+/// replay event without merging their data into one generated sentence.
+#[derive(Default)]
+struct ReplayTimeline {
+    /// The previous raw time of day. Midnight detection uses this unclamped value.
+    previous_clock_millis: Option<u64>,
+    /// One day for each midnight crossing detected in input order.
+    day_offset_millis: u64,
+    /// The last day-extended source timestamp after regression clamping.
+    scheduled_absolute_millis: Option<u64>,
+    /// The first scheduled timestamp. Subtracting it produces replay positions.
+    origin_absolute_millis: Option<u64>,
+    /// Whether the timeline has clamped at least one backward jump.
+    has_timestamp_regression: bool,
+}
+
+/// Contains the source identity and delivery position for one input timestamp.
+struct TimelinePoint {
+    /// The day-extended raw time. IGC uses this value to group B and K records.
+    source_absolute_millis: u64,
+    /// The monotonic elapsed time that schedules delivery of the replay event.
+    at: Duration,
+    /// Whether this timestamp added one day to the source timeline.
+    crossed_midnight: bool,
+    /// Whether this timestamp caused the first clamped backward jump.
+    first_timestamp_regression: bool,
+}
+
+impl ReplayTimeline {
+    /// Applies the next input timestamp and advances all timeline state.
+    fn schedule_timestamp(&mut self, time: Time) -> TimelinePoint {
+        let clock_millis = u64::from(time.milliseconds_since_midnight());
+        let crossed_midnight = self.previous_clock_millis.is_some_and(|previous| {
+            previous > clock_millis && previous - clock_millis > HALF_DAY_MILLIS
+        });
+        if crossed_midnight {
+            self.day_offset_millis += DAY_MILLIS;
+        }
+
+        let source_absolute_millis = self.day_offset_millis + clock_millis;
+        let had_timestamp_regression = self.has_timestamp_regression;
+        let scheduled_absolute_millis = match self.scheduled_absolute_millis {
+            Some(current) if source_absolute_millis < current => {
+                self.has_timestamp_regression = true;
+                current
+            }
+            _ => source_absolute_millis,
+        };
+        let origin_absolute_millis = *self
+            .origin_absolute_millis
+            .get_or_insert(scheduled_absolute_millis);
+
+        self.previous_clock_millis = Some(clock_millis);
+        self.scheduled_absolute_millis = Some(scheduled_absolute_millis);
+
+        TimelinePoint {
+            source_absolute_millis,
+            at: Duration::from_millis(scheduled_absolute_millis - origin_absolute_millis),
+            crossed_midnight,
+            first_timestamp_regression: !had_timestamp_regression && self.has_timestamp_regression,
+        }
+    }
+
+    /// Reports whether NMEA replay must emit its file-level regression warning.
+    fn has_timestamp_regression(&self) -> bool {
+        self.has_timestamp_regression
+    }
+}
+
 struct IgcEventBuilder {
     absolute: u64,
     at: Duration,
@@ -233,13 +319,9 @@ impl Replay {
         let source_len = source.len();
         let mut input = source.as_ref();
         let mut events = Vec::new();
-        let mut first_absolute = None;
         let mut event_time = None;
         let mut range_start = 0;
-        let mut previous_time = None;
-        let mut day_offset = 0;
-        let mut current_time = None;
-        let mut timestamp_regression = false;
+        let mut timeline = ReplayTimeline::default();
 
         // Build events while the parser advances through the source.
         loop {
@@ -259,15 +341,7 @@ impl Replay {
             };
 
             if let Some(time) = time {
-                let absolute = schedule_millis(
-                    time,
-                    &mut previous_time,
-                    &mut day_offset,
-                    &mut current_time,
-                    &mut timestamp_regression,
-                );
-                let first_absolute = *first_absolute.get_or_insert(absolute);
-                let anchor_time = Duration::from_millis(absolute - first_absolute);
+                let anchor_time = timeline.schedule_timestamp(time).at;
 
                 match event_time {
                     None => event_time = Some(anchor_time),
@@ -294,7 +368,8 @@ impl Replay {
         Ok(Self {
             events,
             duration,
-            warnings: timestamp_regression
+            warnings: timeline
+                .has_timestamp_regression()
                 .then(|| "NMEA replay timestamps moved backward".to_owned())
                 .into_iter()
                 .collect(),
@@ -304,16 +379,12 @@ impl Replay {
     pub fn from_igc(input: &str) -> Result<Self, ReplayError> {
         let mut events = Vec::<ReplayEvent>::new();
         let mut event_builder = None;
-        let mut first_absolute = None;
-        let mut previous_time = None;
-        let mut day_offset = 0;
-        let mut current_time = None;
+        let mut timeline = ReplayTimeline::default();
         let mut current_date = None;
         let mut fix_extensions = Vec::new();
         let mut wind_extensions = Vec::new();
         let mut identification = empty_lxwp1();
         let mut has_fix = false;
-        let mut timestamp_regression = false;
         let mut warnings = Vec::new();
 
         for (line_index, line) in input.lines().enumerate() {
@@ -384,30 +455,19 @@ impl Replay {
                     };
                     has_fix = true;
 
-                    let previous_day_offset = day_offset;
-                    let had_timestamp_regression = timestamp_regression;
-                    let scheduled = schedule_millis(
-                        time,
-                        &mut previous_time,
-                        &mut day_offset,
-                        &mut current_time,
-                        &mut timestamp_regression,
-                    );
-                    if !had_timestamp_regression && timestamp_regression {
+                    let timestamp = timeline.schedule_timestamp(time);
+                    if timestamp.first_timestamp_regression {
                         warnings.push(format!("IGC line {line_number}: timestamp moved backward"));
                     }
-                    if day_offset > previous_day_offset {
+                    if timestamp.crossed_midnight {
                         current_date = current_date.map(next_date);
                     }
 
-                    let absolute = day_offset + u64::from(time.milliseconds_since_midnight());
-                    let first_absolute = *first_absolute.get_or_insert(scheduled);
-                    let at = Duration::from_millis(scheduled - first_absolute);
                     current_igc_event_builder(
                         &mut events,
                         &mut event_builder,
-                        absolute,
-                        at,
+                        timestamp.source_absolute_millis,
+                        timestamp.at,
                         &mut warnings,
                     )
                     .add_fix(
@@ -449,30 +509,19 @@ impl Replay {
                         continue;
                     };
 
-                    let previous_day_offset = day_offset;
-                    let had_timestamp_regression = timestamp_regression;
-                    let scheduled = schedule_millis(
-                        time,
-                        &mut previous_time,
-                        &mut day_offset,
-                        &mut current_time,
-                        &mut timestamp_regression,
-                    );
-                    if !had_timestamp_regression && timestamp_regression {
+                    let timestamp = timeline.schedule_timestamp(time);
+                    if timestamp.first_timestamp_regression {
                         warnings.push(format!("IGC line {line_number}: timestamp moved backward"));
                     }
-                    if day_offset > previous_day_offset {
+                    if timestamp.crossed_midnight {
                         current_date = current_date.map(next_date);
                     }
 
-                    let absolute = day_offset + u64::from(time.milliseconds_since_midnight());
-                    let first_absolute = *first_absolute.get_or_insert(scheduled);
-                    let at = Duration::from_millis(scheduled - first_absolute);
                     current_igc_event_builder(
                         &mut events,
                         &mut event_builder,
-                        absolute,
-                        at,
+                        timestamp.source_absolute_millis,
+                        timestamp.at,
                         &mut warnings,
                     )
                     .add_wind(wind_direction, wind_speed, line_number);
@@ -735,36 +784,6 @@ fn next_date(date: Date) -> Date {
 
 fn is_leap_year(year: u16) -> bool {
     (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
-}
-
-fn schedule_millis(
-    time: Time,
-    previous_time: &mut Option<u64>,
-    day_offset: &mut u64,
-    current_time: &mut Option<u64>,
-    timestamp_regression: &mut bool,
-) -> u64 {
-    let time = u64::from(time.milliseconds_since_midnight());
-
-    if let Some(previous) = *previous_time
-        && previous > time
-        && previous - time > HALF_DAY_MILLIS
-    {
-        *day_offset += DAY_MILLIS;
-    }
-
-    let candidate = *day_offset + time;
-    let scheduled = match *current_time {
-        Some(current) if candidate < current => {
-            *timestamp_regression = true;
-            current
-        }
-        _ => candidate,
-    };
-
-    *previous_time = Some(time);
-    *current_time = Some(scheduled);
-    scheduled
 }
 
 fn replay_span(duration: Duration, position: Duration) -> Span {
@@ -1312,6 +1331,41 @@ mod tests {
 
         let skipped = assert_ok!(replay.events_from(Duration::from_secs(2)));
         assert_some_eq!(skipped.first().map(ReplayEvent::at), Duration::from_secs(2));
+    }
+
+    #[test]
+    fn advances_the_nmea_timeline_after_midnight() {
+        let input = b"$GPRMC,235959.000,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n\
+                      $GPRMC,000000.000,A,5049.40,N,00611.20,E,46.0,271.0,020126,,,A\r\n";
+        let replay = assert_ok!(Replay::from_nmea(input.to_vec()));
+
+        assert_eq!(
+            replay
+                .events()
+                .iter()
+                .map(ReplayEvent::at)
+                .collect::<Vec<_>>(),
+            [Duration::ZERO, Duration::from_secs(1)]
+        );
+        assert!(replay.warnings().is_empty());
+    }
+
+    #[test]
+    fn clamps_a_small_nmea_timestamp_regression() {
+        let input = b"$GPRMC,120001.000,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n\
+                      $GPRMC,120000.000,A,5049.40,N,00611.20,E,46.0,271.0,010126,,,A\r\n\
+                      $GPRMC,120002.000,A,5049.42,N,00611.24,E,47.0,272.0,010126,,,A\r\n";
+        let replay = assert_ok!(Replay::from_nmea(input.to_vec()));
+
+        assert_eq!(
+            replay
+                .events()
+                .iter()
+                .map(ReplayEvent::at)
+                .collect::<Vec<_>>(),
+            [Duration::ZERO, Duration::from_secs(1)]
+        );
+        assert_eq!(replay.warnings(), ["NMEA replay timestamps moved backward"]);
     }
 
     #[test]

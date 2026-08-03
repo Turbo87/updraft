@@ -4,9 +4,9 @@ use crate::time::Timestamp;
 use crate::topic::{Instruments, LatLon};
 use std::time::Duration;
 use updraft_geo::LatLon as GeoLatLon;
-use updraft_units::{Angle, MslAltitude, Speed};
+use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
 
-const GPS_FRESHNESS_LIMIT: Duration = Duration::from_secs(3);
+const DOMAIN_FRESHNESS_LIMIT: Duration = Duration::from_secs(3);
 
 /// A source value and the monotonic time when the core ingested it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -24,7 +24,7 @@ impl<T> Timed<T> {
 
 impl<T: Copy> Timed<T> {
     fn fresh_value(self, at: Timestamp) -> Option<T> {
-        (at.saturating_since(self.ingested_at) < GPS_FRESHNESS_LIMIT).then_some(self.value)
+        (at.saturating_since(self.ingested_at) < DOMAIN_FRESHNESS_LIMIT).then_some(self.value)
     }
 }
 
@@ -140,6 +140,20 @@ pub fn select_gps_candidate(
                         .map(FixTime::UtcTimeOfDay)
                 }),
         },
+    })
+}
+
+/// Creates a pressure-altitude selection when the candidate is fresh.
+pub fn select_pressure_altitude_candidate(
+    source: SourceId,
+    candidate: Option<Timed<PressureAltitude>>,
+    at: Timestamp,
+) -> Option<Selected<PressureAltitude>> {
+    let altitude = candidate?;
+    Some(Selected {
+        source,
+        ingested_at: altitude.ingested_at,
+        value: altitude.fresh_value(at)?,
     })
 }
 

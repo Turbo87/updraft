@@ -3,8 +3,10 @@ use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
 use crate::ownship::GpsCandidate;
+use crate::ownship::Timed;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use updraft_units::PressureAltitude;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -31,6 +33,7 @@ pub struct ExternalDevice {
     pub decoder: Decoder,
     pub diagnostics: ConnectionDiagnostics,
     pub gps: GpsCandidate,
+    pub pressure_altitude: Option<Timed<PressureAltitude>>,
 }
 
 impl ExternalDevice {
@@ -38,6 +41,7 @@ impl ExternalDevice {
         self.decoder = Decoder::default();
         self.diagnostics = ConnectionDiagnostics::default();
         self.gps = GpsCandidate::default();
+        self.pressure_altitude = None;
     }
 }
 
@@ -77,6 +81,7 @@ impl ExternalDevices {
                 decoder: Decoder::default(),
                 diagnostics: ConnectionDiagnostics::default(),
                 gps: GpsCandidate::default(),
+                pressure_altitude: None,
             });
         }
         external_devices
@@ -109,6 +114,7 @@ impl ExternalDevices {
             decoder: Decoder::default(),
             diagnostics: ConnectionDiagnostics::default(),
             gps: GpsCandidate::default(),
+            pressure_altitude: None,
         });
         device_id
     }

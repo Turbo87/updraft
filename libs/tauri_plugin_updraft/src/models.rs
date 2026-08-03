@@ -36,15 +36,15 @@ pub enum BondedBluetoothDevices {
 /// reports. Correcting it to mean sea level is a domain conversion and stays
 /// out of the plugin.
 ///
-/// Everything but the position is optional: a receiver can have a position
-/// without yet having a track, a speed or an altitude, and reporting a
-/// placeholder for one of those would be indistinguishable from a real
-/// reading.
+/// Track, speed, and altitude are optional. A receiver can have a position
+/// and time without those values. A placeholder would be indistinguishable
+/// from a real reading.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Fix {
     pub latitude_degrees: f64,
     pub longitude_degrees: f64,
+    pub unix_time_milliseconds: i64,
     pub altitude_ellipsoid_meters: Option<f64>,
     pub track_degrees: Option<f64>,
     pub ground_speed_meters_per_second: Option<f64>,

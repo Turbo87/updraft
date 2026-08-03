@@ -2,7 +2,7 @@ use crate::driver::DriverHandle;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri_plugin_updraft::Fix as ReportedFix;
 use tokio::sync::mpsc;
-use updraft_core::{Fix as CoreFix, InternalGps};
+use updraft_core::{Fix as CoreFix, InternalGps, UtcInstant};
 use updraft_geo::LatLon;
 use updraft_units::{Angle, EllipsoidAltitude, Length, Speed};
 
@@ -47,7 +47,9 @@ fn fix(reported: ReportedFix) -> CoreFix {
         ground_speed: reported
             .ground_speed_meters_per_second
             .map(Speed::from_meters_per_second),
-        fix_time: None,
+        fix_time: Some(UtcInstant::from_unix_milliseconds(
+            reported.unix_time_milliseconds,
+        )),
     }
 }
 
@@ -61,13 +63,14 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{Instant, timeout, timeout_at};
     use tracing_test::traced_test;
-    use updraft_core::{AirspaceState, Instruments, SettingsSnapshot, Topic};
+    use updraft_core::{AirspaceState, Instruments, SettingsSnapshot, Topic, UtcInstant};
 
     const PATIENCE: Duration = Duration::from_secs(5);
 
     const COMPLETE: &str = r#"{
         "latitudeDegrees": 50.823,
         "longitudeDegrees": 6.186,
+        "unixTimeMilliseconds": 1767268800000,
         "altitudeEllipsoidMeters": 247.0,
         "trackDegrees": 270.0,
         "groundSpeedMetersPerSecond": 23.15
@@ -78,6 +81,7 @@ mod tests {
     const RENAMED_OPTIONAL: &str = r#"{
         "latitudeDegrees": 50.823,
         "longitudeDegrees": 6.186,
+        "unixTimeMilliseconds": 1767268800000,
         "altitudeEllipsoidMeters": 247.0,
         "trackDegreesss": 270.0,
         "groundSpeedMetersPerSecond": 23.15
@@ -88,6 +92,7 @@ mod tests {
     const POSITION_ONLY: &str = r#"{
         "latitudeDegrees": 51.0,
         "longitudeDegrees": 7.0,
+        "unixTimeMilliseconds": 1767268801000,
         "altitudeEllipsoidMeters": null,
         "trackDegrees": null,
         "groundSpeedMetersPerSecond": null
@@ -115,6 +120,23 @@ mod tests {
         channel
             .send(InvokeResponseBody::Json(payload.to_owned()))
             .expect("the channel accepts the payload");
+    }
+
+    #[test]
+    fn reported_epoch_time_becomes_core_fix_time() {
+        let converted = fix(ReportedFix {
+            latitude_degrees: 50.823,
+            longitude_degrees: 6.186,
+            altitude_ellipsoid_meters: None,
+            track_degrees: None,
+            ground_speed_meters_per_second: None,
+            unix_time_milliseconds: 1_767_268_800_000,
+        });
+
+        assert_some_eq!(
+            converted.fix_time,
+            UtcInstant::from_unix_milliseconds(1_767_268_800_000)
+        );
     }
 
     async fn next_instruments(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> Instruments {

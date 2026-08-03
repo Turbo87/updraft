@@ -1,7 +1,16 @@
+import type { AppContext } from '$lib/app-context';
+
+import { execFileSync } from 'node:child_process';
+
 import { expect, test } from '@playwright/test';
+
+const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
+  encoding: 'utf8',
+}).trim();
 
 type TestWindow = Window & {
   __airspaceImportCalls?: number;
+  __updraftApp?: AppContext;
   __updraftFake?: {
     emit: (topic: unknown) => void;
     importAirspace: () => Promise<{ type: 'cancelled' }>;
@@ -50,6 +59,7 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
     ['Units', '/settings/units'],
     ['Airspace', '/settings/airspace'],
     ['External devices', '/settings/devices'],
+    ['About', '/settings/about'],
   ] as const;
 
   for (let [name, route] of routes) {
@@ -65,6 +75,52 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
     );
     await page.getByRole('link', { name: 'Back to settings' }).click();
   }
+});
+
+test('shows source and build information on the About page', async ({ page }) => {
+  await page.goto('/settings/about?testMode=1');
+
+  await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'GitHub repository' })).toHaveAttribute(
+    'href',
+    'https://github.com/Turbo87/updraft',
+  );
+  await expect(
+    page.getByRole('link', { name: EXPECTED_BUILD_COMMIT_SHA.slice(0, 7) }),
+  ).toHaveAttribute(
+    'href',
+    `https://github.com/Turbo87/updraft/commit/${EXPECTED_BUILD_COMMIT_SHA}`,
+  );
+  let buildTime = page.locator('time');
+  await expect(buildTime).toBeVisible();
+  expect(Date.parse((await buildTime.getAttribute('datetime')) ?? '')).not.toBeNaN();
+  await expect(page.getByRole('heading', { name: 'Data credits' })).not.toBeVisible();
+});
+
+test('shows a snapshot of the current map source credits', async ({ page }) => {
+  await page.goto('/settings?testMode=1');
+  await page.waitForFunction(() =>
+    (window as TestWindow).__updraftApp?.mapState.map?.isStyleLoaded(),
+  );
+  await page.evaluate(() => {
+    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    if (!map) throw new Error('Map is not available');
+
+    map.addSource('about-page-test', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+      attribution: 'Map data <a href="https://example.com/data">Example Data</a>',
+    });
+  });
+
+  await page.getByRole('link', { name: 'About' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Data credits' })).toBeVisible();
+  await expect(page.getByText('Map data')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Example Data' })).toHaveAttribute(
+    'href',
+    'https://example.com/data',
+  );
 });
 
 test.describe('with a supported German browser language', () => {

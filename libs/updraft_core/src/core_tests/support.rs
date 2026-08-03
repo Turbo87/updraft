@@ -10,11 +10,19 @@ use updraft_units::{Angle, EllipsoidAltitude, Length, Speed};
 pub const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
 pub const RMC_SECOND_DEVICE: &[u8] =
     b"$GPRMC,120000.00,A,5100.00,N,00700.00,E,40.0,180.0,010126,,,A\r\n";
+pub const UNDATED_RMC: &[u8] = b"$GPRMC,120001.250,A,5049.38,N,00611.16,E,45.0,270.0,,,,A\r\n";
+pub const LEAP_SECOND_RMC: &[u8] =
+    b"$GPRMC,235960.123,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
 pub const INVALID_MODE_RMC: &[u8] =
     b"$GPRMC,120000.00,A,5100.00,N,00700.00,E,40.0,180.0,010126,,,N\r\n";
 pub const POSITION_ONLY_RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,,,010126,,,A\r\n";
 pub const OPTIONAL_ONLY_RMC: &[u8] = b"$GPRMC,120000.00,A,,,,,50.0,90.0,010126,,,A\r\n";
 pub const GGA: &[u8] = b"$GPGGA,120000.00,5049.38,N,00611.16,E,1,08,0.9,200.0,M,0.0,M,,\r\n";
+pub const GGA_LATER_TIME: &[u8] =
+    b"$GPGGA,120001.500,5049.38,N,00611.16,E,1,08,0.9,200.0,M,0.0,M,,\r\n";
+pub const GGA_WITHOUT_TIME: &[u8] = b"$GPGGA,,5049.38,N,00611.16,E,1,08,0.9,200.0,M,0.0,M,,\r\n";
+pub const LEAP_SECOND_GGA: &[u8] =
+    b"$GPGGA,235960.123,5049.38,N,00611.16,E,1,08,0.9,200.0,M,0.0,M,,\r\n";
 pub const GGA_SECOND_DEVICE: &[u8] =
     b"$GPGGA,120000.00,5100.00,N,00700.00,E,1,08,0.9,300.0,M,0.0,M,,\r\n";
 pub const INVALID_GGA: &[u8] =
@@ -109,5 +117,6 @@ pub fn fix(latitude_degrees: f64, longitude_degrees: f64) -> Fix {
         altitude_ellipsoid: Some(EllipsoidAltitude::new(Length::from_meters(247.0))),
         track: Some(Angle::from_degrees(90.0)),
         ground_speed: Some(Speed::from_meters_per_second(30.0)),
+        fix_time: None,
     }
 }

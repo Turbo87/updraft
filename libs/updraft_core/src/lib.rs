@@ -35,7 +35,7 @@ pub use external_device::{
     ExternalDeviceConfig, InvalidExternalDeviceOrder, PublishedExternalDevice,
     UnknownExternalDevice,
 };
-pub use fix::Fix;
+pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
 pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,

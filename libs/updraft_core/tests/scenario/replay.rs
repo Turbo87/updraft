@@ -73,6 +73,7 @@ fn gnss_fix_and_equivalent_sentence_agree() {
         altitude_ellipsoid: None,
         track: Some(Angle::from_degrees(270.0)),
         ground_speed: Some(Speed::from_meters_per_second(45.0 * 1852.0 / 3600.0)),
+        fix_time: None,
     };
     let input = InternalGps::new(fix);
     let equivalent = from_fix.apply(input, Timestamp::from_millis(0)).effects;

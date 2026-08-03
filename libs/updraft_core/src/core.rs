@@ -2,7 +2,7 @@ use crate::airspace::{AirspaceDataset, AirspaceState};
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
-use crate::fix::Fix;
+use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
@@ -142,6 +142,9 @@ impl Core {
         if let Some(speed) = fix.ground_speed {
             self.internal_gps.ground_speed = Some(Timed::new(speed, at));
         }
+        if let Some(fix_time) = fix.fix_time {
+            self.internal_gps.fix_time.full = Some(Timed::new(fix_time, at));
+        }
 
         self.select_gps(at);
         let after = self.gps_instruments();
@@ -168,6 +171,18 @@ impl Core {
                     return false;
                 };
                 let mut updated = false;
+                if let Some(time) = rmc.utc_time {
+                    if let Some(date) = rmc.date {
+                        if let Some(fix_time) = UtcInstant::from_nmea_date_time(date, time) {
+                            device.gps.fix_time.full = Some(Timed::new(fix_time, at));
+                            updated = true;
+                        }
+                    } else {
+                        let fix_time = UtcTime::from_nmea_time(time);
+                        device.gps.fix_time.time_only = Some(Timed::new(fix_time, at));
+                        updated = true;
+                    }
+                }
                 if let Some(position) = rmc.position {
                     device.gps.position = Some(Timed::new(position, at));
                     updated = true;
@@ -187,6 +202,11 @@ impl Core {
                     return false;
                 };
                 let mut updated = false;
+                if let Some(time) = gga.utc_time {
+                    let fix_time = UtcTime::from_nmea_time(time);
+                    device.gps.fix_time.time_only = Some(Timed::new(fix_time, at));
+                    updated = true;
+                }
                 if let Some(position) = gga.position {
                     device.gps.position = Some(Timed::new(position, at));
                     updated = true;

@@ -1,10 +1,26 @@
 use super::super::*;
 use super::support::*;
 use crate::connection::ConnectionState;
+use crate::{FixTime, UtcInstant, UtcTime};
 use approx::assert_abs_diff_eq;
 use claims::{assert_some, assert_some_eq};
 use std::assert_matches;
 use updraft_units::{Length, MslAltitude};
+
+fn selected_fix_time(sentence: &[u8]) -> FixTime {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, sentence), at(0));
+    let DomainState::Current(selected) = core.gps else {
+        panic!("GPS should be current");
+    };
+    assert_some!(selected.value.fix_time)
+}
+
+fn utc_time(milliseconds_since_midnight: u32) -> UtcTime {
+    assert_some!(UtcTime::from_milliseconds_since_midnight(
+        milliseconds_since_midnight
+    ))
+}
 
 #[test]
 fn fix_emits_instruments_immediately() {
@@ -20,6 +36,65 @@ fn fix_emits_instruments_immediately() {
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
     assert_some_eq!(instruments.track_degrees, 270.0);
+}
+
+#[test]
+fn nmea_sentences_select_canonical_fix_times() {
+    assert_eq!(
+        selected_fix_time(RMC),
+        FixTime::UtcInstant(UtcInstant::from_unix_milliseconds(1_767_268_800_000))
+    );
+    assert_eq!(
+        selected_fix_time(UNDATED_RMC),
+        FixTime::UtcTimeOfDay(utc_time(43_201_250))
+    );
+    assert_eq!(
+        selected_fix_time(GGA),
+        FixTime::UtcTimeOfDay(utc_time(43_200_000))
+    );
+}
+
+#[test]
+fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
+    let (mut core, device_id) = core_with_external_device();
+    let full = FixTime::UtcInstant(UtcInstant::from_unix_milliseconds(1_767_268_800_000));
+    let time_only = FixTime::UtcTimeOfDay(utc_time(43_201_500));
+
+    core.apply(Bytes::new(device_id, RMC), at(0));
+    core.apply(Bytes::new(device_id, GGA_LATER_TIME), at(1_000));
+    core.apply(Bytes::new(device_id, GGA_WITHOUT_TIME), at(2_500));
+
+    let DomainState::Current(selected) = core.gps else {
+        panic!("GPS should be current");
+    };
+    assert_some_eq!(selected.value.fix_time, full);
+
+    core.apply(Tick, at(3_000));
+
+    let DomainState::Current(selected) = core.gps else {
+        panic!("GPS should remain current");
+    };
+    assert_some_eq!(selected.value.fix_time, time_only);
+
+    let effects = core.apply(Tick, at(4_000)).effects;
+
+    let DomainState::Current(selected) = core.gps else {
+        panic!("GPS should remain current");
+    };
+    assert!(selected.value.fix_time.is_none());
+    assert!(effects.is_empty());
+}
+
+#[test]
+fn nmea_leap_second_reuses_235959_for_fix_time() {
+    assert_eq!(
+        selected_fix_time(LEAP_SECOND_RMC),
+        FixTime::UtcInstant(UtcInstant::from_unix_milliseconds(1_767_311_999_123))
+    );
+    assert_eq!(
+        selected_fix_time(LEAP_SECOND_GGA),
+        FixTime::UtcTimeOfDay(utc_time(86_399_123))
+    );
 }
 
 #[test]
@@ -45,7 +120,10 @@ fn gps_becomes_last_known_at_the_exact_freshness_boundary() {
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert!(effects.is_empty());
-    assert_matches!(core.gps, DomainState::LastKnown(_));
+    let DomainState::LastKnown(selected) = core.gps else {
+        panic!("GPS should be last known");
+    };
+    assert!(selected.value.fix_time.is_some());
 }
 
 #[test]
@@ -222,6 +300,7 @@ fn equal_internal_fallback_changes_source_without_an_instruments_effect() {
         altitude_ellipsoid: None,
         track: Some(assert_some!(external.track).value),
         ground_speed: Some(assert_some!(external.ground_speed).value),
+        fix_time: None,
     };
 
     let effects = core.apply(InternalGps::new(equivalent_fix), at(1)).effects;
@@ -400,6 +479,21 @@ fn internal_gps_emits_instruments_immediately() {
     let position = assert_some!(instruments.position);
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-9);
     assert_some_eq!(instruments.track_degrees, 90.0);
+}
+
+#[test]
+fn internal_gps_selects_full_fix_time() {
+    let mut core = Core::new(config());
+    let fix_time = UtcInstant::from_unix_milliseconds(1_767_268_800_000);
+    let mut reported = fix(50.823, 6.186);
+    reported.fix_time = Some(fix_time);
+
+    core.apply(InternalGps::new(reported), at(100));
+
+    let DomainState::Current(selected) = core.gps else {
+        panic!("GPS should be current");
+    };
+    assert_some_eq!(selected.value.fix_time, FixTime::UtcInstant(fix_time));
 }
 
 #[test]

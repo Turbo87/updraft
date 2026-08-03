@@ -1,4 +1,5 @@
 use crate::connection::ExternalDeviceId;
+use crate::fix::{FixTime, UtcInstant, UtcTime};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, LatLon};
 use std::time::Duration;
@@ -34,6 +35,14 @@ pub struct GpsCandidate {
     pub altitude: Option<Timed<MslAltitude>>,
     pub track: Option<Timed<Angle>>,
     pub ground_speed: Option<Timed<Speed>>,
+    pub fix_time: GpsTimeCandidate,
+}
+
+/// Stores the latest canonical GPS fix times from one source.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GpsTimeCandidate {
+    pub full: Option<Timed<UtcInstant>>,
+    pub time_only: Option<Timed<UtcTime>>,
 }
 
 /// Identifies the external device or internal sensor that supplied a domain.
@@ -77,6 +86,7 @@ pub struct GpsSnapshot {
     pub altitude_msl: Option<MslAltitude>,
     pub track: Option<Angle>,
     pub ground_speed: Option<Speed>,
+    pub fix_time: Option<FixTime>,
 }
 
 impl GpsSnapshot {
@@ -117,6 +127,18 @@ pub fn select_gps_candidate(
             ground_speed: candidate
                 .ground_speed
                 .and_then(|speed| speed.fresh_value(at)),
+            fix_time: candidate
+                .fix_time
+                .full
+                .and_then(|time| time.fresh_value(at))
+                .map(FixTime::UtcInstant)
+                .or_else(|| {
+                    candidate
+                        .fix_time
+                        .time_only
+                        .and_then(|time| time.fresh_value(at))
+                        .map(FixTime::UtcTimeOfDay)
+                }),
         },
     })
 }
@@ -135,6 +157,7 @@ mod tests {
             altitude_msl: Some(MslAltitude::new(Length::from_meters(200.0))),
             track: Some(Angle::from_degrees(270.0)),
             ground_speed: Some(Speed::from_meters_per_second(45.0)),
+            fix_time: None,
         };
 
         let published = snapshot.published();

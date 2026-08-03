@@ -47,6 +47,7 @@ fn fix(reported: ReportedFix) -> CoreFix {
         ground_speed: reported
             .ground_speed_meters_per_second
             .map(Speed::from_meters_per_second),
+        fix_time: None,
     }
 }
 

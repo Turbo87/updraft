@@ -246,6 +246,18 @@ impl Core {
         };
     }
 
+    fn select_gps_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
+        let selected_source_was_reset = self
+            .gps
+            .selected()
+            .is_some_and(|selected| selected.source == source);
+
+        self.select_gps(at);
+        if selected_source_was_reset && matches!(self.gps, DomainState::LastKnown(_)) {
+            self.gps = DomainState::Unavailable;
+        }
+    }
+
     fn displayed_gps(&self) -> Option<GpsSnapshot> {
         self.gps.selected().map(|selected| selected.value)
     }
@@ -408,7 +420,8 @@ impl Input for AddExternalDevice {
 impl Input for DeleteExternalDevice {
     type Response = Result<(), UnknownExternalDevice>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.gps_instruments();
         let Some(device) = core.external_devices.remove(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -417,6 +430,11 @@ impl Input for DeleteExternalDevice {
         let mut effects = Vec::new();
         if device.config.enabled {
             effects.push(Effect::close(self.device_id));
+        }
+        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
+        let after = core.gps_instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
         }
         effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
@@ -427,24 +445,31 @@ impl Input for DeleteExternalDevice {
 impl Input for ReorderExternalDevices {
     type Response = Result<(), InvalidExternalDeviceOrder>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.gps_instruments();
         match core.external_devices.reorder(&self.order) {
             Ok(false) => return Update::empty().with_response(Ok(())),
             Ok(true) => {}
             Err(error) => return Update::empty().with_response(Err(error)),
         }
-        Update::effects(vec![
-            Effect::emit(core.external_devices.as_topic()),
-            Effect::persist_settings(core.settings_snapshot()),
-        ])
-        .with_response(Ok(()))
+        core.select_gps(at);
+
+        let mut effects = Vec::new();
+        let after = core.gps_instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
+        effects.push(Effect::emit(core.external_devices.as_topic()));
+        effects.push(Effect::persist_settings(core.settings_snapshot()));
+        Update::effects(effects).with_response(Ok(()))
     }
 }
 
 impl Input for EditExternalDevice {
     type Response = Result<(), UnknownExternalDevice>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.gps_instruments();
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -462,6 +487,11 @@ impl Input for EditExternalDevice {
             effects.push(Effect::close(self.device_id));
             effects.push(Effect::open(self.device_id, self.spec));
         }
+        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
+        let after = core.gps_instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
         effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))
@@ -471,7 +501,8 @@ impl Input for EditExternalDevice {
 impl Input for SetExternalDeviceEnabled {
     type Response = Result<(), UnknownExternalDevice>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.gps_instruments();
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -489,6 +520,11 @@ impl Input for SetExternalDeviceEnabled {
         } else {
             vec![Effect::close(self.device_id)]
         };
+        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
+        let after = core.gps_instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
         effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))

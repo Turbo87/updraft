@@ -11,6 +11,7 @@
   import { TauriClient } from '$lib/client/tauri';
   import FlightView from '$lib/flight-view/FlightView.svelte';
   import { applyLocaleSetting } from '$lib/i18n.svelte.js';
+  import { MapState } from '$lib/map-state.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { AirspaceStore } from '$lib/stores/airspace.svelte';
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
@@ -25,13 +26,14 @@
   const externalDevices = new ExternalDevicesStore();
   const instruments = new InstrumentsStore();
   const airspace = new AirspaceStore();
+  const mapState = new MapState();
   const settings = new SettingsStore();
   const traffic = new TrafficStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
 
-  setAppContext({ client, airspace, externalDevices, settings });
+  setAppContext({ client, airspace, externalDevices, mapState, settings });
 
   // Only in test mode: a plain web build should not hand every visitor a
   // handle for injecting instrument data.
@@ -65,6 +67,7 @@
   <FlightView
     airspace={airspace.current}
     instruments={instruments.current}
+    {mapState}
     {traffic}
     units={settings.current.units}
     {testMode}

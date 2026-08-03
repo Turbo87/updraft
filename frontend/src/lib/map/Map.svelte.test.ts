@@ -5,13 +5,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import MapComponent from './Map.svelte';
-
-type TestWindow = Window & {
-  __updraftTest?: { map: MapLibreMap };
-};
 
 const instruments = {
   position: null,
@@ -39,8 +36,10 @@ afterEach(() => {
 });
 
 async function renderMap(airspace: AirspaceStatus): Promise<MapLibreMap> {
+  let mapState = new MapState();
   await render(MapComponent, {
     instruments,
+    mapState,
     traffic: new TrafficStore(),
     units,
     airspace,
@@ -49,9 +48,9 @@ async function renderMap(airspace: AirspaceStatus): Promise<MapLibreMap> {
   });
 
   await vi.waitFor(() => {
-    expect((window as TestWindow).__updraftTest?.map).toBeDefined();
+    expect(mapState.map).toBeDefined();
   });
-  return (window as TestWindow).__updraftTest!.map;
+  return mapState.map!;
 }
 
 it.each([
@@ -82,19 +81,46 @@ it('adds the airspace source and both layers for the active state', async () => 
   expect(consoleError).not.toHaveBeenCalled();
 });
 
+it('publishes the map and camera values through the shared map state', async () => {
+  let mapState = new MapState();
+  await render(MapComponent, {
+    instruments,
+    traffic: new TrafficStore(),
+    units,
+    airspace: { type: 'none' },
+    mapState,
+    testMode: true,
+  });
+  await vi.waitFor(() => {
+    expect(mapState.map).toBeDefined();
+  });
+  let map = mapState.map!;
+
+  map.jumpTo({ center: [7, 51], zoom: 9, bearing: 15, pitch: 20 });
+
+  await vi.waitFor(() => {
+    expect(mapState.center).toEqual({ lng: 7, lat: 51 });
+    expect(mapState.zoom).toBe(9);
+    expect(mapState.bearing).toBe(15);
+    expect(mapState.pitch).toBe(20);
+  });
+});
+
 it('returns to follow mode without a position and follows the next position', async () => {
+  let mapState = new MapState();
   let traffic = new TrafficStore();
   let view = await render(MapComponent, {
     instruments,
+    mapState,
     traffic,
     units,
     airspace: { type: 'none' },
     testMode: true,
   });
   await vi.waitFor(() => {
-    expect((window as TestWindow).__updraftTest?.map).toBeDefined();
+    expect(mapState.map).toBeDefined();
   });
-  let map = (window as TestWindow).__updraftTest!.map;
+  let map = mapState.map!;
   await vi.waitFor(() => {
     expect(map.isStyleLoaded()).toBe(true);
     expect(map.hasImage('updraft-sdf:glider')).toBe(true);
@@ -102,18 +128,21 @@ it('returns to follow mode without a position and follows the next position', as
   let initialCenter = map.getCenter().toArray();
 
   map.fire('dragstart');
+  expect(mapState.followMode).toBe(false);
   let returnButton = page.getByRole('button', { name: 'Return to position' });
   await expect.element(returnButton).toBeVisible();
 
   let button = document.querySelector<HTMLButtonElement>('button[aria-label="Return to position"]');
   if (!button) throw new Error('Return to position button is not available');
   button.click();
+  expect(mapState.followMode).toBe(true);
   await expect.element(returnButton).not.toBeInTheDocument();
   expect(map.getCenter().toArray()).toEqual(initialCenter);
 
   map.jumpTo({ zoom: 9, bearing: 15, pitch: 20 });
   await view.rerender({
     instruments: positionInstruments,
+    mapState,
     traffic,
     units,
     airspace: { type: 'none' },
@@ -131,6 +160,7 @@ it('returns to follow mode without a position and follows the next position', as
 
   await view.rerender({
     instruments,
+    mapState,
     traffic,
     units,
     airspace: { type: 'none' },

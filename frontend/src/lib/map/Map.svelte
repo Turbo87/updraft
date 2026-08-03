@@ -3,6 +3,7 @@
   import 'svelte-maplibre-gl/vite';
 
   import type { GeoJSONSourceSpecification, Map, StyleSpecification } from 'maplibre-gl';
+  import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -22,7 +23,6 @@
     __updraftTestAirspaceData?: GeoJSONSourceSpecification['data'];
   };
 
-  const DEFAULT_CENTER: [number, number] = [6.186, 50.823];
   const FOLLOW_DURATION_MS = 300;
   const TEST_STYLE: StyleSpecification = {
     version: 8,
@@ -33,6 +33,7 @@
   let {
     airspace,
     instruments,
+    mapState,
     traffic,
     units,
     testMode = false,
@@ -40,15 +41,15 @@
   }: {
     airspace: AirspaceStatus;
     instruments: Instruments;
+    mapState: MapState;
     traffic: TrafficStore;
     units: UnitSettings;
     testMode?: boolean;
     testAirspaceData?: GeoJSONSourceSpecification['data'];
   } = $props();
 
-  let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
-  let following = $state(true);
+  const map = $derived(mapState.map);
   const position = $derived(instruments.position);
   const mapStyle = $derived(
     testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
@@ -74,7 +75,7 @@
   });
 
   $effect(() => {
-    if (!map || !following || !position) return;
+    if (!map || !mapState.followMode || !position) return;
 
     map.easeTo({
       center: positionCoordinates(position),
@@ -83,12 +84,12 @@
   });
 
   function enterManualMode() {
-    following = false;
+    mapState.followMode = false;
   }
 
   function resumeFollowing() {
     map?.stop();
-    following = true;
+    mapState.followMode = true;
   }
 
   function loadSprites() {
@@ -105,11 +106,13 @@
     style={mapStyle}
     {...testMode ? { fadeDuration: 0 } : {}}
     autoloadGlobalCss={false}
-    bind:map
+    bind:map={mapState.map}
+    bind:bearing={mapState.bearing}
+    bind:center={mapState.center}
+    bind:pitch={mapState.pitch}
+    bind:zoom={mapState.zoom}
     ondragstart={enterManualMode}
     onload={loadSprites}
-    center={DEFAULT_CENTER}
-    zoom={11}
   >
     {#if spritesLoaded}
       <Traffic {traffic} altitudeUnit={units.altitude} />
@@ -121,7 +124,7 @@
       {/if}
     {/if}
   </MapLibre>
-  {#if !following}
+  {#if !mapState.followMode}
     <ReturnToPositionButton onClick={resumeFollowing} />
   {/if}
   <MapDebugOverlay {map} {instruments} {units} />

@@ -7,6 +7,7 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { expect, waitFor } from 'storybook/test';
 
+  import { MapState } from '$lib/map-state.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
   import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
   import Map from './Map.svelte';
@@ -120,6 +121,7 @@
       trackDegrees: null,
       groundSpeedMetersPerSecond: null,
     },
+    mapState: new MapState(),
     traffic,
     units,
   }}
@@ -127,7 +129,7 @@
 />
 <Story
   name="Position"
-  args={{ airspace: { type: 'none' }, instruments, traffic, units }}
+  args={{ airspace: { type: 'none' }, instruments, mapState: new MapState(), traffic, units }}
   {template}
 />
 <Story
@@ -140,6 +142,7 @@
       generation: 1,
     },
     instruments,
+    mapState: new MapState(),
     traffic,
     units,
     testMode: true,

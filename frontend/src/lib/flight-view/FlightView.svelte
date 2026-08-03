@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -12,12 +13,14 @@
   let {
     airspace,
     instruments,
+    mapState,
     traffic,
     units,
     testMode = false,
   }: {
     airspace: AirspaceStatus;
     instruments: Instruments;
+    mapState: MapState;
     traffic: TrafficStore;
     units: UnitSettings;
     testMode?: boolean;
@@ -25,7 +28,7 @@
 </script>
 
 <section class="flight-view" aria-label={m.flight_view()}>
-  <Map {airspace} {instruments} {traffic} {units} {testMode} />
+  <Map {airspace} {instruments} {mapState} {traffic} {units} {testMode} />
   <div class="overlay">
     <a href={resolve('/settings')}>{m.settings_heading()}</a>
   </div>

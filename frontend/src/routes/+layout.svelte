@@ -2,6 +2,8 @@
   import '../app.css';
   import 'virtual:uno.css';
 
+  import type { AppContext } from '$lib/app-context';
+
   import { onMount } from 'svelte';
   import { page } from '$app/state';
 
@@ -11,6 +13,7 @@
   import { TauriClient } from '$lib/client/tauri';
   import FlightView from '$lib/flight-view/FlightView.svelte';
   import { applyLocaleSetting } from '$lib/i18n.svelte.js';
+  import { MapState } from '$lib/map-state.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { AirspaceStore } from '$lib/stores/airspace.svelte';
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
@@ -18,25 +21,31 @@
   import { SettingsStore } from '$lib/stores/settings.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
 
-  type TestWindow = Window & { __updraftFake?: FakeClient };
+  type TestWindow = Window & {
+    __updraftApp?: AppContext;
+    __updraftFake?: FakeClient;
+  };
 
   let { children } = $props();
 
   const externalDevices = new ExternalDevicesStore();
   const instruments = new InstrumentsStore();
   const airspace = new AirspaceStore();
+  const mapState = new MapState();
   const settings = new SettingsStore();
   const traffic = new TrafficStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
+  const appContext = { client, airspace, externalDevices, mapState, settings } satisfies AppContext;
 
-  setAppContext({ client, airspace, externalDevices, settings });
+  setAppContext(appContext);
 
-  // Only in test mode: a plain web build should not hand every visitor a
-  // handle for injecting instrument data.
-  if (testMode && client instanceof FakeClient) {
-    (window as TestWindow).__updraftFake = client;
+  // Only test mode exposes application state and the fake client to browser automation.
+  if (testMode) {
+    let testWindow = window as TestWindow;
+    testWindow.__updraftApp = appContext;
+    if (client instanceof FakeClient) testWindow.__updraftFake = client;
   }
 
   onMount(() => {
@@ -65,6 +74,7 @@
   <FlightView
     airspace={airspace.current}
     instruments={instruments.current}
+    {mapState}
     {traffic}
     units={settings.current.units}
     {testMode}

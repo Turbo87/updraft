@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
+  import type { GeoJSONSource } from 'maplibre-gl';
   import type { ComponentProps } from 'svelte';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -7,6 +7,7 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { expect, waitFor } from 'storybook/test';
 
+  import { MapState } from '$lib/map-state.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
   import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
   import Map from './Map.svelte';
@@ -29,6 +30,7 @@
   } satisfies UnitSettings;
 
   const traffic = new TrafficStore();
+  const testMapState = new MapState();
   traffic.apply({
     topic: 'traffic',
     value: {
@@ -99,9 +101,6 @@
   });
 
   type Args = ComponentProps<typeof Map>;
-  type TestWindow = Window & {
-    __updraftTest?: { map: MapLibreMap };
-  };
 </script>
 
 {#snippet template(args: Args)}
@@ -120,6 +119,7 @@
       trackDegrees: null,
       groundSpeedMetersPerSecond: null,
     },
+    mapState: new MapState(),
     traffic,
     units,
   }}
@@ -127,7 +127,7 @@
 />
 <Story
   name="Position"
-  args={{ airspace: { type: 'none' }, instruments, traffic, units }}
+  args={{ airspace: { type: 'none' }, instruments, mapState: new MapState(), traffic, units }}
   {template}
 />
 <Story
@@ -140,6 +140,7 @@
       generation: 1,
     },
     instruments,
+    mapState: testMapState,
     traffic,
     units,
     testMode: true,
@@ -147,7 +148,7 @@
   }}
   play={async () => {
     await waitFor(async () => {
-      let map = (window as TestWindow).__updraftTest?.map;
+      let map = testMapState.map;
       let data = await map?.getSource<GeoJSONSource>('traffic')?.getData();
       let featureCount = data && 'features' in data ? data.features.length : 0;
 

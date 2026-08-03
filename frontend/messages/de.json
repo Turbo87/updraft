@@ -37,6 +37,7 @@
   "about_build_commit": "Commit",
   "about_build_time": "Erstellt",
   "about_unknown_version": "Unbekannte Version",
+  "about_data_credits_heading": "Datenquellen",
   "back_to_external_devices": "Zurück zu den externen Geräten",
   "external_device_not_found": "Externes Gerät nicht gefunden",
   "external_devices_heading": "Externe Geräte",

@@ -1,9 +1,15 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
 
+  import { getAppContext } from '$lib/app-context';
   import BuildInformation from '$lib/BuildInformation.svelte';
+  import DataCredits from '$lib/DataCredits.svelte';
+  import { collectMapSourceAttributions } from '$lib/map-attribution';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
+
+  const { mapState } = getAppContext();
+  const attributions = collectMapSourceAttributions(mapState.map);
 </script>
 
 <main>
@@ -20,6 +26,8 @@
     timestamp={__BUILD_TIMESTAMP__}
     locale={getLocale()}
   />
+
+  <DataCredits {attributions} />
 </main>
 
 <style>

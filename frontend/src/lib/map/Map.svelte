@@ -14,6 +14,7 @@
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
+  import ReturnToPositionButton from './ReturnToPositionButton.svelte';
   import Traffic from './Traffic.svelte';
 
   type TestWindow = Window & {
@@ -22,6 +23,7 @@
   };
 
   const DEFAULT_CENTER: [number, number] = [6.186, 50.823];
+  const FOLLOW_DURATION_MS = 300;
   const TEST_STYLE: StyleSpecification = {
     version: 8,
     sources: {},
@@ -46,8 +48,8 @@
 
   let map: Map | undefined = $state();
   let spritesLoaded = $state(false);
+  let following = $state(true);
   const position = $derived(instruments.position);
-  const center = $derived(position ? positionCoordinates(position) : DEFAULT_CENTER);
   const mapStyle = $derived(
     testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
   );
@@ -71,6 +73,24 @@
     };
   });
 
+  $effect(() => {
+    if (!map || !following || !position) return;
+
+    map.easeTo({
+      center: positionCoordinates(position),
+      duration: testMode ? 0 : FOLLOW_DURATION_MS,
+    });
+  });
+
+  function enterManualMode() {
+    following = false;
+  }
+
+  function resumeFollowing() {
+    map?.stop();
+    following = true;
+  }
+
   function loadSprites() {
     if (!map) return;
 
@@ -86,8 +106,9 @@
     {...testMode ? { fadeDuration: 0 } : {}}
     autoloadGlobalCss={false}
     bind:map
+    ondragstart={enterManualMode}
     onload={loadSprites}
-    {center}
+    center={DEFAULT_CENTER}
     zoom={11}
   >
     {#if spritesLoaded}
@@ -100,6 +121,9 @@
       {/if}
     {/if}
   </MapLibre>
+  {#if !following}
+    <ReturnToPositionButton onClick={resumeFollowing} />
+  {/if}
   <MapDebugOverlay {map} {instruments} {units} />
 </div>
 

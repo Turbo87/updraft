@@ -25,6 +25,7 @@
   "airspace_command_driver_stopped": "The airspace service is unavailable.",
   "airspace_command_busy": "Another airspace change is already in progress.",
   "airspace_command_unknown": "Could not update airspace.",
+  "return_to_position": "Return to position",
   "flight_view": "Flight view",
   "settings_heading": "Settings",
   "back_to_flight_view": "Back to flight view",

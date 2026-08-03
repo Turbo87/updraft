@@ -154,8 +154,10 @@ Focused map-component browser tests create a `MapState` and pass it to
 - Position updates still leave the camera unchanged in manual mode.
 
 The existing MapLibre end-to-end test remains the vertical follow-mode test.
-The test-mode window hook remains available for that test. Storybook does not
-duplicate these behavior tests.
+In test mode, the root layout exposes the `AppContext` reference as
+`window.__updraftApp`. The test reads the map through
+`window.__updraftApp.mapState.map`. Storybook uses its local `MapState` and does
+not duplicate these behavior tests.
 
 No core, Tauri, protocol, storage, or persistence test is necessary.
 
@@ -171,6 +173,8 @@ This feature is complete when all of these statements are true:
 - MapLibre keeps the map and camera fields synchronized.
 - The existing follow-mode behavior uses `mapState.followMode`.
 - Route screens can use the raw MapLibre instance when it is available.
+- End-to-end tests can inspect `AppContext` through `window.__updraftApp` in
+  test mode.
 - Other application screens do not reset the state.
 - A new application session starts with the initial values.
 - The implementation does not add persistence, wrapper methods, or backend

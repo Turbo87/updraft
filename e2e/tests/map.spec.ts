@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
+import type { GeoJSONSource } from 'maplibre-gl';
+import type { AppContext } from '$lib/app-context';
 
 import { expect, test } from '@playwright/test';
 
@@ -30,7 +31,7 @@ type AirspaceMapState = {
 };
 
 type TestWindow = Window & {
-  __updraftTest?: { map: MapLibreMap };
+  __updraftApp?: AppContext;
   __updraftFake?: { emit: (topic: unknown) => void };
   __updraftTestAirspaceData?: typeof AIRSPACE_BROWSER_FIXTURE;
 };
@@ -162,7 +163,7 @@ async function panMap(page: Page) {
 
 async function readMapCenter(page: Page): Promise<MapCenter> {
   return page.evaluate(() => {
-    let map = (window as TestWindow).__updraftTest?.map;
+    let map = (window as TestWindow).__updraftApp?.mapState.map;
     if (!map) throw new Error('Map is not available');
 
     let center = map.getCenter();
@@ -172,11 +173,11 @@ async function readMapCenter(page: Page): Promise<MapCenter> {
 
 async function expectFullPan(page: Page, previousCenter: MapCenter): Promise<MapCenter> {
   await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__updraftTest?.map.isMoving()))
+    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp?.mapState.map?.isMoving()))
     .toBe(false);
 
   let { center, displacementPixels } = await page.evaluate((previous) => {
-    let map = (window as TestWindow).__updraftTest?.map;
+    let map = (window as TestWindow).__updraftApp?.mapState.map;
     if (!map) throw new Error('Map is not available');
 
     let current = map.getCenter();
@@ -193,7 +194,7 @@ async function expectFullPan(page: Page, previousCenter: MapCenter): Promise<Map
 
 async function readMapState(page: Page): Promise<MapState | null> {
   return page.evaluate(async () => {
-    let map = (window as TestWindow).__updraftTest?.map;
+    let map = (window as TestWindow).__updraftApp?.mapState.map;
     let source = map?.getSource<GeoJSONSource>('ownship');
     if (!map || !source) return null;
 
@@ -214,7 +215,7 @@ async function readMapState(page: Page): Promise<MapState | null> {
 
 async function readAirspaceMapState(page: Page): Promise<AirspaceMapState | null> {
   return page.evaluate(async () => {
-    let map = (window as TestWindow).__updraftTest?.map;
+    let map = (window as TestWindow).__updraftApp?.mapState.map;
     let source = map?.getSource<GeoJSONSource>('airspace');
     if (!map || !source || !map.isSourceLoaded('airspace')) return null;
 

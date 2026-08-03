@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
+  import type { GeoJSONSource } from 'maplibre-gl';
   import type { ComponentProps } from 'svelte';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -30,6 +30,7 @@
   } satisfies UnitSettings;
 
   const traffic = new TrafficStore();
+  const testMapState = new MapState();
   traffic.apply({
     topic: 'traffic',
     value: {
@@ -100,9 +101,6 @@
   });
 
   type Args = ComponentProps<typeof Map>;
-  type TestWindow = Window & {
-    __updraftTest?: { map: MapLibreMap };
-  };
 </script>
 
 {#snippet template(args: Args)}
@@ -142,7 +140,7 @@
       generation: 1,
     },
     instruments,
-    mapState: new MapState(),
+    mapState: testMapState,
     traffic,
     units,
     testMode: true,
@@ -150,7 +148,7 @@
   }}
   play={async () => {
     await waitFor(async () => {
-      let map = (window as TestWindow).__updraftTest?.map;
+      let map = testMapState.map;
       let data = await map?.getSource<GeoJSONSource>('traffic')?.getData();
       let featureCount = data && 'features' in data ? data.features.length : 0;
 

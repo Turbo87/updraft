@@ -2,7 +2,7 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
 
-  import type { GeoJSONSourceSpecification, Map, StyleSpecification } from 'maplibre-gl';
+  import type { GeoJSONSourceSpecification, StyleSpecification } from 'maplibre-gl';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
@@ -19,7 +19,6 @@
   import Traffic from './Traffic.svelte';
 
   type TestWindow = Window & {
-    __updraftTest?: { map: Map };
     __updraftTestAirspaceData?: GeoJSONSourceSpecification['data'];
   };
 
@@ -62,17 +61,6 @@
       ? (inlineAirspaceData ?? `updraft://localhost/airspace.geojson?v=${airspace.generation}`)
       : null,
   );
-
-  $effect(() => {
-    if (!testMode || !map) return;
-
-    let testWindow = window as TestWindow;
-    testWindow.__updraftTest = { map };
-
-    return () => {
-      delete testWindow.__updraftTest;
-    };
-  });
 
   $effect(() => {
     if (!map || !mapState.followMode || !position) return;

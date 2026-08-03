@@ -55,6 +55,7 @@
 </script>
 
 <main>
+  <a class="back-link" href={resolve('/settings')}>{m.back_to_settings()}</a>
   <h1>{m.external_devices_heading()}</h1>
 
   {#if !initialized}
@@ -93,8 +94,10 @@
             />
             <span>{m.device_enabled()}</span>
           </label>
-          <a href={resolve('/devices/[deviceId]', { deviceId: String(device.deviceId) })}
-            >{m.edit_external_device({ endpoint: deviceEndpoint(device) })}</a
+          <a
+            href={resolve('/settings/devices/[deviceId]', {
+              deviceId: String(device.deviceId),
+            })}>{m.edit_external_device({ endpoint: deviceEndpoint(device) })}</a
           >
           {#if failedDeviceIds.includes(device.deviceId)}
             <p class="error" role="alert">{m.update_device_error()}</p>
@@ -104,8 +107,7 @@
     </ul>
   {/if}
 
-  <a class="add-link" href={resolve('/devices/new')}>{m.add_external_device()}</a>
-  <a class="back-link" href={resolve('/settings')}>{m.back_to_settings()}</a>
+  <a class="add-link" href={resolve('/settings/devices/new')}>{m.add_external_device()}</a>
 </main>
 
 <style>
@@ -187,13 +189,13 @@
     color: light-dark(var(--color-red-700), var(--color-red-300));
   }
 
-  .add-link,
   .back-link {
     display: inline-block;
-    margin-block-start: 2rem;
+    margin-block-end: 1rem;
   }
 
-  .back-link {
-    margin-inline-start: 1rem;
+  .add-link {
+    display: inline-block;
+    margin-block-start: 2rem;
   }
 </style>

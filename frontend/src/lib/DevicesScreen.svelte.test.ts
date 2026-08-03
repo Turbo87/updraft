@@ -62,13 +62,13 @@ describe('DevicesScreen.svelte', () => {
 
     await expect
       .element(page.getByRole('link', { name: 'Add external device' }))
-      .toHaveAttribute('href', '/devices/new');
+      .toHaveAttribute('href', '/settings/devices/new');
     await expect
       .element(page.getByRole('link', { name: 'Edit 192.0.2.1:4353' }))
-      .toHaveAttribute('href', '/devices/4');
+      .toHaveAttribute('href', '/settings/devices/4');
     await expect
       .element(page.getByRole('link', { name: 'Edit 00:11:22:33:44:55' }))
-      .toHaveAttribute('href', '/devices/5');
+      .toHaveAttribute('href', '/settings/devices/5');
   });
 
   it('summarizes TCP and Bluetooth devices without showing the standard SPP UUID', async () => {

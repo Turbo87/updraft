@@ -1,3 +1,9 @@
 # Soaring-domain names that `clippy::doc_markdown` would otherwise ask to
 # wrap in backticks; ".." keeps clippy's built-in defaults.
-doc-valid-idents = ["MacCready", "WinPilot", "BeiDou", "OpenAir", ".."]
+doc-valid-idents = [
+    "MacCready",
+    "WinPilot",
+    "BeiDou",
+    "OpenAir",
+    "..",
+]

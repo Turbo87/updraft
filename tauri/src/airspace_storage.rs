@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::NamedTempFile;
 use thiserror::Error;
-use updraft_core::{AirspaceDataset, AirspaceImportError, AirspaceLoadError, AirspaceState};
+use updraft_airspace::{AirspaceDataset, AirspaceImportError};
+use updraft_core::{AirspaceLoadError, AirspaceState};
 
 const SOURCE_FILE_NAME: &str = "airspace.txt";
 const METADATA_FILE_NAME: &str = "airspace.json";
@@ -257,12 +258,9 @@ mod tests {
     use tracing_test::traced_test;
     use updraft_core::{AirspaceLoadError, AirspaceStatus};
 
-    const POLYGON: &[u8] =
-        include_bytes!("../../libs/updraft_core/tests/fixtures/airspace/polygon.txt");
-    const PARSER_ERROR: &[u8] =
-        include_bytes!("../../libs/updraft_core/tests/fixtures/airspace/parser_error.txt");
-    const CIRCLE: &[u8] =
-        include_bytes!("../../libs/updraft_core/tests/fixtures/airspace/circle.txt");
+    const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
+    const PARSER_ERROR: &[u8] = include_bytes!("../../testdata/airspace/parser_error.txt");
+    const CIRCLE: &[u8] = include_bytes!("../../testdata/airspace/circle.txt");
     const GEOMETRY_ERROR: &[u8] = b"AC D\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:00:00 N 010:00:00 E\n";
 
     #[test]

@@ -1,40 +1,6 @@
-use serde::Serialize;
-use updraft_geo::LatLon;
+use serde_json::json;
+use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
-
-/// A safe machine-readable failure from loading a stored airspace source.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
-#[serde(rename_all = "camelCase")]
-pub enum AirspaceLoadError {
-    ReadFailed,
-    ParseFailed,
-    GeometryFailed,
-}
-
-/// The client-visible state of the local airspace source.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
-#[serde(
-    tag = "type",
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase"
-)]
-pub enum AirspaceStatus {
-    /// No local airspace source is selected.
-    None,
-    /// A canonical dataset is active in this process.
-    Active {
-        source_name: Option<String>,
-        airspace_count: usize,
-        generation: u32,
-    },
-    /// A stored source exists but could not become a canonical dataset.
-    Unavailable {
-        source_name: Option<String>,
-        error: AirspaceLoadError,
-    },
-}
 
 /// A stable sequence number within one parsed airspace dataset.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,6 +17,21 @@ pub enum AirspaceClass {
     F,
     G,
     Unclassified,
+}
+
+impl AirspaceClass {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::A => "A",
+            Self::B => "B",
+            Self::C => "C",
+            Self::D => "D",
+            Self::E => "E",
+            Self::F => "F",
+            Self::G => "G",
+            Self::Unclassified => "UNC",
+        }
+    }
 }
 
 /// A known OpenAir type or an unknown normalized type code.
@@ -196,13 +177,6 @@ pub enum AirspaceAltitude {
     Unlimited,
 }
 
-/// One canonical airspace exterior ring without a repeated closing vertex.
-#[derive(Clone, Debug, PartialEq)]
-pub struct AirspacePolygon {
-    /// The polygon vertices in source traversal order.
-    pub vertices: Vec<LatLon>,
-}
-
 /// One canonical polygon-only airspace.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airspace {
@@ -219,7 +193,25 @@ pub struct Airspace {
     /// The upper altitude limit.
     pub upper_bound: AirspaceAltitude,
     /// The canonical polygon exterior ring.
-    pub polygon: AirspacePolygon,
+    pub polygon: Polygon,
+}
+
+impl Airspace {
+    /// Converts this airspace to a GeoJSON feature.
+    pub fn to_geojson(&self) -> serde_json::Value {
+        json!({
+            "type": "Feature",
+            "properties": {
+                "id": self.id.0,
+                "class": self.class.as_ref().map(AirspaceClass::as_str),
+                "type": self.type_code.as_ref().map(|value| value.as_str()),
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [self.polygon.to_geojson_coordinates()],
+            },
+        })
+    }
 }
 
 /// A complete canonical dataset parsed from one OpenAir source.

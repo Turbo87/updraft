@@ -1,29 +1,31 @@
-use super::geometry::MAX_AIRSPACE_CURVE_ERROR;
-use crate::airspace::{
-    AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
-    AirspaceImportError, AirspaceParseError, AirspacePolygon, AirspaceType,
-};
+use approx::assert_abs_diff_eq;
 use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_ok};
 use std::assert_matches;
-use updraft_geo::LatLon;
+use updraft_airspace::{
+    AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
+    AirspaceImportError, AirspaceParseError, AirspaceType,
+};
+use updraft_geo::{LatLon, Polygon};
 use updraft_units::{Angle, Length, MslAltitude, PressureAltitude};
 
-const POLYGON: &[u8] = include_bytes!("../../../tests/fixtures/airspace/polygon.txt");
-const CIRCLE: &[u8] = include_bytes!("../../../tests/fixtures/airspace/circle.txt");
-const DB_CLOCKWISE: &[u8] = include_bytes!("../../../tests/fixtures/airspace/db_clockwise.txt");
+/// The maximum distance between a normalized curve and its chord.
+const MAX_AIRSPACE_CURVE_ERROR: Length = Length::from_meters(1.);
+
+const POLYGON: &[u8] = include_bytes!("../../../testdata/airspace/polygon.txt");
+const CIRCLE: &[u8] = include_bytes!("../../../testdata/airspace/circle.txt");
+const DB_CLOCKWISE: &[u8] = include_bytes!("../../../testdata/airspace/db_clockwise.txt");
 const DB_COUNTERCLOCKWISE: &[u8] =
-    include_bytes!("../../../tests/fixtures/airspace/db_counterclockwise.txt");
-const DA_CLOCKWISE: &[u8] = include_bytes!("../../../tests/fixtures/airspace/da_clockwise.txt");
+    include_bytes!("../../../testdata/airspace/db_counterclockwise.txt");
+const DA_CLOCKWISE: &[u8] = include_bytes!("../../../testdata/airspace/da_clockwise.txt");
 const DA_COUNTERCLOCKWISE: &[u8] =
-    include_bytes!("../../../tests/fixtures/airspace/da_counterclockwise.txt");
-const PARSER_ERROR: &[u8] = include_bytes!("../../../tests/fixtures/airspace/parser_error.txt");
-const CLASS_TYPES: &[u8] = include_bytes!("../../../tests/fixtures/airspace/class_types.txt");
-const ALTITUDES: &[u8] = include_bytes!("../../../tests/fixtures/airspace/altitudes.txt");
+    include_bytes!("../../../testdata/airspace/da_counterclockwise.txt");
+const PARSER_ERROR: &[u8] = include_bytes!("../../../testdata/airspace/parser_error.txt");
+const CLASS_TYPES: &[u8] = include_bytes!("../../../testdata/airspace/class_types.txt");
+const ALTITUDES: &[u8] = include_bytes!("../../../testdata/airspace/altitudes.txt");
 const UNSUPPORTED_ALTITUDE: &[u8] =
-    include_bytes!("../../../tests/fixtures/airspace/unsupported_altitude.txt");
-const LEGACY_NONE: &[u8] = include_bytes!("../../../tests/fixtures/airspace/legacy_none.txt");
-const ONE_BAD_AIRSPACE: &[u8] =
-    include_bytes!("../../../tests/fixtures/airspace/one_bad_airspace.txt");
+    include_bytes!("../../../testdata/airspace/unsupported_altitude.txt");
+const LEGACY_NONE: &[u8] = include_bytes!("../../../testdata/airspace/legacy_none.txt");
+const ONE_BAD_AIRSPACE: &[u8] = include_bytes!("../../../testdata/airspace/one_bad_airspace.txt");
 
 /// Returns the canonical dataset for valid fixture bytes.
 fn parse_fixture(bytes: &[u8]) -> AirspaceDataset {
@@ -31,16 +33,23 @@ fn parse_fixture(bytes: &[u8]) -> AirspaceDataset {
 }
 
 /// Returns the only polygon in a valid one-airspace fixture.
-fn only_polygon(bytes: &[u8]) -> AirspacePolygon {
+fn only_polygon(bytes: &[u8]) -> Polygon {
     parse_fixture(bytes).airspaces()[0].polygon.clone()
 }
 
 /// Returns the vertex bearings from the specified center, in degrees.
-fn bearings(center: LatLon, ring: &AirspacePolygon) -> Vec<f64> {
-    ring.vertices
+fn bearings(center: LatLon, ring: &Polygon) -> Vec<f64> {
+    ring.vertices()
         .iter()
         .map(|vertex| center.bearing(*vertex).as_degrees())
         .collect()
+}
+
+/// Returns the maximum chord error for a circle with the specified radius and sweep angle.
+fn curve_error(radius: Length, sweep: Angle, vertex_count: usize) -> Length {
+    let segment_count = vertex_count - 1;
+    let step = sweep / segment_count as f64;
+    radius * (1. - (step / 2.).cos())
 }
 
 /// Checks that equal-angle segments do not exceed the specified chord-error limit.
@@ -50,34 +59,30 @@ fn assert_curve_error_bound(
     vertex_count: usize,
     error_budget: Length,
 ) {
-    let segment_count = vertex_count - 1;
-    let step = sweep / segment_count as f64;
-    let sagitta = radius * (1. - (step / 2.).cos());
-    assert_le!(sagitta, error_budget);
+    assert_le!(curve_error(radius, sweep, vertex_count), error_budget);
 }
 
 /// Checks that each vertex radius matches linear interpolation within `1e-6` metres.
 fn assert_linearly_interpolated_radii(
     center: LatLon,
-    ring: &AirspacePolygon,
+    ring: &Polygon,
     start_radius: Length,
     end_radius: Length,
 ) {
-    let segment_count = ring.vertices.len() - 1;
-    for (index, vertex) in ring.vertices.iter().enumerate() {
+    let segment_count = ring.vertices().len() - 1;
+    for (index, vertex) in ring.vertices().iter().enumerate() {
         let fraction = index as f64 / segment_count as f64;
         let expected_radius = start_radius + (end_radius - start_radius) * fraction;
-        assert_le!(
-            (center.distance(*vertex) - expected_radius)
-                .abs()
-                .as_meters(),
-            1e-6
+        assert_abs_diff_eq!(
+            center.distance(*vertex).as_meters(),
+            expected_radius.as_meters(),
+            epsilon = 1e-6
         );
     }
 }
 
 /// Checks that vertex bearings use equal clockwise steps of less than 180 degrees.
-fn assert_clockwise(center: LatLon, ring: &AirspacePolygon) {
+fn assert_clockwise(center: LatLon, ring: &Polygon) {
     let bearings = bearings(center, ring);
     let mut expected_step = None;
     for pair in bearings.windows(2) {
@@ -85,12 +90,12 @@ fn assert_clockwise(center: LatLon, ring: &AirspacePolygon) {
         assert_gt!(delta, 0.);
         assert_lt!(delta, 180.);
         let expected = *expected_step.get_or_insert(delta);
-        assert_le!((delta - expected).abs(), 1e-8);
+        assert_abs_diff_eq!(delta, expected, epsilon = 1e-8);
     }
 }
 
 /// Checks that vertex bearings use equal counterclockwise steps of less than 180 degrees.
-fn assert_counterclockwise(center: LatLon, ring: &AirspacePolygon) {
+fn assert_counterclockwise(center: LatLon, ring: &Polygon) {
     let bearings = bearings(center, ring);
     let mut expected_step = None;
     for pair in bearings.windows(2) {
@@ -98,7 +103,7 @@ fn assert_counterclockwise(center: LatLon, ring: &AirspacePolygon) {
         assert_gt!(delta, 0.);
         assert_lt!(delta, 180.);
         let expected = *expected_step.get_or_insert(delta);
-        assert_le!((delta - expected).abs(), 1e-8);
+        assert_abs_diff_eq!(delta, expected, epsilon = 1e-8);
     }
 }
 
@@ -119,7 +124,7 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(5000.)))
     );
     assert_eq!(
-        airspace.polygon.vertices,
+        airspace.polygon.vertices(),
         &[
             LatLon::from_degrees(50., 10.),
             LatLon::from_degrees(50., 10. + 1. / 60.),
@@ -137,20 +142,24 @@ fn normalizes_circle_within_the_curve_error_bound() {
     let radius = Length::from_nautical_miles(2.);
     let ring = only_polygon(CIRCLE);
 
-    assert_ge!(ring.vertices.len(), 3);
-    assert_ne!(ring.vertices.first(), ring.vertices.last());
-    for vertex in &ring.vertices {
-        assert_le!((center.distance(*vertex) - radius).abs().as_meters(), 1e-6);
+    assert_ge!(ring.vertices().len(), 3);
+    assert_ne!(ring.vertices().first(), ring.vertices().last());
+    for vertex in ring.vertices() {
+        assert_abs_diff_eq!(
+            center.distance(*vertex).as_meters(),
+            radius.as_meters(),
+            epsilon = 1e-6
+        );
     }
     assert_clockwise(center, &ring);
     let ring_bearings = bearings(center, &ring);
     let step = ring_bearings[1] - ring_bearings[0];
     let closing_step = (ring_bearings[0] - ring_bearings[ring_bearings.len() - 1]).rem_euclid(360.);
-    assert_le!((closing_step - step).abs(), 1e-8);
+    assert_abs_diff_eq!(closing_step, step, epsilon = 1e-8);
     assert_curve_error_bound(
         radius,
         Angle::from_degrees(360.),
-        ring.vertices.len() + 1,
+        ring.vertices().len() + 1,
         MAX_AIRSPACE_CURVE_ERROR,
     );
 }
@@ -160,7 +169,7 @@ fn normalizes_circle_within_the_curve_error_bound() {
 fn uses_at_least_three_vertices_for_a_small_circle() {
     let bytes = b"AC D\nAL GND\nAH FL100\nV X=50:00:00 N 010:00:00 E\nDC 0.0001\n";
 
-    assert_eq!(only_polygon(bytes).vertices.len(), 3);
+    assert_eq!(only_polygon(bytes).vertices().len(), 3);
 }
 
 /// Verifies that `DB` conversion preserves endpoints and direction.
@@ -179,26 +188,26 @@ fn normalizes_db_arcs_with_interpolated_radii_exact_endpoints_and_direction() {
     };
 
     let clockwise = only_polygon(DB_CLOCKWISE);
-    assert_eq!(clockwise.vertices.first(), Some(&start));
-    assert_eq!(clockwise.vertices.last(), Some(&end));
+    assert_eq!(clockwise.vertices().first(), Some(&start));
+    assert_eq!(clockwise.vertices().last(), Some(&end));
     assert_clockwise(center, &clockwise);
     assert_linearly_interpolated_radii(center, &clockwise, start_radius, end_radius);
     assert_curve_error_bound(
         maximum_radius,
         Angle::from_degrees(180.),
-        clockwise.vertices.len(),
+        clockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 
     let counterclockwise = only_polygon(DB_COUNTERCLOCKWISE);
-    assert_eq!(counterclockwise.vertices.first(), Some(&start));
-    assert_eq!(counterclockwise.vertices.last(), Some(&end));
+    assert_eq!(counterclockwise.vertices().first(), Some(&start));
+    assert_eq!(counterclockwise.vertices().last(), Some(&end));
     assert_counterclockwise(center, &counterclockwise);
     assert_linearly_interpolated_radii(center, &counterclockwise, start_radius, end_radius);
     assert_curve_error_bound(
         maximum_radius,
         Angle::from_degrees(180.),
-        counterclockwise.vertices.len(),
+        counterclockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 }
@@ -212,8 +221,8 @@ fn normalizes_db_arcs_with_large_radius_differences() {
     let end = LatLon::from_degrees(50., 10. + 1. / 60.);
     let ring = only_polygon(bytes);
 
-    assert_eq!(ring.vertices.first(), Some(&start));
-    assert_eq!(ring.vertices.last(), Some(&end));
+    assert_eq!(ring.vertices().first(), Some(&start));
+    assert_eq!(ring.vertices().last(), Some(&end));
     assert_linearly_interpolated_radii(center, &ring, center.distance(start), center.distance(end));
 }
 
@@ -226,24 +235,24 @@ fn normalizes_da_arcs_with_exact_endpoints_and_direction() {
     let end = center.destination(Angle::from_degrees(140.), radius);
 
     let clockwise = only_polygon(DA_CLOCKWISE);
-    assert_eq!(clockwise.vertices.first(), Some(&start));
-    assert_eq!(clockwise.vertices.last(), Some(&end));
+    assert_eq!(clockwise.vertices().first(), Some(&start));
+    assert_eq!(clockwise.vertices().last(), Some(&end));
     assert_clockwise(center, &clockwise);
     assert_curve_error_bound(
         radius,
         Angle::from_degrees(120.),
-        clockwise.vertices.len(),
+        clockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 
     let counterclockwise = only_polygon(DA_COUNTERCLOCKWISE);
-    assert_eq!(counterclockwise.vertices.first(), Some(&start));
-    assert_eq!(counterclockwise.vertices.last(), Some(&end));
+    assert_eq!(counterclockwise.vertices().first(), Some(&start));
+    assert_eq!(counterclockwise.vertices().last(), Some(&end));
     assert_counterclockwise(center, &counterclockwise);
     assert_curve_error_bound(
         radius,
         Angle::from_degrees(240.),
-        counterclockwise.vertices.len(),
+        counterclockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 }

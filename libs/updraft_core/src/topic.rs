@@ -1,4 +1,4 @@
-use crate::airspace::AirspaceStatus;
+use crate::core::AirspaceStatus;
 use crate::external_device::PublishedExternalDevice;
 use crate::fix::FixTime as CoreFixTime;
 use crate::settings::Settings;
@@ -115,7 +115,7 @@ pub enum Topic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::airspace::{AirspaceLoadError, AirspaceStatus};
+    use crate::core::{AirspaceLoadError, AirspaceStatus};
     use crate::settings::Locale;
     use crate::traffic::{
         PublishedTrafficTarget, TrafficAlarmLevel, TrafficDelta, TrafficTarget, TrafficTargetId,

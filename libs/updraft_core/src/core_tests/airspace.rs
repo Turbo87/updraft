@@ -3,8 +3,9 @@ use super::support::at;
 use crate::{AirspaceLoadError, AirspaceStatus};
 use claims::assert_some;
 use std::sync::Arc;
+use updraft_airspace::AirspaceDataset;
 
-const POLYGON: &[u8] = include_bytes!("../../tests/fixtures/airspace/polygon.txt");
+const POLYGON: &[u8] = include_bytes!("../../../../testdata/airspace/polygon.txt");
 
 fn airspace_status(core: &Core) -> AirspaceStatus {
     core.topics()

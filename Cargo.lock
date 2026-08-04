@@ -4904,13 +4904,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
 
 [[package]]
+name = "updraft_airspace"
+version = "0.0.0"
+dependencies = [
+ "approx 0.6.0-rc2",
+ "claims",
+ "openair",
+ "serde_json",
+ "thiserror 2.0.19",
+ "updraft_geo",
+ "updraft_units",
+]
+
+[[package]]
 name = "updraft_core"
 version = "0.0.0"
 dependencies = [
  "approx 0.6.0-rc2",
  "claims",
  "insta",
- "openair",
  "serde",
  "tempfile",
  "thiserror 2.0.19",
@@ -4918,6 +4930,7 @@ dependencies = [
  "tracing",
  "tracing-test",
  "ts-rs",
+ "updraft_airspace",
  "updraft_egm96",
  "updraft_geo",
  "updraft_nmea",
@@ -5029,6 +5042,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "tracing-test",
+ "updraft_airspace",
  "updraft_core",
  "updraft_geo",
  "updraft_units",

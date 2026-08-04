@@ -264,6 +264,92 @@ stages delay the reading by about `2·τ`, so that halves the vario's lag from
 roughly 4 s to 2 s. For centring a thermal that matters more than any of the
 error figures above.
 
+`updraft_air` keeps the 2 s time constant at every rate. Shortening it needs
+measurements from the sensor it would run on, which none of these recordings
+contain.
+
+## Recordings that would settle the time constant
+
+Today the vertical speed carries 0.10 to 0.14 m/s of altitude noise, out of a
+0.48 m/s total difference against the instrument. That is the budget a shorter
+time constant has to stay inside. Given a sensor's noise and rate, the table
+below is the shortest time constant that stays at or below 0.12 m/s:
+
+| Sensor noise | 10 Hz | 25 Hz | 50 Hz |
+| --- | --- | --- | --- |
+| 0.1 m | 0.30 s | 0.20 s | 0.20 s |
+| 0.2 m | 0.45 s | 0.35 s | 0.25 s |
+| 0.3 m | 0.55 s | 0.40 s | 0.35 s |
+| 0.5 m | 0.80 s | 0.60 s | 0.45 s |
+| 0.8 m | 1.05 s | 0.80 s | 0.65 s |
+
+Every row is a large win. Even the worst, 0.8 m of noise at 10 Hz, halves the
+lag from about 4 s to 2 s, and a quiet sensor at 25 Hz takes it under half a
+second. So the only measurement the decision needs is the noise and the true
+rate of a real device barometer.
+
+### A bench recording decides it
+
+Put the device on a table indoors and log the barometer at the fastest rate
+the platform gives, for ten minutes, without touching it. Repeat on two or
+three devices, because the barometer chip differs between them.
+
+From that recording:
+
+- **The delivered rate.** `SENSOR_DELAY_FASTEST` is a request, not a promise.
+  The gaps between event timestamps say what arrived.
+- **The noise.** The standard deviation of the second difference, divided by
+  `√6`, is the per-sample noise for a white source. That value picks the row
+  in the table above.
+- **Whether the sensor is already smoothed.** This is the trap that the
+  uBLOX LEA-4S sprang on the GNSS altitude. A driver that low-pass filters
+  reports a high rate that carries no extra information, and a shorter time
+  constant would then buy lag, not bandwidth. It shows as noise that falls
+  away faster than `1/√n` when the samples are averaged in blocks of `n`, and
+  as correlation between consecutive differences.
+- **The resolution.** A coarse quantisation step sets a floor under the noise.
+
+Ten minutes of a still device answers all four. No flight is needed.
+
+### A flight recording checks the rest
+
+Two things a table cannot show:
+
+- **The static source.** A device barometer measures cabin pressure, which
+  moves with the vents, with the airspeed, and with the canopy. That is a
+  systematic error, and it decides whether a device barometer may drive the
+  height at all when an instrument on the aircraft static port is connected.
+- **That a shorter time constant does no harm.** A 1 Hz reference cannot
+  confirm the behaviour of a filter faster than about 2 s, so this can only
+  rule out a regression, not confirm the gain.
+
+One flight of two hours or more, with the device beside a connected
+instrument, covering a launch, several climbs, at least one fast glide, and
+vents opened and closed during a steady glide.
+
+### What a recording has to contain
+
+One row per sample, with each source on its own row and its own timestamp.
+A single fused row per second cannot express a 25 Hz barometer, which is the
+whole point of the recording. An IGC file therefore cannot carry this.
+
+| Source | Fields |
+| --- | --- |
+| `baro` | time, raw pressure in pascals |
+| `fix` | time, latitude, longitude, GNSS altitude, track, ground speed, accuracy |
+| `tas` | time, true airspeed, if an instrument is connected |
+| `reference` | time, the instrument's own vario and pressure altitude |
+
+Raw pressure rather than a converted altitude, so that the conversion stays in
+one place. The instrument's netto is not worth recording: it depends on the
+direction of turn (see below).
+
+**The timestamps have to share one clock.** On Android a sensor event is
+stamped on a different clock from a location fix. Recording both clocks once
+at the start, or every sensor event's own timestamp plus a mapping, is enough.
+A 100 ms error between the two sources puts the whole point of the exercise
+out of reach: the height filter pairs the two altitudes within 200 ms.
+
 ## A better altitude, and the QNH
 
 The height filter throws away the offset between the two altitudes, because

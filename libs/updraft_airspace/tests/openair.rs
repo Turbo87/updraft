@@ -118,6 +118,7 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
     assert_eq!(airspace.name.as_deref(), Some("Polygon"));
     assert_eq!(airspace.class, AirspaceClass::D);
     assert_eq!(airspace.type_code, AirspaceType::Other);
+    assert_none!(airspace.activity);
     assert_eq!(airspace.lower_limit, AirspaceAltitude::Ground);
     assert_eq!(
         airspace.upper_limit,

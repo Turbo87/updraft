@@ -77,6 +77,25 @@ impl AirspaceType {
     }
 }
 
+/// An intended airspace activity with its documented OpenAIP numeric value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum AirspaceActivity {
+    NoSpecificActivity = 0,
+    Parachuting = 1,
+    Aerobatics = 2,
+    AeroclubAndAerialWork = 3,
+    UltraLightMachine = 4,
+    HangGlidingOrParagliding = 5,
+}
+
+impl AirspaceActivity {
+    /// Returns the numeric activity value from the OpenAIP schema.
+    pub const fn openaip_code(self) -> u8 {
+        self as u8
+    }
+}
+
 /// One supported OpenAir altitude limit in typed physical units.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AirspaceAltitude {
@@ -98,6 +117,8 @@ pub struct Airspace {
     pub class: AirspaceClass,
     /// The required OpenAIP airspace type.
     pub type_code: AirspaceType,
+    /// The intended activity when the source defines one.
+    pub activity: Option<AirspaceActivity>,
     /// The lower altitude limit.
     pub lower_limit: AirspaceAltitude,
     /// An optional hard minimum for the lower altitude limit.

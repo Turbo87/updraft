@@ -57,6 +57,7 @@ fn normalize_airspace(
         name: parsed.name.map(String::into_boxed_str),
         class,
         type_code,
+        activity: None,
         lower_limit,
         lower_limit_min: None,
         upper_limit,

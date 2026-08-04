@@ -37,6 +37,7 @@ function instruments(trackDegrees: number): Topic {
         stale: false,
       },
       pressureAltitude: null,
+      trueAirspeed: null,
     },
   };
 }

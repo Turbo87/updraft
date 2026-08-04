@@ -4,6 +4,7 @@ import type { Topic } from '$lib/protocol/generated/Topic';
 const EMPTY: Instruments = {
   gps: null,
   pressureAltitude: null,
+  trueAirspeed: null,
 };
 
 /**

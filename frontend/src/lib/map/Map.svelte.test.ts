@@ -13,6 +13,7 @@ import MapComponent from './Map.svelte';
 const instruments = {
   gps: null,
   pressureAltitude: null,
+  trueAirspeed: null,
 };
 
 const positionInstruments = {
@@ -25,6 +26,7 @@ const positionInstruments = {
     stale: true,
   },
   pressureAltitude: null,
+  trueAirspeed: null,
 };
 
 const units = {

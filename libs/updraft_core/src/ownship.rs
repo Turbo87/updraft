@@ -1,7 +1,7 @@
 use crate::connection::ExternalDeviceId;
 use crate::fix::{FixTime, UtcInstant, UtcTime};
 use crate::time::Timestamp;
-use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments};
+use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments, TrueAirspeedInstruments};
 use std::time::Duration;
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
@@ -107,6 +107,23 @@ impl DomainState<PressureAltitude> {
     }
 }
 
+impl DomainState<Speed> {
+    /// Projects the selected true-airspeed state without its source metadata.
+    pub fn published(self) -> Option<TrueAirspeedInstruments> {
+        match self {
+            Self::Unavailable => None,
+            Self::Current(selected) => Some(TrueAirspeedInstruments {
+                meters_per_second: selected.value.as_meters_per_second(),
+                stale: false,
+            }),
+            Self::LastKnown(selected) => Some(TrueAirspeedInstruments {
+                meters_per_second: selected.value.as_meters_per_second(),
+                stale: true,
+            }),
+        }
+    }
+}
+
 /// Stores one source-consistent GPS snapshot with its required position anchor.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsSnapshot {
@@ -184,6 +201,20 @@ pub fn select_pressure_altitude_candidate(
         source,
         ingested_at: altitude.ingested_at,
         value: altitude.fresh_value(at)?,
+    })
+}
+
+/// Creates a true-airspeed selection when the candidate is fresh.
+pub fn select_true_airspeed_candidate(
+    source: SourceId,
+    candidate: Option<Timed<Speed>>,
+    at: Timestamp,
+) -> Option<Selected<Speed>> {
+    let speed = candidate?;
+    Some(Selected {
+        source,
+        ingested_at: speed.ingested_at,
+        value: speed.fresh_value(at)?,
     })
 }
 

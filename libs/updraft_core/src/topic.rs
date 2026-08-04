@@ -66,6 +66,15 @@ pub struct PressureAltitudeInstruments {
     pub stale: bool,
 }
 
+/// The selected true-airspeed domain at the frontend boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct TrueAirspeedInstruments {
+    pub meters_per_second: f64,
+    pub stale: bool,
+}
+
 /// Fast-changing instrument values grouped by source-selection domain.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -73,6 +82,7 @@ pub struct PressureAltitudeInstruments {
 pub struct Instruments {
     pub gps: Option<GpsInstruments>,
     pub pressure_altitude: Option<PressureAltitudeInstruments>,
+    pub true_airspeed: Option<TrueAirspeedInstruments>,
 }
 
 impl Instruments {
@@ -149,6 +159,10 @@ mod tests {
             pressure_altitude: Some(PressureAltitudeInstruments {
                 meters: 1_000.0,
                 stale: true,
+            }),
+            true_airspeed: Some(TrueAirspeedInstruments {
+                meters_per_second: 50.0,
+                stale: false,
             }),
         }
         .as_topic();

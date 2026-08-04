@@ -124,6 +124,7 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
     assert_none!(airspace.special_agreement);
     assert_none!(airspace.request_compliance);
     assert_eq!(airspace.country_codes, []);
+    assert_none!(airspace.remarks.as_deref());
     assert_eq!(airspace.lower_limit, AirspaceAltitude::Ground);
     assert_eq!(
         airspace.upper_limit,

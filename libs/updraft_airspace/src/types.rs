@@ -131,6 +131,8 @@ pub struct Airspace {
     pub request_compliance: Option<bool>,
     /// The unvalidated source country codes associated with this airspace.
     pub country_codes: Vec<Box<str>>,
+    /// Additional source remarks when present.
+    pub remarks: Option<Box<str>>,
     /// The lower altitude limit.
     pub lower_limit: AirspaceAltitude,
     /// An optional hard minimum for the lower altitude limit.

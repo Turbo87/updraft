@@ -127,6 +127,8 @@ pub struct Airspace {
     pub by_notam: Option<bool>,
     /// Whether the airspace is subject to a special agreement.
     pub special_agreement: Option<bool>,
+    /// Whether the airspace represents a non-mandatory compliance request.
+    pub request_compliance: Option<bool>,
     /// The lower altitude limit.
     pub lower_limit: AirspaceAltitude,
     /// An optional hard minimum for the lower altitude limit.

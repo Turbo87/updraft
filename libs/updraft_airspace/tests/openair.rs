@@ -45,6 +45,13 @@ fn bearings(center: LatLon, ring: &Polygon) -> Vec<f64> {
         .collect()
 }
 
+/// Returns the maximum chord error for a circle with the specified radius and sweep angle.
+fn curve_error(radius: Length, sweep: Angle, vertex_count: usize) -> Length {
+    let segment_count = vertex_count - 1;
+    let step = sweep / segment_count as f64;
+    radius * (1. - (step / 2.).cos())
+}
+
 /// Checks that equal-angle segments do not exceed the specified chord-error limit.
 fn assert_curve_error_bound(
     radius: Length,
@@ -52,10 +59,7 @@ fn assert_curve_error_bound(
     vertex_count: usize,
     error_budget: Length,
 ) {
-    let segment_count = vertex_count - 1;
-    let step = sweep / segment_count as f64;
-    let sagitta = radius * (1. - (step / 2.).cos());
-    assert_le!(sagitta, error_budget);
+    assert_le!(curve_error(radius, sweep, vertex_count), error_budget);
 }
 
 /// Checks that each vertex radius matches linear interpolation within `1e-6` metres.

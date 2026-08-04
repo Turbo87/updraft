@@ -119,6 +119,8 @@ pub struct Airspace {
     pub type_code: AirspaceType,
     /// The intended activity when the source defines one.
     pub activity: Option<AirspaceActivity>,
+    /// Whether the airspace is activated on demand.
+    pub on_demand: Option<bool>,
     /// The lower altitude limit.
     pub lower_limit: AirspaceAltitude,
     /// An optional hard minimum for the lower altitude limit.

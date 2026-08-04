@@ -1,6 +1,7 @@
 use super::geometry::normalize_geometry;
 use crate::{
-    Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceId, AirspaceImportError,
+    Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceFrequency,
+    AirspaceFrequencyUnit, AirspaceFrequencyValue, AirspaceId, AirspaceImportError,
     AirspaceParseError, AirspaceType,
 };
 use ::openair::{Airspace as ParsedAirspace, Class as ParsedClass};
@@ -51,6 +52,8 @@ fn normalize_airspace(
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
     let polygon =
         normalize_geometry(parsed.geom).map_err(|kind| AirspaceImportError::geometry(id, kind))?;
+    let frequencies = normalize_frequency(parsed.frequency, parsed.call_sign)
+        .map_err(|kind| AirspaceImportError::parse(id, kind))?;
 
     Ok(Airspace {
         id,
@@ -64,7 +67,7 @@ fn normalize_airspace(
         special_agreement: None,
         request_compliance: None,
         country_codes: Vec::new(),
-        frequencies: Vec::new(),
+        frequencies,
         hours_of_operation: None,
         active_from: None,
         active_until: None,
@@ -75,6 +78,26 @@ fn normalize_airspace(
         upper_limit_max: None,
         polygon,
     })
+}
+
+/// Converts one optional OpenAir frequency and call sign to canonical form.
+fn normalize_frequency(
+    frequency: Option<String>,
+    call_sign: Option<String>,
+) -> Result<Vec<AirspaceFrequency>, AirspaceParseError> {
+    let Some(frequency) = frequency else {
+        return Ok(Vec::new());
+    };
+    let value = AirspaceFrequencyValue::from_megahertz(&frequency)
+        .ok_or(AirspaceParseError::InvalidFrequency)?;
+
+    Ok(vec![AirspaceFrequency {
+        value,
+        unit: AirspaceFrequencyUnit::Megahertz,
+        name: call_sign.map(String::into_boxed_str),
+        primary: Some(true),
+        remarks: None,
+    }])
 }
 
 /// Converts a parsed class and optional type to a canonical classification.

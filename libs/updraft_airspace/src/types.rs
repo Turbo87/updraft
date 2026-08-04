@@ -203,6 +203,8 @@ pub enum AirspaceParseError {
     TooManyAirspaces,
     #[error("the airspace altitude is not supported")]
     UnsupportedAltitude,
+    #[error("the airspace frequency is invalid")]
+    InvalidFrequency,
 }
 
 /// A safe OpenAir polygon conversion error kind.

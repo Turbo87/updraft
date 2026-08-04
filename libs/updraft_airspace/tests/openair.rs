@@ -155,6 +155,45 @@ fn leaves_parser_private_activation_dates_absent() {
     assert_none!(airspace.active_until.as_ref());
 }
 
+/// Verifies that OpenAir frequency records become one primary frequency.
+#[test]
+fn imports_a_primary_frequency() {
+    let bytes = b"AC D\nAF 123.45\nAG TOWER\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+
+    insta::assert_debug_snapshot!(dataset.airspaces()[0].frequencies, @r#"
+    [
+        AirspaceFrequency {
+            value: AirspaceFrequencyValue(
+                123450,
+            ),
+            unit: Megahertz,
+            name: Some(
+                "TOWER",
+            ),
+            primary: Some(
+                true,
+            ),
+            remarks: None,
+        },
+    ]
+    "#);
+}
+
+/// Verifies that an invalid frequency rejects the complete source.
+#[test]
+fn rejects_an_invalid_frequency() {
+    let bytes = b"AC D\nAF 123.4567\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+
+    assert_err_eq!(
+        AirspaceDataset::from_openair(bytes),
+        AirspaceImportError::Parse {
+            airspace_id: Some(AirspaceId(0)),
+            kind: AirspaceParseError::InvalidFrequency,
+        }
+    );
+}
+
 /// Verifies that circle conversion preserves the radius.
 /// Verifies that conversion uses clockwise steps and meets the chord-error limit.
 #[test]

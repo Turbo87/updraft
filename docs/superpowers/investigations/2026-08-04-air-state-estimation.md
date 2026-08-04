@@ -156,6 +156,67 @@ Wings level, where the artifact is absent, the recorded sink rate lands between
 speed. The netto model is therefore sound, and the 1.2 to 1.4 m/s RMS in the
 first table measures the instrument more than the estimate.
 
+Scoring the netto only where the artifact is absent shows what the estimate is
+worth: 0.88 to 1.18 m/s RMS wings level, with a bias of +0.05 to +0.08 m/s,
+against 1.38 to 2.21 m/s in turns.
+
+## Without an airspeed sensor
+
+An Android device and a PowerFlarm both report position and pressure altitude
+but no airspeed. The wind then has to come from the shape of a circle alone: the
+ground velocities of one circle lie on a circle in velocity space whose centre
+is the wind and whose radius is the airspeed. Fitting all three, instead of
+holding the radius at a measured airspeed, is what costs accuracy. Once the wind
+is known, the airspeed follows as `‖ground velocity − wind‖`, which restores
+part of the total energy compensation.
+
+| Flight | Wind (vec / dir) | Airspeed | Vario: sensor / derived / none |
+| --- | --- | --- | --- |
+| 1141558 | 3.52 m/s / 20° | 2.47 m/s | 0.46 / 0.95 / 1.26 m/s |
+| 1179475 | 3.91 m/s / 73° | 2.92 m/s | 0.51 / 1.32 / 1.88 m/s |
+| 1188417 | 5.35 m/s / 35° | 3.73 m/s | 0.71 / 1.26 / 1.93 m/s |
+| 1153141 | 4.45 m/s / 48° | 2.20 m/s | 0.25 / 0.86 / 1.49 m/s |
+| 1179605 | 5.17 m/s / 87° | 3.45 m/s | 0.29 / 1.09 / 1.55 m/s |
+| 1174605 | — | 2.35 m/s | 0.52 / 1.09 / 1.51 m/s |
+
+The wind is 25% to 40% worse in vector RMS than with an airspeed sensor, and it
+only updates while circling. The vario roughly doubles its error, but the
+derived airspeed still recovers about half the gap to an uncompensated vario.
+The netto barely changes (1.12 to 1.27 m/s against 1.16 to 1.35 m/s), because
+its error is dominated by the recorded reference, not by the estimate.
+
+## Sample rate
+
+Re-running the estimate on decimated recordings shows that 1 Hz is already
+past the point where the sample rate matters. Vertical-speed RMS against the
+recorded vario, by sample interval:
+
+| Flight | 1 s | 2 s | 3 s | 5 s | 10 s |
+| --- | --- | --- | --- | --- | --- |
+| 1141558 | 0.48 | 0.50 | 0.52 | 0.58 | 0.66 |
+| 1179475 | 0.51 | 0.58 | 0.60 | 0.64 | 0.86 |
+| 1188417 | 0.71 | 0.77 | 0.81 | 0.88 | 0.75 |
+| 1153141 | 0.29 | 0.29 | 0.27 | 0.37 | 0.73 |
+| 1179605 | 0.31 | 0.31 | 0.29 | 0.38 | 0.76 |
+| 1174605 | 0.53 | 0.51 | 0.68 | 0.80 | 1.17 |
+
+The 2 s smoothing, not the sample rate, sets the bandwidth. A faster pressure
+sensor therefore cannot improve the agreement with a recorded vario. What it
+buys is a shorter time constant at the same noise. For white altitude noise of
+1 m standard deviation, the vario noise the filter passes through is:
+
+| Time constant | 1 Hz | 5 Hz | 10 Hz | 25 Hz |
+| --- | --- | --- | --- | --- |
+| 1.0 s | 0.444 | 0.222 | 0.159 | 0.100 |
+| 1.5 s | 0.258 | 0.122 | 0.085 | 0.054 |
+| 2.0 s | 0.171 | 0.079 | 0.056 | 0.035 |
+| 3.0 s | 0.095 | 0.043 | 0.030 | 0.019 |
+
+At 10 Hz, a 1 s time constant is quieter than 2 s at 1 Hz. The two smoothing
+stages delay the reading by about `2·τ`, so that halves the vario's lag from
+roughly 4 s to 2 s. For centring a thermal that matters more than any of the
+error figures above.
+
 ## Limits
 
 - **Wind in straight flight.** Vector RMS against a 60 s mean of the recorded

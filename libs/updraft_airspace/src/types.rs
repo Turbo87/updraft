@@ -1,5 +1,6 @@
 use crate::AirspaceOperatingHours;
 use serde_json::json;
+use time::OffsetDateTime;
 use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
 
@@ -134,6 +135,10 @@ pub struct Airspace {
     pub country_codes: Vec<Box<str>>,
     /// The operating hours when the source defines them.
     pub hours_of_operation: Option<AirspaceOperatingHours>,
+    /// The activation start instant when the source defines it.
+    pub active_from: Option<OffsetDateTime>,
+    /// The activation end instant when the source defines it.
+    pub active_until: Option<OffsetDateTime>,
     /// Additional source remarks when present.
     pub remarks: Option<Box<str>>,
     /// The lower altitude limit.

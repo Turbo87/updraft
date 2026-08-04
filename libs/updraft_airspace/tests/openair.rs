@@ -144,6 +144,17 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
     );
 }
 
+/// Verifies that parser-private OpenAir activation dates remain absent.
+#[test]
+fn leaves_parser_private_activation_dates_absent() {
+    let bytes = b"AC D\nAA 2023-12-16T12:00Z/2023-12-16T13:00Z\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+    let airspace = &dataset.airspaces()[0];
+
+    assert_none!(airspace.active_from.as_ref());
+    assert_none!(airspace.active_until.as_ref());
+}
+
 /// Verifies that circle conversion preserves the radius.
 /// Verifies that conversion uses clockwise steps and meets the chord-error limit.
 #[test]

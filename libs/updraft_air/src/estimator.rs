@@ -1,7 +1,9 @@
+use crate::height::HeightFilter;
+use crate::smoothing_weight;
 use crate::wind::{Wind, WindFilter};
 use std::time::Duration;
 use updraft_polar::GlidePolar;
-use updraft_units::{Angle, Length, PressureAltitude, Speed};
+use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
 
 /// Standard gravity, in m/s².
 const GRAVITY: f64 = 9.80665;
@@ -29,9 +31,10 @@ const MAX_LOAD_FACTOR: f64 = 3.;
 
 /// One set of measurements, as a flight recorder logs them.
 ///
-/// The position itself is not needed: track and ground speed already
-/// carry the ground velocity, and pressure altitude replaces the GNSS
-/// altitude, which is too noisy to differentiate.
+/// The position is not among them, because track and ground speed
+/// already carry the ground velocity. Deriving that velocity from
+/// consecutive positions instead gives the same accuracy, so a caller
+/// whose source reports no track and ground speed can substitute it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Sample {
     /// Track over ground, clockwise from true north.
@@ -40,6 +43,9 @@ pub struct Sample {
     pub ground_speed: Speed,
     /// Barometric altitude against the 1013.25 hPa datum.
     pub pressure_altitude: PressureAltitude,
+    /// GNSS altitude, where the receiver reports one. It sharpens the
+    /// vertical speed (see [`HeightFilter`]).
+    pub gnss_altitude: Option<EllipsoidAltitude>,
     /// True airspeed.
     pub true_air_speed: Speed,
     /// Horizontal accuracy the GNSS receiver reports for this fix.
@@ -72,10 +78,10 @@ pub struct AirState {
 /// The three outputs build on each other:
 ///
 /// 1. The **total energy height** `h + v²/2g` removes the height that
-///    the glider trades against airspeed when it pushes or pulls. Its
-///    derivative is the total-energy **vertical speed**. Two smoothing
-///    stages suppress the metre-resolution steps of the logged pressure
-///    altitude.
+///    the glider trades against airspeed when it pushes or pulls. `h`
+///    combines both altitude sources (see [`HeightFilter`]). Its
+///    derivative, through two smoothing stages, is the total-energy
+///    **vertical speed**.
 /// 2. The **wind** comes from the difference between the ground velocity
 ///    and the true airspeed (see [`WindFilter`]).
 /// 3. Subtracting the wind from the ground velocity gives the air-relative
@@ -88,6 +94,7 @@ pub struct AirState {
 pub struct AirStateEstimator {
     polar: GlidePolar,
     wind: WindFilter,
+    height: HeightFilter,
     previous: Option<Previous>,
     /// Air-relative track of the previous sample, absent while too slow.
     previous_heading: Option<f64>,
@@ -110,6 +117,7 @@ impl AirStateEstimator {
         Self {
             polar,
             wind: WindFilter::default(),
+            height: HeightFilter::default(),
             previous: None,
             previous_heading: None,
             first_stage: 0.,
@@ -147,7 +155,14 @@ impl AirStateEstimator {
 
         let air_speed = sample.true_air_speed.as_meters_per_second();
         let altitude = sample.pressure_altitude.into_inner().as_meters();
-        let total_energy_height = altitude + air_speed * air_speed / (2. * GRAVITY);
+        let height = self.height.update(
+            interval,
+            altitude,
+            sample
+                .gnss_altitude
+                .map(|altitude| altitude.into_inner().as_meters()),
+        );
+        let total_energy_height = height + air_speed * air_speed / (2. * GRAVITY);
         let previous = self.previous.replace(Previous {
             time,
             total_energy_height,
@@ -212,12 +227,6 @@ impl AirStateEstimator {
     }
 }
 
-/// Weight of a new value in an exponential filter with the given time
-/// constant, for a sample interval that is not fixed.
-fn smoothing_weight(interval: f64, time_constant: f64) -> f64 {
-    1. - (-interval / time_constant).exp()
-}
-
 /// Air density at a pressure altitude, relative to sea level, following
 /// the ISA troposphere model.
 ///
@@ -254,6 +263,7 @@ mod tests {
             track: Angle::from_degrees(track),
             ground_speed: Speed::from_kilometers_per_hour(ground_speed),
             pressure_altitude: PressureAltitude::new(Length::from_meters(altitude)),
+            gnss_altitude: None,
             true_air_speed: Speed::from_kilometers_per_hour(air_speed),
             position_accuracy: Length::from_meters(15.),
         }

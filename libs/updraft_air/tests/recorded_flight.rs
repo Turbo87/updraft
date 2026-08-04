@@ -5,9 +5,9 @@
 //! carry the instrument's own total-energy vario (`VAT`) and netto
 //! (`NET`), and its K records the instrument's wind (`WDI`, `WSP`). The
 //! instrument derived those from sensors the estimator does not have: a
-//! total-energy probe, an inertial platform, and a magnetic heading. The
-//! recorded values are therefore a reference to measure against, not a
-//! ground truth.
+//! total-energy probe and an inertial platform. Its netto also depends on
+//! the direction of turn, which no sink rate can. The recorded values are
+//! therefore a reference to measure against, not a ground truth.
 //!
 //! The snapshot is a regression guard on estimate quality. A change that
 //! moves it has to say which way the numbers moved, and why.
@@ -17,7 +17,7 @@ use std::fmt::Write as _;
 use std::time::Duration;
 use updraft_air::{AirStateEstimator, Sample};
 use updraft_polar::{GlidePolar, POLAR_STORE};
-use updraft_units::{Angle, Length, PressureAltitude, Speed};
+use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.
@@ -52,6 +52,10 @@ fn estimates_match_the_recorded_instrument_values() {
                     pressure_altitude: PressureAltitude::new(Length::from_meters(f64::from(
                         fix.pressure_alt,
                     ))),
+                    // A zero GNSS altitude means the recorder had no fix.
+                    gnss_altitude: (fix.gps_alt != 0).then(|| {
+                        EllipsoidAltitude::new(Length::from_meters(f64::from(fix.gps_alt)))
+                    }),
                     true_air_speed: hundredths_kmh(value("TAS")),
                     position_accuracy: Length::from_meters(value("FXA")),
                 };

@@ -30,6 +30,27 @@ const GLIDER_TYPE: &str = "JS-3-18m";
 
 #[test]
 fn estimates_match_the_recorded_instrument_values() {
+    let mut report = String::new();
+    writeln!(
+        report,
+        "quantity           unit        n    rms    mae   bias   corr"
+    )
+    .unwrap();
+    write!(report, "{}", measure(AirSpeed::FromSensor)).unwrap();
+    writeln!(report, "-- without an airspeed sensor --").unwrap();
+    write!(report, "{}", measure(AirSpeed::Withheld)).unwrap();
+    insta::assert_snapshot!(report);
+}
+
+/// Whether the recorded airspeed is passed on, so that the run measures
+/// what a device without an airspeed sensor would produce.
+#[derive(Clone, Copy, PartialEq)]
+enum AirSpeed {
+    FromSensor,
+    Withheld,
+}
+
+fn measure(air_speed: AirSpeed) -> String {
     let mut estimator = AirStateEstimator::new(polar());
     let mut vertical_speed = Errors::default();
     let mut netto = Errors::default();
@@ -56,7 +77,8 @@ fn estimates_match_the_recorded_instrument_values() {
                     gnss_altitude: (fix.gps_alt != 0).then(|| {
                         EllipsoidAltitude::new(Length::from_meters(f64::from(fix.gps_alt)))
                     }),
-                    true_air_speed: hundredths_kmh(value("TAS")),
+                    true_air_speed: (air_speed == AirSpeed::FromSensor)
+                        .then(|| hundredths_kmh(value("TAS"))),
                     position_accuracy: Length::from_meters(value("FXA")),
                 };
 
@@ -69,7 +91,9 @@ fn estimates_match_the_recorded_instrument_values() {
                     state.vertical_speed.as_meters_per_second(),
                     value("VAT") / 100.,
                 );
-                netto.add(state.netto.as_meters_per_second(), value("NET") / 100.);
+                if let Some(netto_estimate) = state.netto {
+                    netto.add(netto_estimate.as_meters_per_second(), value("NET") / 100.);
+                }
             }
             Ok(Record::K(record)) => {
                 let Some(wind) = estimated_wind else { continue };
@@ -88,17 +112,12 @@ fn estimates_match_the_recorded_instrument_values() {
         }
     }
 
-    let mut report = String::new();
-    writeln!(
-        report,
-        "quantity           unit        n    rms    mae   bias   corr"
-    )
-    .unwrap();
-    writeln!(report, "vertical speed     m/s   {}", vertical_speed.row()).unwrap();
-    writeln!(report, "netto              m/s   {}", netto.row()).unwrap();
-    writeln!(report, "wind speed         m/s   {}", wind_speed.row()).unwrap();
-    writeln!(report, "wind direction     deg   {}", wind_direction.row()).unwrap();
-    insta::assert_snapshot!(report);
+    let mut rows = String::new();
+    writeln!(rows, "vertical speed     m/s   {}", vertical_speed.row()).unwrap();
+    writeln!(rows, "netto              m/s   {}", netto.row()).unwrap();
+    writeln!(rows, "wind speed         m/s   {}", wind_speed.row()).unwrap();
+    writeln!(rows, "wind direction     deg   {}", wind_direction.row()).unwrap();
+    rows
 }
 
 fn polar() -> GlidePolar {

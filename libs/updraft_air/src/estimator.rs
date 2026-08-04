@@ -1,3 +1,4 @@
+use crate::circling::CirclingWind;
 use crate::height::HeightFilter;
 use crate::smoothing_weight;
 use crate::wind::{Wind, WindFilter};
@@ -46,8 +47,10 @@ pub struct Sample {
     /// GNSS altitude, where the receiver reports one. It sharpens the
     /// vertical speed (see [`HeightFilter`]).
     pub gnss_altitude: Option<EllipsoidAltitude>,
-    /// True airspeed.
-    pub true_air_speed: Speed,
+    /// True airspeed, where an airspeed sensor is connected. Without one
+    /// the estimate falls back on the shape of a circle, which costs
+    /// accuracy in every output.
+    pub true_air_speed: Option<Speed>,
     /// Horizontal accuracy the GNSS receiver reports for this fix.
     pub position_accuracy: Length,
 }
@@ -55,14 +58,18 @@ pub struct Sample {
 /// What the glider and the air around it are doing.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AirState {
-    /// Total-energy vertical speed: how fast the glider gains height,
-    /// with the height it trades for airspeed taken out. Positive means
-    /// climbing.
+    /// How fast the glider gains height. Positive means climbing.
+    ///
+    /// This is the total-energy vertical speed, with the height the
+    /// glider trades for airspeed taken out, as long as an airspeed is
+    /// available. Without one it is the plain rate of climb, which shows
+    /// the height gained by pulling up as a climb.
     pub vertical_speed: Speed,
-    /// Vertical speed of the air mass: the total-energy vertical speed
-    /// with the glider's own sink rate added back. Positive means rising
-    /// air.
-    pub netto: Speed,
+    /// Vertical speed of the air mass: the vertical speed with the
+    /// glider's own sink rate added back. Positive means rising air.
+    /// `None` until an airspeed is available, because the sink rate
+    /// depends on it.
+    pub netto: Option<Speed>,
     /// Horizontal movement of the air mass, or `None` while the wind
     /// estimate has not converged yet.
     pub wind: Option<Wind>,
@@ -83,17 +90,21 @@ pub struct AirState {
 ///    derivative, through two smoothing stages, is the total-energy
 ///    **vertical speed**.
 /// 2. The **wind** comes from the difference between the ground velocity
-///    and the true airspeed (see [`WindFilter`]).
+///    and the true airspeed (see [`WindFilter`]). Without an airspeed
+///    sensor it comes from the shape of a circle instead (see
+///    [`CirclingWind`]), and the airspeed the other two steps need is
+///    then `‖ground velocity − wind‖`.
 /// 3. Subtracting the wind from the ground velocity gives the air-relative
 ///    track. Its rate of change is the turn rate, which fixes the bank
 ///    angle and therefore the load factor. The load factor and the air
 ///    density at the current altitude turn the glide polar into the
 ///    current sink rate, and the vertical speed plus that sink rate is
 ///    the **netto**.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct AirStateEstimator {
     polar: GlidePolar,
     wind: WindFilter,
+    circling: CirclingWind,
     height: HeightFilter,
     previous: Option<Previous>,
     /// Air-relative track of the previous sample, absent while too slow.
@@ -107,6 +118,9 @@ pub struct AirStateEstimator {
 struct Previous {
     time: Duration,
     total_energy_height: f64,
+    /// Whether an airspeed went into that height. Gaining or losing the
+    /// airspeed moves the height by `v²/2g`, which is not a climb.
+    compensated: bool,
 }
 
 impl AirStateEstimator {
@@ -117,6 +131,7 @@ impl AirStateEstimator {
         Self {
             polar,
             wind: WindFilter::default(),
+            circling: CirclingWind::default(),
             height: HeightFilter::default(),
             previous: None,
             previous_heading: None,
@@ -144,16 +159,30 @@ impl AirStateEstimator {
         let ground_east = ground_speed * sin_track;
         let ground_north = ground_speed * cos_track;
 
-        self.wind.update(
-            interval,
-            ground_east,
-            ground_north,
-            sample.true_air_speed,
-            sample.position_accuracy,
-        );
-        self.update_turn_rate(interval, ground_east, ground_north);
+        self.circling
+            .update(time.as_secs_f64(), ground_east, ground_north);
+        if let Some(air_speed) = sample.true_air_speed {
+            self.wind.update(
+                interval,
+                ground_east,
+                ground_north,
+                air_speed,
+                sample.position_accuracy,
+            );
+        }
+        let wind = match sample.true_air_speed {
+            Some(_) => self.wind.vector(),
+            None => self.circling.vector(),
+        };
+        self.update_turn_rate(interval, ground_east, ground_north, wind);
 
-        let air_speed = sample.true_air_speed.as_meters_per_second();
+        // Without a sensor, the airspeed is what is left of the ground
+        // velocity once the wind is taken out.
+        let air_speed = sample
+            .true_air_speed
+            .map(Speed::as_meters_per_second)
+            .or_else(|| wind.map(|(east, north)| (ground_east - east).hypot(ground_north - north)));
+
         let altitude = sample.pressure_altitude.into_inner().as_meters();
         let height = self.height.update(
             interval,
@@ -162,36 +191,52 @@ impl AirStateEstimator {
                 .gnss_altitude
                 .map(|altitude| altitude.into_inner().as_meters()),
         );
-        let total_energy_height = height + air_speed * air_speed / (2. * GRAVITY);
+        let energy = air_speed.map_or(0., |speed| speed * speed / (2. * GRAVITY));
         let previous = self.previous.replace(Previous {
             time,
-            total_energy_height,
+            total_energy_height: height + energy,
+            compensated: air_speed.is_some(),
         });
 
-        let Some((interval, previous)) = interval.zip(previous) else {
+        let usable = interval
+            .zip(previous)
+            .filter(|(_, previous)| previous.compensated == air_speed.is_some());
+        let Some((interval, previous)) = usable else {
             self.first_stage = 0.;
             self.vertical_speed = 0.;
             return None;
         };
 
-        let raw = (total_energy_height - previous.total_energy_height) / interval;
+        let raw = (height + energy - previous.total_energy_height) / interval;
         let weight = smoothing_weight(interval, VERTICAL_SPEED_TIME_CONSTANT);
         self.first_stage += weight * (raw - self.first_stage);
         self.vertical_speed += weight * (self.first_stage - self.vertical_speed);
 
-        let sink_rate = self.sink_rate(altitude, air_speed);
         Some(AirState {
             vertical_speed: Speed::from_meters_per_second(self.vertical_speed),
-            netto: Speed::from_meters_per_second(self.vertical_speed + sink_rate),
-            wind: self.wind.wind(),
+            netto: air_speed.map(|speed| {
+                Speed::from_meters_per_second(self.vertical_speed + self.sink_rate(altitude, speed))
+            }),
+            wind: wind.map(|(east, north)| Wind {
+                direction: Angle::from_radians((-east).atan2(-north)).normalized(),
+                speed: Speed::from_meters_per_second(east.hypot(north)),
+            }),
         })
     }
 
     /// Tracks the rate of change of the air-relative track, which is what
-    /// a turn coordinator measures.
-    fn update_turn_rate(&mut self, interval: Option<f64>, ground_east: f64, ground_north: f64) {
-        let air_east = ground_east - self.wind.east();
-        let air_north = ground_north - self.wind.north();
+    /// a turn coordinator measures. Without a wind estimate it falls back
+    /// on the track over ground.
+    fn update_turn_rate(
+        &mut self,
+        interval: Option<f64>,
+        ground_east: f64,
+        ground_north: f64,
+        wind: Option<(f64, f64)>,
+    ) {
+        let (wind_east, wind_north) = wind.unwrap_or((0., 0.));
+        let air_east = ground_east - wind_east;
+        let air_north = ground_north - wind_north;
         if air_east.hypot(air_north) < MIN_AIR_SPEED {
             self.previous_heading = None;
             return;
@@ -264,9 +309,99 @@ mod tests {
             ground_speed: Speed::from_kilometers_per_hour(ground_speed),
             pressure_altitude: PressureAltitude::new(Length::from_meters(altitude)),
             gnss_altitude: None,
-            true_air_speed: Speed::from_kilometers_per_hour(air_speed),
+            true_air_speed: Some(Speed::from_kilometers_per_hour(air_speed)),
             position_accuracy: Length::from_meters(15.),
         }
+    }
+
+    /// Circles at 108 km/h through a 10 m/s wind from the north-east,
+    /// with no airspeed sensor, and returns the last state.
+    fn circle_without_a_sensor(seconds: u64) -> Option<AirState> {
+        const TURN_SECONDS: f64 = 20.;
+        let air_speed = Speed::from_kilometers_per_hour(108.).as_meters_per_second();
+        let mut estimator = AirStateEstimator::new(polar());
+        let mut state = None;
+        for second in 0..seconds {
+            let heading = std::f64::consts::TAU * second as f64 / TURN_SECONDS;
+            let east = -6. + air_speed * heading.sin();
+            let north = -8. + air_speed * heading.cos();
+            state = estimator.update(
+                Duration::from_secs(second),
+                &Sample {
+                    track: Angle::from_radians(east.atan2(north)),
+                    ground_speed: Speed::from_meters_per_second(east.hypot(north)),
+                    pressure_altitude: PressureAltitude::new(Length::from_meters(1000.)),
+                    gnss_altitude: None,
+                    true_air_speed: None,
+                    position_accuracy: Length::from_meters(15.),
+                },
+            );
+        }
+        state
+    }
+
+    #[test]
+    fn circling_recovers_the_wind_without_an_airspeed_sensor() {
+        let state = assert_some!(circle_without_a_sensor(60));
+        let wind = assert_some!(state.wind);
+
+        assert_abs_diff_eq!(
+            wind.speed,
+            Speed::from_meters_per_second(10.),
+            epsilon = 0.3
+        );
+        assert_abs_diff_eq!(wind.direction, Angle::from_degrees(36.87), epsilon = 0.03);
+    }
+
+    #[test]
+    fn the_netto_waits_for_an_airspeed() {
+        // Before a circle is complete there is no wind, so no airspeed
+        // can be derived from the ground velocity, so no sink rate.
+        assert_none!(assert_some!(circle_without_a_sensor(10)).netto);
+        assert_some!(assert_some!(circle_without_a_sensor(60)).netto);
+    }
+
+    #[test]
+    fn without_an_airspeed_a_pull_up_reads_as_a_climb() {
+        let mut estimator = AirStateEstimator::new(polar());
+        let mut state = None;
+        // The same manoeuvre as `a_pull_up_trades_airspeed_for_height`,
+        // which the total energy compensation cancels out when an
+        // airspeed is available.
+        for second in 0..60 {
+            let air_speed = (160. - second as f64).max(100.);
+            let speed = Speed::from_kilometers_per_hour(air_speed).as_meters_per_second();
+            let altitude = 1000. + (44.44 * 44.44 - speed * speed) / (2. * GRAVITY);
+            let mut sample = sample(90., air_speed, altitude, air_speed);
+            sample.true_air_speed = None;
+            state = estimator.update(Duration::from_secs(second), &sample);
+        }
+
+        // Decelerating by 1 km/h per second converts airspeed into
+        // height, which now reads as a climb. The smoothing lags by about
+        // four seconds, so the reading is the rate from 105 km/h.
+        let state = assert_some!(state);
+        assert_abs_diff_eq!(
+            state.vertical_speed,
+            Speed::from_meters_per_second(0.82),
+            epsilon = 0.02
+        );
+    }
+
+    #[test]
+    fn losing_the_airspeed_sensor_does_not_show_as_a_climb() {
+        let mut estimator = AirStateEstimator::new(polar());
+        for second in 0..60 {
+            estimator.update(Duration::from_secs(second), &sample(90., 120., 1000., 120.));
+        }
+
+        // The energy term is 141 m at 120 km/h, and dropping it must not
+        // read as 141 m of sink.
+        let mut without = sample(90., 120., 1000., 120.);
+        without.true_air_speed = None;
+        assert_none!(estimator.update(Duration::from_secs(60), &without));
+        let state = assert_some!(estimator.update(Duration::from_secs(61), &without));
+        assert_abs_diff_eq!(state.vertical_speed, Speed::ZERO, epsilon = 0.01);
     }
 
     #[test]
@@ -346,7 +481,7 @@ mod tests {
         let state = assert_some!(state);
         assert_abs_diff_eq!(state.vertical_speed, Speed::ZERO, epsilon = 0.01);
         assert_abs_diff_eq!(
-            state.netto,
+            assert_some!(state.netto),
             Speed::from_meters_per_second(0.603),
             epsilon = 0.005
         );
@@ -368,7 +503,7 @@ mod tests {
         // rate from the 0.571 m/s of the same speed with level wings.
         let state = assert_some!(state);
         assert_abs_diff_eq!(
-            state.netto - state.vertical_speed,
+            assert_some!(state.netto) - state.vertical_speed,
             Speed::from_meters_per_second(0.645),
             epsilon = 0.005
         );

@@ -227,6 +227,11 @@ derived airspeed still recovers about half the gap to an uncompensated vario.
 The netto barely changes (1.12 to 1.27 m/s against 1.16 to 1.35 m/s), because
 its error is dominated by the recorded reference, not by the estimate.
 
+`updraft_air` implements this path. The recorded-flight test measures both,
+and the estimate falls back on its own when a sample carries no airspeed.
+Nothing chooses between them ahead of time, so an airspeed source that
+connects or drops out mid-flight is handled where it happens.
+
 ## Sample rate
 
 Re-running the estimate on decimated recordings shows that 1 Hz is already

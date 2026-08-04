@@ -17,6 +17,7 @@
 //! netto, because the netto is the vertical speed with the glider's own
 //! sink rate added back.
 
+mod circling;
 mod estimator;
 mod height;
 mod wind;

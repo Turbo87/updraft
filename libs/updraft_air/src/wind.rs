@@ -128,23 +128,11 @@ impl WindFilter {
         self.variance_north -= gain_north * projected_north;
     }
 
-    /// The wind component towards east, in m/s.
-    pub fn east(&self) -> f64 {
-        self.east
-    }
-
-    /// The wind component towards north, in m/s.
-    pub fn north(&self) -> f64 {
-        self.north
-    }
-
-    /// The estimate, or `None` while it is still too uncertain to report.
-    pub fn wind(&self) -> Option<Wind> {
+    /// The wind vector in m/s towards east and north, or `None` while the
+    /// estimate is still too uncertain to report.
+    pub fn vector(&self) -> Option<(f64, f64)> {
         let converged = self.variance_east + self.variance_north <= CONVERGED_VARIANCE;
-        converged.then(|| Wind {
-            direction: Angle::from_radians((-self.east).atan2(-self.north)).normalized(),
-            speed: Speed::from_meters_per_second(self.east.hypot(self.north)),
-        })
+        converged.then_some((self.east, self.north))
     }
 }
 
@@ -177,24 +165,15 @@ mod tests {
 
     #[test]
     fn one_circle_recovers_the_wind_vector() {
-        let filter = circle(20, -6., -8.);
+        let (east, north) = assert_some!(circle(20, -6., -8.).vector());
 
-        assert_abs_diff_eq!(filter.east(), -6., epsilon = 0.5);
-        assert_abs_diff_eq!(filter.north(), -8., epsilon = 0.5);
-
-        let wind = assert_some!(filter.wind());
-        assert_abs_diff_eq!(
-            wind.speed,
-            Speed::from_meters_per_second(10.),
-            epsilon = 0.5
-        );
-        // Blowing towards south-west means coming from north-east.
-        assert_abs_diff_eq!(wind.direction, Angle::from_degrees(36.87), epsilon = 0.05);
+        assert_abs_diff_eq!(east, -6., epsilon = 0.5);
+        assert_abs_diff_eq!(north, -8., epsilon = 0.5);
     }
 
     #[test]
     fn an_unconverged_estimate_is_not_reported() {
-        assert_none!(circle(3, -6., -8.).wind());
+        assert_none!(circle(3, -6., -8.).vector());
     }
 
     #[test]
@@ -208,7 +187,6 @@ mod tests {
             Length::from_meters(REFERENCE_ACCURACY),
         );
 
-        assert_eq!(filter.east(), 0.);
-        assert_none!(filter.wind());
+        assert_none!(filter.vector());
     }
 }

@@ -1,4 +1,4 @@
-use crate::{AirspaceFrequency, AirspaceOperatingHours};
+use crate::{AirspaceFrequency, AirspaceOperatingHours, AirspaceTransponderSetting};
 use serde_json::json;
 use time::OffsetDateTime;
 use updraft_geo::Polygon;
@@ -135,6 +135,8 @@ pub struct Airspace {
     pub country_codes: Vec<Box<str>>,
     /// The source-defined radio frequencies.
     pub frequencies: Vec<AirspaceFrequency>,
+    /// The source-defined transponder settings.
+    pub transponder_settings: Vec<AirspaceTransponderSetting>,
     /// The operating hours when the source defines them.
     pub hours_of_operation: Option<AirspaceOperatingHours>,
     /// The activation start instant when the source defines it.

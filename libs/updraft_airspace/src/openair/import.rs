@@ -68,6 +68,7 @@ fn normalize_airspace(
         request_compliance: None,
         country_codes: Vec::new(),
         frequencies,
+        transponder_settings: Vec::new(),
         hours_of_operation: None,
         active_from: None,
         active_until: None,

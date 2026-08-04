@@ -20,4 +20,5 @@ updraft_units = { path = "../updraft_units" }
 ts = ["dep:ts-rs"]
 
 [dev-dependencies]
+approx = "=0.6.0-rc2"
 claims = "=0.8.0"

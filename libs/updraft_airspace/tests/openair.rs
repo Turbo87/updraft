@@ -1,3 +1,4 @@
+use approx::assert_abs_diff_eq;
 use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_ok};
 use std::assert_matches;
 use updraft_airspace::{
@@ -68,11 +69,10 @@ fn assert_linearly_interpolated_radii(
     for (index, vertex) in ring.vertices().iter().enumerate() {
         let fraction = index as f64 / segment_count as f64;
         let expected_radius = start_radius + (end_radius - start_radius) * fraction;
-        assert_le!(
-            (center.distance(*vertex) - expected_radius)
-                .abs()
-                .as_meters(),
-            1e-6
+        assert_abs_diff_eq!(
+            center.distance(*vertex).as_meters(),
+            expected_radius.as_meters(),
+            epsilon = 1e-6
         );
     }
 }
@@ -86,7 +86,7 @@ fn assert_clockwise(center: LatLon, ring: &Polygon) {
         assert_gt!(delta, 0.);
         assert_lt!(delta, 180.);
         let expected = *expected_step.get_or_insert(delta);
-        assert_le!((delta - expected).abs(), 1e-8);
+        assert_abs_diff_eq!(delta, expected, epsilon = 1e-8);
     }
 }
 
@@ -99,7 +99,7 @@ fn assert_counterclockwise(center: LatLon, ring: &Polygon) {
         assert_gt!(delta, 0.);
         assert_lt!(delta, 180.);
         let expected = *expected_step.get_or_insert(delta);
-        assert_le!((delta - expected).abs(), 1e-8);
+        assert_abs_diff_eq!(delta, expected, epsilon = 1e-8);
     }
 }
 
@@ -141,13 +141,17 @@ fn normalizes_circle_within_the_curve_error_bound() {
     assert_ge!(ring.vertices().len(), 3);
     assert_ne!(ring.vertices().first(), ring.vertices().last());
     for vertex in ring.vertices() {
-        assert_le!((center.distance(*vertex) - radius).abs().as_meters(), 1e-6);
+        assert_abs_diff_eq!(
+            center.distance(*vertex).as_meters(),
+            radius.as_meters(),
+            epsilon = 1e-6
+        );
     }
     assert_clockwise(center, &ring);
     let ring_bearings = bearings(center, &ring);
     let step = ring_bearings[1] - ring_bearings[0];
     let closing_step = (ring_bearings[0] - ring_bearings[ring_bearings.len() - 1]).rem_euclid(360.);
-    assert_le!((closing_step - step).abs(), 1e-8);
+    assert_abs_diff_eq!(closing_step, step, epsilon = 1e-8);
     assert_curve_error_bound(
         radius,
         Angle::from_degrees(360.),

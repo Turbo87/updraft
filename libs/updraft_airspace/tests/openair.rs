@@ -1,29 +1,30 @@
-use super::geometry::MAX_AIRSPACE_CURVE_ERROR;
-use crate::{
+use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_ok};
+use std::assert_matches;
+use updraft_airspace::{
     AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
     AirspaceImportError, AirspaceParseError, AirspaceType,
 };
-use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_ok};
-use std::assert_matches;
 use updraft_geo::{LatLon, Polygon};
 use updraft_units::{Angle, Length, MslAltitude, PressureAltitude};
 
-const POLYGON: &[u8] = include_bytes!("../../../../testdata/airspace/polygon.txt");
-const CIRCLE: &[u8] = include_bytes!("../../../../testdata/airspace/circle.txt");
-const DB_CLOCKWISE: &[u8] = include_bytes!("../../../../testdata/airspace/db_clockwise.txt");
+/// The maximum distance between a normalized curve and its chord.
+const MAX_AIRSPACE_CURVE_ERROR: Length = Length::from_meters(1.);
+
+const POLYGON: &[u8] = include_bytes!("../../../testdata/airspace/polygon.txt");
+const CIRCLE: &[u8] = include_bytes!("../../../testdata/airspace/circle.txt");
+const DB_CLOCKWISE: &[u8] = include_bytes!("../../../testdata/airspace/db_clockwise.txt");
 const DB_COUNTERCLOCKWISE: &[u8] =
-    include_bytes!("../../../../testdata/airspace/db_counterclockwise.txt");
-const DA_CLOCKWISE: &[u8] = include_bytes!("../../../../testdata/airspace/da_clockwise.txt");
+    include_bytes!("../../../testdata/airspace/db_counterclockwise.txt");
+const DA_CLOCKWISE: &[u8] = include_bytes!("../../../testdata/airspace/da_clockwise.txt");
 const DA_COUNTERCLOCKWISE: &[u8] =
-    include_bytes!("../../../../testdata/airspace/da_counterclockwise.txt");
-const PARSER_ERROR: &[u8] = include_bytes!("../../../../testdata/airspace/parser_error.txt");
-const CLASS_TYPES: &[u8] = include_bytes!("../../../../testdata/airspace/class_types.txt");
-const ALTITUDES: &[u8] = include_bytes!("../../../../testdata/airspace/altitudes.txt");
+    include_bytes!("../../../testdata/airspace/da_counterclockwise.txt");
+const PARSER_ERROR: &[u8] = include_bytes!("../../../testdata/airspace/parser_error.txt");
+const CLASS_TYPES: &[u8] = include_bytes!("../../../testdata/airspace/class_types.txt");
+const ALTITUDES: &[u8] = include_bytes!("../../../testdata/airspace/altitudes.txt");
 const UNSUPPORTED_ALTITUDE: &[u8] =
-    include_bytes!("../../../../testdata/airspace/unsupported_altitude.txt");
-const LEGACY_NONE: &[u8] = include_bytes!("../../../../testdata/airspace/legacy_none.txt");
-const ONE_BAD_AIRSPACE: &[u8] =
-    include_bytes!("../../../../testdata/airspace/one_bad_airspace.txt");
+    include_bytes!("../../../testdata/airspace/unsupported_altitude.txt");
+const LEGACY_NONE: &[u8] = include_bytes!("../../../testdata/airspace/legacy_none.txt");
+const ONE_BAD_AIRSPACE: &[u8] = include_bytes!("../../../testdata/airspace/one_bad_airspace.txt");
 
 /// Returns the canonical dataset for valid fixture bytes.
 fn parse_fixture(bytes: &[u8]) -> AirspaceDataset {

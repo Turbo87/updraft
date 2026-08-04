@@ -5,7 +5,7 @@ use updraft_geo::{LatLon, Polygon};
 use updraft_units::{Angle, Length};
 
 /// The maximum distance between a normalized curve and its chord.
-pub const MAX_AIRSPACE_CURVE_ERROR: Length = Length::from_meters(1.);
+const MAX_AIRSPACE_CURVE_ERROR: Length = Length::from_meters(1.);
 
 /// Converts one parsed geometry to a canonical airspace polygon.
 ///

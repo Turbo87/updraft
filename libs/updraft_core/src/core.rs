@@ -383,6 +383,7 @@ impl Core {
         Instruments {
             gps: self.gps.published(),
             pressure_altitude: self.pressure_altitude.published(),
+            true_airspeed: self.true_airspeed.published(),
         }
     }
 }

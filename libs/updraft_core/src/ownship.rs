@@ -1,7 +1,7 @@
 use crate::connection::ExternalDeviceId;
 use crate::fix::{FixTime, UtcInstant, UtcTime};
 use crate::time::Timestamp;
-use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments};
+use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments, TrueAirspeedInstruments};
 use std::time::Duration;
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
@@ -101,6 +101,23 @@ impl DomainState<PressureAltitude> {
             }),
             Self::LastKnown(selected) => Some(PressureAltitudeInstruments {
                 meters: selected.value.into_inner().as_meters(),
+                stale: true,
+            }),
+        }
+    }
+}
+
+impl DomainState<Speed> {
+    /// Projects the selected true-airspeed state without its source metadata.
+    pub fn published(self) -> Option<TrueAirspeedInstruments> {
+        match self {
+            Self::Unavailable => None,
+            Self::Current(selected) => Some(TrueAirspeedInstruments {
+                meters_per_second: selected.value.as_meters_per_second(),
+                stale: false,
+            }),
+            Self::LastKnown(selected) => Some(TrueAirspeedInstruments {
+                meters_per_second: selected.value.as_meters_per_second(),
                 stale: true,
             }),
         }

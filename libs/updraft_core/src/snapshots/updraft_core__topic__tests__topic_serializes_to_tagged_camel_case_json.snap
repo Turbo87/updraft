@@ -22,6 +22,10 @@ expression: topic
     "pressureAltitude": {
       "meters": 1000.0,
       "stale": true
+    },
+    "trueAirspeed": {
+      "metersPerSecond": 50.0,
+      "stale": false
     }
   }
 }

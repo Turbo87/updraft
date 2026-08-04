@@ -10,6 +10,7 @@ import MapDebugOverlay from './MapDebugOverlay.svelte';
 const emptyInstruments: Instruments = {
   gps: null,
   pressureAltitude: null,
+  trueAirspeed: null,
 };
 
 const metricUnits: UnitSettings = {
@@ -80,6 +81,7 @@ describe('MapDebugOverlay.svelte', () => {
         stale: false,
       },
       pressureAltitude: { meters: 1_000, stale: false },
+      trueAirspeed: null,
     };
     let view = await render(MapDebugOverlay, {
       map: undefined,
@@ -111,6 +113,7 @@ describe('MapDebugOverlay.svelte', () => {
         stale: true,
       },
       pressureAltitude: { meters: 1_000, stale: true },
+      trueAirspeed: null,
     };
     let units: UnitSettings = {
       altitude: 'ft',

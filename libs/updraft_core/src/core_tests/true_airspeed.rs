@@ -1,6 +1,7 @@
 use super::super::*;
 use super::support::*;
 use crate::ownship::Selected;
+use claims::assert_some;
 use std::assert_matches;
 use updraft_units::Speed;
 
@@ -26,6 +27,9 @@ fn lxwp0_selects_true_airspeed_without_using_other_fields() {
     assert_eq!(selected.value, Speed::from_kilometers_per_hour(180.0));
     assert_eq!(selected.ingested_at, at(0));
     assert_matches!(core.pressure_altitude, DomainState::Unavailable);
+    let published = assert_some!(instruments(&core).true_airspeed);
+    assert_eq!(published.meters_per_second, 50.0);
+    assert!(!published.stale);
 }
 
 #[test]
@@ -51,6 +55,7 @@ fn identical_true_airspeed_refreshes_the_candidate() {
     assert_matches!(core.true_airspeed, DomainState::Current(_));
     core.apply(Tick, at(5_500));
     assert_matches!(core.true_airspeed, DomainState::LastKnown(_));
+    assert!(assert_some!(instruments(&core).true_airspeed).stale);
 }
 
 #[test]

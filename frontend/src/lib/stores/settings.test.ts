@@ -28,6 +28,7 @@ describe('SettingsStore', () => {
       value: {
         gps: null,
         pressureAltitude: null,
+        trueAirspeed: null,
       },
     });
 

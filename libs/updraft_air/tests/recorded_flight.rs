@@ -9,6 +9,12 @@
 //! the direction of turn, which no sink rate can. The recorded values are
 //! therefore a reference to measure against, not a ground truth.
 //!
+//! Only soaring flight is scored. During the launch the engine noise
+//! reaches the pitot and the recorded wind of one flight in this set
+//! passes 30 m/s, so measuring against it there measures the launch, not
+//! the estimate. The estimator is still fed those samples, because it has
+//! to warm up on them as it would in flight.
+//!
 //! The snapshot is a regression guard on estimate quality. A change that
 //! moves it has to say which way the numbers moved, and why.
 
@@ -28,6 +34,16 @@ const RECORDING: &str = include_str!("../../../testdata/weglide_1141558.igc");
 /// not state the flying mass, so the estimate uses the polar's reference
 /// mass and understates the sink rate of a ballasted glider.
 const GLIDER_TYPE: &str = "JS-3-18m";
+
+/// Engine noise level above which the engine counts as running.
+const ENGINE_RUNNING: f64 = 200.;
+
+/// How long the engine has to have been quiet before scoring resumes.
+const ENGINE_SETTLING: Duration = Duration::from_secs(60);
+
+/// How far above the lowest pressure altitude so far the glider counts as
+/// airborne, in metres.
+const AIRBORNE_HEIGHT: f64 = 100.;
 
 #[test]
 fn estimates_match_the_recorded_instrument_values() {
@@ -62,6 +78,9 @@ fn measure(air_speed: AirSpeed) -> String {
     let mut fix_extensions = Vec::new();
     let mut wind_extensions = Vec::new();
     let mut estimated_wind = None;
+    let mut quiet_since = None;
+    let mut lowest = f64::INFINITY;
+    let mut soaring = false;
 
     for line in RECORDING.lines() {
         match Record::parse_line(line) {
@@ -94,10 +113,22 @@ fn measure(air_speed: AirSpeed) -> String {
                     PressureAltitude::new(Length::from_meters(f64::from(record.pressure_alt))),
                 );
 
+                lowest = lowest.min(f64::from(record.pressure_alt));
+                quiet_since = match value("ENL") < ENGINE_RUNNING {
+                    true => quiet_since.or(Some(time)),
+                    false => None,
+                };
+                soaring = quiet_since
+                    .is_some_and(|since| time.saturating_sub(since) >= ENGINE_SETTLING)
+                    && f64::from(record.pressure_alt) >= lowest + AIRBORNE_HEIGHT;
+
                 let Some(state) = estimator.state() else {
                     continue;
                 };
                 estimated_wind = state.wind;
+                if !soaring {
+                    continue;
+                }
 
                 vertical_speed.add(
                     state.vertical_speed.as_meters_per_second(),
@@ -111,7 +142,9 @@ fn measure(air_speed: AirSpeed) -> String {
                 }
             }
             Ok(Record::K(record)) => {
-                let Some(wind) = estimated_wind else { continue };
+                let Some(wind) = estimated_wind.filter(|_| soaring) else {
+                    continue;
+                };
                 let value = |mnemonic| extension(&record, &wind_extensions, mnemonic);
                 wind_speed.add(
                     wind.speed.as_meters_per_second(),

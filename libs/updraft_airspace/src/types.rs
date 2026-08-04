@@ -1,3 +1,4 @@
+use crate::AirspaceOperatingHours;
 use serde_json::json;
 use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
@@ -131,6 +132,8 @@ pub struct Airspace {
     pub request_compliance: Option<bool>,
     /// The unvalidated source country codes associated with this airspace.
     pub country_codes: Vec<Box<str>>,
+    /// The operating hours when the source defines them.
+    pub hours_of_operation: Option<AirspaceOperatingHours>,
     /// Additional source remarks when present.
     pub remarks: Option<Box<str>>,
     /// The lower altitude limit.

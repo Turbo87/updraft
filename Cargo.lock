@@ -4913,6 +4913,7 @@ dependencies = [
  "openair",
  "serde_json",
  "thiserror 2.0.19",
+ "time",
  "updraft_geo",
  "updraft_units",
 ]

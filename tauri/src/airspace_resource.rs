@@ -2,6 +2,7 @@ use crate::driver::DriverHandle;
 use serde_json::{Value, json};
 use tauri::http::{Response, StatusCode, header};
 use updraft_core::{AirspaceClass, AirspaceDataset, GetAirspaceSnapshot};
+use updraft_geo::LatLon;
 
 /// Builds a `GeoJSON` response from the active airspace dataset.
 pub async fn airspace_resource_response(handle: DriverHandle) -> Response<Vec<u8>> {
@@ -34,13 +35,10 @@ fn airspace_geojson(dataset: Option<&AirspaceDataset>) -> Value {
                 .vertices
                 .iter()
                 .chain(airspace.polygon.vertices.first())
-                .map(|point| {
-                    [
-                        point.longitude().as_degrees(),
-                        point.latitude().as_degrees(),
-                    ]
-                })
+                .copied()
+                .map(LatLon::to_geojson_coordinate)
                 .collect::<Vec<_>>();
+
             json!({
                 "type": "Feature",
                 "properties": {

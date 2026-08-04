@@ -54,6 +54,11 @@ impl LatLon {
         self.longitude
     }
 
+    /// Convert to a GeoJSON coordinate array `[longitude, latitude]`.
+    pub const fn to_geojson_coordinate(self) -> [f64; 2] {
+        [self.longitude.as_degrees(), self.latitude.as_degrees()]
+    }
+
     /// The geodesic distance to `other` on the WGS84 ellipsoid.
     pub fn distance(self, other: Self) -> Length {
         let s12: f64 = Geodesic::wgs84().inverse(

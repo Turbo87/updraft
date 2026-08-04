@@ -123,6 +123,8 @@ pub struct Airspace {
     pub on_demand: Option<bool>,
     /// Whether the airspace is activated on request.
     pub on_request: Option<bool>,
+    /// Whether a NOTAM announces when the airspace is active.
+    pub by_notam: Option<bool>,
     /// The lower altitude limit.
     pub lower_limit: AirspaceAltitude,
     /// An optional hard minimum for the lower altitude limit.

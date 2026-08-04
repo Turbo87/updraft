@@ -60,6 +60,7 @@ fn normalize_airspace(
         activity: None,
         on_demand: None,
         on_request: None,
+        by_notam: None,
         lower_limit,
         lower_limit_min: None,
         upper_limit,

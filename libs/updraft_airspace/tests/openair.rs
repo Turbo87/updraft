@@ -306,6 +306,7 @@ fn maps_modern_classes_and_normalized_types() {
     assert_eq!(airspaces[0].type_code, AirspaceType::ControlArea);
     assert_eq!(airspaces[4].type_code, AirspaceType::RadioMandatoryZone);
     assert_eq!(airspaces[6].type_code, AirspaceType::Other);
+    assert_none!(airspaces[17].by_notam);
 }
 
 /// Verifies that legacy classes become complete OpenAIP classifications.

@@ -392,7 +392,10 @@ From that recording:
   reports a high rate that carries no extra information, and a shorter time
   constant would then buy lag, not bandwidth. It shows as noise that falls
   away faster than `1/√n` when the samples are averaged in blocks of `n`, and
-  as correlation between consecutive differences.
+  as the ratio of the power between 2 and 5 Hz to the power between 0.05 and
+  0.1 Hz. See
+  [screening a device that exposes one pressure sensor](#screening-a-device-that-exposes-one-pressure-sensor)
+  for the values that separate a usable source from a filtered one.
 - **The resolution.** A coarse quantisation step sets a floor under the noise.
 
 Ten minutes of a still device answers all four. No flight is needed.
@@ -439,15 +442,18 @@ result first.
 
 #### What the smoothing costs
 
-A driver that smooths also delays. The roll-off of the recording fits a
-first-order low pass with a time constant of 86 ms, 3 dB down at 1.9 Hz: the
-power above 10 Hz is 5% of the power between 1 and 2 Hz. So the driver adds
-about 0.09 s on top of the smoothing stages, and a 0.25 s time constant reads
+A driver that smooths also delays. The power above 10 Hz is 5% of the power
+between 1 and 2 Hz. A first-order low pass with a time constant of 86 ms has
+that ratio, and is 3 dB down at 1.9 Hz. A driver of that shape adds about
+0.09 s on top of the smoothing stages, so a 0.25 s time constant would read
 the air of about 0.59 s ago rather than 0.50 s.
 
-That is an estimate from noise alone. A stationary phone has no height signal
-to lag, so this recording cannot measure the delay directly. Only a moving
-reference can, which is what the flight recording below is for.
+Treat 86 ms as one point in a wide range, not as a measurement. Fitting the
+same first-order shape to the recording gives 143 ms over 1 to 12.5 Hz, 223 ms
+over 0.2 to 10 Hz, and 848 ms over 0.05 to 12.5 Hz. The fitted value follows
+the chosen band, because a stationary phone has no height signal to lag. A
+second stream from the same device measures the delay directly, which the LG
+G7 below supplies.
 
 #### The rate is not what buys the shorter time constant
 
@@ -519,6 +525,53 @@ avoids the 1.4 s public-driver delay and stays below the 0.12 m/s noise budget.
 Its string type is LG-specific, so a portable Android adapter cannot depend on
 it. The public recording looked exceptionally quiet because the driver had
 already removed most of its useful bandwidth.
+
+#### Screening a device that exposes one pressure sensor
+
+The LG G7 exposes an unfiltered stream, so its driver filter is measurable.
+Most devices expose `android.sensor.pressure` alone. A single stream must
+therefore show whether a driver has already removed the bandwidth.
+
+The indicator that the Galaxy S23 section used cannot do that. It compares the
+power above 10 Hz against the power between 1 and 2 Hz. The LG driver cuts at
+0.1 Hz, a decade below the lower anchor, so both LG streams pass 1 to 2 Hz
+almost unchanged. That ratio does not rank the three streams by their measured
+filtering:
+
+| Stream | Measured driver filter | P(>10 Hz) / P(1-2 Hz) | P(2-5 Hz) / P(0.05-0.1 Hz) |
+| --- | --- | --- | --- |
+| Galaxy S23 public | not measurable | 0.0493 | 1.97e-02 |
+| LG G7 unfiltered | none applied | 0.0030 | 6.74e-03 |
+| LG G7 public | 3 dB down at 0.1 Hz | 0.0155 | 5.32e-05 |
+
+The second ratio anchors its lower band at the frequencies a vario uses. It
+puts the three streams in the order that their measured filtering gives. The
+filtered LG public stream falls 370 times below the S23. Use that ratio to
+screen a new device, and read a low value as a reason to reject the source.
+
+Two other single-stream indicators failed:
+
+- **Correlation between consecutive differences.** The LG public stream gives
+  +0.324 and the LG unfiltered stream gives +0.469. A positive value therefore
+  does not prove that the driver filters.
+- **The fitted roll-off.** The fit reaches its upper bound on the LG public
+  stream and moves between 339 and 521 ms on the LG unfiltered stream as the
+  band changes. The LG public noise of 0.000476 m is at its quantisation step
+  of 1/16384 hPa, or 0.00052 m, so quantisation fills its high band instead of
+  sensor output.
+
+#### Noise alone cannot set the time constant
+
+The LG public stream is the quietest source in this investigation, at
+0.000476 m, and also the worst. Its noise budget alone would accept a time
+constant far below 0.25 s, while its reading is already 1.4 s old. A noise
+figure measures what a filter removed, so a driver that removes the signal
+improves the figure.
+
+This is the third source here that hides lag behind a good noise figure. The
+uBLOX LEA-4S reports its altitude one second late. The Galaxy S23 driver
+smooths before the app receives the output. The LG public driver delays by
+1.4 s. A source therefore has to qualify on noise and on bandwidth together.
 
 ### A flight recording checks the rest
 

@@ -3,28 +3,49 @@
 Investigation of "how close can Updraft get to an LXNAV vario, with only GNSS,
 pressure altitude and true airspeed?". The answer is the `updraft_air` crate.
 
-Measured against six recordings from five gliders and two instrument
+Measured against eight recordings from six gliders and two instrument
 generations. Only `testdata/weglide_1141558.igc` is in the repository; the
-others are WeGlide flights 1153141, 1174605, 1179475, 1179605 and 1188417, and
-the numbers taken from them cannot be reproduced from this repository alone.
+others are WeGlide flights 1138165, 1140266, 1153141, 1174605, 1179475,
+1179605 and 1188417, and the numbers taken from them cannot be reproduced from
+this repository alone.
 
 **Headline: vertical speed and wind reach the accuracy of the recorded
-instrument values while circling. Netto does not, because the recorded netto
-itself depends on the direction of turn.**
+instrument values while circling. Netto does not, and how far it misses is set
+by the aircraft, not by the estimate.**
 
-| Flight | Glider | Vertical speed | Netto | Wind speed | Wind direction |
-| --- | --- | --- | --- | --- | --- |
-| 1141558 | JS-3-18m | 0.48 m/s | 1.34 m/s | 1.72 m/s | 16.8° |
-| 1179475 | JS-3-18m | 0.51 m/s | 1.35 m/s | 1.93 m/s | 53.6° |
-| 1188417 | JS-3-18m | 0.71 m/s | 1.17 m/s | 2.52 m/s | 22.9° |
-| 1153141 | ASH 26e | 0.29 m/s | 1.25 m/s | 2.40 m/s | 45.6° |
-| 1179605 | ASH 26e | 0.31 m/s | 1.30 m/s | 2.62 m/s | 73.1° |
-| 1174605 | Duo Discus XLT | 0.53 m/s | — | — | — |
+| Flight | Glider | Registration | Vertical speed | Netto | Wind speed | Wind direction |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1141558 | JS-3-18m | D-KPWZ | 0.47 m/s | 1.27 m/s | 1.73 m/s | 17.0° |
+| 1179475 | JS-3-18m | D-KPWZ | 0.51 m/s | 1.35 m/s | 1.92 m/s | 53.3° |
+| 1188417 | JS-3-18m | OK-3314 | 0.72 m/s | 1.17 m/s | 2.51 m/s | 22.2° |
+| 1153141 | ASH 26e | D-KAFE | 0.26 m/s | 1.18 m/s | 2.33 m/s | 44.2° |
+| 1179605 | ASH 26e | D-KAFE | 0.29 m/s | 1.23 m/s | 2.40 m/s | 72.1° |
+| 1138165 | ASH 25m | HB-2393 | 0.44 m/s | 0.89 m/s | 1.17 m/s | 24.3° |
+| 1140266 | ASH 25m | HB-2393 | 0.51 m/s | 0.84 m/s | 1.15 m/s | 15.3° |
+| 1174605 | Duo Discus XLT | D-KBBQ | 0.52 m/s | — | — | — |
 
-All values are RMS differences against the recorded values. Flight 1174605
-records no netto, and its 64 wind records are too few to score. Wind direction
-scales with wind strength: the flights with a large error are the weak-wind
-days, where the recorded wind itself drops below 2 m/s for hours.
+All values are RMS differences against the recorded values, over soaring
+flight. Flight 1174605 records no netto, and its 64 wind records are too few
+to score. Wind direction scales with wind strength: the flights with a large
+error are the weak-wind days, where the recorded wind itself drops below
+2 m/s for hours.
+
+**The launch is excluded, and has to be.** Five of these gliders have an
+engine. While it runs, the estimate and the recorded values both go wrong: on
+flight 1138165 the first five minutes have the instrument reporting a 32 m/s
+wind and the estimate 22 m/s. Excluding the engine and ground phase, 2% to 7%
+of each recording, moves that flight's netto from 2.23 to 0.89 m/s and its
+wind from 7.22 to 1.71 m/s of vector RMS, and leaves the rest almost
+unchanged. Every hour of both ASH 25m flights after the engine stops scores
+between 1.2 and 2.2 m/s of vector RMS.
+
+Nothing in the live inputs says the engine is running, so the estimate cannot
+exclude it by itself. Rejecting outlying airspeed measurements does not help
+and makes things much worse: the wind state drifts while the measurements are
+rejected, which makes the next ones look like outliers too, and the filter
+never recovers. Vector RMS went from 2.66 to 22.10 m/s on one flight. A
+consumer that knows the engine is running should discard the estimate while
+it is.
 
 The test `libs/updraft_air/tests/recorded_flight.rs` recomputes the 1141558 row
 and keeps it in an Insta snapshot.
@@ -34,14 +55,14 @@ and keeps it in an Insta snapshot.
 An RMS difference is not the error a pilot sees. It squares each difference
 before averaging, so a few large moments set the value while most samples sit
 well below it. For the vertical speed the median difference is 0.16 to 0.35 m/s
-against an RMS of 0.29 to 0.71 m/s, and 90% of samples are inside 0.44 to
+against an RMS of 0.26 to 0.72 m/s, and 90% of samples are inside 0.44 to
 1.13 m/s.
 
 Three further measurements say what the figure is made of.
 
-**Most of it is bandwidth, not error.** The recorded vario differs from its own
-5 second average by 0.31 to 0.56 m/s, which is as large as the whole difference
-against the estimate. That is the instrument's own second-to-second movement.
+**Most of it is bandwidth, not error.** On the first six recordings the
+recorded vario differs from its own 5 second average by 0.31 to 0.56 m/s,
+which is as large as the whole difference against the estimate. That is the instrument's own second-to-second movement.
 A recording of one sample per second cannot contain it, so no estimate built
 from that recording can reproduce it.
 
@@ -60,7 +81,7 @@ signals, by window:
 An error that averages away is a difference in filtering, not a wrong reading.
 An error that stays is a bias.
 
-**The averaged climb rate is accurate.** Over the 123 climbs in the six
+**The averaged climb rate is accurate.** Over the 123 climbs in the first six
 recordings that hold 120 seconds or more of circling, the average climb rate
 differs from the instrument's by 0.06 m/s on average, 0.08 m/s RMS, and never
 by more than 0.29 m/s.
@@ -175,28 +196,51 @@ It is the natural substitute when the source does not.
 The recorded netto minus the recorded vario is the sink rate that the
 instrument applied. Split by the recorded roll angle:
 
-| Flight | Glider | Right turns | Left turns | Wings level |
-| --- | --- | --- | --- | --- |
-| 1141558 | JS-3-18m, D-KPWZ | +1.94 m/s | −0.70 m/s | +0.83 m/s |
-| 1179475 | JS-3-18m, D-KPWZ | +1.71 m/s | −0.59 m/s | +0.99 m/s |
-| 1188417 | JS-3-18m, OK-3314 | +1.39 m/s | +1.09 m/s | +0.90 m/s |
-| 1179605 | ASH 26e, D-KAFE | −0.33 m/s | +2.84 m/s | +0.91 m/s |
-| 1153141 | ASH 26e, D-KAFE | +1.01 m/s | +2.40 m/s | +0.84 m/s |
+| Flight | Glider | Right turns | Left turns | Wings level | Right − left |
+| --- | --- | --- | --- | --- | --- |
+| 1140266 | ASH 25m, HB-2393 | +0.98 m/s | +0.93 m/s | +0.67 m/s | +0.05 |
+| 1138165 | ASH 25m, HB-2393 | +1.30 m/s | +1.38 m/s | +0.74 m/s | −0.08 |
+| 1188417 | JS-3-18m, OK-3314 | +1.39 m/s | +1.09 m/s | +0.90 m/s | +0.30 |
+| 1153141 | ASH 26e, D-KAFE | +1.01 m/s | +2.40 m/s | +0.84 m/s | −1.39 |
+| 1179475 | JS-3-18m, D-KPWZ | +1.71 m/s | −0.59 m/s | +0.99 m/s | +2.30 |
+| 1141558 | JS-3-18m, D-KPWZ | +1.94 m/s | −0.70 m/s | +0.83 m/s | +2.64 |
+| 1179605 | ASH 26e, D-KAFE | −0.33 m/s | +2.84 m/s | +0.91 m/s | −3.17 |
 
 Turns are samples with 25° to 70° of bank. A sink rate can never be negative,
 and it cannot depend on which way the glider turns.
 
-The asymmetry follows the **aircraft**, not the firmware. Both D-KPWZ flights
-read high to the right, both D-KAFE flights read high to the left, and OK-3314
-is nearly symmetric even though all three fly the same LX9070 firmware
-generation. That points at the pressure-port installation or a steady sideslip,
-not at the netto formula.
+The asymmetry follows the **aircraft**, not the firmware or the instrument.
+Every aircraft flown twice repeats its own asymmetry: HB-2393 is symmetric on
+both days, D-KPWZ reads high to the right on both, D-KAFE high to the left on
+both. HB-2393 carries an LX9000 and the others an LX9070, and the two clean
+aircraft sit either side of that divide, so the instrument model does not
+explain it. That points at the pressure-port installation or a steady sideslip.
+
+**The netto difference ranks with the asymmetry.** Ordering the seven flights
+by how asymmetric the instrument's own netto is puts them in almost the same
+order as the difference against the estimate:
+
+| Aircraft | Flight | Asymmetry | Netto RMS |
+| --- | --- | --- | --- |
+| HB-2393 | 1140266 | 0.05 | 0.84 m/s |
+| HB-2393 | 1138165 | 0.08 | 0.89 m/s |
+| OK-3314 | 1188417 | 0.30 | 1.17 m/s |
+| D-KAFE | 1153141 | 1.39 | 1.18 m/s |
+| D-KAFE | 1179605 | 3.17 | 1.23 m/s |
+| D-KPWZ | 1141558 | 2.64 | 1.27 m/s |
+| D-KPWZ | 1179475 | 2.30 | 1.35 m/s |
+
+Spearman rank correlation 0.86, Pearson 0.80. The estimate agrees best with
+the aircraft whose recorded netto is self-consistent, and worst with the
+aircraft whose recorded netto contradicts itself between left and right
+turns. That is what a reference problem looks like, not a model problem.
 
 Wings level, where the artifact is absent, the recorded sink rate lands between
-0.83 and 0.99 m/s on every flight, against a modelled 0.89 m/s. On flight
-1141558, speed bins of 10 km/h agree within ±0.22 m/s with no trend against
-speed. The netto model is therefore sound, and the 1.2 to 1.4 m/s RMS in the
-first table measures the instrument more than the estimate.
+0.67 and 0.99 m/s on every flight, which is the range the polars of these six
+gliders predict. On flight 1141558, speed bins of 10 km/h agree within
+±0.22 m/s with no trend against speed. The netto model is therefore sound, and
+the 0.8 to 1.4 m/s RMS in the first table measures the instrument more than the
+estimate.
 
 Scoring the netto only where the artifact is absent shows what the estimate is
 worth: 0.88 to 1.18 m/s RMS wings level, with a bias of +0.05 to +0.08 m/s,
@@ -521,12 +565,15 @@ changes from the other, and check that they agree before combining them.
   instrument does.
 - **Airspeed calibration.** Fitting circles in velocity space with a free
   radius gives the airspeed the flight path implies. Against the recorded TAS,
-  the median ratio is 0.993 to 1.002 on three aircraft but 1.033 to 1.040 on
-  the other two. A 4% airspeed error moves the wind along the heading by about
-  1.2 m/s, and the two aircraft with the offset are the two with the worst wind
+  the median ratio splits the fleet: 0.993 to 1.013 on D-KPWZ, D-KBBQ and
+  HB-2393, and 1.022 to 1.040 on OK-3314, D-KAFE and the second HB-2393
+  flight. A 4% airspeed error moves the wind along the heading by about
+  1.2 m/s, and the aircraft with the largest offset have the worst wind
   results. Estimating that scale as a third filter state diverges, because in
   straight flight it is degenerate with the along-heading wind; estimating it
   from complete circles only should work, and is the obvious next step.
+- **The engine.** The estimate is unusable while an engine runs, and cannot
+  tell that it is. See the headline section.
 - **The recorded wind is noisy.** On flight 1141558 it deviates from its own
   60 s mean by 1.65 m/s. That noise also inflates the recorded wind *speed*
   relative to the magnitude of the mean wind vector, which accounts for much of
@@ -536,5 +583,5 @@ changes from the other, and check that they agree before combining them.
   cost of about 1% of sink rate per 3 K.
 - **Flying mass.** No recording states it, so the estimate uses the polar's
   reference mass. A ballasted glider sinks faster than that.
-- **One instrument manufacturer.** All six recordings come from LXNAV
-  instruments, and five from the same firmware generation.
+- **One instrument manufacturer.** All eight recordings come from LXNAV
+  instruments, six of them from the same firmware generation.

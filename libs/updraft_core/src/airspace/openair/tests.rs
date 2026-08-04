@@ -1,11 +1,11 @@
 use super::geometry::MAX_AIRSPACE_CURVE_ERROR;
 use crate::airspace::{
     AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
-    AirspaceImportError, AirspaceParseError, AirspacePolygon, AirspaceType,
+    AirspaceImportError, AirspaceParseError, AirspaceType,
 };
 use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_ok};
 use std::assert_matches;
-use updraft_geo::LatLon;
+use updraft_geo::{LatLon, Polygon};
 use updraft_units::{Angle, Length, MslAltitude, PressureAltitude};
 
 const POLYGON: &[u8] = include_bytes!("../../../tests/fixtures/airspace/polygon.txt");
@@ -31,13 +31,13 @@ fn parse_fixture(bytes: &[u8]) -> AirspaceDataset {
 }
 
 /// Returns the only polygon in a valid one-airspace fixture.
-fn only_polygon(bytes: &[u8]) -> AirspacePolygon {
+fn only_polygon(bytes: &[u8]) -> Polygon {
     parse_fixture(bytes).airspaces()[0].polygon.clone()
 }
 
 /// Returns the vertex bearings from the specified center, in degrees.
-fn bearings(center: LatLon, ring: &AirspacePolygon) -> Vec<f64> {
-    ring.vertices
+fn bearings(center: LatLon, ring: &Polygon) -> Vec<f64> {
+    ring.vertices()
         .iter()
         .map(|vertex| center.bearing(*vertex).as_degrees())
         .collect()
@@ -59,12 +59,12 @@ fn assert_curve_error_bound(
 /// Checks that each vertex radius matches linear interpolation within `1e-6` metres.
 fn assert_linearly_interpolated_radii(
     center: LatLon,
-    ring: &AirspacePolygon,
+    ring: &Polygon,
     start_radius: Length,
     end_radius: Length,
 ) {
-    let segment_count = ring.vertices.len() - 1;
-    for (index, vertex) in ring.vertices.iter().enumerate() {
+    let segment_count = ring.vertices().len() - 1;
+    for (index, vertex) in ring.vertices().iter().enumerate() {
         let fraction = index as f64 / segment_count as f64;
         let expected_radius = start_radius + (end_radius - start_radius) * fraction;
         assert_le!(
@@ -77,7 +77,7 @@ fn assert_linearly_interpolated_radii(
 }
 
 /// Checks that vertex bearings use equal clockwise steps of less than 180 degrees.
-fn assert_clockwise(center: LatLon, ring: &AirspacePolygon) {
+fn assert_clockwise(center: LatLon, ring: &Polygon) {
     let bearings = bearings(center, ring);
     let mut expected_step = None;
     for pair in bearings.windows(2) {
@@ -90,7 +90,7 @@ fn assert_clockwise(center: LatLon, ring: &AirspacePolygon) {
 }
 
 /// Checks that vertex bearings use equal counterclockwise steps of less than 180 degrees.
-fn assert_counterclockwise(center: LatLon, ring: &AirspacePolygon) {
+fn assert_counterclockwise(center: LatLon, ring: &Polygon) {
     let bearings = bearings(center, ring);
     let mut expected_step = None;
     for pair in bearings.windows(2) {
@@ -119,7 +119,7 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(5000.)))
     );
     assert_eq!(
-        airspace.polygon.vertices,
+        airspace.polygon.vertices(),
         &[
             LatLon::from_degrees(50., 10.),
             LatLon::from_degrees(50., 10. + 1. / 60.),
@@ -137,9 +137,9 @@ fn normalizes_circle_within_the_curve_error_bound() {
     let radius = Length::from_nautical_miles(2.);
     let ring = only_polygon(CIRCLE);
 
-    assert_ge!(ring.vertices.len(), 3);
-    assert_ne!(ring.vertices.first(), ring.vertices.last());
-    for vertex in &ring.vertices {
+    assert_ge!(ring.vertices().len(), 3);
+    assert_ne!(ring.vertices().first(), ring.vertices().last());
+    for vertex in ring.vertices() {
         assert_le!((center.distance(*vertex) - radius).abs().as_meters(), 1e-6);
     }
     assert_clockwise(center, &ring);
@@ -150,7 +150,7 @@ fn normalizes_circle_within_the_curve_error_bound() {
     assert_curve_error_bound(
         radius,
         Angle::from_degrees(360.),
-        ring.vertices.len() + 1,
+        ring.vertices().len() + 1,
         MAX_AIRSPACE_CURVE_ERROR,
     );
 }
@@ -160,7 +160,7 @@ fn normalizes_circle_within_the_curve_error_bound() {
 fn uses_at_least_three_vertices_for_a_small_circle() {
     let bytes = b"AC D\nAL GND\nAH FL100\nV X=50:00:00 N 010:00:00 E\nDC 0.0001\n";
 
-    assert_eq!(only_polygon(bytes).vertices.len(), 3);
+    assert_eq!(only_polygon(bytes).vertices().len(), 3);
 }
 
 /// Verifies that `DB` conversion preserves endpoints and direction.
@@ -179,26 +179,26 @@ fn normalizes_db_arcs_with_interpolated_radii_exact_endpoints_and_direction() {
     };
 
     let clockwise = only_polygon(DB_CLOCKWISE);
-    assert_eq!(clockwise.vertices.first(), Some(&start));
-    assert_eq!(clockwise.vertices.last(), Some(&end));
+    assert_eq!(clockwise.vertices().first(), Some(&start));
+    assert_eq!(clockwise.vertices().last(), Some(&end));
     assert_clockwise(center, &clockwise);
     assert_linearly_interpolated_radii(center, &clockwise, start_radius, end_radius);
     assert_curve_error_bound(
         maximum_radius,
         Angle::from_degrees(180.),
-        clockwise.vertices.len(),
+        clockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 
     let counterclockwise = only_polygon(DB_COUNTERCLOCKWISE);
-    assert_eq!(counterclockwise.vertices.first(), Some(&start));
-    assert_eq!(counterclockwise.vertices.last(), Some(&end));
+    assert_eq!(counterclockwise.vertices().first(), Some(&start));
+    assert_eq!(counterclockwise.vertices().last(), Some(&end));
     assert_counterclockwise(center, &counterclockwise);
     assert_linearly_interpolated_radii(center, &counterclockwise, start_radius, end_radius);
     assert_curve_error_bound(
         maximum_radius,
         Angle::from_degrees(180.),
-        counterclockwise.vertices.len(),
+        counterclockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 }
@@ -212,8 +212,8 @@ fn normalizes_db_arcs_with_large_radius_differences() {
     let end = LatLon::from_degrees(50., 10. + 1. / 60.);
     let ring = only_polygon(bytes);
 
-    assert_eq!(ring.vertices.first(), Some(&start));
-    assert_eq!(ring.vertices.last(), Some(&end));
+    assert_eq!(ring.vertices().first(), Some(&start));
+    assert_eq!(ring.vertices().last(), Some(&end));
     assert_linearly_interpolated_radii(center, &ring, center.distance(start), center.distance(end));
 }
 
@@ -226,24 +226,24 @@ fn normalizes_da_arcs_with_exact_endpoints_and_direction() {
     let end = center.destination(Angle::from_degrees(140.), radius);
 
     let clockwise = only_polygon(DA_CLOCKWISE);
-    assert_eq!(clockwise.vertices.first(), Some(&start));
-    assert_eq!(clockwise.vertices.last(), Some(&end));
+    assert_eq!(clockwise.vertices().first(), Some(&start));
+    assert_eq!(clockwise.vertices().last(), Some(&end));
     assert_clockwise(center, &clockwise);
     assert_curve_error_bound(
         radius,
         Angle::from_degrees(120.),
-        clockwise.vertices.len(),
+        clockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 
     let counterclockwise = only_polygon(DA_COUNTERCLOCKWISE);
-    assert_eq!(counterclockwise.vertices.first(), Some(&start));
-    assert_eq!(counterclockwise.vertices.last(), Some(&end));
+    assert_eq!(counterclockwise.vertices().first(), Some(&start));
+    assert_eq!(counterclockwise.vertices().last(), Some(&end));
     assert_counterclockwise(center, &counterclockwise);
     assert_curve_error_bound(
         radius,
         Angle::from_degrees(240.),
-        counterclockwise.vertices.len(),
+        counterclockwise.vertices().len(),
         MAX_AIRSPACE_CURVE_ERROR,
     );
 }

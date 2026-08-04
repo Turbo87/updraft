@@ -5,8 +5,7 @@ use std::sync::Arc;
 
 pub use types::{
     Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
-    AirspaceImportError, AirspaceLoadError, AirspaceParseError, AirspacePolygon, AirspaceStatus,
-    AirspaceType,
+    AirspaceImportError, AirspaceLoadError, AirspaceParseError, AirspaceStatus, AirspaceType,
 };
 
 /// Owns one valid core airspace state and its process-local generation.

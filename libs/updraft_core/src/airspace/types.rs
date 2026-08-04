@@ -1,6 +1,6 @@
 use serde::Serialize;
 use serde_json::json;
-use updraft_geo::LatLon;
+use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
 
 /// A safe machine-readable failure from loading a stored airspace source.
@@ -212,13 +212,6 @@ pub enum AirspaceAltitude {
     Unlimited,
 }
 
-/// One canonical airspace exterior ring without a repeated closing vertex.
-#[derive(Clone, Debug, PartialEq)]
-pub struct AirspacePolygon {
-    /// The polygon vertices in source traversal order.
-    pub vertices: Vec<LatLon>,
-}
-
 /// One canonical polygon-only airspace.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airspace {
@@ -235,21 +228,12 @@ pub struct Airspace {
     /// The upper altitude limit.
     pub upper_bound: AirspaceAltitude,
     /// The canonical polygon exterior ring.
-    pub polygon: AirspacePolygon,
+    pub polygon: Polygon,
 }
 
 impl Airspace {
     /// Converts this airspace to a GeoJSON feature.
     pub fn to_geojson(&self) -> serde_json::Value {
-        let vertices = &self.polygon.vertices;
-
-        let coordinates = vertices
-            .iter()
-            .chain(vertices.first())
-            .copied()
-            .map(LatLon::to_geojson_coordinate)
-            .collect::<Vec<_>>();
-
         json!({
             "type": "Feature",
             "properties": {
@@ -259,7 +243,7 @@ impl Airspace {
             },
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [coordinates],
+                "coordinates": [self.polygon.to_geojson_coordinates()],
             },
         })
     }

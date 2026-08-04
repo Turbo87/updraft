@@ -22,8 +22,8 @@ mod traffic;
 
 pub use airspace::{
     Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
-    AirspaceImportError, AirspaceLoadError, AirspaceParseError, AirspacePolygon, AirspaceState,
-    AirspaceStatus, AirspaceType,
+    AirspaceImportError, AirspaceLoadError, AirspaceParseError, AirspaceState, AirspaceStatus,
+    AirspaceType,
 };
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,

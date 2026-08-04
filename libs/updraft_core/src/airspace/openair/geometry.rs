@@ -1,7 +1,7 @@
-use crate::airspace::{AirspaceGeometryError, AirspacePolygon};
+use crate::airspace::AirspaceGeometryError;
 use ::openair::{Coord, Direction, Geometry, PolygonSegment};
 use std::f64::consts::TAU;
-use updraft_geo::LatLon;
+use updraft_geo::{LatLon, Polygon};
 use updraft_units::{Angle, Length};
 
 /// The maximum distance between a normalized curve and its chord.
@@ -12,8 +12,8 @@ pub const MAX_AIRSPACE_CURVE_ERROR: Length = Length::from_meters(1.);
 /// # Errors
 ///
 /// Returns an error if a coordinate, radius, or polygon ring is invalid.
-pub fn normalize_geometry(geometry: Geometry) -> Result<AirspacePolygon, AirspaceGeometryError> {
-    let mut vertices = match geometry {
+pub fn normalize_geometry(geometry: Geometry) -> Result<Polygon, AirspaceGeometryError> {
+    let vertices = match geometry {
         Geometry::Circle {
             centerpoint,
             radius,
@@ -21,9 +21,6 @@ pub fn normalize_geometry(geometry: Geometry) -> Result<AirspacePolygon, Airspac
         Geometry::Polygon { segments } => normalize_polygon_segments(segments)?,
     };
 
-    while vertices.len() > 1 && vertices.first() == vertices.last() {
-        vertices.pop();
-    }
     let mut distinct = Vec::with_capacity(3);
     for vertex in &vertices {
         if !distinct.contains(vertex) {
@@ -36,7 +33,8 @@ pub fn normalize_geometry(geometry: Geometry) -> Result<AirspacePolygon, Airspac
     if distinct.len() < 3 {
         return Err(AirspaceGeometryError::InvalidRing);
     }
-    Ok(AirspacePolygon { vertices })
+
+    Ok(Polygon::from_vertices(vertices))
 }
 
 /// Converts one parsed circle to polygon vertices within the curve-error limit.

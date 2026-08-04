@@ -28,6 +28,8 @@ mod bounding_box;
 #[cfg(feature = "geo-types")]
 mod convert;
 mod lat_lon;
+mod polygon;
 
 pub use bounding_box::BoundingBox;
 pub use lat_lon::LatLon;
+pub use polygon::Polygon;

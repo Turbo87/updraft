@@ -3,11 +3,12 @@
 Investigation of "how close can Updraft get to an LXNAV vario, with only GNSS,
 pressure altitude and true airspeed?". The answer is the `updraft_air` crate.
 
-Measured against eleven recordings from six aircraft, five glider types and
-four LXNAV instrument models. Only `testdata/weglide_1141558.igc` is in the
-repository; the others are WeGlide flights 1138165, 1140266, 1153141, 1168132,
-1173566, 1174605, 1179475, 1179605, 1184098 and 1188417, and the numbers taken
-from them cannot be reproduced from this repository alone.
+Measured against fourteen recordings from seven aircraft, six glider types and
+five LXNAV instrument models. Only `testdata/weglide_1141558.igc` is in the
+repository; the others are WeGlide flights 1113539, 1120273, 1131653, 1138165,
+1140266, 1153141, 1168132, 1173566, 1174605, 1179475, 1179605, 1184098 and
+1188417, and the numbers taken from them cannot be reproduced from this
+repository alone.
 
 **Headline: vertical speed and wind reach the accuracy of the recorded
 instrument values while circling. Netto does not, and how far it misses is set
@@ -25,6 +26,9 @@ by the aircraft, not by the estimate.**
 | 1168132 | ASW 27B | D-6897 | S100 | 0.92 m/s | 0.88 m/s | 1.23 m/s | 28.0° |
 | 1173566 | ASW 27B | D-6897 | S100 | 0.92 m/s | 1.01 m/s | 1.43 m/s | 27.9° |
 | 1184098 | ASW 27B | D-6897 | S100 | 0.85 m/s | 0.90 m/s | 2.00 m/s | 53.6° |
+| 1113539 | LS 1 | D-9486 | S10 | 0.48 m/s | 0.86 m/s | 1.32 m/s | 20.9° |
+| 1120273 | LS 1 | D-9486 | S10 | 0.53 m/s | 0.93 m/s | 1.57 m/s | 13.5° |
+| 1131653 | LS 1 | D-9486 | S10 | 0.50 m/s | 0.89 m/s | 1.43 m/s | 57.7° |
 | 1174605 | Duo Discus XLT | D-KBBQ | LX9000F | 0.52 m/s | — | — | — |
 
 All values are RMS differences against the recorded values, over soaring
@@ -40,8 +44,9 @@ nothing below is explained by its presence or absence.
 0.92 m/s is the worst vertical speed in the table, and their averaged climb
 rate is the best: 0.02 to 0.05 m/s over a thermal. The S100's own vario moves
 twice as fast as the others, 0.68 to 0.72 m/s away from its own 5 second
-average against 0.20 to 0.41 m/s elsewhere. That movement is real, and a
-recording of one sample per second cannot hold it. See
+average against 0.20 to 0.41 m/s everywhere else, the S10 included. That is
+the instrument, not the family: a fast S100 needle and a damped S10 needle
+have to be matched by the same estimate. See
 [Reading the error figures](#reading-the-error-figures).
 
 **The launch is excluded, and has to be.** Five of these gliders have an
@@ -93,6 +98,9 @@ signals, by window:
 | 1141558 | LX9070 | 0.46 | 0.35 | 0.19 | 0.13 | 0.09 | 0.034 |
 | 1179605 | LX9070 | 0.29 | 0.20 | 0.11 | 0.08 | 0.07 | 0.083 |
 | 1153141 | LX9070 | 0.25 | 0.17 | 0.09 | 0.06 | 0.05 | 0.038 |
+| 1120273 | S10 | 0.53 | 0.46 | 0.34 | 0.24 | 0.16 | 0.068 |
+| 1131653 | S10 | 0.50 | 0.42 | 0.31 | 0.22 | 0.15 | 0.045 |
+| 1113539 | S10 | 0.48 | 0.41 | 0.31 | 0.23 | 0.15 | 0.060 |
 | 1140266 | LX9000 | 0.51 | 0.44 | 0.26 | 0.16 | 0.10 | 0.064 |
 | 1138165 | LX9000 | 0.44 | 0.37 | 0.22 | 0.14 | 0.09 | 0.036 |
 | 1174605 | LX9000F | 0.51 | 0.32 | 0.14 | 0.08 | 0.06 | 0.011 |
@@ -102,7 +110,7 @@ An error that stays is a bias. The last column is the difference in the average
 climb rate over a whole thermal, which is the number a pilot decides on.
 
 The S100 rows make the point on their own. They start worst and end best. Over
-the 266 climbs in all eleven recordings that hold 120 seconds or more of
+the 350 climbs in all fourteen recordings that hold 120 seconds or more of
 circling, the averaged climb rate differs from the instrument's by 0.05 m/s on
 average, 0.07 m/s RMS, and never by more than 0.29 m/s.
 
@@ -116,7 +124,7 @@ averaged netto differs by 0.13 to 0.18 m/s.
 
 The `I` record defines FXA, ENL, TAS, GSP, TRT, VAT, OAT and ACZ everywhere,
 plus NET, AOR and AOP on everything except the LX9000F, SIU on everything
-except the S100, and AOA on the LX9070 only. The `J` record
+except the S10 and S100, and AOA on the LX9070 only. The `J` record
 defines WDI and either WSP or WVE, depending on the firmware; both hold the
 same quantity. LXNAV writes speeds as hundredths of a kilometre per hour,
 vertical speeds as hundredths of a metre per second, accelerations as
@@ -221,6 +229,9 @@ instrument applied. Split by the recorded roll angle:
 | --- | --- | --- | --- | --- | --- | --- |
 | 1140266 | ASH 25m, HB-2393 | LX9000 | +0.98 m/s | +0.93 m/s | +0.67 m/s | +0.05 |
 | 1138165 | ASH 25m, HB-2393 | LX9000 | +1.30 m/s | +1.38 m/s | +0.74 m/s | −0.08 |
+| 1120273 | LS 1, D-9486 | S10 | +1.06 m/s | +1.18 m/s | +1.24 m/s | −0.12 |
+| 1113539 | LS 1, D-9486 | S10 | +1.04 m/s | +1.17 m/s | +1.17 m/s | −0.13 |
+| 1131653 | LS 1, D-9486 | S10 | +1.17 m/s | +1.38 m/s | +1.35 m/s | −0.21 |
 | 1188417 | JS-3-18m, OK-3314 | LX9070 | +1.39 m/s | +1.09 m/s | +0.90 m/s | +0.30 |
 | 1184098 | ASW 27B, D-6897 | S100 | +1.53 m/s | +1.10 m/s | +1.05 m/s | +0.43 |
 | 1168132 | ASW 27B, D-6897 | S100 | +1.54 m/s | +0.78 m/s | +0.98 m/s | +0.76 |
@@ -235,34 +246,32 @@ and it cannot depend on which way the glider turns.
 
 The asymmetry follows the **aircraft**, not the firmware or the instrument.
 Every aircraft flown more than once keeps the sign of its own asymmetry:
-HB-2393 is symmetric on both days, D-KPWZ reads high to the right on both,
-D-KAFE high to the left on both, and D-6897 high to the right on all three.
-Three instrument models are represented, and both the cleanest and one of the
-worst aircraft carry the same LX9070 generation, so the instrument does not
-explain it. That points at the pressure-port installation or a steady sideslip.
+HB-2393 is symmetric on both days, D-9486 slightly high to the left on all
+three, D-6897 high to the right on all three, D-KPWZ high to the right on
+both, D-KAFE high to the left on both. Four instrument models are
+represented, and both the cleanest and the worst aircraft carry the same
+LX9070 generation, so the instrument does not explain it. That points at the
+pressure-port installation or a steady sideslip.
 
-**The netto difference ranks with the asymmetry.** Ordering the ten flights by
-how asymmetric the instrument's own netto is puts them in almost the same
-order as the difference against the estimate:
+**The netto difference ranks with the asymmetry.** Averaged per aircraft, how
+asymmetric the instrument's own netto is orders them almost exactly as the
+difference against the estimate:
 
-| Aircraft | Flight | Asymmetry | Netto RMS |
-| --- | --- | --- | --- |
-| HB-2393 | 1140266 | 0.05 | 0.84 m/s |
-| HB-2393 | 1138165 | 0.08 | 0.89 m/s |
-| OK-3314 | 1188417 | 0.30 | 1.17 m/s |
-| D-6897 | 1184098 | 0.43 | 0.90 m/s |
-| D-6897 | 1168132 | 0.76 | 0.88 m/s |
-| D-6897 | 1173566 | 1.28 | 1.01 m/s |
-| D-KAFE | 1153141 | 1.39 | 1.18 m/s |
-| D-KPWZ | 1179475 | 2.30 | 1.35 m/s |
-| D-KPWZ | 1141558 | 2.64 | 1.27 m/s |
-| D-KAFE | 1179605 | 3.17 | 1.23 m/s |
+| Aircraft | Glider | Flights | Asymmetry | Netto RMS |
+| --- | --- | --- | --- | --- |
+| HB-2393 | ASH 25m | 2 | 0.07 | 0.86 m/s |
+| D-9486 | LS 1 | 3 | 0.15 | 0.89 m/s |
+| OK-3314 | JS-3-18m | 1 | 0.30 | 1.17 m/s |
+| D-6897 | ASW 27B | 3 | 0.82 | 0.93 m/s |
+| D-KAFE | ASH 26e | 2 | 2.28 | 1.21 m/s |
+| D-KPWZ | JS-3-18m | 2 | 2.47 | 1.31 m/s |
 
-Spearman rank correlation 0.83 over the flights, and 0.90 over the five
-aircraft. The estimate agrees best with the aircraft whose recorded netto is
-self-consistent, and worst with the aircraft whose recorded netto contradicts
-itself between left and right turns. That is what a reference problem looks
-like, not a model problem.
+Spearman rank correlation 0.94 over the six aircraft, and 0.81 over the
+thirteen flights. The estimate agrees best with the aircraft whose recorded
+netto is self-consistent, and worst with the aircraft whose recorded netto
+contradicts itself between left and right turns. That is what a reference
+problem looks like, not a model problem. D-6897 is the one that does not fit:
+a middling asymmetry with a good netto difference.
 
 Wings level, where the artifact is absent, the recorded sink rate lands between
 0.67 and 1.08 m/s on every flight, which is the range the polars of these five
@@ -594,10 +603,11 @@ changes from the other, and check that they agree before combining them.
   instrument does.
 - **Airspeed calibration.** Fitting circles in velocity space with a free
   radius gives the airspeed the flight path implies. Against the recorded TAS,
-  the median ratio runs from 0.993 to 1.047 across the eleven flights, and it
+  the median ratio runs from 0.993 to 1.047 across the fourteen flights, and it
   moves between flights of the same aircraft: 1.013 and 1.022 on HB-2393,
-  1.023 to 1.047 on D-6897. So part of it is not a fixed installation error. A
-  4% airspeed error moves the wind along the heading by about 1.2 m/s. Estimating that scale as a third filter state diverges, because in
+  1.023 to 1.047 on D-6897, and 1.003 to 1.032 on D-9486. So part of it is not
+  a fixed installation error. A 4% airspeed error moves the wind along the
+  heading by about 1.2 m/s. Estimating that scale as a third filter state diverges, because in
   straight flight it is degenerate with the along-heading wind; estimating it
   from complete circles only should work, and is the obvious next step.
 - **The engine.** The estimate is unusable while an engine runs, and cannot
@@ -611,5 +621,5 @@ changes from the other, and check that they agree before combining them.
   cost of about 1% of sink rate per 3 K.
 - **Flying mass.** No recording states it, so the estimate uses the polar's
   reference mass. A ballasted glider sinks faster than that.
-- **One instrument manufacturer.** All eleven recordings come from LXNAV
+- **One instrument manufacturer.** All fourteen recordings come from LXNAV
   instruments, and every one has an LX HAWK inertial platform.

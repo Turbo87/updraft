@@ -4904,6 +4904,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
 
 [[package]]
+name = "updraft_air"
+version = "0.0.0"
+dependencies = [
+ "approx 0.6.0-rc2",
+ "claims",
+ "igc",
+ "insta",
+ "updraft_polar",
+ "updraft_units",
+]
+
+[[package]]
 name = "updraft_core"
 version = "0.0.0"
 dependencies = [

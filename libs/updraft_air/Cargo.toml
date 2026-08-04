@@ -1,0 +1,19 @@
+[package]
+name = "updraft_air"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[lints]
+workspace = true
+
+[dependencies]
+updraft_polar = { path = "../updraft_polar" }
+updraft_units = { path = "../updraft_units" }
+
+[dev-dependencies]
+approx = "=0.6.0-rc2"
+claims = "=0.8.0"
+igc = "=0.3.0"
+insta = "=1.48.0"
+updraft_units = { path = "../updraft_units", features = ["approx"] }

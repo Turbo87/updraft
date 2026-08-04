@@ -1,0 +1,9 @@
+---
+source: libs/updraft_air/tests/recorded_flight.rs
+expression: report
+---
+quantity           unit        n    rms    mae   bias   corr
+vertical speed     m/s    18811   0.53   0.40  -0.01   0.96
+netto              m/s    18811   1.35   1.01  -0.14   0.72
+wind speed         m/s    13357   1.72   1.31  -0.25   0.53
+wind direction     deg    13357  16.83  12.64  -1.12      -

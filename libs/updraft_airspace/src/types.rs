@@ -201,8 +201,8 @@ impl Airspace {
     pub fn to_geojson(&self) -> serde_json::Value {
         json!({
             "type": "Feature",
+            "id": self.id.0,
             "properties": {
-                "id": self.id.0,
                 "class": self.class.as_ref().map(AirspaceClass::as_str),
                 "type": self.type_code.as_ref().map(AirspaceType::as_str),
             },

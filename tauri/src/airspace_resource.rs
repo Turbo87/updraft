@@ -98,9 +98,9 @@ mod tests {
                 ],
                 "type": "Polygon"
               },
+              "id": 0,
               "properties": {
                 "class": "D",
-                "id": 0,
                 "type": null
               },
               "type": "Feature"
@@ -144,7 +144,6 @@ mod tests {
         assert_eq!(
             properties,
             &json!({
-                "id": 0,
                 "class": null,
                 "type": "R",
             })

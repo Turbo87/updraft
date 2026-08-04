@@ -64,6 +64,7 @@ fn normalize_airspace(
         special_agreement: None,
         request_compliance: None,
         country_codes: Vec::new(),
+        frequencies: Vec::new(),
         hours_of_operation: None,
         active_from: None,
         active_until: None,

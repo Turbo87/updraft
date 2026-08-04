@@ -2,6 +2,7 @@
 # wrap in backticks; ".." keeps clippy's built-in defaults.
 doc-valid-idents = [
     "BeiDou",
+    "GeoJSON",
     "MacCready",
     "OpenAir",
     "WinPilot",

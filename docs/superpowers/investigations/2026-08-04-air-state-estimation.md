@@ -320,6 +320,47 @@ sink rate per 3 K, without needing an OAT sensor.
 
 [`updraft_egm96`]: ../../../libs/updraft_egm96
 
+## An outside air temperature input is not worth it
+
+All six recordings carry OAT, so the value can be measured rather than
+guessed. It has two possible uses, and neither pays.
+
+**Air density for the sink rate.** Replacing the ISA density with
+`(p/p₀)·(T_ISA/T)` moves the mean sink rate by 0.002 to 0.013 m/s and the netto
+difference against the instrument by 0.002 to 0.005 m/s. The two corrections
+that a temperature makes almost cancel: warmer air lowers the equivalent
+airspeed, which moves the polar reading down, and it divides the result by a
+smaller density ratio, which moves it back up.
+
+**The temperature term of the altitude model.** Building a temperature profile
+from the flight's own OAT samples and integrating `T/T_ISA` over the pressure
+altitude predicts the offset with only the altimeter setting left free. It is
+worse than simply fitting the slope, on every flight:
+
+| Flight | Fitted `a + b·Hp` | OAT profile | OAT at the glider |
+| --- | --- | --- | --- |
+| 1141558 | 5.2 m | 5.3 m | 8.5 m |
+| 1153141 | 3.9 m | 4.8 m | 10.0 m |
+| 1174605 | 5.5 m | 5.9 m | 8.0 m |
+| 1179475 | 4.6 m | 4.8 m | 12.4 m |
+| 1179605 | 4.3 m | 7.4 m | 15.5 m |
+| 1188417 | 6.9 m | 7.6 m | 16.9 m |
+
+Treating the temperature at the glider as the temperature of the whole column
+below it is much worse again, which is expected: it is not the same quantity.
+
+The sensor is also not neutral. At equal pressure altitude it reads 0.06 to
+1.56 K warmer while circling than while cruising, because it sits in the sun
+and gets less airflow. That error changes with what the pilot is doing, and it
+is as large as the accuracy of the fitted term.
+
+The one case for OAT is the start of a flight, before the glider has flown a
+range of altitudes for the fit. Seeding the temperature term from OAT is better
+for the first two minutes on four of the six flights, and worse from ten
+minutes on. The fit reaches 0.1 to 6.5 m within ten minutes on its own, and the
+temperature term is small while the glider is still low, so the gap it would
+bridge is small and brief.
+
 ## A second sensor of the same kind adds nothing
 
 Updraft can receive a position and a pressure altitude from the device it runs

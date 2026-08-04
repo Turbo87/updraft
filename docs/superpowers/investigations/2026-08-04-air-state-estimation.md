@@ -29,6 +29,48 @@ days, where the recorded wind itself drops below 2 m/s for hours.
 The test `libs/updraft_air/tests/recorded_flight.rs` recomputes the 1141558 row
 and keeps it in an Insta snapshot.
 
+## Reading the error figures
+
+An RMS difference is not the error a pilot sees. It squares each difference
+before averaging, so a few large moments set the value while most samples sit
+well below it. For the vertical speed the median difference is 0.16 to 0.35 m/s
+against an RMS of 0.29 to 0.71 m/s, and 90% of samples are inside 0.44 to
+1.13 m/s.
+
+Three further measurements say what the figure is made of.
+
+**Most of it is bandwidth, not error.** The recorded vario differs from its own
+5 second average by 0.31 to 0.56 m/s, which is as large as the whole difference
+against the estimate. That is the instrument's own second-to-second movement.
+A recording of one sample per second cannot contain it, so no estimate built
+from that recording can reproduce it.
+
+**It averages away.** RMS of the difference between running averages of both
+signals, by window:
+
+| Flight | 1 s | 5 s | 15 s | 30 s | 60 s |
+| --- | --- | --- | --- | --- | --- |
+| 1141558 | 0.48 | 0.37 | 0.20 | 0.12 | 0.08 |
+| 1179475 | 0.51 | 0.41 | 0.28 | 0.20 | 0.15 |
+| 1188417 | 0.71 | 0.61 | 0.34 | 0.22 | 0.15 |
+| 1153141 | 0.29 | 0.20 | 0.10 | 0.07 | 0.05 |
+| 1179605 | 0.31 | 0.21 | 0.11 | 0.08 | 0.07 |
+| 1174605 | 0.52 | 0.32 | 0.13 | 0.07 | 0.05 |
+
+An error that averages away is a difference in filtering, not a wrong reading.
+An error that stays is a bias.
+
+**The averaged climb rate is accurate.** Over the 123 climbs in the six
+recordings that hold 120 seconds or more of circling, the average climb rate
+differs from the instrument's by 0.06 m/s on average, 0.08 m/s RMS, and never
+by more than 0.29 m/s.
+
+The netto looks worse: 1.17 to 1.35 m/s at one second, and still 0.41 to
+0.92 m/s over 60 seconds. That is the recorded netto's turn offset (see below),
+which is a bias in the reference and does not average away. Over stretches of
+60 seconds or more with the wings level, where the offset is absent, the
+averaged netto differs by 0.13 to 0.18 m/s.
+
 ## What the recordings contain
 
 The `I` record defines FXA, SIU, ENL, TAS, GSP, TRT, VAT, OAT and ACZ
@@ -216,6 +258,35 @@ At 10 Hz, a 1 s time constant is quieter than 2 s at 1 Hz. The two smoothing
 stages delay the reading by about `2·τ`, so that halves the vario's lag from
 roughly 4 s to 2 s. For centring a thermal that matters more than any of the
 error figures above.
+
+## A second sensor of the same kind adds nothing
+
+Updraft can receive a position and a pressure altitude from the device it runs
+on and from a connected instrument at the same time. Averaging the two only
+pays off if the estimate is limited by sensor noise. It is not.
+
+Adding synthetic noise to both altitude sources and re-running the estimate
+changes the vertical speed by 0.01 m/s at 0.5 m of extra noise, and by 0.02 to
+0.05 m/s at 1 m. The sources already carry 0.5 to 0.8 m, so halving that is
+invisible. Adding up to 2 m/s per axis to the ground velocity changes the wind
+by less than 0.1 m/s of vector RMS, which is inside the run-to-run scatter: the
+wind is limited by gusts and by how often the glider turns, not by the
+receiver.
+
+What a second source is worth is therefore not accuracy:
+
+- **Rate.** A device barometer at 10 to 50 Hz supports a shorter time constant
+  than a 1 Hz instrument feed, and a shorter time constant is less lag.
+- **Static source.** A device barometer measures cabin pressure, which moves
+  with the vents and with airspeed. An instrument on the aircraft's static port
+  does not. That is a systematic difference, so it calls for choosing a source,
+  not for averaging.
+- **Cover.** One recording loses its GNSS fix 15 times. A second receiver fills
+  those gaps.
+
+The same structure the [height filter](#both-altitudes-are-useful) already uses
+fits all three: take the slow, trusted reference from one source and the fast
+changes from the other, and check that they agree before combining them.
 
 ## Limits
 

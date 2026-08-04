@@ -194,6 +194,39 @@ fn rejects_an_invalid_frequency() {
     );
 }
 
+/// Verifies that an OpenAir transponder code becomes one primary setting.
+#[test]
+fn imports_a_primary_transponder_setting() {
+    let bytes = b"AC D\nAX 123\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+
+    insta::assert_debug_snapshot!(dataset.airspaces()[0].transponder_settings, @"
+    [
+        AirspaceTransponderSetting {
+            code: AirspaceTransponderCode(
+                123,
+            ),
+            primary: true,
+            remarks: None,
+        },
+    ]
+    ");
+}
+
+/// Verifies that an invalid transponder code rejects the complete source.
+#[test]
+fn rejects_an_invalid_transponder_code() {
+    let bytes = b"AC D\nAX 1289\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+
+    assert_err_eq!(
+        AirspaceDataset::from_openair(bytes),
+        AirspaceImportError::Parse {
+            airspace_id: Some(AirspaceId(0)),
+            kind: AirspaceParseError::InvalidTransponderCode,
+        }
+    );
+}
+
 /// Verifies that circle conversion preserves the radius.
 /// Verifies that conversion uses clockwise steps and meets the chord-error limit.
 #[test]

@@ -207,6 +207,8 @@ pub enum AirspaceParseError {
     UnsupportedAltitude,
     #[error("the airspace frequency is invalid")]
     InvalidFrequency,
+    #[error("the airspace transponder code is invalid")]
+    InvalidTransponderCode,
 }
 
 /// A safe OpenAir polygon conversion error kind.

@@ -2,7 +2,7 @@ use super::geometry::normalize_geometry;
 use crate::{
     Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceFrequency,
     AirspaceFrequencyUnit, AirspaceFrequencyValue, AirspaceId, AirspaceImportError,
-    AirspaceParseError, AirspaceType,
+    AirspaceParseError, AirspaceTransponderCode, AirspaceTransponderSetting, AirspaceType,
 };
 use ::openair::{Airspace as ParsedAirspace, Class as ParsedClass};
 use std::io::Cursor;
@@ -54,6 +54,8 @@ fn normalize_airspace(
         normalize_geometry(parsed.geom).map_err(|kind| AirspaceImportError::geometry(id, kind))?;
     let frequencies = normalize_frequency(parsed.frequency, parsed.call_sign)
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
+    let transponder_settings = normalize_transponder_code(parsed.transponder_code)
+        .map_err(|kind| AirspaceImportError::parse(id, kind))?;
 
     Ok(Airspace {
         id,
@@ -68,7 +70,7 @@ fn normalize_airspace(
         request_compliance: None,
         country_codes: Vec::new(),
         frequencies,
-        transponder_settings: Vec::new(),
+        transponder_settings,
         hours_of_operation: None,
         active_from: None,
         active_until: None,
@@ -79,6 +81,23 @@ fn normalize_airspace(
         upper_limit_max: None,
         polygon,
     })
+}
+
+/// Converts one optional OpenAir transponder code to canonical form.
+fn normalize_transponder_code(
+    code: Option<u16>,
+) -> Result<Vec<AirspaceTransponderSetting>, AirspaceParseError> {
+    let Some(code) = code else {
+        return Ok(Vec::new());
+    };
+    let code = AirspaceTransponderCode::from_octal_digits(code)
+        .ok_or(AirspaceParseError::InvalidTransponderCode)?;
+
+    Ok(vec![AirspaceTransponderSetting {
+        code,
+        primary: true,
+        remarks: None,
+    }])
 }
 
 /// Converts one optional OpenAir frequency and call sign to canonical form.

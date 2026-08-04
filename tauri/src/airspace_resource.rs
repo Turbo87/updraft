@@ -1,8 +1,7 @@
 use crate::driver::DriverHandle;
 use serde_json::{Value, json};
 use tauri::http::{Response, StatusCode, header};
-use updraft_core::{AirspaceClass, AirspaceDataset, GetAirspaceSnapshot};
-use updraft_geo::LatLon;
+use updraft_core::{Airspace, AirspaceDataset, GetAirspaceSnapshot};
 
 /// Builds a `GeoJSON` response from the active airspace dataset.
 pub async fn airspace_resource_response(handle: DriverHandle) -> Response<Vec<u8>> {
@@ -29,48 +28,13 @@ fn airspace_geojson(dataset: Option<&AirspaceDataset>) -> Value {
     let features = dataset
         .into_iter()
         .flat_map(AirspaceDataset::airspaces)
-        .map(|airspace| {
-            let coordinates = airspace
-                .polygon
-                .vertices
-                .iter()
-                .chain(airspace.polygon.vertices.first())
-                .copied()
-                .map(LatLon::to_geojson_coordinate)
-                .collect::<Vec<_>>();
-
-            json!({
-                "type": "Feature",
-                "properties": {
-                    "id": airspace.id.0,
-                    "class": airspace.class.map(airspace_class_code),
-                    "type": airspace.type_code.as_ref().map(|value| value.as_str()),
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [coordinates],
-                },
-            })
-        })
+        .map(Airspace::to_geojson)
         .collect::<Vec<_>>();
 
     json!({
         "type": "FeatureCollection",
         "features": features,
     })
-}
-
-fn airspace_class_code(class: AirspaceClass) -> &'static str {
-    match class {
-        AirspaceClass::A => "A",
-        AirspaceClass::B => "B",
-        AirspaceClass::C => "C",
-        AirspaceClass::D => "D",
-        AirspaceClass::E => "E",
-        AirspaceClass::F => "F",
-        AirspaceClass::G => "G",
-        AirspaceClass::Unclassified => "UNC",
-    }
 }
 
 #[cfg(test)]

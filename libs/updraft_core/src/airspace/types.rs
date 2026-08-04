@@ -1,4 +1,5 @@
 use serde::Serialize;
+use serde_json::json;
 use updraft_geo::LatLon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
 
@@ -220,6 +221,46 @@ pub struct Airspace {
     pub upper_bound: AirspaceAltitude,
     /// The canonical polygon exterior ring.
     pub polygon: AirspacePolygon,
+}
+
+impl Airspace {
+    /// Converts this airspace to a GeoJSON feature.
+    pub fn to_geojson(&self) -> serde_json::Value {
+        let vertices = &self.polygon.vertices;
+
+        let coordinates = vertices
+            .iter()
+            .chain(vertices.first())
+            .copied()
+            .map(LatLon::to_geojson_coordinate)
+            .collect::<Vec<_>>();
+
+        json!({
+            "type": "Feature",
+            "properties": {
+                "id": self.id.0,
+                "class": self.class.map(airspace_class_code),
+                "type": self.type_code.as_ref().map(|value| value.as_str()),
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [coordinates],
+            },
+        })
+    }
+}
+
+fn airspace_class_code(class: AirspaceClass) -> &'static str {
+    match class {
+        AirspaceClass::A => "A",
+        AirspaceClass::B => "B",
+        AirspaceClass::C => "C",
+        AirspaceClass::D => "D",
+        AirspaceClass::E => "E",
+        AirspaceClass::F => "F",
+        AirspaceClass::G => "G",
+        AirspaceClass::Unclassified => "UNC",
+    }
 }
 
 /// A complete canonical dataset parsed from one OpenAir source.

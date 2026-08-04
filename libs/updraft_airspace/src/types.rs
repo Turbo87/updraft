@@ -100,8 +100,12 @@ pub struct Airspace {
     pub type_code: AirspaceType,
     /// The lower altitude limit.
     pub lower_limit: AirspaceAltitude,
+    /// An optional hard minimum for the lower altitude limit.
+    pub lower_limit_min: Option<AirspaceAltitude>,
     /// The upper altitude limit.
     pub upper_limit: AirspaceAltitude,
+    /// An optional hard maximum for the upper altitude limit.
+    pub upper_limit_max: Option<AirspaceAltitude>,
     /// The canonical polygon exterior ring.
     pub polygon: Polygon,
 }

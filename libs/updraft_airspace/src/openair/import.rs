@@ -58,7 +58,9 @@ fn normalize_airspace(
         class,
         type_code,
         lower_limit,
+        lower_limit_min: None,
         upper_limit,
+        upper_limit_max: None,
         polygon,
     })
 }

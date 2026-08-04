@@ -1,5 +1,5 @@
 use approx::assert_abs_diff_eq;
-use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_ok};
+use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_none, assert_ok};
 use std::assert_matches;
 use updraft_airspace::{
     AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
@@ -123,6 +123,8 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
         airspace.upper_limit,
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(5000.)))
     );
+    assert_none!(airspace.lower_limit_min);
+    assert_none!(airspace.upper_limit_max);
     assert_eq!(
         airspace.polygon.vertices(),
         &[

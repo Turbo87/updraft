@@ -187,6 +187,20 @@ pub fn select_pressure_altitude_candidate(
     })
 }
 
+/// Creates a true-airspeed selection when the candidate is fresh.
+pub fn select_true_airspeed_candidate(
+    source: SourceId,
+    candidate: Option<Timed<Speed>>,
+    at: Timestamp,
+) -> Option<Selected<Speed>> {
+    let speed = candidate?;
+    Some(Selected {
+        source,
+        ingested_at: speed.ingested_at,
+        value: speed.fresh_value(at)?,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -6,3 +6,4 @@ mod settings;
 mod support;
 mod traffic;
 mod transport;
+mod true_airspeed;

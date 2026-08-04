@@ -12,13 +12,15 @@ use updraft_units::{
 /// Standard gravity, in m/s².
 const GRAVITY: f64 = 9.80665;
 
-/// Time constant of each of the two vertical-speed smoothing stages, in
-/// seconds. Fitted against the recorded vario of an LXNAV LX9070 in
-/// `testdata/weglide_1141558.igc`, which reports once per second. A
-/// barometer that reports faster supports a shorter time constant, and
-/// therefore less lag, but choosing one needs measurements from such a
-/// sensor.
-const VERTICAL_SPEED_TIME_CONSTANT: f64 = 2.;
+/// Default time constant of each of the two vertical-speed smoothing
+/// stages, in seconds. Fitted against the recorded vario of an LXNAV
+/// LX9070 in `testdata/weglide_1141558.igc`.
+///
+/// It suits a pressure altitude that carries about 0.6 m of noise, which
+/// is what a flight recorder logs. A quieter sensor supports a shorter
+/// one; see
+/// [`with_vertical_speed_time_constant`](AirStateEstimator::with_vertical_speed_time_constant).
+const DEFAULT_VERTICAL_SPEED_TIME_CONSTANT: f64 = 2.;
 
 /// Time constant of the turn-rate smoothing, in seconds. It only has to
 /// suppress the fix-to-fix track noise: the turn rate itself changes
@@ -145,6 +147,7 @@ pub struct AirStateEstimator {
     previous: Option<Previous>,
     /// Air-relative track at the previous fix, absent while too slow.
     previous_heading: Option<f64>,
+    vertical_speed_time_constant: f64,
     first_stage: f64,
     vertical_speed: Option<f64>,
     turn_rate: f64,
@@ -201,10 +204,29 @@ impl AirStateEstimator {
             altitude: None,
             previous: None,
             previous_heading: None,
+            vertical_speed_time_constant: DEFAULT_VERTICAL_SPEED_TIME_CONSTANT,
             first_stage: 0.,
             vertical_speed: None,
             turn_rate: 0.,
         }
+    }
+
+    /// Sets how hard the vertical speed is smoothed. Each of the two
+    /// stages uses this time constant, and the reading lags the air by
+    /// about twice it.
+    ///
+    /// The right value follows the noise of the pressure source, not its
+    /// rate. The 0.6 m of noise in a logged pressure altitude needs the
+    /// 2 s default. The barometer of a Samsung Galaxy S23 carries 0.024 m
+    /// and stays inside the same vertical-speed noise at 0.25 s, even
+    /// after its 25 Hz output is decimated to one sample per second.
+    /// Non-finite or non-positive values leave the setting unchanged.
+    pub fn with_vertical_speed_time_constant(mut self, time_constant: Duration) -> Self {
+        let seconds = time_constant.as_secs_f64();
+        if seconds.is_finite() && seconds > 0. {
+            self.vertical_speed_time_constant = seconds;
+        }
+        self
     }
 
     /// Takes a barometric altitude against the 1013.25 hPa datum. This is
@@ -377,7 +399,7 @@ impl AirStateEstimator {
         };
 
         let raw = (total_energy_height - previous_height) / interval;
-        let weight = smoothing_weight(interval, VERTICAL_SPEED_TIME_CONSTANT);
+        let weight = smoothing_weight(interval, self.vertical_speed_time_constant);
         self.first_stage += weight * (raw - self.first_stage);
         let vertical_speed = self.vertical_speed.unwrap_or(0.);
         self.vertical_speed = Some(vertical_speed + weight * (self.first_stage - vertical_speed));
@@ -703,6 +725,37 @@ mod tests {
         }
         let state = assert_some!(estimator.state());
         assert_abs_diff_eq!(state.vertical_speed, Speed::ZERO, epsilon = 0.01);
+    }
+
+    #[test]
+    fn a_shorter_time_constant_reaches_the_climb_rate_sooner() {
+        /// The two stages lag by about twice the time constant, so a
+        /// quarter-second one is settled where a two-second one is not.
+        fn climb_after(seconds: u64, time_constant: Duration) -> Speed {
+            let mut estimator =
+                AirStateEstimator::new(polar()).with_vertical_speed_time_constant(time_constant);
+            for tenth in 0..seconds * 10 {
+                let time = Duration::from_millis(tenth * 100);
+                estimator.pressure_altitude(time, meters(0.2 * tenth as f64));
+            }
+            estimator.state().map_or(Speed::ZERO, |s| s.vertical_speed)
+        }
+
+        assert_abs_diff_eq!(
+            climb_after(2, Duration::from_millis(250)),
+            Speed::from_meters_per_second(2.),
+            epsilon = 0.01
+        );
+        assert!(climb_after(2, Duration::from_secs(2)) < Speed::from_meters_per_second(1.));
+    }
+
+    #[test]
+    fn an_impossible_time_constant_is_ignored() {
+        let estimator = AirStateEstimator::new(polar())
+            .with_vertical_speed_time_constant(Duration::from_millis(250))
+            .with_vertical_speed_time_constant(Duration::ZERO);
+
+        assert_eq!(estimator.vertical_speed_time_constant, 0.25);
     }
 
     #[test]

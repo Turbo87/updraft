@@ -434,8 +434,8 @@ Replaying the recording through the two vertical-speed smoothing stages gives:
 
 A 0.25 s time constant stays below the 0.12 m/s budget with margin on this
 device. It reduces the approximate lag from 4 s to 0.5 s. This one recording
-does not justify a common Android value. Two more device models must confirm
-the result first.
+does not justify a common Android value. More device models must confirm the
+result first.
 
 #### What the smoothing costs
 
@@ -473,6 +473,52 @@ time constant. The constant therefore has to follow the noise of the source,
 not its rate, and `AirStateEstimator::with_vertical_speed_time_constant` lets
 the caller set it. The default stays at the 2 s that a logged pressure
 altitude needs.
+
+#### LG G7 public and unfiltered result
+
+The second bench device was an LG G7 ThinQ (`LM-G710`) with Android 10. It
+exposes two pressure sensors. The public `android.sensor.pressure` sensor
+reports at 25 Hz. The LG-only `lge.sensor.lg_unfiltered_pressure` sensor
+reports at 32 Hz.
+
+The comparison recording is
+[`testdata/android_barometer_lm_g710_comparison.csv`](../../../testdata/android_barometer_lm_g710_comparison.csv).
+A temporary app registered both sensors with `SENSOR_DELAY_FASTEST`. It saved
+both streams with their `SensorEvent.timestamp` values. The public stream
+delivered 15,001 samples in 600.00 s. The unfiltered stream delivered 19,201
+samples in the same interval. Neither stream had a missing sample.
+
+The unfiltered stream carries more noise, but it is still well below the
+vertical-speed budget:
+
+| Source | Rate | Altitude noise | RMS at τ = 0.25 s |
+| --- | --- | --- | --- |
+| Public | 25 Hz | 0.000476 m | 0.0119 m/s |
+| Unfiltered | 32 Hz | 0.003116 m | 0.0415 m/s |
+
+The simultaneous timestamps expose the filter that LG applies to the public
+sensor. The analysis first resampled the unfiltered stream at each public
+timestamp. It then split both streams into six overlapping windows of 4,096
+samples. Each window had its best-fit line removed and a Hann window applied.
+The averaged cross-spectrum gives the gain and phase delay of the public
+stream relative to the unfiltered stream:
+
+| Frequency | Public gain | Coherence | Phase delay |
+| --- | --- | --- | --- |
+| 0.049 Hz | 0.986 | 0.988 | 1.37 s |
+| 0.098 Hz | 0.708 | 0.947 | 1.42 s |
+| 0.201 Hz | 0.345 | 0.912 | 1.59 s |
+
+The public output is 3 dB down at about 0.1 Hz. At that frequency, the LG
+driver adds 1.4 s of phase delay. Two estimator stages with a 0.25 s time
+constant add about 0.5 s more. The combined phase delay is therefore about
+1.9 s at 0.1 Hz.
+
+The unfiltered sensor supports the same 0.25 s estimator time constant. It
+avoids the 1.4 s public-driver delay and stays below the 0.12 m/s noise budget.
+Its string type is LG-specific, so a portable Android adapter cannot depend on
+it. The public recording looked exceptionally quiet because the driver had
+already removed most of its useful bandwidth.
 
 ### A flight recording checks the rest
 

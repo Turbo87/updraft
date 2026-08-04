@@ -9,6 +9,10 @@ These files are unmodified real-world inputs used to exercise Updraft's parsers.
 
 The repository also contains raw sensor recordings for investigations:
 
+- `android_barometer_lm_g710_comparison.csv`: This file contains simultaneous
+  public and unfiltered pressure samples from a stationary LG G7 ThinQ. The
+  [air-state investigation](../docs/superpowers/investigations/2026-08-04-air-state-estimation.md#lg-g7-public-and-unfiltered-result)
+  measures the filter that LG applies to the public sensor.
 - `android_barometer_sm_s911b.csv`: This file contains ten minutes of pressure
   samples from a stationary Samsung Galaxy S23 with an STMicro LPS22HH
   barometer. The [air-state investigation](../docs/superpowers/investigations/2026-08-04-air-state-estimation.md#galaxy-s23-result)

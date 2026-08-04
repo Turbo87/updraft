@@ -1,5 +1,6 @@
 use super::super::*;
 use super::support::at;
+use crate::AirspaceStatus;
 use crate::connection::ConnectionSpec;
 use crate::external_device::ExternalDeviceConfig;
 use crate::settings::{
@@ -7,7 +8,6 @@ use crate::settings::{
     VerticalSpeedUnit,
 };
 use crate::topic::Instruments;
-use updraft_airspace::AirspaceStatus;
 
 #[test]
 fn topics_include_settings_and_external_devices() {

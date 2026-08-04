@@ -22,7 +22,7 @@ mod traffic;
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };
-pub use core::Core;
+pub use core::{AirspaceLoadError, AirspaceState, AirspaceStatus, Core};
 pub use decoder::Decoder;
 pub use effect::Effect;
 pub use external_device::{

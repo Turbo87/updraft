@@ -11,10 +11,9 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri_plugin_updraft::SppConnectionId;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
-use updraft_airspace::AirspaceState;
 use updraft_core::{
-    ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
-    SettingsSnapshot, Topic,
+    AirspaceState, ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId,
+    STANDARD_SPP_SERVICE_UUID, SettingsSnapshot, Topic,
 };
 use uuid::{Uuid, uuid};
 

@@ -63,8 +63,7 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{Instant, timeout, timeout_at};
     use tracing_test::traced_test;
-    use updraft_airspace::AirspaceState;
-    use updraft_core::{Instruments, SettingsSnapshot, Topic, UtcInstant};
+    use updraft_core::{AirspaceState, Instruments, SettingsSnapshot, Topic, UtcInstant};
 
     const PATIENCE: Duration = Duration::from_secs(5);
 

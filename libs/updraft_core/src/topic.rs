@@ -1,9 +1,9 @@
+use crate::core::AirspaceStatus;
 use crate::external_device::PublishedExternalDevice;
 use crate::fix::FixTime as CoreFixTime;
 use crate::settings::Settings;
 use crate::traffic::TrafficUpdate;
 use serde::Serialize;
-use updraft_airspace::AirspaceStatus;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -115,12 +115,12 @@ pub enum Topic {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::{AirspaceLoadError, AirspaceStatus};
     use crate::settings::Locale;
     use crate::traffic::{
         PublishedTrafficTarget, TrafficAlarmLevel, TrafficDelta, TrafficTarget, TrafficTargetId,
         TrafficTargetIdType, TrafficType, TrafficUpdate,
     };
-    use updraft_airspace::{AirspaceLoadError, AirspaceStatus};
     use updraft_geo::LatLon as GeoLatLon;
     use updraft_units::{Angle, Length, MslAltitude};
 

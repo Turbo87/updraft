@@ -4910,10 +4910,8 @@ dependencies = [
  "approx 0.6.0-rc2",
  "claims",
  "openair",
- "serde",
  "serde_json",
  "thiserror 2.0.19",
- "ts-rs",
  "updraft_geo",
  "updraft_units",
 ]

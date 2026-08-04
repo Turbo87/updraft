@@ -46,8 +46,7 @@ mod tests {
     use std::time::Duration;
     use tauri::http::{StatusCode, header};
     use tracing_test::traced_test;
-    use updraft_airspace::AirspaceState;
-    use updraft_core::{ActivateAirspaceDataset, SettingsSnapshot};
+    use updraft_core::{ActivateAirspaceDataset, AirspaceState, SettingsSnapshot};
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
     const CIRCLE: &[u8] = include_bytes!("../../testdata/airspace/circle.txt");

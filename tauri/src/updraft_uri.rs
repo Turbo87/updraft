@@ -52,8 +52,7 @@ mod tests {
     use crate::driver::{Driver, DriverHandle};
     use std::time::Duration;
     use tauri::http::{Request, StatusCode, header};
-    use updraft_airspace::AirspaceState;
-    use updraft_core::SettingsSnapshot;
+    use updraft_core::{AirspaceState, SettingsSnapshot};
 
     fn driver() -> DriverHandle {
         Driver::spawn(

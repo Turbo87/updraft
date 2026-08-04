@@ -335,8 +335,7 @@ mod tests {
     use serde_json::{Value, json};
     use std::time::Duration;
     use tempfile::tempdir;
-    use updraft_airspace::AirspaceState;
-    use updraft_core::{GetAirspaceSnapshot, SettingsSnapshot};
+    use updraft_core::{AirspaceState, GetAirspaceSnapshot, SettingsSnapshot};
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
     const PARSER_ERROR: &[u8] = include_bytes!("../../testdata/airspace/parser_error.txt");

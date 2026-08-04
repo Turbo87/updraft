@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::NamedTempFile;
 use thiserror::Error;
-use updraft_airspace::{AirspaceDataset, AirspaceImportError, AirspaceLoadError, AirspaceState};
+use updraft_airspace::{AirspaceDataset, AirspaceImportError};
+use updraft_core::{AirspaceLoadError, AirspaceState};
 
 const SOURCE_FILE_NAME: &str = "airspace.txt";
 const METADATA_FILE_NAME: &str = "airspace.json";
@@ -255,7 +256,7 @@ mod tests {
     use claims::{assert_none, assert_ok, assert_some};
     use tempfile::tempdir;
     use tracing_test::traced_test;
-    use updraft_airspace::{AirspaceLoadError, AirspaceStatus};
+    use updraft_core::{AirspaceLoadError, AirspaceStatus};
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
     const PARSER_ERROR: &[u8] = include_bytes!("../../testdata/airspace/parser_error.txt");

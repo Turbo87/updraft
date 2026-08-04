@@ -21,7 +21,7 @@ updraft_units = { path = "../updraft_units" }
 uuid = { version = "=1.24.0", features = ["serde"] }
 
 [features]
-ts = ["dep:ts-rs", "updraft_airspace/ts"]
+ts = ["dep:ts-rs"]
 
 [dev-dependencies]
 approx = "=0.6.0-rc2"

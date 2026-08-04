@@ -1,8 +1,9 @@
 use super::super::*;
 use super::support::at;
+use crate::{AirspaceLoadError, AirspaceStatus};
 use claims::assert_some;
 use std::sync::Arc;
-use updraft_airspace::{AirspaceDataset, AirspaceLoadError, AirspaceStatus};
+use updraft_airspace::AirspaceDataset;
 
 const POLYGON: &[u8] = include_bytes!("../../../../testdata/airspace/polygon.txt");
 

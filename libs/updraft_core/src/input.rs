@@ -1,11 +1,11 @@
 use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
-use crate::core::Core;
+use crate::core::{AirspaceLoadError, Core};
 use crate::effect::Effect;
 use crate::fix::Fix;
 use crate::settings::{Locale, UnitSettings};
 use crate::time::Timestamp;
 use std::sync::Arc;
-use updraft_airspace::{AirspaceDataset, AirspaceLoadError};
+use updraft_airspace::AirspaceDataset;
 
 mod private {
     pub trait Sealed {}

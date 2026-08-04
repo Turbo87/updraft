@@ -54,6 +54,21 @@ pub enum AirspaceClass {
     Unclassified,
 }
 
+impl AirspaceClass {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::A => "A",
+            Self::B => "B",
+            Self::C => "C",
+            Self::D => "D",
+            Self::E => "E",
+            Self::F => "F",
+            Self::G => "G",
+            Self::Unclassified => "UNC",
+        }
+    }
+}
+
 /// A known OpenAir type or an unknown normalized type code.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AirspaceType {
@@ -239,7 +254,7 @@ impl Airspace {
             "type": "Feature",
             "properties": {
                 "id": self.id.0,
-                "class": self.class.map(airspace_class_code),
+                "class": self.class.as_ref().map(AirspaceClass::as_str),
                 "type": self.type_code.as_ref().map(|value| value.as_str()),
             },
             "geometry": {
@@ -247,19 +262,6 @@ impl Airspace {
                 "coordinates": [coordinates],
             },
         })
-    }
-}
-
-fn airspace_class_code(class: AirspaceClass) -> &'static str {
-    match class {
-        AirspaceClass::A => "A",
-        AirspaceClass::B => "B",
-        AirspaceClass::C => "C",
-        AirspaceClass::D => "D",
-        AirspaceClass::E => "E",
-        AirspaceClass::F => "F",
-        AirspaceClass::G => "G",
-        AirspaceClass::Unclassified => "UNC",
     }
 }
 

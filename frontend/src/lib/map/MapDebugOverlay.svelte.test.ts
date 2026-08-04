@@ -67,6 +67,8 @@ describe('MapDebugOverlay.svelte', () => {
       '–',
       '–',
       'Unavailable',
+      '–',
+      'Unavailable',
     ]);
   });
 
@@ -81,7 +83,7 @@ describe('MapDebugOverlay.svelte', () => {
         stale: false,
       },
       pressureAltitude: { meters: 1_000, stale: false },
-      trueAirspeed: null,
+      trueAirspeed: { metersPerSecond: 50, stale: false },
     };
     let view = await render(MapDebugOverlay, {
       map: undefined,
@@ -96,9 +98,10 @@ describe('MapDebugOverlay.svelte', () => {
     let states = Array.from(view.container.querySelectorAll('dd'), (element) =>
       element.textContent?.trim(),
     ).filter((value) => value === 'Current');
-    expect(states).toEqual(['Current', 'Current']);
+    expect(states).toEqual(['Current', 'Current', 'Current']);
     await expect.element(page.getByText('190 m', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('108.0 km/h', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('180.0 km/h', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('1000 m', { exact: true })).toBeInTheDocument();
   });
 
@@ -113,7 +116,7 @@ describe('MapDebugOverlay.svelte', () => {
         stale: true,
       },
       pressureAltitude: { meters: 1_000, stale: true },
-      trueAirspeed: null,
+      trueAirspeed: { metersPerSecond: 50, stale: true },
     };
     let units: UnitSettings = {
       altitude: 'ft',
@@ -130,9 +133,10 @@ describe('MapDebugOverlay.svelte', () => {
     let states = Array.from(view.container.querySelectorAll('dd'), (element) =>
       element.textContent?.trim(),
     ).filter((value) => value === 'Stale');
-    expect(states).toEqual(['Stale', 'Stale']);
+    expect(states).toEqual(['Stale', 'Stale', 'Stale']);
     await expect.element(page.getByText('623 ft', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('58.3 kt', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('97.2 kt', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('3281 ft', { exact: true })).toBeInTheDocument();
   });
 });

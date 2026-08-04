@@ -16,6 +16,8 @@
   const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);
   const fixTime = $derived(formatFixTime(gps?.fixTime ?? null));
   const gpsState = $derived(formatDomainState(gps));
+  const trueAirspeed = $derived(instruments.trueAirspeed);
+  const trueAirspeedState = $derived(formatDomainState(trueAirspeed));
   const pressureAltitude = $derived(instruments.pressureAltitude);
   const pressureAltitudeState = $derived(formatDomainState(pressureAltitude));
 
@@ -115,6 +117,14 @@
           ? '–'
           : `${convertSpeed(groundSpeedMetersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
       </dd>
+      <dt>True airspeed</dt>
+      <dd>
+        {trueAirspeed === null
+          ? '–'
+          : `${convertSpeed(trueAirspeed.metersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
+      </dd>
+      <dt>True airspeed state</dt>
+      <dd>{trueAirspeedState}</dd>
       <dt>Pressure altitude</dt>
       <dd>
         {pressureAltitude === null

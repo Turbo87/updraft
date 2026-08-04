@@ -15,7 +15,7 @@
 use igc::records::{Extendable, Extension, Record};
 use std::fmt::Write as _;
 use std::time::Duration;
-use updraft_air::{AirStateEstimator, Sample};
+use updraft_air::{AirStateEstimator, Fix};
 use updraft_polar::{GlidePolar, POLAR_STORE};
 use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
 
@@ -65,24 +65,30 @@ fn measure(air_speed: AirSpeed) -> String {
         match Record::parse_line(line) {
             Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
             Ok(Record::J(definition)) => wind_extensions = definition.0.extensions,
-            Ok(Record::B(fix)) => {
-                let value = |mnemonic| extension(&fix, &fix_extensions, mnemonic);
-                let sample = Sample {
-                    track: Angle::from_degrees(value("TRT")),
-                    ground_speed: hundredths_kmh(value("GSP")),
-                    pressure_altitude: PressureAltitude::new(Length::from_meters(f64::from(
-                        fix.pressure_alt,
-                    ))),
-                    // A zero GNSS altitude means the recorder had no fix.
-                    gnss_altitude: (fix.gps_alt != 0).then(|| {
-                        EllipsoidAltitude::new(Length::from_meters(f64::from(fix.gps_alt)))
-                    }),
-                    true_air_speed: (air_speed == AirSpeed::FromSensor)
-                        .then(|| hundredths_kmh(value("TAS"))),
-                    position_accuracy: Length::from_meters(value("FXA")),
-                };
+            Ok(Record::B(record)) => {
+                let value = |mnemonic| extension(&record, &fix_extensions, mnemonic);
+                let time = seconds(&record.timestamp);
+                if air_speed == AirSpeed::FromSensor {
+                    estimator.air_speed(time, hundredths_kmh(value("TAS")));
+                }
+                estimator.fix(
+                    time,
+                    &Fix {
+                        track: Angle::from_degrees(value("TRT")),
+                        ground_speed: hundredths_kmh(value("GSP")),
+                        // A zero GNSS altitude means the recorder had no fix.
+                        altitude: (record.gps_alt != 0).then(|| {
+                            EllipsoidAltitude::new(Length::from_meters(f64::from(record.gps_alt)))
+                        }),
+                        position_accuracy: Length::from_meters(value("FXA")),
+                    },
+                );
+                estimator.pressure_altitude(
+                    time,
+                    PressureAltitude::new(Length::from_meters(f64::from(record.pressure_alt))),
+                );
 
-                let Some(state) = estimator.update(seconds(&fix.timestamp), &sample) else {
+                let Some(state) = estimator.state() else {
                     continue;
                 };
                 estimated_wind = state.wind;

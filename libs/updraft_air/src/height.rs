@@ -11,6 +11,15 @@ const OFFSET_TIME_CONSTANT: f64 = 5.;
 /// alignment by chance.
 const LAG_TIME_CONSTANT: f64 = 120.;
 
+/// How close in time the two altitudes have to be to be subtracted from
+/// each other, in seconds. In a 2 m/s climb, one second apart would put
+/// two metres of climb into the offset.
+const PAIRING_TOLERANCE: f64 = 0.2;
+
+/// How long a GNSS altitude waits for a pressure altitude to pair with,
+/// in seconds.
+const MAX_PAIRING_WAIT: f64 = 2.;
+
 /// Combines the pressure altitude with the GNSS altitude.
 ///
 /// Both measure the same height change through two unrelated error
@@ -21,77 +30,125 @@ const LAG_TIME_CONSTANT: f64 = 120.;
 /// the GNSS altitude carry the slow height changes and the pressure
 /// altitude the fast ones.
 ///
+/// The two arrive on their own calls, at their own rates. Pressure drives
+/// the height, because a barometer can report many times per second where
+/// a GNSS receiver reports once. A GNSS altitude only moves the offset,
+/// and it waits for a pressure altitude close enough in time to subtract
+/// from, whichever of the two arrives first.
+///
 /// Some GNSS receivers smooth their altitude output and report it a
 /// second late. Averaging a delayed copy of the same signal is worse than
 /// not averaging at all, so the filter compares the GNSS height rate
-/// against the current and the previous pressure height rate, and stops
-/// using the GNSS altitude while the previous one fits better.
+/// against the pressure height rate over the same interval and over the
+/// one before it, and stops using the GNSS altitude while the earlier one
+/// fits better.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct HeightFilter {
     offset: Option<f64>,
+    /// Latest pressure altitude and its time.
+    pressure: Option<(f64, f64)>,
+    /// GNSS altitude and its time, waiting for a pressure altitude.
+    pending: Option<(f64, f64)>,
     previous: Option<Previous>,
-    /// Mean square of the height-rate difference at the current sample.
+    /// Mean square of the height-rate difference over the same interval.
     matched: f64,
-    /// Mean square of the height-rate difference one sample back.
+    /// Mean square of the height-rate difference one interval back.
     delayed: f64,
 }
 
+/// What the previous paired GNSS altitude saw, for the lag check.
 #[derive(Clone, Copy, Debug)]
 struct Previous {
+    time: f64,
+    gnss: f64,
     pressure: f64,
-    gnss: Option<f64>,
-    /// Pressure height rate leading up to the previous sample.
+    /// Pressure height rate over the interval that ended there.
     pressure_rate: Option<f64>,
 }
 
 impl HeightFilter {
-    /// The height to derive vertical speed from, in metres. It shares the
-    /// pressure altitude's reference, so only its changes are meaningful.
-    pub fn update(&mut self, interval: Option<f64>, pressure: f64, gnss: Option<f64>) -> f64 {
-        let previous = self.previous.take();
-        let rate = interval
-            .zip(previous)
-            .map(|(interval, previous)| (pressure - previous.pressure) / interval);
-        self.check_lag(interval, gnss, rate, previous);
+    /// Takes a pressure altitude and returns the height to derive vertical
+    /// speed from, in metres. It shares the pressure altitude's reference,
+    /// so only its changes are meaningful.
+    pub fn pressure(&mut self, time: f64, altitude: f64) -> f64 {
+        self.pressure = Some((time, altitude));
+        if let Some((gnss_time, gnss)) = self.pending {
+            if (gnss_time - time).abs() <= PAIRING_TOLERANCE {
+                self.pending = None;
+                self.pair(gnss_time, gnss, altitude);
+            } else if time - gnss_time > MAX_PAIRING_WAIT {
+                self.pending = None;
+            }
+        }
+        altitude + self.offset.unwrap_or(0.)
+    }
+
+    /// Whether the offset between the two altitudes is established. The
+    /// height steps by that offset when it first is, so the caller has to
+    /// treat the heights either side of that as unrelated.
+    pub fn is_fused(&self) -> bool {
+        self.offset.is_some()
+    }
+
+    /// Takes a GNSS altitude. It moves the offset that
+    /// [`pressure`](Self::pressure) adds, and never the height directly.
+    pub fn gnss(&mut self, time: f64, altitude: f64) {
+        match self.pressure {
+            Some((pressure_time, pressure))
+                if (time - pressure_time).abs() <= PAIRING_TOLERANCE =>
+            {
+                self.pair(time, altitude, pressure);
+            }
+            _ => self.pending = Some((time, altitude)),
+        }
+    }
+
+    /// Folds one pair of altitudes measured at the same moment into the
+    /// lag check and the offset.
+    fn pair(&mut self, time: f64, gnss: f64, pressure: f64) {
+        let interval = self
+            .previous
+            .map(|previous| time - previous.time)
+            .filter(|interval| *interval > 0.);
+        let rate = self.check_lag(time, gnss, pressure);
         self.previous = Some(Previous {
-            pressure,
+            time,
             gnss,
+            pressure,
             pressure_rate: rate,
         });
 
-        // A delayed GNSS altitude fits the previous pressure rate better.
-        let usable = gnss.filter(|_| self.delayed >= self.matched);
-        if let Some(gnss) = usable {
-            let difference = gnss - pressure;
-            self.offset = Some(match self.offset {
-                Some(offset) => {
-                    let weight = interval.map_or(1., |i| smoothing_weight(i, OFFSET_TIME_CONSTANT));
-                    offset + weight * (difference - offset)
-                }
-                None => difference,
-            });
+        // A delayed GNSS altitude fits the earlier pressure rate better.
+        if self.delayed < self.matched {
+            return;
         }
-        pressure + self.offset.unwrap_or(0.)
+        let difference = gnss - pressure;
+        self.offset = Some(match self.offset.zip(interval) {
+            Some((offset, interval)) => {
+                let weight = smoothing_weight(interval, OFFSET_TIME_CONSTANT);
+                offset + weight * (difference - offset)
+            }
+            None => difference,
+        });
     }
 
-    fn check_lag(
-        &mut self,
-        interval: Option<f64>,
-        gnss: Option<f64>,
-        rate: Option<f64>,
-        previous: Option<Previous>,
-    ) {
-        let Some(previous) = previous else { return };
-        let (Some(interval), Some(rate), Some(gnss), Some(previous_gnss), Some(earlier_rate)) =
-            (interval, rate, gnss, previous.gnss, previous.pressure_rate)
-        else {
-            return;
-        };
+    /// Folds this pair into the lag check, and returns the pressure height
+    /// rate over the interval that ends here.
+    fn check_lag(&mut self, time: f64, gnss: f64, pressure: f64) -> Option<f64> {
+        let previous = self.previous?;
+        let interval = time - previous.time;
+        if interval <= 0. {
+            return None;
+        }
 
-        let gnss_rate = (gnss - previous_gnss) / interval;
-        let weight = smoothing_weight(interval, LAG_TIME_CONSTANT);
-        self.matched += weight * ((gnss_rate - rate).powi(2) - self.matched);
-        self.delayed += weight * ((gnss_rate - earlier_rate).powi(2) - self.delayed);
+        let rate = (pressure - previous.pressure) / interval;
+        if let Some(earlier_rate) = previous.pressure_rate {
+            let gnss_rate = (gnss - previous.gnss) / interval;
+            let weight = smoothing_weight(interval, LAG_TIME_CONSTANT);
+            self.matched += weight * ((gnss_rate - rate).powi(2) - self.matched);
+            self.delayed += weight * ((gnss_rate - earlier_rate).powi(2) - self.delayed);
+        }
+        Some(rate)
     }
 }
 
@@ -100,52 +157,80 @@ mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
 
-    /// Runs a climb at `rate` m/s, with the GNSS altitude offset by 200 m
-    /// and delayed by `delay` samples. Returns the height rate the filter
-    /// produces over the last second.
-    fn climb(rate: f64, delay: usize, seconds: usize) -> f64 {
+    /// Climbs at `rate` m/s with the GNSS altitude offset by 200 m and
+    /// delayed by `delay` seconds. `fix_first` sends the GNSS altitude
+    /// before the pressure altitude of the same second. Returns the height
+    /// rate over the last second.
+    fn climb(rate: f64, delay: f64, seconds: usize, fix_first: bool) -> f64 {
         let mut filter = HeightFilter::default();
         let mut last = 0.;
         let mut previous = 0.;
         for second in 0..seconds {
-            let pressure = rate * second as f64;
-            let gnss = 200. + rate * second.saturating_sub(delay) as f64;
+            let time = second as f64;
+            let gnss = 200. + rate * (time - delay).max(0.);
             previous = last;
-            last = filter.update((second > 0).then_some(1.), pressure, Some(gnss));
+            if fix_first {
+                filter.gnss(time, gnss);
+                last = filter.pressure(time, rate * time);
+            } else {
+                last = filter.pressure(time, rate * time);
+                filter.gnss(time, gnss);
+            }
         }
         last - previous
     }
 
     #[test]
     fn a_matching_gnss_altitude_keeps_the_height_rate() {
-        assert_abs_diff_eq!(climb(2., 0, 300), 2., epsilon = 0.01);
+        assert_abs_diff_eq!(climb(2., 0., 300, false), 2., epsilon = 0.01);
+    }
+
+    #[test]
+    fn the_order_the_two_altitudes_arrive_in_does_not_matter() {
+        assert_abs_diff_eq!(climb(2., 0., 300, true), 2., epsilon = 0.01);
+    }
+
+    #[test]
+    fn a_delayed_gnss_altitude_is_dropped() {
+        assert_abs_diff_eq!(climb(2., 1., 3000, false), 2., epsilon = 0.01);
     }
 
     #[test]
     fn the_offset_does_not_leak_into_the_height_rate() {
         let mut filter = HeightFilter::default();
-        let first = filter.update(None, 1000., Some(1200.));
-        let second = filter.update(Some(1.), 1002., Some(1202.));
+        filter.pressure(0., 1000.);
+        filter.gnss(0., 1200.);
+
+        let first = filter.pressure(1., 1000.);
+        filter.gnss(1., 1200.);
+        let second = filter.pressure(2., 1002.);
 
         // The 200 m offset is absorbed, so the rate is the 2 m/s climb.
         assert_abs_diff_eq!(second - first, 2., epsilon = 0.01);
     }
 
     #[test]
-    fn a_delayed_gnss_altitude_is_dropped() {
-        // A one-sample delay biases the rate if it is averaged in. The
-        // lag check needs a while to settle, so the early samples still
-        // use it.
-        assert_abs_diff_eq!(climb(2., 1, 3000), 2., epsilon = 0.01);
+    fn a_missing_gnss_altitude_falls_back_to_the_pressure_altitude() {
+        let mut filter = HeightFilter::default();
+        let first = filter.pressure(0., 1002.);
+        let second = filter.pressure(1., 1004.);
+
+        assert_abs_diff_eq!(second - first, 2., epsilon = 1e-9);
     }
 
     #[test]
-    fn a_missing_gnss_altitude_falls_back_to_the_pressure_altitude() {
+    fn pressure_between_two_gnss_altitudes_carries_the_height() {
         let mut filter = HeightFilter::default();
-        filter.update(None, 1000., None);
-        let first = filter.update(Some(1.), 1002., None);
-        let second = filter.update(Some(1.), 1004., None);
+        filter.pressure(0., 1000.);
+        filter.gnss(0., 1200.);
 
-        assert_abs_diff_eq!(second - first, 2., epsilon = 1e-9);
+        // Ten pressure samples per GNSS sample, climbing at 2 m/s.
+        let mut height = filter.pressure(1., 1000.);
+        for tenth in 1..=10 {
+            let time = 1. + 0.1 * f64::from(tenth);
+            height = filter.pressure(time, 1000. + 0.2 * f64::from(tenth));
+        }
+
+        assert_abs_diff_eq!(height - 1200., 2., epsilon = 1e-9);
     }
 }

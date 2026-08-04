@@ -346,9 +346,13 @@ stages delay the reading by about `2·τ`, so that halves the vario's lag from
 roughly 4 s to 2 s. For centring a thermal that matters more than any of the
 error figures above.
 
-`updraft_air` keeps the 2 s time constant at every rate. Shortening it needs
-measurements from the sensor it would run on, which none of these recordings
-contain.
+That table assumes white noise. A measured device barometer turned out not to
+have any, and the conclusion changed: see
+[the rate is not what buys the shorter time constant](#the-rate-is-not-what-buys-the-shorter-time-constant).
+
+`updraft_air` defaults to the 2 s that a logged pressure altitude needs, and
+takes another value from the caller, which is the side that knows what sensor
+is feeding it.
 
 ## Recordings that would settle the time constant
 
@@ -432,6 +436,43 @@ A 0.25 s time constant stays below the 0.12 m/s budget with margin on this
 device. It reduces the approximate lag from 4 s to 0.5 s. This one recording
 does not justify a common Android value. Two more device models must confirm
 the result first.
+
+#### What the smoothing costs
+
+A driver that smooths also delays. The roll-off of the recording fits a
+first-order low pass with a time constant of 86 ms, 3 dB down at 1.9 Hz: the
+power above 10 Hz is 5% of the power between 1 and 2 Hz. So the driver adds
+about 0.09 s on top of the smoothing stages, and a 0.25 s time constant reads
+the air of about 0.59 s ago rather than 0.50 s.
+
+That is an estimate from noise alone. A stationary phone has no height signal
+to lag, so this recording cannot measure the delay directly. Only a moving
+reference can, which is what the flight recording below is for.
+
+#### The rate is not what buys the shorter time constant
+
+Decimating the same recording separates the sample rate from the quality of
+the sensor. Vertical-speed noise, in m/s:
+
+| Rate | Altitude noise | τ = 0.25 s | τ = 0.5 s | τ = 1 s | τ = 2 s |
+| --- | --- | --- | --- | --- | --- |
+| 25 Hz | 0.024 m | 0.083 | 0.039 | 0.018 | 0.009 |
+| 5 Hz | 0.047 m | 0.097 | 0.043 | 0.020 | 0.010 |
+| 1 Hz | 0.061 m | 0.082 | 0.058 | 0.028 | 0.013 |
+
+**One sample per second from this barometer still supports a 0.25 s time
+constant.** The earlier section of this investigation expected the rate to be
+what allows a shorter one. For white noise it would be. This sensor's noise is
+not white, so decimating it loses less than the white model predicts, and what
+is left is still ten times quieter than the 0.6 m of a logged pressure
+altitude.
+
+The vertical-speed noise scales with the altitude noise, so the same 25 Hz
+recording at the 0.6 m of a flight recorder would give 2.1 m/s at a 0.25 s
+time constant. The constant therefore has to follow the noise of the source,
+not its rate, and `AirStateEstimator::with_vertical_speed_time_constant` lets
+the caller set it. The default stays at the 2 s that a logged pressure
+altitude needs.
 
 ### A flight recording checks the rest
 

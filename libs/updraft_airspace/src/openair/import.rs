@@ -1,5 +1,5 @@
 use super::geometry::normalize_geometry;
-use crate::airspace::{
+use crate::{
     Airspace, AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceId, AirspaceImportError,
     AirspaceParseError, AirspaceType,
 };

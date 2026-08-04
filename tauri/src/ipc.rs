@@ -6,11 +6,12 @@ use std::sync::Arc;
 use tauri::ipc::Channel;
 use tauri_plugin_updraft::{BondedBluetoothDevices, UpdraftMobileExt};
 use tokio::sync::Mutex;
+use updraft_airspace::AirspaceImportError;
 use updraft_core::{
-    ActivateAirspaceDataset, AddExternalDevice, AirspaceImportError, ClearAirspaceDataset,
-    ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceId,
-    InvalidExternalDeviceOrder, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale,
-    SetUnits, Topic, UnitSettings, UnknownExternalDevice,
+    ActivateAirspaceDataset, AddExternalDevice, ClearAirspaceDataset, ConnectionSpec,
+    DeleteExternalDevice, EditExternalDevice, ExternalDeviceId, InvalidExternalDeviceOrder,
+    ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Topic, UnitSettings,
+    UnknownExternalDevice,
 };
 
 pub struct AirspaceCommandState {
@@ -334,12 +335,13 @@ mod tests {
     use serde_json::{Value, json};
     use std::time::Duration;
     use tempfile::tempdir;
-    use updraft_core::{AirspaceState, GetAirspaceSnapshot, SettingsSnapshot};
+    use updraft_airspace::AirspaceState;
+    use updraft_core::{GetAirspaceSnapshot, SettingsSnapshot};
 
     const POLYGON: &[u8] =
-        include_bytes!("../../libs/updraft_core/tests/fixtures/airspace/polygon.txt");
+        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/polygon.txt");
     const PARSER_ERROR: &[u8] =
-        include_bytes!("../../libs/updraft_core/tests/fixtures/airspace/parser_error.txt");
+        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/parser_error.txt");
     const GEOMETRY_ERROR: &[u8] = b"AC D\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:00:00 N 010:00:00 E\n";
 
     fn app() -> tauri::App<tauri::test::MockRuntime> {

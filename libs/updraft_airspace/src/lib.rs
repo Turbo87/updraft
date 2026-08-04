@@ -1,3 +1,5 @@
+//! Canonical airspace data and process-local airspace state.
+
 mod openair;
 mod types;
 
@@ -8,7 +10,7 @@ pub use types::{
     AirspaceImportError, AirspaceLoadError, AirspaceParseError, AirspaceStatus, AirspaceType,
 };
 
-/// Owns one valid core airspace state and its process-local generation.
+/// Owns one valid airspace state and its process-local generation.
 #[derive(Debug)]
 pub struct AirspaceState {
     value: AirspaceStateValue,

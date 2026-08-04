@@ -10,11 +10,11 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
+use updraft_airspace::{AirspaceDataset, AirspaceLoadError, AirspaceState, AirspaceStatus};
 use updraft_core::{
-    ActivateAirspaceDataset, AddExternalDevice, AirspaceDataset, AirspaceLoadError, AirspaceState,
-    AirspaceStatus, Bytes, ConnectionSpec, DeleteExternalDevice, EditExternalDevice,
-    ExternalDeviceConfig, ExternalDeviceId, SetExternalDeviceEnabled, SetLocale, SettingsSnapshot,
-    Topic, TrafficUpdate,
+    ActivateAirspaceDataset, AddExternalDevice, Bytes, ConnectionSpec, DeleteExternalDevice,
+    EditExternalDevice, ExternalDeviceConfig, ExternalDeviceId, SetExternalDeviceEnabled,
+    SetLocale, SettingsSnapshot, Topic, TrafficUpdate,
 };
 
 const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";

@@ -1,4 +1,4 @@
-use crate::airspace::AirspaceGeometryError;
+use crate::AirspaceGeometryError;
 use ::openair::{Coord, Direction, Geometry, PolygonSegment};
 use std::f64::consts::TAU;
 use updraft_geo::{LatLon, Polygon};

@@ -1,7 +1,8 @@
 use crate::driver::DriverHandle;
 use serde_json::{Value, json};
 use tauri::http::{Response, StatusCode, header};
-use updraft_core::{Airspace, AirspaceDataset, GetAirspaceSnapshot};
+use updraft_airspace::{Airspace, AirspaceDataset};
+use updraft_core::GetAirspaceSnapshot;
 
 /// Builds a `GeoJSON` response from the active airspace dataset.
 pub async fn airspace_resource_response(handle: DriverHandle) -> Response<Vec<u8>> {
@@ -45,12 +46,13 @@ mod tests {
     use std::time::Duration;
     use tauri::http::{StatusCode, header};
     use tracing_test::traced_test;
-    use updraft_core::{ActivateAirspaceDataset, AirspaceState, SettingsSnapshot};
+    use updraft_airspace::AirspaceState;
+    use updraft_core::{ActivateAirspaceDataset, SettingsSnapshot};
 
     const POLYGON: &[u8] =
-        include_bytes!("../../libs/updraft_core/tests/fixtures/airspace/polygon.txt");
+        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/polygon.txt");
     const CIRCLE: &[u8] =
-        include_bytes!("../../libs/updraft_core/tests/fixtures/airspace/circle.txt");
+        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/circle.txt");
 
     fn driver(airspace: AirspaceState) -> DriverHandle {
         Driver::spawn(

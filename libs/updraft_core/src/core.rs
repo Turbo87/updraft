@@ -1,4 +1,3 @@
-use crate::airspace::{AirspaceDataset, AirspaceState};
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
@@ -18,6 +17,7 @@ use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use std::sync::Arc;
+use updraft_airspace::{AirspaceDataset, AirspaceState};
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
 use updraft_units::{MslAltitude, PressureAltitude, Speed};

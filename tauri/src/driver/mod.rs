@@ -3,9 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::sync::{mpsc, oneshot};
+use updraft_airspace::AirspaceState;
 use updraft_core::{
-    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Tick,
-    Timestamp, Topic, Update,
+    ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Tick, Timestamp,
+    Topic, Update,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is

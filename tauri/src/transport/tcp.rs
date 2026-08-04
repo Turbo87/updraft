@@ -136,9 +136,8 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{sleep, timeout};
     use tracing_test::traced_test;
-    use updraft_core::{
-        AirspaceState, ConnectionSpec, ExternalDeviceConfig, SettingsSnapshot, Topic,
-    };
+    use updraft_airspace::AirspaceState;
+    use updraft_core::{ConnectionSpec, ExternalDeviceConfig, SettingsSnapshot, Topic};
 
     const PATIENCE: Duration = Duration::from_secs(5);
 

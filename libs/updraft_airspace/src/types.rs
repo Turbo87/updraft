@@ -99,9 +99,9 @@ pub struct Airspace {
     /// The required OpenAIP airspace type.
     pub type_code: AirspaceType,
     /// The lower altitude limit.
-    pub lower_bound: AirspaceAltitude,
+    pub lower_limit: AirspaceAltitude,
     /// The upper altitude limit.
-    pub upper_bound: AirspaceAltitude,
+    pub upper_limit: AirspaceAltitude,
     /// The canonical polygon exterior ring.
     pub polygon: Polygon,
 }

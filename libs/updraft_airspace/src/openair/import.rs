@@ -45,9 +45,9 @@ fn normalize_airspace(
     parsed: ParsedAirspace,
 ) -> Result<Airspace, AirspaceImportError> {
     let (class, type_code) = normalize_classification(parsed.class, parsed.type_.as_deref());
-    let lower_bound = AirspaceAltitude::try_from(parsed.lower_bound)
+    let lower_limit = AirspaceAltitude::try_from(parsed.lower_bound)
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
-    let upper_bound = AirspaceAltitude::try_from(parsed.upper_bound)
+    let upper_limit = AirspaceAltitude::try_from(parsed.upper_bound)
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
     let polygon =
         normalize_geometry(parsed.geom).map_err(|kind| AirspaceImportError::geometry(id, kind))?;
@@ -57,8 +57,8 @@ fn normalize_airspace(
         name: parsed.name.map(String::into_boxed_str),
         class,
         type_code,
-        lower_bound,
-        upper_bound,
+        lower_limit,
+        upper_limit,
         polygon,
     })
 }

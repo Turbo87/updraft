@@ -118,9 +118,9 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
     assert_eq!(airspace.name.as_deref(), Some("Polygon"));
     assert_eq!(airspace.class, AirspaceClass::D);
     assert_eq!(airspace.type_code, AirspaceType::Other);
-    assert_eq!(airspace.lower_bound, AirspaceAltitude::Ground);
+    assert_eq!(airspace.lower_limit, AirspaceAltitude::Ground);
     assert_eq!(
-        airspace.upper_bound,
+        airspace.upper_limit,
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(5000.)))
     );
     assert_eq!(
@@ -363,24 +363,24 @@ fn maps_supported_altitudes_to_typed_lengths() {
     let dataset = parse_fixture(ALTITUDES);
     let airspaces = dataset.airspaces();
 
-    assert_eq!(airspaces[0].lower_bound, AirspaceAltitude::Ground);
+    assert_eq!(airspaces[0].lower_limit, AirspaceAltitude::Ground);
     assert_eq!(
-        airspaces[0].upper_bound,
+        airspaces[0].upper_limit,
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(5000.)))
     );
     assert_eq!(
-        airspaces[1].lower_bound,
+        airspaces[1].lower_limit,
         AirspaceAltitude::Agl(Length::from_feet(1000.))
     );
     assert_eq!(
-        airspaces[1].upper_bound,
+        airspaces[1].upper_limit,
         AirspaceAltitude::FlightLevel(PressureAltitude::new(Length::from_feet(10_000.)))
     );
     assert_eq!(
-        airspaces[2].lower_bound,
+        airspaces[2].lower_limit,
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(250.)))
     );
-    assert_eq!(airspaces[2].upper_bound, AirspaceAltitude::Unlimited);
+    assert_eq!(airspaces[2].upper_limit, AirspaceAltitude::Unlimited);
 }
 
 /// Verifies that the importer rejects an unsupported altitude form.

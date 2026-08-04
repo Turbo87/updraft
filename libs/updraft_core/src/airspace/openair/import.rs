@@ -46,9 +46,9 @@ fn normalize_airspace(
 ) -> Result<Airspace, AirspaceImportError> {
     let (class, type_code) = normalize_classification(parsed.class, parsed.type_.as_deref())
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
-    let lower_bound = normalize_altitude(parsed.lower_bound)
+    let lower_bound = AirspaceAltitude::try_from(parsed.lower_bound)
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
-    let upper_bound = normalize_altitude(parsed.upper_bound)
+    let upper_bound = AirspaceAltitude::try_from(parsed.upper_bound)
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
     let polygon =
         normalize_geometry(parsed.geom).map_err(|kind| AirspaceImportError::geometry(id, kind))?;
@@ -105,22 +105,23 @@ fn normalize_classification(
     Ok((class, type_code))
 }
 
-/// Converts one supported parsed altitude to typed physical units.
-fn normalize_altitude(
-    altitude: ::openair::Altitude,
-) -> Result<AirspaceAltitude, AirspaceParseError> {
-    match altitude {
-        ::openair::Altitude::Gnd => Ok(AirspaceAltitude::Ground),
-        ::openair::Altitude::FeetAmsl(feet) => Ok(AirspaceAltitude::Msl(MslAltitude::new(
-            Length::from_feet(f64::from(feet)),
-        ))),
-        ::openair::Altitude::FeetAgl(feet) => {
-            Ok(AirspaceAltitude::Agl(Length::from_feet(f64::from(feet))))
+impl TryFrom<::openair::Altitude> for AirspaceAltitude {
+    type Error = AirspaceParseError;
+
+    fn try_from(value: ::openair::Altitude) -> Result<Self, Self::Error> {
+        match value {
+            ::openair::Altitude::Gnd => Ok(AirspaceAltitude::Ground),
+            ::openair::Altitude::FeetAmsl(feet) => Ok(AirspaceAltitude::Msl(MslAltitude::new(
+                Length::from_feet(f64::from(feet)),
+            ))),
+            ::openair::Altitude::FeetAgl(feet) => {
+                Ok(AirspaceAltitude::Agl(Length::from_feet(f64::from(feet))))
+            }
+            ::openair::Altitude::FlightLevel(level) => Ok(AirspaceAltitude::FlightLevel(
+                PressureAltitude::new(Length::from_feet(f64::from(level) * 100.)),
+            )),
+            ::openair::Altitude::Unlimited => Ok(AirspaceAltitude::Unlimited),
+            ::openair::Altitude::Other(_) => Err(AirspaceParseError::UnsupportedAltitude),
         }
-        ::openair::Altitude::FlightLevel(level) => Ok(AirspaceAltitude::FlightLevel(
-            PressureAltitude::new(Length::from_feet(f64::from(level) * 100.)),
-        )),
-        ::openair::Altitude::Unlimited => Ok(AirspaceAltitude::Unlimited),
-        ::openair::Altitude::Other(_) => Err(AirspaceParseError::UnsupportedAltitude),
     }
 }

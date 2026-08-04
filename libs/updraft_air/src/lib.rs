@@ -1,12 +1,14 @@
 //! Air-mass state estimation for Updraft.
 //!
-//! A soaring pilot needs to know three things that no sensor measures
-//! directly: how fast the glider gains energy ([total-energy vertical
+//! A soaring pilot needs to know things that no sensor measures directly:
+//! how fast the glider gains energy ([total-energy vertical
 //! speed](AirState::vertical_speed)), how fast the surrounding air rises
-//! ([netto](AirState::netto)), and where the air moves horizontally
-//! ([wind](Wind)). This crate derives all three from what a flight
-//! recorder logs: GNSS track, ground speed and position accuracy,
-//! barometric altitude, and true airspeed.
+//! ([netto](AirState::netto)), where the air moves horizontally
+//! ([wind](Wind)), and how high the glider is above sea level
+//! ([altitude](AirState::altitude)) without an altimeter setting to enter.
+//! This crate derives them from a GNSS receiver, a barometer, and an
+//! airspeed sensor, each of which is allowed to be absent or to arrive at
+//! its own rate.
 //!
 //! [`AirStateEstimator`] is the entry point. Each input arrives on its
 //! own call, at whatever rate its source produces it, and

@@ -16,6 +16,7 @@ use igc::records::{Extendable, Extension, Record};
 use std::fmt::Write as _;
 use std::time::Duration;
 use updraft_air::{AirStateEstimator, Fix};
+use updraft_geo::LatLon;
 use updraft_polar::{GlidePolar, POLAR_STORE};
 use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
 
@@ -56,6 +57,7 @@ fn measure(air_speed: AirSpeed) -> String {
     let mut netto = Errors::default();
     let mut wind_speed = Errors::default();
     let mut wind_direction = Errors::default();
+    let mut settings: Vec<f64> = Vec::new();
 
     let mut fix_extensions = Vec::new();
     let mut wind_extensions = Vec::new();
@@ -74,6 +76,10 @@ fn measure(air_speed: AirSpeed) -> String {
                 estimator.fix(
                     time,
                     &Fix {
+                        position: LatLon::from_degrees(
+                            f64::from(record.pos.lat),
+                            f64::from(record.pos.lon),
+                        ),
                         track: Angle::from_degrees(value("TRT")),
                         ground_speed: hundredths_kmh(value("GSP")),
                         // A zero GNSS altitude means the recorder had no fix.
@@ -100,6 +106,9 @@ fn measure(air_speed: AirSpeed) -> String {
                 if let Some(netto_estimate) = state.netto {
                     netto.add(netto_estimate.as_meters_per_second(), value("NET") / 100.);
                 }
+                if let Some(setting) = state.qnh {
+                    settings.push(setting.as_hectopascals());
+                }
             }
             Ok(Record::K(record)) => {
                 let Some(wind) = estimated_wind else { continue };
@@ -123,6 +132,20 @@ fn measure(air_speed: AirSpeed) -> String {
     writeln!(rows, "netto              m/s   {}", netto.row()).unwrap();
     writeln!(rows, "wind speed         m/s   {}", wind_speed.row()).unwrap();
     writeln!(rows, "wind direction     deg   {}", wind_direction.row()).unwrap();
+
+    // The altimeter setting has no reference in the recording. Its spread
+    // is the point: it grows with height on a day warmer than the ISA.
+    settings.sort_by(f64::total_cmp);
+    let percentile = |fraction: f64| settings[(settings.len() as f64 * fraction) as usize];
+    writeln!(
+        rows,
+        "altimeter setting  hPa   {:6}  p5 {:7.2}  median {:7.2}  p95 {:7.2}",
+        settings.len(),
+        percentile(0.05),
+        percentile(0.5),
+        percentile(0.95),
+    )
+    .unwrap();
     rows
 }
 

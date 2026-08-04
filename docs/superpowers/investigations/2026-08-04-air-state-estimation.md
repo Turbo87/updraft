@@ -309,6 +309,34 @@ through the whole column cannot follow a temperature profile that changes above
 the convective layer. A QNH estimate therefore has to weight the low and recent
 part of the flight.
 
+### Extrapolating to sea level does not work
+
+`updraft_air` reports the altitude and an altimeter setting, but not from
+this two-term fit. Running the fit online, as a two-state Kalman filter fed one
+measurement per fix, recovers the altimeter setting measured before take-off
+to within a few metres on the two flights that stayed below 2300 m, and misses
+it by 20 to 45 m on the three that climbed to 4000 m. Weighting the low
+samples more heavily, and feeding the filter the pre-take-off ground data,
+both leave that unchanged. One straight line cannot follow a temperature
+profile that changes above the convective layer, and near the ground the two
+terms are not separable at all: the glider sits at one altitude, so any split
+between them fits the data equally well.
+
+The crate therefore reports the altimeter setting that makes a pressure
+altimeter read the current altitude, which needs no extrapolation and is as
+accurate as the altitude itself. It is what a pilot does when they set the
+altimeter to a known height. On a day warmer than the ISA it grows with height:
+over flight 1141558 it moved between 1027.7 and 1031.9 hPa.
+
+The **altitude** itself needs no fit. It is the fused height, which the vario
+already computes, converted to mean sea level with the geoid. Against a 60 s
+mean of the GNSS altitude, no crossover between 5 s and 300 s scores better
+than any other, and none is far from the raw GNSS altitude: at one sample per
+second the GNSS altitude is already as smooth as the barometer, 0.47 to 0.60 m
+against 0.57 to 0.82 m. The gain over each source alone is not noise. It is
+that the result needs no altimeter setting, carries no temperature error, and
+is one value whether a barometer, a receiver, or both are connected.
+
 Two consequences matter beyond the estimate itself.
 
 **There are two different altitudes, and they are far apart.** At the top of

@@ -3,8 +3,11 @@ use crate::height::HeightFilter;
 use crate::smoothing_weight;
 use crate::wind::{Wind, WindFilter};
 use std::time::Duration;
+use updraft_geo::LatLon;
 use updraft_polar::GlidePolar;
-use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
+use updraft_units::{
+    Angle, EllipsoidAltitude, Length, MslAltitude, Pressure, PressureAltitude, Speed,
+};
 
 /// Standard gravity, in m/s².
 const GRAVITY: f64 = 9.80665;
@@ -39,12 +42,16 @@ const MAX_LOAD_FACTOR: f64 = 3.;
 
 /// A position report from a GNSS receiver.
 ///
-/// The position itself is not needed, because track and ground speed
-/// already carry the ground velocity. Deriving that velocity from
-/// consecutive positions instead gives the same accuracy, so a caller
-/// whose receiver reports no track and ground speed can substitute it.
+/// Track and ground speed carry the ground velocity, which is what the
+/// wind is derived from. Deriving that velocity from consecutive
+/// positions instead gives the same accuracy, so a caller whose receiver
+/// reports neither can substitute it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Fix {
+    /// Where the glider is. It is only needed to convert the receiver's
+    /// altitude to mean sea level, which moves by tens of metres across
+    /// a country.
+    pub position: LatLon,
     /// Track over ground, clockwise from true north.
     pub track: Angle,
     /// Speed over ground.
@@ -74,6 +81,20 @@ pub struct AirState {
     /// Horizontal movement of the air mass, or `None` while the wind
     /// estimate has not converged yet.
     pub wind: Option<Wind>,
+    /// Height above mean sea level, from both altitude sources. `None`
+    /// until a GNSS altitude has arrived, because a pressure altitude
+    /// alone has no sea-level reference.
+    pub altitude: Option<MslAltitude>,
+    /// The altimeter setting that makes a pressure altimeter read
+    /// [`altitude`](Self::altitude) *here*.
+    ///
+    /// This is not the airfield's QNH unless the air below the glider is
+    /// at the ISA temperature. A warm air column is thicker, so the
+    /// glider is higher than a correctly set altimeter shows, and this
+    /// value grows with height to make up the difference. Over the
+    /// recordings this crate was measured against, that difference
+    /// reached 47 to 251 m at the top of the flight.
+    pub qnh: Option<Pressure>,
 }
 
 /// Derives vertical speed, netto and wind from flight data.
@@ -113,6 +134,11 @@ pub struct AirStateEstimator {
     measured_air_speed: Option<Timed<f64>>,
     /// Latest ground velocity towards east and north, in m/s.
     ground: Option<Timed<(f64, f64)>>,
+    /// Latest position, for the geoid.
+    position: Option<LatLon>,
+    /// Latest fused height, and whether it is referenced to the
+    /// ellipsoid rather than to the pressure datum.
+    height_value: Option<(f64, bool)>,
     /// Latest pressure altitude, in metres, and whether a barometer
     /// supplied it. Without one the GNSS altitude takes its place.
     altitude: Option<Timed<(f64, bool)>>,
@@ -170,6 +196,8 @@ impl AirStateEstimator {
             height: HeightFilter::default(),
             measured_air_speed: None,
             ground: None,
+            position: None,
+            height_value: None,
             altitude: None,
             previous: None,
             previous_heading: None,
@@ -189,6 +217,7 @@ impl AirStateEstimator {
             value: (altitude, true),
         });
         let height = self.height.pressure(time.as_secs_f64(), altitude);
+        self.height_value = Some((height, self.height.is_fused()));
         self.advance_vertical_speed(time, height, true);
     }
 
@@ -215,6 +244,7 @@ impl AirStateEstimator {
             time,
             value: (east, north),
         });
+        self.position = Some(fix.position);
 
         let Some(altitude) = fix.altitude.map(|a| a.into_inner().as_meters()) else {
             return;
@@ -223,12 +253,16 @@ impl AirStateEstimator {
         // altitude only moves the offset. Without one it is all there is.
         if self.barometer_is_connected(time) {
             self.height.gnss(time.as_secs_f64(), altitude);
+            if let Some(value) = self.height_value.as_mut() {
+                value.1 = self.height.is_fused();
+            }
         } else {
             self.altitude = Some(Timed {
                 time,
                 value: (altitude, false),
             });
             let height = self.height.pressure(time.as_secs_f64(), altitude);
+            self.height_value = Some((height, true));
             self.advance_vertical_speed(time, height, false);
         }
     }
@@ -248,6 +282,7 @@ impl AirStateEstimator {
     pub fn state(&self) -> Option<AirState> {
         let vertical_speed = self.vertical_speed?;
         let air_speed = self.air_speed_at(self.previous?.time);
+        let altitude = self.msl_altitude();
         Some(AirState {
             vertical_speed: Speed::from_meters_per_second(vertical_speed),
             netto: air_speed.zip(self.altitude).map(|(speed, altitude)| {
@@ -258,7 +293,22 @@ impl AirStateEstimator {
                 direction: Angle::from_radians((-east).atan2(-north)).normalized(),
                 speed: Speed::from_meters_per_second(east.hypot(north)),
             }),
+            altitude,
+            qnh: altitude.zip(self.altitude).map(|(altitude, pressure)| {
+                altimeter_setting(pressure.value.0, altitude.into_inner().as_meters())
+            }),
         })
+    }
+
+    /// The height above mean sea level, once the GNSS altitude has given
+    /// the height a sea-level reference.
+    fn msl_altitude(&self) -> Option<MslAltitude> {
+        let (height, _) = self.height_value.filter(|(_, referenced)| *referenced)?;
+        let ellipsoidal = EllipsoidAltitude::new(Length::from_meters(height));
+        Some(updraft_egm96::ellipsoidal_to_msl(
+            self.position?,
+            ellipsoidal,
+        ))
     }
 
     /// The wind, from whichever estimator the connected sensors support.
@@ -376,6 +426,24 @@ impl AirStateEstimator {
     }
 }
 
+/// The sea-level pressure that makes an altimeter read `altitude` where
+/// the standard atmosphere reads `pressure_altitude`.
+///
+/// Both altitudes name the same air pressure, one against the 1013.25 hPa
+/// datum and one against the setting being solved for, so the ratio of
+/// the two ISA pressure profiles is the ratio of the two settings.
+fn altimeter_setting(pressure_altitude: f64, altitude: f64) -> Pressure {
+    /// Temperature lapse rate divided by the sea level temperature, in 1/m.
+    const LAPSE_RATE: f64 = 2.255_77e-5;
+    /// `g/(R·L)`, the exponent that turns a temperature ratio into a
+    /// pressure ratio.
+    const EXPONENT: f64 = 5.255_88;
+
+    let datum = (1. - LAPSE_RATE * pressure_altitude).max(0.);
+    let setting = (1. - LAPSE_RATE * altitude).max(f64::MIN_POSITIVE);
+    Pressure::from_hectopascals(1013.25 * (datum / setting).powf(EXPONENT))
+}
+
 /// Air density at a pressure altitude, relative to sea level, following
 /// the ISA troposphere model.
 ///
@@ -408,8 +476,13 @@ mod tests {
             .glide_polar()
     }
 
+    /// Somewhere in Germany, where the geoid sits about 46 m above the
+    /// ellipsoid.
+    const POSITION: LatLon = LatLon::from_degrees(50.8, 6.2);
+
     fn fix(track: f64, ground_speed: f64) -> Fix {
         Fix {
+            position: POSITION,
             track: Angle::from_degrees(track),
             ground_speed: Speed::from_kilometers_per_hour(ground_speed),
             altitude: None,
@@ -586,8 +659,7 @@ mod tests {
                 &Fix {
                     track: Angle::from_radians(east.atan2(north)),
                     ground_speed: Speed::from_meters_per_second(east.hypot(north)),
-                    altitude: None,
-                    position_accuracy: Length::from_meters(15.),
+                    ..fix(0., 0.)
                 },
             );
             estimator.pressure_altitude(time, meters(1000.));
@@ -700,6 +772,70 @@ mod tests {
             state.vertical_speed,
             Speed::from_meters_per_second(2.),
             epsilon = 0.01
+        );
+    }
+
+    #[test]
+    fn the_altitude_needs_a_gnss_altitude_for_its_reference() {
+        let mut estimator = AirStateEstimator::new(polar());
+        for step in 0..10 {
+            second(&mut estimator, step, 90., 120., 1000., Some(120.));
+        }
+
+        // A pressure altitude alone says nothing about sea level.
+        let state = assert_some!(estimator.state());
+        assert_none!(state.altitude);
+        assert_none!(state.qnh);
+    }
+
+    #[test]
+    fn the_altitude_follows_the_gnss_altitude_through_the_geoid() {
+        let mut estimator = AirStateEstimator::new(polar());
+        for step in 0..30 {
+            let time = Duration::from_secs(step);
+            estimator.air_speed(time, Speed::from_kilometers_per_hour(120.));
+            estimator.fix(
+                time,
+                &Fix {
+                    altitude: Some(EllipsoidAltitude::new(Length::from_meters(1046.))),
+                    ..fix(90., 120.)
+                },
+            );
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+
+        let state = assert_some!(estimator.state());
+        let expected = updraft_egm96::ellipsoidal_to_msl(
+            POSITION,
+            EllipsoidAltitude::new(Length::from_meters(1046.)),
+        );
+        assert_abs_diff_eq!(assert_some!(state.altitude), expected, epsilon = 0.01);
+    }
+
+    #[test]
+    fn the_altimeter_setting_is_the_standard_one_in_a_standard_atmosphere() {
+        /// Pressure comparisons are in pascals, so this is 0.05 hPa.
+        const TOLERANCE: f64 = 5.;
+
+        // 1013.25 hPa is by definition the setting at which the two
+        // altitudes are the same.
+        assert_abs_diff_eq!(
+            altimeter_setting(1000., 1000.),
+            Pressure::from_hectopascals(1013.25),
+            epsilon = 1e-9
+        );
+        // Near sea level one hectopascal is worth about 8.3 m. Standing
+        // higher than the standard atmosphere says means the pressure at
+        // sea level is above standard, and the other way round.
+        assert_abs_diff_eq!(
+            altimeter_setting(0., 8.3),
+            Pressure::from_hectopascals(1014.25),
+            epsilon = TOLERANCE
+        );
+        assert_abs_diff_eq!(
+            altimeter_setting(150., 0.),
+            Pressure::from_hectopascals(995.36),
+            epsilon = TOLERANCE
         );
     }
 

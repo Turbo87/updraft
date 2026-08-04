@@ -49,7 +49,8 @@
 
   let spritesLoaded = $state(false);
   const map = $derived(mapState.map);
-  const position = $derived(instruments.position);
+  const gps = $derived(instruments.gps);
+  const position = $derived(gps?.position ?? null);
   const mapStyle = $derived(
     testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
   );
@@ -106,7 +107,7 @@
     {#if spritesLoaded}
       <Traffic {traffic} altitudeUnit={units.altitude} />
       {#if position}
-        <Ownship {position} trackDegrees={instruments.trackDegrees} />
+        <Ownship {position} trackDegrees={gps?.trackDegrees ?? null} />
       {/if}
       {#if airspaceData}
         <Airspace data={airspaceData} beforeId="traffic-fixed" />

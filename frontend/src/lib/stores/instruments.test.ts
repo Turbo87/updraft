@@ -9,15 +9,20 @@ describe('InstrumentsStore', () => {
     store.apply({
       topic: 'instruments',
       value: {
-        position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-        trackDegrees: 270,
-        groundSpeedMetersPerSecond: 45,
-        altitudeMslMeters: 200,
+        gps: {
+          position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+          altitudeMeters: 200,
+          groundSpeedMetersPerSecond: 45,
+          trackDegrees: 270,
+          fixTime: null,
+          stale: false,
+        },
+        pressureAltitude: null,
       },
     });
 
-    expect(store.current.trackDegrees).toBe(270);
-    expect(store.current.position).toEqual({
+    expect(store.current.gps?.trackDegrees).toBe(270);
+    expect(store.current.gps?.position).toEqual({
       latitudeDegrees: 50.823,
       longitudeDegrees: 6.186,
     });

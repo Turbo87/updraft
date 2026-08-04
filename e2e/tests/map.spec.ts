@@ -1,17 +1,11 @@
 import type { Page } from '@playwright/test';
 import type { GeoJSONSource } from 'maplibre-gl';
 import type { AppContext } from '$lib/app-context';
+import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
 
 import { expect, test } from '@playwright/test';
 
 import { AIRSPACE_BROWSER_FIXTURE } from '../../frontend/src/lib/map/airspace.fixture';
-
-type Instruments = {
-  position: { latitudeDegrees: number; longitudeDegrees: number };
-  trackDegrees: number;
-  groundSpeedMetersPerSecond: number;
-  altitudeMslMeters: number;
-};
 
 type MapState = {
   center: number[];
@@ -36,25 +30,31 @@ type TestWindow = Window & {
   __updraftTestAirspaceData?: typeof AIRSPACE_BROWSER_FIXTURE;
 };
 
-const POSITION_A: Instruments = {
+const POSITION_A: GpsInstruments = {
   position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
   trackDegrees: 45,
   groundSpeedMetersPerSecond: 30,
-  altitudeMslMeters: 400,
+  altitudeMeters: 400,
+  fixTime: null,
+  stale: false,
 };
 
-const POSITION_B: Instruments = {
+const POSITION_B: GpsInstruments = {
   position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
   trackDegrees: 90,
   groundSpeedMetersPerSecond: 31,
-  altitudeMslMeters: 410,
+  altitudeMeters: 410,
+  fixTime: null,
+  stale: false,
 };
 
-const POSITION_C: Instruments = {
+const POSITION_C: GpsInstruments = {
   position: { latitudeDegrees: 50.825, longitudeDegrees: 6.188 },
   trackDegrees: 135,
   groundSpeedMetersPerSecond: 32,
-  altitudeMslMeters: 420,
+  altitudeMeters: 420,
+  fixTime: null,
+  stale: false,
 };
 
 test('follows live positions until the user pans and returns', async ({ page }) => {
@@ -119,15 +119,18 @@ test('renders active airspace below traffic and ownship', async ({ page }) => {
     });
 });
 
-async function emitInstruments(page: Page, instruments: Instruments) {
-  await page.evaluate((value) => {
-    (window as TestWindow).__updraftFake?.emit({ topic: 'instruments', value });
-  }, instruments);
+async function emitInstruments(page: Page, gps: GpsInstruments) {
+  await page.evaluate(
+    (value) => {
+      (window as TestWindow).__updraftFake?.emit({ topic: 'instruments', value });
+    },
+    { gps, pressureAltitude: null },
+  );
 }
 
 async function expectMapPosition(
   page: Page,
-  instruments: Instruments,
+  instruments: GpsInstruments,
   expectedCenter = instruments.position,
 ) {
   let { latitudeDegrees, longitudeDegrees } = instruments.position;

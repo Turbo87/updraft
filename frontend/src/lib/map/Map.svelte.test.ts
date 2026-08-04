@@ -11,17 +11,20 @@ import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import MapComponent from './Map.svelte';
 
 const instruments = {
-  position: null,
-  altitudeMslMeters: null,
-  trackDegrees: null,
-  groundSpeedMetersPerSecond: null,
+  gps: null,
+  pressureAltitude: null,
 };
 
 const positionInstruments = {
-  position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
-  altitudeMslMeters: 410,
-  trackDegrees: 90,
-  groundSpeedMetersPerSecond: 31,
+  gps: {
+    position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
+    altitudeMeters: 410,
+    groundSpeedMetersPerSecond: 31,
+    trackDegrees: 90,
+    fixTime: null,
+    stale: true,
+  },
+  pressureAltitude: null,
 };
 
 const units = {
@@ -156,8 +159,8 @@ it('returns to follow mode without a position and follows the next position', as
   });
   await vi.waitFor(() => {
     expect(map.getCenter().toArray()).toEqual([
-      expect.closeTo(positionInstruments.position.longitudeDegrees, 6),
-      expect.closeTo(positionInstruments.position.latitudeDegrees, 6),
+      expect.closeTo(positionInstruments.gps.position.longitudeDegrees, 6),
+      expect.closeTo(positionInstruments.gps.position.latitudeDegrees, 6),
     ]);
     expect(map.getZoom()).toBe(9);
     expect(map.getBearing()).toBe(15);

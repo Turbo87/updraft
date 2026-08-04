@@ -2,9 +2,11 @@ use crate::Topic;
 use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
-use crate::ownship::OwnshipState;
+use crate::ownship::GpsCandidate;
+use crate::ownship::Timed;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use updraft_units::PressureAltitude;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -30,14 +32,16 @@ pub struct ExternalDevice {
     pub config: ExternalDeviceConfig,
     pub decoder: Decoder,
     pub diagnostics: ConnectionDiagnostics,
-    pub ownship: OwnshipState,
+    pub gps: GpsCandidate,
+    pub pressure_altitude: Option<Timed<PressureAltitude>>,
 }
 
 impl ExternalDevice {
     pub fn reset_runtime(&mut self) {
         self.decoder = Decoder::default();
         self.diagnostics = ConnectionDiagnostics::default();
-        self.ownship = OwnshipState::default();
+        self.gps = GpsCandidate::default();
+        self.pressure_altitude = None;
     }
 }
 
@@ -76,7 +80,8 @@ impl ExternalDevices {
                 config,
                 decoder: Decoder::default(),
                 diagnostics: ConnectionDiagnostics::default(),
-                ownship: OwnshipState::default(),
+                gps: GpsCandidate::default(),
+                pressure_altitude: None,
             });
         }
         external_devices
@@ -108,7 +113,8 @@ impl ExternalDevices {
             },
             decoder: Decoder::default(),
             diagnostics: ConnectionDiagnostics::default(),
-            ownship: OwnshipState::default(),
+            gps: GpsCandidate::default(),
+            pressure_altitude: None,
         });
         device_id
     }

@@ -289,7 +289,7 @@ mod tests {
             let Topic::Instruments(instruments) = assert_some!(received) else {
                 continue;
             };
-            if instruments.position.is_some() {
+            if instruments.gps.is_some() {
                 return;
             }
         }
@@ -447,7 +447,7 @@ mod tests {
             let Topic::Instruments(instruments) = assert_some!(received) else {
                 continue;
             };
-            assert!(instruments.position.is_none());
+            assert!(instruments.gps.is_none());
             break;
         }
     }

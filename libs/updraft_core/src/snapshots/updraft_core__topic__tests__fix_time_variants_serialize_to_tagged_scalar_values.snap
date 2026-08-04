@@ -1,0 +1,14 @@
+---
+source: libs/updraft_core/src/topic.rs
+expression: "[FixTime::UtcInstant { unix_milliseconds: 1_767_268_800_000, },\nFixTime::UtcTimeOfDay { milliseconds_since_midnight: 43_201_250, },]"
+---
+[
+  {
+    "type": "utcInstant",
+    "unixMilliseconds": 1767268800000
+  },
+  {
+    "type": "utcTimeOfDay",
+    "millisecondsSinceMidnight": 43201250
+  }
+]

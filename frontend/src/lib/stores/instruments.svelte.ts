@@ -2,10 +2,8 @@ import type { Instruments } from '$lib/protocol/generated/Instruments';
 import type { Topic } from '$lib/protocol/generated/Topic';
 
 const EMPTY: Instruments = {
-  position: null,
-  trackDegrees: null,
-  groundSpeedMetersPerSecond: null,
-  altitudeMslMeters: null,
+  gps: null,
+  pressureAltitude: null,
 };
 
 /**

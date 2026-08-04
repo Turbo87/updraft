@@ -2,7 +2,7 @@ use crate::driver::DriverHandle;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri_plugin_updraft::Fix as ReportedFix;
 use tokio::sync::mpsc;
-use updraft_core::{Fix as CoreFix, InternalGps};
+use updraft_core::{Fix as CoreFix, InternalGps, UtcInstant};
 use updraft_geo::LatLon;
 use updraft_units::{Angle, EllipsoidAltitude, Length, Speed};
 
@@ -47,6 +47,9 @@ fn fix(reported: ReportedFix) -> CoreFix {
         ground_speed: reported
             .ground_speed_meters_per_second
             .map(Speed::from_meters_per_second),
+        fix_time: Some(UtcInstant::from_unix_milliseconds(
+            reported.unix_time_milliseconds,
+        )),
     }
 }
 
@@ -60,13 +63,14 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::time::{Instant, timeout, timeout_at};
     use tracing_test::traced_test;
-    use updraft_core::{AirspaceState, Instruments, SettingsSnapshot, Topic};
+    use updraft_core::{AirspaceState, Instruments, SettingsSnapshot, Topic, UtcInstant};
 
     const PATIENCE: Duration = Duration::from_secs(5);
 
     const COMPLETE: &str = r#"{
         "latitudeDegrees": 50.823,
         "longitudeDegrees": 6.186,
+        "unixTimeMilliseconds": 1767268800000,
         "altitudeEllipsoidMeters": 247.0,
         "trackDegrees": 270.0,
         "groundSpeedMetersPerSecond": 23.15
@@ -77,6 +81,7 @@ mod tests {
     const RENAMED_OPTIONAL: &str = r#"{
         "latitudeDegrees": 50.823,
         "longitudeDegrees": 6.186,
+        "unixTimeMilliseconds": 1767268800000,
         "altitudeEllipsoidMeters": 247.0,
         "trackDegreesss": 270.0,
         "groundSpeedMetersPerSecond": 23.15
@@ -87,6 +92,7 @@ mod tests {
     const POSITION_ONLY: &str = r#"{
         "latitudeDegrees": 51.0,
         "longitudeDegrees": 7.0,
+        "unixTimeMilliseconds": 1767268801000,
         "altitudeEllipsoidMeters": null,
         "trackDegrees": null,
         "groundSpeedMetersPerSecond": null
@@ -114,6 +120,23 @@ mod tests {
         channel
             .send(InvokeResponseBody::Json(payload.to_owned()))
             .expect("the channel accepts the payload");
+    }
+
+    #[test]
+    fn reported_epoch_time_becomes_core_fix_time() {
+        let converted = fix(ReportedFix {
+            latitude_degrees: 50.823,
+            longitude_degrees: 6.186,
+            altitude_ellipsoid_meters: None,
+            track_degrees: None,
+            ground_speed_meters_per_second: None,
+            unix_time_milliseconds: 1_767_268_800_000,
+        });
+
+        assert_some_eq!(
+            converted.fix_time,
+            UtcInstant::from_unix_milliseconds(1_767_268_800_000)
+        );
     }
 
     async fn next_instruments(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> Instruments {
@@ -147,8 +170,8 @@ mod tests {
                 continue;
             };
             if instruments
-                .position
-                .is_some_and(|position| position.latitude_degrees == latitude_degrees)
+                .gps
+                .is_some_and(|gps| gps.position.latitude_degrees == latitude_degrees)
             {
                 return instruments;
             }
@@ -163,23 +186,17 @@ mod tests {
         report(&fix_channel(handle), COMPLETE);
 
         let instruments = instruments_at(&mut topics, 50.823).await;
-        assert_eq!(
-            assert_some!(instruments.position).longitude_degrees,
-            6.186_f64
-        );
-        assert_some_eq!(instruments.track_degrees, 270.0_f64);
-        assert_some_eq!(instruments.ground_speed_meters_per_second, 23.15_f64);
+        let gps = assert_some!(instruments.gps);
+        assert_eq!(gps.position.longitude_degrees, 6.186_f64);
+        assert_some_eq!(gps.track_degrees, 270.0_f64);
+        assert_some_eq!(gps.ground_speed_meters_per_second, 23.15_f64);
 
         // The geoid sits some 46.5 m above the ellipsoid here, so the MSL
         // altitude lands near 200 m. The tolerance leaves the core free to
         // refine its geoid model while still missing every other field of the
         // fix, the nearest of which is the uncorrected ellipsoidal altitude,
         // 46.5 m away.
-        assert_abs_diff_eq!(
-            assert_some!(instruments.altitude_msl_meters),
-            200.5,
-            epsilon = 10.0
-        );
+        assert_abs_diff_eq!(assert_some!(gps.altitude_meters), 200.5, epsilon = 10.0);
     }
 
     #[tokio::test]
@@ -194,12 +211,14 @@ mod tests {
         report(&channel, POSITION_ONLY);
         let landed = instruments_at(&mut topics, 51.0).await;
 
+        let flying = assert_some!(flying.gps);
+        let landed = assert_some!(landed.gps);
         assert_eq!(landed.track_degrees, flying.track_degrees);
         assert_eq!(
             landed.ground_speed_meters_per_second,
             flying.ground_speed_meters_per_second
         );
-        assert_eq!(landed.altitude_msl_meters, flying.altitude_msl_meters);
+        assert_eq!(landed.altitude_meters, flying.altitude_meters);
     }
 
     #[tokio::test]
@@ -214,8 +233,8 @@ mod tests {
         let first = instruments_at(&mut topics, 50.823).await;
         let second = instruments_at(&mut topics, 51.0).await;
 
-        assert_eq!(assert_some!(first.position).latitude_degrees, 50.823);
-        assert_eq!(assert_some!(second.position).latitude_degrees, 51.0);
+        assert_eq!(assert_some!(first.gps).position.latitude_degrees, 50.823);
+        assert_eq!(assert_some!(second.gps).position.latitude_degrees, 51.0);
     }
 
     #[tokio::test]
@@ -239,7 +258,10 @@ mod tests {
         // proves both that the malformed payload reached no topic of its own
         // and that the driver kept running.
         let instruments = next_instruments(&mut topics).await;
-        assert_eq!(assert_some!(instruments.position).latitude_degrees, 50.823);
+        assert_eq!(
+            assert_some!(instruments.gps).position.latitude_degrees,
+            50.823
+        );
 
         assert!(logs_contain("Discarded an unreadable GNSS fix"));
     }
@@ -267,7 +289,7 @@ mod tests {
         // the renamed payload published would arrive first and carry a track
         // of `None`.
         let instruments = next_instruments(&mut topics).await;
-        assert_some_eq!(instruments.track_degrees, 270.0_f64);
+        assert_some_eq!(assert_some!(instruments.gps).track_degrees, 270.0_f64);
 
         assert!(logs_contain("Discarded an unreadable GNSS fix"));
     }

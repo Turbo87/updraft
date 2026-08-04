@@ -35,20 +35,22 @@ pub use external_device::{
     ExternalDeviceConfig, InvalidExternalDeviceOrder, PublishedExternalDevice,
     UnknownExternalDevice,
 };
-pub use fix::Fix;
+pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
 pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
     ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
     Start, Tick, Update,
 };
-pub use ownship::OwnshipState;
 pub use settings::{
     AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
     VerticalSpeedUnit,
 };
 pub use time::Timestamp;
-pub use topic::{Instruments, LatLon, Topic};
+pub use topic::{
+    FixTime as PublishedFixTime, GpsInstruments, Instruments, LatLon, PressureAltitudeInstruments,
+    Topic,
+};
 pub use traffic::{
     PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,
     TrafficTarget, TrafficTargetId, TrafficTargetIdType, TrafficType, TrafficUpdate,

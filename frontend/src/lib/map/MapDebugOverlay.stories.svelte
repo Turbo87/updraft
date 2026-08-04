@@ -8,10 +8,27 @@
   import MapDebugOverlay from './MapDebugOverlay.svelte';
 
   const instruments = {
-    position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-    altitudeMslMeters: 190,
-    trackDegrees: 45,
-    groundSpeedMetersPerSecond: 30,
+    gps: {
+      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+      altitudeMeters: 190,
+      groundSpeedMetersPerSecond: 30,
+      trackDegrees: 45,
+      fixTime: { type: 'utcInstant', unixMilliseconds: 1_767_268_800_000 },
+      stale: false,
+    },
+    pressureAltitude: { meters: 1_000, stale: false },
+  } satisfies Instruments;
+
+  const staleInstruments = {
+    gps: {
+      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+      altitudeMeters: 190,
+      groundSpeedMetersPerSecond: 30,
+      trackDegrees: 45,
+      fixTime: { type: 'utcTimeOfDay', millisecondsSinceMidnight: 43_201_250 },
+      stale: true,
+    },
+    pressureAltitude: { meters: 1_000, stale: true },
   } satisfies Instruments;
 
   const metricUnits = {
@@ -52,7 +69,7 @@
 />
 <Story
   name="Aviation"
-  args={{ map, instruments, units: aviationUnits }}
+  args={{ map, instruments: staleInstruments, units: aviationUnits }}
   play={async ({ userEvent }) => {
     await userEvent.keyboard('d');
   }}

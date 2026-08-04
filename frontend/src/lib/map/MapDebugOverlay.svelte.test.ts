@@ -8,10 +8,8 @@ import { page, userEvent } from 'vitest/browser';
 import MapDebugOverlay from './MapDebugOverlay.svelte';
 
 const emptyInstruments: Instruments = {
-  position: null,
-  altitudeMslMeters: null,
-  trackDegrees: null,
-  groundSpeedMetersPerSecond: null,
+  gps: null,
+  pressureAltitude: null,
 };
 
 const metricUnits: UnitSettings = {
@@ -58,31 +56,61 @@ describe('MapDebugOverlay.svelte', () => {
     let values = Array.from(view.container.querySelectorAll('dd'), (element) =>
       element.textContent?.trim(),
     );
-    expect(values).toEqual(['0.00', '0.00000, 0.00000', '–', '–', '–']);
+    expect(values).toEqual([
+      '0.00',
+      '0.00000, 0.00000',
+      '–',
+      '–',
+      'Unavailable',
+      '–',
+      '–',
+      '–',
+      'Unavailable',
+    ]);
   });
 
   it('shows the current flight values once visible', async () => {
     let instruments: Instruments = {
-      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-      altitudeMslMeters: 190,
-      trackDegrees: 45,
-      groundSpeedMetersPerSecond: 30,
+      gps: {
+        position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+        altitudeMeters: 190,
+        groundSpeedMetersPerSecond: 30,
+        trackDegrees: 45,
+        fixTime: { type: 'utcInstant', unixMilliseconds: 1_767_268_800_000 },
+        stale: false,
+      },
+      pressureAltitude: { meters: 1_000, stale: false },
     };
-    render(MapDebugOverlay, { map: undefined, instruments, units: metricUnits });
+    let view = await render(MapDebugOverlay, {
+      map: undefined,
+      instruments,
+      units: metricUnits,
+    });
 
     await userEvent.keyboard('d');
 
     await expect.element(page.getByText('50.82300, 6.18600')).toBeInTheDocument();
+    await expect.element(page.getByText('2026-01-01 12:00:00.000 UTC')).toBeInTheDocument();
+    let states = Array.from(view.container.querySelectorAll('dd'), (element) =>
+      element.textContent?.trim(),
+    ).filter((value) => value === 'Current');
+    expect(states).toEqual(['Current', 'Current']);
     await expect.element(page.getByText('190 m', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('108.0 km/h', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('1000 m', { exact: true })).toBeInTheDocument();
   });
 
   it('uses the selected altitude and speed units', async () => {
     let instruments: Instruments = {
-      position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-      altitudeMslMeters: 190,
-      trackDegrees: 45,
-      groundSpeedMetersPerSecond: 30,
+      gps: {
+        position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+        altitudeMeters: 190,
+        groundSpeedMetersPerSecond: 30,
+        trackDegrees: 45,
+        fixTime: { type: 'utcTimeOfDay', millisecondsSinceMidnight: 43_201_250 },
+        stale: true,
+      },
+      pressureAltitude: { meters: 1_000, stale: true },
     };
     let units: UnitSettings = {
       altitude: 'ft',
@@ -90,12 +118,18 @@ describe('MapDebugOverlay.svelte', () => {
       speed: 'kt',
       verticalSpeed: 'ft/min',
     };
-    render(MapDebugOverlay, { map: undefined, instruments, units });
+    let view = await render(MapDebugOverlay, { map: undefined, instruments, units });
 
     await userEvent.keyboard('d');
 
     await expect.element(page.getByText('50.82300, 6.18600')).toBeInTheDocument();
+    await expect.element(page.getByText('12:00:01.250 UTC', { exact: true })).toBeInTheDocument();
+    let states = Array.from(view.container.querySelectorAll('dd'), (element) =>
+      element.textContent?.trim(),
+    ).filter((value) => value === 'Stale');
+    expect(states).toEqual(['Stale', 'Stale']);
     await expect.element(page.getByText('623 ft', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('58.3 kt', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('3281 ft', { exact: true })).toBeInTheDocument();
   });
 });

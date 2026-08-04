@@ -108,6 +108,7 @@ class GpsSource(private val context: Context, private val fixes: Channel) : Loca
 private fun Location.toFix(): JSObject = JSObject()
     .put("latitudeDegrees", latitude)
     .put("longitudeDegrees", longitude)
+    .put("unixTimeMilliseconds", time)
     .put("altitudeEllipsoidMeters", orNull(hasAltitude(), altitude))
     .put("trackDegrees", orNull(hasBearing(), bearing.toDouble()))
     .put("groundSpeedMetersPerSecond", orNull(hasSpeed(), speed.toDouble()))

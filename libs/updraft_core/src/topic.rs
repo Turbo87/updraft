@@ -1,5 +1,6 @@
 use crate::airspace::AirspaceStatus;
 use crate::external_device::PublishedExternalDevice;
+use crate::fix::FixTime as CoreFixTime;
 use crate::settings::Settings;
 use crate::traffic::TrafficUpdate;
 use serde::Serialize;
@@ -12,18 +13,66 @@ pub struct LatLon {
     pub longitude_degrees: f64,
 }
 
-/// Fast-changing instrument values.
-///
-/// Every field is SI and names its unit. Conversion to display units and
-/// formatting belong to the frontend.
+/// A canonical GPS fix time at the frontend boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum FixTime {
+    UtcInstant {
+        #[cfg_attr(feature = "ts", ts(type = "number"))]
+        unix_milliseconds: i64,
+    },
+    UtcTimeOfDay {
+        milliseconds_since_midnight: u32,
+    },
+}
+
+impl From<CoreFixTime> for FixTime {
+    fn from(value: CoreFixTime) -> Self {
+        match value {
+            CoreFixTime::UtcInstant(time) => Self::UtcInstant {
+                unix_milliseconds: time.unix_milliseconds(),
+            },
+            CoreFixTime::UtcTimeOfDay(time) => Self::UtcTimeOfDay {
+                milliseconds_since_midnight: time.milliseconds_since_midnight(),
+            },
+        }
+    }
+}
+
+/// The selected GPS domain at the frontend boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct GpsInstruments {
+    pub position: LatLon,
+    pub altitude_meters: Option<f64>,
+    pub ground_speed_meters_per_second: Option<f64>,
+    pub track_degrees: Option<f64>,
+    pub fix_time: Option<FixTime>,
+    pub stale: bool,
+}
+
+/// The selected pressure-altitude domain at the frontend boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct PressureAltitudeInstruments {
+    pub meters: f64,
+    pub stale: bool,
+}
+
+/// Fast-changing instrument values grouped by source-selection domain.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct Instruments {
-    pub position: Option<LatLon>,
-    pub track_degrees: Option<f64>,
-    pub ground_speed_meters_per_second: Option<f64>,
-    pub altitude_msl_meters: Option<f64>,
+    pub gps: Option<GpsInstruments>,
+    pub pressure_altitude: Option<PressureAltitudeInstruments>,
 }
 
 impl Instruments {
@@ -84,17 +133,39 @@ mod tests {
     #[test]
     fn topic_serializes_to_tagged_camel_case_json() {
         let topic = Instruments {
-            position: Some(LatLon {
-                latitude_degrees: 50.823,
-                longitude_degrees: 6.186,
+            gps: Some(GpsInstruments {
+                position: LatLon {
+                    latitude_degrees: 50.823,
+                    longitude_degrees: 6.186,
+                },
+                altitude_meters: None,
+                ground_speed_meters_per_second: Some(45.0),
+                track_degrees: Some(270.0),
+                fix_time: Some(FixTime::UtcInstant {
+                    unix_milliseconds: 1_767_268_800_000,
+                }),
+                stale: false,
             }),
-            track_degrees: Some(270.0),
-            ground_speed_meters_per_second: Some(45.0),
-            altitude_msl_meters: None,
+            pressure_altitude: Some(PressureAltitudeInstruments {
+                meters: 1_000.0,
+                stale: true,
+            }),
         }
         .as_topic();
 
         insta::assert_json_snapshot!(topic);
+    }
+
+    #[test]
+    fn fix_time_variants_serialize_to_tagged_scalar_values() {
+        insta::assert_json_snapshot!([
+            FixTime::UtcInstant {
+                unix_milliseconds: 1_767_268_800_000,
+            },
+            FixTime::UtcTimeOfDay {
+                milliseconds_since_midnight: 43_201_250,
+            },
+        ]);
     }
 
     #[test]

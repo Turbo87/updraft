@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Map } from 'maplibre-gl';
+  import type { FixTime } from '$lib/protocol/generated/FixTime';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
@@ -10,6 +11,28 @@
     instruments,
     units,
   }: { map: Map | undefined; instruments: Instruments; units: UnitSettings } = $props();
+  const gps = $derived(instruments.gps);
+  const altitudeMeters = $derived(gps?.altitudeMeters ?? null);
+  const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);
+  const fixTime = $derived(formatFixTime(gps?.fixTime ?? null));
+  const gpsState = $derived(formatDomainState(gps));
+  const pressureAltitude = $derived(instruments.pressureAltitude);
+  const pressureAltitudeState = $derived(formatDomainState(pressureAltitude));
+
+  function formatDomainState(value: { stale: boolean } | null): string {
+    if (value === null) return 'Unavailable';
+    return value.stale ? 'Stale' : 'Current';
+  }
+
+  function formatFixTime(value: FixTime | null): string {
+    if (value === null) return '–';
+
+    let timestamp =
+      value.type === 'utcInstant' ? value.unixMilliseconds : value.millisecondsSinceMidnight;
+    let iso = new Date(timestamp).toISOString();
+    let time = `${iso.slice(11, 23)} UTC`;
+    return value.type === 'utcInstant' ? `${iso.slice(0, 10)} ${time}` : time;
+  }
 
   let visible = $state(false);
   let showTileBoundaries = $state(false);
@@ -68,26 +91,38 @@
       <dt>Center</dt>
       <dd>{lat.toFixed(5)}, {lng.toFixed(5)}</dd>
       <dt>Position</dt>
-      {#if instruments.position}
+      {#if gps}
         <dd>
-          {instruments.position.latitudeDegrees.toFixed(5)},
-          {instruments.position.longitudeDegrees.toFixed(5)}
+          {gps.position.latitudeDegrees.toFixed(5)},
+          {gps.position.longitudeDegrees.toFixed(5)}
         </dd>
       {:else}
         <dd>–</dd>
       {/if}
+      <dt>GPS fix time</dt>
+      <dd>{fixTime}</dd>
+      <dt>GPS state</dt>
+      <dd>{gpsState}</dd>
       <dt>MSL altitude</dt>
       <dd>
-        {instruments.altitudeMslMeters === null
+        {altitudeMeters === null
           ? '–'
-          : `${convertAltitude(instruments.altitudeMslMeters, units.altitude).toFixed(0)} ${units.altitude}`}
+          : `${convertAltitude(altitudeMeters, units.altitude).toFixed(0)} ${units.altitude}`}
       </dd>
       <dt>Ground speed</dt>
       <dd>
-        {instruments.groundSpeedMetersPerSecond === null
+        {groundSpeedMetersPerSecond === null
           ? '–'
-          : `${convertSpeed(instruments.groundSpeedMetersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
+          : `${convertSpeed(groundSpeedMetersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
       </dd>
+      <dt>Pressure altitude</dt>
+      <dd>
+        {pressureAltitude === null
+          ? '–'
+          : `${convertAltitude(pressureAltitude.meters, units.altitude).toFixed(0)} ${units.altitude}`}
+      </dd>
+      <dt>Pressure altitude state</dt>
+      <dd>{pressureAltitudeState}</dd>
     </dl>
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />

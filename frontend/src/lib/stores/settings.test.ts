@@ -26,10 +26,8 @@ describe('SettingsStore', () => {
     store.apply({
       topic: 'instruments',
       value: {
-        position: null,
-        trackDegrees: null,
-        groundSpeedMetersPerSecond: null,
-        altitudeMslMeters: null,
+        gps: null,
+        pressureAltitude: null,
       },
     });
 

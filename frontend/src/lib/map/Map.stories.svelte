@@ -13,13 +13,18 @@
   import Map from './Map.svelte';
 
   const instruments = {
-    position: {
-      latitudeDegrees: 50.823,
-      longitudeDegrees: 6.186,
+    gps: {
+      position: {
+        latitudeDegrees: 50.823,
+        longitudeDegrees: 6.186,
+      },
+      altitudeMeters: 190,
+      groundSpeedMetersPerSecond: 30,
+      trackDegrees: 45,
+      fixTime: null,
+      stale: false,
     },
-    altitudeMslMeters: 190,
-    trackDegrees: 45,
-    groundSpeedMetersPerSecond: 30,
+    pressureAltitude: null,
   } satisfies Instruments;
 
   const units = {
@@ -114,10 +119,8 @@
   args={{
     airspace: { type: 'none' },
     instruments: {
-      position: null,
-      altitudeMslMeters: null,
-      trackDegrees: null,
-      groundSpeedMetersPerSecond: null,
+      gps: null,
+      pressureAltitude: null,
     },
     mapState: new MapState(),
     traffic,

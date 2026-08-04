@@ -2,22 +2,30 @@ use crate::airspace::{AirspaceDataset, AirspaceState};
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
-use crate::fix::Fix;
+use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
     ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
     Start, Tick, Update,
 };
-use crate::ownship::OwnshipState;
+use crate::ownship::{
+    DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
+    select_pressure_altitude_candidate,
+};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
-use crate::topic::Topic;
+use crate::topic::{Instruments, Topic};
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use std::sync::Arc;
 use updraft_egm96::ellipsoidal_to_msl;
-use updraft_nmea::{Message, RmcStatus};
-use updraft_units::MslAltitude;
+use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
+use updraft_units::{MslAltitude, PressureAltitude};
+
+enum UpdatedDomain {
+    Gps,
+    PressureAltitude,
+}
 
 /// The deterministic application core.
 ///
@@ -29,7 +37,9 @@ pub struct Core {
     settings: Settings,
     external_devices: ExternalDevices,
     airspace: AirspaceState,
-    ownship: OwnshipState,
+    internal_gps: GpsCandidate,
+    gps: DomainState<GpsSnapshot>,
+    pressure_altitude: DomainState<PressureAltitude>,
     traffic: TrafficState,
 }
 
@@ -48,7 +58,9 @@ impl Core {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
             airspace,
-            ownship: OwnshipState::default(),
+            internal_gps: GpsCandidate::default(),
+            gps: DomainState::Unavailable,
+            pressure_altitude: DomainState::Unavailable,
             traffic: TrafficState::default(),
         }
     }
@@ -65,7 +77,7 @@ impl Core {
     /// subscribed and holds no state yet.
     pub fn topics(&self) -> Vec<Topic> {
         vec![
-            self.ownship.published().as_topic(),
+            self.instruments().as_topic(),
             self.settings.as_topic(),
             self.external_devices.as_topic(),
             Topic::Airspace(self.airspace.status()),
@@ -85,24 +97,37 @@ impl Core {
             device
                 .diagnostics
                 .bytes(device_id, &device.config.spec, data.len());
-            device.decoder.push(data);
+            device.decoder.push(data, at);
 
             let mut messages = Vec::new();
-            while let Some(message) = device.decoder.next_message() {
-                messages.push(message);
+            while let Some((message, ingested_at)) = device.decoder.next_message() {
+                messages.push((message, ingested_at));
             }
             messages
         };
 
-        let before = self.ownship;
+        let before = self.instruments();
         let mut traffic_changes = TrafficChanges::default();
-        for message in messages {
-            self.handle_message(device_id, message, at, &mut traffic_changes);
+        let mut gps_updated = false;
+        let mut pressure_altitude_updated = false;
+        for (message, ingested_at) in messages {
+            match self.handle_message(device_id, message, ingested_at, &mut traffic_changes) {
+                Some(UpdatedDomain::Gps) => gps_updated = true,
+                Some(UpdatedDomain::PressureAltitude) => pressure_altitude_updated = true,
+                None => {}
+            }
+        }
+        if gps_updated {
+            self.select_gps(at);
+        }
+        if pressure_altitude_updated {
+            self.select_pressure_altitude(at);
         }
 
         let mut effects = Vec::new();
-        if self.ownship != before {
-            effects.push(Effect::emit(self.ownship.published().as_topic()));
+        let after = self.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
         }
         if let Some(delta) = traffic_changes.into_delta() {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
@@ -118,25 +143,31 @@ impl Core {
         }
     }
 
-    fn apply_fix(&mut self, fix: Fix) -> Vec<Effect> {
-        let before = self.ownship;
+    fn apply_fix(&mut self, fix: Fix, at: Timestamp) -> Vec<Effect> {
+        let before = self.instruments();
 
-        self.ownship.position = Some(fix.position);
+        self.internal_gps.position = Some(Timed::new(fix.position, at));
         if let Some(altitude) = fix.altitude_ellipsoid {
-            self.ownship.altitude_msl = Some(ellipsoidal_to_msl(fix.position, altitude));
+            let altitude = ellipsoidal_to_msl(fix.position, altitude);
+            self.internal_gps.altitude = Some(Timed::new(altitude, at));
         }
         if let Some(track) = fix.track {
-            self.ownship.track = Some(track);
+            self.internal_gps.track = Some(Timed::new(track, at));
         }
         if let Some(speed) = fix.ground_speed {
-            self.ownship.ground_speed = Some(speed);
+            self.internal_gps.ground_speed = Some(Timed::new(speed, at));
+        }
+        if let Some(fix_time) = fix.fix_time {
+            self.internal_gps.fix_time.full = Some(Timed::new(fix_time, at));
         }
 
-        if self.ownship == before {
+        self.select_gps(at);
+        let after = self.instruments();
+        if after == before {
             return Vec::new();
         }
 
-        vec![Effect::emit(self.ownship.published().as_topic())]
+        vec![Effect::emit(after.as_topic())]
     }
 
     fn handle_message(
@@ -145,50 +176,163 @@ impl Core {
         message: Message,
         at: Timestamp,
         traffic_changes: &mut TrafficChanges,
-    ) {
+    ) -> Option<UpdatedDomain> {
         match message {
-            Message::Rmc(rmc) if rmc.status == RmcStatus::Active => {
-                let Some(device) = self.external_devices.get_mut(device_id) else {
-                    return;
-                };
+            Message::Rmc(rmc)
+                if rmc.status == RmcStatus::Active
+                    && rmc.mode != Some(PositioningMode::NotValid) =>
+            {
+                let device = self.external_devices.get_mut(device_id)?;
+                let mut updated = false;
+                if let Some(time) = rmc.utc_time {
+                    if let Some(date) = rmc.date {
+                        if let Some(fix_time) = UtcInstant::from_nmea_date_time(date, time) {
+                            device.gps.fix_time.full = Some(Timed::new(fix_time, at));
+                            updated = true;
+                        }
+                    } else {
+                        let fix_time = UtcTime::from_nmea_time(time);
+                        device.gps.fix_time.time_only = Some(Timed::new(fix_time, at));
+                        updated = true;
+                    }
+                }
                 if let Some(position) = rmc.position {
-                    device.ownship.position = Some(position);
-                    self.ownship.position = Some(position);
+                    device.gps.position = Some(Timed::new(position, at));
+                    updated = true;
                 }
                 if let Some(course) = rmc.course_over_ground {
-                    device.ownship.track = Some(course);
-                    self.ownship.track = Some(course);
+                    device.gps.track = Some(Timed::new(course, at));
+                    updated = true;
                 }
                 if let Some(speed) = rmc.speed_over_ground {
-                    device.ownship.ground_speed = Some(speed);
-                    self.ownship.ground_speed = Some(speed);
+                    device.gps.ground_speed = Some(Timed::new(speed, at));
+                    updated = true;
                 }
+                updated.then_some(UpdatedDomain::Gps)
             }
-            Message::Gga(gga) => {
-                if let Some(altitude) = gga.altitude {
-                    let Some(device) = self.external_devices.get_mut(device_id) else {
-                        return;
-                    };
-                    let altitude = MslAltitude::new(altitude);
-                    device.ownship.altitude_msl = Some(altitude);
-                    self.ownship.altitude_msl = Some(altitude);
+            Message::Gga(gga) if gga.fix_quality != GgaFixQuality::Invalid => {
+                let device = self.external_devices.get_mut(device_id)?;
+                let mut updated = false;
+                if let Some(time) = gga.utc_time {
+                    let fix_time = UtcTime::from_nmea_time(time);
+                    device.gps.fix_time.time_only = Some(Timed::new(fix_time, at));
+                    updated = true;
                 }
+                if let Some(position) = gga.position {
+                    device.gps.position = Some(Timed::new(position, at));
+                    updated = true;
+                }
+                if let Some(altitude) = gga.altitude {
+                    let altitude = MslAltitude::new(altitude);
+                    device.gps.altitude = Some(Timed::new(altitude, at));
+                    updated = true;
+                }
+                updated.then_some(UpdatedDomain::Gps)
+            }
+            Message::Pgrmz(pgrmz) => {
+                let altitude = pgrmz.altitude?;
+                let device = self.external_devices.get_mut(device_id)?;
+                device.pressure_altitude = Some(Timed::new(PressureAltitude::new(altitude), at));
+                Some(UpdatedDomain::PressureAltitude)
             }
             Message::Pflaa(pflaa) => {
-                let Some(device) = self.external_devices.get(device_id) else {
-                    return;
-                };
-                let same_device = device.ownship;
-                let Some(position) = same_device.position.or(self.ownship.position) else {
-                    return;
-                };
-                let altitude = same_device.altitude_msl.or(self.ownship.altitude_msl);
-                let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
-                    return;
-                };
+                let device = self.external_devices.get(device_id)?;
+                let same_device = device.gps;
+                let displayed = self.displayed_gps();
+                let position = same_device
+                    .position
+                    .map(|position| position.value)
+                    .or(displayed.map(|gps| gps.position))?;
+                let altitude = same_device
+                    .altitude
+                    .map(|altitude| altitude.value)
+                    .or(displayed.and_then(|gps| gps.altitude_msl));
+                let target = target_from_pflaa(&pflaa, position, altitude)?;
                 self.traffic.observe(target, at, traffic_changes);
+                None
             }
-            _ => {}
+            _ => None,
+        }
+    }
+
+    fn select_gps(&mut self, at: Timestamp) {
+        let selected = self
+            .external_devices
+            .iter()
+            .filter(|device| device.config.enabled)
+            .find_map(|device| {
+                select_gps_candidate(SourceId::External(device.device_id), device.gps, at)
+            })
+            .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at));
+
+        self.gps = match selected {
+            Some(selected) => DomainState::Current(selected),
+            None => match self.gps {
+                DomainState::Unavailable => DomainState::Unavailable,
+                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
+                    DomainState::LastKnown(selected)
+                }
+            },
+        };
+    }
+
+    fn select_pressure_altitude(&mut self, at: Timestamp) {
+        let selected = self
+            .external_devices
+            .iter()
+            .filter(|device| device.config.enabled)
+            .find_map(|device| {
+                select_pressure_altitude_candidate(
+                    SourceId::External(device.device_id),
+                    device.pressure_altitude,
+                    at,
+                )
+            });
+
+        self.pressure_altitude = match selected {
+            Some(selected) => DomainState::Current(selected),
+            None => match self.pressure_altitude {
+                DomainState::Unavailable => DomainState::Unavailable,
+                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
+                    DomainState::LastKnown(selected)
+                }
+            },
+        };
+    }
+
+    fn select_pressure_altitude_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
+        let selected_source_was_reset = self
+            .pressure_altitude
+            .selected()
+            .is_some_and(|selected| selected.source == source);
+
+        self.select_pressure_altitude(at);
+        if selected_source_was_reset && matches!(self.pressure_altitude, DomainState::LastKnown(_))
+        {
+            self.pressure_altitude = DomainState::Unavailable;
+        }
+    }
+
+    fn select_gps_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
+        let selected_source_was_reset = self
+            .gps
+            .selected()
+            .is_some_and(|selected| selected.source == source);
+
+        self.select_gps(at);
+        if selected_source_was_reset && matches!(self.gps, DomainState::LastKnown(_)) {
+            self.gps = DomainState::Unavailable;
+        }
+    }
+
+    fn displayed_gps(&self) -> Option<GpsSnapshot> {
+        self.gps.selected().map(|selected| selected.value)
+    }
+
+    fn instruments(&self) -> Instruments {
+        Instruments {
+            gps: self.gps.published(),
+            pressure_altitude: self.pressure_altitude.published(),
         }
     }
 }
@@ -246,14 +390,20 @@ impl Input for Tick {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.instruments();
+        core.select_gps(at);
+        core.select_pressure_altitude(at);
+        let after = core.instruments();
+
+        let mut effects = Vec::new();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
         let changes = core.traffic.expire(at);
-        Update::effects(
-            changes
-                .into_delta()
-                .map(|delta| Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))))
-                .into_iter()
-                .collect(),
-        )
+        if let Some(delta) = changes.into_delta() {
+            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
+        }
+        Update::effects(effects)
     }
 }
 
@@ -285,8 +435,8 @@ impl Input for ConnectionChanged {
 impl Input for InternalGps {
     type Response = ();
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        Update::effects(core.apply_fix(self.fix))
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        Update::effects(core.apply_fix(self.fix, at))
     }
 }
 
@@ -339,7 +489,8 @@ impl Input for AddExternalDevice {
 impl Input for DeleteExternalDevice {
     type Response = Result<(), UnknownExternalDevice>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.instruments();
         let Some(device) = core.external_devices.remove(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -348,6 +499,12 @@ impl Input for DeleteExternalDevice {
         let mut effects = Vec::new();
         if device.config.enabled {
             effects.push(Effect::close(self.device_id));
+        }
+        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
+        core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
         }
         effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
@@ -358,24 +515,32 @@ impl Input for DeleteExternalDevice {
 impl Input for ReorderExternalDevices {
     type Response = Result<(), InvalidExternalDeviceOrder>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.instruments();
         match core.external_devices.reorder(&self.order) {
             Ok(false) => return Update::empty().with_response(Ok(())),
             Ok(true) => {}
             Err(error) => return Update::empty().with_response(Err(error)),
         }
-        Update::effects(vec![
-            Effect::emit(core.external_devices.as_topic()),
-            Effect::persist_settings(core.settings_snapshot()),
-        ])
-        .with_response(Ok(()))
+        core.select_gps(at);
+        core.select_pressure_altitude(at);
+
+        let mut effects = Vec::new();
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
+        effects.push(Effect::emit(core.external_devices.as_topic()));
+        effects.push(Effect::persist_settings(core.settings_snapshot()));
+        Update::effects(effects).with_response(Ok(()))
     }
 }
 
 impl Input for EditExternalDevice {
     type Response = Result<(), UnknownExternalDevice>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.instruments();
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -393,6 +558,12 @@ impl Input for EditExternalDevice {
             effects.push(Effect::close(self.device_id));
             effects.push(Effect::open(self.device_id, self.spec));
         }
+        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
+        core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
         effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))
@@ -402,7 +573,8 @@ impl Input for EditExternalDevice {
 impl Input for SetExternalDeviceEnabled {
     type Response = Result<(), UnknownExternalDevice>;
 
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let before = core.instruments();
         let Some(device) = core.external_devices.get_mut(self.device_id) else {
             return Update::empty().with_response(Err(UnknownExternalDevice {
                 device_id: self.device_id,
@@ -420,6 +592,12 @@ impl Input for SetExternalDeviceEnabled {
         } else {
             vec![Effect::close(self.device_id)]
         };
+        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
+        core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
         effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))

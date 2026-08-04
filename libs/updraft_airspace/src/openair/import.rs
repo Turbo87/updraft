@@ -44,8 +44,7 @@ fn normalize_airspace(
     id: AirspaceId,
     parsed: ParsedAirspace,
 ) -> Result<Airspace, AirspaceImportError> {
-    let (class, type_code) = normalize_classification(parsed.class, parsed.type_.as_deref())
-        .map_err(|kind| AirspaceImportError::parse(id, kind))?;
+    let (class, type_code) = normalize_classification(parsed.class, parsed.type_.as_deref());
     let lower_bound = AirspaceAltitude::try_from(parsed.lower_bound)
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
     let upper_bound = AirspaceAltitude::try_from(parsed.upper_bound)
@@ -68,41 +67,82 @@ fn normalize_airspace(
 fn normalize_classification(
     parsed_class: ParsedClass,
     parsed_type: Option<&str>,
-) -> Result<(Option<AirspaceClass>, Option<AirspaceType>), AirspaceParseError> {
+) -> (AirspaceClass, AirspaceType) {
     let (class, legacy_type) = match parsed_class {
-        ParsedClass::A => (Some(AirspaceClass::A), None),
-        ParsedClass::B => (Some(AirspaceClass::B), None),
-        ParsedClass::C => (Some(AirspaceClass::C), None),
-        ParsedClass::D => (Some(AirspaceClass::D), None),
-        ParsedClass::E => (Some(AirspaceClass::E), None),
-        ParsedClass::F => (Some(AirspaceClass::F), None),
-        ParsedClass::G => (Some(AirspaceClass::G), None),
-        ParsedClass::Unclassified => (Some(AirspaceClass::Unclassified), None),
-        ParsedClass::Ctr => (None, Some(AirspaceType::ControlZone)),
-        ParsedClass::Restricted => (None, Some(AirspaceType::RestrictedArea)),
-        ParsedClass::Danger => (None, Some(AirspaceType::DangerArea)),
-        ParsedClass::Prohibited => (None, Some(AirspaceType::ProhibitedArea)),
-        ParsedClass::GliderProhibited => (None, Some(AirspaceType::Unknown("GP".into()))),
-        ParsedClass::WaveWindow => (None, Some(AirspaceType::GlidingSector)),
-        ParsedClass::RadioMandatoryZone => (None, Some(AirspaceType::RadioMandatoryZone)),
-        ParsedClass::TransponderMandatoryZone => {
-            (None, Some(AirspaceType::TransponderMandatoryZone))
-        }
+        ParsedClass::A => (AirspaceClass::A, None),
+        ParsedClass::B => (AirspaceClass::B, None),
+        ParsedClass::C => (AirspaceClass::C, None),
+        ParsedClass::D => (AirspaceClass::D, None),
+        ParsedClass::E => (AirspaceClass::E, None),
+        ParsedClass::F => (AirspaceClass::F, None),
+        ParsedClass::G => (AirspaceClass::G, None),
+        ParsedClass::Unclassified => (AirspaceClass::Unclassified, None),
+        ParsedClass::Ctr => (
+            AirspaceClass::Unclassified,
+            Some(AirspaceType::ControlledTowerRegion),
+        ),
+        ParsedClass::Restricted => (AirspaceClass::Unclassified, Some(AirspaceType::Restricted)),
+        ParsedClass::Danger => (AirspaceClass::Unclassified, Some(AirspaceType::Danger)),
+        ParsedClass::Prohibited => (AirspaceClass::Unclassified, Some(AirspaceType::Prohibited)),
+        ParsedClass::GliderProhibited => (AirspaceClass::Unclassified, Some(AirspaceType::Other)),
+        ParsedClass::WaveWindow => (
+            AirspaceClass::Unclassified,
+            Some(AirspaceType::GlidingSector),
+        ),
+        ParsedClass::RadioMandatoryZone => (
+            AirspaceClass::Unclassified,
+            Some(AirspaceType::RadioMandatoryZone),
+        ),
+        ParsedClass::TransponderMandatoryZone => (
+            AirspaceClass::Unclassified,
+            Some(AirspaceType::TransponderMandatoryZone),
+        ),
     };
 
-    let normalized_type = parsed_type.map(|value| value.trim().to_ascii_uppercase());
-    let type_code = match normalized_type.as_deref() {
-        None => legacy_type,
-        Some("NONE") => None,
-        Some("") => {
-            return Err(AirspaceParseError::EmptyTypeCode);
-        }
-        Some(code) => Some(AirspaceType::from_code(code)),
-    };
-    if class.is_none() && type_code.is_none() {
-        return Err(AirspaceParseError::MissingClassOrType);
+    let type_code = parsed_type
+        .and_then(airspace_type_from_openair_code)
+        .or(legacy_type)
+        .unwrap_or(AirspaceType::Other);
+    (class, type_code)
+}
+
+/// Maps a supported OpenAir type code to its OpenAIP airspace type.
+fn airspace_type_from_openair_code(code: &str) -> Option<AirspaceType> {
+    match code.trim().to_ascii_uppercase().as_str() {
+        "ACCSEC" => Some(AirspaceType::AccSector),
+        "ADIZ" => Some(AirspaceType::AirDefenseIdentificationZone),
+        "ALERT" => Some(AirspaceType::AlertArea),
+        "ASRA" => Some(AirspaceType::AerialSportingOrRecreationalActivity),
+        "ATZ" => Some(AirspaceType::AirportTrafficZone),
+        "AWY" => Some(AirspaceType::Airway),
+        "CTA" => Some(AirspaceType::ControlArea),
+        "CTR" => Some(AirspaceType::ControlledTowerRegion),
+        "FIR" => Some(AirspaceType::FlightInformationRegion),
+        "FIS" => Some(AirspaceType::FisSector),
+        "GSEC" => Some(AirspaceType::GlidingSector),
+        "HTZ" => Some(AirspaceType::HelicopterTrafficZone),
+        "LTA" => Some(AirspaceType::LowerTrafficArea),
+        "MATZ" => Some(AirspaceType::MilitaryAirportTrafficZone),
+        "MTA" => Some(AirspaceType::MilitaryTrainingArea),
+        "MTR" => Some(AirspaceType::MilitaryTrainingRoute),
+        "OFR" => Some(AirspaceType::LowAltitudeOverflightRestriction),
+        "P" => Some(AirspaceType::Prohibited),
+        "Q" => Some(AirspaceType::Danger),
+        "R" => Some(AirspaceType::Restricted),
+        "RMZ" => Some(AirspaceType::RadioMandatoryZone),
+        "TIA" => Some(AirspaceType::TrafficInformationArea),
+        "TIZ" => Some(AirspaceType::TrafficInformationZone),
+        "TMA" => Some(AirspaceType::TerminalManeuveringArea),
+        "TMZ" => Some(AirspaceType::TransponderMandatoryZone),
+        "TRA" => Some(AirspaceType::TemporaryReservedArea),
+        "TRAFR" => Some(AirspaceType::TsaOrTraFeedingRoute),
+        "TSA" => Some(AirspaceType::TemporarySegregatedArea),
+        "UIR" => Some(AirspaceType::UpperFlightInformationRegion),
+        "UTA" => Some(AirspaceType::UpperTrafficArea),
+        "VFRSEC" => Some(AirspaceType::VfrSector),
+        "WARNING" => Some(AirspaceType::WarningArea),
+        _ => None,
     }
-    Ok((class, type_code))
 }
 
 impl TryFrom<::openair::Altitude> for AirspaceAltitude {

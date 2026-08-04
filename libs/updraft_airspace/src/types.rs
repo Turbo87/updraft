@@ -6,164 +6,74 @@ use updraft_units::{Length, MslAltitude, PressureAltitude};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AirspaceId(pub u32);
 
-/// A modern OpenAir airspace class.
+/// An ICAO airspace class with its OpenAIP numeric value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum AirspaceClass {
-    A,
-    B,
-    C,
-    D,
-    E,
-    F,
-    G,
-    Unclassified,
+    A = 0,
+    B = 1,
+    C = 2,
+    D = 3,
+    E = 4,
+    F = 5,
+    G = 6,
+    Unclassified = 8,
 }
 
 impl AirspaceClass {
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::A => "A",
-            Self::B => "B",
-            Self::C => "C",
-            Self::D => "D",
-            Self::E => "E",
-            Self::F => "F",
-            Self::G => "G",
-            Self::Unclassified => "UNC",
-        }
+    /// Returns the numeric ICAO class value from the OpenAIP schema.
+    pub const fn openaip_code(self) -> u8 {
+        self as u8
     }
 }
 
-/// A known OpenAir type or an unknown normalized type code.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// An airspace type with its OpenAIP numeric value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum AirspaceType {
-    RemoteCommunicationArea,
-    AirDefenceIdentificationZone,
-    AlertArea,
-    AerialSportingOrRecreationalActivity,
-    AerodromeTrafficZone,
-    Airway,
-    ControlledTrafficArea,
-    ControlZone,
-    Custom,
-    FlightInformationRegion,
-    FlightInformationServiceSector,
-    GlidingSector,
-    HelicopterTrafficZone,
-    LowerTrafficArea,
-    MilitaryAirportTrafficZone,
-    MilitaryTrainingArea,
-    MilitaryTrainingRoute,
-    NotamAffectedArea,
-    OverflightRestriction,
-    ProhibitedArea,
-    DangerArea,
-    RestrictedArea,
-    RadioMandatoryZone,
-    TemporaryFlightRestriction,
-    TrafficInformationArea,
-    TrafficInformationZone,
-    TerminalManoeuvringArea,
-    TransponderMandatoryZone,
-    TemporaryReservedArea,
-    TemporaryReservedOrSegregatedAreaFeedingRoute,
-    TransponderRecommendedZone,
-    TemporarySegregatedArea,
-    UpperFlightInformationRegion,
-    UpperTrafficArea,
-    DesignatedVisualFlightRulesRoute,
-    VisualFlightRulesSector,
-    WarningArea,
-    Unknown(Box<str>),
+    Other = 0,
+    Restricted = 1,
+    Danger = 2,
+    Prohibited = 3,
+    ControlledTowerRegion = 4,
+    TransponderMandatoryZone = 5,
+    RadioMandatoryZone = 6,
+    TerminalManeuveringArea = 7,
+    TemporaryReservedArea = 8,
+    TemporarySegregatedArea = 9,
+    FlightInformationRegion = 10,
+    UpperFlightInformationRegion = 11,
+    AirDefenseIdentificationZone = 12,
+    AirportTrafficZone = 13,
+    MilitaryAirportTrafficZone = 14,
+    Airway = 15,
+    MilitaryTrainingRoute = 16,
+    AlertArea = 17,
+    WarningArea = 18,
+    ProtectedArea = 19,
+    HelicopterTrafficZone = 20,
+    GlidingSector = 21,
+    TransponderSetting = 22,
+    TrafficInformationZone = 23,
+    TrafficInformationArea = 24,
+    MilitaryTrainingArea = 25,
+    ControlArea = 26,
+    AccSector = 27,
+    AerialSportingOrRecreationalActivity = 28,
+    LowAltitudeOverflightRestriction = 29,
+    MilitaryRoute = 30,
+    TsaOrTraFeedingRoute = 31,
+    VfrSector = 32,
+    FisSector = 33,
+    LowerTrafficArea = 34,
+    UpperTrafficArea = 35,
+    MilitaryControlledTowerRegion = 36,
 }
 
 impl AirspaceType {
-    /// Creates an airspace type from a normalized OpenAir type code.
-    pub fn from_code(code: &str) -> Self {
-        match code {
-            "ACCSEC" => Self::RemoteCommunicationArea,
-            "ADIZ" => Self::AirDefenceIdentificationZone,
-            "ALERT" => Self::AlertArea,
-            "ASRA" => Self::AerialSportingOrRecreationalActivity,
-            "ATZ" => Self::AerodromeTrafficZone,
-            "AWY" => Self::Airway,
-            "CTA" => Self::ControlledTrafficArea,
-            "CTR" => Self::ControlZone,
-            "CUSTOM" => Self::Custom,
-            "FIR" => Self::FlightInformationRegion,
-            "FIS" => Self::FlightInformationServiceSector,
-            "GSEC" => Self::GlidingSector,
-            "HTZ" => Self::HelicopterTrafficZone,
-            "LTA" => Self::LowerTrafficArea,
-            "MATZ" => Self::MilitaryAirportTrafficZone,
-            "MTA" => Self::MilitaryTrainingArea,
-            "MTR" => Self::MilitaryTrainingRoute,
-            "N" => Self::NotamAffectedArea,
-            "OFR" => Self::OverflightRestriction,
-            "P" => Self::ProhibitedArea,
-            "Q" => Self::DangerArea,
-            "R" => Self::RestrictedArea,
-            "RMZ" => Self::RadioMandatoryZone,
-            "TFR" => Self::TemporaryFlightRestriction,
-            "TIA" => Self::TrafficInformationArea,
-            "TIZ" => Self::TrafficInformationZone,
-            "TMA" => Self::TerminalManoeuvringArea,
-            "TMZ" => Self::TransponderMandatoryZone,
-            "TRA" => Self::TemporaryReservedArea,
-            "TRAFR" => Self::TemporaryReservedOrSegregatedAreaFeedingRoute,
-            "TRZ" => Self::TransponderRecommendedZone,
-            "TSA" => Self::TemporarySegregatedArea,
-            "UIR" => Self::UpperFlightInformationRegion,
-            "UTA" => Self::UpperTrafficArea,
-            "VFRR" => Self::DesignatedVisualFlightRulesRoute,
-            "VFRSEC" => Self::VisualFlightRulesSector,
-            "WARNING" => Self::WarningArea,
-            _ => Self::Unknown(code.into()),
-        }
-    }
-
-    /// Returns the normalized OpenAir type code.
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::RemoteCommunicationArea => "ACCSEC",
-            Self::AirDefenceIdentificationZone => "ADIZ",
-            Self::AlertArea => "ALERT",
-            Self::AerialSportingOrRecreationalActivity => "ASRA",
-            Self::AerodromeTrafficZone => "ATZ",
-            Self::Airway => "AWY",
-            Self::ControlledTrafficArea => "CTA",
-            Self::ControlZone => "CTR",
-            Self::Custom => "CUSTOM",
-            Self::FlightInformationRegion => "FIR",
-            Self::FlightInformationServiceSector => "FIS",
-            Self::GlidingSector => "GSEC",
-            Self::HelicopterTrafficZone => "HTZ",
-            Self::LowerTrafficArea => "LTA",
-            Self::MilitaryAirportTrafficZone => "MATZ",
-            Self::MilitaryTrainingArea => "MTA",
-            Self::MilitaryTrainingRoute => "MTR",
-            Self::NotamAffectedArea => "N",
-            Self::OverflightRestriction => "OFR",
-            Self::ProhibitedArea => "P",
-            Self::DangerArea => "Q",
-            Self::RestrictedArea => "R",
-            Self::RadioMandatoryZone => "RMZ",
-            Self::TemporaryFlightRestriction => "TFR",
-            Self::TrafficInformationArea => "TIA",
-            Self::TrafficInformationZone => "TIZ",
-            Self::TerminalManoeuvringArea => "TMA",
-            Self::TransponderMandatoryZone => "TMZ",
-            Self::TemporaryReservedArea => "TRA",
-            Self::TemporaryReservedOrSegregatedAreaFeedingRoute => "TRAFR",
-            Self::TransponderRecommendedZone => "TRZ",
-            Self::TemporarySegregatedArea => "TSA",
-            Self::UpperFlightInformationRegion => "UIR",
-            Self::UpperTrafficArea => "UTA",
-            Self::DesignatedVisualFlightRulesRoute => "VFRR",
-            Self::VisualFlightRulesSector => "VFRSEC",
-            Self::WarningArea => "WARNING",
-            Self::Unknown(value) => value,
-        }
+    /// Returns the numeric airspace type value from the OpenAIP schema.
+    pub const fn openaip_code(self) -> u8 {
+        self as u8
     }
 }
 
@@ -184,10 +94,10 @@ pub struct Airspace {
     pub id: AirspaceId,
     /// The source airspace name when it is present.
     pub name: Option<Box<str>>,
-    /// The modern OpenAir class when the source defines one.
-    pub class: Option<AirspaceClass>,
-    /// The OpenAir type when one applies.
-    pub type_code: Option<AirspaceType>,
+    /// The required OpenAIP ICAO class.
+    pub class: AirspaceClass,
+    /// The required OpenAIP airspace type.
+    pub type_code: AirspaceType,
     /// The lower altitude limit.
     pub lower_bound: AirspaceAltitude,
     /// The upper altitude limit.
@@ -197,14 +107,17 @@ pub struct Airspace {
 }
 
 impl Airspace {
-    /// Converts this airspace to a GeoJSON feature.
+    /// Converts this airspace to a GeoJSON rendering subset.
+    ///
+    /// The `type` and `class` properties use numeric values from the
+    /// [OpenAIP airspace schema](https://api.core.openaip.net/api/schemas/response/airspace/airspace-schema.json).
     pub fn to_geojson(&self) -> serde_json::Value {
         json!({
             "type": "Feature",
             "id": self.id.0,
             "properties": {
-                "class": self.class.as_ref().map(AirspaceClass::as_str),
-                "type": self.type_code.as_ref().map(AirspaceType::as_str),
+                "type": self.type_code.openaip_code(),
+                "class": self.class.openaip_code(),
             },
             "geometry": {
                 "type": "Polygon",
@@ -239,10 +152,6 @@ pub enum AirspaceParseError {
     SourceParser(String),
     #[error("the source contains too many airspaces")]
     TooManyAirspaces,
-    #[error("the airspace type code is empty")]
-    EmptyTypeCode,
-    #[error("the airspace has no class or type")]
-    MissingClassOrType,
     #[error("the airspace altitude is not supported")]
     UnsupportedAltitude,
 }

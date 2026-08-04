@@ -116,8 +116,8 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
     assert_eq!(dataset.airspaces().len(), 1);
     assert_eq!(airspace.id.0, 0);
     assert_eq!(airspace.name.as_deref(), Some("Polygon"));
-    assert_eq!(airspace.class, Some(AirspaceClass::D));
-    assert_eq!(airspace.type_code, None);
+    assert_eq!(airspace.class, AirspaceClass::D);
+    assert_eq!(airspace.type_code, AirspaceType::Other);
     assert_eq!(airspace.lower_bound, AirspaceAltitude::Ground);
     assert_eq!(
         airspace.upper_bound,
@@ -288,90 +288,73 @@ fn maps_modern_classes_and_normalized_types() {
             .map(|airspace| airspace.class)
             .collect::<Vec<_>>(),
         vec![
-            Some(AirspaceClass::A),
-            Some(AirspaceClass::B),
-            Some(AirspaceClass::C),
-            Some(AirspaceClass::D),
-            Some(AirspaceClass::E),
-            Some(AirspaceClass::F),
-            Some(AirspaceClass::G),
-            Some(AirspaceClass::Unclassified),
+            AirspaceClass::A,
+            AirspaceClass::B,
+            AirspaceClass::C,
+            AirspaceClass::D,
+            AirspaceClass::E,
+            AirspaceClass::F,
+            AirspaceClass::G,
+            AirspaceClass::Unclassified,
         ]
     );
-    assert_eq!(
-        airspaces[0].type_code.as_ref(),
-        Some(&AirspaceType::ControlledTrafficArea)
-    );
-    assert_eq!(
-        airspaces[4].type_code.as_ref(),
-        Some(&AirspaceType::RadioMandatoryZone)
-    );
-    assert_eq!(airspaces[6].type_code, None);
+    assert_eq!(airspaces[0].type_code, AirspaceType::ControlArea);
+    assert_eq!(airspaces[4].type_code, AirspaceType::RadioMandatoryZone);
+    assert_eq!(airspaces[6].type_code, AirspaceType::Other);
 }
 
-/// Verifies that legacy classes become canonical airspace types.
+/// Verifies that legacy classes become complete OpenAIP classifications.
 #[test]
-fn normalizes_legacy_classes_to_airspace_types() {
+fn normalizes_legacy_classes_to_openaip_classifications() {
     let dataset = parse_fixture(CLASS_TYPES);
     let airspaces = dataset.airspaces();
 
     assert!(
         airspaces[8..16]
             .iter()
-            .all(|airspace| airspace.class.is_none())
+            .all(|airspace| airspace.class == AirspaceClass::Unclassified)
     );
     assert_eq!(
         airspaces[8..16]
             .iter()
-            .map(|airspace| airspace.type_code.clone().unwrap())
+            .map(|airspace| airspace.type_code)
             .collect::<Vec<_>>(),
         vec![
-            AirspaceType::ControlZone,
-            AirspaceType::RestrictedArea,
-            AirspaceType::DangerArea,
-            AirspaceType::ProhibitedArea,
-            AirspaceType::Unknown("GP".into()),
+            AirspaceType::ControlledTowerRegion,
+            AirspaceType::Restricted,
+            AirspaceType::Danger,
+            AirspaceType::Prohibited,
+            AirspaceType::Other,
             AirspaceType::GlidingSector,
             AirspaceType::RadioMandatoryZone,
             AirspaceType::TransponderMandatoryZone,
         ]
     );
-    assert_eq!(airspaces[16].class, None);
-    assert_eq!(
-        airspaces[16].type_code.as_ref(),
-        Some(&AirspaceType::Custom)
-    );
-    assert_eq!(airspaces[17].class, Some(AirspaceClass::G));
-    assert_eq!(
-        airspaces[17].type_code.as_ref(),
-        Some(&AirspaceType::Unknown("FUTURE-ZONE".into()))
-    );
+    assert_eq!(airspaces[16].class, AirspaceClass::Unclassified);
+    assert_eq!(airspaces[16].type_code, AirspaceType::Restricted);
+    assert_eq!(airspaces[17].class, AirspaceClass::G);
+    assert_eq!(airspaces[17].type_code, AirspaceType::Other);
 }
 
-/// Verifies that an explicit `NONE` type does not restore a legacy type.
+/// Verifies that an unsupported explicit type retains the legacy classification.
 #[test]
-fn rejects_legacy_type_with_explicit_none() {
-    assert_err_eq!(
-        AirspaceDataset::from_openair(LEGACY_NONE),
-        AirspaceImportError::Parse {
-            airspace_id: Some(AirspaceId(0)),
-            kind: AirspaceParseError::MissingClassOrType,
-        }
-    );
+fn retains_legacy_type_for_explicit_none() {
+    let dataset = parse_fixture(LEGACY_NONE);
+    let airspace = &dataset.airspaces()[0];
+
+    assert_eq!(airspace.class, AirspaceClass::Unclassified);
+    assert_eq!(airspace.type_code, AirspaceType::Restricted);
 }
 
-/// Verifies that the importer rejects an empty explicit type.
+/// Verifies that an empty explicit type becomes `Other` for a modern class.
 #[test]
-fn rejects_an_empty_explicit_type() {
+fn maps_an_empty_explicit_type_to_other() {
     let bytes = b"AC D\nAY \nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+    let airspace = &dataset.airspaces()[0];
 
-    assert_err_eq!(
-        AirspaceDataset::from_openair(bytes),
-        AirspaceImportError::Parse {
-            airspace_id: Some(AirspaceId(0)),
-            kind: AirspaceParseError::EmptyTypeCode,
-        }
-    );
+    assert_eq!(airspace.class, AirspaceClass::D);
+    assert_eq!(airspace.type_code, AirspaceType::Other);
 }
 
 /// Verifies that supported altitude forms use the correct typed units.

@@ -49,10 +49,8 @@ mod tests {
     use updraft_airspace::AirspaceState;
     use updraft_core::{ActivateAirspaceDataset, SettingsSnapshot};
 
-    const POLYGON: &[u8] =
-        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/polygon.txt");
-    const CIRCLE: &[u8] =
-        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/circle.txt");
+    const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
+    const CIRCLE: &[u8] = include_bytes!("../../testdata/airspace/circle.txt");
 
     fn driver(airspace: AirspaceState) -> DriverHandle {
         Driver::spawn(

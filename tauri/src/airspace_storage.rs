@@ -257,12 +257,9 @@ mod tests {
     use tracing_test::traced_test;
     use updraft_airspace::{AirspaceLoadError, AirspaceStatus};
 
-    const POLYGON: &[u8] =
-        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/polygon.txt");
-    const PARSER_ERROR: &[u8] =
-        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/parser_error.txt");
-    const CIRCLE: &[u8] =
-        include_bytes!("../../libs/updraft_airspace/tests/fixtures/airspace/circle.txt");
+    const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
+    const PARSER_ERROR: &[u8] = include_bytes!("../../testdata/airspace/parser_error.txt");
+    const CIRCLE: &[u8] = include_bytes!("../../testdata/airspace/circle.txt");
     const GEOMETRY_ERROR: &[u8] = b"AC D\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:00:00 N 010:00:00 E\n";
 
     #[test]

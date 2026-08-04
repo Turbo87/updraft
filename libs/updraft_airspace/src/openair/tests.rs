@@ -8,22 +8,22 @@ use std::assert_matches;
 use updraft_geo::{LatLon, Polygon};
 use updraft_units::{Angle, Length, MslAltitude, PressureAltitude};
 
-const POLYGON: &[u8] = include_bytes!("../../tests/fixtures/airspace/polygon.txt");
-const CIRCLE: &[u8] = include_bytes!("../../tests/fixtures/airspace/circle.txt");
-const DB_CLOCKWISE: &[u8] = include_bytes!("../../tests/fixtures/airspace/db_clockwise.txt");
+const POLYGON: &[u8] = include_bytes!("../../../../testdata/airspace/polygon.txt");
+const CIRCLE: &[u8] = include_bytes!("../../../../testdata/airspace/circle.txt");
+const DB_CLOCKWISE: &[u8] = include_bytes!("../../../../testdata/airspace/db_clockwise.txt");
 const DB_COUNTERCLOCKWISE: &[u8] =
-    include_bytes!("../../tests/fixtures/airspace/db_counterclockwise.txt");
-const DA_CLOCKWISE: &[u8] = include_bytes!("../../tests/fixtures/airspace/da_clockwise.txt");
+    include_bytes!("../../../../testdata/airspace/db_counterclockwise.txt");
+const DA_CLOCKWISE: &[u8] = include_bytes!("../../../../testdata/airspace/da_clockwise.txt");
 const DA_COUNTERCLOCKWISE: &[u8] =
-    include_bytes!("../../tests/fixtures/airspace/da_counterclockwise.txt");
-const PARSER_ERROR: &[u8] = include_bytes!("../../tests/fixtures/airspace/parser_error.txt");
-const CLASS_TYPES: &[u8] = include_bytes!("../../tests/fixtures/airspace/class_types.txt");
-const ALTITUDES: &[u8] = include_bytes!("../../tests/fixtures/airspace/altitudes.txt");
+    include_bytes!("../../../../testdata/airspace/da_counterclockwise.txt");
+const PARSER_ERROR: &[u8] = include_bytes!("../../../../testdata/airspace/parser_error.txt");
+const CLASS_TYPES: &[u8] = include_bytes!("../../../../testdata/airspace/class_types.txt");
+const ALTITUDES: &[u8] = include_bytes!("../../../../testdata/airspace/altitudes.txt");
 const UNSUPPORTED_ALTITUDE: &[u8] =
-    include_bytes!("../../tests/fixtures/airspace/unsupported_altitude.txt");
-const LEGACY_NONE: &[u8] = include_bytes!("../../tests/fixtures/airspace/legacy_none.txt");
+    include_bytes!("../../../../testdata/airspace/unsupported_altitude.txt");
+const LEGACY_NONE: &[u8] = include_bytes!("../../../../testdata/airspace/legacy_none.txt");
 const ONE_BAD_AIRSPACE: &[u8] =
-    include_bytes!("../../tests/fixtures/airspace/one_bad_airspace.txt");
+    include_bytes!("../../../../testdata/airspace/one_bad_airspace.txt");
 
 /// Returns the canonical dataset for valid fixture bytes.
 fn parse_fixture(bytes: &[u8]) -> AirspaceDataset {

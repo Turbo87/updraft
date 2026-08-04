@@ -393,6 +393,46 @@ From that recording:
 
 Ten minutes of a still device answers all four. No flight is needed.
 
+#### Galaxy S23 result
+
+The first bench recording is
+[`testdata/android_barometer_sm_s911b.csv`](../../../testdata/android_barometer_sm_s911b.csv).
+It came from a Samsung Galaxy S23 (`SM-S911B`) with Android 16. Android
+identified its barometer as an STMicro LPS22HH. The phone stayed on a table
+indoors and received USB power. A temporary app requested
+`SENSOR_DELAY_FASTEST` and saved each pressure value with its
+`SensorEvent.timestamp`.
+
+The sensor delivered 15,002 samples in 600.04 s. The mean rate was exactly
+25.000 Hz. The median gap was 40.000 ms, and the largest gap was 40.146 ms.
+No gap exceeded 41 ms.
+
+The second-difference method gives 0.00281 hPa of pressure noise. This is
+0.0240 m at the mean pressure of 981.26 hPa. The noise was stable between
+0.0228 and 0.0248 m in the ten one-minute sections.
+
+The values are not independent. Consecutive altitude differences had a
+correlation of -0.110. Independent white samples would give -0.5. The
+second-difference noise of eight-sample block means was 0.0334 m. Independent
+white samples would reduce it to 0.0085 m. The sensor or its Android driver
+therefore smooths the output before the app receives it.
+
+Android reported a resolution of 0.0002 hPa. The recorded values used steps
+of 1/4096 hPa, or 0.000244 hPa. This step is 0.00209 m at the mean pressure.
+
+Replaying the recording through the two vertical-speed smoothing stages gives:
+
+| Time constant | Full-recording RMS | Highest one-minute RMS | Approximate lag |
+| --- | --- | --- | --- |
+| 0.200 s | 0.104 m/s | 0.121 m/s | 0.400 s |
+| 0.225 s | 0.092 m/s | 0.110 m/s | 0.450 s |
+| 0.250 s | 0.083 m/s | 0.101 m/s | 0.500 s |
+
+A 0.25 s time constant stays below the 0.12 m/s budget with margin on this
+device. It reduces the approximate lag from 4 s to 0.5 s. This one recording
+does not justify a common Android value. Two more device models must confirm
+the result first.
+
 ### A flight recording checks the rest
 
 Two things a table cannot show:

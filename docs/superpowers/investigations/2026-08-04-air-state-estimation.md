@@ -259,6 +259,67 @@ stages delay the reading by about `2·τ`, so that halves the vario's lag from
 roughly 4 s to 2 s. For centring a thermal that matters more than any of the
 error figures above.
 
+## A better altitude, and the QNH
+
+The height filter throws away the offset between the two altitudes, because
+vertical speed only needs the changes. The offset itself is worth keeping: it
+holds both the altimeter setting and the temperature of the air below the
+glider.
+
+The offset is not constant. Over one flight, `GNSS altitude − pressure
+altitude` moves by 10 to 43 m. Two terms explain almost all of that:
+
+```text
+true altitude = pressure altitude + a + b · pressure altitude
+```
+
+`a` is the altimeter setting, which does not change with height. `b` is how far
+the mean temperature of the air below the glider deviates from the ISA, as a
+fraction: a warm air column is thicker, so the glider is higher than the
+altimeter says. Fitting both over a flight leaves a residual of 3.9 to 6.9 m,
+or 2.8 to 4.8 m when `a` is allowed to drift hour by hour. Part of that
+residual is the geoid, which moves by several metres across a 200 km flight and
+which [`updraft_egm96`] already models.
+
+Both terms check out against an independent measurement:
+
+| Flight | `b` as ΔT | ΔT from recorded OAT | `a` | Offset on the ground | Altitude flown |
+| --- | --- | --- | --- | --- | --- |
+| 1141558 | +6.7 K | +7.7 K | 150.5 m | 159.0 m | 360–1956 m |
+| 1153141 | +11.5 K | +7.8 K | 138.2 m | 138.0 m | 78–2198 m |
+| 1174605 | +8.8 K | +9.9 K | 11.9 m | 14.0 m | 522–2287 m |
+| 1179475 | +15.5 K | +16.1 K | 104.8 m | 150.0 m | 831–4091 m |
+| 1179605 | +15.7 K | +12.9 K | 118.4 m | 157.0 m | 926–3903 m |
+| 1188417 | +16.6 K | +14.8 K | 51.6 m | 77.0 m | 696–4080 m |
+
+The temperature term lands within 1 to 4 K of the recorded outside air
+temperature on every flight, and the cockpit sensor is not a reference
+instrument itself.
+
+The altimeter setting is only as good as the extrapolation to sea level. The
+three flights that stayed below 2300 m recover the offset measured before
+take-off to within 0.2 to 8.5 m, which is 0.02 to 1 hPa. The three that climbed
+to 4000 m miss it by 25 to 45 m, or 3 to 5 hPa, because one straight line
+through the whole column cannot follow a temperature profile that changes above
+the convective layer. A QNH estimate therefore has to weight the low and recent
+part of the flight.
+
+Two consequences matter beyond the estimate itself.
+
+**There are two different altitudes, and they are far apart.** At the top of
+these flights the temperature term is 47 m on the coolest day and 251 m on the
+warmest. Airspace and traffic separation run on what a pressure altimeter set
+to QNH reads, because that is the shared reference. Terrain clearance and a
+terrain map run on geometric height. The gap between them is a whole airspace
+layer, so each reading has to say which one it is.
+
+**The temperature term is the assumption the netto currently makes.** The sink
+rate divides by the air density, which the estimate takes from the ISA at the
+pressure altitude. `b` measures the deviation the ISA ignores, at about 1% of
+sink rate per 3 K, without needing an OAT sensor.
+
+[`updraft_egm96`]: ../../../libs/updraft_egm96
+
 ## A second sensor of the same kind adds nothing
 
 Updraft can receive a position and a pressure altitude from the device it runs

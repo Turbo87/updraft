@@ -18,10 +18,9 @@
       'icon-allow-overlap': true,
     }}
     paint={{
-      'icon-color': '#2d55a6',
-      'icon-halo-color': '#ffffff',
-      'icon-halo-width': 2,
-      'icon-halo-blur': 0.5,
+      'icon-color': '#5ee9b5', // --color-emerald-300
+      'icon-halo-color': '#0f172b', // --color-slate-900
+      'icon-halo-width': 1.5,
     }}
   />
 </GeoJSONSource>

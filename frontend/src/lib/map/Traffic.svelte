@@ -59,16 +59,23 @@
       'match',
       ['get', 'alarmLevel'],
       'low',
-      '#f59e0b',
+      '#fe9a00', // --color-amber-500
       'important',
-      '#f97316',
+      '#ff6900', // --color-orange-500
       'urgent',
-      '#dc2626',
-      '#262626',
+      '#e7000b', // --color-red-600
+      '#ffffff', // --color-white
     ],
     'icon-opacity': TRAFFIC_OPACITY,
-    'text-color': '#262626',
+    'text-color': '#0f172b', // --color-slate-900
     'text-opacity': TRAFFIC_OPACITY,
+    'icon-halo-color': '#0f172b', // --color-slate-900
+    'icon-halo-width': [
+      'case',
+      ['boolean', ['get', 'stale'], false],
+      0.5,
+      1.5,
+    ],
   };
 
   let { traffic, altitudeUnit }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit } = $props();

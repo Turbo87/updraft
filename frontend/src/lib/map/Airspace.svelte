@@ -94,7 +94,7 @@
       controlled,
       [
         'match',
-        ['get', 'class'],
+        ['get', 'icaoClass'],
         [AIRSPACE_CLASS.A, AIRSPACE_CLASS.B, AIRSPACE_CLASS.C, AIRSPACE_CLASS.D, AIRSPACE_CLASS.E],
         controlled,
         other,

@@ -160,16 +160,21 @@ pub struct Airspace {
 impl Airspace {
     /// Converts this airspace to a GeoJSON rendering subset.
     ///
-    /// The `type` and `class` properties use numeric values from the
+    /// The `type` and `icaoClass` properties use numeric values from the
     /// [OpenAIP airspace schema](https://api.core.openaip.net/api/schemas/response/airspace/airspace-schema.json).
     pub fn to_geojson(&self) -> serde_json::Value {
+        let mut properties = json!({
+            "type": self.type_code.openaip_code(),
+            "icaoClass": self.class.openaip_code(),
+        });
+        if let Some(activity) = self.activity {
+            properties["activity"] = json!(activity.openaip_code());
+        }
+
         json!({
             "type": "Feature",
             "id": self.id.0,
-            "properties": {
-                "type": self.type_code.openaip_code(),
-                "class": self.class.openaip_code(),
-            },
+            "properties": properties,
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [self.polygon.to_geojson_coordinates()],

@@ -1,7 +1,7 @@
 import type * as GeoJSON from 'geojson';
 
 type AirspaceFixtureProperties = {
-  class: number;
+  icaoClass: number;
   type: number;
 };
 
@@ -12,7 +12,7 @@ export const AIRSPACE_BROWSER_FIXTURE = {
     {
       type: 'Feature',
       id: 0,
-      properties: { class: 3, type: 4 },
+      properties: { icaoClass: 3, type: 4 },
       geometry: {
         type: 'Polygon',
         coordinates: [
@@ -29,7 +29,7 @@ export const AIRSPACE_BROWSER_FIXTURE = {
     {
       type: 'Feature',
       id: 1,
-      properties: { class: 4, type: 6 },
+      properties: { icaoClass: 4, type: 6 },
       geometry: {
         type: 'Polygon',
         coordinates: [

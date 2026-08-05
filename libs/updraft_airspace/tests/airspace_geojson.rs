@@ -1,6 +1,6 @@
 use claims::assert_ok;
 use serde_json::json;
-use updraft_airspace::AirspaceDataset;
+use updraft_airspace::{AirspaceActivity, AirspaceDataset};
 
 const POLYGON: &[u8] = include_bytes!("../../../testdata/airspace/polygon.txt");
 
@@ -19,8 +19,17 @@ fn projects_required_openaip_classification_properties() {
     assert_eq!(
         dataset.airspaces()[0].to_geojson()["properties"],
         json!({
-            "class": 8,
+            "icaoClass": 8,
             "type": 1,
         })
     );
+}
+
+#[test]
+fn projects_optional_openaip_activity() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.activity = Some(AirspaceActivity::HangGlidingOrParagliding);
+
+    assert_eq!(airspace.to_geojson()["properties"]["activity"], json!(5));
 }

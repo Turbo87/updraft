@@ -1,6 +1,10 @@
-use claims::{assert_none, assert_ok};
+use claims::{assert_none, assert_ok, assert_some};
 use serde_json::json;
-use updraft_airspace::{AirspaceActivity, AirspaceAltitude, AirspaceDataset};
+use time::{Time, Weekday};
+use updraft_airspace::{
+    AirspaceActivity, AirspaceAltitude, AirspaceDataset, AirspaceOperatingHours,
+    AirspaceOperatingPeriod, AirspaceOperatingSchedule,
+};
 use updraft_units::{Length, PressureAltitude};
 
 const POLYGON: &[u8] = include_bytes!("../../../testdata/airspace/polygon.txt");
@@ -203,4 +207,51 @@ fn projects_openaip_transponder_settings() {
             },
         ])
     );
+}
+
+#[test]
+fn projects_openaip_operating_schedules() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    let period = |day_of_week, schedule| AirspaceOperatingPeriod {
+        day_of_week,
+        public_holidays_excluded: false,
+        remarks: None,
+        schedule,
+    };
+    let periods = vec![
+        AirspaceOperatingPeriod {
+            day_of_week: Weekday::Monday,
+            public_holidays_excluded: true,
+            remarks: Some("WEEKDAYS".into()),
+            schedule: AirspaceOperatingSchedule::Fixed {
+                start_time: assert_ok!(Time::from_hms(8, 30, 15)),
+                end_time: assert_ok!(Time::from_hms(17, 45, 0)),
+            },
+        },
+        period(
+            Weekday::Tuesday,
+            AirspaceOperatingSchedule::FixedStartUntilSunset {
+                start_time: assert_ok!(Time::from_hms(9, 0, 0)),
+            },
+        ),
+        period(
+            Weekday::Wednesday,
+            AirspaceOperatingSchedule::SunriseUntilFixedEnd {
+                end_time: assert_ok!(Time::from_hms(18, 0, 0)),
+            },
+        ),
+        period(
+            Weekday::Thursday,
+            AirspaceOperatingSchedule::SunriseUntilSunset,
+        ),
+        period(Weekday::Friday, AirspaceOperatingSchedule::NoSpecifiedTime),
+        period(Weekday::Saturday, AirspaceOperatingSchedule::ByNotam),
+    ];
+    airspace.hours_of_operation = Some(assert_some!(AirspaceOperatingHours::new(
+        periods,
+        Some("LOCAL TIME".into()),
+    )));
+
+    insta::assert_json_snapshot!(airspace.to_geojson()["properties"]["hoursOfOperation"]);
 }

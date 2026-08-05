@@ -1,0 +1,56 @@
+---
+source: libs/updraft_airspace/tests/airspace_geojson.rs
+expression: "airspace.to_geojson()[\"properties\"][\"hoursOfOperation\"]"
+---
+{
+  "operatingHours": [
+    {
+      "byNotam": false,
+      "dayOfWeek": 0,
+      "endTime": "17:45:00",
+      "publicHolidaysExcluded": true,
+      "remarks": "WEEKDAYS",
+      "startTime": "08:30:15",
+      "sunrise": false,
+      "sunset": false
+    },
+    {
+      "byNotam": false,
+      "dayOfWeek": 1,
+      "publicHolidaysExcluded": false,
+      "startTime": "09:00:00",
+      "sunrise": false,
+      "sunset": true
+    },
+    {
+      "byNotam": false,
+      "dayOfWeek": 2,
+      "endTime": "18:00:00",
+      "publicHolidaysExcluded": false,
+      "sunrise": true,
+      "sunset": false
+    },
+    {
+      "byNotam": false,
+      "dayOfWeek": 3,
+      "publicHolidaysExcluded": false,
+      "sunrise": true,
+      "sunset": true
+    },
+    {
+      "byNotam": false,
+      "dayOfWeek": 4,
+      "publicHolidaysExcluded": false,
+      "sunrise": false,
+      "sunset": false
+    },
+    {
+      "byNotam": true,
+      "dayOfWeek": 5,
+      "publicHolidaysExcluded": false,
+      "sunrise": false,
+      "sunset": false
+    }
+  ],
+  "remarks": "LOCAL TIME"
+}

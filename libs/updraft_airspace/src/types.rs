@@ -1,6 +1,9 @@
-use crate::{AirspaceFrequency, AirspaceOperatingHours, AirspaceTransponderSetting};
+use crate::{
+    AirspaceFrequency, AirspaceOperatingHours, AirspaceOperatingPeriod, AirspaceOperatingSchedule,
+    AirspaceTransponderSetting,
+};
 use serde_json::json;
-use time::OffsetDateTime;
+use time::{OffsetDateTime, Time};
 use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
 
@@ -166,6 +169,66 @@ fn openaip_limit(
     })
 }
 
+fn format_openaip_time(time: Time) -> String {
+    format!(
+        "{:02}:{:02}:{:02}",
+        time.hour(),
+        time.minute(),
+        time.second()
+    )
+}
+
+fn operating_period_to_openaip_json(period: &AirspaceOperatingPeriod) -> serde_json::Value {
+    let mut value = json!({
+        "dayOfWeek": period.day_of_week.number_days_from_monday(),
+        "sunrise": false,
+        "sunset": false,
+        "byNotam": false,
+        "publicHolidaysExcluded": period.public_holidays_excluded,
+    });
+    match period.schedule {
+        AirspaceOperatingSchedule::Fixed {
+            start_time,
+            end_time,
+        } => {
+            value["startTime"] = json!(format_openaip_time(start_time));
+            value["endTime"] = json!(format_openaip_time(end_time));
+        }
+        AirspaceOperatingSchedule::FixedStartUntilSunset { start_time } => {
+            value["startTime"] = json!(format_openaip_time(start_time));
+            value["sunset"] = json!(true);
+        }
+        AirspaceOperatingSchedule::SunriseUntilFixedEnd { end_time } => {
+            value["endTime"] = json!(format_openaip_time(end_time));
+            value["sunrise"] = json!(true);
+        }
+        AirspaceOperatingSchedule::SunriseUntilSunset => {
+            value["sunrise"] = json!(true);
+            value["sunset"] = json!(true);
+        }
+        AirspaceOperatingSchedule::NoSpecifiedTime => {}
+        AirspaceOperatingSchedule::ByNotam => value["byNotam"] = json!(true),
+    }
+    if let Some(remarks) = period.remarks.as_deref() {
+        value["remarks"] = json!(remarks);
+    }
+    value
+}
+
+fn operating_hours_to_openaip_json(hours: &AirspaceOperatingHours) -> serde_json::Value {
+    let mut value = json!({
+        "operatingHours": hours
+            .operating_periods()
+            .iter()
+            .map(operating_period_to_openaip_json)
+            .collect::<Vec<_>>(),
+    });
+    if let Some(remarks) = hours.remarks.as_deref() {
+        value["remarks"] = json!(remarks);
+    }
+    value
+}
+
 /// One canonical polygon-only airspace.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airspace {
@@ -294,6 +357,9 @@ impl Airspace {
                     })
                     .collect::<Vec<_>>()
             );
+        }
+        if let Some(hours_of_operation) = self.hours_of_operation.as_ref() {
+            properties["hoursOfOperation"] = operating_hours_to_openaip_json(hours_of_operation);
         }
 
         json!({

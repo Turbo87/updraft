@@ -1,0 +1,135 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FakeClient > allocates device IDs and publishes complete authoritative topics 1`] = `
+[
+  {
+    "topic": "externalDevices",
+    "value": [
+      {
+        "deviceId": 1,
+        "enabled": true,
+        "host": "127.0.0.1",
+        "port": 4353,
+        "type": "tcp",
+      },
+    ],
+  },
+  {
+    "topic": "externalDevices",
+    "value": [
+      {
+        "deviceId": 1,
+        "enabled": true,
+        "host": "127.0.0.1",
+        "port": 4353,
+        "type": "tcp",
+      },
+      {
+        "address": "00:11:22:33:44:55",
+        "deviceId": 2,
+        "enabled": true,
+        "type": "bluetooth",
+      },
+    ],
+  },
+]
+`;
+
+exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] = `
+[
+  {
+    "topic": "settings",
+    "value": {
+      "locale": null,
+      "units": {
+        "altitude": "m",
+        "distance": "km",
+        "speed": "km/h",
+        "verticalSpeed": "m/s",
+      },
+    },
+  },
+  {
+    "topic": "externalDevices",
+    "value": [],
+  },
+  {
+    "topic": "traffic",
+    "value": {
+      "type": "snapshot",
+      "value": [],
+    },
+  },
+  {
+    "topic": "airspace",
+    "value": {
+      "type": "none",
+    },
+  },
+]
+`;
+
+exports[`FakeClient > edits a device without changing its ID, enabled state, or position 1`] = `
+[
+  {
+    "topic": "externalDevices",
+    "value": [
+      {
+        "address": "AA:BB:CC:DD:EE:FF",
+        "deviceId": 4,
+        "enabled": true,
+        "type": "bluetooth",
+      },
+      {
+        "address": "00:11:22:33:44:55",
+        "deviceId": 7,
+        "enabled": false,
+        "type": "bluetooth",
+      },
+    ],
+  },
+]
+`;
+
+exports[`FakeClient > publishes enable, disable, and delete changes 1`] = `
+[
+  [
+    {
+      "deviceId": 4,
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 4353,
+      "type": "tcp",
+    },
+    {
+      "address": "00:11:22:33:44:55",
+      "deviceId": 7,
+      "enabled": false,
+      "type": "bluetooth",
+    },
+  ],
+  [
+    {
+      "deviceId": 4,
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 4353,
+      "type": "tcp",
+    },
+    {
+      "address": "00:11:22:33:44:55",
+      "deviceId": 7,
+      "enabled": true,
+      "type": "bluetooth",
+    },
+  ],
+  [
+    {
+      "address": "00:11:22:33:44:55",
+      "deviceId": 7,
+      "enabled": true,
+      "type": "bluetooth",
+    },
+  ],
+]
+`;

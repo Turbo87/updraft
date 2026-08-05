@@ -2,19 +2,62 @@ use claims::{assert_none, assert_ok, assert_some};
 use serde_json::json;
 use time::{Date, Month, Time, UtcOffset, Weekday};
 use updraft_airspace::{
-    AirspaceActivity, AirspaceAltitude, AirspaceDataset, AirspaceOperatingHours,
+    Airspace, AirspaceActivity, AirspaceAltitude, AirspaceDataset, AirspaceOperatingHours,
     AirspaceOperatingPeriod, AirspaceOperatingSchedule,
 };
 use updraft_units::{Length, PressureAltitude};
 
 const POLYGON: &[u8] = include_bytes!("../../../testdata/airspace/polygon.txt");
 const ALTITUDES: &[u8] = include_bytes!("../../../testdata/airspace/altitudes.txt");
+const COMPLETE_AIRSPACE: &[u8] = b"AC D
+AY R
+AN Complete
+AF 123.45
+AG TOWER
+AX 123
+AL GND
+AH 5000 FT
+DP 50:00:00 N 010:00:00 E
+DP 50:00:00 N 010:01:00 E
+DP 50:01:00 N 010:01:00 E
+DP 50:01:00 N 010:00:00 E
+";
+
+fn complete_airspace() -> Airspace {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(COMPLETE_AIRSPACE));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.activity = Some(AirspaceActivity::HangGlidingOrParagliding);
+    airspace.on_demand = Some(true);
+    airspace.on_request = Some(false);
+    airspace.by_notam = Some(true);
+    airspace.special_agreement = Some(false);
+    airspace.request_compliance = Some(true);
+    airspace.country_codes = vec!["DE".into(), "AT".into()];
+    airspace.lower_limit_min = Some(AirspaceAltitude::Agl(Length::from_feet(500.)));
+    airspace.upper_limit_max = Some(AirspaceAltitude::FlightLevel(PressureAltitude::new(
+        Length::from_feet(12_000.),
+    )));
+    airspace.frequencies[0].remarks = Some("EMERGENCIES ONLY".into());
+    airspace.transponder_settings[0].remarks = Some("WHEN ACTIVE".into());
+    airspace.hours_of_operation = Some(assert_some!(AirspaceOperatingHours::new(
+        vec![AirspaceOperatingPeriod {
+            day_of_week: Weekday::Sunday,
+            public_holidays_excluded: true,
+            remarks: Some("DAYLIGHT HOURS".into()),
+            schedule: AirspaceOperatingSchedule::SunriseUntilSunset,
+        }],
+        Some("LOCAL TIME".into()),
+    )));
+    let date = assert_ok!(Date::from_calendar_date(2026, Month::April, 12));
+    airspace.active_from = Some(assert_ok!(date.with_hms(8, 30, 0)).assume_utc());
+    airspace.active_until = Some(assert_ok!(date.with_hms(17, 45, 0)).assume_utc());
+    airspace.remarks = Some("ACTIVE DURING GLIDER EVENTS".into());
+    airspace
+}
 
 #[test]
-fn projects_airspace_as_a_closed_geojson_polygon() {
-    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
-
-    insta::assert_json_snapshot!(dataset.airspaces()[0].to_geojson());
+fn projects_complete_airspace_as_geojson() {
+    insta::assert_json_snapshot!(complete_airspace().to_geojson());
 }
 
 #[test]

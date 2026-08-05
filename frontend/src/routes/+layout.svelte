@@ -44,6 +44,7 @@
     instruments,
     mapState,
     settings,
+    traffic,
   } satisfies AppContext;
 
   setAppContext(appContext);

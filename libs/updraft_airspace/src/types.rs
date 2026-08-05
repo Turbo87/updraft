@@ -204,7 +204,7 @@ impl Airspace {
             "properties": {
                 "id": self.id.0,
                 "class": self.class.as_ref().map(AirspaceClass::as_str),
-                "type": self.type_code.as_ref().map(|value| value.as_str()),
+                "type": self.type_code.as_ref().map(AirspaceType::as_str),
             },
             "geometry": {
                 "type": "Polygon",

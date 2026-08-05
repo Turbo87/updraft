@@ -27,6 +27,6 @@ impl Polygon {
             .chain(self.vertices.first())
             .copied()
             .map(LatLon::to_geojson_coordinate)
-            .collect::<Vec<_>>()
+            .collect()
     }
 }

@@ -108,10 +108,8 @@ fn normalize_db_arc(arc: ::openair::Arc) -> Result<Vec<LatLon>, AirspaceGeometry
     for index in 1..segment_count {
         let fraction = index as f64 / segment_count as f64;
         let radius = start_radius + (end_radius - start_radius) * fraction;
-        vertices.push(center.destination(
-            arc_bearing(start_bearing, sweep, arc.direction, index, segment_count),
-            radius,
-        ));
+        let bearing = arc_bearing(start_bearing, sweep, arc.direction, index, segment_count);
+        vertices.push(center.destination(bearing, radius));
     }
     vertices.push(end);
     Ok(vertices)
@@ -134,10 +132,8 @@ fn normalize_da_arc(arc: ::openair::ArcSegment) -> Result<Vec<LatLon>, AirspaceG
     let mut vertices = Vec::with_capacity(capacity);
     vertices.push(center.destination(start_bearing, radius));
     for index in 1..segment_count {
-        vertices.push(center.destination(
-            arc_bearing(start_bearing, sweep, arc.direction, index, segment_count),
-            radius,
-        ));
+        let bearing = arc_bearing(start_bearing, sweep, arc.direction, index, segment_count);
+        vertices.push(center.destination(bearing, radius));
     }
     vertices.push(center.destination(end_bearing, radius));
     Ok(vertices)

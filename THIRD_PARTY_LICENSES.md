@@ -2,8 +2,10 @@
 
 ## Tailwind CSS
 
-`frontend/src/styles/colors.css` contains the default color palette from
-Tailwind CSS v4.3.0:
+`frontend/src/styles/colors.ts` contains the default color palette from
+Tailwind CSS v4.3.0. The generated `frontend/src/styles/colors.generated.css`
+and `frontend/src/lib/map/colors.generated.ts` files contain derived forms of
+the same palette:
 
 https://github.com/tailwindlabs/tailwindcss/blob/v4.3.0/packages/tailwindcss/theme.css
 

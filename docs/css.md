@@ -122,6 +122,11 @@ header identifies the source and update command. Updraft does not otherwise use
 Tailwind as a CSS framework or runtime build dependency. The source values
 remain in OKLCH, while Lightning CSS emits sRGB and wider-gamut fallbacks.
 
+The same golden test generates the complete
+`frontend/src/lib/map/colors.generated.ts` module. It converts each OKLCH value
+to clipped sRGB for MapLibre. Map code imports colors from this module. Other
+frontend code uses the CSS custom properties directly.
+
 Reusable UI consumes semantic tokens from `theme.css`. Tokens are named for
 their purpose, such as `--color-warning-surface`, rather than for a hue. A token
 can select palette values for both themes:

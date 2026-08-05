@@ -10,6 +10,13 @@
   import { onMount } from 'svelte';
   import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
 
+  import {
+    COLOR_AMBER_500,
+    COLOR_ORANGE_500,
+    COLOR_RED_600,
+    COLOR_SLATE_900,
+    COLOR_WHITE,
+  } from './colors.generated';
   import { applyTrafficSourceUpdate, trafficFeatureCollection } from './traffic';
 
   type SymbolLayout = NonNullable<SymbolLayerSpecification['layout']>;
@@ -59,23 +66,18 @@
       'match',
       ['get', 'alarmLevel'],
       'low',
-      '#fe9a00', // --color-amber-500
+      COLOR_AMBER_500,
       'important',
-      '#ff6900', // --color-orange-500
+      COLOR_ORANGE_500,
       'urgent',
-      '#e7000b', // --color-red-600
-      '#ffffff', // --color-white
+      COLOR_RED_600,
+      COLOR_WHITE,
     ],
     'icon-opacity': TRAFFIC_OPACITY,
-    'text-color': '#0f172b', // --color-slate-900
+    'text-color': COLOR_SLATE_900,
     'text-opacity': TRAFFIC_OPACITY,
-    'icon-halo-color': '#0f172b', // --color-slate-900
-    'icon-halo-width': [
-      'case',
-      ['boolean', ['get', 'stale'], false],
-      0.5,
-      1.5,
-    ],
+    'icon-halo-color': COLOR_SLATE_900,
+    'icon-halo-width': ['case', ['boolean', ['get', 'stale'], false], 0.5, 1.5],
   };
 
   let { traffic, altitudeUnit }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit } = $props();

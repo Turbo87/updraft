@@ -57,11 +57,13 @@ fn generate_spritesheet(svg_dir: &Path, output: &Path, pixel_ratio: u8) -> anyho
         .generate()
         .context("Failed to pack sprites into a spritesheet")?;
 
-    spritesheet.save_spritesheet(output.with_extension("png"))?;
-    let output = output
+    let image_path = output.with_extension("png");
+    spritesheet.save_spritesheet(image_path)?;
+
+    let index_path = output
         .to_str()
         .context("Failed to convert output path to string")?;
-    spritesheet.save_index(output, true)?;
+    spritesheet.save_index(index_path, true)?;
 
     Ok(())
 }

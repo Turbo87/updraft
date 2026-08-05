@@ -128,6 +128,7 @@
 </script>
 
 <GeoJSONSource id="airspace" maxzoom={24} {data}>
+  <FillLayer id="airspace-hit" {beforeId} paint={{ 'fill-opacity': 0 }} />
   <FillLayer id="airspace-fill" {beforeId} paint={AIRSPACE_FILL_PAINT} />
   <LineLayer id="airspace-outline" {beforeId} paint={AIRSPACE_OUTLINE_PAINT} />
 </GeoJSONSource>

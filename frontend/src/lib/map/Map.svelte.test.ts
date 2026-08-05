@@ -85,6 +85,7 @@ it.each([
   let map = await renderMap(airspace);
 
   expect(map.getSource('airspace')).toBeUndefined();
+  expect(map.getLayer('airspace-hit')).toBeUndefined();
   expect(map.getLayer('airspace-fill')).toBeUndefined();
   expect(map.getLayer('airspace-outline')).toBeUndefined();
 });
@@ -100,11 +101,32 @@ it('adds the airspace source and both layers for the active state', async () => 
 
   await vi.waitFor(() => {
     expect(map.getSource('airspace')).toBeDefined();
+    expect(map.getLayer('airspace-hit')).toBeDefined();
     expect(map.getLayer('airspace-fill')).toBeDefined();
     expect(map.getLayer('airspace-outline')).toBeDefined();
   });
   expect(airspaceStyle(map)).toMatchSnapshot();
   expect(consoleError).not.toHaveBeenCalled();
+});
+
+it('queries airspace through the transparent hit layer', async () => {
+  let map = await renderMap({
+    type: 'active',
+    sourceName: 'rheinland.txt',
+    airspaceCount: 2,
+    generation: 3,
+  });
+
+  await vi.waitFor(() => {
+    expect(map.getLayer('airspace-hit')).toBeDefined();
+  });
+
+  let features = map.queryRenderedFeatures(map.project([6.175, 50.82]), {
+    layers: ['airspace-hit'],
+  });
+
+  expect(map.getPaintProperty('airspace-hit', 'fill-opacity')).toBe(0);
+  expect(features.map(({ id }) => id)).toEqual([0]);
 });
 
 it('publishes the map and camera values through the shared map state', async () => {

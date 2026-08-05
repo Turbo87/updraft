@@ -106,8 +106,10 @@ waits for the required sources and layers. It projects the URL coordinate to a
 screen point. It then calls `queryRenderedFeatures()` for the airspace and
 traffic hit layers at that point.
 
-A direct visit and a reload use the same process. Browser Back mounts a new
-`/nearby` page and repeats the query.
+The query uses only content that MapLibre currently renders. The page does not
+move the map to an off-screen URL coordinate. Such a coordinate therefore has
+no MapLibre matches. Direct visits and reloads are exceptional but use this
+same process. Browser Back mounts a new `/nearby` page and repeats the query.
 
 ## Hit layers
 
@@ -225,8 +227,9 @@ airspace dataset is active, it also waits for the airspace source and hit layer.
 No active airspace dataset is a valid state. The page can still show traffic.
 
 The page keeps the selected feature sequence after the query completes. An
-airspace source replacement does not change the mounted result page. A remount
-or Retry runs a new query.
+airspace source replacement does not change the mounted result page. The query
+uses whichever airspace source MapLibre renders when it first becomes ready. A
+remount runs a new query.
 
 ## Nearby page
 
@@ -329,13 +332,14 @@ An invalid latitude or longitude shows an invalid-selection state with a Back
 to map control. The page does not query MapLibre. Coordinates must be finite.
 Latitude must be from -90 through 90. Longitude must be from -180 through 180.
 
-A map or source loading failure shows an explicit error with Retry and Back to
-map controls. Retry waits for current source state and repeats the query. It
-does not show the empty state for a failed query.
+The nearby airspace category reports no matching airspace when no dataset is
+active, the dataset is unavailable, or MapLibre cannot render the airspace
+source. It does not provide Retry. An unexpected exception from `project()` or
+`queryRenderedFeatures()` remains an application error.
 
-An airspace source read failure shows an explicit error with Retry. A successful
-source read with no matching ID shows the not-found state. These states are
-different.
+An airspace source read failure on the independent detail route shows an
+explicit error with Retry. A successful source read with no matching ID shows
+the not-found state. These states are different.
 
 ## Tests
 
@@ -363,9 +367,13 @@ Playwright tests use the real application with deterministic airspace and
 traffic fixtures. They cover these behaviors:
 
 - Each normal map tap opens the expected `/nearby` URL.
-- Empty and populated results show the correct state.
+- Delayed initial state, no dataset, unavailable data, empty results, and
+  populated results show the correct state.
 - Overlapping airspace and traffic keep their MapLibre sequence in each
   category.
+- An off-screen direct `/nearby` URL does not move the map and has no MapLibre
+  matches.
+- Later airspace changes do not replace an already selected feature sequence.
 - Direct airspace and traffic detail URLs work after reload.
 - Traffic values update and remain after removal.
 - Browser Back remounts `/nearby` and repeats the query.
@@ -385,6 +393,10 @@ This feature is complete when all these statements are true:
 - Traffic hit testing uses a fixed radius of 24 CSS pixels.
 - The debug overlay can show traffic hit circles.
 - The result page preserves the MapLibre feature sequence without changes.
+- Nearby airspace results use one snapshot of currently rendered map content.
+- An off-screen direct nearby URL does not move the map.
+- Missing, unavailable, or unrendered airspace produces an empty result without
+  Retry.
 - Airspace GeoJSON contains all canonical metadata.
 - OpenAIP property names and shapes apply where they can represent the value.
 - Documented Updraft extensions preserve other canonical values.

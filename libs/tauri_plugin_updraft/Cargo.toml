@@ -18,4 +18,5 @@ thiserror = "=2.0.19"
 uuid = { version = "=1.24.0", features = ["serde"] }
 
 [dev-dependencies]
+claims = "=0.8.0"
 insta = { version = "=1.48.0", features = ["json"] }

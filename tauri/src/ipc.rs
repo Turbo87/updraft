@@ -582,17 +582,12 @@ mod tests {
           "type": "imported"
         }
         "#);
-        assert_eq!(
-            assert_some!(
-                handle
-                    .send(GetAirspaceSnapshot)
-                    .await
-                    .expect("active driver")
-            )
-            .airspaces()
-            .len(),
-            1
-        );
+        let snapshot = handle
+            .send(GetAirspaceSnapshot)
+            .await
+            .expect("active driver");
+        let dataset = assert_some!(snapshot);
+        assert_eq!(dataset.airspaces().len(), 1);
     }
 
     #[tokio::test(flavor = "multi_thread")]

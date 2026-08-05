@@ -4134,6 +4134,7 @@ dependencies = [
 name = "tauri-plugin-updraft"
 version = "0.0.0"
 dependencies = [
+ "claims",
  "insta",
  "serde",
  "tauri",

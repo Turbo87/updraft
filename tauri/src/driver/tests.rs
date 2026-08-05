@@ -14,7 +14,8 @@ use updraft_airspace::AirspaceDataset;
 use updraft_core::{
     ActivateAirspaceDataset, AddExternalDevice, AirspaceLoadError, AirspaceState, AirspaceStatus,
     Bytes, ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
-    ExternalDeviceId, SetExternalDeviceEnabled, SetLocale, SettingsSnapshot, Topic, TrafficUpdate,
+    ExternalDeviceId, LatLon, PublishedExternalDevice, SetExternalDeviceEnabled, SetLocale,
+    SettingsSnapshot, Topic, TrafficUpdate,
 };
 
 const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -73,7 +74,7 @@ fn topic_stream(handle: &DriverHandle) -> mpsc::UnboundedReceiver<Topic> {
 
 /// Awaits topics until one carries a position, so the onboarding
 /// emission of empty state does not have to be counted.
-async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> updraft_core::LatLon {
+async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> LatLon {
     loop {
         let received = timeout(PATIENCE, receiver.recv())
             .await
@@ -113,8 +114,8 @@ async fn next_device_id(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> Extern
 
 async fn next_external_devices(
     receiver: &mut mpsc::UnboundedReceiver<Topic>,
-    matches: impl Fn(&[updraft_core::PublishedExternalDevice]) -> bool,
-) -> Vec<updraft_core::PublishedExternalDevice> {
+    matches: impl Fn(&[PublishedExternalDevice]) -> bool,
+) -> Vec<PublishedExternalDevice> {
     loop {
         let received = timeout(PATIENCE, receiver.recv())
             .await

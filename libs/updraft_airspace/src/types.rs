@@ -285,10 +285,11 @@ pub struct Airspace {
 }
 
 impl Airspace {
-    /// Converts this airspace to a GeoJSON rendering subset.
+    /// Converts this airspace to GeoJSON with OpenAIP-compatible aviation properties.
     ///
-    /// The `type` and `icaoClass` properties use numeric values from the
-    /// [OpenAIP airspace schema](https://api.core.openaip.net/api/schemas/response/airspace/airspace-schema.json).
+    /// Property names, shapes, and numeric values follow the
+    /// [OpenAIP airspace schema](https://api.core.openaip.net/api/schemas/response/airspace/airspace-schema.json)
+    /// when the schema can represent the canonical value.
     pub fn to_geojson(&self) -> serde_json::Value {
         let mut properties = json!({
             "type": self.type_code.openaip_code(),
@@ -372,6 +373,9 @@ impl Airspace {
         }
         if let Some(active_until) = self.active_until {
             properties["activeUntil"] = json!(format_openaip_datetime(active_until));
+        }
+        if let Some(remarks) = self.remarks.as_deref() {
+            properties["remarks"] = json!(remarks);
         }
 
         json!({

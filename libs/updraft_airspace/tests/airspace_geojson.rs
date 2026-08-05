@@ -282,3 +282,18 @@ fn projects_independently_optional_openaip_activation_dates() {
     assert_eq!(properties["activeFrom"], json!("2026-04-12T08:30:00+02:00"));
     assert_none!(properties.get("activeUntil"));
 }
+
+#[test]
+fn projects_optional_airspace_remarks() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.remarks = Some("ACTIVE DURING GLIDER EVENTS".into());
+
+    assert_eq!(
+        airspace.to_geojson()["properties"]["remarks"],
+        json!("ACTIVE DURING GLIDER EVENTS")
+    );
+
+    airspace.remarks = None;
+    assert_none!(airspace.to_geojson()["properties"].get("remarks"));
+}

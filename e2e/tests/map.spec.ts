@@ -520,6 +520,50 @@ test('shows traffic not found for missing IDs', async ({ page }) => {
   await expect(page.getByText('Traffic not found.')).toBeVisible();
 });
 
+test('opens inspector details and requeries the map after browser Back', async ({ page }) => {
+  await page.addInitScript((data) => {
+    (window as TestWindow).__updraftTestAirspaceData = data;
+  }, AIRSPACE_BROWSER_FIXTURE);
+  await page.goto('/?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'active', generation: 1 });
+
+  let selectedPosition = { latitudeDegrees: 50.82, longitudeDegrees: 6.182 };
+  let trafficTarget = { ...TRAFFIC_A, position: selectedPosition };
+  await emitTraffic(page, { type: 'snapshot', value: [trafficTarget] });
+  await expect.poll(() => readAirspaceMapState(page)).not.toBeNull();
+  await expect.poll(() => readTrafficIdsAt(page, selectedPosition)).toEqual([TRAFFIC_A.id]);
+
+  await clickMapPosition(page, selectedPosition);
+  let nearbyUrl = page.url();
+  let airspaces = page.getByRole('region', { name: 'Airspaces' });
+  let traffic = page.getByRole('region', { name: 'Traffic' });
+  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+  await expect(traffic.getByRole('listitem')).toHaveText('Glider · FLARM 000001');
+
+  await airspaces.getByRole('link', { name: 'Köln RMZ' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Köln RMZ');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page).toHaveURL(nearbyUrl);
+  await expect(traffic.getByRole('link', { name: 'Glider · FLARM 000001' })).toBeVisible();
+
+  await traffic.getByRole('link', { name: 'Glider · FLARM 000001' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
+  await emitTraffic(page, {
+    type: 'delta',
+    value: {
+      upserts: [{ ...trafficTarget, position: { latitudeDegrees: 0, longitudeDegrees: 0 } }],
+      removed: [],
+    },
+  });
+  await expect.poll(() => readTrafficIdsAt(page, selectedPosition)).toEqual([]);
+
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page).toHaveURL(nearbyUrl);
+  await expect(traffic.getByText('No traffic at this position.')).toBeVisible();
+  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+});
+
 async function emitInstruments(page: Page, gps: GpsInstruments) {
   await page.evaluate(
     (value) => {

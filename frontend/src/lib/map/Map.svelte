@@ -2,10 +2,11 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
 
-  import type { GeoJSONSourceSpecification, StyleSpecification } from 'maplibre-gl';
+  import type { GeoJSONSourceSpecification, MapMouseEvent, StyleSpecification } from 'maplibre-gl';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
@@ -37,6 +38,7 @@
     units,
     testMode = false,
     testAirspaceData,
+    onInspect,
   }: {
     airspace: AirspaceStatus;
     instruments: Instruments;
@@ -45,6 +47,7 @@
     units: UnitSettings;
     testMode?: boolean;
     testAirspaceData?: GeoJSONSourceSpecification['data'];
+    onInspect?: (position: LatLon) => void;
   } = $props();
 
   let spritesLoaded = $state(false);
@@ -88,6 +91,13 @@
     map.addSprite('updraft-sdf', `${window.location.origin}/sprites/updraft-sdf`);
     spritesLoaded = true;
   }
+
+  function inspectMapPosition(event: MapMouseEvent) {
+    onInspect?.({
+      latitudeDegrees: event.lngLat.lat,
+      longitudeDegrees: event.lngLat.lng,
+    });
+  }
 </script>
 
 <div class="map-container">
@@ -102,6 +112,7 @@
     bind:center={mapState.center}
     bind:pitch={mapState.pitch}
     bind:zoom={mapState.zoom}
+    onclick={inspectMapPosition}
     ondragstart={enterManualMode}
     onload={loadSprites}
   >

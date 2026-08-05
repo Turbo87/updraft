@@ -2,9 +2,11 @@
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
+  import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
+  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
 
   import Map from '$lib/map/Map.svelte';
@@ -25,10 +27,26 @@
     units: UnitSettings;
     testMode?: boolean;
   } = $props();
+
+  function openNearbyRoute(position: LatLon) {
+    let path = resolve('/nearby/[latitude]/[longitude]', {
+      latitude: position.latitudeDegrees.toFixed(6),
+      longitude: position.longitudeDegrees.toFixed(6),
+    });
+    void goto(path);
+  }
 </script>
 
 <section class="flight-view" aria-label={m.flight_view()}>
-  <Map {airspace} {instruments} {mapState} {traffic} {units} {testMode} />
+  <Map
+    {airspace}
+    {instruments}
+    {mapState}
+    {traffic}
+    {units}
+    {testMode}
+    onInspect={openNearbyRoute}
+  />
   <div class="overlay">
     <a href={resolve('/settings')}>{m.settings_heading()}</a>
   </div>

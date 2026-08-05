@@ -119,6 +119,36 @@ test('renders active airspace below traffic and ownship', async ({ page }) => {
     });
 });
 
+test('opens a tapped map position and updates its ownship relation', async ({ page }) => {
+  await page.goto('/?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+
+  await emitInstruments(page, POSITION_A);
+  await expectMapPosition(page, POSITION_A);
+
+  let bounds = await page.locator('.maplibregl-canvas').boundingBox();
+  if (!bounds) throw new Error('Map canvas is not visible');
+
+  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await expect(page).toHaveURL('/nearby/50.823000/6.186000');
+  await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
+  await expect(page.getByText('50.82300, 6.18600')).toBeVisible();
+  await expect(page.getByText('0.0 km', { exact: true })).toBeVisible();
+  await expect(page.getByText('0°', { exact: true })).toBeVisible();
+
+  await emitInstruments(page, POSITION_B);
+  await expect(page.getByText('0.1 km', { exact: true })).toBeVisible();
+  await expect(page.getByText('212°', { exact: true })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Back to map' }).click();
+  await expect(page).toHaveURL('/');
+
+  await page.goto('/nearby/91/6.186?testMode=1');
+  await expect(page.getByText('The selected map position is invalid.')).toBeVisible();
+  await page.getByRole('link', { name: 'Back to map' }).click();
+  await expect(page).toHaveURL('/');
+});
+
 async function emitInstruments(page: Page, gps: GpsInstruments) {
   await page.evaluate(
     (value) => {

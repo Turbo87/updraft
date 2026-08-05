@@ -109,3 +109,43 @@ fn omits_absent_openaip_operational_flags() {
         assert_none!(properties.get(property));
     }
 }
+
+#[test]
+fn projects_one_country_as_a_scalar() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.country_codes = vec!["DE".into()];
+
+    assert_eq!(airspace.to_geojson()["properties"]["country"], json!("DE"));
+}
+
+#[test]
+fn projects_multiple_countries_as_an_ordered_array() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.country_codes = vec!["DE".into(), "AT".into()];
+
+    assert_eq!(
+        airspace.to_geojson()["properties"]["country"],
+        json!(["DE", "AT"])
+    );
+}
+
+#[test]
+fn omits_an_empty_country_collection() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+
+    assert_none!(dataset.airspaces()[0].to_geojson()["properties"].get("country"));
+}
+
+#[test]
+fn preserves_an_unrecognized_country_value() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.country_codes = vec!["UNKNOWN".into()];
+
+    assert_eq!(
+        airspace.to_geojson()["properties"]["country"],
+        json!("UNKNOWN")
+    );
+}

@@ -233,6 +233,11 @@ impl Airspace {
         if let Some(activity) = self.activity {
             properties["activity"] = json!(activity.openaip_code());
         }
+        match self.country_codes.as_slice() {
+            [] => {}
+            [country] => properties["country"] = json!(country),
+            countries => properties["country"] = json!(countries),
+        }
         for (property, value) in [
             ("onDemand", self.on_demand),
             ("onRequest", self.on_request),

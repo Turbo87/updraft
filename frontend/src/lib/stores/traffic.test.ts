@@ -21,6 +21,13 @@ function target(
 }
 
 describe('TrafficStore', () => {
+  it('starts uninitialized without targets', () => {
+    let store = new TrafficStore();
+
+    expect(store.initialized).toBe(false);
+    expect(store.current).toEqual(new Map());
+  });
+
   it('replaces all targets in the same map on a snapshot', () => {
     let store = new TrafficStore();
     let current = store.current;
@@ -28,6 +35,9 @@ describe('TrafficStore', () => {
     let second = target('flarm:000002');
 
     store.apply({ topic: 'traffic', value: { type: 'snapshot', value: [first] } });
+
+    expect(store.initialized).toBe(true);
+
     store.apply({ topic: 'traffic', value: { type: 'snapshot', value: [second] } });
 
     expect(store.current).toBe(current);
@@ -103,6 +113,7 @@ describe('TrafficStore', () => {
     });
 
     expect(store.current).toBe(initial);
+    expect(store.initialized).toBe(false);
   });
 
   it('notifies subscribers after applying an update', () => {

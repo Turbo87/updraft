@@ -40,12 +40,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function renderMap(airspace: AirspaceStatus): Promise<MapLibreMap> {
+async function renderMap(
+  airspace: AirspaceStatus,
+  traffic = new TrafficStore(),
+): Promise<MapLibreMap> {
   let mapState = new MapState();
   await render(MapComponent, {
     instruments,
     mapState,
-    traffic: new TrafficStore(),
+    traffic,
     units,
     airspace,
     testMode: true,
@@ -127,6 +130,51 @@ it('queries airspace through the transparent hit layer', async () => {
 
   expect(map.getPaintProperty('airspace-hit', 'fill-opacity')).toBe(0);
   expect(features.map(({ id }) => id)).toEqual([0]);
+});
+
+it('queries traffic within the transparent 24 pixel hit radius', async () => {
+  let traffic = new TrafficStore();
+  let position = { latitudeDegrees: 50.823, longitudeDegrees: 6.186 };
+  traffic.apply({
+    topic: 'traffic',
+    value: {
+      type: 'snapshot',
+      value: [
+        {
+          id: 'flarm:000001',
+          position,
+          altitudeMslMeters: 500,
+          trafficType: 'glider',
+          trackDegrees: 90,
+          alarmLevel: 'none',
+          stale: false,
+        },
+      ],
+    },
+  });
+  let map = await renderMap({ type: 'none' }, traffic);
+
+  await vi.waitFor(() => {
+    expect(map.getLayer('traffic-hit')).toBeDefined();
+  });
+
+  let targetPoint = map.project([position.longitudeDegrees, position.latitudeDegrees]);
+  await vi.waitFor(() => {
+    let features = map.queryRenderedFeatures(targetPoint, { layers: ['traffic-hit'] });
+    expect(features.map(({ id }) => id)).toEqual(['flarm:000001']);
+  });
+
+  let inside = map.queryRenderedFeatures([targetPoint.x + 23, targetPoint.y], {
+    layers: ['traffic-hit'],
+  });
+  let outside = map.queryRenderedFeatures([targetPoint.x + 25, targetPoint.y], {
+    layers: ['traffic-hit'],
+  });
+
+  expect(map.getPaintProperty('traffic-hit', 'circle-radius')).toBe(24);
+  expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0);
+  expect(inside.map(({ id }) => id)).toEqual(['flarm:000001']);
+  expect(outside).toEqual([]);
 });
 
 it('publishes the map and camera values through the shared map state', async () => {

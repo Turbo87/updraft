@@ -43,6 +43,7 @@ describe('trafficFeature', () => {
         "properties": {
           "alarmLevel": "none",
           "altitudeLabel": "200 m",
+          "id": "flarm:000123",
           "stale": false,
           "trackDegrees": 270,
           "trafficType": "glider",
@@ -71,6 +72,7 @@ describe('trafficFeature', () => {
         "properties": {
           "alarmLevel": "none",
           "altitudeLabel": null,
+          "id": "flarm:000123",
           "stale": false,
           "trackDegrees": null,
           "trafficType": "glider",

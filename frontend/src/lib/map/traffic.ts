@@ -14,6 +14,7 @@ type TrafficGeoJSONSource = Pick<GeoJSONSource, 'setData' | 'updateData'> & {
 };
 
 export type TrafficFeatureProperties = {
+  id: string;
   trafficType: TrafficType;
   alarmLevel: TrafficAlarmLevel;
   stale: boolean;
@@ -33,6 +34,7 @@ export function trafficFeature(
       coordinates: [target.position.longitudeDegrees, target.position.latitudeDegrees],
     },
     properties: {
+      id: target.id,
       trafficType: target.trafficType,
       alarmLevel: target.alarmLevel,
       stale: target.stale,

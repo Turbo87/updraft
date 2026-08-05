@@ -8,7 +8,7 @@
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { onMount } from 'svelte';
-  import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
+  import { CircleLayer, GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
 
   import {
     COLOR_AMBER_500,
@@ -107,7 +107,14 @@
   );
 </script>
 
-<GeoJSONSource id="traffic" maxzoom={24} data={trafficFeatureCollection([], 'm')} bind:source>
+<GeoJSONSource
+  id="traffic"
+  maxzoom={24}
+  promoteId="id"
+  data={trafficFeatureCollection([], 'm')}
+  bind:source
+>
+  <CircleLayer id="traffic-hit" paint={{ 'circle-radius': 24, 'circle-opacity': 0 }} />
   <SymbolLayer
     id="traffic-fixed"
     filter={[

@@ -830,7 +830,7 @@ mod tests {
     fn loads_the_representative_igc_recording() {
         let replay = assert_ok!(Replay::from_igc(REPRESENTATIVE_IGC));
         let events = replay.events();
-        let event_times = events.iter().map(ReplayEvent::at).collect::<Vec<_>>();
+        let event_times = event_times(&replay);
         let mut ordered_times = event_times.clone();
         ordered_times.sort_unstable();
         ordered_times.dedup();
@@ -852,11 +852,7 @@ mod tests {
         let replay = assert_ok!(Replay::from_igc(BASIC_IGC));
 
         assert_eq!(
-            replay
-                .events()
-                .iter()
-                .map(ReplayEvent::at)
-                .collect::<Vec<_>>(),
+            event_times(&replay),
             [Duration::ZERO, Duration::from_secs(1)]
         );
         assert_eq!(replay.duration(), Duration::from_secs(1));
@@ -991,11 +987,7 @@ mod tests {
         ));
 
         assert_eq!(
-            replay
-                .events()
-                .iter()
-                .map(ReplayEvent::at)
-                .collect::<Vec<_>>(),
+            event_times(&replay),
             [
                 Duration::ZERO,
                 Duration::from_secs(60),
@@ -1038,11 +1030,7 @@ mod tests {
         ));
 
         assert_eq!(
-            replay
-                .events()
-                .iter()
-                .map(ReplayEvent::at)
-                .collect::<Vec<_>>(),
+            event_times(&replay),
             [Duration::ZERO, Duration::from_secs(1)]
         );
         let wind = first_lxwp0(&replay.events()[0]);
@@ -1178,11 +1166,7 @@ mod tests {
             let replay = assert_ok!(Replay::from_igc(&input));
 
             assert_eq!(
-                replay
-                    .events()
-                    .iter()
-                    .map(ReplayEvent::at)
-                    .collect::<Vec<_>>(),
+                event_times(&replay),
                 [Duration::ZERO, Duration::from_secs(1)]
             );
             assert_some_eq!(first_rmc(&replay.events()[1]).date, expected_date);
@@ -1198,11 +1182,7 @@ mod tests {
         ));
 
         assert_eq!(
-            replay
-                .events()
-                .iter()
-                .map(ReplayEvent::at)
-                .collect::<Vec<_>>(),
+            event_times(&replay),
             [Duration::ZERO, Duration::from_secs(1)]
         );
         assert_eq!(replay.warnings(), ["IGC line 2: timestamp moved backward"]);
@@ -1306,11 +1286,7 @@ mod tests {
         let replay = assert_ok!(Replay::from_nmea(BASIC.to_vec()));
 
         assert_eq!(
-            replay
-                .events()
-                .iter()
-                .map(ReplayEvent::at)
-                .collect::<Vec<_>>(),
+            event_times(&replay),
             [
                 Duration::ZERO,
                 Duration::from_secs(1),
@@ -1340,11 +1316,7 @@ mod tests {
         let replay = assert_ok!(Replay::from_nmea(input.to_vec()));
 
         assert_eq!(
-            replay
-                .events()
-                .iter()
-                .map(ReplayEvent::at)
-                .collect::<Vec<_>>(),
+            event_times(&replay),
             [Duration::ZERO, Duration::from_secs(1)]
         );
         assert!(replay.warnings().is_empty());
@@ -1358,11 +1330,7 @@ mod tests {
         let replay = assert_ok!(Replay::from_nmea(input.to_vec()));
 
         assert_eq!(
-            replay
-                .events()
-                .iter()
-                .map(ReplayEvent::at)
-                .collect::<Vec<_>>(),
+            event_times(&replay),
             [Duration::ZERO, Duration::from_secs(1)]
         );
         assert_eq!(replay.warnings(), ["NMEA replay timestamps moved backward"]);
@@ -1372,6 +1340,10 @@ mod tests {
     fn rejects_a_file_without_a_timestamp() {
         let error = Replay::from_nmea(b"$PGRMZ,1000,f,3\r\n".to_vec());
         assert_matches!(error, Err(ReplayError::MissingTimestamp));
+    }
+
+    fn event_times(replay: &Replay) -> Vec<Duration> {
+        replay.events().iter().map(ReplayEvent::at).collect()
     }
 
     fn payload_text(event: &ReplayEvent) -> &str {
@@ -1393,7 +1365,7 @@ mod tests {
         rmc_messages(event)
             .into_iter()
             .next()
-            .unwrap_or_else(|| panic!("expected RMC frame"))
+            .expect("expected RMC frame")
     }
 
     fn rmc_messages(event: &ReplayEvent) -> Vec<Rmc> {
@@ -1424,7 +1396,7 @@ mod tests {
         lxwp0_messages(event)
             .into_iter()
             .next()
-            .unwrap_or_else(|| panic!("expected LXWP0 frame"))
+            .expect("expected LXWP0 frame")
     }
 
     fn first_lxwp1(event: &ReplayEvent) -> Lxwp1 {
@@ -1452,7 +1424,7 @@ mod tests {
         }
     }
 
-    fn first_plxvs(event: &ReplayEvent) -> updraft_nmea::Plxvs {
+    fn first_plxvs(event: &ReplayEvent) -> Plxvs {
         let mut input = event.payload().as_ref();
         loop {
             match parse(&mut input) {

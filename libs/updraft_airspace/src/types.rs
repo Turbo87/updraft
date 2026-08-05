@@ -3,7 +3,7 @@ use crate::{
     AirspaceTransponderSetting,
 };
 use serde_json::json;
-use time::{OffsetDateTime, Time};
+use time::{OffsetDateTime, Time, format_description::well_known::Rfc3339};
 use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
 
@@ -176,6 +176,12 @@ fn format_openaip_time(time: Time) -> String {
         time.minute(),
         time.second()
     )
+}
+
+fn format_openaip_datetime(datetime: OffsetDateTime) -> String {
+    datetime
+        .format(&Rfc3339)
+        .expect("airspace activation date must support RFC 3339")
 }
 
 fn operating_period_to_openaip_json(period: &AirspaceOperatingPeriod) -> serde_json::Value {
@@ -360,6 +366,12 @@ impl Airspace {
         }
         if let Some(hours_of_operation) = self.hours_of_operation.as_ref() {
             properties["hoursOfOperation"] = operating_hours_to_openaip_json(hours_of_operation);
+        }
+        if let Some(active_from) = self.active_from {
+            properties["activeFrom"] = json!(format_openaip_datetime(active_from));
+        }
+        if let Some(active_until) = self.active_until {
+            properties["activeUntil"] = json!(format_openaip_datetime(active_until));
         }
 
         json!({

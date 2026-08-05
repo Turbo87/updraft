@@ -1,6 +1,6 @@
 use claims::{assert_none, assert_ok, assert_some};
 use serde_json::json;
-use time::{Time, Weekday};
+use time::{Date, Month, Time, UtcOffset, Weekday};
 use updraft_airspace::{
     AirspaceActivity, AirspaceAltitude, AirspaceDataset, AirspaceOperatingHours,
     AirspaceOperatingPeriod, AirspaceOperatingSchedule,
@@ -254,4 +254,31 @@ fn projects_openaip_operating_schedules() {
     )));
 
     insta::assert_json_snapshot!(airspace.to_geojson()["properties"]["hoursOfOperation"]);
+}
+
+#[test]
+fn projects_independently_optional_openaip_activation_dates() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    let date = assert_ok!(Date::from_calendar_date(2026, Month::April, 12));
+    let offset = assert_ok!(UtcOffset::from_hms(2, 0, 0));
+    let active_from = assert_ok!(date.with_hms(8, 30, 0)).assume_offset(offset);
+    let active_until = assert_ok!(date.with_hms(9, 45, 30)).assume_utc();
+    airspace.active_from = Some(active_from);
+    airspace.active_until = Some(active_until);
+
+    let properties = &airspace.to_geojson()["properties"];
+    assert_eq!(properties["activeFrom"], json!("2026-04-12T08:30:00+02:00"));
+    assert_eq!(properties["activeUntil"], json!("2026-04-12T09:45:30Z"));
+
+    airspace.active_from = None;
+    let properties = &airspace.to_geojson()["properties"];
+    assert_none!(properties.get("activeFrom"));
+    assert_eq!(properties["activeUntil"], json!("2026-04-12T09:45:30Z"));
+
+    airspace.active_from = Some(active_from);
+    airspace.active_until = None;
+    let properties = &airspace.to_geojson()["properties"];
+    assert_eq!(properties["activeFrom"], json!("2026-04-12T08:30:00+02:00"));
+    assert_none!(properties.get("activeUntil"));
 }

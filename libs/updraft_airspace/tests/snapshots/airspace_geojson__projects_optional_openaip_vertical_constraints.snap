@@ -1,0 +1,29 @@
+---
+source: libs/updraft_airspace/tests/airspace_geojson.rs
+expression: "airspace.to_geojson()[\"properties\"]"
+---
+{
+  "icaoClass": 3,
+  "lowerLimit": {
+    "referenceDatum": 0,
+    "unit": 0,
+    "value": 0
+  },
+  "lowerLimitMin": {
+    "referenceDatum": 0,
+    "unit": 1,
+    "value": 500
+  },
+  "name": "Polygon",
+  "type": 0,
+  "upperLimit": {
+    "referenceDatum": 1,
+    "unit": 1,
+    "value": 5000
+  },
+  "upperLimitMax": {
+    "referenceDatum": 2,
+    "unit": 6,
+    "value": 120
+  }
+}

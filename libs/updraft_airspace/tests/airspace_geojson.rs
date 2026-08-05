@@ -1,8 +1,10 @@
 use claims::{assert_none, assert_ok};
 use serde_json::json;
-use updraft_airspace::{AirspaceActivity, AirspaceDataset};
+use updraft_airspace::{AirspaceActivity, AirspaceAltitude, AirspaceDataset};
+use updraft_units::{Length, PressureAltitude};
 
 const POLYGON: &[u8] = include_bytes!("../../../testdata/airspace/polygon.txt");
+const ALTITUDES: &[u8] = include_bytes!("../../../testdata/airspace/altitudes.txt");
 
 #[test]
 fn projects_airspace_as_a_closed_geojson_polygon() {
@@ -16,13 +18,10 @@ fn projects_required_openaip_classification_properties() {
     let legacy_class = b"AC R\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
     let dataset = assert_ok!(AirspaceDataset::from_openair(legacy_class));
 
-    assert_eq!(
-        dataset.airspaces()[0].to_geojson()["properties"],
-        json!({
-            "icaoClass": 8,
-            "type": 1,
-        })
-    );
+    let properties = &dataset.airspaces()[0].to_geojson()["properties"];
+    assert_eq!(properties["icaoClass"], json!(8));
+    assert_eq!(properties["type"], json!(1));
+    assert_none!(properties.get("activity"));
 }
 
 #[test]
@@ -51,4 +50,28 @@ fn omits_absent_airspace_name() {
     airspace.name = None;
 
     assert_none!(airspace.to_geojson()["properties"].get("name"));
+}
+
+#[test]
+fn projects_openaip_vertical_limits() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(ALTITUDES));
+    let properties = dataset
+        .airspaces()
+        .iter()
+        .map(|airspace| airspace.to_geojson()["properties"].clone())
+        .collect::<Vec<_>>();
+
+    insta::assert_json_snapshot!(properties);
+}
+
+#[test]
+fn projects_optional_openaip_vertical_constraints() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.lower_limit_min = Some(AirspaceAltitude::Agl(Length::from_feet(500.)));
+    airspace.upper_limit_max = Some(AirspaceAltitude::FlightLevel(PressureAltitude::new(
+        Length::from_feet(12_000.),
+    )));
+
+    insta::assert_json_snapshot!(airspace.to_geojson()["properties"]);
 }

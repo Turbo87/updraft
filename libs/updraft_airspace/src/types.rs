@@ -108,6 +108,64 @@ pub enum AirspaceAltitude {
     Unlimited,
 }
 
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum OpenAipLimitUnit {
+    Meters = 0,
+    Feet = 1,
+    FlightLevel = 6,
+}
+
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum OpenAipReferenceDatum {
+    Ground = 0,
+    MeanSeaLevel = 1,
+    StandardPressure = 2,
+}
+
+impl AirspaceAltitude {
+    fn to_openaip_limit(self) -> serde_json::Value {
+        match self {
+            Self::Ground => {
+                openaip_limit(0, OpenAipLimitUnit::Meters, OpenAipReferenceDatum::Ground)
+            }
+            Self::Msl(altitude) => openaip_limit(
+                whole_feet(altitude.into_inner()),
+                OpenAipLimitUnit::Feet,
+                OpenAipReferenceDatum::MeanSeaLevel,
+            ),
+            Self::Agl(height) => openaip_limit(
+                whole_feet(height),
+                OpenAipLimitUnit::Feet,
+                OpenAipReferenceDatum::Ground,
+            ),
+            Self::FlightLevel(altitude) => openaip_limit(
+                whole_feet(altitude.into_inner()) / 100,
+                OpenAipLimitUnit::FlightLevel,
+                OpenAipReferenceDatum::StandardPressure,
+            ),
+            Self::Unlimited => json!({ "unlimited": true }),
+        }
+    }
+}
+
+fn whole_feet(length: Length) -> i64 {
+    length.as_feet().round() as i64
+}
+
+fn openaip_limit(
+    value: i64,
+    unit: OpenAipLimitUnit,
+    reference_datum: OpenAipReferenceDatum,
+) -> serde_json::Value {
+    json!({
+        "value": value,
+        "unit": unit as u8,
+        "referenceDatum": reference_datum as u8,
+    })
+}
+
 /// One canonical polygon-only airspace.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airspace {
@@ -166,12 +224,20 @@ impl Airspace {
         let mut properties = json!({
             "type": self.type_code.openaip_code(),
             "icaoClass": self.class.openaip_code(),
+            "lowerLimit": self.lower_limit.to_openaip_limit(),
+            "upperLimit": self.upper_limit.to_openaip_limit(),
         });
         if let Some(name) = self.name.as_deref() {
             properties["name"] = json!(name);
         }
         if let Some(activity) = self.activity {
             properties["activity"] = json!(activity.openaip_code());
+        }
+        if let Some(lower_limit_min) = self.lower_limit_min {
+            properties["lowerLimitMin"] = lower_limit_min.to_openaip_limit();
+        }
+        if let Some(upper_limit_max) = self.upper_limit_max {
+            properties["upperLimitMax"] = upper_limit_max.to_openaip_limit();
         }
 
         json!({

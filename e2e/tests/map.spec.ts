@@ -149,6 +149,65 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
   await expect(page).toHaveURL('/');
 });
 
+test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) => {
+  await page.addInitScript((data) => {
+    (window as TestWindow).__updraftTestAirspaceData = data;
+  }, AIRSPACE_BROWSER_FIXTURE);
+  await page.goto('/?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'active', generation: 1 });
+  await expect.poll(() => readAirspaceMapState(page)).not.toBeNull();
+
+  await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.182 });
+  let airspaces = page.getByRole('region', { name: 'Airspaces' });
+  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+});
+
+test('shows empty states without rendered airspace', async ({ page }) => {
+  await page.goto('/nearby/50.82/6.15?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  let airspaces = page.getByRole('region', { name: 'Airspaces' });
+  await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Back to map' }).click();
+  await expect(page).toHaveURL('/');
+  await emitAirspace(page, { type: 'unavailable' });
+  await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.15 });
+  await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
+});
+
+test('keeps the first nearby airspace result', async ({ page }) => {
+  await page.addInitScript((data) => {
+    (window as TestWindow).__updraftTestAirspaceData = data;
+  }, AIRSPACE_BROWSER_FIXTURE);
+  await page.goto('/?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'active', generation: 1 });
+  await expect.poll(() => readAirspaceMapState(page)).not.toBeNull();
+
+  await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.19 });
+  let airspaces = page.getByRole('region', { name: 'Airspaces' });
+  await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+
+  await emitAirspace(page, { type: 'unavailable' });
+  await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+});
+
+test('does not move the map for an off-screen nearby URL', async ({ page }) => {
+  await page.addInitScript((data) => {
+    (window as TestWindow).__updraftTestAirspaceData = data;
+  }, AIRSPACE_BROWSER_FIXTURE);
+  await page.goto('/nearby/0/0?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await expect.poll(() => readMapCenter(page)).toBeTruthy();
+  let initialCenter = await readMapCenter(page);
+
+  await emitAirspace(page, { type: 'active', generation: 1 });
+  let airspaces = page.getByRole('region', { name: 'Airspaces' });
+  await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
+  expect(await readMapCenter(page)).toEqual(initialCenter);
+});
+
 async function emitInstruments(page: Page, gps: GpsInstruments) {
   await page.evaluate(
     (value) => {
@@ -156,6 +215,47 @@ async function emitInstruments(page: Page, gps: GpsInstruments) {
     },
     { gps, pressureAltitude: null },
   );
+}
+
+async function emitAirspace(
+  page: Page,
+  state: { type: 'none' } | { type: 'unavailable' } | { type: 'active'; generation: number },
+) {
+  await page.evaluate(
+    ({ airspace, airspaceCount }) => {
+      let value =
+        airspace.type === 'active'
+          ? {
+              type: 'active' as const,
+              sourceName: 'browser-fixture.txt',
+              airspaceCount,
+              generation: airspace.generation,
+            }
+          : airspace.type === 'unavailable'
+            ? {
+                type: 'unavailable' as const,
+                sourceName: 'broken.txt',
+                error: 'readFailed' as const,
+              }
+            : { type: 'none' as const };
+
+      (window as TestWindow).__updraftFake?.emit({ topic: 'airspace', value });
+    },
+    { airspace: state, airspaceCount: AIRSPACE_BROWSER_FIXTURE.features.length },
+  );
+}
+
+async function clickMapPosition(page: Page, position: MapCenter) {
+  let point = await page.evaluate(({ latitudeDegrees, longitudeDegrees }) => {
+    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    if (!map) throw new Error('Map is not available');
+    return map.project([longitudeDegrees, latitudeDegrees]);
+  }, position);
+  let bounds = await page.locator('.maplibregl-canvas').boundingBox();
+  if (!bounds) throw new Error('Map canvas is not visible');
+
+  await page.mouse.click(bounds.x + point.x, bounds.y + point.y);
+  await expect(page).toHaveURL(/\/nearby\//);
 }
 
 async function expectMapPosition(

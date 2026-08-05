@@ -6,9 +6,10 @@
   import { calculateDistanceAndBearing } from '$lib/geographic-position';
   import { m } from '$lib/paraglide/messages.js';
   import { convertDistance } from '$lib/units';
+  import NearbyAirspaces from './NearbyAirspaces.svelte';
   import { parseNearbyRouteCoordinates } from './params';
 
-  const { instruments, settings } = getAppContext();
+  const { airspace, instruments, mapState, settings } = getAppContext();
   const selectedPosition = $derived(
     parseNearbyRouteCoordinates(page.params.latitude, page.params.longitude),
   );
@@ -42,6 +43,17 @@
         {ownshipRelation ? `${ownshipRelation.bearingDegrees.toFixed(0)}°` : m.unavailable_value()}
       </dd>
     </dl>
+
+    <section aria-labelledby="airspaces-heading">
+      <h2 id="airspaces-heading">{m.airspaces_heading()}</h2>
+      {#if airspace.initialized && mapState.map}
+        {#key `${selectedPosition.latitudeDegrees}/${selectedPosition.longitudeDegrees}`}
+          <NearbyAirspaces {airspace} map={mapState.map} position={selectedPosition} />
+        {/key}
+      {:else}
+        <p>{m.loading_nearby_airspaces()}</p>
+      {/if}
+    </section>
   {:else}
     <p role="alert">{m.invalid_inspection()}</p>
   {/if}
@@ -63,6 +75,10 @@
 
   h1 {
     margin-block-start: 0;
+  }
+
+  h2 {
+    margin-block-end: 0.5rem;
   }
 
   dl {

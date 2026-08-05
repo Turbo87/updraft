@@ -123,13 +123,18 @@ it('queries airspace through the transparent hit layer', async () => {
   await vi.waitFor(() => {
     expect(map.getLayer('airspace-hit')).toBeDefined();
   });
+  await vi.waitFor(() => {
+    let features = map.queryRenderedFeatures(map.project([6.175, 50.82]), {
+      layers: ['airspace-hit'],
+    });
+    let overlappingFeatures = map.queryRenderedFeatures(map.project([6.182, 50.82]), {
+      layers: ['airspace-hit'],
+    });
 
-  let features = map.queryRenderedFeatures(map.project([6.175, 50.82]), {
-    layers: ['airspace-hit'],
+    expect(features.map(({ id }) => id)).toEqual([0]);
+    expect(overlappingFeatures.map(({ id }) => id)).toEqual([1, 0]);
   });
-
   expect(map.getPaintProperty('airspace-hit', 'fill-opacity')).toBe(0);
-  expect(features.map(({ id }) => id)).toEqual([0]);
 });
 
 it('queries traffic within the transparent 24 pixel hit radius', async () => {

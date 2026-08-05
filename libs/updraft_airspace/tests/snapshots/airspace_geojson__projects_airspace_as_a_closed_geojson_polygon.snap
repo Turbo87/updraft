@@ -33,6 +33,7 @@ expression: "dataset.airspaces()[0].to_geojson()"
   "id": 0,
   "properties": {
     "icaoClass": 3,
+    "name": "Polygon",
     "type": 0
   },
   "type": "Feature"

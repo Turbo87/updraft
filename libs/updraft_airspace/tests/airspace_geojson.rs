@@ -1,4 +1,4 @@
-use claims::assert_ok;
+use claims::{assert_none, assert_ok};
 use serde_json::json;
 use updraft_airspace::{AirspaceActivity, AirspaceDataset};
 
@@ -32,4 +32,23 @@ fn projects_optional_openaip_activity() {
     airspace.activity = Some(AirspaceActivity::HangGlidingOrParagliding);
 
     assert_eq!(airspace.to_geojson()["properties"]["activity"], json!(5));
+}
+
+#[test]
+fn projects_optional_airspace_name() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+
+    assert_eq!(
+        dataset.airspaces()[0].to_geojson()["properties"]["name"],
+        json!("Polygon")
+    );
+}
+
+#[test]
+fn omits_absent_airspace_name() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.name = None;
+
+    assert_none!(airspace.to_geojson()["properties"].get("name"));
 }

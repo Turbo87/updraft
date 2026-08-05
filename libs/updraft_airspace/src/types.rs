@@ -167,6 +167,9 @@ impl Airspace {
             "type": self.type_code.openaip_code(),
             "icaoClass": self.class.openaip_code(),
         });
+        if let Some(name) = self.name.as_deref() {
+            properties["name"] = json!(name);
+        }
         if let Some(activity) = self.activity {
             properties["activity"] = json!(activity.openaip_code());
         }

@@ -1,9 +1,8 @@
 import type * as GeoJSON from 'geojson';
 
 type AirspaceFixtureProperties = {
-  id: number;
-  class: string | null;
-  type: string | null;
+  class: number;
+  type: number;
 };
 
 /** Fixed airspace GeoJSON for browser tests and Storybook. */
@@ -12,7 +11,8 @@ export const AIRSPACE_BROWSER_FIXTURE = {
   features: [
     {
       type: 'Feature',
-      properties: { id: 0, class: 'D', type: 'CTR' },
+      id: 0,
+      properties: { class: 3, type: 4 },
       geometry: {
         type: 'Polygon',
         coordinates: [
@@ -28,7 +28,8 @@ export const AIRSPACE_BROWSER_FIXTURE = {
     },
     {
       type: 'Feature',
-      properties: { id: 1, class: 'E', type: 'RMZ' },
+      id: 1,
+      properties: { class: 4, type: 6 },
       geometry: {
         type: 'Polygon',
         coordinates: [

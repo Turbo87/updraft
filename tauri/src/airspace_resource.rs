@@ -98,10 +98,10 @@ mod tests {
                 ],
                 "type": "Polygon"
               },
+              "id": 0,
               "properties": {
-                "class": "D",
-                "id": 0,
-                "type": null
+                "class": 3,
+                "type": 0
               },
               "type": "Feature"
             }
@@ -134,19 +134,18 @@ mod tests {
     }
 
     #[test]
-    fn projects_nullable_class_and_type_properties() {
-        let without_class = b"AC R\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    fn projects_required_openaip_classification_properties() {
+        let legacy_class = b"AC R\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
         let dataset =
-            AirspaceDataset::from_openair(without_class).expect("a valid legacy OpenAir source");
+            AirspaceDataset::from_openair(legacy_class).expect("a valid legacy OpenAir source");
 
         let properties = &airspace_geojson(Some(&dataset))["features"][0]["properties"];
 
         assert_eq!(
             properties,
             &json!({
-                "id": 0,
-                "class": null,
-                "type": "R",
+                "class": 8,
+                "type": 1,
             })
         );
     }
@@ -172,8 +171,8 @@ mod tests {
             .expect("valid initial airspace GeoJSON");
         let replacement_body: Value = serde_json::from_slice(replacement_response.body())
             .expect("valid replacement airspace GeoJSON");
-        assert_eq!(initial_body["features"][0]["properties"]["class"], "D");
-        assert_eq!(replacement_body["features"][0]["properties"]["class"], "C");
+        assert_eq!(initial_body["features"][0]["properties"]["class"], 3);
+        assert_eq!(replacement_body["features"][0]["properties"]["class"], 2);
     }
 
     #[tokio::test]

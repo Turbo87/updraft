@@ -1,5 +1,5 @@
 use approx::assert_abs_diff_eq;
-use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_ok};
+use claims::{assert_err_eq, assert_ge, assert_gt, assert_le, assert_lt, assert_none, assert_ok};
 use std::assert_matches;
 use updraft_airspace::{
     AirspaceAltitude, AirspaceClass, AirspaceDataset, AirspaceGeometryError, AirspaceId,
@@ -116,13 +116,23 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
     assert_eq!(dataset.airspaces().len(), 1);
     assert_eq!(airspace.id.0, 0);
     assert_eq!(airspace.name.as_deref(), Some("Polygon"));
-    assert_eq!(airspace.class, Some(AirspaceClass::D));
-    assert_eq!(airspace.type_code, None);
-    assert_eq!(airspace.lower_bound, AirspaceAltitude::Ground);
+    assert_eq!(airspace.class, AirspaceClass::D);
+    assert_eq!(airspace.type_code, AirspaceType::Other);
+    assert_none!(airspace.activity);
+    assert_none!(airspace.on_demand);
+    assert_none!(airspace.on_request);
+    assert_none!(airspace.special_agreement);
+    assert_none!(airspace.request_compliance);
+    assert_eq!(airspace.country_codes, []);
+    assert_none!(airspace.hours_of_operation.as_ref());
+    assert_none!(airspace.remarks.as_deref());
+    assert_eq!(airspace.lower_limit, AirspaceAltitude::Ground);
     assert_eq!(
-        airspace.upper_bound,
+        airspace.upper_limit,
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(5000.)))
     );
+    assert_none!(airspace.lower_limit_min);
+    assert_none!(airspace.upper_limit_max);
     assert_eq!(
         airspace.polygon.vertices(),
         &[
@@ -131,6 +141,89 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
             LatLon::from_degrees(50. + 1. / 60., 10. + 1. / 60.),
             LatLon::from_degrees(50. + 1. / 60., 10.),
         ]
+    );
+}
+
+/// Verifies that parser-private OpenAir activation dates remain absent.
+#[test]
+fn leaves_parser_private_activation_dates_absent() {
+    let bytes = b"AC D\nAA 2023-12-16T12:00Z/2023-12-16T13:00Z\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+    let airspace = &dataset.airspaces()[0];
+
+    assert_none!(airspace.active_from.as_ref());
+    assert_none!(airspace.active_until.as_ref());
+}
+
+/// Verifies that OpenAir frequency records become one primary frequency.
+#[test]
+fn imports_a_primary_frequency() {
+    let bytes = b"AC D\nAF 123.45\nAG TOWER\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+
+    insta::assert_debug_snapshot!(dataset.airspaces()[0].frequencies, @r#"
+    [
+        AirspaceFrequency {
+            value: AirspaceFrequencyValue(
+                123450,
+            ),
+            unit: Megahertz,
+            name: Some(
+                "TOWER",
+            ),
+            primary: Some(
+                true,
+            ),
+            remarks: None,
+        },
+    ]
+    "#);
+}
+
+/// Verifies that an invalid frequency rejects the complete source.
+#[test]
+fn rejects_an_invalid_frequency() {
+    let bytes = b"AC D\nAF 123.4567\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+
+    assert_err_eq!(
+        AirspaceDataset::from_openair(bytes),
+        AirspaceImportError::Parse {
+            airspace_id: Some(AirspaceId(0)),
+            kind: AirspaceParseError::InvalidFrequency,
+        }
+    );
+}
+
+/// Verifies that an OpenAir transponder code becomes one primary setting.
+#[test]
+fn imports_a_primary_transponder_setting() {
+    let bytes = b"AC D\nAX 123\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+
+    insta::assert_debug_snapshot!(dataset.airspaces()[0].transponder_settings, @"
+    [
+        AirspaceTransponderSetting {
+            code: AirspaceTransponderCode(
+                123,
+            ),
+            primary: true,
+            remarks: None,
+        },
+    ]
+    ");
+}
+
+/// Verifies that an invalid transponder code rejects the complete source.
+#[test]
+fn rejects_an_invalid_transponder_code() {
+    let bytes = b"AC D\nAX 1289\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+
+    assert_err_eq!(
+        AirspaceDataset::from_openair(bytes),
+        AirspaceImportError::Parse {
+            airspace_id: Some(AirspaceId(0)),
+            kind: AirspaceParseError::InvalidTransponderCode,
+        }
     );
 }
 
@@ -288,90 +381,74 @@ fn maps_modern_classes_and_normalized_types() {
             .map(|airspace| airspace.class)
             .collect::<Vec<_>>(),
         vec![
-            Some(AirspaceClass::A),
-            Some(AirspaceClass::B),
-            Some(AirspaceClass::C),
-            Some(AirspaceClass::D),
-            Some(AirspaceClass::E),
-            Some(AirspaceClass::F),
-            Some(AirspaceClass::G),
-            Some(AirspaceClass::Unclassified),
+            AirspaceClass::A,
+            AirspaceClass::B,
+            AirspaceClass::C,
+            AirspaceClass::D,
+            AirspaceClass::E,
+            AirspaceClass::F,
+            AirspaceClass::G,
+            AirspaceClass::Unclassified,
         ]
     );
-    assert_eq!(
-        airspaces[0].type_code.as_ref(),
-        Some(&AirspaceType::ControlledTrafficArea)
-    );
-    assert_eq!(
-        airspaces[4].type_code.as_ref(),
-        Some(&AirspaceType::RadioMandatoryZone)
-    );
-    assert_eq!(airspaces[6].type_code, None);
+    assert_eq!(airspaces[0].type_code, AirspaceType::ControlArea);
+    assert_eq!(airspaces[4].type_code, AirspaceType::RadioMandatoryZone);
+    assert_eq!(airspaces[6].type_code, AirspaceType::Other);
+    assert_none!(airspaces[17].by_notam);
 }
 
-/// Verifies that legacy classes become canonical airspace types.
+/// Verifies that legacy classes become complete OpenAIP classifications.
 #[test]
-fn normalizes_legacy_classes_to_airspace_types() {
+fn normalizes_legacy_classes_to_openaip_classifications() {
     let dataset = parse_fixture(CLASS_TYPES);
     let airspaces = dataset.airspaces();
 
     assert!(
         airspaces[8..16]
             .iter()
-            .all(|airspace| airspace.class.is_none())
+            .all(|airspace| airspace.class == AirspaceClass::Unclassified)
     );
     assert_eq!(
         airspaces[8..16]
             .iter()
-            .map(|airspace| airspace.type_code.clone().unwrap())
+            .map(|airspace| airspace.type_code)
             .collect::<Vec<_>>(),
         vec![
-            AirspaceType::ControlZone,
-            AirspaceType::RestrictedArea,
-            AirspaceType::DangerArea,
-            AirspaceType::ProhibitedArea,
-            AirspaceType::Unknown("GP".into()),
+            AirspaceType::ControlledTowerRegion,
+            AirspaceType::Restricted,
+            AirspaceType::Danger,
+            AirspaceType::Prohibited,
+            AirspaceType::Other,
             AirspaceType::GlidingSector,
             AirspaceType::RadioMandatoryZone,
             AirspaceType::TransponderMandatoryZone,
         ]
     );
-    assert_eq!(airspaces[16].class, None);
-    assert_eq!(
-        airspaces[16].type_code.as_ref(),
-        Some(&AirspaceType::Custom)
-    );
-    assert_eq!(airspaces[17].class, Some(AirspaceClass::G));
-    assert_eq!(
-        airspaces[17].type_code.as_ref(),
-        Some(&AirspaceType::Unknown("FUTURE-ZONE".into()))
-    );
+    assert_eq!(airspaces[16].class, AirspaceClass::Unclassified);
+    assert_eq!(airspaces[16].type_code, AirspaceType::Restricted);
+    assert_eq!(airspaces[17].class, AirspaceClass::G);
+    assert_eq!(airspaces[17].type_code, AirspaceType::Other);
 }
 
-/// Verifies that an explicit `NONE` type does not restore a legacy type.
+/// Verifies that an unsupported explicit type retains the legacy classification.
 #[test]
-fn rejects_legacy_type_with_explicit_none() {
-    assert_err_eq!(
-        AirspaceDataset::from_openair(LEGACY_NONE),
-        AirspaceImportError::Parse {
-            airspace_id: Some(AirspaceId(0)),
-            kind: AirspaceParseError::MissingClassOrType,
-        }
-    );
+fn retains_legacy_type_for_explicit_none() {
+    let dataset = parse_fixture(LEGACY_NONE);
+    let airspace = &dataset.airspaces()[0];
+
+    assert_eq!(airspace.class, AirspaceClass::Unclassified);
+    assert_eq!(airspace.type_code, AirspaceType::Restricted);
 }
 
-/// Verifies that the importer rejects an empty explicit type.
+/// Verifies that an empty explicit type becomes `Other` for a modern class.
 #[test]
-fn rejects_an_empty_explicit_type() {
+fn maps_an_empty_explicit_type_to_other() {
     let bytes = b"AC D\nAY \nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = parse_fixture(bytes);
+    let airspace = &dataset.airspaces()[0];
 
-    assert_err_eq!(
-        AirspaceDataset::from_openair(bytes),
-        AirspaceImportError::Parse {
-            airspace_id: Some(AirspaceId(0)),
-            kind: AirspaceParseError::EmptyTypeCode,
-        }
-    );
+    assert_eq!(airspace.class, AirspaceClass::D);
+    assert_eq!(airspace.type_code, AirspaceType::Other);
 }
 
 /// Verifies that supported altitude forms use the correct typed units.
@@ -380,24 +457,24 @@ fn maps_supported_altitudes_to_typed_lengths() {
     let dataset = parse_fixture(ALTITUDES);
     let airspaces = dataset.airspaces();
 
-    assert_eq!(airspaces[0].lower_bound, AirspaceAltitude::Ground);
+    assert_eq!(airspaces[0].lower_limit, AirspaceAltitude::Ground);
     assert_eq!(
-        airspaces[0].upper_bound,
+        airspaces[0].upper_limit,
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(5000.)))
     );
     assert_eq!(
-        airspaces[1].lower_bound,
+        airspaces[1].lower_limit,
         AirspaceAltitude::Agl(Length::from_feet(1000.))
     );
     assert_eq!(
-        airspaces[1].upper_bound,
+        airspaces[1].upper_limit,
         AirspaceAltitude::FlightLevel(PressureAltitude::new(Length::from_feet(10_000.)))
     );
     assert_eq!(
-        airspaces[2].lower_bound,
+        airspaces[2].lower_limit,
         AirspaceAltitude::Msl(MslAltitude::new(Length::from_feet(250.)))
     );
-    assert_eq!(airspaces[2].upper_bound, AirspaceAltitude::Unlimited);
+    assert_eq!(airspaces[2].upper_limit, AirspaceAltitude::Unlimited);
 }
 
 /// Verifies that the importer rejects an unsupported altitude form.

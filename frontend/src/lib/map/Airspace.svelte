@@ -15,6 +15,34 @@
     beforeId: string;
   };
 
+  const AIRSPACE_TYPE = {
+    RESTRICTED: 1,
+    DANGER: 2,
+    PROHIBITED: 3,
+    CONTROLLED_TOWER_REGION: 4,
+    TRANSPONDER_MANDATORY_ZONE: 5,
+    RADIO_MANDATORY_ZONE: 6,
+    TERMINAL_MANEUVERING_AREA: 7,
+    AIRPORT_TRAFFIC_ZONE: 13,
+    AIRWAY: 15,
+    PROTECTED_AREA: 19,
+    GLIDING_SECTOR: 21,
+    TRANSPONDER_SETTING: 22,
+    CONTROL_AREA: 26,
+    ACC_SECTOR: 27,
+    AERIAL_SPORTING_OR_RECREATIONAL_ACTIVITY: 28,
+    LOW_ALTITUDE_OVERFLIGHT_RESTRICTION: 29,
+    MILITARY_CONTROLLED_TOWER_REGION: 36,
+  } as const;
+
+  const AIRSPACE_CLASS = {
+    A: 0,
+    B: 1,
+    C: 2,
+    D: 3,
+    E: 4,
+  } as const;
+
   function airspaceStyleValue(
     controlled: string | number,
     prohibitedRestrictedDanger: string | number,
@@ -25,15 +53,39 @@
     return [
       'match',
       ['get', 'type'],
-      ['P', 'R', 'Q', 'GP', 'OFR', 'TFR'],
+      [
+        AIRSPACE_TYPE.RESTRICTED,
+        AIRSPACE_TYPE.DANGER,
+        AIRSPACE_TYPE.PROHIBITED,
+        AIRSPACE_TYPE.PROTECTED_AREA,
+        AIRSPACE_TYPE.LOW_ALTITUDE_OVERFLIGHT_RESTRICTION,
+      ],
       prohibitedRestrictedDanger,
-      ['TMZ', 'RMZ'],
+      [
+        AIRSPACE_TYPE.TRANSPONDER_MANDATORY_ZONE,
+        AIRSPACE_TYPE.RADIO_MANDATORY_ZONE,
+        AIRSPACE_TYPE.TRANSPONDER_SETTING,
+      ],
       mandatoryZone,
-      ['GSEC', 'ASRA'],
+      [AIRSPACE_TYPE.GLIDING_SECTOR, AIRSPACE_TYPE.AERIAL_SPORTING_OR_RECREATIONAL_ACTIVITY],
       glidingWave,
-      ['CTR', 'CTA', 'TMA', 'ATZ', 'AWY'],
+      [
+        AIRSPACE_TYPE.CONTROLLED_TOWER_REGION,
+        AIRSPACE_TYPE.TERMINAL_MANEUVERING_AREA,
+        AIRSPACE_TYPE.AIRPORT_TRAFFIC_ZONE,
+        AIRSPACE_TYPE.AIRWAY,
+        AIRSPACE_TYPE.CONTROL_AREA,
+        AIRSPACE_TYPE.ACC_SECTOR,
+        AIRSPACE_TYPE.MILITARY_CONTROLLED_TOWER_REGION,
+      ],
       controlled,
-      ['match', ['get', 'class'], ['A', 'B', 'C', 'D', 'E'], controlled, other],
+      [
+        'match',
+        ['get', 'class'],
+        [AIRSPACE_CLASS.A, AIRSPACE_CLASS.B, AIRSPACE_CLASS.C, AIRSPACE_CLASS.D, AIRSPACE_CLASS.E],
+        controlled,
+        other,
+      ],
     ];
   }
 

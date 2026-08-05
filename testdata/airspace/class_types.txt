@@ -139,8 +139,8 @@ DP 50:00:00 N 010:01:00 E
 DP 50:01:00 N 010:00:00 E
 
 AC G
-AY future-zone
-AN Unknown type
+AY N
+AN NOTAM type
 AL GND
 AH FL100
 DP 50:00:00 N 010:00:00 E

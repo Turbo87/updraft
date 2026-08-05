@@ -10,7 +10,13 @@
     map,
     instruments,
     units,
-  }: { map: Map | undefined; instruments: Instruments; units: UnitSettings } = $props();
+    showTrafficHitAreas = $bindable(false),
+  }: {
+    map: Map | undefined;
+    instruments: Instruments;
+    units: UnitSettings;
+    showTrafficHitAreas?: boolean;
+  } = $props();
   const gps = $derived(instruments.gps);
   const altitudeMeters = $derived(gps?.altitudeMeters ?? null);
   const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);
@@ -138,6 +144,10 @@
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />
       Tile boundaries
+    </label>
+    <label>
+      <input type="checkbox" bind:checked={showTrafficHitAreas} />
+      Traffic hit areas
     </label>
   </div>
 {/if}

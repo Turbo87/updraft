@@ -48,6 +48,7 @@
   } = $props();
 
   let spritesLoaded = $state(false);
+  let showTrafficHitAreas = $state(false);
   const map = $derived(mapState.map);
   const gps = $derived(instruments.gps);
   const position = $derived(gps?.position ?? null);
@@ -105,7 +106,7 @@
     onload={loadSprites}
   >
     {#if spritesLoaded}
-      <Traffic {traffic} altitudeUnit={units.altitude} />
+      <Traffic {traffic} altitudeUnit={units.altitude} {showTrafficHitAreas} />
       {#if position}
         <Ownship {position} trackDegrees={gps?.trackDegrees ?? null} />
       {/if}
@@ -117,7 +118,7 @@
   {#if !mapState.followMode}
     <ReturnToPositionButton onClick={resumeFollowing} />
   {/if}
-  <MapDebugOverlay {map} {instruments} {units} />
+  <MapDebugOverlay {map} {instruments} {units} bind:showTrafficHitAreas />
 </div>
 
 <style>

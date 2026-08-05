@@ -80,7 +80,11 @@
     'icon-halo-width': ['case', ['boolean', ['get', 'stale'], false], 0.5, 1.5],
   };
 
-  let { traffic, altitudeUnit }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit } = $props();
+  let {
+    traffic,
+    altitudeUnit,
+    showTrafficHitAreas,
+  }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit; showTrafficHitAreas: boolean } = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
@@ -114,7 +118,10 @@
   data={trafficFeatureCollection([], 'm')}
   bind:source
 >
-  <CircleLayer id="traffic-hit" paint={{ 'circle-radius': 24, 'circle-opacity': 0 }} />
+  <CircleLayer
+    id="traffic-hit"
+    paint={{ 'circle-radius': 24, 'circle-opacity': showTrafficHitAreas ? 0.2 : 0 }}
+  />
   <SymbolLayer
     id="traffic-fixed"
     filter={[

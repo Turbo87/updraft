@@ -3,7 +3,7 @@ import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 
 import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -175,6 +175,19 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
   expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0);
   expect(inside.map(({ id }) => id)).toEqual(['flarm:000001']);
   expect(outside).toEqual([]);
+
+  await userEvent.keyboard('d');
+  let checkbox = page.getByRole('checkbox', { name: 'Traffic hit areas' });
+  await checkbox.click();
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0.2);
+  });
+
+  let visible = map.queryRenderedFeatures([targetPoint.x + 23, targetPoint.y], {
+    layers: ['traffic-hit'],
+  });
+  expect(map.getPaintProperty('traffic-hit', 'circle-radius')).toBe(24);
+  expect(visible.map(({ id }) => id)).toEqual(inside.map(({ id }) => id));
 });
 
 it('publishes the map and camera values through the shared map state', async () => {

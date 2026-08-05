@@ -4,6 +4,7 @@ import { expect, it } from 'vitest';
 
 import {
   createRetainedTraffic,
+  formatTrafficAlarmLevel,
   formatTrafficId,
   formatTrafficType,
   refreshRetainedTraffic,
@@ -102,4 +103,9 @@ it('formats a canonical traffic ID for display', () => {
 it('formats a traffic type for the selected locale', () => {
   expect(formatTrafficType('towPlane', 'en')).toBe('Tow plane');
   expect(formatTrafficType('towPlane', 'de')).toBe('Schleppflugzeug');
+});
+
+it('formats a traffic alarm level for the selected locale', () => {
+  expect(formatTrafficAlarmLevel('important', 'en')).toBe('Important');
+  expect(formatTrafficAlarmLevel('important', 'de')).toBe('Wichtig');
 });

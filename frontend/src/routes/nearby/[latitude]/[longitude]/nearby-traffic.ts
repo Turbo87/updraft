@@ -1,5 +1,6 @@
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
+import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
 import type { TrafficType } from '$lib/protocol/generated/TrafficType';
 
 import { m } from '$lib/paraglide/messages.js';
@@ -41,4 +42,8 @@ export function formatTrafficId(id: string): string {
 
 export function formatTrafficType(trafficType: TrafficType, locale: Locale): string {
   return m.traffic_type_value({ trafficType }, { locale });
+}
+
+export function formatTrafficAlarmLevel(alarmLevel: TrafficAlarmLevel, locale: Locale): string {
+  return m.traffic_alarm_level_value({ alarmLevel }, { locale });
 }

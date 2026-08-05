@@ -167,6 +167,30 @@
       }
     }
   ],
+  "traffic_alarm_level_value": [
+    {
+      "match": {
+        "alarmLevel=unknown": "Unknown",
+        "alarmLevel=none": "None",
+        "alarmLevel=low": "Low",
+        "alarmLevel=important": "Important",
+        "alarmLevel=urgent": "Urgent",
+        "alarmLevel=*": "{alarmLevel}"
+      }
+    }
+  ],
+  "traffic_details_loading": "Loading traffic…",
+  "traffic_not_found": "Traffic not found.",
+  "traffic_back": "Back",
+  "traffic_map": "Map",
+  "traffic_id_label": "ID",
+  "traffic_type_label": "Type",
+  "position_label": "Position",
+  "track_label": "Track",
+  "alarm_level_label": "Alarm level",
+  "state_label": "State",
+  "fresh_value": "Fresh",
+  "stale_value": "Stale",
   "selected_position_label": "Selected position",
   "unavailable_value": "Unavailable",
   "invalid_inspection": "The selected map position is invalid.",

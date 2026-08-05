@@ -8,6 +8,7 @@
   import type { RetainedTraffic } from './nearby-traffic';
 
   import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
 
   import { m } from '$lib/paraglide/messages.js';
   import {
@@ -86,7 +87,9 @@
 {:else}
   <ul>
     {#each queryState.traffic as retained (retained)}
-      <li>{trafficLabel(retained)}</li>
+      <li>
+        <a href={resolve('/traffic/[id]', { id: retained.id })}>{trafficLabel(retained)}</a>
+      </li>
     {/each}
   </ul>
 {/if}

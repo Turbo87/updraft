@@ -167,6 +167,30 @@
       }
     }
   ],
+  "traffic_alarm_level_value": [
+    {
+      "match": {
+        "alarmLevel=unknown": "Unbekannt",
+        "alarmLevel=none": "Keine",
+        "alarmLevel=low": "Niedrig",
+        "alarmLevel=important": "Wichtig",
+        "alarmLevel=urgent": "Dringend",
+        "alarmLevel=*": "{alarmLevel}"
+      }
+    }
+  ],
+  "traffic_details_loading": "Verkehr wird geladen…",
+  "traffic_not_found": "Verkehr nicht gefunden.",
+  "traffic_back": "Zurück",
+  "traffic_map": "Karte",
+  "traffic_id_label": "ID",
+  "traffic_type_label": "Typ",
+  "position_label": "Position",
+  "track_label": "Kurs",
+  "alarm_level_label": "Warnstufe",
+  "state_label": "Status",
+  "fresh_value": "Aktuell",
+  "stale_value": "Veraltet",
   "selected_position_label": "Ausgewählte Position",
   "unavailable_value": "Nicht verfügbar",
   "invalid_inspection": "Die ausgewählte Kartenposition ist ungültig.",

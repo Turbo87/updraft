@@ -263,6 +263,14 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
     'Paraglider · FLARM 000002',
     'Balloon · FLARM 000001',
   ]);
+
+  await emitTraffic(page, {
+    type: 'delta',
+    value: { upserts: [], removed: [TRAFFIC_B.id] },
+  });
+  await traffic.getByRole('link', { name: 'paraglider · FLARM 000002 · Unavailable' }).click();
+  await expect(page).toHaveURL('/traffic/flarm:000002');
+  await expect(page.getByText('Traffic not found.')).toBeVisible();
 });
 
 test('does not move the map for an off-screen nearby URL', async ({ page }) => {
@@ -421,6 +429,95 @@ test('retries an airspace source read failure', async ({ page }) => {
   }, AIRSPACE_BROWSER_FIXTURE);
   await retry.click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
+});
+
+test('shows complete traffic details on direct visits and reloads', async ({ page }) => {
+  await page.goto(`/traffic/${TRAFFIC_A.id}?testMode=1`);
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitInstruments(page, POSITION_A);
+  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
+  await expect(page.locator('main')).toMatchAriaSnapshot(`
+    - navigation:
+      - button "Back"
+      - link "Map":
+        - /url: /
+    - heading "FLARM 000001" [level=1]
+    - term: ID
+    - definition: flarm:000001
+    - term: Type
+    - definition: Glider
+    - term: Position
+    - definition: 50.82300, 6.18600
+    - term: Altitude
+    - definition: 400 m MSL
+    - term: Track
+    - definition: 45° true
+    - term: Alarm level
+    - definition: None
+    - term: State
+    - definition: Fresh
+    - term: Distance
+    - definition: 0.0 km
+    - term: Bearing
+    - definition: 0° true
+  `);
+
+  await page.reload();
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
+});
+
+test('updates and retains traffic details', async ({ page }) => {
+  await page.goto(`/traffic/${TRAFFIC_A.id}?testMode=1`);
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitInstruments(page, POSITION_A);
+  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+
+  let movedTarget = {
+    ...TRAFFIC_A,
+    position: POSITION_B.position,
+    altitudeMslMeters: null,
+    trackDegrees: null,
+    alarmLevel: 'important' as const,
+    stale: true,
+  };
+  await emitTraffic(page, {
+    type: 'delta',
+    value: { upserts: [movedTarget], removed: [] },
+  });
+  await expect(page.getByText('50.82400, 6.18700')).toBeVisible();
+  await expect(page.getByText('0.1 km', { exact: true })).toBeVisible();
+  await expect(page.getByText('32° true')).toBeVisible();
+  await expect(page.getByText('Stale', { exact: true })).toBeVisible();
+  await expect(page.getByText('Important', { exact: true })).toBeVisible();
+  await expect(page.getByText('Unavailable', { exact: true })).toHaveCount(2);
+
+  await emitInstruments(page, POSITION_C);
+  await expect(page.getByText('212° true')).toBeVisible();
+
+  await emitTraffic(page, {
+    type: 'delta',
+    value: { upserts: [], removed: [TRAFFIC_A.id] },
+  });
+  await expect(page.getByText('Unavailable', { exact: true })).toHaveCount(3);
+  await expect(page.getByText('50.82400, 6.18700')).toBeVisible();
+
+  await emitTraffic(page, {
+    type: 'delta',
+    value: { upserts: [TRAFFIC_A], removed: [] },
+  });
+  await expect(page.getByText('Fresh', { exact: true })).toBeVisible();
+  await expect(page.getByText('50.82300, 6.18600')).toBeVisible();
+});
+
+test('shows traffic not found for missing IDs', async ({ page }) => {
+  await page.goto('/traffic/flarm:999999?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+  await expect(page.getByText('Traffic not found.')).toBeVisible();
 });
 
 async function emitInstruments(page: Page, gps: GpsInstruments) {

@@ -309,16 +309,15 @@ The route keeps its latest complete target while mounted. A removal marks the
 retained target unavailable. A later update for the same ID replaces the
 retained value and makes it available again.
 
-A direct visit shows a traffic-not-found state when the initial traffic state
-does not contain the requested ID. A retained unavailable result row can pass
-its last snapshot through navigation history state. This state belongs only to
-that history entry.
+A direct visit shows a traffic-not-found state when the current traffic state
+does not contain the requested ID. A retained unavailable result row remains a
+normal detail link and therefore shows the same not-found state.
 
 ## Navigation and accessibility
 
 The `/nearby` page provides a Back to map control. Each detail page provides a
 Back control that uses browser history. Each detail page also provides a Map
-control for a direct visit or unavailable history.
+control for a direct visit.
 
 The result categories use headings and lists. Each result is an accessible
 link. Loading, empty, error, unavailable, invalid-route, and not-found states

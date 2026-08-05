@@ -1,10 +1,5 @@
 import type * as GeoJSON from 'geojson';
-
-type AirspaceFixtureProperties = {
-  icaoClass: number;
-  name: string;
-  type: number;
-};
+import type { AirspaceProperties } from '$lib/airspace';
 
 /** Fixed airspace GeoJSON for browser tests and Storybook. */
 export const AIRSPACE_BROWSER_FIXTURE = {
@@ -13,7 +8,53 @@ export const AIRSPACE_BROWSER_FIXTURE = {
     {
       type: 'Feature',
       id: 0,
-      properties: { icaoClass: 3, name: 'Düsseldorf CTR', type: 4 },
+      properties: {
+        activeFrom: '2026-04-12T08:30:00Z',
+        activeUntil: '2026-04-12T17:45:00Z',
+        activity: 5,
+        byNotam: true,
+        country: ['DE', 'AT'],
+        frequencies: [
+          {
+            name: 'TOWER',
+            primary: true,
+            remarks: 'EMERGENCIES ONLY',
+            unit: 2,
+            value: '123.450',
+          },
+          {
+            remarks: 'GUARD',
+            unit: 2,
+            value: '121.500',
+          },
+        ],
+        hoursOfOperation: {
+          operatingHours: [
+            {
+              byNotam: false,
+              dayOfWeek: 6,
+              publicHolidaysExcluded: true,
+              remarks: 'DAYLIGHT HOURS',
+              sunrise: true,
+              sunset: true,
+            },
+          ],
+          remarks: 'LOCAL TIME',
+        },
+        icaoClass: 3,
+        lowerLimit: { referenceDatum: 0, unit: 0, value: 0 },
+        lowerLimitMin: { referenceDatum: 0, unit: 1, value: 500 },
+        name: 'Düsseldorf CTR',
+        onDemand: true,
+        onRequest: false,
+        remarks: 'ACTIVE DURING GLIDER EVENTS',
+        requestCompliance: true,
+        specialAgreement: false,
+        transponderSettings: [{ code: '0123', primary: true, remarks: 'WHEN ACTIVE' }],
+        type: 4,
+        upperLimit: { referenceDatum: 1, unit: 1, value: 5000 },
+        upperLimitMax: { referenceDatum: 2, unit: 6, value: 120 },
+      },
       geometry: {
         type: 'Polygon',
         coordinates: [
@@ -30,7 +71,13 @@ export const AIRSPACE_BROWSER_FIXTURE = {
     {
       type: 'Feature',
       id: 1,
-      properties: { icaoClass: 4, name: 'Köln RMZ', type: 6 },
+      properties: {
+        icaoClass: 4,
+        lowerLimit: { referenceDatum: 0, unit: 0, value: 0 },
+        name: 'Köln RMZ',
+        type: 6,
+        upperLimit: { unlimited: true },
+      },
       geometry: {
         type: 'Polygon',
         coordinates: [
@@ -45,4 +92,4 @@ export const AIRSPACE_BROWSER_FIXTURE = {
       },
     },
   ],
-} satisfies GeoJSON.FeatureCollection<GeoJSON.Polygon, AirspaceFixtureProperties>;
+} satisfies GeoJSON.FeatureCollection<GeoJSON.Polygon, AirspaceProperties>;

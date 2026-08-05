@@ -278,9 +278,10 @@ initial airspace state and the MapLibre `airspace` GeoJSON source. It calls
 ID. It does not fetch the GeoJSON resource separately.
 
 The page shows all canonical metadata that the feature contains. It always
-shows type, ICAO class, lower limit, and upper limit. It omits absent optional
-fields and empty sections. It uses user-facing enum labels and the configured
-display units where a conversion applies.
+shows type, lower limit, and upper limit. It shows ICAO class unless the
+airspace is unclassified. It omits absent optional fields and empty sections.
+It uses user-facing enum labels and the configured display units where a
+conversion applies.
 
 An inactive dataset or missing feature produces an airspace-not-found state.
 

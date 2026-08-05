@@ -4,6 +4,7 @@
   import type { AirspaceStore } from '$lib/stores/airspace.svelte';
 
   import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
 
   import { m } from '$lib/paraglide/messages.js';
 
@@ -69,7 +70,11 @@
 {:else}
   <ul>
     {#each queryState.features as feature (feature)}
-      <li>{airspaceName(feature)}</li>
+      <li>
+        <a href={resolve('/airspaces/[id]', { id: String(feature.id) })}>
+          {airspaceName(feature)}
+        </a>
+      </li>
     {/each}
   </ul>
 {/if}

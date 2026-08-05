@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
-import type { GeoJSONSource } from 'maplibre-gl';
+import type * as GeoJSON from 'geojson';
+import type { GeoJSONSource, GeoJSONSourceSpecification } from 'maplibre-gl';
+import type { AirspaceProperties } from '$lib/airspace';
 import type { AppContext } from '$lib/app-context';
 import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
@@ -29,7 +31,7 @@ type AirspaceMapState = {
 type TestWindow = Window & {
   __updraftApp?: AppContext;
   __updraftFake?: { emit: (topic: unknown) => void };
-  __updraftTestAirspaceData?: typeof AIRSPACE_BROWSER_FIXTURE;
+  __updraftTestAirspaceData?: GeoJSONSourceSpecification['data'];
 };
 
 const POSITION_A: GpsInstruments = {
@@ -212,6 +214,10 @@ test('keeps the first nearby airspace result', async ({ page }) => {
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.19 });
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+  await expect(airspaces.getByRole('link', { name: 'Köln RMZ' })).toHaveAttribute(
+    'href',
+    '/airspaces/1',
+  );
 
   await emitAirspace(page, { type: 'unavailable' });
   await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
@@ -272,6 +278,149 @@ test('does not move the map for an off-screen nearby URL', async ({ page }) => {
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
   expect(await readMapCenter(page)).toEqual(initialCenter);
+});
+
+test('shows complete airspace details on direct visits and reloads', async ({ page }) => {
+  await page.addInitScript((data) => {
+    (window as TestWindow).__updraftTestAirspaceData = data;
+  }, AIRSPACE_BROWSER_FIXTURE);
+  await page.goto('/airspaces/0?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'active', generation: 1 });
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
+  await expect(page.locator('main')).toMatchAriaSnapshot(`
+    - navigation:
+      - button "Back"
+      - link "Map":
+        - /url: /
+    - heading "Düsseldorf CTR" [level=1]
+    - heading "Classification" [level=2]
+    - term: Type
+    - definition: Control zone
+    - term: ICAO class
+    - definition: Class D
+    - term: Activity
+    - definition: Hang gliding or paragliding
+    - heading "Vertical limits" [level=2]
+    - term: Upper limit
+    - definition: 1524 m MSL (max. FL 120)
+    - term: Lower limit
+    - definition: GND (min. 152 m AGL)
+    - heading "Countries" [level=2]
+    - list:
+      - listitem: DE
+      - listitem: AT
+    - heading "Communications" [level=2]
+    - term: TOWER
+    - definition: 123.450 MHz
+    - term: Primary
+    - definition: "Yes"
+    - term: Remarks
+    - definition: EMERGENCIES ONLY
+    - term: Frequency
+    - definition: 121.500 MHz
+    - term: Remarks
+    - definition: GUARD
+    - term: Transponder code
+    - definition: "0123"
+    - term: Primary
+    - definition: "Yes"
+    - term: Remarks
+    - definition: WHEN ACTIVE
+    - heading "Activation" [level=2]
+    - term: On demand
+    - definition: "Yes"
+    - term: On request
+    - definition: "No"
+    - term: By NOTAM
+    - definition: "Yes"
+    - term: Special agreement
+    - definition: "No"
+    - term: Compliance requested
+    - definition: "Yes"
+    - term: Active from
+    - definition: Apr 12, 2026, 8:30 AM
+    - term: Active until
+    - definition: Apr 12, 2026, 5:45 PM
+    - heading "Operating hours" [level=3]
+    - term: Sunday
+    - definition
+    - term: Start
+    - definition: Sunrise
+    - term: End
+    - definition: Sunset
+    - term: By NOTAM
+    - definition: "No"
+    - term: Public holidays excluded
+    - definition: "Yes"
+    - term: Remarks
+    - definition: DAYLIGHT HOURS
+    - term: Remarks
+    - definition: LOCAL TIME
+    - heading "Remarks" [level=2]
+    - paragraph: ACTIVE DURING GLIDER EVENTS
+  `);
+
+  await page.reload();
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'active', generation: 2 });
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
+});
+
+test('shows airspace not found for unavailable data and missing IDs', async ({ page }) => {
+  await page.addInitScript((data) => {
+    (window as TestWindow).__updraftTestAirspaceData = data;
+  }, AIRSPACE_BROWSER_FIXTURE);
+  await page.goto('/airspaces/0?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'unavailable' });
+  await expect(page.getByText('Airspace not found.')).toBeVisible();
+
+  await page.goto('/airspaces/999?testMode=1');
+  await emitAirspace(page, { type: 'active', generation: 1 });
+  await expect(page.getByText('Airspace not found.')).toBeVisible();
+});
+
+test('omits an unclassified airspace class', async ({ page }) => {
+  let fixture = structuredClone(AIRSPACE_BROWSER_FIXTURE) as GeoJSON.FeatureCollection<
+    GeoJSON.Polygon,
+    AirspaceProperties
+  >;
+  fixture.features[0].properties.icaoClass = 8;
+  await page.addInitScript((data) => {
+    (window as TestWindow).__updraftTestAirspaceData = data;
+  }, fixture);
+  await page.goto('/airspaces/0?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'active', generation: 1 });
+
+  let classification = page.getByRole('heading', { name: 'Classification' }).locator('..');
+  await expect(classification.getByText('ICAO class')).toHaveCount(0);
+  await expect(classification.getByText('Unclassified')).toHaveCount(0);
+});
+
+test('retries an airspace source read failure', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as TestWindow).__updraftTestAirspaceData = '/missing-airspace.geojson';
+  });
+  await page.goto('/airspaces/0?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitAirspace(page, { type: 'active', generation: 1 });
+
+  let retry = page.getByRole('button', { name: 'Retry' });
+  await expect(page.getByText('The airspace could not be loaded.')).toBeVisible();
+  await expect(retry).toBeVisible();
+
+  await page.evaluate(async (data) => {
+    let source = (window as TestWindow).__updraftApp?.mapState.map?.getSource<GeoJSONSource>(
+      'airspace',
+    );
+    if (!source) throw new Error('Airspace source is not available');
+    await source.setData(data);
+  }, AIRSPACE_BROWSER_FIXTURE);
+  await retry.click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
 });
 
 async function emitInstruments(page: Page, gps: GpsInstruments) {

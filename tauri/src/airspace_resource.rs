@@ -42,6 +42,7 @@ fn airspace_geojson(dataset: Option<&AirspaceDataset>) -> Value {
 mod tests {
     use super::*;
     use crate::driver::Driver;
+    use claims::assert_some_eq;
     use std::sync::Arc;
     use std::time::Duration;
     use tauri::http::{StatusCode, header};
@@ -49,8 +50,6 @@ mod tests {
     use updraft_core::{ActivateAirspaceDataset, AirspaceState, SettingsSnapshot};
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
-    const CIRCLE: &[u8] = include_bytes!("../../testdata/airspace/circle.txt");
-
     fn driver(airspace: AirspaceState) -> DriverHandle {
         Driver::spawn(
             SettingsSnapshot::default(),
@@ -62,53 +61,18 @@ mod tests {
     }
 
     #[test]
-    fn projects_airspace_as_a_closed_geojson_polygon() {
+    fn wraps_airspaces_in_a_feature_collection() {
         let dataset = AirspaceDataset::from_openair(POLYGON).expect("a valid OpenAir fixture");
 
         let geojson = airspace_geojson(Some(&dataset));
 
-        insta::assert_json_snapshot!(geojson, @r#"
-        {
-          "features": [
-            {
-              "geometry": {
-                "coordinates": [
-                  [
-                    [
-                      10.0,
-                      50.0
-                    ],
-                    [
-                      10.016666666666667,
-                      50.0
-                    ],
-                    [
-                      10.016666666666667,
-                      50.016666666666666
-                    ],
-                    [
-                      10.0,
-                      50.016666666666666
-                    ],
-                    [
-                      10.0,
-                      50.0
-                    ]
-                  ]
-                ],
-                "type": "Polygon"
-              },
-              "id": 0,
-              "properties": {
-                "class": 3,
-                "type": 0
-              },
-              "type": "Feature"
-            }
-          ],
-          "type": "FeatureCollection"
-        }
-        "#);
+        assert_eq!(
+            geojson,
+            json!({
+                "type": "FeatureCollection",
+                "features": [dataset.airspaces()[0].to_geojson()],
+            })
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -133,23 +97,6 @@ mod tests {
         "#);
     }
 
-    #[test]
-    fn projects_required_openaip_classification_properties() {
-        let legacy_class = b"AC R\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
-        let dataset =
-            AirspaceDataset::from_openair(legacy_class).expect("a valid legacy OpenAir source");
-
-        let properties = &airspace_geojson(Some(&dataset))["features"][0]["properties"];
-
-        assert_eq!(
-            properties,
-            &json!({
-                "class": 8,
-                "type": 1,
-            })
-        );
-    }
-
     #[tokio::test(flavor = "multi_thread")]
     async fn replacement_request_receives_the_latest_dataset_snapshot() {
         let initial = Arc::new(
@@ -158,9 +105,7 @@ mod tests {
         let handle = driver(AirspaceState::active_at_startup(initial, None));
         let initial_response = airspace_resource_response(handle.clone()).await;
 
-        let replacement = Arc::new(
-            AirspaceDataset::from_openair(CIRCLE).expect("a valid replacement OpenAir fixture"),
-        );
+        let replacement = Arc::new(AirspaceDataset::default());
         handle
             .send(ActivateAirspaceDataset::new(replacement, None))
             .await
@@ -171,8 +116,8 @@ mod tests {
             .expect("valid initial airspace GeoJSON");
         let replacement_body: Value = serde_json::from_slice(replacement_response.body())
             .expect("valid replacement airspace GeoJSON");
-        assert_eq!(initial_body["features"][0]["properties"]["class"], 3);
-        assert_eq!(replacement_body["features"][0]["properties"]["class"], 2);
+        assert_some_eq!(initial_body["features"].as_array().map(Vec::len), 1);
+        assert_eq!(replacement_body["features"], json!([]));
     }
 
     #[tokio::test]

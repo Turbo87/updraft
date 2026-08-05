@@ -1,0 +1,39 @@
+---
+source: libs/updraft_airspace/tests/airspace_geojson.rs
+expression: "dataset.airspaces()[0].to_geojson()"
+---
+{
+  "geometry": {
+    "coordinates": [
+      [
+        [
+          10.0,
+          50.0
+        ],
+        [
+          10.016666666666667,
+          50.0
+        ],
+        [
+          10.016666666666667,
+          50.016666666666666
+        ],
+        [
+          10.0,
+          50.016666666666666
+        ],
+        [
+          10.0,
+          50.0
+        ]
+      ]
+    ],
+    "type": "Polygon"
+  },
+  "id": 0,
+  "properties": {
+    "class": 3,
+    "type": 0
+  },
+  "type": "Feature"
+}

@@ -39,7 +39,7 @@ changes farther down the tree.
 imports, in dependency order:
 
 ```text
-reset.css -> fonts.css -> colors.css -> theme.css -> base.css -> utils.css
+reset.css -> fonts.css -> colors.generated.css -> theme.css -> base.css -> utils.css
 ```
 
 The imported files live in `frontend/src/styles/`:
@@ -47,7 +47,8 @@ The imported files live in `frontend/src/styles/`:
 - `reset.css` establishes predictable browser defaults, including box sizing
   and inherited typography.
 - `fonts.css` loads application typefaces.
-- `colors.css` contains the versioned Tailwind color palette.
+- `colors.ts` contains the versioned Tailwind color palette. Its golden test
+  generates the committed `colors.generated.css` file.
 - `theme.css` defines semantic tokens and light and dark theme behavior.
 - `base.css` styles global elements such as `html`, `body`, links, and form
   controls. It may consume tokens defined by the preceding files.
@@ -114,11 +115,12 @@ during startup. Theme-selection logic lives at the application level rather
 than in individual components. There is no infrastructure for additional
 themes or user-defined palettes.
 
-`colors.css` is a committed copy of the complete default Tailwind color
-palette. The file records the release, source URL, retrieval date, and license
-notice. Updraft does not otherwise use Tailwind as a CSS framework or runtime
-build dependency. The source values remain in OKLCH, while Lightning CSS emits
-sRGB and wider-gamut fallbacks.
+`colors.ts` contains the complete default Tailwind color palette. The source
+records the release, source URL, retrieval date, and license notice. The
+committed `colors.generated.css` file follows the golden file pattern, and its
+header identifies the source and update command. Updraft does not otherwise use
+Tailwind as a CSS framework or runtime build dependency. The source values
+remain in OKLCH, while Lightning CSS emits sRGB and wider-gamut fallbacks.
 
 Reusable UI consumes semantic tokens from `theme.css`. Tokens are named for
 their purpose, such as `--color-warning-surface`, rather than for a hue. A token

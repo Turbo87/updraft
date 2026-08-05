@@ -20,6 +20,21 @@ const metricUnits: UnitSettings = {
   verticalSpeed: 'm/s',
 };
 
+function readValues(container: HTMLElement): { label: string; value: string }[] {
+  let labels = Array.from(container.querySelectorAll('dt'));
+  let values = Array.from(container.querySelectorAll('dd'));
+  if (labels.length !== values.length) throw new Error('Debug value labels do not match values');
+
+  function text(element: Element): string {
+    return element.textContent.replace(/\s+/g, ' ').trim();
+  }
+
+  return labels.map((label, index) => ({
+    label: text(label),
+    value: text(values[index]),
+  }));
+}
+
 describe('MapDebugOverlay.svelte', () => {
   it('is hidden until the D key is pressed, then toggles off again', async () => {
     render(MapDebugOverlay, { map: undefined, instruments: emptyInstruments, units: metricUnits });
@@ -54,22 +69,54 @@ describe('MapDebugOverlay.svelte', () => {
 
     await userEvent.keyboard('d');
 
-    let values = Array.from(view.container.querySelectorAll('dd'), (element) =>
-      element.textContent?.trim(),
-    );
-    expect(values).toEqual([
-      '0.00',
-      '0.00000, 0.00000',
-      '–',
-      '–',
-      'Unavailable',
-      '–',
-      '–',
-      '–',
-      'Unavailable',
-      '–',
-      'Unavailable',
-    ]);
+    expect(readValues(view.container)).toMatchInlineSnapshot(`
+      [
+        {
+          "label": "Zoom",
+          "value": "0.00",
+        },
+        {
+          "label": "Center",
+          "value": "0.00000, 0.00000",
+        },
+        {
+          "label": "Position",
+          "value": "–",
+        },
+        {
+          "label": "GPS fix time",
+          "value": "–",
+        },
+        {
+          "label": "GPS state",
+          "value": "Unavailable",
+        },
+        {
+          "label": "MSL altitude",
+          "value": "–",
+        },
+        {
+          "label": "Ground speed",
+          "value": "–",
+        },
+        {
+          "label": "True airspeed",
+          "value": "–",
+        },
+        {
+          "label": "True airspeed state",
+          "value": "Unavailable",
+        },
+        {
+          "label": "Pressure altitude",
+          "value": "–",
+        },
+        {
+          "label": "Pressure altitude state",
+          "value": "Unavailable",
+        },
+      ]
+    `);
   });
 
   it('shows the current flight values once visible', async () => {
@@ -93,16 +140,54 @@ describe('MapDebugOverlay.svelte', () => {
 
     await userEvent.keyboard('d');
 
-    await expect.element(page.getByText('50.82300, 6.18600')).toBeInTheDocument();
-    await expect.element(page.getByText('2026-01-01 12:00:00.000 UTC')).toBeInTheDocument();
-    let states = Array.from(view.container.querySelectorAll('dd'), (element) =>
-      element.textContent?.trim(),
-    ).filter((value) => value === 'Current');
-    expect(states).toEqual(['Current', 'Current', 'Current']);
-    await expect.element(page.getByText('190 m', { exact: true })).toBeInTheDocument();
-    await expect.element(page.getByText('108.0 km/h', { exact: true })).toBeInTheDocument();
-    await expect.element(page.getByText('180.0 km/h', { exact: true })).toBeInTheDocument();
-    await expect.element(page.getByText('1000 m', { exact: true })).toBeInTheDocument();
+    expect(readValues(view.container)).toMatchInlineSnapshot(`
+      [
+        {
+          "label": "Zoom",
+          "value": "0.00",
+        },
+        {
+          "label": "Center",
+          "value": "0.00000, 0.00000",
+        },
+        {
+          "label": "Position",
+          "value": "50.82300, 6.18600",
+        },
+        {
+          "label": "GPS fix time",
+          "value": "2026-01-01 12:00:00.000 UTC",
+        },
+        {
+          "label": "GPS state",
+          "value": "Current",
+        },
+        {
+          "label": "MSL altitude",
+          "value": "190 m",
+        },
+        {
+          "label": "Ground speed",
+          "value": "108.0 km/h",
+        },
+        {
+          "label": "True airspeed",
+          "value": "180.0 km/h",
+        },
+        {
+          "label": "True airspeed state",
+          "value": "Current",
+        },
+        {
+          "label": "Pressure altitude",
+          "value": "1000 m",
+        },
+        {
+          "label": "Pressure altitude state",
+          "value": "Current",
+        },
+      ]
+    `);
   });
 
   it('uses the selected altitude and speed units', async () => {
@@ -128,15 +213,53 @@ describe('MapDebugOverlay.svelte', () => {
 
     await userEvent.keyboard('d');
 
-    await expect.element(page.getByText('50.82300, 6.18600')).toBeInTheDocument();
-    await expect.element(page.getByText('12:00:01.250 UTC', { exact: true })).toBeInTheDocument();
-    let states = Array.from(view.container.querySelectorAll('dd'), (element) =>
-      element.textContent?.trim(),
-    ).filter((value) => value === 'Stale');
-    expect(states).toEqual(['Stale', 'Stale', 'Stale']);
-    await expect.element(page.getByText('623 ft', { exact: true })).toBeInTheDocument();
-    await expect.element(page.getByText('58.3 kt', { exact: true })).toBeInTheDocument();
-    await expect.element(page.getByText('97.2 kt', { exact: true })).toBeInTheDocument();
-    await expect.element(page.getByText('3281 ft', { exact: true })).toBeInTheDocument();
+    expect(readValues(view.container)).toMatchInlineSnapshot(`
+      [
+        {
+          "label": "Zoom",
+          "value": "0.00",
+        },
+        {
+          "label": "Center",
+          "value": "0.00000, 0.00000",
+        },
+        {
+          "label": "Position",
+          "value": "50.82300, 6.18600",
+        },
+        {
+          "label": "GPS fix time",
+          "value": "12:00:01.250 UTC",
+        },
+        {
+          "label": "GPS state",
+          "value": "Stale",
+        },
+        {
+          "label": "MSL altitude",
+          "value": "623 ft",
+        },
+        {
+          "label": "Ground speed",
+          "value": "58.3 kt",
+        },
+        {
+          "label": "True airspeed",
+          "value": "97.2 kt",
+        },
+        {
+          "label": "True airspeed state",
+          "value": "Stale",
+        },
+        {
+          "label": "Pressure altitude",
+          "value": "3281 ft",
+        },
+        {
+          "label": "Pressure altitude state",
+          "value": "Stale",
+        },
+      ]
+    `);
   });
 });

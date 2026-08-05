@@ -70,10 +70,11 @@
 
   // Keep the readout in sync with the map while the overlay is visible.
   $effect(() => {
-    if (!map || !visible) return;
+    let activeMap = map;
+    if (!activeMap || !visible) return;
     syncView();
-    map.on('move', syncView);
-    return () => map.off('move', syncView);
+    activeMap.on('move', syncView);
+    return () => activeMap.off('move', syncView);
   });
 
   // MapLibre's tile-boundary debug mode outlines each tile and labels it with

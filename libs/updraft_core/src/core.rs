@@ -593,13 +593,13 @@ impl Input for Start {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        Update::effects(
-            core.external_devices
-                .iter()
-                .filter(|device| device.config.enabled)
-                .map(|device| Effect::open(device.device_id, device.config.spec.clone()))
-                .collect(),
-        )
+        let effects = core
+            .external_devices
+            .iter()
+            .filter(|device| device.config.enabled)
+            .map(|device| Effect::open(device.device_id, device.config.spec.clone()))
+            .collect();
+        Update::effects(effects)
     }
 }
 

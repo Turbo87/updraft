@@ -186,18 +186,16 @@ impl TryFrom<&Rmc> for Vec<u8> {
         for field in position_fields(rmc.position) {
             sentence.field(&field);
         }
+        sentence.field(&optional_field(rmc.speed_over_ground.map(Speed::as_knots)));
         sentence.field(&optional_field(
-            rmc.speed_over_ground.map(|speed| speed.as_knots()),
+            rmc.course_over_ground.map(Angle::as_degrees),
         ));
-        sentence.field(&optional_field(
-            rmc.course_over_ground.map(|course| course.as_degrees()),
-        ));
-        sentence.field(
-            &rmc.date
-                .map(Date::to_nmea_field)
-                .transpose()?
-                .unwrap_or_default(),
-        );
+        let date = rmc
+            .date
+            .map(Date::to_nmea_field)
+            .transpose()?
+            .unwrap_or_default();
+        sentence.field(&date);
         match rmc.magnetic_variation {
             Some(variation) => {
                 let degrees = variation.as_degrees();

@@ -111,7 +111,8 @@ mod tests {
         assert_relative_eq!(n(52.0, 7.0), n(52.0, 367.0));
         assert_relative_eq!(n(52.0, 7.0), n(52.0, -353.0));
         // A query just past the last column interpolates back to 0°E.
-        assert_relative_eq!(n(0.0, 359.5), (n(0.0, 359.0) + n(0.0, 0.0)) / 2.0);
+        let antimeridian_midpoint = (n(0.0, 359.0) + n(0.0, 0.0)) / 2.0;
+        assert_relative_eq!(n(0.0, 359.5), antimeridian_midpoint);
     }
 
     #[test]

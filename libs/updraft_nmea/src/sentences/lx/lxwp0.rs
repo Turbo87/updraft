@@ -53,12 +53,10 @@ impl TryFrom<&Lxwp0> for Vec<u8> {
             None => "",
         });
         sentence.field(&optional_field(
-            lxwp0
-                .true_airspeed
-                .map(|speed| speed.as_kilometers_per_hour()),
+            lxwp0.true_airspeed.map(Speed::as_kilometers_per_hour),
         ));
         sentence.field(&optional_field(
-            lxwp0.pressure_altitude.map(|altitude| altitude.as_meters()),
+            lxwp0.pressure_altitude.map(Length::as_meters),
         ));
 
         let vario_sample_count = lxwp0.vario_samples.len().min(6);
@@ -69,14 +67,10 @@ impl TryFrom<&Lxwp0> for Vec<u8> {
             sentence.field("");
         }
 
+        sentence.field(&optional_field(lxwp0.heading.map(Angle::as_degrees)));
+        sentence.field(&optional_field(lxwp0.wind_direction.map(Angle::as_degrees)));
         sentence.field(&optional_field(
-            lxwp0.heading.map(|heading| heading.as_degrees()),
-        ));
-        sentence.field(&optional_field(
-            lxwp0.wind_direction.map(|direction| direction.as_degrees()),
-        ));
-        sentence.field(&optional_field(
-            lxwp0.wind_speed.map(|speed| speed.as_kilometers_per_hour()),
+            lxwp0.wind_speed.map(Speed::as_kilometers_per_hour),
         ));
         Ok(sentence.finish())
     }

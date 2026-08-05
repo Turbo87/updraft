@@ -189,13 +189,10 @@ fn identical_observation_refreshes_the_stale_deadline_without_an_upsert() {
 
     assert!(changes.upserts.is_empty());
     assert!(changes.removed.is_empty());
-    assert!(
-        state
-            .expire(Timestamp::from_millis(5_999))
-            .upserts
-            .is_empty()
-    );
-    assert!(state.expire(Timestamp::from_millis(6_000)).upserts[&target.id].stale);
+    let fresh = state.expire(Timestamp::from_millis(5_999));
+    assert!(fresh.upserts.is_empty());
+    let stale = state.expire(Timestamp::from_millis(6_000));
+    assert!(stale.upserts[&target.id].stale);
 }
 
 #[test]

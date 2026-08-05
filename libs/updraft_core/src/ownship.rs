@@ -161,31 +161,35 @@ pub fn select_gps_candidate(
 ) -> Option<Selected<GpsSnapshot>> {
     let position = candidate.position?;
     let position_value = position.fresh_value(at)?;
+    let altitude_msl = candidate
+        .altitude
+        .and_then(|altitude| altitude.fresh_value(at));
+    let track = candidate.track.and_then(|track| track.fresh_value(at));
+    let ground_speed = candidate
+        .ground_speed
+        .and_then(|speed| speed.fresh_value(at));
+    let fix_time = candidate
+        .fix_time
+        .full
+        .and_then(|time| time.fresh_value(at))
+        .map(FixTime::UtcInstant)
+        .or_else(|| {
+            candidate
+                .fix_time
+                .time_only
+                .and_then(|time| time.fresh_value(at))
+                .map(FixTime::UtcTimeOfDay)
+        });
 
     Some(Selected {
         source,
         ingested_at: position.ingested_at,
         value: GpsSnapshot {
             position: position_value,
-            altitude_msl: candidate
-                .altitude
-                .and_then(|altitude| altitude.fresh_value(at)),
-            track: candidate.track.and_then(|track| track.fresh_value(at)),
-            ground_speed: candidate
-                .ground_speed
-                .and_then(|speed| speed.fresh_value(at)),
-            fix_time: candidate
-                .fix_time
-                .full
-                .and_then(|time| time.fresh_value(at))
-                .map(FixTime::UtcInstant)
-                .or_else(|| {
-                    candidate
-                        .fix_time
-                        .time_only
-                        .and_then(|time| time.fresh_value(at))
-                        .map(FixTime::UtcTimeOfDay)
-                }),
+            altitude_msl,
+            track,
+            ground_speed,
+            fix_time,
         },
     })
 }

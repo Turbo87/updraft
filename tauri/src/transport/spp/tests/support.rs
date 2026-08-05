@@ -12,7 +12,7 @@ use tauri_plugin_updraft::SppConnectionId;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use updraft_core::{
-    AirspaceState, ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId,
+    AirspaceState, ConnectionSpec, ExternalDeviceConfig, ExternalDeviceId, Instruments, LatLon,
     STANDARD_SPP_SERVICE_UUID, SettingsSnapshot, Topic,
 };
 use uuid::{Uuid, uuid};
@@ -231,7 +231,7 @@ pub fn topic_stream(handle: &DriverHandle) -> mpsc::UnboundedReceiver<Topic> {
     receiver
 }
 
-pub async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> updraft_core::LatLon {
+pub async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> LatLon {
     loop {
         let received = timeout(PATIENCE, receiver.recv())
             .await
@@ -245,7 +245,7 @@ pub async fn next_position(receiver: &mut mpsc::UnboundedReceiver<Topic>) -> upd
     }
 }
 
-pub async fn current_instruments(handle: &DriverHandle) -> updraft_core::Instruments {
+pub async fn current_instruments(handle: &DriverHandle) -> Instruments {
     let mut topics = topic_stream(handle);
     loop {
         let received = timeout(PATIENCE, topics.recv())

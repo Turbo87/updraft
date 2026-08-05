@@ -73,6 +73,7 @@ impl SppConnectionId {
 #[cfg(test)]
 mod tests {
     use super::{BondedBluetoothDevices, SppEvent};
+    use claims::assert_err;
     use tauri::ipc::InvokeResponseBody;
 
     fn bonded_devices(payload: &str) -> BondedBluetoothDevices {
@@ -130,6 +131,6 @@ mod tests {
         )
         .deserialize::<SppEvent>();
 
-        assert!(result.is_err());
+        assert_err!(result);
     }
 }

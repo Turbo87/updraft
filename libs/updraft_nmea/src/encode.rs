@@ -77,7 +77,7 @@ pub fn optional_field<T: ToString>(value: Option<T>) -> String {
 
 pub fn position_fields(position: Option<LatLon>) -> [String; 4] {
     let Some(position) = position else {
-        return std::array::from_fn(|_| String::new());
+        return Default::default();
     };
 
     let latitude = position.latitude().as_degrees();

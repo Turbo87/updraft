@@ -178,3 +178,29 @@ fn projects_openaip_frequencies() {
         ])
     );
 }
+
+#[test]
+fn projects_openaip_transponder_settings() {
+    let bytes = b"AC D\nAX 123\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = assert_ok!(AirspaceDataset::from_openair(bytes));
+    let mut airspace = dataset.airspaces()[0].clone();
+    let mut secondary = airspace.transponder_settings[0].clone();
+    secondary.primary = false;
+    secondary.remarks = Some("WHEN ACTIVE".into());
+    airspace.transponder_settings.push(secondary);
+
+    assert_eq!(
+        airspace.to_geojson()["properties"]["transponderSettings"],
+        json!([
+            {
+                "code": "0123",
+                "primary": true,
+            },
+            {
+                "code": "0123",
+                "primary": false,
+                "remarks": "WHEN ACTIVE",
+            },
+        ])
+    );
+}

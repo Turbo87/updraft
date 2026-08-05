@@ -278,6 +278,23 @@ impl Airspace {
                     .collect::<Vec<_>>()
             );
         }
+        if !self.transponder_settings.is_empty() {
+            properties["transponderSettings"] = json!(
+                self.transponder_settings
+                    .iter()
+                    .map(|setting| {
+                        let mut value = json!({
+                            "code": setting.code.to_string(),
+                            "primary": setting.primary,
+                        });
+                        if let Some(remarks) = setting.remarks.as_deref() {
+                            value["remarks"] = json!(remarks);
+                        }
+                        value
+                    })
+                    .collect::<Vec<_>>()
+            );
+        }
 
         json!({
             "type": "Feature",

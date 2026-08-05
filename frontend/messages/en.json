@@ -32,6 +32,30 @@
   "loading_nearby_airspaces": "Loading airspaces…",
   "no_nearby_airspaces": "No airspace at this position.",
   "unnamed_airspace": "Unnamed airspace",
+  "traffic_heading": "Traffic",
+  "loading_nearby_traffic": "Loading traffic…",
+  "no_nearby_traffic": "No traffic at this position.",
+  "traffic_type_value": [
+    {
+      "match": {
+        "trafficType=unknown": "Unknown",
+        "trafficType=glider": "Glider",
+        "trafficType=towPlane": "Tow plane",
+        "trafficType=helicopter": "Helicopter",
+        "trafficType=skydiver": "Skydiver",
+        "trafficType=dropPlane": "Drop plane",
+        "trafficType=hangGlider": "Hang glider",
+        "trafficType=paraglider": "Paraglider",
+        "trafficType=pistonAircraft": "Piston aircraft",
+        "trafficType=jetAircraft": "Jet aircraft",
+        "trafficType=balloon": "Balloon",
+        "trafficType=airship": "Airship",
+        "trafficType=uav": "UAV",
+        "trafficType=staticObstacle": "Static obstacle",
+        "trafficType=*": "{trafficType}"
+      }
+    }
+  ],
   "selected_position_label": "Selected position",
   "unavailable_value": "Unavailable",
   "invalid_inspection": "The selected map position is invalid.",

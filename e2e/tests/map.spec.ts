@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test';
 import type { GeoJSONSource } from 'maplibre-gl';
 import type { AppContext } from '$lib/app-context';
 import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
+import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
+import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
 
 import { expect, test } from '@playwright/test';
 
@@ -54,6 +56,26 @@ const POSITION_C: GpsInstruments = {
   groundSpeedMetersPerSecond: 32,
   altitudeMeters: 420,
   fixTime: null,
+  stale: false,
+};
+
+const TRAFFIC_A: PublishedTrafficTarget = {
+  id: 'flarm:000001',
+  position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+  altitudeMslMeters: 400,
+  trafficType: 'glider',
+  trackDegrees: 45,
+  alarmLevel: 'none',
+  stale: false,
+};
+
+const TRAFFIC_B: PublishedTrafficTarget = {
+  id: 'flarm:000002',
+  position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
+  altitudeMslMeters: 500,
+  trafficType: 'towPlane',
+  trackDegrees: 90,
+  alarmLevel: 'none',
   stale: false,
 };
 
@@ -163,11 +185,13 @@ test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) =>
   await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
 });
 
-test('shows empty states without rendered airspace', async ({ page }) => {
+test('shows empty states without rendered features', async ({ page }) => {
   await page.goto('/nearby/50.82/6.15?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
+  let traffic = page.getByRole('region', { name: 'Traffic' });
+  await expect(traffic.getByText('No traffic at this position.')).toBeVisible();
 
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
@@ -191,6 +215,48 @@ test('keeps the first nearby airspace result', async ({ page }) => {
 
   await emitAirspace(page, { type: 'unavailable' });
   await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+});
+
+test('keeps nearby traffic membership while targets update', async ({ page }) => {
+  await page.goto('/?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A, TRAFFIC_B] });
+  let selectedPosition = TRAFFIC_A.position;
+  await expect
+    .poll(() => readTrafficIdsAt(page, selectedPosition))
+    .toEqual([TRAFFIC_B.id, TRAFFIC_A.id]);
+
+  await clickMapPosition(page, selectedPosition);
+  let traffic = page.getByRole('region', { name: 'Traffic' });
+  await expect(traffic.getByRole('listitem')).toHaveText([
+    'Tow plane · FLARM 000002',
+    'Glider · FLARM 000001',
+  ]);
+
+  let updated = {
+    ...TRAFFIC_A,
+    position: { latitudeDegrees: 0, longitudeDegrees: 0 },
+    trafficType: 'balloon' as const,
+  };
+  let unrelated = { ...TRAFFIC_A, id: 'flarm:000003' };
+  await emitTraffic(page, {
+    type: 'delta',
+    value: { upserts: [updated, unrelated], removed: [TRAFFIC_B.id] },
+  });
+  await expect(traffic.getByRole('listitem')).toHaveText([
+    'Tow plane · FLARM 000002 · Unavailable',
+    'Balloon · FLARM 000001',
+  ]);
+
+  let recovered = { ...TRAFFIC_B, trafficType: 'paraglider' as const };
+  await emitTraffic(page, {
+    type: 'delta',
+    value: { upserts: [recovered], removed: [] },
+  });
+  await expect(traffic.getByRole('listitem')).toHaveText([
+    'Paraglider · FLARM 000002',
+    'Balloon · FLARM 000001',
+  ]);
 });
 
 test('does not move the map for an off-screen nearby URL', async ({ page }) => {
@@ -243,6 +309,12 @@ async function emitAirspace(
     },
     { airspace: state, airspaceCount: AIRSPACE_BROWSER_FIXTURE.features.length },
   );
+}
+
+async function emitTraffic(page: Page, update: TrafficUpdate) {
+  await page.evaluate((value) => {
+    (window as TestWindow).__updraftFake?.emit({ topic: 'traffic', value });
+  }, update);
 }
 
 async function clickMapPosition(page: Page, position: MapCenter) {
@@ -379,4 +451,16 @@ async function readAirspaceMapState(page: Page): Promise<AirspaceMapState | null
       renderedLayerIds,
     };
   });
+}
+
+async function readTrafficIdsAt(page: Page, position: MapCenter): Promise<(string | number)[]> {
+  return page.evaluate(({ latitudeDegrees, longitudeDegrees }) => {
+    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    if (!map?.getLayer('traffic-hit')) return [];
+
+    let point = map.project([longitudeDegrees, latitudeDegrees]);
+    return map
+      .queryRenderedFeatures(point, { layers: ['traffic-hit'] })
+      .flatMap(({ id }) => (id === undefined ? [] : [id]));
+  }, position);
 }

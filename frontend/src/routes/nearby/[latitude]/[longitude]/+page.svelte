@@ -5,14 +5,17 @@
   import { getAppContext } from '$lib/app-context';
   import { calculateDistanceAndBearing } from '$lib/geographic-position';
   import { m } from '$lib/paraglide/messages.js';
+  import { getLocale } from '$lib/paraglide/runtime.js';
   import { convertDistance } from '$lib/units';
   import NearbyAirspaces from './NearbyAirspaces.svelte';
+  import NearbyTraffic from './NearbyTraffic.svelte';
   import { parseNearbyRouteCoordinates } from './params';
 
-  const { airspace, instruments, mapState, settings } = getAppContext();
+  const { airspace, instruments, mapState, settings, traffic } = getAppContext();
   const selectedPosition = $derived(
     parseNearbyRouteCoordinates(page.params.latitude, page.params.longitude),
   );
+  const locale = $derived(settings.current.locale ?? getLocale());
   const ownshipRelation = $derived(
     selectedPosition && instruments.current.gps?.position
       ? calculateDistanceAndBearing(instruments.current.gps.position, selectedPosition)
@@ -52,6 +55,17 @@
         {/key}
       {:else}
         <p>{m.loading_nearby_airspaces()}</p>
+      {/if}
+    </section>
+
+    <section aria-labelledby="traffic-heading">
+      <h2 id="traffic-heading">{m.traffic_heading()}</h2>
+      {#if traffic.initialized && mapState.map}
+        {#key `${selectedPosition.latitudeDegrees}/${selectedPosition.longitudeDegrees}`}
+          <NearbyTraffic {locale} map={mapState.map} position={selectedPosition} {traffic} />
+        {/key}
+      {:else}
+        <p>{m.loading_nearby_traffic()}</p>
       {/if}
     </section>
   {:else}

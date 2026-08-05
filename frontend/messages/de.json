@@ -32,6 +32,30 @@
   "loading_nearby_airspaces": "Lufträume werden geladen…",
   "no_nearby_airspaces": "Kein Luftraum an dieser Position.",
   "unnamed_airspace": "Unbenannter Luftraum",
+  "traffic_heading": "Verkehr",
+  "loading_nearby_traffic": "Verkehr wird geladen…",
+  "no_nearby_traffic": "Kein Verkehr an dieser Position.",
+  "traffic_type_value": [
+    {
+      "match": {
+        "trafficType=unknown": "Unbekannt",
+        "trafficType=glider": "Segelflugzeug",
+        "trafficType=towPlane": "Schleppflugzeug",
+        "trafficType=helicopter": "Hubschrauber",
+        "trafficType=skydiver": "Fallschirmspringer",
+        "trafficType=dropPlane": "Absetzflugzeug",
+        "trafficType=hangGlider": "Hängegleiter",
+        "trafficType=paraglider": "Gleitschirm",
+        "trafficType=pistonAircraft": "Motorflugzeug",
+        "trafficType=jetAircraft": "Strahlflugzeug",
+        "trafficType=balloon": "Ballon",
+        "trafficType=airship": "Luftschiff",
+        "trafficType=uav": "Unbemanntes Luftfahrzeug",
+        "trafficType=staticObstacle": "Statisches Hindernis",
+        "trafficType=*": "{trafficType}"
+      }
+    }
+  ],
   "selected_position_label": "Ausgewählte Position",
   "unavailable_value": "Nicht verfügbar",
   "invalid_inspection": "Die ausgewählte Kartenposition ist ungültig.",

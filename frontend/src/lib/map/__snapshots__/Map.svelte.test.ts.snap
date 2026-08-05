@@ -1,0 +1,226 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`adds the airspace source and both layers for the active state 1`] = `
+{
+  "layers": [
+    {
+      "id": "airspace-fill",
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          [
+            "P",
+            "R",
+            "Q",
+            "GP",
+            "OFR",
+            "TFR",
+          ],
+          "#dc2626",
+          [
+            "TMZ",
+            "RMZ",
+          ],
+          "#9333ea",
+          [
+            "GSEC",
+            "ASRA",
+          ],
+          "#16a34a",
+          [
+            "CTR",
+            "CTA",
+            "TMA",
+            "ATZ",
+            "AWY",
+          ],
+          "#2563eb",
+          [
+            "match",
+            [
+              "get",
+              "class",
+            ],
+            [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+            ],
+            "#2563eb",
+            "#64748b",
+          ],
+        ],
+        "fill-opacity": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          [
+            "P",
+            "R",
+            "Q",
+            "GP",
+            "OFR",
+            "TFR",
+          ],
+          0.18,
+          [
+            "TMZ",
+            "RMZ",
+          ],
+          0.14,
+          [
+            "GSEC",
+            "ASRA",
+          ],
+          0.12,
+          [
+            "CTR",
+            "CTA",
+            "TMA",
+            "ATZ",
+            "AWY",
+          ],
+          0.12,
+          [
+            "match",
+            [
+              "get",
+              "class",
+            ],
+            [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+            ],
+            0.12,
+            0.08,
+          ],
+        ],
+      },
+      "source": "airspace",
+      "type": "fill",
+    },
+    {
+      "id": "airspace-outline",
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          [
+            "P",
+            "R",
+            "Q",
+            "GP",
+            "OFR",
+            "TFR",
+          ],
+          "#b91c1c",
+          [
+            "TMZ",
+            "RMZ",
+          ],
+          "#7e22ce",
+          [
+            "GSEC",
+            "ASRA",
+          ],
+          "#15803d",
+          [
+            "CTR",
+            "CTA",
+            "TMA",
+            "ATZ",
+            "AWY",
+          ],
+          "#1d4ed8",
+          [
+            "match",
+            [
+              "get",
+              "class",
+            ],
+            [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+            ],
+            "#1d4ed8",
+            "#475569",
+          ],
+        ],
+        "line-width": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          [
+            "P",
+            "R",
+            "Q",
+            "GP",
+            "OFR",
+            "TFR",
+          ],
+          2,
+          [
+            "TMZ",
+            "RMZ",
+          ],
+          1.5,
+          [
+            "GSEC",
+            "ASRA",
+          ],
+          1.5,
+          [
+            "CTR",
+            "CTA",
+            "TMA",
+            "ATZ",
+            "AWY",
+          ],
+          1.5,
+          [
+            "match",
+            [
+              "get",
+              "class",
+            ],
+            [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+            ],
+            1.5,
+            1,
+          ],
+        ],
+      },
+      "source": "airspace",
+      "type": "line",
+    },
+  ],
+  "source": {
+    "maxzoom": 24,
+    "type": "geojson",
+  },
+}
+`;

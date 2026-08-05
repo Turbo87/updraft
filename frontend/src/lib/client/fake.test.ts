@@ -78,27 +78,7 @@ describe('FakeClient', () => {
 
     client.subscribe((topic) => received.push(topic));
 
-    expect(received).toEqual([
-      {
-        topic: 'settings',
-        value: {
-          locale: null,
-          units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-        },
-      },
-      {
-        topic: 'externalDevices',
-        value: [],
-      },
-      {
-        topic: 'traffic',
-        value: { type: 'snapshot', value: [] },
-      },
-      {
-        topic: 'airspace',
-        value: { type: 'none' },
-      },
-    ]);
+    expect(received).toMatchSnapshot();
   });
 
   it('publishes an explicit locale through the settings topic', async () => {
@@ -181,24 +161,7 @@ describe('FakeClient', () => {
     });
 
     expect([tcpId, bluetoothId]).toEqual([1, 2]);
-    expect(externalDeviceTopics(received)).toEqual([
-      {
-        topic: 'externalDevices',
-        value: [{ deviceId: 1, enabled: true, type: 'tcp', host: '127.0.0.1', port: 4353 }],
-      },
-      {
-        topic: 'externalDevices',
-        value: [
-          { deviceId: 1, enabled: true, type: 'tcp', host: '127.0.0.1', port: 4353 },
-          {
-            deviceId: 2,
-            enabled: true,
-            type: 'bluetooth',
-            address: '00:11:22:33:44:55',
-          },
-        ],
-      },
-    ]);
+    expect(externalDeviceTopics(received)).toMatchSnapshot();
   });
 
   it('allocates a fresh ID after configured devices', async () => {
@@ -220,25 +183,7 @@ describe('FakeClient', () => {
       address: 'AA:BB:CC:DD:EE:FF',
     });
 
-    expect(externalDeviceTopics(received)).toEqual([
-      {
-        topic: 'externalDevices',
-        value: [
-          {
-            deviceId: 4,
-            enabled: true,
-            type: 'bluetooth',
-            address: 'AA:BB:CC:DD:EE:FF',
-          },
-          {
-            deviceId: 7,
-            enabled: false,
-            type: 'bluetooth',
-            address: '00:11:22:33:44:55',
-          },
-        ],
-      },
-    ]);
+    expect(externalDeviceTopics(received)).toMatchSnapshot();
   });
 
   it('publishes enable, disable, and delete changes', async () => {
@@ -251,34 +196,7 @@ describe('FakeClient', () => {
     await client.setExternalDeviceEnabled(7, true);
     await client.deleteExternalDevice(4);
 
-    expect(externalDeviceTopics(received).map((topic) => topic.value)).toEqual([
-      [
-        { deviceId: 4, enabled: false, type: 'tcp', host: '127.0.0.1', port: 4353 },
-        {
-          deviceId: 7,
-          enabled: false,
-          type: 'bluetooth',
-          address: '00:11:22:33:44:55',
-        },
-      ],
-      [
-        { deviceId: 4, enabled: false, type: 'tcp', host: '127.0.0.1', port: 4353 },
-        {
-          deviceId: 7,
-          enabled: true,
-          type: 'bluetooth',
-          address: '00:11:22:33:44:55',
-        },
-      ],
-      [
-        {
-          deviceId: 7,
-          enabled: true,
-          type: 'bluetooth',
-          address: '00:11:22:33:44:55',
-        },
-      ],
-    ]);
+    expect(externalDeviceTopics(received).map((topic) => topic.value)).toMatchSnapshot();
   });
 
   it('does not publish identical edits or enabled states', async () => {

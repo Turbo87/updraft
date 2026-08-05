@@ -277,39 +277,8 @@ mod tests {
         };
 
         assert_ok!(file.write(snapshot.clone()));
-        assert_eq!(
-            assert_ok!(std::fs::read_to_string(config_dir.join("settings.json"))),
-            concat!(
-                "{\n",
-                "  \"locale\": \"de\",\n",
-                "  \"units\": {\n",
-                "    \"altitude\": \"ft\",\n",
-                "    \"distance\": \"nm\",\n",
-                "    \"speed\": \"kt\",\n",
-                "    \"verticalSpeed\": \"ft/min\"\n",
-                "  },\n",
-                "  \"externalDevices\": [\n",
-                "    {\n",
-                "      \"enabled\": true,\n",
-                "      \"type\": \"tcp\",\n",
-                "      \"host\": \"127.0.0.1\",\n",
-                "      \"port\": 4353\n",
-                "    },\n",
-                "    {\n",
-                "      \"enabled\": false,\n",
-                "      \"type\": \"bluetooth\",\n",
-                "      \"address\": \"00:11:22:33:44:55\"\n",
-                "    },\n",
-                "    {\n",
-                "      \"enabled\": true,\n",
-                "      \"type\": \"bluetooth\",\n",
-                "      \"address\": \"00:11:22:33:44:66\",\n",
-                "      \"serviceUuid\": \"e56617bf-f548-4f7c-9cef-4a26eec19b04\"\n",
-                "    }\n",
-                "  ]\n",
-                "}\n",
-            )
-        );
+        let contents = assert_ok!(std::fs::read_to_string(config_dir.join("settings.json")));
+        insta::assert_snapshot!(contents);
         assert_eq!(file.load(), snapshot);
     }
 

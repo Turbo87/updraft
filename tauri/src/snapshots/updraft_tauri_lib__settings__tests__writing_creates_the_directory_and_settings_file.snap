@@ -1,0 +1,32 @@
+---
+source: tauri/src/settings.rs
+expression: contents
+---
+{
+  "locale": "de",
+  "units": {
+    "altitude": "ft",
+    "distance": "nm",
+    "speed": "kt",
+    "verticalSpeed": "ft/min"
+  },
+  "externalDevices": [
+    {
+      "enabled": true,
+      "type": "tcp",
+      "host": "127.0.0.1",
+      "port": 4353
+    },
+    {
+      "enabled": false,
+      "type": "bluetooth",
+      "address": "00:11:22:33:44:55"
+    },
+    {
+      "enabled": true,
+      "type": "bluetooth",
+      "address": "00:11:22:33:44:66",
+      "serviceUuid": "e56617bf-f548-4f7c-9cef-4a26eec19b04"
+    }
+  ]
+}

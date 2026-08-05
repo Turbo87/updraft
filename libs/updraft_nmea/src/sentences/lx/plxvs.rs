@@ -41,11 +41,8 @@ impl TryFrom<&Plxvs> for Vec<u8> {
         sentence.field(&optional_field(plxvs.outside_air_temperature));
         sentence.field(&optional_field(plxvs.mode.map(PlxvsMode::to_nmea_field)));
         sentence.field(&optional_field(plxvs.supply_voltage));
-        sentence.field(&optional_field(
-            plxvs
-                .igc_pressure_altitude
-                .map(|altitude| altitude.as_meters()),
-        ));
+        let pressure_altitude = plxvs.igc_pressure_altitude.map(Length::as_meters);
+        sentence.field(&optional_field(pressure_altitude));
         sentence.text_field(plxvs.flap_position.as_deref(), "flap_position")?;
         Ok(sentence.finish())
     }

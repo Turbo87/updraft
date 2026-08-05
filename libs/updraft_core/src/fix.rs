@@ -24,9 +24,8 @@ impl UtcInstant {
         )
         .ok()?;
         let unix_seconds = date.with_time(time).assume_utc().unix_timestamp();
-        Some(Self::from_unix_milliseconds(
-            unix_seconds * 1_000 + i64::from(time.millisecond()),
-        ))
+        let unix_milliseconds = unix_seconds * 1_000 + i64::from(time.millisecond());
+        Some(Self::from_unix_milliseconds(unix_milliseconds))
     }
 
     /// Returns Unix epoch milliseconds.

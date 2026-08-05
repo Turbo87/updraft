@@ -60,10 +60,11 @@ mod tests {
 
         let committed = read_dir_files(&committed_dir());
         let regenerated = read_dir_files(generated.path());
+        let committed_names = committed.keys().collect::<Vec<_>>();
+        let regenerated_names = regenerated.keys().collect::<Vec<_>>();
 
         assert_eq!(
-            committed.keys().collect::<Vec<_>>(),
-            regenerated.keys().collect::<Vec<_>>(),
+            committed_names, regenerated_names,
             "committed TypeScript bindings are out of date, run `{REGENERATE_COMMAND}`"
         );
 

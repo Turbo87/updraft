@@ -58,6 +58,26 @@ async function renderMap(airspace: AirspaceStatus): Promise<MapLibreMap> {
   return mapState.map!;
 }
 
+function airspaceStyle(map: MapLibreMap) {
+  let style = map.getStyle();
+  let source = style.sources.airspace;
+  if (!source || source.type !== 'geojson') throw new Error('Airspace source is not GeoJSON');
+
+  let layers = style.layers
+    .filter(({ id }) => id === 'airspace-fill' || id === 'airspace-outline')
+    .map((layer) => ({
+      id: layer.id,
+      type: layer.type,
+      source: 'source' in layer ? layer.source : undefined,
+      paint: 'paint' in layer ? layer.paint : undefined,
+    }));
+
+  return {
+    source: { type: source.type, maxzoom: source.maxzoom },
+    layers,
+  };
+}
+
 it.each([
   { type: 'none' } as const,
   { type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' } as const,
@@ -83,6 +103,7 @@ it('adds the airspace source and both layers for the active state', async () => 
     expect(map.getLayer('airspace-fill')).toBeDefined();
     expect(map.getLayer('airspace-outline')).toBeDefined();
   });
+  expect(airspaceStyle(map)).toMatchSnapshot();
   expect(consoleError).not.toHaveBeenCalled();
 });
 

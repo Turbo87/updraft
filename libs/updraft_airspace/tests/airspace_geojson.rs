@@ -75,3 +75,37 @@ fn projects_optional_openaip_vertical_constraints() {
 
     insta::assert_json_snapshot!(airspace.to_geojson()["properties"]);
 }
+
+#[test]
+fn projects_openaip_operational_flags() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let mut airspace = dataset.airspaces()[0].clone();
+    airspace.on_demand = Some(true);
+    airspace.on_request = Some(false);
+    airspace.by_notam = Some(true);
+    airspace.special_agreement = Some(false);
+    airspace.request_compliance = Some(true);
+
+    let properties = &airspace.to_geojson()["properties"];
+    assert_eq!(properties["onDemand"], json!(true));
+    assert_eq!(properties["onRequest"], json!(false));
+    assert_eq!(properties["byNotam"], json!(true));
+    assert_eq!(properties["specialAgreement"], json!(false));
+    assert_eq!(properties["requestCompliance"], json!(true));
+}
+
+#[test]
+fn omits_absent_openaip_operational_flags() {
+    let dataset = assert_ok!(AirspaceDataset::from_openair(POLYGON));
+    let properties = &dataset.airspaces()[0].to_geojson()["properties"];
+
+    for property in [
+        "onDemand",
+        "onRequest",
+        "byNotam",
+        "specialAgreement",
+        "requestCompliance",
+    ] {
+        assert_none!(properties.get(property));
+    }
+}

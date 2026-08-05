@@ -233,6 +233,17 @@ impl Airspace {
         if let Some(activity) = self.activity {
             properties["activity"] = json!(activity.openaip_code());
         }
+        for (property, value) in [
+            ("onDemand", self.on_demand),
+            ("onRequest", self.on_request),
+            ("byNotam", self.by_notam),
+            ("specialAgreement", self.special_agreement),
+            ("requestCompliance", self.request_compliance),
+        ] {
+            if let Some(value) = value {
+                properties[property] = json!(value);
+            }
+        }
         if let Some(lower_limit_min) = self.lower_limit_min {
             properties["lowerLimitMin"] = lower_limit_min.to_openaip_limit();
         }

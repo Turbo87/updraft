@@ -149,3 +149,32 @@ fn preserves_an_unrecognized_country_value() {
         json!("UNKNOWN")
     );
 }
+
+#[test]
+fn projects_openaip_frequencies() {
+    let bytes = b"AC D\nAF 123.45\nAG TOWER\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+    let dataset = assert_ok!(AirspaceDataset::from_openair(bytes));
+    let mut airspace = dataset.airspaces()[0].clone();
+    let mut secondary = airspace.frequencies[0].clone();
+    secondary.name = None;
+    secondary.primary = None;
+    secondary.remarks = Some("GUARD".into());
+    airspace.frequencies.push(secondary);
+
+    assert_eq!(
+        airspace.to_geojson()["properties"]["frequencies"],
+        json!([
+            {
+                "value": "123.450",
+                "unit": 2,
+                "name": "TOWER",
+                "primary": true,
+            },
+            {
+                "value": "123.450",
+                "unit": 2,
+                "remarks": "GUARD",
+            },
+        ])
+    );
+}

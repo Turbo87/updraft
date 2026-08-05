@@ -46,6 +46,13 @@ pub enum AirspaceFrequencyUnit {
     Megahertz = 2,
 }
 
+impl AirspaceFrequencyUnit {
+    /// Returns the numeric frequency unit value from the OpenAIP schema.
+    pub const fn openaip_code(self) -> u8 {
+        self as u8
+    }
+}
+
 /// One canonical airspace radio frequency.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AirspaceFrequency {

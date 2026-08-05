@@ -255,6 +255,29 @@ impl Airspace {
         if let Some(upper_limit_max) = self.upper_limit_max {
             properties["upperLimitMax"] = upper_limit_max.to_openaip_limit();
         }
+        if !self.frequencies.is_empty() {
+            properties["frequencies"] = json!(
+                self.frequencies
+                    .iter()
+                    .map(|frequency| {
+                        let mut value = json!({
+                            "value": frequency.value.to_string(),
+                            "unit": frequency.unit.openaip_code(),
+                        });
+                        if let Some(name) = frequency.name.as_deref() {
+                            value["name"] = json!(name);
+                        }
+                        if let Some(primary) = frequency.primary {
+                            value["primary"] = json!(primary);
+                        }
+                        if let Some(remarks) = frequency.remarks.as_deref() {
+                            value["remarks"] = json!(remarks);
+                        }
+                        value
+                    })
+                    .collect::<Vec<_>>()
+            );
+        }
 
         json!({
             "type": "Feature",

@@ -82,4 +82,4 @@ dependencies {
     androidTestImplementation("androidx.test:rules:1.7.0")
 }
 
-apply(from = "tauri.build.gradle.kts")
+apply(from = file("tauri.build.gradle.kts"))

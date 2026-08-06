@@ -14,6 +14,10 @@ val tauriProperties = Properties().apply {
     }
 }
 
+val isUpdraftNightly = providers.gradleProperty("updraftNightly")
+    .getOrElse("false")
+    .toBooleanStrict()
+
 android {
     compileSdk = 37
     namespace = "aero.updraft"
@@ -41,6 +45,10 @@ android {
             }
         }
         getByName("release") {
+            if (isUpdraftNightly) {
+                applicationIdSuffix = ".nightly"
+                manifestPlaceholders["updraftApplicationLabel"] = "Updraft Nightly"
+            }
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }

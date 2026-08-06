@@ -8,6 +8,19 @@
 
   import { FillLayer, GeoJSONSource, LineLayer } from 'svelte-maplibre-gl';
 
+  import {
+    COLOR_BLUE_600,
+    COLOR_BLUE_700,
+    COLOR_GREEN_600,
+    COLOR_GREEN_700,
+    COLOR_RED_600,
+    COLOR_RED_700,
+    COLOR_SLATE_500,
+    COLOR_SLATE_600,
+    COLOR_VIOLET_600,
+    COLOR_VIOLET_700,
+  } from '$lib/map/colors.generated';
+
   type FillPaint = NonNullable<FillLayerSpecification['paint']>;
   type LinePaint = NonNullable<LineLayerSpecification['paint']>;
   type Props = {
@@ -90,12 +103,24 @@
   }
 
   const AIRSPACE_FILL_PAINT: FillPaint = {
-    'fill-color': airspaceStyleValue('#2563eb', '#dc2626', '#9333ea', '#16a34a', '#64748b'),
+    'fill-color': airspaceStyleValue(
+      COLOR_BLUE_600,
+      COLOR_RED_600,
+      COLOR_VIOLET_600,
+      COLOR_GREEN_600,
+      COLOR_SLATE_500,
+    ),
     'fill-opacity': airspaceStyleValue(0.12, 0.18, 0.14, 0.12, 0.08),
   };
 
   const AIRSPACE_OUTLINE_PAINT: LinePaint = {
-    'line-color': airspaceStyleValue('#1d4ed8', '#b91c1c', '#7e22ce', '#15803d', '#475569'),
+    'line-color': airspaceStyleValue(
+      COLOR_BLUE_700,
+      COLOR_RED_700,
+      COLOR_VIOLET_700,
+      COLOR_GREEN_700,
+      COLOR_SLATE_600,
+    ),
     'line-width': airspaceStyleValue(1.5, 2, 1.5, 1.5, 1),
   };
 

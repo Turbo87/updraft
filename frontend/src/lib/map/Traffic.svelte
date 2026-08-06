@@ -135,6 +135,14 @@
     }}
     paint={TRAFFIC_PAINT}
   />
+
+  <!--
+  `icon-rotation-alignment` does not support data-driven styling, so we need to use a dedicated
+  layer for non-rotating traffic.
+
+  see https://github.com/maplibre/maplibre-gl-js/issues/3461
+  -->
+
   <SymbolLayer
     id="traffic-directional"
     filter={[

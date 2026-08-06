@@ -19,6 +19,7 @@ android {
     namespace = "aero.updraft"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["updraftApplicationLabel"] = "Updraft"
         applicationId = "aero.updraft"
         minSdk = 24
         targetSdk = 36

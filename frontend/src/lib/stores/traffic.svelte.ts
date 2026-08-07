@@ -14,6 +14,7 @@ export class TrafficStore {
   #subscribers = new Set<TrafficSubscriber>();
 
   current = new SvelteMap<string, PublishedTrafficTarget>();
+  initialized = $state(false);
 
   apply(topic: Topic): void {
     if (topic.topic !== 'traffic') return;
@@ -32,6 +33,8 @@ export class TrafficStore {
         this.current.delete(id);
       }
     }
+
+    this.initialized = true;
 
     for (let subscriber of this.#subscribers) {
       subscriber(topic.value, this.current);

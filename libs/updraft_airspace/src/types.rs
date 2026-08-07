@@ -1,6 +1,9 @@
-use crate::{AirspaceFrequency, AirspaceOperatingHours, AirspaceTransponderSetting};
+use crate::{
+    AirspaceFrequency, AirspaceOperatingHours, AirspaceOperatingPeriod, AirspaceOperatingSchedule,
+    AirspaceTransponderSetting,
+};
 use serde_json::json;
-use time::OffsetDateTime;
+use time::{OffsetDateTime, Time, format_description::well_known::Rfc3339};
 use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
 
@@ -108,6 +111,130 @@ pub enum AirspaceAltitude {
     Unlimited,
 }
 
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum OpenAipLimitUnit {
+    Meters = 0,
+    Feet = 1,
+    FlightLevel = 6,
+}
+
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum OpenAipReferenceDatum {
+    Ground = 0,
+    MeanSeaLevel = 1,
+    StandardPressure = 2,
+}
+
+impl AirspaceAltitude {
+    fn to_openaip_limit(self) -> serde_json::Value {
+        match self {
+            Self::Ground => {
+                openaip_limit(0, OpenAipLimitUnit::Meters, OpenAipReferenceDatum::Ground)
+            }
+            Self::Msl(altitude) => openaip_limit(
+                whole_feet(altitude.into_inner()),
+                OpenAipLimitUnit::Feet,
+                OpenAipReferenceDatum::MeanSeaLevel,
+            ),
+            Self::Agl(height) => openaip_limit(
+                whole_feet(height),
+                OpenAipLimitUnit::Feet,
+                OpenAipReferenceDatum::Ground,
+            ),
+            Self::FlightLevel(altitude) => openaip_limit(
+                whole_feet(altitude.into_inner()) / 100,
+                OpenAipLimitUnit::FlightLevel,
+                OpenAipReferenceDatum::StandardPressure,
+            ),
+            Self::Unlimited => json!({ "unlimited": true }),
+        }
+    }
+}
+
+fn whole_feet(length: Length) -> i64 {
+    length.as_feet().round() as i64
+}
+
+fn openaip_limit(
+    value: i64,
+    unit: OpenAipLimitUnit,
+    reference_datum: OpenAipReferenceDatum,
+) -> serde_json::Value {
+    json!({
+        "value": value,
+        "unit": unit as u8,
+        "referenceDatum": reference_datum as u8,
+    })
+}
+
+fn format_openaip_time(time: Time) -> String {
+    format!(
+        "{:02}:{:02}:{:02}",
+        time.hour(),
+        time.minute(),
+        time.second()
+    )
+}
+
+fn format_openaip_datetime(datetime: OffsetDateTime) -> String {
+    datetime
+        .format(&Rfc3339)
+        .expect("airspace activation date must support RFC 3339")
+}
+
+fn operating_period_to_openaip_json(period: &AirspaceOperatingPeriod) -> serde_json::Value {
+    let mut value = json!({
+        "dayOfWeek": period.day_of_week.number_days_from_monday(),
+        "sunrise": false,
+        "sunset": false,
+        "byNotam": false,
+        "publicHolidaysExcluded": period.public_holidays_excluded,
+    });
+    match period.schedule {
+        AirspaceOperatingSchedule::Fixed {
+            start_time,
+            end_time,
+        } => {
+            value["startTime"] = json!(format_openaip_time(start_time));
+            value["endTime"] = json!(format_openaip_time(end_time));
+        }
+        AirspaceOperatingSchedule::FixedStartUntilSunset { start_time } => {
+            value["startTime"] = json!(format_openaip_time(start_time));
+            value["sunset"] = json!(true);
+        }
+        AirspaceOperatingSchedule::SunriseUntilFixedEnd { end_time } => {
+            value["endTime"] = json!(format_openaip_time(end_time));
+            value["sunrise"] = json!(true);
+        }
+        AirspaceOperatingSchedule::SunriseUntilSunset => {
+            value["sunrise"] = json!(true);
+            value["sunset"] = json!(true);
+        }
+        AirspaceOperatingSchedule::NoSpecifiedTime => {}
+        AirspaceOperatingSchedule::ByNotam => value["byNotam"] = json!(true),
+    }
+    if let Some(remarks) = period.remarks.as_deref() {
+        value["remarks"] = json!(remarks);
+    }
+    value
+}
+
+fn operating_hours_to_openaip_json(hours: &AirspaceOperatingHours) -> serde_json::Value {
+    let mut value = json!({
+        "operatingHours": hours
+            .operating_periods()
+            .iter()
+            .map(operating_period_to_openaip_json)
+            .collect::<Vec<_>>(),
+    });
+    if let Some(remarks) = hours.remarks.as_deref() {
+        value["remarks"] = json!(remarks);
+    }
+    value
+}
+
 /// One canonical polygon-only airspace.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airspace {
@@ -158,18 +285,103 @@ pub struct Airspace {
 }
 
 impl Airspace {
-    /// Converts this airspace to a GeoJSON rendering subset.
+    /// Converts this airspace to GeoJSON with OpenAIP-compatible aviation properties.
     ///
-    /// The `type` and `class` properties use numeric values from the
-    /// [OpenAIP airspace schema](https://api.core.openaip.net/api/schemas/response/airspace/airspace-schema.json).
+    /// Property names, shapes, and numeric values follow the
+    /// [OpenAIP airspace schema](https://api.core.openaip.net/api/schemas/response/airspace/airspace-schema.json)
+    /// when the schema can represent the canonical value.
     pub fn to_geojson(&self) -> serde_json::Value {
+        let mut properties = json!({
+            "type": self.type_code.openaip_code(),
+            "icaoClass": self.class.openaip_code(),
+            "lowerLimit": self.lower_limit.to_openaip_limit(),
+            "upperLimit": self.upper_limit.to_openaip_limit(),
+        });
+        if let Some(name) = self.name.as_deref() {
+            properties["name"] = json!(name);
+        }
+        if let Some(activity) = self.activity {
+            properties["activity"] = json!(activity.openaip_code());
+        }
+        match self.country_codes.as_slice() {
+            [] => {}
+            [country] => properties["country"] = json!(country),
+            countries => properties["country"] = json!(countries),
+        }
+        for (property, value) in [
+            ("onDemand", self.on_demand),
+            ("onRequest", self.on_request),
+            ("byNotam", self.by_notam),
+            ("specialAgreement", self.special_agreement),
+            ("requestCompliance", self.request_compliance),
+        ] {
+            if let Some(value) = value {
+                properties[property] = json!(value);
+            }
+        }
+        if let Some(lower_limit_min) = self.lower_limit_min {
+            properties["lowerLimitMin"] = lower_limit_min.to_openaip_limit();
+        }
+        if let Some(upper_limit_max) = self.upper_limit_max {
+            properties["upperLimitMax"] = upper_limit_max.to_openaip_limit();
+        }
+        if !self.frequencies.is_empty() {
+            properties["frequencies"] = json!(
+                self.frequencies
+                    .iter()
+                    .map(|frequency| {
+                        let mut value = json!({
+                            "value": frequency.value.to_string(),
+                            "unit": frequency.unit.openaip_code(),
+                        });
+                        if let Some(name) = frequency.name.as_deref() {
+                            value["name"] = json!(name);
+                        }
+                        if let Some(primary) = frequency.primary {
+                            value["primary"] = json!(primary);
+                        }
+                        if let Some(remarks) = frequency.remarks.as_deref() {
+                            value["remarks"] = json!(remarks);
+                        }
+                        value
+                    })
+                    .collect::<Vec<_>>()
+            );
+        }
+        if !self.transponder_settings.is_empty() {
+            properties["transponderSettings"] = json!(
+                self.transponder_settings
+                    .iter()
+                    .map(|setting| {
+                        let mut value = json!({
+                            "code": setting.code.to_string(),
+                            "primary": setting.primary,
+                        });
+                        if let Some(remarks) = setting.remarks.as_deref() {
+                            value["remarks"] = json!(remarks);
+                        }
+                        value
+                    })
+                    .collect::<Vec<_>>()
+            );
+        }
+        if let Some(hours_of_operation) = self.hours_of_operation.as_ref() {
+            properties["hoursOfOperation"] = operating_hours_to_openaip_json(hours_of_operation);
+        }
+        if let Some(active_from) = self.active_from {
+            properties["activeFrom"] = json!(format_openaip_datetime(active_from));
+        }
+        if let Some(active_until) = self.active_until {
+            properties["activeUntil"] = json!(format_openaip_datetime(active_until));
+        }
+        if let Some(remarks) = self.remarks.as_deref() {
+            properties["remarks"] = json!(remarks);
+        }
+
         json!({
             "type": "Feature",
             "id": self.id.0,
-            "properties": {
-                "type": self.type_code.openaip_code(),
-                "class": self.class.openaip_code(),
-            },
+            "properties": properties,
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [self.polygon.to_geojson_coordinates()],

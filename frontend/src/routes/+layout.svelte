@@ -37,7 +37,15 @@
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
-  const appContext = { client, airspace, externalDevices, mapState, settings } satisfies AppContext;
+  const appContext = {
+    client,
+    airspace,
+    externalDevices,
+    instruments,
+    mapState,
+    settings,
+    traffic,
+  } satisfies AppContext;
 
   setAppContext(appContext);
 

@@ -6,6 +6,7 @@ describe('AirspaceStore', () => {
   it('starts without an airspace source', () => {
     let store = new AirspaceStore();
 
+    expect(store.initialized).toBe(false);
     expect(store.current).toEqual({ type: 'none' });
   });
 
@@ -22,6 +23,7 @@ describe('AirspaceStore', () => {
       },
     });
 
+    expect(store.initialized).toBe(true);
     expect(store.current).toEqual({
       type: 'active',
       sourceName: 'openair.txt',
@@ -43,5 +45,20 @@ describe('AirspaceStore', () => {
       sourceName: 'openair.txt',
       error: 'parseFailed',
     });
+  });
+
+  it('ignores unrelated topics before initialization', () => {
+    let store = new AirspaceStore();
+
+    store.apply({
+      topic: 'settings',
+      value: {
+        locale: 'de',
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
+    });
+
+    expect(store.initialized).toBe(false);
+    expect(store.current).toEqual({ type: 'none' });
   });
 });

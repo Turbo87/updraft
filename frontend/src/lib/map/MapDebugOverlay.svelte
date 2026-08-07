@@ -10,7 +10,13 @@
     map,
     instruments,
     units,
-  }: { map: Map | undefined; instruments: Instruments; units: UnitSettings } = $props();
+    showTrafficHitAreas = $bindable(false),
+  }: {
+    map: Map | undefined;
+    instruments: Instruments;
+    units: UnitSettings;
+    showTrafficHitAreas?: boolean;
+  } = $props();
   const gps = $derived(instruments.gps);
   const altitudeMeters = $derived(gps?.altitudeMeters ?? null);
   const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);
@@ -70,10 +76,11 @@
 
   // Keep the readout in sync with the map while the overlay is visible.
   $effect(() => {
-    if (!map || !visible) return;
+    let activeMap = map;
+    if (!activeMap || !visible) return;
     syncView();
-    map.on('move', syncView);
-    return () => map.off('move', syncView);
+    activeMap.on('move', syncView);
+    return () => activeMap.off('move', syncView);
   });
 
   // MapLibre's tile-boundary debug mode outlines each tile and labels it with
@@ -137,6 +144,10 @@
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />
       Tile boundaries
+    </label>
+    <label>
+      <input type="checkbox" bind:checked={showTrafficHitAreas} />
+      Traffic hit areas
     </label>
   </div>
 {/if}

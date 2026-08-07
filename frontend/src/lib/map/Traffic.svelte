@@ -8,7 +8,7 @@
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { onMount } from 'svelte';
-  import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
+  import { CircleLayer, GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
 
   import {
     COLOR_AMBER_500,
@@ -80,7 +80,11 @@
     'icon-halo-width': ['case', ['boolean', ['get', 'stale'], false], 0.5, 1.5],
   };
 
-  let { traffic, altitudeUnit }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit } = $props();
+  let {
+    traffic,
+    altitudeUnit,
+    showTrafficHitAreas,
+  }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit; showTrafficHitAreas: boolean } = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
@@ -107,7 +111,17 @@
   );
 </script>
 
-<GeoJSONSource id="traffic" maxzoom={24} data={trafficFeatureCollection([], 'm')} bind:source>
+<GeoJSONSource
+  id="traffic"
+  maxzoom={24}
+  promoteId="id"
+  data={trafficFeatureCollection([], 'm')}
+  bind:source
+>
+  <CircleLayer
+    id="traffic-hit"
+    paint={{ 'circle-radius': 24, 'circle-opacity': showTrafficHitAreas ? 0.2 : 0 }}
+  />
   <SymbolLayer
     id="traffic-fixed"
     filter={[

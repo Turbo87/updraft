@@ -94,7 +94,7 @@
       controlled,
       [
         'match',
-        ['get', 'class'],
+        ['get', 'icaoClass'],
         [AIRSPACE_CLASS.A, AIRSPACE_CLASS.B, AIRSPACE_CLASS.C, AIRSPACE_CLASS.D, AIRSPACE_CLASS.E],
         controlled,
         other,
@@ -128,6 +128,7 @@
 </script>
 
 <GeoJSONSource id="airspace" maxzoom={24} {data}>
+  <FillLayer id="airspace-hit" {beforeId} paint={{ 'fill-opacity': 0 }} />
   <FillLayer id="airspace-fill" {beforeId} paint={AIRSPACE_FILL_PAINT} />
   <LineLayer id="airspace-outline" {beforeId} paint={AIRSPACE_OUTLINE_PAINT} />
 </GeoJSONSource>

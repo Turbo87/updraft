@@ -1,0 +1,102 @@
+---
+source: libs/updraft_airspace/tests/airspace_geojson.rs
+expression: complete_airspace().to_geojson()
+---
+{
+  "geometry": {
+    "coordinates": [
+      [
+        [
+          10.0,
+          50.0
+        ],
+        [
+          10.016666666666667,
+          50.0
+        ],
+        [
+          10.016666666666667,
+          50.016666666666666
+        ],
+        [
+          10.0,
+          50.016666666666666
+        ],
+        [
+          10.0,
+          50.0
+        ]
+      ]
+    ],
+    "type": "Polygon"
+  },
+  "id": 0,
+  "properties": {
+    "activeFrom": "2026-04-12T08:30:00Z",
+    "activeUntil": "2026-04-12T17:45:00Z",
+    "activity": 5,
+    "byNotam": true,
+    "country": [
+      "DE",
+      "AT"
+    ],
+    "frequencies": [
+      {
+        "name": "TOWER",
+        "primary": true,
+        "remarks": "EMERGENCIES ONLY",
+        "unit": 2,
+        "value": "123.450"
+      }
+    ],
+    "hoursOfOperation": {
+      "operatingHours": [
+        {
+          "byNotam": false,
+          "dayOfWeek": 6,
+          "publicHolidaysExcluded": true,
+          "remarks": "DAYLIGHT HOURS",
+          "sunrise": true,
+          "sunset": true
+        }
+      ],
+      "remarks": "LOCAL TIME"
+    },
+    "icaoClass": 3,
+    "lowerLimit": {
+      "referenceDatum": 0,
+      "unit": 0,
+      "value": 0
+    },
+    "lowerLimitMin": {
+      "referenceDatum": 0,
+      "unit": 1,
+      "value": 500
+    },
+    "name": "Complete",
+    "onDemand": true,
+    "onRequest": false,
+    "remarks": "ACTIVE DURING GLIDER EVENTS",
+    "requestCompliance": true,
+    "specialAgreement": false,
+    "transponderSettings": [
+      {
+        "code": "0123",
+        "primary": true,
+        "remarks": "WHEN ACTIVE"
+      }
+    ],
+    "type": 1,
+    "upperLimit": {
+      "referenceDatum": 1,
+      "unit": 1,
+      "value": 5000
+    },
+    "upperLimitMax": {
+      "referenceDatum": 2,
+      "unit": 6,
+      "value": 120
+    }
+  },
+  "type": "Feature"
+}

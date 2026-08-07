@@ -60,6 +60,22 @@ describe('MapDebugOverlay.svelte', () => {
     await expect.element(checkbox).toBeChecked();
   });
 
+  it('offers an independent traffic-hit-area checkbox once visible', async () => {
+    render(MapDebugOverlay, { map: undefined, instruments: emptyInstruments, units: metricUnits });
+
+    await userEvent.keyboard('d');
+
+    let trafficHitAreas = page.getByRole('checkbox', { name: 'Traffic hit areas' });
+    let tileBoundaries = page.getByRole('checkbox', { name: 'Tile boundaries' });
+    await expect.element(trafficHitAreas).not.toBeChecked();
+    await expect.element(tileBoundaries).not.toBeChecked();
+
+    await trafficHitAreas.click();
+
+    await expect.element(trafficHitAreas).toBeChecked();
+    await expect.element(tileBoundaries).not.toBeChecked();
+  });
+
   it('keeps missing values and map coordinates unchanged', async () => {
     let view = await render(MapDebugOverlay, {
       map: undefined,

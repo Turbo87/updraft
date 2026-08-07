@@ -1,0 +1,49 @@
+---
+source: libs/updraft_airspace/tests/airspace_geojson.rs
+expression: properties
+---
+[
+  {
+    "icaoClass": 3,
+    "lowerLimit": {
+      "referenceDatum": 0,
+      "unit": 0,
+      "value": 0
+    },
+    "name": "Ground to AMSL",
+    "type": 0,
+    "upperLimit": {
+      "referenceDatum": 1,
+      "unit": 1,
+      "value": 5000
+    }
+  },
+  {
+    "icaoClass": 3,
+    "lowerLimit": {
+      "referenceDatum": 0,
+      "unit": 1,
+      "value": 1000
+    },
+    "name": "AGL to flight level",
+    "type": 0,
+    "upperLimit": {
+      "referenceDatum": 2,
+      "unit": 6,
+      "value": 100
+    }
+  },
+  {
+    "icaoClass": 3,
+    "lowerLimit": {
+      "referenceDatum": 1,
+      "unit": 1,
+      "value": 250
+    },
+    "name": "AMSL to unlimited",
+    "type": 0,
+    "upperLimit": {
+      "unlimited": true
+    }
+  }
+]

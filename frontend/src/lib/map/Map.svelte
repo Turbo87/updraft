@@ -65,7 +65,9 @@
   const airspaceData = $derived(
     airspace.type === 'active'
       ? (inlineAirspaceData ??
-          `${convertFileSrc('airspace.geojson', 'updraft')}?v=${airspace.generation}`)
+          (testMode
+            ? null
+            : `${convertFileSrc('airspace.geojson', 'updraft')}?v=${airspace.generation}`))
       : null,
   );
 

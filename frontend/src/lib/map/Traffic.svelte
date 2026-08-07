@@ -22,12 +22,9 @@
   type SymbolLayout = NonNullable<SymbolLayerSpecification['layout']>;
   type SymbolPaint = NonNullable<SymbolLayerSpecification['paint']>;
 
-  const TRAFFIC_OPACITY: ExpressionSpecification = [
-    'case',
-    ['boolean', ['get', 'stale'], false],
-    0.45,
-    1,
-  ];
+  const IF_STALE: ExpressionSpecification = ['boolean', ['get', 'stale'], false];
+
+  const TRAFFIC_OPACITY: ExpressionSpecification = ['case', IF_STALE, 0.45, 1];
 
   const TRAFFIC_LAYOUT: SymbolLayout = {
     'icon-image': [
@@ -51,9 +48,15 @@
       'updraft-sdf:airship',
       'updraft-sdf:unknown',
     ],
-    'icon-size': 0.75,
+    'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.3, 8, 0.75],
     'icon-allow-overlap': true,
-    'text-field': ['coalesce', ['get', 'altitudeLabel'], ''],
+    'text-field': [
+      'step',
+      ['zoom'],
+      ['coalesce', ''],
+      7,
+      ['coalesce', ['get', 'altitudeLabel'], ''],
+    ],
     'text-size': 11,
     'text-rotation-alignment': 'viewport',
     'text-allow-overlap': true,
@@ -77,7 +80,7 @@
     'text-color': COLOR_SLATE_900,
     'text-opacity': TRAFFIC_OPACITY,
     'icon-halo-color': COLOR_SLATE_900,
-    'icon-halo-width': ['case', ['boolean', ['get', 'stale'], false], 0.5, 1.5],
+    'icon-halo-width': ['interpolate', ['linear'], ['zoom'], 4, 0, 8, ['case', IF_STALE, 0.5, 1.5]],
   };
 
   let {
@@ -135,6 +138,14 @@
     }}
     paint={TRAFFIC_PAINT}
   />
+
+  <!--
+  `icon-rotation-alignment` does not support data-driven styling, so we need to use a dedicated
+  layer for non-rotating traffic.
+
+  see https://github.com/maplibre/maplibre-gl-js/issues/3461
+  -->
+
   <SymbolLayer
     id="traffic-directional"
     filter={[

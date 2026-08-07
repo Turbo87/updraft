@@ -14,11 +14,16 @@ val tauriProperties = Properties().apply {
     }
 }
 
+val isUpdraftNightly = providers.gradleProperty("updraftNightly")
+    .getOrElse("false")
+    .toBooleanStrict()
+
 android {
     compileSdk = 37
     namespace = "aero.updraft"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["updraftApplicationLabel"] = "Updraft"
         applicationId = "aero.updraft"
         minSdk = 24
         targetSdk = 36
@@ -40,6 +45,10 @@ android {
             }
         }
         getByName("release") {
+            if (isUpdraftNightly) {
+                applicationIdSuffix = ".nightly"
+                manifestPlaceholders["updraftApplicationLabel"] = "Updraft Nightly"
+            }
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
@@ -82,4 +91,4 @@ dependencies {
     androidTestImplementation("androidx.test:rules:1.7.0")
 }
 
-apply(from = "tauri.build.gradle.kts")
+apply(from = file("tauri.build.gradle.kts"))

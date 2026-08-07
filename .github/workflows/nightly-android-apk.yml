@@ -1,0 +1,112 @@
+name: Nightly Android APK
+
+on:
+  schedule:
+    # Run each day at 02:17 UTC.
+    # GitHub recommends avoiding the start of an hour to reduce scheduling delays.
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-android-apk
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  ANDROID_BUILD_TOOLS_VERSION: 36.0.0
+  NDK_VERSION: 28.1.13356709
+  UPDRAFT_NIGHTLY_APK: tauri/gen/android/app/build/outputs/apk/universal/release/updraft-nightly-arm64.apk
+  UPDRAFT_UNSIGNED_APK: tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+
+jobs:
+  build-nightly-android-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        with:
+          packages: platform-tools platforms;android-36 platforms;android-37.0 build-tools;${{ env.ANDROID_BUILD_TOOLS_VERSION }} ndk;${{ env.NDK_VERSION }}
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: rustup target add aarch64-linux-android
+      - run: pnpm install --frozen-lockfile
+      - run: cargo fetch --locked
+
+      # These Tauri plugin packages omit consumer-rules.pro.
+      # Gradle 9 stops release builds when the file is missing.
+      - name: Supply missing Tauri consumer rules
+        run: |
+          UPDRAFT_CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+          for UPDRAFT_PLUGIN_DIR in \
+            "$UPDRAFT_CARGO_HOME"/registry/src/*/tauri-plugin-dialog-2.7.2/android \
+            "$UPDRAFT_CARGO_HOME"/registry/src/*/tauri-plugin-fs-2.5.1/android
+          do
+            cp "$UPDRAFT_PLUGIN_DIR/proguard-rules.pro" \
+              "$UPDRAFT_PLUGIN_DIR/consumer-rules.pro"
+          done
+
+      - name: Build release APK
+        run: pnpm tauri android build --target aarch64 --apk --ci
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+          ORG_GRADLE_PROJECT_updraftNightly: 'true'
+
+      - name: Sign release APK
+        env:
+          ANDROID_NIGHTLY_KEYSTORE_BASE64: ${{ secrets.ANDROID_NIGHTLY_KEYSTORE_BASE64 }}
+          ANDROID_NIGHTLY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_NIGHTLY_KEYSTORE_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_NIGHTLY_KEYSTORE_BASE64" ]]; then
+            echo "::error::ANDROID_NIGHTLY_KEYSTORE_BASE64 is not configured"
+            exit 1
+          fi
+          if [[ -z "$ANDROID_NIGHTLY_KEYSTORE_PASSWORD" ]]; then
+            echo "::error::ANDROID_NIGHTLY_KEYSTORE_PASSWORD is not configured"
+            exit 1
+          fi
+
+          UPDRAFT_KEYSTORE="$RUNNER_TEMP/updraft-nightly.keystore"
+          trap 'rm -f "$UPDRAFT_KEYSTORE"' EXIT
+          printf '%s' "$ANDROID_NIGHTLY_KEYSTORE_BASE64" \
+            | base64 --decode > "$UPDRAFT_KEYSTORE"
+          chmod 600 "$UPDRAFT_KEYSTORE"
+
+          "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS_VERSION/zipalign" \
+            -c -P 16 4 "$UPDRAFT_UNSIGNED_APK"
+          "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS_VERSION/apksigner" sign \
+            --ks "$UPDRAFT_KEYSTORE" \
+            --ks-pass env:ANDROID_NIGHTLY_KEYSTORE_PASSWORD \
+            --out "$UPDRAFT_NIGHTLY_APK" \
+            "$UPDRAFT_UNSIGNED_APK"
+          "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS_VERSION/apksigner" verify \
+            --verbose --print-certs "$UPDRAFT_NIGHTLY_APK"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ env.UPDRAFT_NIGHTLY_APK }}
+          if-no-files-found: error
+          retention-days: 14
+          archive: false

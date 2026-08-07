@@ -10,6 +10,7 @@
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
+  import { convertFileSrc } from '@tauri-apps/api/core';
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import Airspace from './Airspace.svelte';
@@ -63,7 +64,10 @@
   );
   const airspaceData = $derived(
     airspace.type === 'active'
-      ? (inlineAirspaceData ?? `updraft://localhost/airspace.geojson?v=${airspace.generation}`)
+      ? (inlineAirspaceData ??
+          (testMode
+            ? null
+            : `${convertFileSrc('airspace.geojson', 'updraft')}?v=${airspace.generation}`))
       : null,
   );
 

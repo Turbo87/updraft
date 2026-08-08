@@ -27,7 +27,7 @@ tempfile = "=3.27.0"
 tracing = "=0.1.44"
 tracing-appender = "=0.2.5"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
-thiserror = "=2.0.19"
+thiserror = "=2.0.20"
 updraft_airspace = { path = "../libs/updraft_airspace" }
 updraft_core = { path = "../libs/updraft_core" }
 updraft_geo = { path = "../libs/updraft_geo" }

@@ -29,6 +29,8 @@ must state whether its behavior is current or planned.
   resources, and current map presentation.
 - [Traffic](product/traffic.md) defines FLARM observation, identity, freshness,
   topic updates, map presentation, and details.
+- [Flight View](product/flight-view.md) defines the map session, position follow
+  mode, and map inspection.
 
 The documents under `design/` contain older product and architecture designs.
 Some sections describe superseded architecture. They are historical material,

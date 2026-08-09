@@ -1,13 +1,21 @@
-# Discovery: Features
+# Product Scope
 
-This document contains a single categorized list of all features and subfeatures found across the analyzed systems, compiled from the discovery documents in this directory.
+Status: Product direction
 
-Each feature is prefixed with a status marker, so we can triage which ones to target for our app:
+This document classifies the capabilities found during ecosystem research. It
+records product intent. It does not record implementation status, delivery
+order, or an accepted design.
+
+Each capability has one scope marker:
 
 - ✅ target
-- ✳️ maybe / partial
-- ❌ skip
+- ✳️ partial target or open boundary
+- ❌ excluded
 - ⬜ undecided
+
+Use the [roadmap](roadmap.md) for delivery status. Use the current product
+documents for accepted behavior. Research sources are under
+`research/ecosystem/`.
 
 ## Map display & interaction
 

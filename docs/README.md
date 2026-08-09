@@ -8,6 +8,8 @@ four roles. Do not combine the roles when you interpret a requirement.
 - [Application architecture](architecture.md) defines the current ownership and
   integration boundaries.
 - [Implementation roadmap](roadmap.md) records delivered and planned work.
+- [Product scope](product-scope.md) classifies target, partial, excluded, and
+  undecided capabilities without implying delivery status.
 - [CSS](css.md) defines current frontend styling rules.
 - [Glossary](glossary.md) defines project terms.
 

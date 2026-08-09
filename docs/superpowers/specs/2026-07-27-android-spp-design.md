@@ -7,7 +7,7 @@ milestone 3 from the [application architecture](2026-07-25-app-architecture-desi
 It builds on the foreground service, wake lock, permission flow, internal GPS,
 and activity-relaunch handling delivered by the
 [Android platform milestone](2026-07-25-app-architecture-design.md#mobile-plugin).
-The [Android platform verification](../verification/2026-07-26-android-platform.md)
+The [Android platform verification](../../verification/2026-07-26-android-platform.md)
 records the lifecycle evidence.
 
 The first hardware target is

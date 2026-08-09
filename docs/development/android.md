@@ -97,5 +97,5 @@ transitions, activity rebuild policy, and the generated MainActivity flag.
 Physical verification is still required for real background limits, Bluetooth
 hardware, manufacturer behavior, and release builds.
 
-The records under [verification](../superpowers/verification/) are historical
+The records under [verification](../verification/) are historical
 physical evidence. They do not extend this platform contract.

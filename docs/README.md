@@ -47,15 +47,16 @@ decisions but do not define Updraft behavior.
 - [Ecosystem research](research/ecosystem/README.md) contains dated capability
   inventories for related navigation systems and avionics.
 
-Technical investigations still use the temporary
-`superpowers/investigations/` location until the evidence cleanup.
+- [Technical investigations](research/investigations/README.md) contain dated
+  root-cause evidence for resolved or constrained problems.
 
 ## Verification evidence
 
 Verification documents record manual or physical checks that automated tests
 cannot prove. They describe the tested environment, result, and limitations.
 
-The current verification records are under `superpowers/verification/`.
+- [Verification records](verification/README.md) contain dated manual and
+  physical test results.
 
 ## Development guides
 

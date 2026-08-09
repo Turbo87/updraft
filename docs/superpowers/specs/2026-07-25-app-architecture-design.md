@@ -187,7 +187,7 @@ The shell feeds a tick input at 10 Hz. This is what lets a clockless core expres
 
 Two Tauri-level fixes belong to the shell rather than the plugin. Emulator
 spikes identified both causes. The
-[Android platform verification](../verification/2026-07-26-android-platform.md)
+[Android platform verification](../../verification/2026-07-26-android-platform.md)
 records the measured results.
 
 - **`prevent_exit()`.** Stock Tauri exits the process when the last window closes, because tao's Android event loop calls `std::process::exit`. When the activity is destroyed the process dies about two seconds after `onTaskRemoved` and takes the foreground service with it. Handling `RunEvent::ExitRequested` with `api.prevent_exit()` is not optional for an app that must keep recording after the user leaves it.

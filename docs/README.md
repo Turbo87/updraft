@@ -58,6 +58,8 @@ The current verification records are under `superpowers/verification/`.
   foreground-session, permission, GNSS, SPP, and activity boundaries.
 - [Replay server](development/replay.md) defines the current NMEA and IGC TCP
   replay tool for development and manual testing.
+- [Testing](development/testing.md) defines test ownership, local checks, and
+  the limits of each test layer.
 
 ## Historical specifications
 

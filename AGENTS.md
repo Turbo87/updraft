@@ -15,11 +15,11 @@ This file contains project rules that agents often miss. Keep changes small, spe
 
 ## Sources of truth
 
-Do not assume that files in `docs/design/` describe the current design. Check `docs/superpowers/specs/` for a newer specification about the same subject.
+Use `docs/README.md` as the documentation entry point. Use `docs/architecture.md` for current system boundaries and `docs/roadmap.md` for delivery status.
 
-Follow a newer specification when it covers the same scope or explicitly supersedes the older design. Report unclear conflicts instead of guessing or combining incompatible designs.
+Files under `docs/design/` and `docs/superpowers/specs/` are historical. Do not use them as current requirements. Report a missing or unclear current requirement instead of combining historical designs.
 
-Specifications define intended behavior. Code and tests define implemented behavior. Treat prototypes and simulators as evidence, not as architecture or hardware-compatibility guarantees.
+Current product documents define accepted intended behavior. Code and tests define implemented behavior. Treat prototypes and simulators as evidence, not as architecture or hardware-compatibility guarantees.
 
 ## Scope and design
 

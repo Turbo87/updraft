@@ -23,6 +23,8 @@ must state whether its behavior is current or planned.
   persistence, and presentation behavior.
 - [External devices](product/devices.md) defines supported connections,
   lifecycle, ordering, and Settings behavior.
+- [Flight data](product/flight-data.md) defines source priority, freshness,
+  selection, and frontend projection.
 
 The documents under `design/` contain older product and architecture designs.
 Some sections describe superseded architecture. They are historical material,

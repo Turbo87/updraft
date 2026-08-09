@@ -108,6 +108,23 @@ test('follows live positions until the user pans and returns', async ({ page }) 
   await expectMapPosition(page, POSITION_C);
 });
 
+test('keeps the Settings button inside the safe area', async ({ page }) => {
+  await page.goto('/?testMode=1');
+  await page.locator('html').evaluate((element) => {
+    element.style.setProperty('--safe-area-top', '32px');
+    element.style.setProperty('--safe-area-right', '24px');
+  });
+
+  await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+    'content',
+    'width=device-width, initial-scale=1, viewport-fit=cover',
+  );
+
+  let settingsButton = page.getByRole('link', { name: 'Settings' });
+  await expect(settingsButton.locator('..')).toHaveCSS('top', '40px');
+  await expect(settingsButton.locator('..')).toHaveCSS('right', '32px');
+});
+
 test('renders active airspace below traffic and ownship', async ({ page }) => {
   await page.addInitScript((data) => {
     (window as TestWindow).__updraftTestAirspaceData = data;

@@ -61,8 +61,8 @@
 
   .overlay {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: calc(0.5rem + var(--safe-area-top));
+    right: calc(0.5rem + var(--safe-area-right));
   }
 
   a {

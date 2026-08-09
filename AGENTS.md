@@ -17,7 +17,9 @@ This file contains project rules that agents often miss. Keep changes small, spe
 
 Use `docs/README.md` as the documentation entry point. Use `docs/architecture.md` for current system boundaries and `docs/roadmap.md` for delivery status.
 
-Files under `docs/design/` and `docs/superpowers/specs/` are historical. Do not use them as current requirements. Report a missing or unclear current requirement instead of combining historical designs.
+Git history contains earlier designs and dated implementation specifications.
+Do not recover them as current requirements. Report a missing or unclear
+current requirement instead of combining historical designs.
 
 Current product documents define accepted intended behavior. Code and tests define implemented behavior. Treat prototypes and simulators as evidence, not as architecture or hardware-compatibility guarantees.
 

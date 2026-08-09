@@ -34,10 +34,6 @@ must state whether its behavior is current or planned.
 - [Flight View](product/flight-view.md) defines the map session, position follow
   mode, and map inspection.
 
-The documents under `design/` contain older product and architecture designs.
-Some sections describe superseded architecture. They are historical material,
-not a source for current system boundaries.
-
 ## Research
 
 Research documents record dated observations and analysis. They inform product
@@ -66,13 +62,3 @@ cannot prove. They describe the tested environment, result, and limitations.
   replay tool for development and manual testing.
 - [Testing](development/testing.md) defines test ownership, local checks, and
   the limits of each test layer.
-
-## Historical specifications
-
-The dated documents under `superpowers/specs/` record earlier design and
-delivery decisions. Newer documents sometimes supersede individual sections of
-older documents. These files preserve history. They do not override the current
-architecture or implemented behavior.
-
-Active requirements from these specifications belong in the current
-architecture, product, or development documents.

@@ -44,6 +44,11 @@ cannot prove. They describe the tested environment, result, and limitations.
 
 The current verification records are under `superpowers/verification/`.
 
+## Development guides
+
+- [Android platform](development/android.md) defines the current build,
+  foreground-session, permission, GNSS, SPP, and activity boundaries.
+
 ## Historical specifications
 
 The dated documents under `superpowers/specs/` record earlier design and

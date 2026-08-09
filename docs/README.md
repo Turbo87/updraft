@@ -27,6 +27,8 @@ must state whether its behavior is current or planned.
   selection, and frontend projection.
 - [Airspace](product/airspace.md) defines import, canonical data, storage,
   resources, and current map presentation.
+- [Traffic](product/traffic.md) defines FLARM observation, identity, freshness,
+  topic updates, map presentation, and details.
 
 The documents under `design/` contain older product and architecture designs.
 Some sections describe superseded architecture. They are historical material,

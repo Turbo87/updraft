@@ -56,6 +56,8 @@ The current verification records are under `superpowers/verification/`.
 
 - [Android platform](development/android.md) defines the current build,
   foreground-session, permission, GNSS, SPP, and activity boundaries.
+- [Replay server](development/replay.md) defines the current NMEA and IGC TCP
+  replay tool for development and manual testing.
 
 ## Historical specifications
 

@@ -11,8 +11,8 @@
 <style>
   button {
     position: absolute;
-    inset-block-end: 1rem;
-    inset-inline-end: 1rem;
+    right: calc(1rem + var(--safe-area-right));
+    bottom: calc(1rem + var(--safe-area-bottom));
     display: grid;
     place-items: center;
     width: 3rem;

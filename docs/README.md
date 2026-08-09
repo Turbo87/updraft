@@ -21,6 +21,8 @@ must state whether its behavior is current or planned.
 
 - [Settings](product/settings.md) defines current navigation, ownership,
   persistence, and presentation behavior.
+- [External devices](product/devices.md) defines supported connections,
+  lifecycle, ordering, and Settings behavior.
 
 The documents under `design/` contain older product and architecture designs.
 Some sections describe superseded architecture. They are historical material,

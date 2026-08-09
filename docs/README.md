@@ -25,6 +25,8 @@ must state whether its behavior is current or planned.
   lifecycle, ordering, and Settings behavior.
 - [Flight data](product/flight-data.md) defines source priority, freshness,
   selection, and frontend projection.
+- [Airspace](product/airspace.md) defines import, canonical data, storage,
+  resources, and current map presentation.
 
 The documents under `design/` contain older product and architecture designs.
 Some sections describe superseded architecture. They are historical material,

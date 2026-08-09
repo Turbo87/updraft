@@ -1,4 +1,4 @@
-# Discovery: Enroute Flight Navigation
+# Ecosystem: Enroute Flight Navigation
 
 > **Framing note.** Enroute Flight Navigation (by Akaflieg Freiburg) is a **VFR moving-map navigation app for powered GA / touring aircraft**, not a soaring flight computer. It deliberately has no glide computer, no MacCready/polar model, no thermal assistant, and no cross-country task/scoring engine. As a result, large parts of the soaring-oriented taxonomy below come back `absent`. Where Enroute has a _different but adjacent_ capability (e.g. a flight-route editor instead of a task manager, a side-view instead of an airspace cross-section analysis), that is called out in the notes.
 

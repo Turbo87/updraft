@@ -1,4 +1,4 @@
-# Discovery: [Name]
+# Ecosystem: [Name]
 
 ## System overview
 

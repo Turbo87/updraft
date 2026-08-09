@@ -1,4 +1,4 @@
-# Discovery: XCTrack (XCTrack Pro)
+# Ecosystem: XCTrack (XCTrack Pro)
 
 ## System overview
 

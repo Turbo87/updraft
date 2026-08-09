@@ -1,4 +1,4 @@
-# Discovery: SeeYou Navigator
+# Ecosystem: SeeYou Navigator
 
 ## System overview
 

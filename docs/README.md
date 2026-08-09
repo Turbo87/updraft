@@ -43,9 +43,12 @@ not a source for current system boundaries.
 Research documents record dated observations and analysis. They inform product
 decisions but do not define Updraft behavior.
 
-The current research material is under `discovery/` and
-`superpowers/investigations/`. The product research will use the
-`research/ecosystem/` location.
+- [Research index](research/README.md) defines the evidence and freshness rules.
+- [Ecosystem research](research/ecosystem/README.md) contains dated capability
+  inventories for related navigation systems and avionics.
+
+Technical investigations still use the temporary
+`superpowers/investigations/` location until the evidence cleanup.
 
 ## Verification evidence
 

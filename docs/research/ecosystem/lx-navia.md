@@ -1,4 +1,4 @@
-# Discovery: LX Navigation Navia
+# Ecosystem: LX Navigation Navia
 
 > **Key caveat that colours the whole inventory:** Navia is a very new, actively launching ecosystem. LX navigation has **not published a pilot / user manual for Navia OS** — only an _installation_ manual and a catalogue. As a result, the hardware, connectivity, sensor, traffic, display, audio and cloud layers are reasonably well documented, but the classic soaring **flight‑computer software behaviour** (MacCready logic, task engine, final glide, thermal assistant, InfoBox catalogue, analysis pages) is essentially undocumented in public sources. Those items are marked `?` on purpose rather than inferred from the heritage LX Zeus/Era/Eos line, even where heritage makes them likely.
 

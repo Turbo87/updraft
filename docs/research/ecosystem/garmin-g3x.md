@@ -1,4 +1,4 @@
-# Discovery: Garmin G3X (non-touch)
+# Ecosystem: Garmin G3X (non-touch)
 
 > **Framing note:** The G3X is a general-aviation glass-cockpit EFIS for experimental / LSA aircraft, _not_ a soaring flight computer. Scored here against XCSoar's soaring taxonomy, most soaring-specific rows come out **absent** (MacCready, polar, thermal assistant, tasks/AAT, IGC, FLARM, WeGlide, live tracking), while a large body of powered-EFIS capability that has no row in this taxonomy is captured in §3.99. "Present via ADS-B/TIS/TAS" is called out explicitly wherever it stands in for a FLARM row, so the distinction isn't lost.
 

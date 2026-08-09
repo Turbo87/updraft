@@ -1,4 +1,4 @@
-# Discovery: LXNAV LX90xx / LX80xx
+# Ecosystem: LXNAV LX90xx / LX80xx
 
 ## System overview
 

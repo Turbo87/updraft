@@ -1,4 +1,4 @@
-# Discovery: WeGlide Copilot
+# Ecosystem: WeGlide Copilot
 
 ## System overview
 

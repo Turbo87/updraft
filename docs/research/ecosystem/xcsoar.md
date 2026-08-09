@@ -1,4 +1,4 @@
-# Discovery: XCSoar
+# Ecosystem: XCSoar
 
 ## System overview
 

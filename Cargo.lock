@@ -5062,6 +5062,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "updraft_waypoint"
+version = "0.0.0"
+dependencies = [
+ "claims",
+ "time",
+ "updraft_geo",
+ "updraft_units",
+]
+
+[[package]]
 name = "url"
 version = "2.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"

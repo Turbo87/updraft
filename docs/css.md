@@ -1,5 +1,7 @@
 # CSS
 
+Status: Current development guide
+
 Updraft uses a small global foundation and scoped styles in Svelte components.
 Global CSS defines shared values and document defaults. Components own the
 appearance of their markup.
@@ -91,10 +93,10 @@ element owned by the component so they cannot affect unrelated content.
 
 ## Themes and colors
 
-Updraft has two visual themes: light and dark. Display settings offer `system`,
-`light`, and `dark`. The system setting follows `prefers-color-scheme` and does
-not set a `data-theme` attribute. Explicit settings select a theme at the
-document root:
+Updraft defines light and dark visual themes. The current application follows
+`prefers-color-scheme` because it does not expose or persist a theme setting.
+The CSS foundation also supports an explicit `data-theme` value at the document
+root:
 
 ```css
 :root {
@@ -110,10 +112,10 @@ document root:
 }
 ```
 
-The saved setting is applied early enough to avoid showing the wrong theme
-during startup. Theme-selection logic lives at the application level rather
-than in individual components. There is no infrastructure for additional
-themes or user-defined palettes.
+The explicit selectors are infrastructure for the planned theme setting. No
+current application code sets them. Future theme-selection logic belongs at the
+application level rather than in individual components. There is no
+infrastructure for additional themes or user-defined palettes.
 
 `colors.ts` contains the complete default Tailwind color palette. The source
 records the release, source URL, retrieval date, and license notice. The

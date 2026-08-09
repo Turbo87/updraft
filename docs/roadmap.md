@@ -1,13 +1,25 @@
 # Implementation Roadmap
 
-The [current application architecture](superpowers/specs/2026-07-25-app-architecture-design.md) uses a deterministic Rust core and a Tauri shell. The frontend sends commands through Tauri IPC. The core sends topics through one Tauri channel. MapLibre reads large resources through `updraft://` URLs.
+Status: Delivery backlog
+
+The [current application architecture](architecture.md) uses a deterministic
+Rust core and a Tauri shell. The frontend sends commands through Tauri IPC. The
+core sends topics through one Tauri channel. MapLibre reads large resources
+through `updraft://` URLs.
 
 An HTTP API is not part of the current architecture. It can return later if a specific feature needs it. Multi-display support is a far-future, optional feature.
 
 - **Start with one complete feature path.** A feature uses only the core state, shell adapters, resource paths, or frontend presentation that it needs.
 - **Replay is development infrastructure.** The replay tool sends recorded NMEA or converted IGC data through the same TCP and NMEA path as a device.
 - **Harden each parser when it lands.** Each parser has no-panic tests and snapshots for applicable recorded data in `testdata/`.
-- **Treat this document as a rough plan.** Each feature needs a focused specification before implementation.
+- **Treat this document as a rough plan.** Each feature needs a focused design
+  before implementation.
+
+A checked item means that the described slice exists in the current code. It
+does not mean that the broader product capability is complete. An unchecked
+item is backlog, not an accepted design or delivery commitment. Use
+[`product-scope.md`](product-scope.md) for product intent and the product
+documents for accepted behavior.
 
 ## MVP delivery status
 
@@ -19,6 +31,8 @@ An HTTP API is not part of the current architecture. It can return later if a sp
 - [x] **unit-selection** — persist display units and apply them to current flight and traffic values.
 - [x] **external-device-management** — persist TCP and Bluetooth SPP devices. Add, edit, enable, disable, and delete them in Settings.
 - [x] **airspace-source-management** — import, replace, and remove one local OpenAir source in Settings.
+- [x] **map-inspection** — open a nearby route from a map point and show current
+  airspace and traffic results with detail routes.
 - [ ] **map-orientation-setting** — persist map orientation and add its Settings control. _(needs: map-orientation, settings-persistence)_
 - [ ] **flight-data-fields** — add a fixed-slot Flight View dock for the first altitude, speed, direction, and time values. _(needs: route-shell, frontend-protocol, units-settings)_
 - [ ] **offline-basemap** — import one local MBTiles basemap and serve its vector tiles through `updraft://localhost/basemap/`.
@@ -48,6 +62,9 @@ An HTTP API is not part of the current architecture. It can return later if a sp
 - [ ] **app-shell** — add the Main Menu, common screen headers, and responsive phone and wide-screen navigation. _(needs: route-shell)_
 - [x] **resource-scheme** — the Tauri shell serves role-based resources through `updraft://localhost/`. Airspace GeoJSON is the first resource. _(needs: tauri-scaffold, tauri-driver)_
 - [x] **e2e-scaffold** — Playwright uses the browser fake and a minimal inline map style. Tests can send topics, inspect shared map state, and wait for deterministic MapLibre results. _(needs: map-position, frontend-protocol)_
+- [x] **map-inspector** — every normal map tap opens a coordinate route with
+  distance and bearing from ownship. The route queries current MapLibre hit
+  layers without moving the camera. _(needs: route-shell, frontend-map)_
 
 ## Sensor input & replay
 
@@ -119,7 +136,9 @@ An HTTP API is not part of the current architecture. It can return later if a sp
 - [ ] **cub-airspace** — SeeYou CUB airspace parser. _(needs: airspace-dataset)_
 - [ ] **sua-airspace** — SUA airspace parser. _(needs: airspace-dataset)_
 - [ ] **airspace-warnings** — detect predicted incursions and publish graded warnings. Offer Until clear, 5 minute, 15 minute, 1 hour, and Today suppression. _(needs: airspace-dataset, geo-shapes, flight-modes, warning-presentation)_
-- [ ] **map-inspector-airspace** — add stacked airspaces, vicinity information, and airspace details to map-inspector results. _(needs: airspace-on-map, map-inspector-waypoints)_
+- [x] **map-inspector-airspace** — show rendered airspaces at the selected map
+  point and link to details from the current dataset. _(needs: airspace-on-map,
+  map-inspector)_
 - [ ] **obstacles** — obstacle databases and warnings. _(needs: airspace-warnings, dem)_
 
 ## Tasks
@@ -147,7 +166,11 @@ An HTTP API is not part of the current architecture. It can return later if a sp
 - [ ] **radar-view** — dedicated FLARM radar page (relative-position rose). _(needs: traffic-store)_
 - [ ] **traffic-warnings** — present authoritative FLARM alarm levels through the shared warning UI. Support one-tap acknowledgement and reactivation when the device reports a new or worse alarm. Do not calculate collision risk in Updraft. _(needs: traffic-store, warning-presentation)_
 - [ ] **traffic-lookup** — FlarmNet / OGN DDB parsing and ID→registration lookup, custom naming, buddy highlighting. _(needs: traffic-store)_
-- [ ] **map-inspector-traffic** — add live traffic results, per-target details, and the sortable traffic list to the map inspector. _(needs: traffic-on-map, traffic-lookup, map-inspector-waypoints)_
+- [x] **map-inspector-traffic** — retain traffic at the selected map point,
+  refresh those targets from topic updates, and link to live details. _(needs:
+  traffic-on-map, map-inspector)_
+- [ ] **traffic-list** — add a sortable list of all current traffic with search
+  and direct detail navigation. _(needs: traffic-store, traffic-lookup)_
 - [ ] **traffic-navigation-targets** — allow live traffic to occupy additional-target positions alongside waypoints and map positions, including focus and pinning, relative-altitude presentation, live guidance updates, and unavailable retention with report age and last-known-position guidance. _(needs: map-inspector-traffic, pinned-navigation-targets)_
 - [ ] **ogn** — OGN traffic via the WeGlide Live API (bbox-scoped polling) + FLARM/OGN deduplication. _(needs: traffic-store, connectivity)_
 - [ ] **adsb** — ADS-B In traffic: `libs/updraft_gdl90` (flag-delimited binary framing) as a second parser framing, plus PowerFLARM/Stratux wiring. _(needs: traffic-store)_

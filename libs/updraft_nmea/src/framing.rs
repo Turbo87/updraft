@@ -239,6 +239,22 @@ mod tests {
     }
 
     #[test]
+    fn parses_pflal_power_data() {
+        let s = b"$PFLAL,09541739 PWR STATE 4 LVL 28 BAT 0.00 EXT 13.06 TEMP 37.8*01\r\n";
+        assert_matches!(parse_one(s), Step::Frame(Message::Pflal(_)));
+    }
+
+    #[test]
+    fn keeps_an_unsupported_pflal_as_unknown() {
+        let s = b"$PFLAL,095417GPS 7 39\r\n";
+        assert_matches!(
+            parse_one(s),
+            Step::Frame(Message::Unknown(unknown))
+                if &*unknown.sentence == "$PFLAL,095417GPS 7 39"
+        );
+    }
+
+    #[test]
     fn parses_lxwp0() {
         let s = b"$LXWP0,Y,222.3,1665.5,1.71,1.71,1.71,1.71,1.71,1.71,239,174,10.1*5E\r\n";
         insta::assert_debug_snapshot!(parse_one(s));

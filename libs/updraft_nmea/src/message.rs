@@ -3,8 +3,8 @@
 
 use crate::field::text;
 use crate::sentences::{
-    CaiG, CaiW, Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pcaid, Pflaa, Pflac, Pflau, Pflav, Pgrmz,
-    Plxv0, Plxvc, Plxvf, Plxvs, Plxvtarg, Pov, Rmc,
+    CaiG, CaiW, Gga, Gsa, Lxwp0, Lxwp1, Lxwp2, Lxwp3, Pcaid, Pflaa, Pflac, Pflal, Pflau, Pflav,
+    Pgrmz, Plxv0, Plxvc, Plxvf, Plxvs, Plxvtarg, Pov, Rmc,
 };
 
 /// A single decoded NMEA sentence, faithful to the wire.
@@ -31,6 +31,8 @@ pub enum Message {
     Pflaa(Pflaa),
     /// FLARM configuration read/set/answer (`PFLAC`).
     Pflac(Pflac),
+    /// Supported FLARM debug content (`PFLAL`).
+    Pflal(Pflal),
     /// FLARM hardware, firmware, and obstacle database versions (`PFLAV`).
     Pflav(Pflav),
     /// LXNAV main flight data (`LXWP0`).

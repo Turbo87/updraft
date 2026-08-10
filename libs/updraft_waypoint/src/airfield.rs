@@ -9,9 +9,8 @@ use updraft_units::{Angle, Length, Mass, MslAltitude};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airfield {
     pub airfield_type: AirfieldType,
-    /// The operator categories. A site with joint use has both. An empty
-    /// list means that the source states no category.
-    pub operators: Vec<AirfieldOperator>,
+    /// The operator category when the source states one.
+    pub operator: Option<AirfieldOperator>,
     /// The stated uses of the site. An empty list means that the source
     /// states no use.
     pub uses: Vec<AirfieldUse>,
@@ -57,6 +56,10 @@ pub enum AirfieldType {
 }
 
 /// The operator category of a landing site.
+///
+/// No current source states joint civil and military use. OpenAIP airport
+/// type 0 covers both categories without stating either, so it states no
+/// operator.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AirfieldOperator {
     /// OpenAIP airport types 2 and 7.

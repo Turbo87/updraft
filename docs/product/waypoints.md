@@ -63,8 +63,7 @@ them:
 
 - `AirfieldType` holds the form. The form says what a pilot lands on.
 - `RunwaySurface` holds the surface.
-- `operators` holds the civil or military category. A site can have both,
-  because joint civil and military aerodromes exist.
+- `operator` holds the civil or military category.
 - `uses` holds the stated use, for example gliding.
 - `closed` holds the status.
 
@@ -78,6 +77,10 @@ agricultural landing strip is a landing strip with a stated user group.
 The use does not restrict a landing by itself. The runway data, the
 `prior_permission_required` flag, and the `private_use` flag state the
 restrictions.
+
+No current source states joint civil and military use. OpenAIP airport type 0
+covers both categories without stating either, so it sets no operator. The
+enum can get a joint value when a source states one.
 
 ### CUP styles
 
@@ -122,7 +125,7 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
 ### OpenAIP datasets
 
 - Airports become `Airfield`. The 14 source types become six forms, the
-  operators, the uses, and the closed flag:
+  operator, the uses, and the closed flag:
   - Types 0, 3, and 9 become `Aerodrome`.
   - Type 2 becomes `Aerodrome` with the civil operator.
   - Type 5 becomes `Aerodrome` with the military operator.
@@ -156,7 +159,7 @@ detail. This is the only source distinction that the model drops.
 
 ## Kind-specific attributes
 
-- `Airfield` keeps the form, the operators, the uses, the closed flag, the
+- `Airfield` keeps the form, the operator, the uses, the closed flag, the
   ICAO, IATA, and alternate identifiers, the traffic types, the magnetic
   declination, the prior-permission, private, skydive, and winch-only flags,
   the services, the frequencies, the runways, and the hours of operation. A

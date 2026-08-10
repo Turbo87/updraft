@@ -15,6 +15,12 @@ whole records copied from the daily OpenAIP JSON exports of 2026-08-10 at
 records are re-indented for review. Each file holds the smallest set of records
 that still covers every field that the source datasets use.
 
+[OpenAIP](https://www.openaip.net) distributes its data under a `CC BY-NC-SA`
+license that requires attribution, forbids commercial use, and requires the same
+license for derived work. These copied fixtures are not covered by Updraft's
+`MIT OR Apache-2.0` license. Confirm the current license terms before Updraft
+ships OpenAIP data or a work derived from it.
+
 - `openaip/airspaces.json`: three records from `de_asp.json`.
 - `openaip/airspace_multi_ring.json`: one record from `us_asp.json`. Its polygon
   has two rings. The published schema permits one ring.

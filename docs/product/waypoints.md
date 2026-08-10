@@ -65,15 +65,16 @@ them:
 - `AirfieldType` holds the form. The form says what a pilot lands on.
 - `RunwaySurface` holds the surface.
 - The `civil` and `military` flags hold the operator categories.
+- The `agricultural` flag holds agricultural flying.
 - `Runway.exclusive_aircraft_types` holds the permitted aircraft.
 - `closed` holds the status.
 
-The form has seven values, because a pilot lands on seven different things: a
-prepared aerodrome, an outlanding field, a simple landing strip, an
-agricultural landing strip, a sloped mountain altiport, a water surface, and
-a heliport. A civil aerodrome and a military aerodrome are the same thing to
-land on. A glider site and an ultralight site are prepared aerodromes that
-serve one aircraft type.
+The form has six values, because a pilot lands on six different things: a
+prepared aerodrome, an outlanding field, a simple landing strip, a sloped
+mountain altiport, a water surface, and a heliport. A civil aerodrome and a
+military aerodrome are the same thing to land on. An agricultural landing
+strip is a landing strip. A glider site and an ultralight site are prepared
+aerodromes that serve one aircraft type.
 
 Two flags hold the operator categories, because a site can have joint civil
 and military use. Each flag is optional, because a source can state neither
@@ -126,8 +127,8 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
 
 ### OpenAIP datasets
 
-- Airports become `Airfield`. The 14 source types become seven forms, the
-  operator flags, the permitted runway aircraft, and the closed flag:
+- Airports become `Airfield`. The 14 source types become six forms, the use
+  flags, the permitted runway aircraft, and the closed flag:
   - Types 0, 3, and 9 become `Aerodrome`.
   - Type 2 becomes `Aerodrome` with the civil flag.
   - Type 5 becomes `Aerodrome` with the military flag.
@@ -139,7 +140,7 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
   - Type 7 becomes `Heliport` with the civil flag.
   - Type 10 becomes `WaterAirfield`.
   - Type 11 becomes `LandingStrip`.
-  - Type 12 becomes `AgriculturalLandingStrip`.
+  - Type 12 becomes `LandingStrip` with the agricultural flag.
   - Type 13 becomes `Altiport`.
 - Navaids become `Navaid`, with one `NavaidType` for each of the nine source
   types.
@@ -168,10 +169,11 @@ detail. This is the only source distinction that the model drops.
 
 ## Kind-specific attributes
 
-- `Airfield` keeps the form, the civil and military flags, the closed flag,
-  the ICAO, IATA, and alternate identifiers, the traffic types, the magnetic
-  declination, the prior-permission, private, skydive, and winch-only flags,
-  the services, the frequencies, the runways, and the hours of operation. A
+- `Airfield` keeps the form, the civil, military, agricultural, and closed
+  flags, the ICAO, IATA, and alternate identifiers, the traffic types, the
+  magnetic declination, the prior-permission, private, skydive, and
+  winch-only flags, the services, the frequencies, the runways, and the hours
+  of operation. A
   runway keeps its designator, direction, operations, turn direction,
   surface, dimensions, declared distances, threshold location, permitted
   aircraft types, lighting, and approach aids.

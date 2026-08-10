@@ -13,6 +13,8 @@ pub struct Airfield {
     pub civil: Option<bool>,
     /// Whether the site has military use. A joint site also has civil use.
     pub military: Option<bool>,
+    /// Whether the site serves agricultural flying.
+    pub agricultural: Option<bool>,
     /// Whether the site is closed.
     pub closed: Option<bool>,
     pub icao_code: Option<Box<str>>,
@@ -44,10 +46,8 @@ pub enum AirfieldType {
     Aerodrome,
     /// CUP style 3. A field for an unplanned landing.
     Outlanding,
-    /// OpenAIP airport type 11. A simple strip.
+    /// OpenAIP airport types 11 and 12. A simple strip.
     LandingStrip,
-    /// OpenAIP airport type 12.
-    AgriculturalLandingStrip,
     /// OpenAIP airport type 13. A mountain aerodrome with a sloped runway.
     Altiport,
     /// OpenAIP airport type 10.

@@ -40,7 +40,9 @@ impl AirspaceDataset {
     }
 }
 
-/// Converts one parsed airspace to canonical form and assigns its dataset ID.
+/// Converts one parsed airspace to canonical form.
+///
+/// The dataset ID identifies the airspace in a conversion error.
 fn normalize_airspace(
     id: AirspaceId,
     parsed: ParsedAirspace,
@@ -58,7 +60,6 @@ fn normalize_airspace(
         .map_err(|kind| AirspaceImportError::parse(id, kind))?;
 
     Ok(Airspace {
-        id,
         name: parsed.name.map(String::into_boxed_str),
         class,
         type_code,

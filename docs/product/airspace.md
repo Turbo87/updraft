@@ -16,15 +16,16 @@ The importer converts supported points, circles, arcs, and polygon segments to
 polygon exterior rings. Curves use a maximum one-metre chord error. It rejects
 unsupported or invalid geometry instead of publishing a partial dataset.
 
-Each imported airspace receives an `AirspaceId` from its zero-based position in
-the parsed dataset. The ID is stable only for that dataset. It is not durable
+Each imported airspace has an `AirspaceId` that is its zero-based position in
+the parsed dataset. The dataset derives the ID from that position. The airspace
+does not store it. The ID is stable only for that dataset. It is not durable
 across source replacement.
 
 ## Canonical model
 
 The canonical `Airspace` stores:
 
-- dataset-local ID and optional name
+- optional name
 - ICAO class, airspace type, and optional activity
 - lower and upper limits with optional minimum and maximum limits
 - activation flags, dates, operating hours, and remarks
@@ -79,7 +80,7 @@ The Tauri shell serves the current snapshot from
 `application/geo+json`, disables caching, and returns an empty FeatureCollection
 when no dataset is active.
 
-Each feature uses its numeric airspace ID as the top-level GeoJSON ID. The
+Each feature uses its dataset position as the top-level GeoJSON ID. The
 geometry is the canonical polygon. Properties use OpenAIP-compatible names and
 numeric codes. Optional values are absent instead of null. An unlimited limit
 uses the Updraft extension `{ "unlimited": true }`.

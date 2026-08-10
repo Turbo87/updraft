@@ -1,7 +1,7 @@
 use crate::driver::DriverHandle;
 use serde_json::{Value, json};
 use tauri::http::{Response, StatusCode, header};
-use updraft_airspace::{Airspace, AirspaceDataset};
+use updraft_airspace::AirspaceDataset;
 use updraft_core::GetAirspaceSnapshot;
 
 /// Builds a `GeoJSON` response from the active airspace dataset.
@@ -28,8 +28,8 @@ pub async fn airspace_resource_response(handle: DriverHandle) -> Response<Vec<u8
 fn airspace_geojson(dataset: Option<&AirspaceDataset>) -> Value {
     let features = dataset
         .into_iter()
-        .flat_map(AirspaceDataset::airspaces)
-        .map(Airspace::to_geojson)
+        .flat_map(AirspaceDataset::identified_airspaces)
+        .map(|(id, airspace)| airspace.to_geojson(id))
         .collect::<Vec<_>>();
 
     json!({
@@ -47,6 +47,7 @@ mod tests {
     use std::time::Duration;
     use tauri::http::{StatusCode, header};
     use tracing_test::traced_test;
+    use updraft_airspace::AirspaceId;
     use updraft_core::{ActivateAirspaceDataset, AirspaceState, SettingsSnapshot};
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
@@ -70,7 +71,7 @@ mod tests {
             geojson,
             json!({
                 "type": "FeatureCollection",
-                "features": [dataset.airspaces()[0].to_geojson()],
+                "features": [dataset.airspaces()[0].to_geojson(AirspaceId(0))],
             })
         );
     }

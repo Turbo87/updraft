@@ -114,7 +114,6 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
     let airspace = &dataset.airspaces()[0];
 
     assert_eq!(dataset.airspaces().len(), 1);
-    assert_eq!(airspace.id.0, 0);
     assert_eq!(airspace.name.as_deref(), Some("Polygon"));
     assert_eq!(airspace.class, AirspaceClass::D);
     assert_eq!(airspace.type_code, AirspaceType::Other);
@@ -141,6 +140,20 @@ fn parses_polygon_airspace_without_a_closing_vertex() {
             LatLon::from_degrees(50. + 1. / 60., 10. + 1. / 60.),
             LatLon::from_degrees(50. + 1. / 60., 10.),
         ]
+    );
+}
+
+/// Verifies that dataset-local IDs number the airspaces by parser position.
+#[test]
+fn numbers_airspaces_by_dataset_position() {
+    let dataset = parse_fixture(CLASS_TYPES);
+
+    assert_eq!(
+        dataset
+            .identified_airspaces()
+            .map(|(id, _)| id.0)
+            .collect::<Vec<_>>(),
+        (0..18).collect::<Vec<_>>()
     );
 }
 
@@ -368,13 +381,7 @@ fn maps_modern_classes_and_normalized_types() {
     let dataset = parse_fixture(CLASS_TYPES);
     let airspaces = dataset.airspaces();
 
-    assert_eq!(
-        airspaces
-            .iter()
-            .map(|airspace| airspace.id.0)
-            .collect::<Vec<_>>(),
-        (0..18).collect::<Vec<_>>()
-    );
+    assert_eq!(airspaces.len(), 18);
     assert_eq!(
         airspaces[..8]
             .iter()

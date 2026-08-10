@@ -8,6 +8,9 @@ use updraft_geo::Polygon;
 use updraft_units::{Length, MslAltitude, PressureAltitude};
 
 /// A stable sequence number within one parsed airspace dataset.
+///
+/// The value is the position of the airspace in [`AirspaceDataset::airspaces`].
+/// It is not stored with the airspace.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AirspaceId(pub u32);
 
@@ -238,8 +241,6 @@ fn operating_hours_to_openaip_json(hours: &AirspaceOperatingHours) -> serde_json
 /// One canonical polygon-only airspace.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airspace {
-    /// The stable sequence number within this dataset.
-    pub id: AirspaceId,
     /// The source airspace name when it is present.
     pub name: Option<Box<str>>,
     /// The required OpenAIP ICAO class.
@@ -287,10 +288,13 @@ pub struct Airspace {
 impl Airspace {
     /// Converts this airspace to GeoJSON with OpenAIP-compatible aviation properties.
     ///
+    /// The caller supplies the dataset-local ID because the airspace does not
+    /// store it.
+    ///
     /// Property names, shapes, and numeric values follow the
     /// [OpenAIP airspace schema](https://api.core.openaip.net/api/schemas/response/airspace/airspace-schema.json)
     /// when the schema can represent the canonical value.
-    pub fn to_geojson(&self) -> serde_json::Value {
+    pub fn to_geojson(&self, id: AirspaceId) -> serde_json::Value {
         let mut properties = json!({
             "type": self.type_code.openaip_code(),
             "icaoClass": self.class.openaip_code(),
@@ -380,7 +384,7 @@ impl Airspace {
 
         json!({
             "type": "Feature",
-            "id": self.id.0,
+            "id": id.0,
             "properties": properties,
             "geometry": {
                 "type": "Polygon",
@@ -398,13 +402,30 @@ pub struct AirspaceDataset {
 
 impl AirspaceDataset {
     /// Creates a canonical dataset from airspaces in parser order.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the dataset holds more than [`u32::MAX`] airspaces, because
+    /// each position must remain a valid [`AirspaceId`].
     pub fn from_airspaces(airspaces: Vec<Airspace>) -> Self {
+        assert!(
+            u32::try_from(airspaces.len()).is_ok(),
+            "a dataset must hold at most u32::MAX airspaces"
+        );
         Self { airspaces }
     }
 
     /// Returns every airspace in parser order.
     pub fn airspaces(&self) -> &[Airspace] {
         &self.airspaces
+    }
+
+    /// Returns every airspace with its dataset-local ID, in parser order.
+    pub fn identified_airspaces(&self) -> impl Iterator<Item = (AirspaceId, &Airspace)> {
+        self.airspaces.iter().enumerate().map(|(index, airspace)| {
+            let id = u32::try_from(index).expect("the dataset length fits in u32");
+            (AirspaceId(id), airspace)
+        })
     }
 }
 

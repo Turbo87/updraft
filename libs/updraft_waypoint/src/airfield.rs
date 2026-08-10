@@ -2,7 +2,7 @@ use crate::{Frequency, FrequencyType, OperatingHours};
 use updraft_geo::LatLon;
 use updraft_units::{Angle, Length, Mass, MslAltitude};
 
-/// One landing site with its runways and radio frequencies.
+/// One airfield with its runways and radio frequencies.
 ///
 /// CUP supplies at most one runway and one frequency. OpenAIP supplies
 /// ordered lists.
@@ -35,7 +35,7 @@ pub struct Airfield {
     pub hours_of_operation: Option<OperatingHours>,
 }
 
-/// The form of a landing site.
+/// The form of an airfield.
 ///
 /// The form says what a pilot lands on. Who operates the site and which
 /// aircraft may use it are separate attributes.
@@ -44,8 +44,6 @@ pub enum AirfieldType {
     /// A prepared aerodrome. CUP styles 2, 4, and 5, and OpenAIP airport
     /// types 0, 1, 2, 3, 5, 6, 8, and 9.
     Aerodrome,
-    /// CUP style 3. A field for an unplanned landing.
-    Outlanding,
     /// OpenAIP airport types 11 and 12. A simple strip.
     LandingStrip,
     /// OpenAIP airport type 13. A mountain aerodrome with a sloped runway.

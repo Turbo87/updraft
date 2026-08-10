@@ -25,6 +25,7 @@ mod hotspot;
 mod navaid;
 mod obstacle;
 mod operating_hours;
+mod outlanding;
 mod rc_airfield;
 mod reporting_point;
 mod waypoint;
@@ -45,6 +46,7 @@ pub use hotspot::{
 pub use navaid::{Navaid, NavaidType};
 pub use obstacle::{Obstacle, ObstacleType};
 pub use operating_hours::{OperatingHours, OperatingPeriod, OperatingSchedule};
+pub use outlanding::Outlanding;
 pub use rc_airfield::{RcAirfield, VerticalLimit};
 pub use reporting_point::ReportingPoint;
 pub use waypoint::{Waypoint, WaypointDataset, WaypointId, WaypointKind};

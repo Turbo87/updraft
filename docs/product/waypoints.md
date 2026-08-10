@@ -53,8 +53,12 @@ every source distinction.
 
 A variant carries a payload when its source family supplies attributes that
 no other family uses. Families with the same attribute set share one payload.
-Every landing site type shares `Airfield`, so no payload is repeated.
-Variants without further attributes stay simple.
+Every airfield form shares `Airfield`, so no payload is repeated. Variants
+without further attributes stay simple.
+
+An outlanding field is not an airfield. It has no identifier, no designated
+runway, no operator, and no services. It keeps its own kind with a small
+payload: the usable direction, the usable dimensions, and the CUP frequency.
 
 A kind records what a point is. It does not record independent attributes of
 that point. The CUP styles and the OpenAIP airport types mix five axes: the
@@ -69,12 +73,12 @@ them:
 - `Runway.exclusive_aircraft_types` holds the permitted aircraft.
 - `closed` holds the status.
 
-The form has six values, because a pilot lands on six different things: a
-prepared aerodrome, an outlanding field, a simple landing strip, a sloped
-mountain altiport, a water surface, and a heliport. A civil aerodrome and a
-military aerodrome are the same thing to land on. An agricultural landing
-strip is a landing strip. A glider site and an ultralight site are prepared
-aerodromes that serve one aircraft type.
+The form has five values, because a pilot lands on five different airfields:
+a prepared aerodrome, a simple landing strip, a sloped mountain altiport, a
+water surface, and a heliport. A civil aerodrome and a military aerodrome are
+the same thing to land on. An agricultural landing strip is a landing strip.
+A glider site and an ultralight site are prepared aerodromes that serve one
+aircraft type.
 
 Two flags hold the operator categories, because a site can have joint civil
 and military use. Each flag is optional, because a source can state neither
@@ -90,7 +94,7 @@ separate site classification for a glider site or an ultralight site.
 - 1 Waypoint becomes `Waypoint`.
 - 2 Airfield with grass surface runway becomes `Airfield(Aerodrome)` with a
   grass runway composition.
-- 3 Outlanding becomes `Airfield(Outlanding)`.
+- 3 Outlanding becomes `Outlanding`.
 - 4 Gliding airfield becomes `Airfield(Aerodrome)` with gliders as the
   permitted runway aircraft.
 - 5 Airfield with solid surface runway becomes `Airfield(Aerodrome)` with a
@@ -116,11 +120,15 @@ A transmitter mast and a cooling tower are vertical obstructions, so both
 become obstacles. A power plant, dam, tunnel, bridge, castle, intersection,
 and marker are landmarks, so each keeps its own kind.
 
-The CUP `rwdir`, `rwlen`, and `rwwidth` columns become one runway without a
-designator. Styles 2 and 5 supply the composition of that runway. A record
-with a surface style but no runway columns still becomes one runway, because
-the composition needs a runway to hold it. The `freq` column becomes one
-airfield frequency without a purpose.
+For an airfield, the CUP `rwdir`, `rwlen`, and `rwwidth` columns become one
+runway without a designator. Styles 2 and 5 supply the composition of that
+runway. A record with a surface style but no runway columns still becomes one
+runway, because the composition needs a runway to hold it. The `freq` column
+becomes one airfield frequency without a purpose.
+
+For an outlanding field, the same columns become the usable direction, the
+usable dimensions, and the frequency of the `Outlanding` payload. An
+outlanding field has no runway.
 
 CUP names no material for a solid surface, so `RunwayComposition` has a
 `Solid` value. The OpenAIP compositions name a material.
@@ -177,6 +185,8 @@ detail. This is the only source distinction that the model drops.
   runway keeps its designator, direction, operations, turn direction,
   surface, dimensions, declared distances, threshold location, permitted
   aircraft types, lighting, and approach aids.
+- `Outlanding` keeps the usable direction, the usable length and width, and
+  the frequency.
 - `Navaid` keeps the identifier, channel, frequency, range, magnetic
   declination, true-north alignment, and hours of operation.
 - `Obstacle` keeps the height above ground.

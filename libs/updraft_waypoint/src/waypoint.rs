@@ -1,4 +1,6 @@
-use crate::{Airfield, HangGlidingSite, Hotspot, Navaid, Obstacle, RcAirfield, ReportingPoint};
+use crate::{
+    Airfield, HangGlidingSite, Hotspot, Navaid, Obstacle, Outlanding, RcAirfield, ReportingPoint,
+};
 use updraft_geo::LatLon;
 use updraft_units::MslAltitude;
 
@@ -48,11 +50,14 @@ pub enum WaypointKind {
     Unknown,
     /// A turn point without further classification. CUP style 1.
     Waypoint,
-    /// A landing site. CUP styles 2 to 5 and the OpenAIP airports dataset.
+    /// An airfield. CUP styles 2, 4, and 5, and the OpenAIP airports
+    /// dataset.
     ///
     /// The payload is boxed, because it is much larger than every other
-    /// payload. Most waypoints of a dataset are not landing sites.
+    /// payload. Most waypoints of a dataset are not airfields.
     Airfield(Box<Airfield>),
+    /// A field for an unplanned landing. CUP style 3.
+    Outlanding(Outlanding),
     /// CUP style 6.
     MountainPass,
     /// CUP style 7.

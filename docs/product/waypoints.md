@@ -53,17 +53,23 @@ every source distinction.
 
 A variant carries a payload when its source family supplies attributes that
 no other family uses. Families with the same attribute set share one payload.
-All ten landing site types share `Airfield`, so no payload is repeated.
+Every landing site type shares `Airfield`, so no payload is repeated.
 Variants without further attributes stay simple.
+
+A kind records what a point is, not what it is made of. The runway surface is
+an attribute of the runway. `AirfieldType` therefore holds the operational
+role only.
 
 ### CUP styles
 
 - 0 Unknown becomes `Unknown`.
 - 1 Waypoint becomes `Waypoint`.
-- 2 Airfield with grass surface runway becomes `Airfield(GrassAirfield)`.
+- 2 Airfield with grass surface runway becomes `Airfield(Unspecified)` with a
+  grass runway composition.
 - 3 Outlanding becomes `Airfield(Outlanding)`.
 - 4 Gliding airfield becomes `Airfield(GliderSite)`.
-- 5 Airfield with solid surface runway becomes `Airfield(SolidAirfield)`.
+- 5 Airfield with solid surface runway becomes `Airfield(Unspecified)` with a
+  solid runway composition.
 - 6 Mountain Pass becomes `MountainPass`.
 - 7 Mountain Top becomes `MountainTop`.
 - 8 Transmitter Mast becomes `Obstacle(TransmitterMast)`.
@@ -86,8 +92,13 @@ become obstacles. A power plant, dam, tunnel, bridge, castle, intersection,
 and marker are landmarks, so each keeps its own kind.
 
 The CUP `rwdir`, `rwlen`, and `rwwidth` columns become one runway without a
-designator. The `freq` column becomes one airfield frequency without a
-purpose.
+designator. Styles 2 and 5 supply the composition of that runway. A record
+with a surface style but no runway columns still becomes one runway, because
+the composition needs a runway to hold it. The `freq` column becomes one
+airfield frequency without a purpose.
+
+CUP names no material for a solid surface, so `RunwayComposition` has a
+`Solid` value. The OpenAIP compositions name a material.
 
 ### OpenAIP datasets
 

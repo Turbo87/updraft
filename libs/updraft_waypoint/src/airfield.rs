@@ -27,16 +27,14 @@ pub struct Airfield {
     pub hours_of_operation: Option<OperatingHours>,
 }
 
-/// The kind of a landing site.
+/// The operational role of a landing site.
 ///
-/// CUP classifies the runway surface. OpenAIP classifies the operational
-/// role. The variants keep both source distinctions.
+/// The runway surface is not a role. It belongs to [`RunwaySurface`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AirfieldType {
-    /// CUP style 2.
-    GrassAirfield,
-    /// CUP style 5.
-    SolidAirfield,
+    /// An airfield whose role the source does not classify. CUP styles 2
+    /// and 5 supply it, because they classify the runway surface instead.
+    Unspecified,
     /// CUP style 3. A field for an unplanned landing.
     Outlanding,
     /// CUP style 4 and OpenAIP airport type 1.
@@ -230,6 +228,9 @@ pub enum RunwayComposition {
     Wood,
     NonBituminousMix,
     Unknown,
+    /// A solid surface without further classification. CUP style 5 supplies
+    /// it, because CUP names no material.
+    Solid,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

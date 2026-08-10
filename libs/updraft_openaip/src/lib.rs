@@ -12,10 +12,15 @@
 //! A country that has no data for a dataset has no file. The export overview at
 //! <https://www.openaip.net/data/exports> lists the completed export jobs.
 //!
-//! | Suffix | Module       | Type                   |
-//! |--------|--------------|------------------------|
-//! | `asp`  | [`airspace`] | [`airspace::Airspace`] |
-//! | `apt`  | [`airport`]  | [`airport::Airport`]   |
+//! | Suffix | Module              | Type                                |
+//! |--------|---------------------|-------------------------------------|
+//! | `asp`  | [`airspace`]        | [`airspace::Airspace`]              |
+//! | `apt`  | [`airport`]         | [`airport::Airport`]                |
+//! | `nav`  | [`navaid`]          | [`navaid::Navaid`]                  |
+//! | `rpp`  | [`reporting_point`] | [`reporting_point::ReportingPoint`] |
+//! | `hot`  | [`hotspot`]         | [`hotspot::Hotspot`]                |
+//! | `hgl`  | [`hang_gliding`]    | [`hang_gliding::HangGlidingSite`]   |
+//! | `obs`  | [`obstacle`]        | [`obstacle::Obstacle`]              |
 //!
 //! Each file holds a JSON array of records. The crate supplies the record types
 //! and leaves the JSON reader to the caller:
@@ -55,8 +60,14 @@ mod common;
 
 pub mod airport;
 pub mod airspace;
+pub mod hang_gliding;
+pub mod hotspot;
+pub mod navaid;
+pub mod obstacle;
+pub mod reporting_point;
 
 pub use common::{
     Countries, DayOfWeek, Elevation, ElevationGeoid, FrequencyUnit, HoursOfOperation, Image,
     OperatingHours, Point, Polygon, Position, Ring, VerticalDatum, VerticalLimit, VerticalUnit,
+    WindDirection,
 };

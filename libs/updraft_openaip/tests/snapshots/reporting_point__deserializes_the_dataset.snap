@@ -1,0 +1,43 @@
+---
+source: libs/updraft_openaip/tests/reporting_point.rs
+expression: records
+---
+[
+    ReportingPoint {
+        id: "629ccd9bf4b4089a578e69b8",
+        name: "N",
+        compulsory: true,
+        country: Countries(
+            [
+                "CH",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                7.5575,
+                47.01388,
+            ],
+        },
+        elevation: Elevation {
+            value: 588.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 637.0,
+                geoid_height: 49.0,
+            },
+        ),
+        airports: [
+            "62615198cb27f42509466dbb",
+        ],
+        remarks: Some(
+            "Bern airport",
+        ),
+        created_at: "2022-06-05T15:36:59.132Z",
+        created_by: "openaip-system",
+        updated_at: "2026-03-25T15:20:52.839Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+]

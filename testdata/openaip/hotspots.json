@@ -1,0 +1,52 @@
+[
+  {
+    "_id": "62614b131eacded7b7bbe1ba",
+    "name": "LOECHERBERG1",
+    "type": 0,
+    "reliability": 2,
+    "occurrence": 1,
+    "category": [
+      1,
+      0
+    ],
+    "country": "DE",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        8.15,
+        48.42306
+      ]
+    },
+    "elevation": {
+      "value": 782,
+      "unit": 0,
+      "referenceDatum": 1
+    },
+    "timeOfDay": [
+      2,
+      1
+    ],
+    "favTimeOfDay": [
+      1
+    ],
+    "favWindDirection": [
+      3,
+      4,
+      5
+    ],
+    "reqWindDirection": [
+      3,
+      4,
+      5
+    ],
+    "createdAt": "2022-04-21T12:16:19.596Z",
+    "updatedAt": "2022-10-04T15:36:51.735Z",
+    "createdBy": "AUTO-IMPORTER",
+    "updatedBy": "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    "elevationGeoid": {
+      "geoidHeight": 49.46699599123198,
+      "hae": 831.466995991232
+    },
+    "remarks": "First thermal in the morning."
+  }
+]

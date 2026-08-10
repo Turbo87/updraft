@@ -1,0 +1,52 @@
+---
+source: libs/updraft_openaip/tests/obstacle.rs
+expression: records
+---
+[
+    Obstacle {
+        id: "6a6ddd8f8309a5fdce6a3902",
+        name: "Obstacle",
+        type: Obstacle,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                7.18905,
+                51.5514,
+            ],
+        },
+        elevation: Elevation {
+            value: 44.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 89.0,
+                geoid_height: 45.0,
+            },
+        ),
+        height: Some(
+            Height {
+                value: 120.0,
+                unit: Meter,
+                reference_datum: Gnd,
+            },
+        ),
+        osm_id: "106538649",
+        osm_tags: {
+            "height": "120",
+            "key": "building",
+            "value": "yes",
+        },
+        osm_import_job_id: "c4a75715-8838-4e3e-ab75-abd59bda7cb0",
+        osm_updated_at: "2026-08-01T11:50:39.469Z",
+        created_at: "2026-08-01T11:50:39.469Z",
+        created_by: "openaip-system",
+        updated_at: "2026-08-01T11:50:39.469Z",
+        updated_by: "openaip-system",
+    },
+]

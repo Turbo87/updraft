@@ -1,0 +1,63 @@
+---
+source: libs/updraft_openaip/tests/hotspot.rs
+expression: records
+---
+[
+    Hotspot {
+        id: "62614b131eacded7b7bbe1ba",
+        name: "LOECHERBERG1",
+        type: Natural,
+        reliability: High,
+        occurrence: ScheduledInterval,
+        category: [
+            1,
+            0,
+        ],
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                8.15,
+                48.42306,
+            ],
+        },
+        elevation: Elevation {
+            value: 782.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 831.466995991232,
+                geoid_height: 49.46699599123198,
+            },
+        ),
+        time_of_day: [
+            Noon,
+            Morning,
+        ],
+        fav_time_of_day: [
+            Morning,
+        ],
+        fav_wind_direction: [
+            SouthEast,
+            South,
+            SouthWest,
+        ],
+        req_wind_direction: [
+            SouthEast,
+            South,
+            SouthWest,
+        ],
+        remarks: Some(
+            "First thermal in the morning.",
+        ),
+        created_at: "2022-04-21T12:16:19.596Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2022-10-04T15:36:51.735Z",
+        updated_by: "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    },
+]

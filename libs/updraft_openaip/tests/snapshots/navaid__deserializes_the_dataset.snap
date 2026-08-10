@@ -1,0 +1,160 @@
+---
+source: libs/updraft_openaip/tests/navaid.rs
+expression: records
+---
+[
+    Navaid {
+        id: "62616fb0abdcc7f0ccbc5602",
+        name: "WILLISAU",
+        identifier: "WIL",
+        type: DvorDme,
+        country: Countries(
+            [
+                "CH",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                7.90581,
+                47.17836,
+            ],
+        },
+        elevation: Elevation {
+            value: 739.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 787.0,
+                geoid_height: 48.0,
+            },
+        ),
+        magnetic_declination: 4.0,
+        aligned_true_north: false,
+        frequency: Frequency {
+            value: "116.900",
+            unit: MegaHertz,
+        },
+        channel: Some(
+            "116X",
+        ),
+        range: Some(
+            Range {
+                value: 50,
+                unit: NauticalMile,
+            },
+        ),
+        hours_of_operation: HoursOfOperation {
+            operating_hours: [
+                OperatingHours {
+                    day_of_week: Monday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Tuesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Wednesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Thursday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Friday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Saturday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Sunday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+            ],
+            remarks: None,
+        },
+        images: [],
+        remarks: Some(
+            "DOC 50 NM / 25’000 ft, range \n80 NM in sector 0° - 105°.",
+        ),
+        created_at: "2022-04-21T14:52:32.827Z",
+        created_by: "import-script",
+        updated_at: "2025-11-16T19:53:50.287Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+]

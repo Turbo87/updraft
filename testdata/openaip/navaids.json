@@ -1,0 +1,108 @@
+[
+  {
+    "_id": "62616fb0abdcc7f0ccbc5602",
+    "name": "WILLISAU",
+    "identifier": "WIL",
+    "type": 7,
+    "country": "CH",
+    "channel": "116X",
+    "frequency": {
+      "value": "116.900",
+      "unit": 2
+    },
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        7.90581,
+        47.17836
+      ]
+    },
+    "elevation": {
+      "value": 739,
+      "unit": 0,
+      "referenceDatum": 1
+    },
+    "magneticDeclination": 4,
+    "alignedTrueNorth": false,
+    "createdAt": "2022-04-21T14:52:32.827Z",
+    "updatedAt": "2025-11-16T19:53:50.287Z",
+    "createdBy": "import-script",
+    "updatedBy": "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    "elevationGeoid": {
+      "geoidHeight": 48,
+      "hae": 787
+    },
+    "hoursOfOperation": {
+      "operatingHours": [
+        {
+          "dayOfWeek": 0,
+          "startTime": "00:00",
+          "endTime": "00:00",
+          "byNotam": false,
+          "sunrise": false,
+          "sunset": false,
+          "publicHolidaysExcluded": false
+        },
+        {
+          "dayOfWeek": 1,
+          "startTime": "00:00",
+          "endTime": "00:00",
+          "byNotam": false,
+          "sunrise": false,
+          "sunset": false,
+          "publicHolidaysExcluded": false
+        },
+        {
+          "dayOfWeek": 2,
+          "startTime": "00:00",
+          "endTime": "00:00",
+          "byNotam": false,
+          "sunrise": false,
+          "sunset": false,
+          "publicHolidaysExcluded": false
+        },
+        {
+          "dayOfWeek": 3,
+          "startTime": "00:00",
+          "endTime": "00:00",
+          "byNotam": false,
+          "sunrise": false,
+          "sunset": false,
+          "publicHolidaysExcluded": false
+        },
+        {
+          "dayOfWeek": 4,
+          "startTime": "00:00",
+          "endTime": "00:00",
+          "byNotam": false,
+          "sunrise": false,
+          "sunset": false,
+          "publicHolidaysExcluded": false
+        },
+        {
+          "dayOfWeek": 5,
+          "startTime": "00:00",
+          "endTime": "00:00",
+          "byNotam": false,
+          "sunrise": false,
+          "sunset": false,
+          "publicHolidaysExcluded": false
+        },
+        {
+          "dayOfWeek": 6,
+          "startTime": "00:00",
+          "endTime": "00:00",
+          "byNotam": false,
+          "sunrise": false,
+          "sunset": false,
+          "publicHolidaysExcluded": false
+        }
+      ]
+    },
+    "range": {
+      "value": 50,
+      "unit": 2
+    },
+    "remarks": "DOC 50 NM / 25’000 ft, range \n80 NM in sector 0° - 105°."
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "6a6ddd8f8309a5fdce6a3902",
+    "osmId": "106538649",
+    "country": "DE",
+    "createdAt": "2026-08-01T11:50:39.469Z",
+    "createdBy": "openaip-system",
+    "elevation": {
+      "value": 44,
+      "unit": 0,
+      "referenceDatum": 1
+    },
+    "elevationGeoid": {
+      "geoidHeight": 45,
+      "hae": 89
+    },
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        7.18905,
+        51.5514
+      ]
+    },
+    "height": {
+      "value": 120,
+      "unit": 0,
+      "referenceDatum": 0
+    },
+    "name": "Obstacle",
+    "osmImportJobId": "c4a75715-8838-4e3e-ab75-abd59bda7cb0",
+    "osmTags": {
+      "key": "building",
+      "value": "yes",
+      "height": "120"
+    },
+    "osmUpdatedAt": "2026-08-01T11:50:39.469Z",
+    "type": 0,
+    "updatedAt": "2026-08-01T11:50:39.469Z",
+    "updatedBy": "openaip-system"
+  }
+]

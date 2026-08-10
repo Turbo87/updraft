@@ -1,0 +1,52 @@
+---
+source: libs/updraft_openaip/tests/hang_gliding.rs
+expression: records
+---
+[
+    HangGlidingSite {
+        id: "629210271af44633bbed95dd",
+        name: "KÖNIGSTUHL",
+        type: TakeOff,
+        category: [
+            1,
+            0,
+        ],
+        access: [
+            3,
+            0,
+            4,
+        ],
+        certified: true,
+        suitable_wind_direction: [
+            West,
+        ],
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                8.72715,
+                49.40394,
+            ],
+        },
+        elevation: Elevation {
+            value: 552.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 600.0665499875942,
+                geoid_height: 48.06654998759413,
+            },
+        ),
+        images: [],
+        remarks: None,
+        created_at: "2022-05-28T12:05:59.740Z",
+        created_by: "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+        updated_at: "2022-05-28T14:49:16.515Z",
+        updated_by: "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    },
+]

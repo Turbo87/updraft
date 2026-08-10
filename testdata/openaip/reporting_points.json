@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "629ccd9bf4b4089a578e69b8",
+    "name": "N",
+    "compulsory": true,
+    "country": "CH",
+    "airports": [
+      "62615198cb27f42509466dbb"
+    ],
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        7.5575,
+        47.01388
+      ]
+    },
+    "elevation": {
+      "value": 588,
+      "unit": 0,
+      "referenceDatum": 1
+    },
+    "remarks": "Bern airport",
+    "createdAt": "2022-06-05T15:36:59.132Z",
+    "updatedAt": "2026-03-25T15:20:52.839Z",
+    "createdBy": "openaip-system",
+    "updatedBy": "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    "elevationGeoid": {
+      "geoidHeight": 49,
+      "hae": 637
+    }
+  }
+]

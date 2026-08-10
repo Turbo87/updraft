@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "629210271af44633bbed95dd",
+    "name": "KÖNIGSTUHL",
+    "type": 0,
+    "category": [
+      1,
+      0
+    ],
+    "access": [
+      3,
+      0,
+      4
+    ],
+    "country": "DE",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        8.72715,
+        49.40394
+      ]
+    },
+    "elevation": {
+      "value": 552,
+      "unit": 0,
+      "referenceDatum": 1
+    },
+    "createdAt": "2022-05-28T12:05:59.740Z",
+    "updatedAt": "2022-05-28T14:49:16.515Z",
+    "createdBy": "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    "updatedBy": "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    "elevationGeoid": {
+      "geoidHeight": 48.06654998759413,
+      "hae": 600.0665499875942
+    },
+    "certified": true,
+    "suitableWindDirection": [
+      6
+    ]
+  }
+]

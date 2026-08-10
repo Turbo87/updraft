@@ -22,6 +22,7 @@ mod airfield;
 mod frequency;
 mod hang_gliding;
 mod hotspot;
+mod landing_area;
 mod navaid;
 mod obstacle;
 mod operating_hours;
@@ -34,15 +35,15 @@ mod wind;
 pub use airfield::{
     AircraftType, Airfield, AirfieldFrequency, AirfieldServices, AirfieldType, ChargingStation,
     DeclaredDistances, FuelType, GliderTowing, HandlingFacility, InstrumentApproachAid,
-    InstrumentApproachType, LightingSystem, PassengerFacility, Runway, RunwayComposition,
-    RunwayCondition, RunwayDimension, RunwayOperations, RunwaySurface, ThresholdLocation,
-    TrafficType, TurnDirection, VisualApproachAid,
+    InstrumentApproachType, LightingSystem, PassengerFacility, Runway, RunwayOperations,
+    ThresholdLocation, TrafficType, TurnDirection, VisualApproachAid,
 };
 pub use frequency::{Frequency, FrequencyType, FrequencyUnit, FrequencyValue};
 pub use hang_gliding::{HangGlidingAccess, HangGlidingCategory, HangGlidingSite, HangGlidingType};
 pub use hotspot::{
     Hotspot, HotspotAircraftCategory, HotspotOccurrence, HotspotReliability, HotspotType, TimeOfDay,
 };
+pub use landing_area::{LandingArea, Surface, SurfaceComposition, SurfaceCondition};
 pub use navaid::{Navaid, NavaidType};
 pub use obstacle::{Obstacle, ObstacleType};
 pub use operating_hours::{OperatingHours, OperatingPeriod, OperatingSchedule};

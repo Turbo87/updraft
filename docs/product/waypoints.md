@@ -57,28 +57,31 @@ Every airfield form shares `Airfield`, so no payload is repeated. Variants
 without further attributes stay simple.
 
 An outlanding field is not an airfield. It has no identifier, no designated
-runway, no operator, and no services. It keeps its own kind with a small
-payload: the usable direction, the usable dimensions, and the CUP frequency.
+runway, no operator, and no services. It keeps its own kind.
+
+A runway and an outlanding field state the same three facts: the usable
+direction, the usable dimensions, and the surface. `LandingArea` holds them.
+A runway adds its designator, its declared distances, and its aerodrome
+equipment. An outlanding field adds only the CUP frequency.
 
 A kind records what a point is. It does not record independent attributes of
 that point. The CUP styles and the OpenAIP airport types mix five axes: the
 form, the surface, the operator, the permitted aircraft, and the status. The
-model separates
-them:
+model separates them:
 
 - `AirfieldType` holds the form. The form says what a pilot lands on.
-- `RunwaySurface` holds the surface.
+- `LandingArea` holds the direction, the dimensions, and the surface.
 - The `civil` and `military` flags hold the operator categories.
 - The `agricultural` flag holds agricultural flying.
 - `Runway.exclusive_aircraft_types` holds the permitted aircraft.
 - `closed` holds the status.
 
-The form has five values, because a pilot lands on five different airfields:
-a prepared aerodrome, a simple landing strip, a sloped mountain altiport, a
-water surface, and a heliport. A civil aerodrome and a military aerodrome are
-the same thing to land on. An agricultural landing strip is a landing strip.
-A glider site and an ultralight site are prepared aerodromes that serve one
-aircraft type.
+The form has four values, because a pilot lands on four different airfields:
+a prepared aerodrome, a simple landing strip, a sloped mountain altiport, and
+a heliport. A civil aerodrome and a military aerodrome are the same thing to
+land on. An agricultural landing strip is a landing strip. A glider site and
+an ultralight site are prepared aerodromes that serve one aircraft type. A
+water airfield is an aerodrome with a water surface.
 
 Two flags hold the operator categories, because a site can have joint civil
 and military use. Each flag is optional, because a source can state neither
@@ -126,17 +129,16 @@ runway. A record with a surface style but no runway columns still becomes one
 runway, because the composition needs a runway to hold it. The `freq` column
 becomes one airfield frequency without a purpose.
 
-For an outlanding field, the same columns become the usable direction, the
-usable dimensions, and the frequency of the `Outlanding` payload. An
-outlanding field has no runway.
+For an outlanding field, the same columns become the landing area and the
+frequency of the `Outlanding` payload. An outlanding field has no runway.
 
-CUP names no material for a solid surface, so `RunwayComposition` has a
+CUP names no material for a solid surface, so `SurfaceComposition` has a
 `Solid` value. The OpenAIP compositions name a material.
 
 ### OpenAIP datasets
 
-- Airports become `Airfield`. The 14 source types become six forms, the use
-  flags, the permitted runway aircraft, and the closed flag:
+- Airports become `Airfield`. The 14 source types become four forms, the use
+  flags, the surface, the permitted runway aircraft, and the closed flag:
   - Types 0, 3, and 9 become `Aerodrome`.
   - Type 2 becomes `Aerodrome` with the civil flag.
   - Type 5 becomes `Aerodrome` with the military flag.
@@ -146,7 +148,7 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
     runway aircraft.
   - Type 4 becomes `Heliport` with the military flag.
   - Type 7 becomes `Heliport` with the civil flag.
-  - Type 10 becomes `WaterAirfield`.
+  - Type 10 becomes `Aerodrome` with a water surface.
   - Type 11 becomes `LandingStrip`.
   - Type 12 becomes `LandingStrip` with the agricultural flag.
   - Type 13 becomes `Altiport`.
@@ -182,11 +184,10 @@ detail. This is the only source distinction that the model drops.
   magnetic declination, the prior-permission, private, skydive, and
   winch-only flags, the services, the frequencies, the runways, and the hours
   of operation. A
-  runway keeps its designator, direction, operations, turn direction,
-  surface, dimensions, declared distances, threshold location, permitted
-  aircraft types, lighting, and approach aids.
-- `Outlanding` keeps the usable direction, the usable length and width, and
-  the frequency.
+  runway keeps its designator, landing area, operations, turn direction,
+  declared distances, threshold location, permitted aircraft types, lighting,
+  and approach aids.
+- `Outlanding` keeps the landing area and the frequency.
 - `Navaid` keeps the identifier, channel, frequency, range, magnetic
   declination, true-north alignment, and hours of operation.
 - `Obstacle` keeps the height above ground.

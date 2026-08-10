@@ -1,6 +1,6 @@
-use crate::{Frequency, FrequencyType, OperatingHours};
+use crate::{Frequency, FrequencyType, LandingArea, OperatingHours};
 use updraft_geo::LatLon;
-use updraft_units::{Angle, Length, Mass, MslAltitude};
+use updraft_units::{Angle, Length, MslAltitude};
 
 /// One airfield with its runways and radio frequencies.
 ///
@@ -48,8 +48,6 @@ pub enum AirfieldType {
     LandingStrip,
     /// OpenAIP airport type 13. A mountain aerodrome with a sloped runway.
     Altiport,
-    /// OpenAIP airport type 10.
-    WaterAirfield,
     /// OpenAIP airport types 4 and 7.
     Heliport,
 }
@@ -142,16 +140,15 @@ pub enum PassengerFacility {
 pub struct Runway {
     /// The runway designator, for example `07L`.
     pub designator: Option<Box<str>>,
-    /// The runway direction. The CUP column declares no reference datum.
-    pub true_heading: Option<Angle>,
+    /// The direction, the dimensions, and the surface.
+    pub area: LandingArea,
+    /// Whether the designator refers to true north.
     pub aligned_true_north: Option<bool>,
     pub operations: Option<RunwayOperations>,
     pub main_runway: Option<bool>,
     pub turn_direction: Option<TurnDirection>,
     pub landing_only: Option<bool>,
     pub take_off_only: Option<bool>,
-    pub surface: Option<RunwaySurface>,
-    pub dimension: Option<RunwayDimension>,
     pub declared_distances: Option<DeclaredDistances>,
     pub threshold_location: Option<ThresholdLocation>,
     /// The aircraft types that may use this runway. An empty list means that
@@ -178,66 +175,6 @@ pub enum TurnDirection {
     Right,
     Left,
     Both,
-}
-
-/// The runway surface.
-#[derive(Clone, Debug, PartialEq)]
-pub struct RunwaySurface {
-    pub compositions: Vec<RunwayComposition>,
-    pub main_composition: Option<RunwayComposition>,
-    pub condition: Option<RunwayCondition>,
-    /// The maximum take-off weight that the runway permits.
-    pub max_take_off_weight: Option<Mass>,
-    /// The unvalidated pavement classification number.
-    pub pcn: Option<Box<str>>,
-    pub remarks: Option<Box<str>>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RunwayComposition {
-    Asphalt,
-    Concrete,
-    Grass,
-    Sand,
-    Water,
-    BituminousTar,
-    Brick,
-    Macadam,
-    Stone,
-    Coral,
-    Clay,
-    Laterite,
-    Gravel,
-    Earth,
-    Ice,
-    Snow,
-    ProtectiveLaminate,
-    Metal,
-    LandingMat,
-    PiercedSteelPlanking,
-    Wood,
-    NonBituminousMix,
-    Unknown,
-    /// A solid surface without further classification. CUP style 5 supplies
-    /// it, because CUP names no material.
-    Solid,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RunwayCondition {
-    Good,
-    Fair,
-    Poor,
-    Unsafe,
-    Deformed,
-    Unknown,
-}
-
-/// The physical runway dimensions.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RunwayDimension {
-    pub length: Option<Length>,
-    pub width: Option<Length>,
 }
 
 /// The declared distances of a runway.

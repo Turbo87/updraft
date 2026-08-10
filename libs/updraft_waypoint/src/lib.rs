@@ -31,11 +31,11 @@ mod waypoint;
 mod wind;
 
 pub use airfield::{
-    AircraftType, Airfield, AirfieldFrequency, AirfieldServices, AirfieldType, ChargingStation,
-    DeclaredDistances, FuelType, GliderTowing, HandlingFacility, InstrumentApproachAid,
-    InstrumentApproachType, LightingSystem, PassengerFacility, Runway, RunwayComposition,
-    RunwayCondition, RunwayDimension, RunwayOperations, RunwaySurface, ThresholdLocation,
-    TrafficType, TurnDirection, VisualApproachAid,
+    AircraftType, Airfield, AirfieldFrequency, AirfieldOperator, AirfieldServices, AirfieldType,
+    ChargingStation, DeclaredDistances, FuelType, GliderTowing, HandlingFacility,
+    InstrumentApproachAid, InstrumentApproachType, LightingSystem, PassengerFacility, Runway,
+    RunwayComposition, RunwayCondition, RunwayDimension, RunwayOperations, RunwaySurface,
+    ThresholdLocation, TrafficType, TurnDirection, VisualApproachAid,
 };
 pub use frequency::{Frequency, FrequencyType, FrequencyUnit, FrequencyValue};
 pub use hang_gliding::{HangGlidingAccess, HangGlidingCategory, HangGlidingSite, HangGlidingType};

@@ -56,19 +56,27 @@ no other family uses. Families with the same attribute set share one payload.
 Every landing site type shares `Airfield`, so no payload is repeated.
 Variants without further attributes stay simple.
 
-A kind records what a point is, not what it is made of. The runway surface is
-an attribute of the runway. `AirfieldType` therefore holds the operational
-role only.
+A kind records what a point is. It does not record independent attributes of
+that point. The OpenAIP airport types mix four axes: the role, the surface,
+the operator, and the status. The model separates them. `AirfieldType` holds
+the role. `RunwaySurface` holds the surface. The `operator` and `closed`
+fields hold the other two.
+
+The role answers one question: what can a pilot land on. An aerodrome, a
+glider site, an ultralight site, a landing strip, an agricultural strip, an
+altiport, a water airfield, a heliport, and an outlanding field each answer
+it differently. A civil aerodrome and a military aerodrome answer it the
+same, so the operator is not a role.
 
 ### CUP styles
 
 - 0 Unknown becomes `Unknown`.
 - 1 Waypoint becomes `Waypoint`.
-- 2 Airfield with grass surface runway becomes `Airfield(Unspecified)` with a
+- 2 Airfield with grass surface runway becomes `Airfield(Aerodrome)` with a
   grass runway composition.
 - 3 Outlanding becomes `Airfield(Outlanding)`.
 - 4 Gliding airfield becomes `Airfield(GliderSite)`.
-- 5 Airfield with solid surface runway becomes `Airfield(Unspecified)` with a
+- 5 Airfield with solid surface runway becomes `Airfield(Aerodrome)` with a
   solid runway composition.
 - 6 Mountain Pass becomes `MountainPass`.
 - 7 Mountain Top becomes `MountainTop`.
@@ -102,8 +110,19 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
 
 ### OpenAIP datasets
 
-- Airports become `Airfield`, with one `AirfieldType` for each of the 14
-  source types.
+- Airports become `Airfield`. The 14 source types become nine roles, an
+  operator, and a closed flag:
+  - Types 0, 2, 3, 8, and 9 become the `Aerodrome` role. Type 2 sets the
+    civil operator. Type 8 sets the closed flag.
+  - Type 5 becomes `Aerodrome` with the military operator.
+  - Types 4 and 7 become `Heliport`. Type 4 sets the military operator, and
+    type 7 the civil operator.
+  - Type 1 becomes `GliderSite`.
+  - Type 6 becomes `UltralightSite`.
+  - Type 10 becomes `WaterAirfield`.
+  - Type 11 becomes `LandingStrip`.
+  - Type 12 becomes `AgriculturalLandingStrip`.
+  - Type 13 becomes `Altiport`.
 - Navaids become `Navaid`, with one `NavaidType` for each of the nine source
   types.
 - Obstacles become `Obstacle`, with one `ObstacleType` for each of the five
@@ -117,12 +136,18 @@ OpenAIP airport type 1 and CUP style 4 both become `GliderSite`. OpenAIP
 navaid types 2 and 3 receive the same kinds as CUP styles 10 and 9. The other
 values of both sources stay separate.
 
+The model does not keep the international label of airport type 3 or the IFR
+label of type 9. Both state the scale and the procedures of an aerodrome, not
+its role. The traffic types, the IATA code, the frequencies, the instrument
+approach aids, and the runway dimensions record the same facts with more
+detail. This is the only source distinction that the model drops.
+
 ## Kind-specific attributes
 
-- `Airfield` keeps the ICAO, IATA, and alternate identifiers, the traffic
-  types, the magnetic declination, the prior-permission, private, skydive,
-  and winch-only flags, the services, the frequencies, the runways, and the
-  hours of operation. A runway keeps its designator, direction, operations,
+- `Airfield` keeps the role, the operator, the closed flag, the ICAO, IATA,
+  and alternate identifiers, the traffic types, the magnetic declination, the
+  prior-permission, private, skydive, and winch-only flags, the services, the
+  frequencies, the runways, and the hours of operation. A runway keeps its designator, direction, operations,
   turn direction, surface, dimensions, declared distances, threshold
   location, permitted aircraft types, lighting, and approach aids.
 - `Navaid` keeps the identifier, channel, frequency, range, magnetic

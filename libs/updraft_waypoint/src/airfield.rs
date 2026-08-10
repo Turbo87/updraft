@@ -9,6 +9,10 @@ use updraft_units::{Angle, Length, Mass, MslAltitude};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airfield {
     pub airfield_type: AirfieldType,
+    /// The operator category when the source states one.
+    pub operator: Option<AirfieldOperator>,
+    /// Whether the site is closed.
+    pub closed: Option<bool>,
     pub icao_code: Option<Box<str>>,
     pub iata_code: Option<Box<str>>,
     /// A further source identifier for airfields without an ICAO code.
@@ -27,44 +31,40 @@ pub struct Airfield {
     pub hours_of_operation: Option<OperatingHours>,
 }
 
-/// The operational role of a landing site.
+/// The role of a landing site.
 ///
-/// The runway surface is not a role. It belongs to [`RunwaySurface`].
+/// A role says what a pilot can land on. It says nothing about the surface,
+/// the operator, or the status. Those are separate attributes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AirfieldType {
-    /// An airfield whose role the source does not classify. CUP styles 2
-    /// and 5 supply it, because they classify the runway surface instead.
-    Unspecified,
+    /// An aerodrome for fixed-wing aircraft. CUP styles 2 and 5, and OpenAIP
+    /// airport types 0, 2, 3, 8, and 9.
+    Aerodrome,
     /// CUP style 3. A field for an unplanned landing.
     Outlanding,
     /// CUP style 4 and OpenAIP airport type 1.
     GliderSite,
-    /// OpenAIP airport type 0. Civil or military.
-    Airport,
-    /// OpenAIP airport type 2.
-    CivilAirfield,
-    /// OpenAIP airport type 3.
-    InternationalAirport,
-    /// OpenAIP airport type 9.
-    IfrAirfield,
-    /// OpenAIP airport type 5.
-    MilitaryAerodrome,
-    /// OpenAIP airport type 7.
-    CivilHeliport,
-    /// OpenAIP airport type 4.
-    MilitaryHeliport,
     /// OpenAIP airport type 6.
     UltralightSite,
+    /// OpenAIP airport types 4 and 7.
+    Heliport,
     /// OpenAIP airport type 10.
     WaterAirfield,
     /// OpenAIP airport type 11.
     LandingStrip,
     /// OpenAIP airport type 12.
     AgriculturalLandingStrip,
-    /// OpenAIP airport type 13.
+    /// OpenAIP airport type 13. A mountain aerodrome with a sloped runway.
     Altiport,
-    /// OpenAIP airport type 8.
-    ClosedAerodrome,
+}
+
+/// The operator category of a landing site.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AirfieldOperator {
+    /// OpenAIP airport types 2 and 7.
+    Civil,
+    /// OpenAIP airport types 4 and 5.
+    Military,
 }
 
 /// The flight rules that an airfield accepts.

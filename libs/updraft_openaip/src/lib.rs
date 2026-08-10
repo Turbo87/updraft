@@ -15,6 +15,7 @@
 //! | Suffix | Module       | Type                   |
 //! |--------|--------------|------------------------|
 //! | `asp`  | [`airspace`] | [`airspace::Airspace`] |
+//! | `apt`  | [`airport`]  | [`airport::Airport`]   |
 //!
 //! Each file holds a JSON array of records. The crate supplies the record types
 //! and leaves the JSON reader to the caller:
@@ -52,9 +53,10 @@
 mod code;
 mod common;
 
+pub mod airport;
 pub mod airspace;
 
 pub use common::{
-    Countries, DayOfWeek, FrequencyUnit, HoursOfOperation, OperatingHours, Polygon, Position, Ring,
-    VerticalDatum, VerticalLimit, VerticalUnit,
+    Countries, DayOfWeek, Elevation, ElevationGeoid, FrequencyUnit, HoursOfOperation, Image,
+    OperatingHours, Point, Polygon, Position, Ring, VerticalDatum, VerticalLimit, VerticalUnit,
 };

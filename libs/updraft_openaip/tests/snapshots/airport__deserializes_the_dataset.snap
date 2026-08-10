@@ -1,0 +1,2242 @@
+---
+source: libs/updraft_openaip/tests/airport.rs
+expression: records
+---
+[
+    Airport {
+        id: "62614a87cb27f42509446445",
+        name: "MANNHEIM CITY",
+        type: AirportIfr,
+        icao_code: Some(
+            "EDFM",
+        ),
+        iata_code: Some(
+            "MHG",
+        ),
+        alt_identifier: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                8.5142,
+                49.47269,
+            ],
+        },
+        elevation: Elevation {
+            value: 89.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 137.0,
+                geoid_height: 48.0,
+            },
+        ),
+        magnetic_declination: 4.0,
+        traffic_type: [
+            Vfr,
+            Ifr,
+        ],
+        ppr: false,
+        private: false,
+        skydive_activity: false,
+        winch_only: false,
+        services: Some(
+            Services {
+                fuel_types: [
+                    SuperPlus,
+                    Avgas,
+                    JetA1,
+                ],
+                charging_stations: [],
+                glider_towing: [
+                    SelfLaunch,
+                    Winch,
+                    Tow,
+                ],
+                handling_facilities: [],
+                passenger_facilities: [
+                    Customs,
+                    Restaurant,
+                    Sanitation,
+                    Transportation,
+                ],
+            },
+        ),
+        frequencies: [
+            Frequency {
+                id: "62614a87cb27f42509446446",
+                value: "129.780",
+                unit: MegaHertz,
+                type: Tower,
+                name: Some(
+                    "MANNHEIM TOWER OR INFORMATION",
+                ),
+                primary: true,
+                public_use: true,
+                remarks: None,
+            },
+            Frequency {
+                id: "62614a87cb27f42509446447",
+                value: "132.415",
+                unit: MegaHertz,
+                type: Atis,
+                name: Some(
+                    "ATIS",
+                ),
+                primary: false,
+                public_use: true,
+                remarks: None,
+            },
+        ],
+        runways: [
+            Runway {
+                id: "62614a87cb27f42509446448",
+                designator: "09L",
+                true_heading: 91,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: false,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 5.7,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 795,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 646,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 646,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "62614a87cb27f42509446449",
+                designator: "27R",
+                true_heading: 271,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: false,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 5.7,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 795,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 598,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 598,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "62614a87cb27f4250944644a",
+                designator: "09",
+                true_heading: 91,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Asphalt,
+                    ],
+                    main_composite: Asphalt,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 10.0,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: Some(
+                        "18/F/A/X/T",
+                    ),
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1066,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 25,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1013,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: Some(
+                        Distance {
+                            value: 1066,
+                            unit: Meter,
+                        },
+                    ),
+                    asda: Some(
+                        Distance {
+                            value: 1066,
+                            unit: Meter,
+                        },
+                    ),
+                    lda: Some(
+                        Distance {
+                            value: 1060,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: Some(
+                    ThresholdLocation {
+                        geometry: Point {
+                            coordinates: [
+                                8.506390820438071,
+                                49.47298061812472,
+                            ],
+                        },
+                        elevation: Elevation {
+                            value: 94.0,
+                            unit: Meter,
+                            reference_datum: Msl,
+                        },
+                    },
+                ),
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [
+                    RunwayEdgeLights,
+                    RunwayEndLights,
+                ],
+                visual_approach_aids: [
+                    Papi,
+                ],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "62614a87cb27f4250944644b",
+                designator: "27",
+                true_heading: 271,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Asphalt,
+                    ],
+                    main_composite: Asphalt,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 10.0,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: Some(
+                        "18/F/A/X/T",
+                    ),
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1066,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 25,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1060,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: Some(
+                        Distance {
+                            value: 1066,
+                            unit: Meter,
+                        },
+                    ),
+                    asda: Some(
+                        Distance {
+                            value: 1066,
+                            unit: Meter,
+                        },
+                    ),
+                    lda: Some(
+                        Distance {
+                            value: 1013,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: Some(
+                    ThresholdLocation {
+                        geometry: Point {
+                            coordinates: [
+                                8.519733631095136,
+                                49.47252925977202,
+                            ],
+                        },
+                        elevation: Elevation {
+                            value: 93.0,
+                            unit: Meter,
+                            reference_datum: Msl,
+                        },
+                    },
+                ),
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [
+                    ApproachLightingSystem,
+                    RunwayEdgeLights,
+                    RunwayEndLights,
+                ],
+                visual_approach_aids: [
+                    Papi,
+                ],
+                instrument_approach_aids: [
+                    InstrumentApproachAid {
+                        identifier: Some(
+                            "IMAW",
+                        ),
+                        type: Loc,
+                        frequency: NavaidFrequency {
+                            value: "108.550",
+                            unit: MegaHertz,
+                        },
+                        channel: Some(
+                            "22Y",
+                        ),
+                        aligned_true_north: false,
+                        hours_of_operation: Some(
+                            HoursOfOperation {
+                                operating_hours: [
+                                    OperatingHours {
+                                        day_of_week: Monday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Tuesday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Wednesday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Thursday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Friday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Saturday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Sunday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                ],
+                                remarks: None,
+                            },
+                        ),
+                        remarks: Some(
+                            "Location of the LOC is 91 m west of THR 09 and 20 m north of the RCL;\nLOC course (offset 0.4°) crosses the RCL 0.8 NM in front of the THR 27.",
+                        ),
+                    },
+                    InstrumentApproachAid {
+                        identifier: Some(
+                            "MND",
+                        ),
+                        type: Dme,
+                        frequency: NavaidFrequency {
+                            value: "113.550",
+                            unit: MegaHertz,
+                        },
+                        channel: Some(
+                            "82Y",
+                        ),
+                        aligned_true_north: false,
+                        hours_of_operation: Some(
+                            HoursOfOperation {
+                                operating_hours: [
+                                    OperatingHours {
+                                        day_of_week: Monday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Tuesday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Wednesday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Thursday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Friday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Saturday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                    OperatingHours {
+                                        day_of_week: Sunday,
+                                        start_time: Some(
+                                            "00:00",
+                                        ),
+                                        end_time: Some(
+                                            "00:00",
+                                        ),
+                                        sunrise: false,
+                                        sunset: false,
+                                        by_notam: false,
+                                        public_holidays_excluded: false,
+                                        remarks: None,
+                                    },
+                                ],
+                                remarks: None,
+                            },
+                        ),
+                        remarks: Some(
+                            "Designated operational coverage 15 NM, FL 100.",
+                        ),
+                    },
+                ],
+                remarks: None,
+            },
+        ],
+        hours_of_operation: None,
+        contact: None,
+        telephone_services: [],
+        images: [],
+        remarks: None,
+        created_at: "2022-04-21T12:13:59.727Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2024-06-17T05:59:51.746Z",
+        updated_by: "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    },
+    Airport {
+        id: "64243756002514465f9c9e6d",
+        name: "FRANKFURT HOECHST",
+        type: HeliportCivil,
+        icao_code: None,
+        iata_code: None,
+        alt_identifier: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                8.54722,
+                50.10973,
+            ],
+        },
+        elevation: Elevation {
+            value: 132.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 180.11897256696005,
+                geoid_height: 48.118972566960025,
+            },
+        ),
+        magnetic_declination: 3.339,
+        traffic_type: [
+            Vfr,
+        ],
+        ppr: true,
+        private: false,
+        skydive_activity: false,
+        winch_only: false,
+        services: None,
+        frequencies: [],
+        runways: [],
+        hours_of_operation: Some(
+            HoursOfOperation {
+                operating_hours: [
+                    OperatingHours {
+                        day_of_week: Monday,
+                        start_time: Some(
+                            "00:00",
+                        ),
+                        end_time: Some(
+                            "00:00",
+                        ),
+                        sunrise: false,
+                        sunset: false,
+                        by_notam: false,
+                        public_holidays_excluded: false,
+                        remarks: None,
+                    },
+                    OperatingHours {
+                        day_of_week: Tuesday,
+                        start_time: Some(
+                            "00:00",
+                        ),
+                        end_time: Some(
+                            "00:00",
+                        ),
+                        sunrise: false,
+                        sunset: false,
+                        by_notam: false,
+                        public_holidays_excluded: false,
+                        remarks: None,
+                    },
+                    OperatingHours {
+                        day_of_week: Wednesday,
+                        start_time: Some(
+                            "00:00",
+                        ),
+                        end_time: Some(
+                            "00:00",
+                        ),
+                        sunrise: false,
+                        sunset: false,
+                        by_notam: false,
+                        public_holidays_excluded: false,
+                        remarks: None,
+                    },
+                    OperatingHours {
+                        day_of_week: Thursday,
+                        start_time: Some(
+                            "00:00",
+                        ),
+                        end_time: Some(
+                            "00:00",
+                        ),
+                        sunrise: false,
+                        sunset: false,
+                        by_notam: false,
+                        public_holidays_excluded: false,
+                        remarks: None,
+                    },
+                    OperatingHours {
+                        day_of_week: Friday,
+                        start_time: Some(
+                            "00:00",
+                        ),
+                        end_time: Some(
+                            "00:00",
+                        ),
+                        sunrise: false,
+                        sunset: false,
+                        by_notam: false,
+                        public_holidays_excluded: false,
+                        remarks: None,
+                    },
+                    OperatingHours {
+                        day_of_week: Saturday,
+                        start_time: Some(
+                            "00:00",
+                        ),
+                        end_time: Some(
+                            "00:00",
+                        ),
+                        sunrise: false,
+                        sunset: false,
+                        by_notam: false,
+                        public_holidays_excluded: false,
+                        remarks: None,
+                    },
+                    OperatingHours {
+                        day_of_week: Sunday,
+                        start_time: Some(
+                            "00:00",
+                        ),
+                        end_time: Some(
+                            "00:00",
+                        ),
+                        sunrise: false,
+                        sunset: false,
+                        by_notam: false,
+                        public_holidays_excluded: false,
+                        remarks: None,
+                    },
+                ],
+                remarks: None,
+            },
+        ),
+        contact: None,
+        telephone_services: [],
+        images: [],
+        remarks: None,
+        created_at: "2023-03-29T13:04:22.451Z",
+        created_by: "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+        updated_at: "2023-03-29T13:04:22.457Z",
+        updated_by: "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    },
+    Airport {
+        id: "6261519acb27f42509466e36",
+        name: "DITTINGEN \"R\"",
+        type: GliderSite,
+        icao_code: Some(
+            "LSPD",
+        ),
+        iata_code: None,
+        alt_identifier: None,
+        country: Countries(
+            [
+                "CH",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                7.48991,
+                47.43915,
+            ],
+        },
+        elevation: Elevation {
+            value: 545.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 594.0,
+                geoid_height: 49.0,
+            },
+        ),
+        magnetic_declination: 4.0,
+        traffic_type: [
+            Vfr,
+        ],
+        ppr: true,
+        private: true,
+        skydive_activity: false,
+        winch_only: false,
+        services: Some(
+            Services {
+                fuel_types: [],
+                charging_stations: [],
+                glider_towing: [
+                    SelfLaunch,
+                    Tow,
+                ],
+                handling_facilities: [],
+                passenger_facilities: [],
+            },
+        ),
+        frequencies: [
+            Frequency {
+                id: "69c61eac0c6f22ac3728d712",
+                value: "118.180",
+                unit: MegaHertz,
+                type: Radio,
+                name: Some(
+                    "CAPOT DITTINGEN",
+                ),
+                primary: true,
+                public_use: true,
+                remarks: None,
+            },
+        ],
+        runways: [
+            Runway {
+                id: "69c61eac0c6f22ac3728d713",
+                designator: "11",
+                true_heading: 110,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    true,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Fair,
+                    mtow: None,
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 620,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 620,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: None,
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "69c61eac0c6f22ac3728d714",
+                designator: "29",
+                true_heading: 290,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    true,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Fair,
+                    mtow: None,
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 620,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: None,
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 410,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: Some(
+                    "Warning: Ascending Runway, Caution Turbulence on Final",
+                ),
+            },
+        ],
+        hours_of_operation: None,
+        contact: Some(
+            "+41 61 761 68 07",
+        ),
+        telephone_services: [],
+        images: [
+            Image {
+                id: "62617423abdcc7f0ccbc679e",
+                filename: "6261519acb27f42509466e36_1650553890842.jpeg",
+                description: None,
+            },
+            Image {
+                id: "62617423abdcc7f0ccbc679f",
+                filename: "6261519acb27f42509466e36_1650553891099.jpeg",
+                description: None,
+            },
+        ],
+        remarks: Some(
+            "Takeoff only on RWY 11\nLanding only on RWY 29",
+        ),
+        created_at: "2022-04-21T12:44:10.376Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2026-03-27T07:25:03.809Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+    Airport {
+        id: "62614a87cb27f4250944641c",
+        name: "MAINZ/FINTHEN",
+        type: AirfieldCivil,
+        icao_code: Some(
+            "EDFZ",
+        ),
+        iata_code: Some(
+            "QMZ",
+        ),
+        alt_identifier: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                8.14778,
+                49.96917,
+            ],
+        },
+        elevation: Elevation {
+            value: 232.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 280.0,
+                geoid_height: 48.0,
+            },
+        ),
+        magnetic_declination: 4.0,
+        traffic_type: [
+            Vfr,
+        ],
+        ppr: false,
+        private: false,
+        skydive_activity: false,
+        winch_only: false,
+        services: Some(
+            Services {
+                fuel_types: [
+                    SuperPlus,
+                    Avgas,
+                    JetA1,
+                ],
+                charging_stations: [],
+                glider_towing: [],
+                handling_facilities: [
+                    Maintenance,
+                ],
+                passenger_facilities: [
+                    Restaurant,
+                ],
+            },
+        ),
+        frequencies: [
+            Frequency {
+                id: "697b504b91e818060478b152",
+                value: "122.930",
+                unit: MegaHertz,
+                type: Radio,
+                name: Some(
+                    "MAINZ RADIO",
+                ),
+                primary: true,
+                public_use: true,
+                remarks: None,
+            },
+        ],
+        runways: [
+            Runway {
+                id: "697b504b91e818060478b153",
+                designator: "07",
+                true_heading: 71,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Concrete,
+                    ],
+                    main_composite: Concrete,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 14.0,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1000,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 22,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [
+                    Papi,
+                ],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "697b504b91e818060478b154",
+                designator: "25",
+                true_heading: 251,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Concrete,
+                    ],
+                    main_composite: Concrete,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 14.0,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1000,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 22,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [
+                    Papi,
+                ],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "697b504b91e818060478b155",
+                designator: "07",
+                true_heading: 73,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: false,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 2.5,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1000,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 40,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "697b504b91e818060478b156",
+                designator: "25",
+                true_heading: 253,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: false,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 2.5,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1000,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 40,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 1000,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+        ],
+        hours_of_operation: None,
+        contact: Some(
+            "Flugplatz Mainz\nAm Flugplatz 36\n55126 Mainz\nhttps://edfz.de/",
+        ),
+        telephone_services: [
+            TelephoneService {
+                name: "Tower",
+                phone_number: "+49 6131 5545045",
+                remarks: None,
+            },
+        ],
+        images: [],
+        remarks: None,
+        created_at: "2022-04-21T12:13:59.317Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2026-01-29T12:23:40.637Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+    Airport {
+        id: "62614ab5cb27f425094475cd",
+        name: "TROESTAU",
+        type: GliderSite,
+        icao_code: None,
+        iata_code: None,
+        alt_identifier: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                11.9275,
+                50.02139,
+            ],
+        },
+        elevation: Elevation {
+            value: 560.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: None,
+        magnetic_declination: 5.0,
+        traffic_type: [
+            Vfr,
+        ],
+        ppr: true,
+        private: false,
+        skydive_activity: false,
+        winch_only: false,
+        services: Some(
+            Services {
+                fuel_types: [],
+                charging_stations: [],
+                glider_towing: [
+                    SelfLaunch,
+                    Winch,
+                    Tow,
+                ],
+                handling_facilities: [],
+                passenger_facilities: [],
+            },
+        ),
+        frequencies: [
+            Frequency {
+                id: "69132d6c29c252559953cf4e",
+                value: "118.535",
+                unit: MegaHertz,
+                type: Radio,
+                name: Some(
+                    "TRÖSTAU RADIO",
+                ),
+                primary: true,
+                public_use: true,
+                remarks: None,
+            },
+        ],
+        runways: [
+            Runway {
+                id: "69132d6c29c252559953cf4f",
+                designator: "13",
+                true_heading: 128,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    true,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Fair,
+                    mtow: None,
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 540,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: None,
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 540,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "69132d6c29c252559953cf50",
+                designator: "31",
+                true_heading: 308,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Fair,
+                    mtow: None,
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 540,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 540,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 540,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "69132d6c29c252559953cf51",
+                designator: "12",
+                true_heading: 120,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: false,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    true,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Fair,
+                    mtow: None,
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 580,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 540,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: None,
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "69132d6d29c252559953cf52",
+                designator: "30",
+                true_heading: 300,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: false,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Grass,
+                    ],
+                    main_composite: Grass,
+                    condition: Fair,
+                    mtow: None,
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 540,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 30,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 540,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 540,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [
+                    Glider,
+                ],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+        ],
+        hours_of_operation: Some(
+            HoursOfOperation {
+                operating_hours: [],
+                remarks: Some(
+                    "Saturday from 13:00 local time, Sunday and Holidays from 10:00 local time. During flying season and nice weather only - airfield is operated by flying club, without fixed operating hours. Other days/times on request.",
+                ),
+            },
+        ),
+        contact: None,
+        telephone_services: [],
+        images: [
+            Image {
+                id: "626173baabdcc7f0ccbc605d",
+                filename: "62614ab5cb27f425094475cd_1650553785997.jpeg",
+                description: Some(
+                    "During approach to Runway 31 - threshold is at the hangar.",
+                ),
+            },
+        ],
+        remarks: None,
+        created_at: "2022-04-21T12:14:45.730Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2025-11-11T12:35:02.566Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+    Airport {
+        id: "626151a74b027aab592b44f0",
+        name: "ZUERICH KINDERSPITAL",
+        type: HeliportCivil,
+        icao_code: None,
+        iata_code: None,
+        alt_identifier: Some(
+            "KISPI",
+        ),
+        country: Countries(
+            [
+                "CH",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                8.5714,
+                47.3517,
+            ],
+        },
+        elevation: Elevation {
+            value: 461.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 508.0,
+                geoid_height: 47.0,
+            },
+        ),
+        magnetic_declination: 4.0,
+        traffic_type: [
+            Vfr,
+        ],
+        ppr: false,
+        private: false,
+        skydive_activity: false,
+        winch_only: false,
+        services: None,
+        frequencies: [],
+        runways: [],
+        hours_of_operation: None,
+        contact: None,
+        telephone_services: [],
+        images: [],
+        remarks: None,
+        created_at: "2022-04-21T12:44:23.713Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2025-02-02T07:35:20.721Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+    Airport {
+        id: "62614a6f5e9ded5710443fac",
+        name: "HERZOGENAURACH",
+        type: AirfieldCivil,
+        icao_code: Some(
+            "EDQH",
+        ),
+        iata_code: Some(
+            "XHI",
+        ),
+        alt_identifier: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                10.87806,
+                49.58269,
+            ],
+        },
+        elevation: Elevation {
+            value: 325.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 372.0,
+                geoid_height: 47.0,
+            },
+        ),
+        magnetic_declination: 4.0,
+        traffic_type: [
+            Vfr,
+        ],
+        ppr: false,
+        private: false,
+        skydive_activity: false,
+        winch_only: false,
+        services: Some(
+            Services {
+                fuel_types: [
+                    SuperPlus,
+                    Avgas,
+                    JetA1,
+                ],
+                charging_stations: [
+                    CcsE,
+                ],
+                glider_towing: [],
+                handling_facilities: [
+                    Maintenance,
+                    Shelter,
+                ],
+                passenger_facilities: [
+                    Restaurant,
+                ],
+            },
+        ),
+        frequencies: [
+            Frequency {
+                id: "69d156393c9d76e2bae306fb",
+                value: "134.555",
+                unit: MegaHertz,
+                type: Radio,
+                name: Some(
+                    "HERZOGENAURACH RADIO",
+                ),
+                primary: true,
+                public_use: true,
+                remarks: None,
+            },
+        ],
+        runways: [
+            Runway {
+                id: "69d156393c9d76e2bae306fc",
+                designator: "07",
+                true_heading: 74,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Left,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Asphalt,
+                    ],
+                    main_composite: Asphalt,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 3.7,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 700,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 20,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 700,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 700,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "69d156393c9d76e2bae306fd",
+                designator: "25",
+                true_heading: 254,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Right,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Asphalt,
+                    ],
+                    main_composite: Asphalt,
+                    condition: Good,
+                    mtow: Some(
+                        Weight {
+                            value: 3.7,
+                            unit: Ton,
+                        },
+                    ),
+                    pcn: None,
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 700,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 20,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 700,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 700,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+        ],
+        hours_of_operation: None,
+        contact: Some(
+            "+49 9132 4773\nluftaufsicht@flugplatz-herzogenaurach.de\nhttp://flugplatz-herzogenaurach.de",
+        ),
+        telephone_services: [],
+        images: [],
+        remarks: None,
+        created_at: "2022-04-21T12:13:35.670Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2026-04-04T18:50:42.822Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+    Airport {
+        id: "62614aa95e9ded5710445641",
+        name: "SCHOENHAGEN",
+        type: AirportIfr,
+        icao_code: Some(
+            "EDAZ",
+        ),
+        iata_code: Some(
+            "QXH",
+        ),
+        alt_identifier: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Point {
+            coordinates: [
+                13.16,
+                52.20389,
+            ],
+        },
+        elevation: Elevation {
+            value: 41.0,
+            unit: Meter,
+            reference_datum: Msl,
+        },
+        elevation_geoid: Some(
+            ElevationGeoid {
+                hae: 81.0,
+                geoid_height: 40.0,
+            },
+        ),
+        magnetic_declination: 5.0,
+        traffic_type: [
+            Vfr,
+            Ifr,
+        ],
+        ppr: false,
+        private: false,
+        skydive_activity: false,
+        winch_only: false,
+        services: Some(
+            Services {
+                fuel_types: [
+                    SuperPlus,
+                    Avgas,
+                    JetA1,
+                ],
+                charging_stations: [],
+                glider_towing: [
+                    SelfLaunch,
+                    Winch,
+                    Tow,
+                ],
+                handling_facilities: [],
+                passenger_facilities: [],
+            },
+        ),
+        frequencies: [
+            Frequency {
+                id: "697b50db91e818060478c7fe",
+                value: "131.155",
+                unit: MegaHertz,
+                type: Afis,
+                name: Some(
+                    "SCHÖNHAGEN INFORMATION",
+                ),
+                primary: true,
+                public_use: true,
+                remarks: Some(
+                    "AFIS airfield, frequency type changed to Information",
+                ),
+            },
+            Frequency {
+                id: "697b50db91e818060478c7ff",
+                value: "118.490",
+                unit: MegaHertz,
+                type: Atis,
+                name: Some(
+                    "SCHÖNHAGEN ATIS",
+                ),
+                primary: false,
+                public_use: true,
+                remarks: None,
+            },
+        ],
+        runways: [
+            Runway {
+                id: "697b50db91e818060478c800",
+                designator: "07",
+                true_heading: 72,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Asphalt,
+                    ],
+                    main_composite: Asphalt,
+                    condition: Good,
+                    mtow: None,
+                    pcn: Some(
+                        "25/F/A/X/T",
+                    ),
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1510,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 23,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1340,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 1340,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [
+                    Papi,
+                ],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+            Runway {
+                id: "697b50db91e818060478c801",
+                designator: "25",
+                true_heading: 252,
+                aligned_true_north: false,
+                operations: Active,
+                main_runway: true,
+                turn_direction: Some(
+                    Both,
+                ),
+                landing_only: Some(
+                    false,
+                ),
+                take_off_only: Some(
+                    false,
+                ),
+                surface: Surface {
+                    composition: [
+                        Asphalt,
+                    ],
+                    main_composite: Asphalt,
+                    condition: Good,
+                    mtow: None,
+                    pcn: Some(
+                        "25/F/A/X/T",
+                    ),
+                    remarks: None,
+                },
+                dimension: Dimension {
+                    length: Distance {
+                        value: 1510,
+                        unit: Meter,
+                    },
+                    width: Distance {
+                        value: 23,
+                        unit: Meter,
+                    },
+                },
+                declared_distance: DeclaredDistance {
+                    tora: Some(
+                        Distance {
+                            value: 1270,
+                            unit: Meter,
+                        },
+                    ),
+                    toda: None,
+                    asda: None,
+                    lda: Some(
+                        Distance {
+                            value: 1270,
+                            unit: Meter,
+                        },
+                    ),
+                },
+                threshold_location: None,
+                exclusive_aircraft_type: [],
+                pilot_ctrl_lighting: Some(
+                    false,
+                ),
+                lighting_system: [],
+                visual_approach_aids: [
+                    Papi,
+                ],
+                instrument_approach_aids: [],
+                remarks: None,
+            },
+        ],
+        hours_of_operation: None,
+        contact: None,
+        telephone_services: [],
+        images: [],
+        remarks: None,
+        created_at: "2022-04-21T12:14:33.610Z",
+        created_by: "AUTO-IMPORTER",
+        updated_at: "2026-01-29T12:23:40.661Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+]

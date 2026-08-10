@@ -9,6 +9,12 @@ pub type Position = [f64; 2];
 /// One closed ring of a polygon.
 pub type Ring = Vec<Position>;
 
+/// A `GeoJSON` point geometry.
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+pub struct Point {
+    pub coordinates: Position,
+}
+
 /// A `GeoJSON` polygon geometry.
 ///
 /// The published schema permits one ring. Some records carry more. The United
@@ -71,6 +77,25 @@ pub struct VerticalLimit {
     pub reference_datum: VerticalDatum,
 }
 
+/// An elevation above mean sea level.
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Elevation {
+    pub value: f64,
+    pub unit: VerticalUnit,
+    pub reference_datum: VerticalDatum,
+}
+
+/// The geoid values behind an elevation.
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ElevationGeoid {
+    /// Height above the `WGS84` ellipsoid in metres.
+    pub hae: f64,
+    /// Geoid height in metres.
+    pub geoid_height: f64,
+}
+
 codes! {
     /// The unit of a radio frequency value.
     pub enum FrequencyUnit {
@@ -121,4 +146,14 @@ pub struct OperatingHours {
     pub by_notam: bool,
     pub public_holidays_excluded: bool,
     pub remarks: Option<String>,
+}
+
+/// An image that OpenAIP hosts for an object.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Image {
+    #[serde(rename = "_id")]
+    pub id: String,
+    pub filename: String,
+    pub description: Option<String>,
 }

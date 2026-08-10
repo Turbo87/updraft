@@ -18,3 +18,4 @@ that still covers every field that the source datasets use.
 - `openaip/airspaces.json`: three records from `de_asp.json`.
 - `openaip/airspace_multi_ring.json`: one record from `us_asp.json`. Its polygon
   has two rings. The published schema permits one ring.
+- `openaip/airports.json`: eight records from `ch_apt.json` and `de_apt.json`.

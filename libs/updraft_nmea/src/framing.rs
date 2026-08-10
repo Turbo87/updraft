@@ -224,6 +224,21 @@ mod tests {
     }
 
     #[test]
+    fn parses_pflav() {
+        let s = b"$PFLAV,A,1.0,7.40,*3E\r\n";
+        assert_matches!(parse_one(s), Step::Frame(Message::Pflav(_)));
+    }
+
+    #[test]
+    fn keeps_an_unsupported_pflav_as_unknown() {
+        let s = b"$PFLAV,X\r\n";
+        assert_matches!(
+            parse_one(s),
+            Step::Frame(Message::Unknown(unknown)) if &*unknown.sentence == "$PFLAV,X"
+        );
+    }
+
+    #[test]
     fn parses_lxwp0() {
         let s = b"$LXWP0,Y,222.3,1665.5,1.71,1.71,1.71,1.71,1.71,1.71,239,174,10.1*5E\r\n";
         insta::assert_debug_snapshot!(parse_one(s));

@@ -58,29 +58,30 @@ Variants without further attributes stay simple.
 
 A kind records what a point is. It does not record independent attributes of
 that point. The CUP styles and the OpenAIP airport types mix five axes: the
-form, the surface, the operator, the use, and the status. The model separates
+form, the surface, the operator, the permitted aircraft, and the status. The
+model separates
 them:
 
 - `AirfieldType` holds the form. The form says what a pilot lands on.
 - `RunwaySurface` holds the surface.
-- `operator` holds the civil or military category.
-- `uses` holds the stated use, for example gliding.
+- The `civil` and `military` flags hold the operator categories.
+- `Runway.exclusive_aircraft_types` holds the permitted aircraft.
 - `closed` holds the status.
 
-The form has six values, because a pilot lands on six different things: a
-prepared aerodrome, an outlanding field, a simple landing strip, a sloped
-mountain altiport, a water surface, and a heliport. A civil aerodrome and a
-military aerodrome are the same thing to land on. A glider site and an
-ultralight site are prepared aerodromes with a stated user group. An
-agricultural landing strip is a landing strip with a stated user group.
+The form has seven values, because a pilot lands on seven different things: a
+prepared aerodrome, an outlanding field, a simple landing strip, an
+agricultural landing strip, a sloped mountain altiport, a water surface, and
+a heliport. A civil aerodrome and a military aerodrome are the same thing to
+land on. A glider site and an ultralight site are prepared aerodromes that
+serve one aircraft type.
 
-The use does not restrict a landing by itself. The runway data, the
-`prior_permission_required` flag, and the `private_use` flag state the
-restrictions.
+Two flags hold the operator categories, because a site can have joint civil
+and military use. Each flag is optional, because a source can state neither
+category. OpenAIP airport type 0 covers both categories without stating
+either, so it sets neither flag.
 
-No current source states joint civil and military use. OpenAIP airport type 0
-covers both categories without stating either, so it sets no operator. The
-enum can get a joint value when a source states one.
+The permitted aircraft use the OpenAIP runway field. The model adds no
+separate site classification for a glider site or an ultralight site.
 
 ### CUP styles
 
@@ -89,7 +90,8 @@ enum can get a joint value when a source states one.
 - 2 Airfield with grass surface runway becomes `Airfield(Aerodrome)` with a
   grass runway composition.
 - 3 Outlanding becomes `Airfield(Outlanding)`.
-- 4 Gliding airfield becomes `Airfield(Aerodrome)` with the gliding use.
+- 4 Gliding airfield becomes `Airfield(Aerodrome)` with gliders as the
+  permitted runway aircraft.
 - 5 Airfield with solid surface runway becomes `Airfield(Aerodrome)` with a
   solid runway composition.
 - 6 Mountain Pass becomes `MountainPass`.
@@ -124,19 +126,20 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
 
 ### OpenAIP datasets
 
-- Airports become `Airfield`. The 14 source types become six forms, the
-  operator, the uses, and the closed flag:
+- Airports become `Airfield`. The 14 source types become seven forms, the
+  operator flags, the permitted runway aircraft, and the closed flag:
   - Types 0, 3, and 9 become `Aerodrome`.
-  - Type 2 becomes `Aerodrome` with the civil operator.
-  - Type 5 becomes `Aerodrome` with the military operator.
+  - Type 2 becomes `Aerodrome` with the civil flag.
+  - Type 5 becomes `Aerodrome` with the military flag.
   - Type 8 becomes `Aerodrome` with the closed flag.
-  - Type 1 becomes `Aerodrome` with the gliding use.
-  - Type 6 becomes `Aerodrome` with the ultralight use.
-  - Type 4 becomes `Heliport` with the military operator.
-  - Type 7 becomes `Heliport` with the civil operator.
+  - Type 1 becomes `Aerodrome` with gliders as the permitted runway aircraft.
+  - Type 6 becomes `Aerodrome` with ultralight aircraft as the permitted
+    runway aircraft.
+  - Type 4 becomes `Heliport` with the military flag.
+  - Type 7 becomes `Heliport` with the civil flag.
   - Type 10 becomes `WaterAirfield`.
   - Type 11 becomes `LandingStrip`.
-  - Type 12 becomes `LandingStrip` with the agricultural use.
+  - Type 12 becomes `AgriculturalLandingStrip`.
   - Type 13 becomes `Altiport`.
 - Navaids become `Navaid`, with one `NavaidType` for each of the nine source
   types.
@@ -147,9 +150,15 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
 - Hang gliding sites become `HangGlidingSite`.
 - RC airfields become `RcAirfield`.
 
-OpenAIP airport type 1 and CUP style 4 both become an aerodrome with the
-gliding use. OpenAIP navaid types 2 and 3 receive the same kinds as CUP
-styles 10 and 9. The other values of both sources stay separate.
+OpenAIP airport type 1 and CUP style 4 both become an aerodrome with gliders
+as the permitted runway aircraft. OpenAIP navaid types 2 and 3 receive the
+same kinds as CUP styles 10 and 9. The other values of both sources stay
+separate.
+
+A glider site or an ultralight site becomes one runway when the source states
+no runway, because the permitted aircraft need a runway to hold them. OpenAIP
+defines the runway field as an exclusive restriction. A site type states the
+same restriction for the complete site.
 
 The model does not keep the international label of airport type 3 or the IFR
 label of type 9. Both state the scale and the procedures of an aerodrome, not
@@ -159,8 +168,8 @@ detail. This is the only source distinction that the model drops.
 
 ## Kind-specific attributes
 
-- `Airfield` keeps the form, the operator, the uses, the closed flag, the
-  ICAO, IATA, and alternate identifiers, the traffic types, the magnetic
+- `Airfield` keeps the form, the civil and military flags, the closed flag,
+  the ICAO, IATA, and alternate identifiers, the traffic types, the magnetic
   declination, the prior-permission, private, skydive, and winch-only flags,
   the services, the frequencies, the runways, and the hours of operation. A
   runway keeps its designator, direction, operations, turn direction,

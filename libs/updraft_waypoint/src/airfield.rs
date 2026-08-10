@@ -9,11 +9,10 @@ use updraft_units::{Angle, Length, Mass, MslAltitude};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airfield {
     pub airfield_type: AirfieldType,
-    /// The operator category when the source states one.
-    pub operator: Option<AirfieldOperator>,
-    /// The stated uses of the site. An empty list means that the source
-    /// states no use.
-    pub uses: Vec<AirfieldUse>,
+    /// Whether the site has civil use. A joint site also has military use.
+    pub civil: Option<bool>,
+    /// Whether the site has military use. A joint site also has civil use.
+    pub military: Option<bool>,
     /// Whether the site is closed.
     pub closed: Option<bool>,
     pub icao_code: Option<Box<str>>,
@@ -36,8 +35,8 @@ pub struct Airfield {
 
 /// The form of a landing site.
 ///
-/// The form says what a pilot lands on. Who operates the site and who uses
-/// it are separate attributes.
+/// The form says what a pilot lands on. Who operates the site and which
+/// aircraft may use it are separate attributes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AirfieldType {
     /// A prepared aerodrome. CUP styles 2, 4, and 5, and OpenAIP airport
@@ -45,42 +44,16 @@ pub enum AirfieldType {
     Aerodrome,
     /// CUP style 3. A field for an unplanned landing.
     Outlanding,
-    /// OpenAIP airport types 11 and 12. A simple strip.
+    /// OpenAIP airport type 11. A simple strip.
     LandingStrip,
+    /// OpenAIP airport type 12.
+    AgriculturalLandingStrip,
     /// OpenAIP airport type 13. A mountain aerodrome with a sloped runway.
     Altiport,
     /// OpenAIP airport type 10.
     WaterAirfield,
     /// OpenAIP airport types 4 and 7.
     Heliport,
-}
-
-/// The operator category of a landing site.
-///
-/// No current source states joint civil and military use. OpenAIP airport
-/// type 0 covers both categories without stating either, so it states no
-/// operator.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AirfieldOperator {
-    /// OpenAIP airport types 2 and 7.
-    Civil,
-    /// OpenAIP airport types 4 and 5.
-    Military,
-}
-
-/// The stated use of a landing site.
-///
-/// The use says who flies from the site. It does not restrict a landing by
-/// itself. A glider site can have a hard runway. An aerodrome can serve
-/// gliders without a stated use.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AirfieldUse {
-    /// CUP style 4 and OpenAIP airport type 1.
-    Gliding,
-    /// OpenAIP airport type 6.
-    Ultralight,
-    /// OpenAIP airport type 12.
-    Agricultural,
 }
 
 /// The flight rules that an airfield accepts.
@@ -183,6 +156,9 @@ pub struct Runway {
     pub dimension: Option<RunwayDimension>,
     pub declared_distances: Option<DeclaredDistances>,
     pub threshold_location: Option<ThresholdLocation>,
+    /// The aircraft types that may use this runway. An empty list means that
+    /// the runway has no aircraft restriction. A glider site and an
+    /// ultralight site state their aircraft type here.
     pub exclusive_aircraft_types: Vec<AircraftType>,
     pub pilot_controlled_lighting: Option<bool>,
     pub lighting_systems: Vec<LightingSystem>,

@@ -1,0 +1,756 @@
+---
+source: libs/updraft_openaip/tests/airspace.rs
+expression: airspaces
+---
+[
+    Airspace {
+        id: "67dbee12a7f2a48e4ee0546c",
+        name: "TMZ-EDDV XPDR A4676",
+        type: Tmz,
+        icao_class: E,
+        activity: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Polygon {
+            coordinates: [
+                [
+                    [
+                        9.53694,
+                        52.215,
+                    ],
+                    [
+                        9.53111,
+                        52.11528,
+                    ],
+                    [
+                        9.85556,
+                        52.10778,
+                    ],
+                    [
+                        9.86194,
+                        52.20778,
+                    ],
+                    [
+                        9.53694,
+                        52.215,
+                    ],
+                ],
+            ],
+        },
+        lower_limit: VerticalLimit {
+            value: 65,
+            unit: FlightLevel,
+            reference_datum: Std,
+        },
+        upper_limit: VerticalLimit {
+            value: 100,
+            unit: FlightLevel,
+            reference_datum: Std,
+        },
+        lower_limit_min: None,
+        upper_limit_max: None,
+        on_request: false,
+        on_demand: false,
+        by_notam: false,
+        special_agreement: false,
+        request_compliance: false,
+        hours_of_operation: HoursOfOperation {
+            operating_hours: [
+                OperatingHours {
+                    day_of_week: Monday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Tuesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Wednesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Thursday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Friday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Saturday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Sunday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+            ],
+            remarks: None,
+        },
+        active_from: None,
+        active_until: None,
+        frequencies: [
+            Frequency {
+                id: "6a44c4c04d61c57cac33b737",
+                value: Some(
+                    "119.490",
+                ),
+                unit: MegaHertz,
+                name: Some(
+                    "BREMEN RADAR",
+                ),
+                primary: true,
+                remarks: None,
+            },
+        ],
+        transponder_settings: [
+            TransponderSetting {
+                code: "4676",
+                primary: true,
+                remarks: None,
+            },
+        ],
+        remarks: None,
+        data_ingestion: true,
+        created_at: "2025-03-20T10:29:38.279Z",
+        created_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+        updated_at: "2026-07-01T07:48:40.004Z",
+        updated_by: "OPONcQnzWGOLiJSceNaf8pvx1fA2",
+    },
+    Airspace {
+        id: "695eb0d67f17d7822992420e",
+        name: "ED-R PEENEMUENDE",
+        type: Restricted,
+        icao_class: Sua,
+        activity: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Polygon {
+            coordinates: [
+                [
+                    [
+                        13.69361,
+                        54.17083,
+                    ],
+                    [
+                        13.725,
+                        54.14306,
+                    ],
+                    [
+                        13.87083,
+                        54.10222,
+                    ],
+                    [
+                        13.925,
+                        54.12139,
+                    ],
+                    [
+                        13.88444,
+                        54.33556,
+                    ],
+                    [
+                        13.79056,
+                        54.34056,
+                    ],
+                    [
+                        13.69361,
+                        54.17083,
+                    ],
+                ],
+            ],
+        },
+        lower_limit: VerticalLimit {
+            value: 0,
+            unit: Foot,
+            reference_datum: Gnd,
+        },
+        upper_limit: VerticalLimit {
+            value: 5000,
+            unit: Foot,
+            reference_datum: Msl,
+        },
+        lower_limit_min: None,
+        upper_limit_max: None,
+        on_request: false,
+        on_demand: false,
+        by_notam: true,
+        special_agreement: false,
+        request_compliance: false,
+        hours_of_operation: HoursOfOperation {
+            operating_hours: [
+                OperatingHours {
+                    day_of_week: Monday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Tuesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Wednesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Thursday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Friday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Saturday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Sunday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+            ],
+            remarks: Some(
+                "Times of activity\n08 JAN 2026 - 31 DEC 2028; daily 0700 (0600) - 1700 (1800).\nThe actual use of the area will be published in advance by NOTAM.",
+            ),
+        },
+        active_from: Some(
+            "2026-01-08T07:00:00.000Z",
+        ),
+        active_until: Some(
+            "2028-12-31T17:00:00.000Z",
+        ),
+        frequencies: [],
+        transponder_settings: [],
+        remarks: Some(
+            "AIP VFR SUP 02/26",
+        ),
+        data_ingestion: false,
+        created_at: "2026-01-07T19:15:34.047Z",
+        created_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+        updated_at: "2026-01-29T12:26:03.398Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+    Airspace {
+        id: "67dbee10a7f2a48e4ee052a8",
+        name: "DRESDEN-SUED  HX",
+        type: Tma,
+        icao_class: D,
+        activity: None,
+        country: Countries(
+            [
+                "DE",
+            ],
+        ),
+        geometry: Polygon {
+            coordinates: [
+                [
+                    [
+                        13.65889,
+                        50.8975,
+                    ],
+                    [
+                        13.64383,
+                        50.90028,
+                    ],
+                    [
+                        13.62897,
+                        50.90346,
+                    ],
+                    [
+                        13.61432,
+                        50.90702,
+                    ],
+                    [
+                        13.59993,
+                        50.91097,
+                    ],
+                    [
+                        13.58581,
+                        50.91529,
+                    ],
+                    [
+                        13.57198,
+                        50.91998,
+                    ],
+                    [
+                        13.56083,
+                        50.92417,
+                    ],
+                    [
+                        13.54761,
+                        50.92951,
+                    ],
+                    [
+                        13.53475,
+                        50.93519,
+                    ],
+                    [
+                        13.52228,
+                        50.9412,
+                    ],
+                    [
+                        13.51022,
+                        50.94754,
+                    ],
+                    [
+                        13.49858,
+                        50.95418,
+                    ],
+                    [
+                        13.4874,
+                        50.96113,
+                    ],
+                    [
+                        13.47668,
+                        50.96837,
+                    ],
+                    [
+                        13.46645,
+                        50.97588,
+                    ],
+                    [
+                        13.45672,
+                        50.98365,
+                    ],
+                    [
+                        13.44752,
+                        50.99167,
+                    ],
+                    [
+                        13.43885,
+                        50.99993,
+                    ],
+                    [
+                        13.43074,
+                        51.00841,
+                    ],
+                    [
+                        13.4232,
+                        51.01709,
+                    ],
+                    [
+                        13.41624,
+                        51.02597,
+                    ],
+                    [
+                        13.40987,
+                        51.03501,
+                    ],
+                    [
+                        13.40411,
+                        51.04422,
+                    ],
+                    [
+                        13.39896,
+                        51.05358,
+                    ],
+                    [
+                        13.39445,
+                        51.06305,
+                    ],
+                    [
+                        13.39056,
+                        51.07264,
+                    ],
+                    [
+                        13.38732,
+                        51.08233,
+                    ],
+                    [
+                        13.38472,
+                        51.09209,
+                    ],
+                    [
+                        13.38277,
+                        51.10191,
+                    ],
+                    [
+                        13.3825,
+                        51.11028,
+                    ],
+                    [
+                        13.25111,
+                        51.01361,
+                    ],
+                    [
+                        13.25357,
+                        51.00759,
+                    ],
+                    [
+                        13.26193,
+                        50.99446,
+                    ],
+                    [
+                        13.27115,
+                        50.98156,
+                    ],
+                    [
+                        13.28122,
+                        50.96891,
+                    ],
+                    [
+                        13.29211,
+                        50.95654,
+                    ],
+                    [
+                        13.30381,
+                        50.94446,
+                    ],
+                    [
+                        13.3163,
+                        50.93271,
+                    ],
+                    [
+                        13.32955,
+                        50.92129,
+                    ],
+                    [
+                        13.34354,
+                        50.91023,
+                    ],
+                    [
+                        13.35825,
+                        50.89954,
+                    ],
+                    [
+                        13.37364,
+                        50.88925,
+                    ],
+                    [
+                        13.3897,
+                        50.87938,
+                    ],
+                    [
+                        13.4064,
+                        50.86994,
+                    ],
+                    [
+                        13.4237,
+                        50.86094,
+                    ],
+                    [
+                        13.44157,
+                        50.85241,
+                    ],
+                    [
+                        13.45999,
+                        50.84435,
+                    ],
+                    [
+                        13.47892,
+                        50.83678,
+                    ],
+                    [
+                        13.49833,
+                        50.82972,
+                    ],
+                    [
+                        13.65889,
+                        50.8975,
+                    ],
+                ],
+            ],
+        },
+        lower_limit: VerticalLimit {
+            value: 3500,
+            unit: Foot,
+            reference_datum: Msl,
+        },
+        upper_limit: VerticalLimit {
+            value: 75,
+            unit: FlightLevel,
+            reference_datum: Std,
+        },
+        lower_limit_min: None,
+        upper_limit_max: None,
+        on_request: false,
+        on_demand: false,
+        by_notam: false,
+        special_agreement: false,
+        request_compliance: false,
+        hours_of_operation: HoursOfOperation {
+            operating_hours: [
+                OperatingHours {
+                    day_of_week: Monday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Tuesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Wednesday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Thursday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Friday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Saturday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+                OperatingHours {
+                    day_of_week: Sunday,
+                    start_time: Some(
+                        "00:00",
+                    ),
+                    end_time: Some(
+                        "00:00",
+                    ),
+                    sunrise: false,
+                    sunset: false,
+                    by_notam: false,
+                    public_holidays_excluded: false,
+                    remarks: None,
+                },
+            ],
+            remarks: None,
+        },
+        active_from: None,
+        active_until: None,
+        frequencies: [
+            Frequency {
+                id: "6832d01e4cbc0190920ee48f",
+                value: Some(
+                    "125.875",
+                ),
+                unit: MegaHertz,
+                name: Some(
+                    "MUENCHEN RADAR",
+                ),
+                primary: true,
+                remarks: None,
+            },
+            Frequency {
+                id: "6832d01e4cbc0190920ee490",
+                value: Some(
+                    "118.880",
+                ),
+                unit: MegaHertz,
+                name: Some(
+                    "VFR-ATIS",
+                ),
+                primary: false,
+                remarks: Some(
+                    "VFR-ATIS frequency for HX activity",
+                ),
+            },
+        ],
+        transponder_settings: [],
+        remarks: None,
+        data_ingestion: true,
+        created_at: "2025-03-20T10:29:36.678Z",
+        created_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+        updated_at: "2025-05-25T10:47:44.297Z",
+        updated_by: "eBT9qSrxquPVguazo7MwJzzaf2p1",
+    },
+]

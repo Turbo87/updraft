@@ -4982,6 +4982,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "updraft_openaip"
+version = "0.0.0"
+dependencies = [
+ "claims",
+ "insta",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "updraft_polar"
 version = "0.0.0"
 dependencies = [

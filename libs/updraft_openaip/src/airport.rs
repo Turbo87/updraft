@@ -25,7 +25,7 @@ pub struct Airport {
     /// The magnetic declination at the airport in degrees.
     pub magnetic_declination: f64,
     #[serde(default)]
-    pub traffic_type: Vec<TrafficType>,
+    pub traffic_type: Box<[TrafficType]>,
     /// Prior permission is required.
     pub ppr: bool,
     pub private: bool,
@@ -34,15 +34,15 @@ pub struct Airport {
     pub winch_only: bool,
     pub services: Option<Services>,
     #[serde(default)]
-    pub frequencies: Vec<Frequency>,
+    pub frequencies: Box<[Frequency]>,
     #[serde(default)]
-    pub runways: Vec<Runway>,
+    pub runways: Box<[Runway]>,
     pub hours_of_operation: Option<HoursOfOperation>,
     pub contact: Option<Box<str>>,
     #[serde(default)]
-    pub telephone_services: Vec<TelephoneService>,
+    pub telephone_services: Box<[TelephoneService]>,
     #[serde(default)]
-    pub images: Vec<Image>,
+    pub images: Box<[Image]>,
     pub remarks: Option<Box<str>>,
     pub created_at: Box<str>,
     pub created_by: Box<str>,
@@ -55,15 +55,15 @@ pub struct Airport {
 #[serde(rename_all = "camelCase")]
 pub struct Services {
     #[serde(default)]
-    pub fuel_types: Vec<FuelType>,
+    pub fuel_types: Box<[FuelType]>,
     #[serde(default)]
-    pub charging_stations: Vec<ChargingStation>,
+    pub charging_stations: Box<[ChargingStation]>,
     #[serde(default)]
-    pub glider_towing: Vec<GliderTowing>,
+    pub glider_towing: Box<[GliderTowing]>,
     #[serde(default)]
-    pub handling_facilities: Vec<HandlingFacility>,
+    pub handling_facilities: Box<[HandlingFacility]>,
     #[serde(default)]
-    pub passenger_facilities: Vec<PassengerFacility>,
+    pub passenger_facilities: Box<[PassengerFacility]>,
 }
 
 /// A radio frequency of an airport.
@@ -114,15 +114,15 @@ pub struct Runway {
     pub threshold_location: Option<ThresholdLocation>,
     /// If set, only these aircraft types may use the runway.
     #[serde(default)]
-    pub exclusive_aircraft_type: Vec<AircraftType>,
+    pub exclusive_aircraft_type: Box<[AircraftType]>,
     /// The pilot can control the lighting from the aircraft.
     pub pilot_ctrl_lighting: Option<bool>,
     #[serde(default)]
-    pub lighting_system: Vec<LightingSystem>,
+    pub lighting_system: Box<[LightingSystem]>,
     #[serde(default)]
-    pub visual_approach_aids: Vec<VisualApproachAid>,
+    pub visual_approach_aids: Box<[VisualApproachAid]>,
     #[serde(default)]
-    pub instrument_approach_aids: Vec<InstrumentApproachAid>,
+    pub instrument_approach_aids: Box<[InstrumentApproachAid]>,
     pub remarks: Option<Box<str>>,
 }
 
@@ -130,7 +130,7 @@ pub struct Runway {
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Surface {
-    pub composition: Vec<SurfaceComposition>,
+    pub composition: Box<[SurfaceComposition]>,
     pub main_composite: SurfaceComposition,
     pub condition: SurfaceCondition,
     /// The maximum permitted take-off weight.

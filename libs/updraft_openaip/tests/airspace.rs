@@ -17,7 +17,14 @@ fn accepts_more_than_one_polygon_ring() {
 
     let rings: Vec<Vec<usize>> = airspaces
         .iter()
-        .map(|airspace| airspace.geometry.coordinates.iter().map(Vec::len).collect())
+        .map(|airspace| {
+            airspace
+                .geometry
+                .coordinates
+                .iter()
+                .map(|ring| ring.len())
+                .collect()
+        })
         .collect();
     assert_eq!(rings, vec![vec![158, 132]]);
 }

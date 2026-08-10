@@ -30,7 +30,7 @@ pub struct Navaid {
     pub range: Option<Range>,
     pub hours_of_operation: HoursOfOperation,
     #[serde(default)]
-    pub images: Vec<Image>,
+    pub images: Box<[Image]>,
     pub remarks: Option<Box<str>>,
     pub created_at: Box<str>,
     pub created_by: Box<str>,

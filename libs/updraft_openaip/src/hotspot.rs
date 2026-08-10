@@ -16,23 +16,23 @@ pub struct Hotspot {
     pub occurrence: Occurrence,
     /// Raw category codes. The API documentation does not describe them.
     #[serde(default)]
-    pub category: Vec<u16>,
+    pub category: Box<[u16]>,
     pub country: Countries,
     pub geometry: Point,
     pub elevation: Elevation,
     pub elevation_geoid: Option<ElevationGeoid>,
     /// The times of day at which the hotspot can work.
     #[serde(default)]
-    pub time_of_day: Vec<TimeOfDay>,
+    pub time_of_day: Box<[TimeOfDay]>,
     /// The times of day at which the hotspot works best.
     #[serde(default)]
-    pub fav_time_of_day: Vec<TimeOfDay>,
+    pub fav_time_of_day: Box<[TimeOfDay]>,
     /// The wind directions in which the hotspot works best.
     #[serde(default)]
-    pub fav_wind_direction: Vec<WindDirection>,
+    pub fav_wind_direction: Box<[WindDirection]>,
     /// The wind directions that the hotspot needs to work.
     #[serde(default)]
-    pub req_wind_direction: Vec<WindDirection>,
+    pub req_wind_direction: Box<[WindDirection]>,
     pub remarks: Option<Box<str>>,
     pub created_at: Box<str>,
     pub created_by: Box<str>,

@@ -14,22 +14,22 @@ pub struct HangGlidingSite {
     pub r#type: HangGlidingType,
     /// Raw category codes. The API documentation does not describe them.
     #[serde(default)]
-    pub category: Vec<u16>,
+    pub category: Box<[u16]>,
     /// Raw access codes. The API documentation does not describe them.
     #[serde(default)]
-    pub access: Vec<u16>,
+    pub access: Box<[u16]>,
     /// The site is officially certified.
     pub certified: bool,
     /// The suitable wind directions. Other directions are unfavourable or
     /// dangerous.
     #[serde(default)]
-    pub suitable_wind_direction: Vec<WindDirection>,
+    pub suitable_wind_direction: Box<[WindDirection]>,
     pub country: Countries,
     pub geometry: Point,
     pub elevation: Elevation,
     pub elevation_geoid: Option<ElevationGeoid>,
     #[serde(default)]
-    pub images: Vec<Image>,
+    pub images: Box<[Image]>,
     pub remarks: Option<Box<str>>,
     pub created_at: Box<str>,
     pub created_by: Box<str>,

@@ -7,7 +7,7 @@ use serde::{Deserialize, Deserializer};
 pub type Position = [f64; 2];
 
 /// One closed ring of a polygon.
-pub type Ring = Vec<Position>;
+pub type Ring = Box<[Position]>;
 
 /// A `GeoJSON` point geometry.
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
@@ -21,7 +21,7 @@ pub struct Point {
 /// States dataset uses additional rings for disjoint areas instead of holes.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct Polygon {
-    pub coordinates: Vec<Ring>,
+    pub coordinates: Box<[Ring]>,
 }
 
 /// Source country codes in dataset order.
@@ -29,7 +29,7 @@ pub struct Polygon {
 /// OpenAIP writes one ISO 3166-1 alpha-2 code or an array of codes. Both forms
 /// deserialize into this list. The codes stay unvalidated source text.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Countries(pub Vec<Box<str>>);
+pub struct Countries(pub Box<[Box<str>]>);
 
 impl<'de> Deserialize<'de> for Countries {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -41,8 +41,8 @@ impl<'de> Deserialize<'de> for Countries {
         }
 
         Ok(match OneOrMany::deserialize(deserializer)? {
-            OneOrMany::One(code) => Self(vec![code]),
-            OneOrMany::Many(codes) => Self(codes),
+            OneOrMany::One(code) => Self(Box::from([code])),
+            OneOrMany::Many(codes) => Self(codes.into()),
         })
     }
 }
@@ -124,7 +124,7 @@ pub struct HoursOfOperation {
     /// One entry for each day of the week. Some records carry only remarks and
     /// no entries.
     #[serde(default)]
-    pub operating_hours: Vec<OperatingHours>,
+    pub operating_hours: Box<[OperatingHours]>,
     pub remarks: Option<Box<str>>,
 }
 

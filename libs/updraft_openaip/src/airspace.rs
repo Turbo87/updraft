@@ -38,9 +38,9 @@ pub struct Airspace {
     /// End of a temporary activation period as an RFC 3339 timestamp.
     pub active_until: Option<Box<str>>,
     #[serde(default)]
-    pub frequencies: Vec<Frequency>,
+    pub frequencies: Box<[Frequency]>,
     #[serde(default)]
-    pub transponder_settings: Vec<TransponderSetting>,
+    pub transponder_settings: Box<[TransponderSetting]>,
     pub remarks: Option<Box<str>>,
     /// The record comes from an automated data ingestion.
     pub data_ingestion: bool,

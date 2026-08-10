@@ -18,7 +18,7 @@ pub struct ReportingPoint {
     pub elevation_geoid: Option<ElevationGeoid>,
     /// The OpenAIP identifiers of the airports that use this point.
     #[serde(default)]
-    pub airports: Vec<Box<str>>,
+    pub airports: Box<[Box<str>]>,
     pub remarks: Option<Box<str>>,
     pub created_at: Box<str>,
     pub created_by: Box<str>,

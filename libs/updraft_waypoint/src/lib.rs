@@ -32,7 +32,7 @@ mod wind;
 
 pub use airfield::{
     AircraftType, Airfield, AirfieldFrequency, AirfieldOperator, AirfieldServices, AirfieldType,
-    ChargingStation, DeclaredDistances, FuelType, GliderTowing, HandlingFacility,
+    AirfieldUse, ChargingStation, DeclaredDistances, FuelType, GliderTowing, HandlingFacility,
     InstrumentApproachAid, InstrumentApproachType, LightingSystem, PassengerFacility, Runway,
     RunwayComposition, RunwayCondition, RunwayDimension, RunwayOperations, RunwaySurface,
     ThresholdLocation, TrafficType, TurnDirection, VisualApproachAid,

@@ -49,7 +49,10 @@ pub enum WaypointKind {
     /// A turn point without further classification. CUP style 1.
     Waypoint,
     /// A landing site. CUP styles 2 to 5 and the OpenAIP airports dataset.
-    Airfield(Airfield),
+    ///
+    /// The payload is boxed, because it is much larger than every other
+    /// payload. Most waypoints of a dataset are not landing sites.
+    Airfield(Box<Airfield>),
     /// CUP style 6.
     MountainPass,
     /// CUP style 7.

@@ -57,16 +57,27 @@ Every landing site type shares `Airfield`, so no payload is repeated.
 Variants without further attributes stay simple.
 
 A kind records what a point is. It does not record independent attributes of
-that point. The OpenAIP airport types mix four axes: the role, the surface,
-the operator, and the status. The model separates them. `AirfieldType` holds
-the role. `RunwaySurface` holds the surface. The `operator` and `closed`
-fields hold the other two.
+that point. The CUP styles and the OpenAIP airport types mix five axes: the
+form, the surface, the operator, the use, and the status. The model separates
+them:
 
-The role answers one question: what can a pilot land on. An aerodrome, a
-glider site, an ultralight site, a landing strip, an agricultural strip, an
-altiport, a water airfield, a heliport, and an outlanding field each answer
-it differently. A civil aerodrome and a military aerodrome answer it the
-same, so the operator is not a role.
+- `AirfieldType` holds the form. The form says what a pilot lands on.
+- `RunwaySurface` holds the surface.
+- `operators` holds the civil or military category. A site can have both,
+  because joint civil and military aerodromes exist.
+- `uses` holds the stated use, for example gliding.
+- `closed` holds the status.
+
+The form has six values, because a pilot lands on six different things: a
+prepared aerodrome, an outlanding field, a simple landing strip, a sloped
+mountain altiport, a water surface, and a heliport. A civil aerodrome and a
+military aerodrome are the same thing to land on. A glider site and an
+ultralight site are prepared aerodromes with a stated user group. An
+agricultural landing strip is a landing strip with a stated user group.
+
+The use does not restrict a landing by itself. The runway data, the
+`prior_permission_required` flag, and the `private_use` flag state the
+restrictions.
 
 ### CUP styles
 
@@ -75,7 +86,7 @@ same, so the operator is not a role.
 - 2 Airfield with grass surface runway becomes `Airfield(Aerodrome)` with a
   grass runway composition.
 - 3 Outlanding becomes `Airfield(Outlanding)`.
-- 4 Gliding airfield becomes `Airfield(GliderSite)`.
+- 4 Gliding airfield becomes `Airfield(Aerodrome)` with the gliding use.
 - 5 Airfield with solid surface runway becomes `Airfield(Aerodrome)` with a
   solid runway composition.
 - 6 Mountain Pass becomes `MountainPass`.
@@ -110,18 +121,19 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
 
 ### OpenAIP datasets
 
-- Airports become `Airfield`. The 14 source types become nine roles, an
-  operator, and a closed flag:
-  - Types 0, 2, 3, 8, and 9 become the `Aerodrome` role. Type 2 sets the
-    civil operator. Type 8 sets the closed flag.
+- Airports become `Airfield`. The 14 source types become six forms, the
+  operators, the uses, and the closed flag:
+  - Types 0, 3, and 9 become `Aerodrome`.
+  - Type 2 becomes `Aerodrome` with the civil operator.
   - Type 5 becomes `Aerodrome` with the military operator.
-  - Types 4 and 7 become `Heliport`. Type 4 sets the military operator, and
-    type 7 the civil operator.
-  - Type 1 becomes `GliderSite`.
-  - Type 6 becomes `UltralightSite`.
+  - Type 8 becomes `Aerodrome` with the closed flag.
+  - Type 1 becomes `Aerodrome` with the gliding use.
+  - Type 6 becomes `Aerodrome` with the ultralight use.
+  - Type 4 becomes `Heliport` with the military operator.
+  - Type 7 becomes `Heliport` with the civil operator.
   - Type 10 becomes `WaterAirfield`.
   - Type 11 becomes `LandingStrip`.
-  - Type 12 becomes `AgriculturalLandingStrip`.
+  - Type 12 becomes `LandingStrip` with the agricultural use.
   - Type 13 becomes `Altiport`.
 - Navaids become `Navaid`, with one `NavaidType` for each of the nine source
   types.
@@ -132,24 +144,25 @@ CUP names no material for a solid surface, so `RunwayComposition` has a
 - Hang gliding sites become `HangGlidingSite`.
 - RC airfields become `RcAirfield`.
 
-OpenAIP airport type 1 and CUP style 4 both become `GliderSite`. OpenAIP
-navaid types 2 and 3 receive the same kinds as CUP styles 10 and 9. The other
-values of both sources stay separate.
+OpenAIP airport type 1 and CUP style 4 both become an aerodrome with the
+gliding use. OpenAIP navaid types 2 and 3 receive the same kinds as CUP
+styles 10 and 9. The other values of both sources stay separate.
 
 The model does not keep the international label of airport type 3 or the IFR
 label of type 9. Both state the scale and the procedures of an aerodrome, not
-its role. The traffic types, the IATA code, the frequencies, the instrument
+its form. The traffic types, the IATA code, the frequencies, the instrument
 approach aids, and the runway dimensions record the same facts with more
 detail. This is the only source distinction that the model drops.
 
 ## Kind-specific attributes
 
-- `Airfield` keeps the role, the operator, the closed flag, the ICAO, IATA,
-  and alternate identifiers, the traffic types, the magnetic declination, the
-  prior-permission, private, skydive, and winch-only flags, the services, the
-  frequencies, the runways, and the hours of operation. A runway keeps its designator, direction, operations,
-  turn direction, surface, dimensions, declared distances, threshold
-  location, permitted aircraft types, lighting, and approach aids.
+- `Airfield` keeps the form, the operators, the uses, the closed flag, the
+  ICAO, IATA, and alternate identifiers, the traffic types, the magnetic
+  declination, the prior-permission, private, skydive, and winch-only flags,
+  the services, the frequencies, the runways, and the hours of operation. A
+  runway keeps its designator, direction, operations, turn direction,
+  surface, dimensions, declared distances, threshold location, permitted
+  aircraft types, lighting, and approach aids.
 - `Navaid` keeps the identifier, channel, frequency, range, magnetic
   declination, true-north alignment, and hours of operation.
 - `Obstacle` keeps the height above ground.

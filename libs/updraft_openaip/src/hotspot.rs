@@ -9,8 +9,8 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct Hotspot {
     #[serde(rename = "_id")]
-    pub id: String,
-    pub name: String,
+    pub id: Box<str>,
+    pub name: Box<str>,
     pub r#type: HotspotType,
     pub reliability: Reliability,
     pub occurrence: Occurrence,
@@ -33,11 +33,11 @@ pub struct Hotspot {
     /// The wind directions that the hotspot needs to work.
     #[serde(default)]
     pub req_wind_direction: Vec<WindDirection>,
-    pub remarks: Option<String>,
-    pub created_at: String,
-    pub created_by: String,
-    pub updated_at: String,
-    pub updated_by: String,
+    pub remarks: Option<Box<str>>,
+    pub created_at: Box<str>,
+    pub created_by: Box<str>,
+    pub updated_at: Box<str>,
+    pub updated_by: Box<str>,
 }
 
 codes! {

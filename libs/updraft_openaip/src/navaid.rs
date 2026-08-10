@@ -11,10 +11,10 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct Navaid {
     #[serde(rename = "_id")]
-    pub id: String,
-    pub name: String,
+    pub id: Box<str>,
+    pub name: Box<str>,
     /// The published identifier, for example `TRA`.
-    pub identifier: String,
+    pub identifier: Box<str>,
     pub r#type: NavaidType,
     pub country: Countries,
     pub geometry: Point,
@@ -26,22 +26,22 @@ pub struct Navaid {
     pub aligned_true_north: bool,
     pub frequency: Frequency,
     /// The paired VHF channel of a TACAN or DME station.
-    pub channel: Option<String>,
+    pub channel: Option<Box<str>>,
     pub range: Option<Range>,
     pub hours_of_operation: HoursOfOperation,
     #[serde(default)]
     pub images: Vec<Image>,
-    pub remarks: Option<String>,
-    pub created_at: String,
-    pub created_by: String,
-    pub updated_at: String,
-    pub updated_by: String,
+    pub remarks: Option<Box<str>>,
+    pub created_at: Box<str>,
+    pub created_by: Box<str>,
+    pub updated_at: Box<str>,
+    pub updated_by: Box<str>,
 }
 
 /// The frequency of a navaid.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct Frequency {
-    pub value: String,
+    pub value: Box<str>,
     pub unit: FrequencyUnit,
 }
 

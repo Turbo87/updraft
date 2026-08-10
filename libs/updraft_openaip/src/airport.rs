@@ -11,13 +11,13 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct Airport {
     #[serde(rename = "_id")]
-    pub id: String,
-    pub name: String,
+    pub id: Box<str>,
+    pub name: Box<str>,
     pub r#type: AirportType,
-    pub icao_code: Option<String>,
-    pub iata_code: Option<String>,
+    pub icao_code: Option<Box<str>>,
+    pub iata_code: Option<Box<str>>,
     /// A local identifier that no international registry defines.
-    pub alt_identifier: Option<String>,
+    pub alt_identifier: Option<Box<str>>,
     pub country: Countries,
     pub geometry: Point,
     pub elevation: Elevation,
@@ -38,16 +38,16 @@ pub struct Airport {
     #[serde(default)]
     pub runways: Vec<Runway>,
     pub hours_of_operation: Option<HoursOfOperation>,
-    pub contact: Option<String>,
+    pub contact: Option<Box<str>>,
     #[serde(default)]
     pub telephone_services: Vec<TelephoneService>,
     #[serde(default)]
     pub images: Vec<Image>,
-    pub remarks: Option<String>,
-    pub created_at: String,
-    pub created_by: String,
-    pub updated_at: String,
-    pub updated_by: String,
+    pub remarks: Option<Box<str>>,
+    pub created_at: Box<str>,
+    pub created_by: Box<str>,
+    pub updated_at: Box<str>,
+    pub updated_by: Box<str>,
 }
 
 /// The services of an airport.
@@ -71,25 +71,25 @@ pub struct Services {
 #[serde(rename_all = "camelCase")]
 pub struct Frequency {
     #[serde(rename = "_id")]
-    pub id: String,
+    pub id: Box<str>,
     /// The frequency in the given unit, for example `118.075`.
-    pub value: String,
+    pub value: Box<str>,
     pub unit: FrequencyUnit,
     pub r#type: FrequencyType,
-    pub name: Option<String>,
+    pub name: Option<Box<str>>,
     pub primary: bool,
     /// The frequency is available for public use.
     pub public_use: bool,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// A telephone service of an airport.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TelephoneService {
-    pub name: String,
-    pub phone_number: String,
-    pub remarks: Option<String>,
+    pub name: Box<str>,
+    pub phone_number: Box<str>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// One runway of an airport.
@@ -97,9 +97,9 @@ pub struct TelephoneService {
 #[serde(rename_all = "camelCase")]
 pub struct Runway {
     #[serde(rename = "_id")]
-    pub id: String,
+    pub id: Box<str>,
     /// The runway designator, for example `07L`.
-    pub designator: String,
+    pub designator: Box<str>,
     pub true_heading: i32,
     /// The designator refers to true north instead of magnetic north.
     pub aligned_true_north: bool,
@@ -123,7 +123,7 @@ pub struct Runway {
     pub visual_approach_aids: Vec<VisualApproachAid>,
     #[serde(default)]
     pub instrument_approach_aids: Vec<InstrumentApproachAid>,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// The surface of a runway.
@@ -136,8 +136,8 @@ pub struct Surface {
     /// The maximum permitted take-off weight.
     pub mtow: Option<Weight>,
     /// The pavement classification number.
-    pub pcn: Option<String>,
-    pub remarks: Option<String>,
+    pub pcn: Option<Box<str>>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// The length and width of a runway.
@@ -174,21 +174,21 @@ pub struct ThresholdLocation {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstrumentApproachAid {
-    pub identifier: Option<String>,
+    pub identifier: Option<Box<str>>,
     pub r#type: InstrumentApproachType,
     pub frequency: NavaidFrequency,
     /// The paired VHF channel.
-    pub channel: Option<String>,
+    pub channel: Option<Box<str>>,
     /// The aid is aligned with true north instead of magnetic north.
     pub aligned_true_north: bool,
     pub hours_of_operation: Option<HoursOfOperation>,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// The frequency of an instrument approach aid.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct NavaidFrequency {
-    pub value: String,
+    pub value: Box<str>,
     pub unit: FrequencyUnit,
 }
 

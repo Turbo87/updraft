@@ -29,15 +29,15 @@ pub struct Polygon {
 /// OpenAIP writes one ISO 3166-1 alpha-2 code or an array of codes. Both forms
 /// deserialize into this list. The codes stay unvalidated source text.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Countries(pub Vec<String>);
+pub struct Countries(pub Vec<Box<str>>);
 
 impl<'de> Deserialize<'de> for Countries {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         #[derive(Deserialize)]
         #[serde(untagged)]
         enum OneOrMany {
-            One(String),
-            Many(Vec<String>),
+            One(Box<str>),
+            Many(Vec<Box<str>>),
         }
 
         Ok(match OneOrMany::deserialize(deserializer)? {
@@ -125,7 +125,7 @@ pub struct HoursOfOperation {
     /// no entries.
     #[serde(default)]
     pub operating_hours: Vec<OperatingHours>,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// The operating hours of one day.
@@ -136,8 +136,8 @@ pub struct HoursOfOperation {
 #[serde(rename_all = "camelCase")]
 pub struct OperatingHours {
     pub day_of_week: DayOfWeek,
-    pub start_time: Option<String>,
-    pub end_time: Option<String>,
+    pub start_time: Option<Box<str>>,
+    pub end_time: Option<Box<str>>,
     /// Operation starts at sunrise.
     pub sunrise: bool,
     /// Operation ends at sunset.
@@ -145,7 +145,7 @@ pub struct OperatingHours {
     /// Operation depends on a NOTAM.
     pub by_notam: bool,
     pub public_holidays_excluded: bool,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// An image that OpenAIP hosts for an object.
@@ -153,9 +153,9 @@ pub struct OperatingHours {
 #[serde(rename_all = "camelCase")]
 pub struct Image {
     #[serde(rename = "_id")]
-    pub id: String,
-    pub filename: String,
-    pub description: Option<String>,
+    pub id: Box<str>,
+    pub filename: Box<str>,
+    pub description: Option<Box<str>>,
 }
 
 codes! {

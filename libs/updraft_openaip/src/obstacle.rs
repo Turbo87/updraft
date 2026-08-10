@@ -13,8 +13,8 @@ use std::collections::BTreeMap;
 #[serde(rename_all = "camelCase")]
 pub struct Obstacle {
     #[serde(rename = "_id")]
-    pub id: String,
-    pub name: String,
+    pub id: Box<str>,
+    pub name: Box<str>,
     pub r#type: ObstacleType,
     pub country: Countries,
     pub geometry: Point,
@@ -22,17 +22,17 @@ pub struct Obstacle {
     pub elevation_geoid: Option<ElevationGeoid>,
     /// The height above ground.
     pub height: Option<Height>,
-    pub osm_id: String,
+    pub osm_id: Box<str>,
     /// The `OpenStreetMap` tags of the source node.
     #[serde(default)]
-    pub osm_tags: BTreeMap<String, String>,
-    pub osm_import_job_id: String,
+    pub osm_tags: BTreeMap<Box<str>, Box<str>>,
+    pub osm_import_job_id: Box<str>,
     /// The last `OpenStreetMap` update as an RFC 3339 timestamp.
-    pub osm_updated_at: String,
-    pub created_at: String,
-    pub created_by: String,
-    pub updated_at: String,
-    pub updated_by: String,
+    pub osm_updated_at: Box<str>,
+    pub created_at: Box<str>,
+    pub created_by: Box<str>,
+    pub updated_at: Box<str>,
+    pub updated_by: Box<str>,
 }
 
 /// The height of an obstacle above ground.

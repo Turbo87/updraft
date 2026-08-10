@@ -54,6 +54,8 @@
 //! - An absent array becomes an empty list.
 //! - A timestamp stays an RFC 3339 string, and a time of day stays an `HH:MM`
 //!   string.
+//! - Text uses `Box<str>`, like the canonical Updraft types. A record is
+//!   read-only after deserialization, so it needs no spare capacity.
 
 mod code;
 mod common;

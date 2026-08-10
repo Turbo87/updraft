@@ -9,8 +9,8 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct HangGlidingSite {
     #[serde(rename = "_id")]
-    pub id: String,
-    pub name: String,
+    pub id: Box<str>,
+    pub name: Box<str>,
     pub r#type: HangGlidingType,
     /// Raw category codes. The API documentation does not describe them.
     #[serde(default)]
@@ -30,11 +30,11 @@ pub struct HangGlidingSite {
     pub elevation_geoid: Option<ElevationGeoid>,
     #[serde(default)]
     pub images: Vec<Image>,
-    pub remarks: Option<String>,
-    pub created_at: String,
-    pub created_by: String,
-    pub updated_at: String,
-    pub updated_by: String,
+    pub remarks: Option<Box<str>>,
+    pub created_at: Box<str>,
+    pub created_by: Box<str>,
+    pub updated_at: Box<str>,
+    pub updated_by: Box<str>,
 }
 
 codes! {

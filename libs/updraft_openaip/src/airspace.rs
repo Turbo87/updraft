@@ -9,8 +9,8 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct Airspace {
     #[serde(rename = "_id")]
-    pub id: String,
-    pub name: String,
+    pub id: Box<str>,
+    pub name: Box<str>,
     pub r#type: AirspaceType,
     pub icao_class: IcaoClass,
     pub activity: Activity,
@@ -34,20 +34,20 @@ pub struct Airspace {
     pub request_compliance: bool,
     pub hours_of_operation: HoursOfOperation,
     /// Start of a temporary activation period as an RFC 3339 timestamp.
-    pub active_from: Option<String>,
+    pub active_from: Option<Box<str>>,
     /// End of a temporary activation period as an RFC 3339 timestamp.
-    pub active_until: Option<String>,
+    pub active_until: Option<Box<str>>,
     #[serde(default)]
     pub frequencies: Vec<Frequency>,
     #[serde(default)]
     pub transponder_settings: Vec<TransponderSetting>,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
     /// The record comes from an automated data ingestion.
     pub data_ingestion: bool,
-    pub created_at: String,
-    pub created_by: String,
-    pub updated_at: String,
-    pub updated_by: String,
+    pub created_at: Box<str>,
+    pub created_by: Box<str>,
+    pub updated_at: Box<str>,
+    pub updated_by: Box<str>,
 }
 
 /// A radio frequency of an airspace.
@@ -55,24 +55,24 @@ pub struct Airspace {
 #[serde(rename_all = "camelCase")]
 pub struct Frequency {
     #[serde(rename = "_id")]
-    pub id: String,
+    pub id: Box<str>,
     /// The frequency in the given unit, for example `123.625`.
     ///
     /// Two United Kingdom records carry a corrupt entry that holds no value.
-    pub value: Option<String>,
+    pub value: Option<Box<str>>,
     pub unit: FrequencyUnit,
-    pub name: Option<String>,
+    pub name: Option<Box<str>>,
     pub primary: bool,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
 }
 
 /// A transponder code of an airspace.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransponderSetting {
-    pub code: String,
+    pub code: Box<str>,
     pub primary: bool,
-    pub remarks: Option<String>,
+    pub remarks: Option<Box<str>>,
 }
 
 codes! {

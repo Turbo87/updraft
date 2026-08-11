@@ -11,6 +11,7 @@
 //! The same code therefore serves a live sensor stream and a replayed
 //! recording.
 
+mod circling;
 mod estimator;
 mod height;
 mod noise;

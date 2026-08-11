@@ -1,3 +1,4 @@
+use crate::circling::{self, CirclingWind};
 use crate::height::HeightFilter;
 use crate::noise::NoiseFloor;
 use crate::smoothing_weight;
@@ -113,6 +114,8 @@ pub struct AirStateEstimator {
     previous_energy: Option<f64>,
     /// Estimates the wind from the ground velocity and the airspeed.
     wind: WindFilter,
+    /// Measures the wind from the shape of a circle instead.
+    circling: CirclingWind,
     /// Latest ground velocity, east and north in m/s.
     ground: Option<Timed<(f64, f64)>>,
     /// Noise and resolution of the source that drives the height.
@@ -232,6 +235,7 @@ impl AirStateEstimator {
             measured_air_speed: None,
             previous_energy: None,
             wind: WindFilter::default(),
+            circling: CirclingWind::default(),
             ground: None,
             noise: NoiseFloor::default(),
             vertical_speed_time_constant: None,
@@ -342,13 +346,25 @@ impl AirStateEstimator {
         if let Some(interval) = self.interval_since_fix(time) {
             self.wind.predict(interval);
         }
-        if let Some(air_speed) = self.measured_air_speed.filter(|speed| speed.fresh_at(time)) {
-            self.wind.update(
+        // One wind state takes both kinds of measurement, so it stays
+        // continuous when an airspeed sensor appears or goes away.
+        let air_speed = self.measured_air_speed.filter(|speed| speed.fresh_at(time));
+        let fit = self.circling.update(time.as_secs_f64(), east, north);
+        match air_speed {
+            // An airspeed knows the radius of the circle, so it places
+            // the wind better than a fit that has to find the radius too.
+            Some(air_speed) => self.wind.update(
                 east,
                 north,
                 Speed::from_meters_per_second(air_speed.value),
                 fix.position_accuracy,
-            );
+            ),
+            None => {
+                if let Some(fit) = fit {
+                    self.wind
+                        .update_vector(fit.east, fit.north, circling::MEASUREMENT_VARIANCE);
+                }
+            }
         }
         self.ground = Some(Timed {
             time,
@@ -833,5 +849,81 @@ mod tests {
             .with_vertical_speed_time_constant(Duration::ZERO);
 
         assert_eq!(estimator.vertical_speed_time_constant(), 0.25);
+    }
+
+    /// Circles at 108 km/h through a 10 m/s wind from the north-east,
+    /// with no airspeed sensor, so only the shape of the circle can
+    /// place the wind.
+    fn circle_without_a_sensor(seconds: u64) -> AirStateEstimator {
+        const TURN_SECONDS: f64 = 20.;
+        let air_speed = Speed::from_kilometers_per_hour(108.).as_meters_per_second();
+        let mut estimator = AirStateEstimator::new();
+        for step in 0..seconds {
+            let heading = std::f64::consts::TAU * step as f64 / TURN_SECONDS;
+            let east = -6. + air_speed * heading.sin();
+            let north = -8. + air_speed * heading.cos();
+            let time = Duration::from_secs(step);
+            estimator.fix(
+                time,
+                &Fix {
+                    position: LatLon::from_degrees(50.8, 6.2),
+                    track: Angle::from_radians(east.atan2(north)),
+                    ground_speed: Speed::from_meters_per_second(east.hypot(north)),
+                    position_accuracy: Length::from_meters(15.),
+                },
+            );
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+        estimator
+    }
+
+    #[test]
+    fn circling_recovers_the_wind_without_an_airspeed_sensor() {
+        let state = assert_some!(circle_without_a_sensor(60).state());
+
+        let wind = assert_some!(state.wind);
+        assert_abs_diff_eq!(
+            wind.speed,
+            Speed::from_meters_per_second(10.),
+            epsilon = 0.3
+        );
+        assert_abs_diff_eq!(wind.direction, Angle::from_degrees(36.87), epsilon = 0.5);
+    }
+
+    #[test]
+    fn the_wind_survives_losing_the_airspeed_sensor() {
+        const TURN_SECONDS: f64 = 20.;
+        let air_speed = Speed::from_kilometers_per_hour(108.).as_meters_per_second();
+        let mut estimator = AirStateEstimator::new();
+        let mut worst = 0f64;
+
+        // Circles through the same wind, with the sensor for the first
+        // half of the time and without it for the second. One filter
+        // takes both kinds of measurement, so nothing restarts.
+        for step in 0..120u64 {
+            let heading = std::f64::consts::TAU * step as f64 / TURN_SECONDS;
+            let east = -6. + air_speed * heading.sin();
+            let north = -8. + air_speed * heading.cos();
+            let time = Duration::from_secs(step);
+            if step < 60 {
+                estimator.air_speed(time, Speed::from_meters_per_second(air_speed));
+            }
+            estimator.fix(
+                time,
+                &Fix {
+                    position: LatLon::from_degrees(50.8, 6.2),
+                    track: Angle::from_radians(east.atan2(north)),
+                    ground_speed: Speed::from_meters_per_second(east.hypot(north)),
+                    position_accuracy: Length::from_meters(15.),
+                },
+            );
+            estimator.pressure_altitude(time, meters(1000.));
+            if step > 60 {
+                let wind = assert_some!(assert_some!(estimator.state()).wind);
+                worst = worst.max((wind.speed.as_meters_per_second() - 10.).abs());
+            }
+        }
+
+        assert!(worst < 0.5, "wind speed drifted {worst} m/s");
     }
 }

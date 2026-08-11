@@ -133,6 +133,39 @@ impl WindFilter {
         self.variance_north -= gain_north * projected_north;
     }
 
+    /// Folds a complete wind vector into the estimate, with an isotropic
+    /// variance of `variance` on each component. A circle fit produces
+    /// one of these where no airspeed sensor does.
+    pub fn update_vector(&mut self, east: f64, north: f64, variance: f64) {
+        // A value that is not a number would stay in the state for the
+        // rest of the flight, and the determinant check below would then
+        // pass for ever, so nothing could repair it.
+        if !east.is_finite() || !north.is_finite() || !variance.is_finite() || variance <= 0. {
+            return;
+        }
+
+        let (pe, c, pn) = (self.variance_east, self.covariance, self.variance_north);
+        let determinant = (pe + variance) * (pn + variance) - c * c;
+        if !determinant.is_finite() || determinant <= 0. {
+            return;
+        }
+
+        // Gain of a two-dimensional update with H = I.
+        let gain_ee = (pe * pn + pe * variance - c * c) / determinant;
+        let gain_en = c * variance / determinant;
+        let gain_nn = (pe * pn + pn * variance - c * c) / determinant;
+
+        let innovation_east = east - self.east;
+        let innovation_north = north - self.north;
+        self.east += gain_ee * innovation_east + gain_en * innovation_north;
+        self.north += gain_en * innovation_east + gain_nn * innovation_north;
+
+        // P -= K·P, with K symmetric.
+        self.variance_east -= gain_ee * pe + gain_en * c;
+        self.covariance -= gain_ee * c + gain_en * pn;
+        self.variance_north -= gain_en * c + gain_nn * pn;
+    }
+
     /// The wind vector in m/s towards east and north, or `None` while the
     /// estimate is still too uncertain to report.
     ///

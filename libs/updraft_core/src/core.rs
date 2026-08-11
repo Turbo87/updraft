@@ -401,6 +401,10 @@ impl Core {
                     device.gps.altitude = Some(Timed::new(altitude, at));
                     updated = true;
                 }
+                if let Some(dilution) = gga.hdop.filter(|hdop| hdop.is_finite() && *hdop > 0.) {
+                    device.gps.horizontal_dilution = Some(Timed::new(dilution, at));
+                    updated = true;
+                }
                 updated.then_some(UpdatedDomain::Gps)
             }
             Message::Pgrmz(pgrmz) => {

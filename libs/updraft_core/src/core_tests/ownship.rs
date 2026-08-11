@@ -144,6 +144,20 @@ fn valid_gga_position_makes_a_gps_source_eligible() {
 }
 
 #[test]
+fn a_gga_dilution_reaches_the_selected_gps_domain() {
+    let (mut core, device_id) = core_with_external_device();
+
+    core.apply(Bytes::new(device_id, GGA), at(0));
+
+    // A receiver reports the dilution rather than an accuracy, and a
+    // consumer that weighs a fix needs it.
+    let DomainState::Current(selected) = core.gps else {
+        unreachable!()
+    };
+    assert_some_eq!(selected.value.horizontal_dilution, 0.9);
+}
+
+#[test]
 fn invalid_gga_does_not_replace_or_refresh_valid_data() {
     let (mut core, device_id) = core_with_external_device();
     core.apply(Bytes::new(device_id, GGA), at(0));

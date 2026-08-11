@@ -36,6 +36,8 @@ pub struct GpsCandidate {
     pub track: Option<Timed<Angle>>,
     pub ground_speed: Option<Timed<Speed>>,
     pub fix_time: GpsTimeCandidate,
+    /// Horizontal dilution of precision, where the receiver reports one.
+    pub horizontal_dilution: Option<Timed<f64>>,
 }
 
 /// Stores the latest canonical GPS fix times from one source.
@@ -132,6 +134,8 @@ pub struct GpsSnapshot {
     pub track: Option<Angle>,
     pub ground_speed: Option<Speed>,
     pub fix_time: Option<FixTime>,
+    /// Horizontal dilution of precision, where the receiver reports one.
+    pub horizontal_dilution: Option<f64>,
 }
 
 impl GpsSnapshot {
@@ -168,6 +172,9 @@ pub fn select_gps_candidate(
     let ground_speed = candidate
         .ground_speed
         .and_then(|speed| speed.fresh_value(at));
+    let horizontal_dilution = candidate
+        .horizontal_dilution
+        .and_then(|dilution| dilution.fresh_value(at));
     let fix_time = candidate
         .fix_time
         .full
@@ -190,6 +197,7 @@ pub fn select_gps_candidate(
             track,
             ground_speed,
             fix_time,
+            horizontal_dilution,
         },
     })
 }
@@ -237,6 +245,7 @@ mod tests {
             track: Some(Angle::from_degrees(270.0)),
             ground_speed: Some(Speed::from_meters_per_second(45.0)),
             fix_time: None,
+            horizontal_dilution: Some(0.9),
         };
 
         let published = snapshot.published(false);

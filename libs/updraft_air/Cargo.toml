@@ -10,6 +10,7 @@ workspace = true
 [dependencies]
 updraft_egm96 = { path = "../updraft_egm96" }
 updraft_geo = { path = "../updraft_geo" }
+updraft_polar = { path = "../updraft_polar" }
 updraft_units = { path = "../updraft_units" }
 
 [dev-dependencies]

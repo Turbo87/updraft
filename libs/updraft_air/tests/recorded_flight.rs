@@ -2,11 +2,12 @@
 //!
 //! `testdata/weglide_1141558.igc` is a five-hour cross-country flight in a
 //! JS-3-18m, logged by an LXNAV LX9070 with a V9 vario. Its B records
-//! carry the instrument's own total-energy vario (`VAT`), and its K
-//! records the instrument's wind (`WDI`, `WSP`). The instrument derived
-//! those from sensors the estimator does not have: a total-energy probe
-//! and an inertial platform. The recorded values are therefore a
-//! reference to measure against, not a ground truth.
+//! carry the instrument's own total-energy vario (`VAT`) and netto
+//! (`NET`), and its K records the instrument's wind (`WDI`, `WSP`). The
+//! instrument derived those from sensors the estimator does not have: a
+//! total-energy probe and an inertial platform. Its netto also depends
+//! on the direction of turn, which no sink rate can. The recorded values
+//! are therefore a reference to measure against, not a ground truth.
 //!
 //! Only soaring flight is scored. During the launch the engine noise
 //! reaches the pitot, so measuring there measures the launch, not the
@@ -21,11 +22,17 @@ use std::fmt::Write as _;
 use std::time::Duration;
 use updraft_air::{AirStateEstimator, Fix};
 use updraft_geo::LatLon;
+use updraft_polar::{GlidePolar, POLAR_STORE};
 use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.
 const RECORDING: &str = include_str!("../../../testdata/weglide_1141558.igc");
+
+/// The glider type in the recording's `HFGTY` header. The recording does
+/// not state the flying mass, so the estimate uses the polar's reference
+/// mass and understates the sink rate of a ballasted glider.
+const GLIDER_TYPE: &str = "JS-3-18m";
 
 /// Engine noise level above which the engine counts as running.
 const ENGINE_RUNNING: f64 = 200.;
@@ -60,8 +67,9 @@ enum AirSpeed {
 }
 
 fn measure(air_speed: AirSpeed) -> String {
-    let mut estimator = AirStateEstimator::new();
+    let mut estimator = AirStateEstimator::new().with_polar(polar());
     let mut vertical_speed = Errors::default();
+    let mut netto = Errors::default();
     let mut wind_speed = Errors::default();
     let mut wind_direction = Errors::default();
 
@@ -126,6 +134,9 @@ fn measure(air_speed: AirSpeed) -> String {
                     state.vertical_speed.as_meters_per_second(),
                     value("VAT") / 100.,
                 );
+                if let Some(netto_estimate) = state.netto {
+                    netto.add(netto_estimate.as_meters_per_second(), value("NET") / 100.);
+                }
             }
             Ok(Record::K(record)) => {
                 let Some(wind) = estimated_wind.filter(|_| soaring) else {
@@ -148,9 +159,18 @@ fn measure(air_speed: AirSpeed) -> String {
 
     let mut rows = String::new();
     writeln!(rows, "vertical speed     m/s   {}", vertical_speed.row()).unwrap();
+    writeln!(rows, "netto              m/s   {}", netto.row()).unwrap();
     writeln!(rows, "wind speed         m/s   {}", wind_speed.row()).unwrap();
     writeln!(rows, "wind direction     deg   {}", wind_direction.row()).unwrap();
     rows
+}
+
+fn polar() -> GlidePolar {
+    POLAR_STORE
+        .iter()
+        .find(|entry| entry.name == GLIDER_TYPE)
+        .expect("the built-in store has the recording's glider type")
+        .glide_polar()
 }
 
 fn seconds(time: &igc::util::Time) -> Duration {

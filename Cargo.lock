@@ -5342,6 +5342,7 @@ dependencies = [
  "insta",
  "updraft_egm96",
  "updraft_geo",
+ "updraft_polar",
  "updraft_units",
 ]
 

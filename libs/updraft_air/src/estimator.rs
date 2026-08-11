@@ -5,6 +5,7 @@ use crate::smoothing_weight;
 use crate::wind::{Wind, WindFilter};
 use std::time::Duration;
 use updraft_geo::LatLon;
+use updraft_polar::GlidePolar;
 use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
 
 /// Standard gravity, in m/s².
@@ -109,6 +110,11 @@ pub struct AirState {
     /// Horizontal movement of the air mass, or `None` while the wind
     /// estimate has not converged yet.
     pub wind: Option<Wind>,
+    /// Vertical speed of the air mass: the vertical speed with the
+    /// glider's own sink rate added back. Positive means rising air.
+    /// `None` until an airspeed is available and the glider's polar is
+    /// known, because the sink rate depends on both.
+    pub netto: Option<Speed>,
     /// Bank angle of a coordinated turn at the current turn rate.
     /// Positive means banked to the right. `None` until an airspeed is
     /// available, because the bank angle depends on it.
@@ -148,6 +154,8 @@ pub struct AirState {
 /// that would reject it therefore passes.
 #[derive(Clone, Debug)]
 pub struct AirStateEstimator {
+    /// The glider's polar, which the netto needs.
+    polar: Option<GlidePolar>,
     /// Combines the two altitude sources into one height.
     height: HeightFilter,
     /// Latest pressure altitude, in metres, and whether a barometer
@@ -287,6 +295,7 @@ impl Default for AirStateEstimator {
 impl AirStateEstimator {
     pub fn new() -> Self {
         Self {
+            polar: None,
             height: HeightFilter::default(),
             altitude: None,
             total_energy: Vario::default(),
@@ -303,6 +312,20 @@ impl AirStateEstimator {
             noise: NoiseFloor::default(),
             vertical_speed_time_constant: None,
         }
+    }
+
+    /// Sets the glider's polar, which the netto needs. The polar must
+    /// already carry the flight's mass and bugs settings, because they
+    /// scale the sink rate that the netto builds on.
+    pub fn with_polar(mut self, polar: GlidePolar) -> Self {
+        self.set_polar(polar);
+        self
+    }
+
+    /// Replaces the polar in flight, for a glider that dumps its water
+    /// ballast and changes its wing loading part way through.
+    pub fn set_polar(&mut self, polar: GlidePolar) {
+        self.polar = Some(polar);
     }
 
     /// Overrides the vertical-speed smoothing, which otherwise follows
@@ -517,6 +540,42 @@ impl AirStateEstimator {
         Angle::from_radians(tangent.atan())
     }
 
+    /// The still-air sink rate (a positive number) at the given airspeed,
+    /// the current bank angle and the air density, in m/s.
+    ///
+    /// A glide polar is quoted as equivalent airspeed against sink rate
+    /// at sea level, so a density ratio `σ` reads it at `v·√σ` and
+    /// scales the result by `1/√σ`.
+    ///
+    /// A turn scales the two axes differently. The sink rate comes from
+    /// the power balance `w = D·v/W`, and lift does no work, so `W` is
+    /// the weight and not the lift. Holding the lift coefficient, a load
+    /// factor `n = 1/cos(φ)` needs `v' = √n·v` and costs `D' = n·D`,
+    /// which leaves `w' = n^1.5·w`. The polar is therefore read at
+    /// `v·√σ/√n` and its result scaled by `n^1.5/√σ`.
+    ///
+    /// Scaling both axes by `√n`, as a change of mass does, would
+    /// understate the circling sink rate by the factor `n` itself: 19%
+    /// instead of 68% at 45° of bank, where the textbooks and the load
+    /// factor both say `1/cos^1.5(φ)`. A change of mass is different
+    /// because the weight moves with the lift, and the power balance
+    /// divides by it.
+    ///
+    /// The density is the ISA one at the pressure altitude, divided by
+    /// the measured temperature of the column: a pressure altitude names
+    /// a pressure, and warm air at that pressure is thinner than the ISA
+    /// says by exactly that ratio.
+    fn sink_rate(&self, altitude: f64, air_speed: f64) -> Option<f64> {
+        let polar = self.polar.as_ref()?;
+        let density = isa_density_ratio(altitude) / self.height.column_ratio();
+        let root_density = density.sqrt();
+        let load = 1. / self.bank_angle(air_speed).cos();
+        let root_load = load.sqrt();
+
+        let equivalent = Speed::from_meters_per_second(air_speed * root_density / root_load);
+        Some(polar.sink_rate(equivalent).as_meters_per_second() * load * root_load / root_density)
+    }
+
     /// The air-relative track, which is the ground velocity with the wind
     /// taken out.
     fn heading(&self, now: Duration) -> Option<Angle> {
@@ -581,6 +640,10 @@ impl AirStateEstimator {
             rate_of_climb: Speed::from_meters_per_second(rate_of_climb),
             air_speed: air_speed.map(Speed::from_meters_per_second),
             heading: self.heading(now),
+            netto: air_speed.zip(self.altitude).and_then(|(speed, altitude)| {
+                let sink_rate = self.sink_rate(altitude.value.0, speed)?;
+                Some(Speed::from_meters_per_second(vertical_speed + sink_rate))
+            }),
             bank_angle: air_speed.map(|speed| self.bank_angle(speed)),
             altitude: self.msl_altitude(),
             column_temperature_ratio: self
@@ -596,6 +659,20 @@ impl AirStateEstimator {
     }
 }
 
+/// Air density at a pressure altitude, relative to sea level, following
+/// the ISA troposphere model.
+///
+/// The model assumes the ISA temperature at that altitude. A warm day
+/// leaves the air thinner than this, which the column ratio corrects.
+fn isa_density_ratio(altitude: f64) -> f64 {
+    /// Temperature lapse rate divided by the sea level temperature, in 1/m.
+    const LAPSE_RATE: f64 = 2.255_77e-5;
+    /// `g/(R·L) - 1`, the exponent for density rather than pressure.
+    const EXPONENT: f64 = 4.255_88;
+
+    (1. - LAPSE_RATE * altitude).max(0.).powf(EXPONENT)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -604,6 +681,34 @@ mod tests {
     use updraft_units::Length;
 
     const POSITION: LatLon = LatLon::from_degrees(50.8, 6.2);
+    const GLIDER_TYPE: &str = "JS-3-18m";
+
+    fn polar() -> GlidePolar {
+        updraft_polar::POLAR_STORE
+            .iter()
+            .find(|entry| entry.name == GLIDER_TYPE)
+            .expect("the built-in store has this glider type")
+            .glide_polar()
+    }
+
+    /// Flies two minutes at `speed` km/h and returns the sink rate the
+    /// netto added back. `circle` is the time for a full turn, or `None`
+    /// to hold a straight track.
+    fn applied_sink(speed: f64, circle: Option<f64>) -> f64 {
+        let mut estimator = AirStateEstimator::new().with_polar(polar());
+        for step in 0..120u64 {
+            let time = Duration::from_secs(step);
+            let track = match circle {
+                Some(circle) => 360. * step as f64 / circle,
+                None => 90.,
+            };
+            estimator.air_speed(time, Speed::from_kilometers_per_hour(speed));
+            estimator.fix(time, &fix(track, speed));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+        let state = estimator.state().expect("two minutes produce a state");
+        (state.netto.expect("the polar is set") - state.vertical_speed).as_meters_per_second()
+    }
 
     fn fix(track: f64, ground_speed: f64) -> Fix {
         Fix {
@@ -1028,6 +1133,84 @@ mod tests {
     }
 
     #[test]
+    fn the_netto_adds_the_glider_own_sink_rate_back() {
+        // Flying level at 108 km/h, the air must be rising by exactly
+        // the sink rate the glider would have in still air.
+        let mut estimator = AirStateEstimator::new().with_polar(polar());
+        for step in 0..60u64 {
+            let time = Duration::from_secs(step);
+            estimator.air_speed(time, Speed::from_kilometers_per_hour(108.));
+            estimator.fix(time, &fix(90., 108.));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+
+        let state = assert_some!(estimator.state());
+        assert_abs_diff_eq!(state.vertical_speed, Speed::ZERO, epsilon = 0.01);
+        assert_abs_diff_eq!(
+            assert_some!(state.netto),
+            Speed::from_meters_per_second(0.571),
+            epsilon = 0.01
+        );
+    }
+
+    #[test]
+    fn the_netto_waits_for_a_polar() {
+        let mut estimator = AirStateEstimator::new();
+        for step in 0..60u64 {
+            let time = Duration::from_secs(step);
+            estimator.air_speed(time, Speed::from_kilometers_per_hour(108.));
+            estimator.fix(time, &fix(90., 108.));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+
+        // Nothing says how fast this glider sinks.
+        assert_none!(assert_some!(estimator.state()).netto);
+    }
+
+    #[test]
+    fn the_turning_sink_rate_follows_the_load_factor_law() {
+        /// Time for one full circle, in seconds.
+        const CIRCLE: f64 = 20.;
+        const SPEED: f64 = 108.;
+
+        // Lift does no work, so the power balance `w = D·v/W` keeps
+        // dividing by the weight while the lift grows. Holding the lift
+        // coefficient, a load factor `n` needs `√n` times the speed and
+        // costs `n` times the drag, which is `n^1.5` times the sink
+        // rate. Comparing the estimate against itself at the same
+        // altitude cancels the density, so only the load factor is left.
+        //
+        // Scaling both axes by `√n`, as a change of mass does, would
+        // give a ratio of `n` instead. That is what this separates.
+        let turn_rate = std::f64::consts::TAU / CIRCLE;
+        let load = (1. + (turn_rate * SPEED / 3.6 / GRAVITY).powi(2)).sqrt();
+
+        let turning = applied_sink(SPEED, Some(CIRCLE));
+        let level = applied_sink(SPEED / load.sqrt(), None);
+
+        assert_abs_diff_eq!(turning / level, load * load.sqrt(), epsilon = 0.01);
+    }
+
+    #[test]
+    fn circling_raises_the_sink_rate_the_netto_corrects_for() {
+        // 108 km/h in a 20 s circle is 44° of bank, which raises the
+        // sink rate from the 0.571 m/s of the same speed with level
+        // wings. Scaling by the square root of the load factor instead
+        // would read 0.645 m/s.
+        assert_abs_diff_eq!(applied_sink(108., Some(20.)), 0.895, epsilon = 0.005);
+    }
+
+    #[test]
+    fn a_warm_column_thins_the_air_the_sink_rate_is_read_at() {
+        // A pressure altitude names a pressure, and warm air at that
+        // pressure is thinner, so the glider sinks faster through it.
+        let standard = isa_density_ratio(1000.);
+
+        assert!(standard < 1., "density ratio at 1000 m read {standard}");
+        assert_abs_diff_eq!(standard, 0.9075, epsilon = 0.001);
+    }
+
+    #[test]
     fn an_altitude_that_is_not_a_number_is_ignored() {
         for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             let mut estimator = climb(2., 30);
@@ -1240,5 +1423,51 @@ mod tests {
         }
 
         assert!(worst < 0.5, "wind speed drifted {worst} m/s");
+    }
+
+    #[test]
+    fn the_netto_waits_for_an_airspeed() {
+        let mut estimator = AirStateEstimator::new().with_polar(polar());
+        for second in 0..60u64 {
+            estimator.pressure_altitude(Duration::from_secs(second), meters(1000.));
+        }
+
+        // The sink rate depends on how fast the glider is flying, and
+        // nothing here says.
+        assert_none!(assert_some!(estimator.state()).netto);
+    }
+
+    #[test]
+    fn dumping_water_ballast_lightens_the_sink_rate_at_once() {
+        let heavy = polar().with_total_mass(updraft_units::Mass::from_kilograms(600.));
+        let light = polar().with_total_mass(updraft_units::Mass::from_kilograms(400.));
+
+        let mut estimator = AirStateEstimator::new().with_polar(heavy);
+        for second in 0..60u64 {
+            let time = Duration::from_secs(second);
+            estimator.air_speed(time, Speed::from_kilometers_per_hour(108.));
+            estimator.fix(time, &fix(90., 108.));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+        let ballasted = assert_some!(assert_some!(estimator.state()).netto);
+
+        estimator.set_polar(light);
+        let dumped = assert_some!(assert_some!(estimator.state()).netto);
+
+        // Less mass is less sink at the same speed, so the same vertical
+        // speed means the air is rising less than it seemed.
+        assert!(
+            dumped < ballasted,
+            "dumped {dumped:?} against ballasted {ballasted:?}"
+        );
+    }
+
+    #[test]
+    fn the_isa_model_matches_the_published_density_ratios() {
+        // Published ISA density ratios, which the sink rate is read at.
+        assert_abs_diff_eq!(isa_density_ratio(0.), 1., epsilon = 1e-9);
+        assert_abs_diff_eq!(isa_density_ratio(1000.), 0.9075, epsilon = 0.0005);
+        assert_abs_diff_eq!(isa_density_ratio(3000.), 0.7423, epsilon = 0.0005);
+        assert_abs_diff_eq!(isa_density_ratio(5000.), 0.6012, epsilon = 0.0005);
     }
 }

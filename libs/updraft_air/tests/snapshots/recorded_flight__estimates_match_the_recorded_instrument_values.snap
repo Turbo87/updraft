@@ -4,9 +4,11 @@ expression: report
 ---
 quantity           unit        n    rms    mae   bias   corr
 vertical speed     m/s    17581   0.47   0.36  -0.01   0.96
+netto              m/s    17581   1.23   0.96  -0.10   0.77
 wind speed         m/s    12680   1.73   1.32  -0.27   0.52
 wind direction     deg    12680  16.98  12.73  -1.17      -
 -- without an airspeed sensor --
 vertical speed     m/s    17581   0.94   0.72  -0.01   0.84
+netto              m/s    17572   1.13   0.81  -0.09   0.80
 wind speed         m/s    12671   2.10   1.59  -0.48   0.33
 wind direction     deg    12671  18.83  14.59  +1.22      -

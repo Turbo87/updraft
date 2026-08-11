@@ -40,6 +40,9 @@ const MAX_TIME_CONSTANT: f64 = 3.;
 /// A larger gap restarts the vertical speed.
 const MAX_ALTITUDE_INTERVAL: Duration = Duration::from_secs(30);
 
+/// Airspeed below which the air-relative track is meaningless, in m/s.
+const MIN_AIR_SPEED: f64 = 1.;
+
 /// How long an airspeed stays usable after it arrives. It covers a
 /// source that reports slowly, and expires one that went away.
 const MAX_AGE: Duration = Duration::from_secs(5);
@@ -80,6 +83,20 @@ pub struct AirState {
     /// wants under power, and it stays available when the airspeed goes
     /// away.
     pub rate_of_climb: Speed,
+    /// True airspeed. It comes from a connected instrument where one
+    /// reports it, and otherwise from the ground velocity with the wind
+    /// taken out, which needs the wind estimate to have converged.
+    ///
+    /// The derived value uses the horizontal velocities alone, so a
+    /// steep climb understates it by a few tenths of a percent.
+    pub air_speed: Option<Speed>,
+    /// The direction the glider points, clockwise from true north.
+    ///
+    /// This is the air-relative track, which a coordinated turn keeps
+    /// aligned with the fuselage. `None` until the wind is known,
+    /// because without the wind it would only repeat the track over
+    /// ground that the caller supplied.
+    pub heading: Option<Angle>,
     /// Horizontal movement of the air mass, or `None` while the wind
     /// estimate has not converged yet.
     pub wind: Option<Wind>,
@@ -389,11 +406,27 @@ impl AirStateEstimator {
         self.measured_air_speed = Some(Timed { time, value: speed });
     }
 
-    /// The airspeed to work from, while an instrument still reports one.
+    /// The airspeed to work from: measured where an instrument reports
+    /// one, otherwise what is left of the ground velocity once the wind
+    /// is taken out.
     fn air_speed_at(&self, now: Duration) -> Option<f64> {
-        self.measured_air_speed
-            .filter(|speed| speed.fresh_at(now))
-            .map(|speed| speed.value)
+        if let Some(speed) = self.measured_air_speed.filter(|s| s.fresh_at(now)) {
+            return Some(speed.value);
+        }
+        let ground = self.ground.filter(|ground| ground.fresh_at(now))?;
+        let (east, north) = self.wind.vector()?;
+        Some((ground.value.0 - east).hypot(ground.value.1 - north))
+    }
+
+    /// The air-relative track, which is the ground velocity with the wind
+    /// taken out.
+    fn heading(&self, now: Duration) -> Option<Angle> {
+        let ground = self.ground.filter(|ground| ground.fresh_at(now))?;
+        let (wind_east, wind_north) = self.wind.vector()?;
+        let east = ground.value.0 - wind_east;
+        let north = ground.value.1 - wind_north;
+        (east.hypot(north) >= MIN_AIR_SPEED)
+            .then(|| Angle::from_radians(east.atan2(north)).normalized())
     }
 
     /// Differentiates both the total energy height and the height alone.
@@ -442,9 +475,13 @@ impl AirStateEstimator {
         // that is always available.
         let rate_of_climb = self.uncompensated.value?;
         let vertical_speed = self.total_energy.value.unwrap_or(rate_of_climb);
+        let now = self.uncompensated.previous?.time;
+        let air_speed = self.air_speed_at(now);
         Some(AirState {
             vertical_speed: Speed::from_meters_per_second(vertical_speed),
             rate_of_climb: Speed::from_meters_per_second(rate_of_climb),
+            air_speed: air_speed.map(Speed::from_meters_per_second),
+            heading: self.heading(now),
             wind: self.wind.vector().map(|(east, north)| Wind {
                 direction: Angle::from_radians((-east).atan2(-north)).normalized(),
                 speed: Speed::from_meters_per_second(east.hypot(north)),
@@ -459,6 +496,17 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use claims::{assert_ge, assert_le, assert_lt, assert_none, assert_some};
     use updraft_units::Length;
+
+    const POSITION: LatLon = LatLon::from_degrees(50.8, 6.2);
+
+    fn fix(track: f64, ground_speed: f64) -> Fix {
+        Fix {
+            position: POSITION,
+            track: Angle::from_degrees(track),
+            ground_speed: Speed::from_kilometers_per_hour(ground_speed),
+            position_accuracy: Length::from_meters(15.),
+        }
+    }
 
     fn meters(value: f64) -> PressureAltitude {
         PressureAltitude::new(Length::from_meters(value))
@@ -710,6 +758,50 @@ mod tests {
             climb_after(2, Duration::from_secs(2)),
             Speed::from_meters_per_second(1.)
         );
+    }
+
+    #[test]
+    fn the_airspeed_sensor_is_reported_as_it_arrives() {
+        let mut estimator = AirStateEstimator::new();
+        for step in 0..10u64 {
+            let time = Duration::from_secs(step);
+            estimator.air_speed(time, Speed::from_kilometers_per_hour(120.));
+            estimator.fix(time, &fix(90., 150.));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+
+        // The ground speed is 150 km/h, so this can only be the sensor.
+        let state = assert_some!(estimator.state());
+        assert_abs_diff_eq!(
+            assert_some!(state.air_speed),
+            Speed::from_kilometers_per_hour(120.),
+            epsilon = 1e-9
+        );
+    }
+
+    #[test]
+    fn circling_recovers_the_airspeed_and_heading_without_a_sensor() {
+        // The last fix of the circle points 342°, at 108 km/h.
+        let state = assert_some!(circle_without_a_sensor(60).state());
+
+        assert_abs_diff_eq!(
+            assert_some!(state.air_speed),
+            Speed::from_kilometers_per_hour(108.),
+            epsilon = 0.3
+        );
+        assert_abs_diff_eq!(
+            assert_some!(state.heading),
+            Angle::from_degrees(342.),
+            epsilon = 0.5
+        );
+    }
+
+    #[test]
+    fn the_heading_waits_for_the_wind() {
+        // Without the wind the heading would only repeat the track over
+        // ground that the caller supplied.
+        assert_none!(assert_some!(circle_without_a_sensor(10).state()).heading);
+        assert_some!(assert_some!(circle_without_a_sensor(60).state()).heading);
     }
 
     #[test]

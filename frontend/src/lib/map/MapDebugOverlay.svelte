@@ -4,7 +4,7 @@
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
-  import { convertAltitude, convertSpeed } from '$lib/units';
+  import { convertAltitude, convertSpeed, convertVerticalSpeed } from '$lib/units';
 
   let {
     map,
@@ -26,6 +26,38 @@
   const trueAirspeedState = $derived(formatDomainState(trueAirspeed));
   const pressureAltitude = $derived(instruments.pressureAltitude);
   const pressureAltitudeState = $derived(formatDomainState(pressureAltitude));
+  // The estimate is absent until the core has produced one, and every
+  // row still shows, as a dash: knowing that it has nothing yet is the
+  // point of the overlay.
+  const air = $derived(instruments.air);
+
+  function degrees(value: number | null): string {
+    return value === null ? '–' : `${value.toFixed(0)}°`;
+  }
+
+  function wind(): string {
+    let direction = air?.windDirectionDegrees ?? null;
+    if (direction === null) return '–';
+    return `${degrees(direction)} / ${speed(air?.windSpeedMetersPerSecond ?? null)}`;
+  }
+
+  function altitude(meters: number | null | undefined): string {
+    return meters === null || meters === undefined
+      ? '–'
+      : `${convertAltitude(meters, units.altitude).toFixed(0)} ${units.altitude}`;
+  }
+
+  function speed(metersPerSecond: number | null | undefined): string {
+    return metersPerSecond === null || metersPerSecond === undefined
+      ? '–'
+      : `${convertSpeed(metersPerSecond, units.speed).toFixed(1)} ${units.speed}`;
+  }
+
+  function verticalSpeed(metersPerSecond: number | null | undefined): string {
+    return metersPerSecond === null || metersPerSecond === undefined
+      ? '–'
+      : `${convertVerticalSpeed(metersPerSecond, units.verticalSpeed).toFixed(2)} ${units.verticalSpeed}`;
+  }
 
   function formatDomainState(value: { stale: boolean } | null): string {
     if (value === null) return 'Unavailable';
@@ -140,6 +172,24 @@
       </dd>
       <dt>Pressure altitude state</dt>
       <dd>{pressureAltitudeState}</dd>
+      <dt>Vertical speed</dt>
+      <dd>{verticalSpeed(air?.verticalSpeedMetersPerSecond)}</dd>
+      <dt>Rate of climb</dt>
+      <dd>{verticalSpeed(air?.rateOfClimbMetersPerSecond)}</dd>
+      <dt>Netto</dt>
+      <dd>{verticalSpeed(air?.nettoMetersPerSecond)}</dd>
+      <dt>Air speed</dt>
+      <dd>{speed(air?.airSpeedMetersPerSecond)}</dd>
+      <dt>Heading</dt>
+      <dd>{degrees(air?.headingDegrees ?? null)}</dd>
+      <dt>Bank angle</dt>
+      <dd>{degrees(air?.bankAngleDegrees ?? null)}</dd>
+      <dt>Wind</dt>
+      <dd>{wind()}</dd>
+      <dt>Wind ±</dt>
+      <dd>{speed(air?.windUncertaintyMetersPerSecond)}</dd>
+      <dt>Fused altitude</dt>
+      <dd>{altitude(air?.fusedAltitudeMslMeters)}</dd>
     </dl>
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />

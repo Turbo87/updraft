@@ -5,12 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
+import { EMPTY_AIR_ESTIMATE, EMPTY_INSTRUMENTS } from '$lib/stores/instruments.svelte';
 import MapDebugOverlay from './MapDebugOverlay.svelte';
 
 const emptyInstruments: Instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  air: null,
 };
 
 const metricUnits: UnitSettings = {
@@ -131,6 +133,42 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Pressure altitude state",
           "value": "Unavailable",
         },
+        {
+          "label": "Vertical speed",
+          "value": "–",
+        },
+        {
+          "label": "Rate of climb",
+          "value": "–",
+        },
+        {
+          "label": "Netto",
+          "value": "–",
+        },
+        {
+          "label": "Air speed",
+          "value": "–",
+        },
+        {
+          "label": "Heading",
+          "value": "–",
+        },
+        {
+          "label": "Bank angle",
+          "value": "–",
+        },
+        {
+          "label": "Wind",
+          "value": "–",
+        },
+        {
+          "label": "Wind ±",
+          "value": "–",
+        },
+        {
+          "label": "Fused altitude",
+          "value": "–",
+        },
       ]
     `);
   });
@@ -147,6 +185,7 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: false },
       trueAirspeed: { metersPerSecond: 50, stale: false },
+      air: null,
     };
     let view = await render(MapDebugOverlay, {
       map: undefined,
@@ -202,8 +241,66 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Pressure altitude state",
           "value": "Current",
         },
+        {
+          "label": "Vertical speed",
+          "value": "–",
+        },
+        {
+          "label": "Rate of climb",
+          "value": "–",
+        },
+        {
+          "label": "Netto",
+          "value": "–",
+        },
+        {
+          "label": "Air speed",
+          "value": "–",
+        },
+        {
+          "label": "Heading",
+          "value": "–",
+        },
+        {
+          "label": "Bank angle",
+          "value": "–",
+        },
+        {
+          "label": "Wind",
+          "value": "–",
+        },
+        {
+          "label": "Wind ±",
+          "value": "–",
+        },
+        {
+          "label": "Fused altitude",
+          "value": "–",
+        },
       ]
     `);
+  });
+
+  it('shows every estimate the core derived', async () => {
+    let instruments: Instruments = {
+      ...EMPTY_INSTRUMENTS,
+      air: {
+        ...EMPTY_AIR_ESTIMATE,
+        verticalSpeedMetersPerSecond: 1.8,
+        nettoMetersPerSecond: 2.4,
+        bankAngleDegrees: -38,
+        windDirectionDegrees: 240,
+        windSpeedMetersPerSecond: 5.2,
+      },
+    };
+    render(MapDebugOverlay, { map: undefined, instruments, units: metricUnits });
+
+    await userEvent.keyboard('d');
+
+    await expect.element(page.getByText('1.80 m/s', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('2.40 m/s', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('-38°', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('240° / 18.7 km/h', { exact: true })).toBeInTheDocument();
   });
 
   it('uses the selected altitude and speed units', async () => {
@@ -218,6 +315,7 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: true },
       trueAirspeed: { metersPerSecond: 50, stale: true },
+      air: null,
     };
     let units: UnitSettings = {
       altitude: 'ft',
@@ -274,6 +372,42 @@ describe('MapDebugOverlay.svelte', () => {
         {
           "label": "Pressure altitude state",
           "value": "Stale",
+        },
+        {
+          "label": "Vertical speed",
+          "value": "–",
+        },
+        {
+          "label": "Rate of climb",
+          "value": "–",
+        },
+        {
+          "label": "Netto",
+          "value": "–",
+        },
+        {
+          "label": "Air speed",
+          "value": "–",
+        },
+        {
+          "label": "Heading",
+          "value": "–",
+        },
+        {
+          "label": "Bank angle",
+          "value": "–",
+        },
+        {
+          "label": "Wind",
+          "value": "–",
+        },
+        {
+          "label": "Wind ±",
+          "value": "–",
+        },
+        {
+          "label": "Fused altitude",
+          "value": "–",
         },
       ]
     `);

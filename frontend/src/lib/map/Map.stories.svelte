@@ -26,6 +26,7 @@
     },
     pressureAltitude: null,
     trueAirspeed: null,
+    air: null,
   } satisfies Instruments;
 
   const units = {
@@ -123,6 +124,7 @@
       gps: null,
       pressureAltitude: null,
       trueAirspeed: null,
+      air: null,
     },
     mapState: new MapState(),
     traffic,

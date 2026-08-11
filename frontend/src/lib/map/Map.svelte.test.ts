@@ -14,6 +14,7 @@ const instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  air: null,
 };
 
 const positionInstruments = {
@@ -27,6 +28,7 @@ const positionInstruments = {
   },
   pressureAltitude: null,
   trueAirspeed: null,
+  air: null,
 };
 
 const units = {

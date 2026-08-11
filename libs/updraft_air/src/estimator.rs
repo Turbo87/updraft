@@ -40,8 +40,17 @@ const MAX_TIME_CONSTANT: f64 = 3.;
 /// A larger gap restarts the vertical speed.
 const MAX_ALTITUDE_INTERVAL: Duration = Duration::from_secs(30);
 
+/// Time constant of the turn-rate smoothing, in seconds. It only has to
+/// suppress the fix-to-fix track noise: the turn rate itself changes
+/// slowly, and the sink rate reacts to it weakly.
+const TURN_RATE_TIME_CONSTANT: f64 = 3.;
+
 /// Airspeed below which the air-relative track is meaningless, in m/s.
 const MIN_AIR_SPEED: f64 = 1.;
+
+/// Load factor the bank angle is capped at. A steeper turn than 70° of
+/// bank is turbulence or track noise, not circling.
+const MAX_LOAD_FACTOR: f64 = 3.;
 
 /// How long an airspeed stays usable after it arrives. It covers a
 /// source that reports slowly, and expires one that went away.
@@ -100,6 +109,15 @@ pub struct AirState {
     /// Horizontal movement of the air mass, or `None` while the wind
     /// estimate has not converged yet.
     pub wind: Option<Wind>,
+    /// Bank angle of a coordinated turn at the current turn rate.
+    /// Positive means banked to the right. `None` until an airspeed is
+    /// available, because the bank angle depends on it.
+    ///
+    /// This is derived from the rate the air-relative track turns at, so
+    /// a slip or a skid does not show. It stops at 70.5°, where the load
+    /// factor reaches 3, above which the reading is turbulence or track
+    /// noise instead of a turn.
+    pub bank_angle: Option<Angle>,
     /// Height above mean sea level, from both altitude sources. `None`
     /// until a GNSS altitude has arrived, because a pressure altitude
     /// alone has no sea-level reference.
@@ -141,6 +159,10 @@ pub struct AirStateEstimator {
     ground: Option<Timed<(f64, f64)>>,
     /// Latest position, for the geoid.
     position: Option<LatLon>,
+    /// Air-relative track at the previous fix, absent while too slow.
+    previous_heading: Option<f64>,
+    /// Smoothed rate the air-relative track turns at, in rad/s.
+    turn_rate: f64,
     /// Latest fused height, and whether it is referenced to the
     /// ellipsoid rather than to the pressure datum.
     height_value: Option<(f64, bool)>,
@@ -264,6 +286,8 @@ impl AirStateEstimator {
             circling: CirclingWind::default(),
             ground: None,
             position: None,
+            previous_heading: None,
+            turn_rate: 0.,
             height_value: None,
             noise: NoiseFloor::default(),
             vertical_speed_time_constant: None,
@@ -410,6 +434,7 @@ impl AirStateEstimator {
                 }
             }
         }
+        self.update_turn_rate(time, east, north);
         self.ground = Some(Timed {
             time,
             value: (east, north),
@@ -444,6 +469,41 @@ impl AirStateEstimator {
         let ground = self.ground.filter(|ground| ground.fresh_at(now))?;
         let (east, north) = self.wind.vector()?;
         Some((ground.value.0 - east).hypot(ground.value.1 - north))
+    }
+
+    /// Follows the rate the air-relative track turns at, which is what
+    /// the bank angle of a coordinated turn comes from.
+    fn update_turn_rate(&mut self, time: Duration, ground_east: f64, ground_north: f64) {
+        let (wind_east, wind_north) = self.wind.vector().unwrap_or((0., 0.));
+        let air_east = ground_east - wind_east;
+        let air_north = ground_north - wind_north;
+        if air_east.hypot(air_north) < MIN_AIR_SPEED {
+            self.previous_heading = None;
+            return;
+        }
+
+        let heading = air_east.atan2(air_north);
+        let interval = self.interval_since_fix(time);
+        if let Some((interval, previous)) = interval.zip(self.previous_heading) {
+            let change = Angle::from_radians(heading - previous)
+                .normalized_signed()
+                .as_radians();
+            let weight = smoothing_weight(interval, TURN_RATE_TIME_CONSTANT);
+            self.turn_rate += weight * (change / interval - self.turn_rate);
+        }
+        self.previous_heading = Some(heading);
+    }
+
+    /// The bank angle a coordinated turn needs to sweep the air-relative
+    /// track at the current rate, at the given airspeed.
+    ///
+    /// A coordinated turn holds `ω = g·tan(φ)/v`. The tangent is limited
+    /// rather than the angle, so that the load factor it implies stops
+    /// exactly at [`MAX_LOAD_FACTOR`].
+    fn bank_angle(&self, air_speed: f64) -> Angle {
+        let limit = (MAX_LOAD_FACTOR * MAX_LOAD_FACTOR - 1.).sqrt();
+        let tangent = (self.turn_rate * air_speed / GRAVITY).clamp(-limit, limit);
+        Angle::from_radians(tangent.atan())
     }
 
     /// The air-relative track, which is the ground velocity with the wind
@@ -510,6 +570,7 @@ impl AirStateEstimator {
             rate_of_climb: Speed::from_meters_per_second(rate_of_climb),
             air_speed: air_speed.map(Speed::from_meters_per_second),
             heading: self.heading(now),
+            bank_angle: air_speed.map(|speed| self.bank_angle(speed)),
             altitude: self.msl_altitude(),
             wind: self.wind.vector().map(|(east, north)| Wind {
                 direction: Angle::from_radians((-east).atan2(-north)).normalized(),
@@ -892,6 +953,63 @@ mod tests {
         let before = assert_some!(fused);
         let after = assert_some!(assert_some!(estimator.state()).altitude);
         assert_abs_diff_eq!(after, before, epsilon = 1.);
+    }
+
+    /// Circles once every `turn_seconds` at `speed` km/h with an
+    /// airspeed sensor, and returns the state afterwards.
+    fn circling(turn_seconds: f64, speed: f64) -> AirState {
+        let mut estimator = AirStateEstimator::new();
+        for step in 0..120u64 {
+            let time = Duration::from_secs(step);
+            let track = 360. * step as f64 / turn_seconds;
+            estimator.air_speed(time, Speed::from_kilometers_per_hour(speed));
+            estimator.fix(time, &fix(track, speed));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+        estimator.state().expect("two minutes produce a state")
+    }
+
+    #[test]
+    fn a_turn_is_reported_as_a_bank_angle() {
+        // 108 km/h in a 20 s circle needs 43.9° of bank: the turn rate
+        // is 0.314 rad/s and a coordinated turn holds tan φ = ω·v/g.
+        let state = circling(20., 108.);
+
+        assert_abs_diff_eq!(
+            assert_some!(state.bank_angle),
+            Angle::from_degrees(43.86),
+            epsilon = 0.05
+        );
+    }
+
+    #[test]
+    fn turning_the_other_way_banks_the_other_way() {
+        let right = assert_some!(circling(20., 108.).bank_angle);
+        let left = assert_some!(circling(-20., 108.).bank_angle);
+
+        assert_abs_diff_eq!(right, -left, epsilon = 0.05);
+    }
+
+    #[test]
+    fn a_wild_turn_rate_stops_at_the_load_factor_limit() {
+        // Four seconds for a full circle is track noise, not a turn.
+        let state = circling(4., 108.);
+
+        assert_abs_diff_eq!(
+            assert_some!(state.bank_angle),
+            Angle::from_degrees(70.53),
+            epsilon = 0.05
+        );
+    }
+
+    #[test]
+    fn the_bank_angle_waits_for_an_airspeed() {
+        // The turn rate alone does not give a bank angle: the same rate
+        // at twice the speed is twice the load. Half a circle in, with
+        // no sensor, the wind has not converged and there is no derived
+        // airspeed either.
+        assert_none!(assert_some!(circle_without_a_sensor(10).state()).bank_angle);
+        assert_some!(assert_some!(circle_without_a_sensor(60).state()).bank_angle);
     }
 
     #[test]

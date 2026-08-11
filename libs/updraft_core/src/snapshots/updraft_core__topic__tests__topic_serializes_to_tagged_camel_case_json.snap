@@ -26,6 +26,18 @@ expression: topic
     "trueAirspeed": {
       "metersPerSecond": 50.0,
       "stale": false
+    },
+    "air": {
+      "verticalSpeedMetersPerSecond": 1.5,
+      "rateOfClimbMetersPerSecond": 1.2,
+      "nettoMetersPerSecond": 2.1,
+      "airSpeedMetersPerSecond": 28.0,
+      "headingDegrees": 265.0,
+      "bankAngleDegrees": -42.0,
+      "windDirectionDegrees": 240.0,
+      "windSpeedMetersPerSecond": 5.0,
+      "windUncertaintyMetersPerSecond": 0.5,
+      "fusedAltitudeMslMeters": 1234.5
     }
   }
 }

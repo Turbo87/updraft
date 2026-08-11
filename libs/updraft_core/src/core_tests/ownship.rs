@@ -3,7 +3,7 @@ use super::support::*;
 use crate::connection::ConnectionState;
 use crate::{FixTime, UtcInstant, UtcTime};
 use approx::assert_abs_diff_eq;
-use claims::{assert_some, assert_some_eq};
+use claims::{assert_none, assert_some, assert_some_eq};
 use std::assert_matches;
 use updraft_units::{Length, MslAltitude};
 
@@ -550,9 +550,68 @@ fn repeated_identical_fixes_emit_only_once() {
         emissions += core.apply(input, at(millis)).effects.len();
     }
 
-    assert_eq!(emissions, 1, "only the first fix changed any value");
+    // Two, not one: the first fix carries the position, and the second
+    // gives the air estimate two altitudes to differentiate, which is
+    // the first vertical speed. The rest change nothing.
+    assert_eq!(emissions, 2, "only new values were emitted");
     assert_eq!(
         assert_some!(core.internal_gps.position).ingested_at,
         at(104)
+    );
+}
+
+/// A barometric altitude, as a Garmin sentence carries it: whole feet,
+/// with the checksum left off, which the decoder accepts.
+fn pgrmz(meters: f64) -> Vec<u8> {
+    format!("$PGRMZ,{:.0},F,2\r\n", meters / 0.3048).into_bytes()
+}
+
+#[test]
+fn a_climb_reaches_the_instruments_topic() {
+    let (mut core, device_id) = core_with_external_device();
+
+    // A minute of climbing at 2 m/s, with a fix each second so the
+    // estimate has a ground velocity to work from.
+    let mut vertical_speed = None;
+    for second in 0..60u64 {
+        let time = at(second * 1_000);
+        core.apply(
+            Bytes::new(device_id, pgrmz(1000. + 2. * second as f64)),
+            time,
+        );
+        core.apply(Bytes::new(device_id, RMC), time);
+        if let Some(Topic::Instruments(instruments)) = core
+            .topics()
+            .into_iter()
+            .find(|topic| matches!(topic, Topic::Instruments(_)))
+        {
+            vertical_speed = instruments
+                .air
+                .and_then(|air| air.vertical_speed_meters_per_second);
+        }
+    }
+
+    let climb = assert_some!(vertical_speed);
+    assert_abs_diff_eq!(climb, 2.0, epsilon = 0.05);
+}
+
+#[test]
+fn a_pressure_altitude_alone_reports_no_vertical_speed() {
+    let (mut core, device_id) = core_with_external_device();
+
+    // One altitude has nothing to be differentiated against.
+    core.apply(Bytes::new(device_id, pgrmz(1000.)), at(0));
+
+    let Some(Topic::Instruments(instruments)) = core
+        .topics()
+        .into_iter()
+        .find(|topic| matches!(topic, Topic::Instruments(_)))
+    else {
+        unreachable!()
+    };
+    assert_none!(
+        instruments
+            .air
+            .and_then(|air| air.vertical_speed_meters_per_second)
     );
 }

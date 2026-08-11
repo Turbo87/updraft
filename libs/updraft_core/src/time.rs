@@ -16,6 +16,12 @@ impl Timestamp {
         self.0.as_millis() as u64
     }
 
+    /// Time since the shell started, for a consumer that tracks its own
+    /// state across inputs rather than comparing two timestamps.
+    pub const fn since_start(self) -> Duration {
+        self.0
+    }
+
     /// Time elapsed since `earlier`, clamped at zero so a late or
     /// out-of-order input can never produce a negative duration.
     pub fn saturating_since(self, earlier: Timestamp) -> Duration {

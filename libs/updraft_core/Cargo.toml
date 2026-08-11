@@ -13,6 +13,7 @@ thiserror = "=2.0.20"
 time = "=0.3.55"
 tracing = "=0.1.44"
 ts-rs = { version = "=12.0.1", features = ["uuid-impl"], optional = true }
+updraft_air = { path = "../updraft_air" }
 updraft_airspace = { path = "../updraft_airspace" }
 updraft_egm96 = { path = "../updraft_egm96" }
 updraft_geo = { path = "../updraft_geo" }

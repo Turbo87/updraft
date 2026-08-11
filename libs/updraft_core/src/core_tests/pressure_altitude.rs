@@ -60,10 +60,13 @@ fn identical_pressure_altitude_refreshes_without_repeating_current_output() {
         .effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 
+    // The altitude repeats, but the pair of them is new: it is the
+    // first interval the air estimate can differentiate, so it reports a
+    // vertical speed of zero where it had none.
     let effects = core
         .apply(Bytes::new(device_id, PGRMZ_NO_FIX), at(2_500))
         .effects;
-    assert!(effects.is_empty());
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert!(effects.is_empty());

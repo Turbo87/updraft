@@ -1,3 +1,4 @@
+use crate::air::AirSensors;
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
@@ -14,14 +15,14 @@ use crate::ownship::{
 };
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
-use crate::topic::{Instruments, Topic};
+use crate::topic::{AirEstimate, Instruments, Topic};
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use serde::Serialize;
 use std::sync::Arc;
 use updraft_airspace::AirspaceDataset;
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
-use updraft_units::{MslAltitude, PressureAltitude, Speed};
+use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
 
 enum UpdatedDomain {
     Gps,
@@ -208,6 +209,7 @@ pub struct Core {
     gps: DomainState<GpsSnapshot>,
     pressure_altitude: DomainState<PressureAltitude>,
     true_airspeed: DomainState<Speed>,
+    air: AirSensors,
     traffic: TrafficState,
 }
 
@@ -230,6 +232,7 @@ impl Core {
             gps: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
             true_airspeed: DomainState::Unavailable,
+            air: AirSensors::default(),
             traffic: TrafficState::default(),
         }
     }
@@ -334,7 +337,6 @@ impl Core {
         if let Some(fix_time) = fix.fix_time {
             self.internal_gps.fix_time.full = Some(Timed::new(fix_time, at));
         }
-
         self.select_gps(at);
         let after = self.instruments();
         if after == before {
@@ -458,6 +460,9 @@ impl Core {
                 }
             },
         };
+        if let DomainState::Current(selected) = self.gps {
+            self.air.gps(selected.ingested_at, &selected.value);
+        }
     }
 
     fn select_pressure_altitude(&mut self, at: Timestamp) {
@@ -482,6 +487,10 @@ impl Core {
                 }
             },
         };
+        if let DomainState::Current(selected) = self.pressure_altitude {
+            self.air
+                .pressure_altitude(selected.ingested_at, selected.value);
+        }
     }
 
     fn select_pressure_altitude_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
@@ -519,6 +528,9 @@ impl Core {
                 }
             },
         };
+        if let DomainState::Current(selected) = self.true_airspeed {
+            self.air.air_speed(selected.ingested_at, selected.value);
+        }
     }
 
     fn select_true_airspeed_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
@@ -554,6 +566,30 @@ impl Core {
             gps: self.gps.published(),
             pressure_altitude: self.pressure_altitude.published(),
             true_airspeed: self.true_airspeed.published(),
+            air: self.air.state().map(|state| {
+                Box::new(AirEstimate {
+                    vertical_speed_meters_per_second: Some(
+                        state.vertical_speed.as_meters_per_second(),
+                    ),
+                    rate_of_climb_meters_per_second: Some(
+                        state.rate_of_climb.as_meters_per_second(),
+                    ),
+                    netto_meters_per_second: state.netto.map(Speed::as_meters_per_second),
+                    air_speed_meters_per_second: state.air_speed.map(Speed::as_meters_per_second),
+                    heading_degrees: state.heading.map(Angle::as_degrees),
+                    bank_angle_degrees: state.bank_angle.map(Angle::as_degrees),
+                    wind_direction_degrees: state.wind.map(|wind| wind.direction.as_degrees()),
+                    wind_speed_meters_per_second: state
+                        .wind
+                        .map(|wind| wind.speed.as_meters_per_second()),
+                    wind_uncertainty_meters_per_second: state
+                        .wind
+                        .map(|wind| wind.uncertainty.as_meters_per_second()),
+                    fused_altitude_msl_meters: state
+                        .altitude
+                        .map(|altitude| altitude.into_inner().as_meters()),
+                })
+            }),
         }
     }
 }

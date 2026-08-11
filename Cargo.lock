@@ -5375,6 +5375,7 @@ dependencies = [
  "tracing",
  "tracing-test",
  "ts-rs",
+ "updraft_air",
  "updraft_airspace",
  "updraft_egm96",
  "updraft_geo",

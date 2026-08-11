@@ -75,19 +75,56 @@ pub struct TrueAirspeedInstruments {
     pub stale: bool,
 }
 
-/// Fast-changing instrument values grouped by source-selection domain.
+/// What the air-state estimate derives from the domains above.
+///
+/// It is not a source-selection domain itself. Every field comes from
+/// one estimate, which reads whichever source each domain selected.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct AirEstimate {
+    /// Total-energy vertical speed, positive climbing.
+    pub vertical_speed_meters_per_second: Option<f64>,
+    /// Rate of climb with no total-energy compensation, as a vertical
+    /// speed indicator shows it.
+    pub rate_of_climb_meters_per_second: Option<f64>,
+    /// Vertical speed of the air mass. Absent until the glider's polar
+    /// is known.
+    pub netto_meters_per_second: Option<f64>,
+    /// True airspeed, measured or derived from the wind.
+    pub air_speed_meters_per_second: Option<f64>,
+    /// The direction the glider points, which is its track through the
+    /// air rather than over the ground.
+    pub heading_degrees: Option<f64>,
+    /// Bank angle of a coordinated turn, positive to the right.
+    pub bank_angle_degrees: Option<f64>,
+    /// Direction the wind comes from.
+    pub wind_direction_degrees: Option<f64>,
+    pub wind_speed_meters_per_second: Option<f64>,
+    /// One standard deviation of each wind component, which grows while
+    /// nothing measures the wind.
+    pub wind_uncertainty_meters_per_second: Option<f64>,
+    /// Height above mean sea level from both altitude sources together.
+    pub fused_altitude_msl_meters: Option<f64>,
+}
+
+/// Fast-changing instrument values grouped by source-selection domain.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct Instruments {
     pub gps: Option<GpsInstruments>,
     pub pressure_altitude: Option<PressureAltitudeInstruments>,
     pub true_airspeed: Option<TrueAirspeedInstruments>,
+    /// Everything the air-state estimate derives, absent until it has
+    /// produced one. Boxed so that the topic stays small for the
+    /// clients that only read a position.
+    pub air: Option<Box<AirEstimate>>,
 }
 
 impl Instruments {
     pub fn as_topic(&self) -> Topic {
-        Topic::Instruments(*self)
+        Topic::Instruments(self.clone())
     }
 }
 
@@ -164,6 +201,18 @@ mod tests {
                 meters_per_second: 50.0,
                 stale: false,
             }),
+            air: Some(Box::new(AirEstimate {
+                vertical_speed_meters_per_second: Some(1.5),
+                rate_of_climb_meters_per_second: Some(1.2),
+                netto_meters_per_second: Some(2.1),
+                air_speed_meters_per_second: Some(28.0),
+                heading_degrees: Some(265.0),
+                bank_angle_degrees: Some(-42.0),
+                wind_direction_degrees: Some(240.0),
+                wind_speed_meters_per_second: Some(5.0),
+                wind_uncertainty_meters_per_second: Some(0.5),
+                fused_altitude_msl_meters: Some(1234.5),
+            })),
         }
         .as_topic();
 

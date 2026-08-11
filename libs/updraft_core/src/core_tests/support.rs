@@ -81,7 +81,7 @@ pub fn instruments(core: &Core) -> Instruments {
     let Topic::Instruments(instruments) = &core.topics()[0] else {
         panic!("the first topic should contain instruments");
     };
-    *instruments
+    instruments.clone()
 }
 
 pub fn gps_instruments(core: &Core) -> GpsInstruments {

@@ -1,4 +1,5 @@
 use crate::height::HeightFilter;
+use crate::noise::NoiseFloor;
 use crate::smoothing_weight;
 use std::time::Duration;
 use updraft_units::{EllipsoidAltitude, PressureAltitude, Speed};
@@ -6,9 +7,31 @@ use updraft_units::{EllipsoidAltitude, PressureAltitude, Speed};
 /// Standard gravity, in m/s².
 const GRAVITY: f64 = 9.80665;
 
-/// Time constant of each of the two vertical-speed smoothing stages, in
-/// seconds. Fitted against the recorded vario of an LXNAV LX9070.
-const VERTICAL_SPEED_TIME_CONSTANT: f64 = 2.;
+/// Default time constant of each of the two vertical-speed smoothing
+/// stages, in seconds. Fitted against the recorded vario of an LXNAV
+/// LX9070.
+///
+/// It suits a pressure altitude that carries about 0.6 m of noise, which
+/// is what a flight recorder logs. A quieter sensor supports a shorter
+/// one; see
+/// [`with_vertical_speed_time_constant`](AirStateEstimator::with_vertical_speed_time_constant).
+const DEFAULT_VERTICAL_SPEED_TIME_CONSTANT: f64 = 2.;
+
+/// The noise that [`DEFAULT_VERTICAL_SPEED_TIME_CONSTANT`] was fitted at,
+/// in metres.
+const REFERENCE_NOISE: f64 = 0.6;
+
+/// How the time constant follows the noise of the source.
+///
+/// It is a two-point calibration. A logged pressure altitude carries
+/// 0.6 m and needs 2 s. The barometer of a Galaxy S23 carries 0.024 m and
+/// holds the same vertical-speed noise at 0.25 s. A power law through
+/// those two points has this exponent.
+const NOISE_EXPONENT: f64 = 0.65;
+
+/// Time constants the measurement is allowed to choose, in seconds.
+const MIN_TIME_CONSTANT: f64 = 0.25;
+const MAX_TIME_CONSTANT: f64 = 3.;
 
 /// The longest gap that two altitudes can still be differentiated across.
 /// A larger gap restarts the vertical speed.
@@ -64,6 +87,10 @@ pub struct AirStateEstimator {
     /// The airspeed term of the previous total energy height, absent
     /// where no airspeed contributed one.
     previous_energy: Option<f64>,
+    /// Noise and resolution of the source that drives the height.
+    noise: NoiseFloor,
+    /// Set by the caller, or `None` to follow the measured noise.
+    vertical_speed_time_constant: Option<f64>,
 }
 
 /// A value with the time it was measured at.
@@ -109,7 +136,14 @@ impl Vario {
     ///
     /// A change of datum, or a gap longer than [`MAX_ALTITUDE_INTERVAL`],
     /// still restarts the filter. Neither carries a known step.
-    fn advance(&mut self, time: Duration, height: f64, rebase: f64, barometric: bool) {
+    fn advance(
+        &mut self,
+        time: Duration,
+        height: f64,
+        rebase: f64,
+        barometric: bool,
+        time_constant: f64,
+    ) {
         if let Some(previous) = self.previous.as_mut() {
             previous.height += rebase;
         }
@@ -147,7 +181,7 @@ impl Vario {
         };
 
         let raw = (height - previous_height) / interval;
-        let weight = smoothing_weight(interval, VERTICAL_SPEED_TIME_CONSTANT);
+        let weight = smoothing_weight(interval, time_constant);
         self.first_stage += weight * (raw - self.first_stage);
         let value = self.value.unwrap_or(0.);
         self.value = Some(value + weight * (self.first_stage - value));
@@ -169,6 +203,43 @@ impl AirStateEstimator {
             uncompensated: Vario::default(),
             measured_air_speed: None,
             previous_energy: None,
+            noise: NoiseFloor::default(),
+            vertical_speed_time_constant: None,
+        }
+    }
+
+    /// Overrides the vertical-speed smoothing, which otherwise follows
+    /// the noise of the altitude source. A caller that knows its sensor
+    /// better than the measurement does can set it here.
+    pub fn with_vertical_speed_time_constant(mut self, time_constant: Duration) -> Self {
+        let seconds = time_constant.as_secs_f64();
+        if seconds.is_finite() && seconds > 0. {
+            self.vertical_speed_time_constant = Some(seconds);
+        }
+        self
+    }
+
+    /// How hard to smooth the vertical speed, in seconds.
+    ///
+    /// A noisy source needs a longer time constant and a quiet one buys
+    /// a shorter reading. The measurement only shortens the default
+    /// where the source resolves its own noise: a sensor quantised more
+    /// coarsely than it is noisy reads a floor of zero, which says
+    /// nothing about how noisy it really is.
+    fn vertical_speed_time_constant(&self) -> f64 {
+        if let Some(set) = self.vertical_speed_time_constant {
+            return set;
+        }
+        let Some(noise) = self.noise.noise() else {
+            return DEFAULT_VERTICAL_SPEED_TIME_CONSTANT;
+        };
+
+        let derived =
+            DEFAULT_VERTICAL_SPEED_TIME_CONSTANT * (noise / REFERENCE_NOISE).powf(NOISE_EXPONENT);
+        let derived = derived.clamp(MIN_TIME_CONSTANT, MAX_TIME_CONSTANT);
+        match self.noise.resolves_its_own_noise() {
+            true => derived,
+            false => derived.max(DEFAULT_VERTICAL_SPEED_TIME_CONSTANT),
         }
     }
 
@@ -178,6 +249,7 @@ impl AirStateEstimator {
         if !altitude.is_finite() {
             return;
         }
+        self.noise.update(time.as_secs_f64(), altitude);
         self.altitude = Some(Timed {
             time,
             value: (altitude, true),
@@ -259,9 +331,20 @@ impl AirStateEstimator {
         };
         self.previous_energy = air_speed.map(|_| energy);
 
-        self.total_energy
-            .advance(time, height + energy, fusion + compensation, barometric);
-        self.uncompensated.advance(time, height, fusion, barometric);
+        self.total_energy.advance(
+            time,
+            height + energy,
+            fusion + compensation,
+            barometric,
+            self.vertical_speed_time_constant(),
+        );
+        self.uncompensated.advance(
+            time,
+            height,
+            fusion,
+            barometric,
+            self.vertical_speed_time_constant(),
+        );
     }
 
     /// The current estimate, or `None` until two altitudes have arrived
@@ -282,7 +365,7 @@ impl AirStateEstimator {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::{assert_none, assert_some};
+    use claims::{assert_ge, assert_le, assert_lt, assert_none, assert_some};
     use updraft_units::Length;
 
     fn meters(value: f64) -> PressureAltitude {
@@ -453,6 +536,90 @@ mod tests {
         }
     }
 
+    /// Feeds `seconds` of pressure altitude at 25 Hz, climbing at 2 m/s
+    /// with noise of standard deviation `sigma`, quantised to `step`.
+    fn fast_barometer(sigma: f64, step: f64, seconds: u64) -> AirStateEstimator {
+        let uniform = |seed: f64| {
+            let x = (seed * 12.9898).sin() * 43758.5453;
+            x - x.floor() - 0.5
+        };
+        let mut estimator = AirStateEstimator::new();
+        for tick in 0..seconds * 25 {
+            let time = Duration::from_secs_f64(tick as f64 / 25.);
+            let i = tick as f64;
+            let noise = 2. * sigma * (uniform(i) + uniform(i + 977.) + uniform(i + 1949.));
+            let altitude = 1000. + 2. * (i / 25.) + noise;
+            estimator.pressure_altitude(time, meters((altitude / step).round() * step));
+        }
+        estimator
+    }
+
+    #[test]
+    fn a_quiet_fast_barometer_shortens_the_reading() {
+        // 0.02 m of noise on a 25 Hz sensor that resolves it.
+        let estimator = fast_barometer(0.02, 0.002, 30);
+
+        assert_lt!(estimator.vertical_speed_time_constant(), 0.5);
+        // The clamp holds it above the shortest reading that is still
+        // worth smoothing at all.
+        assert_ge!(estimator.vertical_speed_time_constant(), MIN_TIME_CONSTANT);
+    }
+
+    #[test]
+    fn a_noisy_fast_barometer_lengthens_the_reading_to_its_limit() {
+        // Ten times the noise the default was fitted at. The power law
+        // would ask for 8.9 s, which the clamp holds at three.
+        let estimator = fast_barometer(6., 0.002, 30);
+
+        assert_le!(estimator.vertical_speed_time_constant(), MAX_TIME_CONSTANT);
+        assert_ge!(estimator.vertical_speed_time_constant(), MAX_TIME_CONSTANT);
+    }
+
+    #[test]
+    fn a_barometer_quieter_than_its_own_step_is_not_trusted() {
+        // The same rate, but the reading is quantised far above its
+        // noise, so the measurement cannot tell quiet from slow.
+        let estimator = fast_barometer(0.02, 0.5, 30);
+
+        assert_ge!(
+            estimator.vertical_speed_time_constant(),
+            DEFAULT_VERTICAL_SPEED_TIME_CONSTANT
+        );
+    }
+
+    #[test]
+    fn a_caller_setting_overrides_the_measurement() {
+        let estimator = fast_barometer(0.02, 0.002, 30)
+            .with_vertical_speed_time_constant(Duration::from_secs(2));
+
+        assert_eq!(estimator.vertical_speed_time_constant(), 2.);
+    }
+
+    #[test]
+    fn a_shorter_time_constant_reaches_the_climb_rate_sooner() {
+        /// The two stages lag by about twice the time constant, so a
+        /// quarter-second one is settled where a two-second one is not.
+        fn climb_after(seconds: u64, time_constant: Duration) -> Speed {
+            let mut estimator =
+                AirStateEstimator::new().with_vertical_speed_time_constant(time_constant);
+            for tenth in 0..seconds * 10 {
+                let time = Duration::from_millis(tenth * 100);
+                estimator.pressure_altitude(time, meters(0.2 * tenth as f64));
+            }
+            estimator.state().map_or(Speed::ZERO, |s| s.vertical_speed)
+        }
+
+        assert_abs_diff_eq!(
+            climb_after(2, Duration::from_millis(250)),
+            Speed::from_meters_per_second(2.),
+            epsilon = 0.01
+        );
+        assert_lt!(
+            climb_after(2, Duration::from_secs(2)),
+            Speed::from_meters_per_second(1.)
+        );
+    }
+
     #[test]
     fn an_altitude_that_is_not_a_number_is_ignored() {
         for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
@@ -581,5 +748,14 @@ mod tests {
         // The height moves by the whole 200 m offset when it is first
         // established. That is a change of reference, not a climb.
         assert!(worst < 0.01, "reading reached {worst} m/s");
+    }
+
+    #[test]
+    fn an_impossible_time_constant_is_ignored() {
+        let estimator = AirStateEstimator::new()
+            .with_vertical_speed_time_constant(Duration::from_millis(250))
+            .with_vertical_speed_time_constant(Duration::ZERO);
+
+        assert_eq!(estimator.vertical_speed_time_constant(), 0.25);
     }
 }

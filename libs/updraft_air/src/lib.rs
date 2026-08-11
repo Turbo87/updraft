@@ -13,6 +13,7 @@
 
 mod estimator;
 mod height;
+mod noise;
 
 pub use estimator::{AirState, AirStateEstimator};
 

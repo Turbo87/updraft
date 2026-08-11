@@ -7,6 +7,21 @@ pub struct Wind {
     pub direction: Angle,
     /// How fast the air mass moves.
     pub speed: Speed,
+    /// One standard deviation of the least certain wind component.
+    ///
+    /// This is how much the estimate is worth, and it also says how old
+    /// it is: nothing removes uncertainty except a measurement, and the
+    /// process noise adds to it every second. A wind that no circle has
+    /// touched for half an hour therefore reports a larger figure than
+    /// one measured in the last thermal.
+    ///
+    /// The least certain component rather than the mean of the two. A
+    /// scalar airspeed measurement only constrains the wind along the
+    /// current heading, so a long straight glide leaves the crosswind
+    /// far wider than the along-track component, and averaging the two
+    /// would understate it by about 30% in exactly the case this figure
+    /// exists to warn about.
+    pub uncertainty: Speed,
 }
 
 /// Growth of the wind variance per second, in `(m/s)²`. It sets how fast
@@ -169,12 +184,25 @@ impl WindFilter {
     /// The wind vector in m/s towards east and north, or `None` while the
     /// estimate is still too uncertain to report.
     ///
-    /// Before the first circle the state is still the zero it started
-    /// at, and a consumer that drew that as a calm day would be wrong
-    /// rather than uncertain.
+    /// The gate stays even though [`uncertainty`](Self::uncertainty)
+    /// reports a related figure. Before the first circle the state is
+    /// still the zero it started at, and a consumer that drew that as a
+    /// calm day would be wrong rather than uncertain.
     pub fn vector(&self) -> Option<(f64, f64)> {
         let converged = self.variance_east + self.variance_north <= CONVERGED_VARIANCE;
         converged.then_some((self.east, self.north))
+    }
+
+    /// One standard deviation of the least certain wind component, in
+    /// m/s.
+    ///
+    /// The two components are correlated, so the widest direction is not
+    /// one of the axes: it is the larger eigenvalue of the covariance.
+    pub fn uncertainty(&self) -> f64 {
+        let mean = (self.variance_east + self.variance_north) / 2.;
+        let half_difference = (self.variance_east - self.variance_north) / 2.;
+        let radius = half_difference.hypot(self.covariance);
+        (mean + radius).max(0.).sqrt()
     }
 }
 
@@ -213,6 +241,31 @@ mod tests {
 
         assert_abs_diff_eq!(east, -6., epsilon = 0.5);
         assert_abs_diff_eq!(north, -8., epsilon = 0.5);
+    }
+
+    #[test]
+    fn the_uncertainty_reports_the_widest_direction() {
+        // A straight glide only measures the wind along the heading, so
+        // the crosswind grows while the along-track component is held.
+        // Averaging the two would report less than the worst of them.
+        let mut filter = circle(20, -6., -8.);
+        for second in 0..600 {
+            filter.predict(1.);
+            filter.update(
+                -6. + 30.,
+                -8.,
+                Speed::from_meters_per_second(30.),
+                Length::from_meters(REFERENCE_ACCURACY),
+            );
+            let _ = second;
+        }
+
+        let mean = ((filter.variance_east + filter.variance_north) / 2.).sqrt();
+        assert!(
+            filter.uncertainty() > mean,
+            "reported {:.4} against a mean of {mean:.4}",
+            filter.uncertainty()
+        );
     }
 
     #[test]

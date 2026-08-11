@@ -485,6 +485,7 @@ impl AirStateEstimator {
             wind: self.wind.vector().map(|(east, north)| Wind {
                 direction: Angle::from_radians((-east).atan2(-north)).normalized(),
                 speed: Speed::from_meters_per_second(east.hypot(north)),
+                uncertainty: Speed::from_meters_per_second(self.wind.uncertainty()),
             }),
         })
     }

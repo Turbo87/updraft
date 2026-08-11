@@ -151,8 +151,8 @@ importers:
         specifier: 5.56.8
         version: 5.56.8(@typescript-eslint/types@8.66.0)
       svelte-check:
-        specifier: 4.7.4
-        version: 4.7.4(picomatch@4.0.5)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@6.0.3)
+        specifier: 4.7.5
+        version: 4.7.5(picomatch@4.0.5)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@6.0.3)
       svelte-maplibre-gl:
         specifier: 2.2.0
         version: 2.2.0(maplibre-gl@6.2.0)(svelte@5.56.8(@typescript-eslint/types@8.66.0))
@@ -2471,8 +2471,8 @@ packages:
     peerDependencies:
       svelte: ^5.0.0
 
-  svelte-check@4.7.4:
-    resolution: {integrity: sha512-IW9ot9YqAoyv8FvyN+eb4ZTe8zgcKZrJLNYU6dzSKkGwEBsSPc4K7lmQ8bKn8W2YMXM6WDfZSSVOaGtekyUfOQ==}
+  svelte-check@4.7.5:
+    resolution: {integrity: sha512-NnkHGCTPH6k4ka1E9IpTuNv40uLArHnX52kLEuaHSGqRlPYTnkbFs529jSWG+y+wDy+v+jA2PQ0soN1umVK+OA==}
     engines: {node: '>= 18.0.0'}
     hasBin: true
     peerDependencies:
@@ -4936,7 +4936,7 @@ snapshots:
       svelte: 5.56.8(@typescript-eslint/types@8.66.0)
       zimmerframe: 1.1.2
 
-  svelte-check@4.7.4(picomatch@4.0.5)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@6.0.3):
+  svelte-check@4.7.5(picomatch@4.0.5)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@6.0.3):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@sveltejs/load-config': 0.2.2

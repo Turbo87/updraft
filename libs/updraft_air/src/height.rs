@@ -1,3 +1,4 @@
+use crate::column::ColumnRatio;
 use crate::smoothing_weight;
 
 /// Time constant of the offset tracking, in seconds. It is the crossover
@@ -57,6 +58,8 @@ pub struct HeightFilter {
     /// How far the height jumped when the offset was first established,
     /// until [`take_step`](Self::take_step) collects it.
     step: f64,
+    /// The slope of the same relationship the offset holds the level of.
+    column: ColumnRatio,
 }
 
 /// What the previous paired GNSS altitude saw, for the lag check.
@@ -126,6 +129,10 @@ impl HeightFilter {
             return;
         }
 
+        // The offset holds the level of the relationship between the two
+        // altitudes. This holds its slope, which is the temperature of
+        // the column.
+        self.column.update(time, gnss, pressure);
         let difference = gnss - pressure;
         self.offset = Some(match (self.offset, interval) {
             (Some(offset), Some(interval)) => {
@@ -164,6 +171,17 @@ impl HeightFilter {
             self.delayed += weight * ((gnss_rate - earlier_rate).powi(2) - self.delayed);
         }
         Some(rate)
+    }
+
+    /// How much warmer the air column is than the standard one. See
+    /// [`ColumnRatio`].
+    pub fn column_ratio(&self) -> f64 {
+        self.column.ratio()
+    }
+
+    /// Whether a climb has measured the column temperature yet.
+    pub fn column_is_measured(&self) -> bool {
+        self.column.is_measured()
     }
 
     /// Collects the step that the last change of reference put into the

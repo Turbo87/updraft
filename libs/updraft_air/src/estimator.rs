@@ -122,6 +122,17 @@ pub struct AirState {
     /// until a GNSS altitude has arrived, because a pressure altitude
     /// alone has no sea-level reference.
     pub altitude: Option<MslAltitude>,
+    /// How much warmer the air column below the glider is than the
+    /// standard atmosphere, as a ratio of absolute temperatures.
+    ///
+    /// A pressure altitude follows the ISA, so a glider in a warm column
+    /// climbs further in metres than in pressure altitude, by this ratio.
+    /// `None` until a climb has measured it, where the estimate falls
+    /// back on the standard atmosphere.
+    ///
+    /// One August flight in Provence measured 1.057, about 16 K above
+    /// the standard atmosphere.
+    pub column_temperature_ratio: Option<f64>,
 }
 
 /// Derives the [`AirState`] from flight data.
@@ -572,6 +583,10 @@ impl AirStateEstimator {
             heading: self.heading(now),
             bank_angle: air_speed.map(|speed| self.bank_angle(speed)),
             altitude: self.msl_altitude(),
+            column_temperature_ratio: self
+                .height
+                .column_is_measured()
+                .then(|| self.height.column_ratio()),
             wind: self.wind.vector().map(|(east, north)| Wind {
                 direction: Angle::from_radians((-east).atan2(-north)).normalized(),
                 speed: Speed::from_meters_per_second(east.hypot(north)),

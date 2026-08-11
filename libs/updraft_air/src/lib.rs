@@ -12,6 +12,7 @@
 //! recording.
 
 mod circling;
+mod column;
 mod estimator;
 mod height;
 mod noise;

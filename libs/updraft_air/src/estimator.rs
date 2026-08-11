@@ -1,6 +1,7 @@
+use crate::height::HeightFilter;
 use crate::smoothing_weight;
 use std::time::Duration;
-use updraft_units::{PressureAltitude, Speed};
+use updraft_units::{EllipsoidAltitude, PressureAltitude, Speed};
 
 /// Standard gravity, in m/s².
 const GRAVITY: f64 = 9.80665;
@@ -49,6 +50,11 @@ pub struct AirState {
 /// that would reject it therefore passes.
 #[derive(Clone, Debug)]
 pub struct AirStateEstimator {
+    /// Combines the two altitude sources into one height.
+    height: HeightFilter,
+    /// Latest pressure altitude, in metres, and whether a barometer
+    /// supplied it. Without one the GNSS altitude takes its place.
+    altitude: Option<Timed<(f64, bool)>>,
     /// Vertical speed of the total energy height.
     total_energy: Vario,
     /// Vertical speed of the height alone, without the energy term.
@@ -78,6 +84,10 @@ impl<T> Timed<T> {
 struct Previous {
     time: Duration,
     height: f64,
+    /// Whether a barometer supplied that height. A barometer and a GNSS
+    /// receiver measure against datums that are hundreds of metres
+    /// apart, and nothing here knows the distance between them.
+    barometric: bool,
 }
 
 /// Differentiates a height series and smooths the result through two
@@ -97,9 +107,9 @@ impl Vario {
     /// going away. It is added to the stored previous height, so the
     /// difference stays a climb and the filter keeps running.
     ///
-    /// A gap longer than [`MAX_ALTITUDE_INTERVAL`] restarts the filter,
-    /// because nothing can be differentiated across it.
-    fn advance(&mut self, time: Duration, height: f64, rebase: f64) {
+    /// A change of datum, or a gap longer than [`MAX_ALTITUDE_INTERVAL`],
+    /// still restarts the filter. Neither carries a known step.
+    fn advance(&mut self, time: Duration, height: f64, rebase: f64, barometric: bool) {
         if let Some(previous) = self.previous.as_mut() {
             previous.height += rebase;
         }
@@ -110,17 +120,26 @@ impl Vario {
         // reading would restart. Two devices that both report a pressure
         // altitude arrive in one batch under one timestamp, so this is
         // the ordinary case and not a fault.
-        if self.previous.is_some_and(|previous| time <= previous.time) {
+        let repeated = self
+            .previous
+            .is_some_and(|previous| previous.barometric == barometric && time <= previous.time);
+        if repeated {
             return;
         }
 
-        let previous = self.previous.replace(Previous { time, height });
-
-        let usable = previous.and_then(|previous| {
-            let interval = time.checked_sub(previous.time)?;
-            (!interval.is_zero() && interval <= MAX_ALTITUDE_INTERVAL)
-                .then_some((interval.as_secs_f64(), previous.height))
+        let previous = self.previous.replace(Previous {
+            time,
+            height,
+            barometric,
         });
+
+        let usable = previous
+            .filter(|previous| previous.barometric == barometric)
+            .and_then(|previous| {
+                let interval = time.checked_sub(previous.time)?;
+                (!interval.is_zero() && interval <= MAX_ALTITUDE_INTERVAL)
+                    .then_some((interval.as_secs_f64(), previous.height))
+            });
         let Some((interval, previous_height)) = usable else {
             self.first_stage = 0.;
             self.value = None;
@@ -144,6 +163,8 @@ impl Default for AirStateEstimator {
 impl AirStateEstimator {
     pub fn new() -> Self {
         Self {
+            height: HeightFilter::default(),
+            altitude: None,
             total_energy: Vario::default(),
             uncompensated: Vario::default(),
             measured_air_speed: None,
@@ -157,7 +178,45 @@ impl AirStateEstimator {
         if !altitude.is_finite() {
             return;
         }
-        self.advance_vertical_speed(time, altitude);
+        self.altitude = Some(Timed {
+            time,
+            value: (altitude, true),
+        });
+        let height = self.height.pressure(time.as_secs_f64(), altitude);
+        self.advance_vertical_speed(time, height, true);
+    }
+
+    /// Takes a GNSS altitude against the WGS84 ellipsoid.
+    ///
+    /// The ellipsoid rather than mean sea level, because a receiver's own
+    /// geoid model is coarse and two receivers do not share one.
+    ///
+    /// A barometer measures the height changes better, so this only moves
+    /// the offset while one is connected. Without a barometer it is all
+    /// there is, and it drives the height itself.
+    pub fn gnss_altitude(&mut self, time: Duration, altitude: EllipsoidAltitude) {
+        let altitude = altitude.into_inner().as_meters();
+        if !altitude.is_finite() {
+            return;
+        }
+        if self.barometer_is_connected(time) {
+            self.height.gnss(time.as_secs_f64(), altitude);
+        } else {
+            self.altitude = Some(Timed {
+                time,
+                value: (altitude, false),
+            });
+            // The GNSS altitude is the height itself here, so it does not
+            // go through the offset. That offset is the difference
+            // between the two altitudes, and this altitude already sits
+            // on the GNSS side of it: adding it would count it twice.
+            self.advance_vertical_speed(time, altitude, false);
+        }
+    }
+
+    fn barometer_is_connected(&self, now: Duration) -> bool {
+        self.altitude
+            .is_some_and(|altitude| altitude.value.1 && altitude.fresh_at(now))
     }
 
     /// Takes a true airspeed from an instrument. It expires after five
@@ -183,9 +242,12 @@ impl AirStateEstimator {
     /// height by it keeps the reading on the climb across the change,
     /// where restarting the filter would lose it: 57 m of energy at
     /// 120 km/h would otherwise read as 57 m of sink.
-    fn advance_vertical_speed(&mut self, time: Duration, height: f64) {
+    fn advance_vertical_speed(&mut self, time: Duration, height: f64, barometric: bool) {
         let air_speed = self.air_speed_at(time);
         let energy = air_speed.map_or(0., |speed| speed * speed / (2. * GRAVITY));
+
+        // Establishing the GNSS offset moves both heights by it.
+        let fusion = self.height.take_step();
 
         // Its size at the previous sample is known where the term was
         // already there, and the current one stands in for it where it
@@ -198,8 +260,8 @@ impl AirStateEstimator {
         self.previous_energy = air_speed.map(|_| energy);
 
         self.total_energy
-            .advance(time, height + energy, compensation);
-        self.uncompensated.advance(time, height, 0.);
+            .advance(time, height + energy, fusion + compensation, barometric);
+        self.uncompensated.advance(time, height, fusion, barometric);
     }
 
     /// The current estimate, or `None` until two altitudes have arrived
@@ -478,5 +540,46 @@ mod tests {
             lowest_vertical >= 1.99,
             "vertical speed dipped to {lowest_vertical}"
         );
+    }
+
+    #[test]
+    fn a_receiver_without_a_barometer_still_gives_a_vertical_speed() {
+        let mut estimator = AirStateEstimator::new();
+        for second in 0..60u64 {
+            estimator.gnss_altitude(
+                Duration::from_secs(second),
+                EllipsoidAltitude::new(Length::from_meters(1200. + 2. * second as f64)),
+            );
+        }
+
+        let state = assert_some!(estimator.state());
+        assert_abs_diff_eq!(
+            state.rate_of_climb,
+            Speed::from_meters_per_second(2.),
+            epsilon = 0.01
+        );
+    }
+
+    #[test]
+    fn establishing_the_gnss_offset_does_not_show_as_a_climb() {
+        let mut estimator = AirStateEstimator::new();
+        // A minute on the barometer alone, then the receiver joins with
+        // an altitude 200 m away from it.
+        for second in 0..60u64 {
+            estimator.pressure_altitude(Duration::from_secs(second), meters(1000.));
+        }
+
+        let mut worst = 0f64;
+        for second in 60..90u64 {
+            let time = Duration::from_secs(second);
+            estimator.gnss_altitude(time, EllipsoidAltitude::new(Length::from_meters(1200.)));
+            estimator.pressure_altitude(time, meters(1000.));
+            let state = assert_some!(estimator.state());
+            worst = worst.max(state.rate_of_climb.as_meters_per_second().abs());
+        }
+
+        // The height moves by the whole 200 m offset when it is first
+        // established. That is a change of reference, not a climb.
+        assert!(worst < 0.01, "reading reached {worst} m/s");
     }
 }

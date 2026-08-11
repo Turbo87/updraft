@@ -19,7 +19,7 @@ use igc::records::{Extendable, Extension, Record};
 use std::fmt::Write as _;
 use std::time::Duration;
 use updraft_air::AirStateEstimator;
-use updraft_units::{Length, PressureAltitude, Speed};
+use updraft_units::{EllipsoidAltitude, Length, PressureAltitude, Speed};
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.
@@ -73,6 +73,13 @@ fn measure(air_speed: AirSpeed) -> String {
                 let time = seconds(&record.timestamp);
                 if air_speed == AirSpeed::FromSensor {
                     estimator.air_speed(time, hundredths_kmh(value("TAS")));
+                }
+                // A zero GNSS altitude means the recorder had no fix.
+                if record.gps_alt != 0 {
+                    estimator.gnss_altitude(
+                        time,
+                        EllipsoidAltitude::new(Length::from_meters(f64::from(record.gps_alt))),
+                    );
                 }
                 estimator.pressure_altitude(
                     time,

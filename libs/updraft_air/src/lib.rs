@@ -12,6 +12,7 @@
 //! recording.
 
 mod estimator;
+mod height;
 
 pub use estimator::{AirState, AirStateEstimator};
 

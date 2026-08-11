@@ -2,10 +2,11 @@
 //!
 //! `testdata/weglide_1141558.igc` is a five-hour cross-country flight in a
 //! JS-3-18m, logged by an LXNAV LX9070 with a V9 vario. Its B records
-//! carry the instrument's own total-energy vario (`VAT`). The instrument
-//! derived it from a total-energy probe, which the estimator does not
-//! have, so the recorded values are a reference to measure against, not a
-//! ground truth.
+//! carry the instrument's own total-energy vario (`VAT`), and its K
+//! records the instrument's wind (`WDI`, `WSP`). The instrument derived
+//! those from sensors the estimator does not have: a total-energy probe
+//! and an inertial platform. The recorded values are therefore a
+//! reference to measure against, not a ground truth.
 //!
 //! Only soaring flight is scored. During the launch the engine noise
 //! reaches the pitot, so measuring there measures the launch, not the
@@ -18,8 +19,9 @@
 use igc::records::{Extendable, Extension, Record};
 use std::fmt::Write as _;
 use std::time::Duration;
-use updraft_air::AirStateEstimator;
-use updraft_units::{EllipsoidAltitude, Length, PressureAltitude, Speed};
+use updraft_air::{AirStateEstimator, Fix};
+use updraft_geo::LatLon;
+use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.
@@ -60,20 +62,38 @@ enum AirSpeed {
 fn measure(air_speed: AirSpeed) -> String {
     let mut estimator = AirStateEstimator::new();
     let mut vertical_speed = Errors::default();
+    let mut wind_speed = Errors::default();
+    let mut wind_direction = Errors::default();
 
     let mut fix_extensions = Vec::new();
+    let mut wind_extensions = Vec::new();
+    let mut estimated_wind = None;
     let mut quiet_since = None;
     let mut lowest = f64::INFINITY;
+    let mut soaring = false;
 
     for line in RECORDING.lines() {
         match Record::parse_line(line) {
             Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
+            Ok(Record::J(definition)) => wind_extensions = definition.0.extensions,
             Ok(Record::B(record)) => {
                 let value = |mnemonic| extension(&record, &fix_extensions, mnemonic);
                 let time = seconds(&record.timestamp);
                 if air_speed == AirSpeed::FromSensor {
                     estimator.air_speed(time, hundredths_kmh(value("TAS")));
                 }
+                estimator.fix(
+                    time,
+                    &Fix {
+                        position: LatLon::from_degrees(
+                            f64::from(record.pos.lat),
+                            f64::from(record.pos.lon),
+                        ),
+                        track: Angle::from_degrees(value("TRT")),
+                        ground_speed: hundredths_kmh(value("GSP")),
+                        position_accuracy: Length::from_meters(value("FXA")),
+                    },
+                );
                 // A zero GNSS altitude means the recorder had no fix.
                 if record.gps_alt != 0 {
                     estimator.gnss_altitude(
@@ -91,16 +111,35 @@ fn measure(air_speed: AirSpeed) -> String {
                     true => quiet_since.or(Some(time)),
                     false => None,
                 };
-                let soaring = quiet_since
+                soaring = quiet_since
                     .is_some_and(|since| time.saturating_sub(since) >= ENGINE_SETTLING)
                     && f64::from(record.pressure_alt) >= lowest + AIRBORNE_HEIGHT;
 
-                let Some(state) = estimator.state().filter(|_| soaring) else {
+                let Some(state) = estimator.state() else {
                     continue;
                 };
+                estimated_wind = state.wind;
+                if !soaring {
+                    continue;
+                }
                 vertical_speed.add(
                     state.vertical_speed.as_meters_per_second(),
                     value("VAT") / 100.,
+                );
+            }
+            Ok(Record::K(record)) => {
+                let Some(wind) = estimated_wind.filter(|_| soaring) else {
+                    continue;
+                };
+                let value = |mnemonic| extension(&record, &wind_extensions, mnemonic);
+                wind_speed.add(
+                    wind.speed.as_meters_per_second(),
+                    hundredths_kmh(value("WSP")).as_meters_per_second(),
+                );
+                wind_direction.add_difference(
+                    (wind.direction - Angle::from_degrees(value("WDI")))
+                        .normalized_signed()
+                        .as_degrees(),
                 );
             }
             _ => {}
@@ -109,6 +148,8 @@ fn measure(air_speed: AirSpeed) -> String {
 
     let mut rows = String::new();
     writeln!(rows, "vertical speed     m/s   {}", vertical_speed.row()).unwrap();
+    writeln!(rows, "wind speed         m/s   {}", wind_speed.row()).unwrap();
+    writeln!(rows, "wind direction     deg   {}", wind_direction.row()).unwrap();
     rows
 }
 
@@ -178,6 +219,9 @@ impl Errors {
     }
 
     fn row(&self) -> String {
+        if self.count == 0 {
+            return format!("{:6} {:>6} {:>6} {:>6} {:>6}", 0, "-", "-", "-", "-");
+        }
         let count = self.count as f64;
         let correlation = match &self.correlation {
             Some(c) => {

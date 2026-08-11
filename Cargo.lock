@@ -5340,6 +5340,7 @@ dependencies = [
  "claims",
  "igc",
  "insta",
+ "updraft_geo",
  "updraft_units",
 ]
 

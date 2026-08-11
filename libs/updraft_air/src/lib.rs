@@ -14,8 +14,10 @@
 mod estimator;
 mod height;
 mod noise;
+mod wind;
 
-pub use estimator::{AirState, AirStateEstimator};
+pub use estimator::{AirState, AirStateEstimator, Fix};
+pub use wind::Wind;
 
 /// Weight of a new value in an exponential filter with the given time
 /// constant, for a sample interval that is not fixed.

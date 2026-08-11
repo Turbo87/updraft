@@ -1,8 +1,10 @@
 use crate::height::HeightFilter;
 use crate::noise::NoiseFloor;
 use crate::smoothing_weight;
+use crate::wind::{Wind, WindFilter};
 use std::time::Duration;
-use updraft_units::{EllipsoidAltitude, PressureAltitude, Speed};
+use updraft_geo::LatLon;
+use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
 
 /// Standard gravity, in m/s².
 const GRAVITY: f64 = 9.80665;
@@ -41,6 +43,25 @@ const MAX_ALTITUDE_INTERVAL: Duration = Duration::from_secs(30);
 /// source that reports slowly, and expires one that went away.
 const MAX_AGE: Duration = Duration::from_secs(5);
 
+/// A position and ground velocity from a GNSS receiver.
+///
+/// The altitude arrives on its own call. A receiver reports the two
+/// together, but NMEA splits them across `RMC` and `GGA`, and each has
+/// to keep its own time: the height filter pairs a GNSS altitude with a
+/// pressure altitude within 0.2 s, and one second of a climb put into
+/// that pair is two metres of error.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Fix {
+    /// Where the glider is.
+    pub position: LatLon,
+    /// Track over ground, clockwise from true north.
+    pub track: Angle,
+    /// Speed over ground.
+    pub ground_speed: Speed,
+    /// Horizontal accuracy the receiver reports for this fix.
+    pub position_accuracy: Length,
+}
+
 /// What the glider and the air around it are doing.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AirState {
@@ -58,6 +79,9 @@ pub struct AirState {
     /// wants under power, and it stays available when the airspeed goes
     /// away.
     pub rate_of_climb: Speed,
+    /// Horizontal movement of the air mass, or `None` while the wind
+    /// estimate has not converged yet.
+    pub wind: Option<Wind>,
 }
 
 /// Derives the [`AirState`] from flight data.
@@ -87,6 +111,10 @@ pub struct AirStateEstimator {
     /// The airspeed term of the previous total energy height, absent
     /// where no airspeed contributed one.
     previous_energy: Option<f64>,
+    /// Estimates the wind from the ground velocity and the airspeed.
+    wind: WindFilter,
+    /// Latest ground velocity, east and north in m/s.
+    ground: Option<Timed<(f64, f64)>>,
     /// Noise and resolution of the source that drives the height.
     noise: NoiseFloor,
     /// Set by the caller, or `None` to follow the measured noise.
@@ -203,6 +231,8 @@ impl AirStateEstimator {
             uncompensated: Vario::default(),
             measured_air_speed: None,
             previous_energy: None,
+            wind: WindFilter::default(),
+            ground: None,
             noise: NoiseFloor::default(),
             vertical_speed_time_constant: None,
         }
@@ -291,6 +321,48 @@ impl AirStateEstimator {
             .is_some_and(|altitude| altitude.value.1 && altitude.fresh_at(now))
     }
 
+    /// Takes a position report.
+    pub fn fix(&mut self, time: Duration, fix: &Fix) {
+        let finite = fix.track.as_degrees().is_finite()
+            && fix.ground_speed.as_meters_per_second().is_finite()
+            && fix.position_accuracy.as_meters().is_finite()
+            && fix.position.latitude().as_degrees().is_finite()
+            && fix.position.longitude().as_degrees().is_finite();
+        if !finite {
+            return;
+        }
+
+        let (sin_track, cos_track) = fix.track.sin_cos();
+        let ground_speed = fix.ground_speed.as_meters_per_second();
+        let east = ground_speed * sin_track;
+        let north = ground_speed * cos_track;
+
+        // The estimate ages once per fix, whatever that fix can measure,
+        // so it grows uncertain at the same rate either way.
+        if let Some(interval) = self.interval_since_fix(time) {
+            self.wind.predict(interval);
+        }
+        if let Some(air_speed) = self.measured_air_speed.filter(|speed| speed.fresh_at(time)) {
+            self.wind.update(
+                east,
+                north,
+                Speed::from_meters_per_second(air_speed.value),
+                fix.position_accuracy,
+            );
+        }
+        self.ground = Some(Timed {
+            time,
+            value: (east, north),
+        });
+    }
+
+    fn interval_since_fix(&self, now: Duration) -> Option<f64> {
+        let ground = self.ground?;
+        now.checked_sub(ground.time)
+            .filter(|interval| !interval.is_zero())
+            .map(|interval| interval.as_secs_f64())
+    }
+
     /// Takes a true airspeed from an instrument. It expires after five
     /// seconds, so the compensation stops when the instrument goes away.
     pub fn air_speed(&mut self, time: Duration, speed: Speed) {
@@ -357,6 +429,10 @@ impl AirStateEstimator {
         Some(AirState {
             vertical_speed: Speed::from_meters_per_second(vertical_speed),
             rate_of_climb: Speed::from_meters_per_second(rate_of_climb),
+            wind: self.wind.vector().map(|(east, north)| Wind {
+                direction: Angle::from_radians((-east).atan2(-north)).normalized(),
+                speed: Speed::from_meters_per_second(east.hypot(north)),
+            }),
         })
     }
 }

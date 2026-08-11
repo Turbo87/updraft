@@ -5,7 +5,7 @@ use crate::smoothing_weight;
 use crate::wind::{Wind, WindFilter};
 use std::time::Duration;
 use updraft_geo::LatLon;
-use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
+use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
 
 /// Standard gravity, in m/s².
 const GRAVITY: f64 = 9.80665;
@@ -100,6 +100,10 @@ pub struct AirState {
     /// Horizontal movement of the air mass, or `None` while the wind
     /// estimate has not converged yet.
     pub wind: Option<Wind>,
+    /// Height above mean sea level, from both altitude sources. `None`
+    /// until a GNSS altitude has arrived, because a pressure altitude
+    /// alone has no sea-level reference.
+    pub altitude: Option<MslAltitude>,
 }
 
 /// Derives the [`AirState`] from flight data.
@@ -135,6 +139,11 @@ pub struct AirStateEstimator {
     circling: CirclingWind,
     /// Latest ground velocity, east and north in m/s.
     ground: Option<Timed<(f64, f64)>>,
+    /// Latest position, for the geoid.
+    position: Option<LatLon>,
+    /// Latest fused height, and whether it is referenced to the
+    /// ellipsoid rather than to the pressure datum.
+    height_value: Option<(f64, bool)>,
     /// Noise and resolution of the source that drives the height.
     noise: NoiseFloor,
     /// Set by the caller, or `None` to follow the measured noise.
@@ -254,6 +263,8 @@ impl AirStateEstimator {
             wind: WindFilter::default(),
             circling: CirclingWind::default(),
             ground: None,
+            position: None,
+            height_value: None,
             noise: NoiseFloor::default(),
             vertical_speed_time_constant: None,
         }
@@ -306,6 +317,7 @@ impl AirStateEstimator {
             value: (altitude, true),
         });
         let height = self.height.pressure(time.as_secs_f64(), altitude);
+        self.height_value = Some((height, self.height.is_fused()));
         self.advance_vertical_speed(time, height, true);
     }
 
@@ -324,6 +336,9 @@ impl AirStateEstimator {
         }
         if self.barometer_is_connected(time) {
             self.height.gnss(time.as_secs_f64(), altitude);
+            if let Some(value) = self.height_value.as_mut() {
+                value.1 = self.height.is_fused();
+            }
         } else {
             self.altitude = Some(Timed {
                 time,
@@ -333,8 +348,20 @@ impl AirStateEstimator {
             // go through the offset. That offset is the difference
             // between the two altitudes, and this altitude already sits
             // on the GNSS side of it: adding it would count it twice.
+            self.height_value = Some((altitude, true));
             self.advance_vertical_speed(time, altitude, false);
         }
+    }
+
+    /// The height above mean sea level, once the GNSS altitude has given
+    /// the height a sea-level reference.
+    fn msl_altitude(&self) -> Option<MslAltitude> {
+        let (height, _) = self.height_value.filter(|(_, referenced)| *referenced)?;
+        let ellipsoidal = EllipsoidAltitude::new(Length::from_meters(height));
+        Some(updraft_egm96::ellipsoidal_to_msl(
+            self.position?,
+            ellipsoidal,
+        ))
     }
 
     fn barometer_is_connected(&self, now: Duration) -> bool {
@@ -387,6 +414,7 @@ impl AirStateEstimator {
             time,
             value: (east, north),
         });
+        self.position = Some(fix.position);
     }
 
     fn interval_since_fix(&self, now: Duration) -> Option<f64> {
@@ -482,6 +510,7 @@ impl AirStateEstimator {
             rate_of_climb: Speed::from_meters_per_second(rate_of_climb),
             air_speed: air_speed.map(Speed::from_meters_per_second),
             heading: self.heading(now),
+            altitude: self.msl_altitude(),
             wind: self.wind.vector().map(|(east, north)| Wind {
                 direction: Angle::from_radians((-east).atan2(-north)).normalized(),
                 speed: Speed::from_meters_per_second(east.hypot(north)),
@@ -803,6 +832,66 @@ mod tests {
         // ground that the caller supplied.
         assert_none!(assert_some!(circle_without_a_sensor(10).state()).heading);
         assert_some!(assert_some!(circle_without_a_sensor(60).state()).heading);
+    }
+
+    #[test]
+    fn the_altitude_needs_a_gnss_altitude_for_its_reference() {
+        let mut estimator = AirStateEstimator::new();
+        for step in 0..10u64 {
+            let time = Duration::from_secs(step);
+            estimator.fix(time, &fix(90., 120.));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+
+        // A pressure altitude alone says nothing about sea level.
+        assert_none!(assert_some!(estimator.state()).altitude);
+    }
+
+    #[test]
+    fn the_altitude_follows_the_gnss_altitude_through_the_geoid() {
+        let mut estimator = AirStateEstimator::new();
+        for step in 0..30u64 {
+            let time = Duration::from_secs(step);
+            estimator.fix(time, &fix(90., 120.));
+            estimator.gnss_altitude(time, EllipsoidAltitude::new(Length::from_meters(1046.)));
+            estimator.pressure_altitude(time, meters(1000.));
+        }
+
+        let expected = updraft_egm96::ellipsoidal_to_msl(
+            POSITION,
+            EllipsoidAltitude::new(Length::from_meters(1046.)),
+        );
+        let state = assert_some!(estimator.state());
+        assert_abs_diff_eq!(assert_some!(state.altitude), expected, epsilon = 0.01);
+    }
+
+    #[test]
+    fn losing_the_barometer_keeps_the_altitude_it_was_reporting() {
+        let mut estimator = AirStateEstimator::new();
+        let ellipsoidal = |value: f64| EllipsoidAltitude::new(Length::from_meters(value));
+        let mut fused = None;
+
+        for step in 0..120u64 {
+            let time = Duration::from_secs(step);
+            estimator.fix(time, &fix(90., 120.));
+            // The two altitudes are 200 m apart. The barometer stops
+            // after a minute; the receiver keeps reporting.
+            if step < 60 {
+                estimator.pressure_altitude(time, meters(1000.));
+            }
+            estimator.gnss_altitude(time, ellipsoidal(1200.));
+            if step == 59 {
+                fused = assert_some!(estimator.state()).altitude;
+            }
+        }
+
+        // The glider has not moved, so the altitude has not either. The
+        // offset belongs between the two altitudes, and the GNSS one is
+        // already on its far side: adding it again would move the
+        // reading by the whole datum difference.
+        let before = assert_some!(fused);
+        let after = assert_some!(assert_some!(estimator.state()).altitude);
+        assert_abs_diff_eq!(after, before, epsilon = 1.);
     }
 
     #[test]

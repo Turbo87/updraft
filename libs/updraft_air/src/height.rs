@@ -86,6 +86,13 @@ impl HeightFilter {
         altitude + self.offset.unwrap_or(0.)
     }
 
+    /// Whether the offset between the two altitudes is established, so
+    /// that the height shares the GNSS reference and can be converted to
+    /// a height above sea level.
+    pub fn is_fused(&self) -> bool {
+        self.offset.is_some()
+    }
+
     /// Takes a GNSS altitude. It moves the offset that
     /// [`pressure`](Self::pressure) adds, and never the height directly.
     pub fn gnss(&mut self, time: f64, altitude: f64) {

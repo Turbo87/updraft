@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 workspace = true
 
 [dependencies]
+updraft_egm96 = { path = "../updraft_egm96" }
 updraft_geo = { path = "../updraft_geo" }
 updraft_units = { path = "../updraft_units" }
 

@@ -13,4 +13,6 @@ updraft_units = { path = "../updraft_units" }
 [dev-dependencies]
 approx = "=0.6.0-rc2"
 claims = "=0.8.0"
+igc = "=0.3.0"
+insta = "=1.48.0"
 updraft_units = { path = "../updraft_units", features = ["approx"] }

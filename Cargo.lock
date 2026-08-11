@@ -5338,6 +5338,8 @@ version = "0.0.0"
 dependencies = [
  "approx 0.6.0-rc2",
  "claims",
+ "igc",
+ "insta",
  "updraft_units",
 ]
 

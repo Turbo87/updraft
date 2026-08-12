@@ -35,8 +35,9 @@ returned to the Rust caller.
 
 ## Quit
 
-A quit stops `SessionService` and ends the process. Android owns the exit
-because Rust cannot wake its event loop after Android removes the window.
+A quit stops `SessionService`, removes the application task from Recents, and
+ends the process. Android owns the exit because Rust cannot wake its event loop
+after Android removes the window.
 
 ## Permissions
 

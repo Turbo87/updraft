@@ -2,6 +2,7 @@ package aero.updraft.mobile
 
 import android.Manifest
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.Application
 import android.os.Build
 import android.os.Bundle
@@ -184,7 +185,14 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     private fun quitApp(): Nothing {
         Logger.info(TAG, "Stopping the session and ending the process")
         SessionService.stop(application)
+        finishAppTasks()
         exitProcess(0)
+    }
+
+    /** Removes the app through `ActivityManager` because the plugin activity can be stale. */
+    private fun finishAppTasks() {
+        val manager = application.getSystemService(ActivityManager::class.java)
+        manager.appTasks.forEach { it.finishAndRemoveTask() }
     }
 
     @Command

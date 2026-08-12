@@ -1,5 +1,5 @@
 use crate::Time;
-use crate::field::FieldsIter;
+use crate::field::{FieldsIter, text};
 
 /// A supported FLARM debug message (`$PFLAL`) with its source timestamp.
 #[derive(Clone, Debug, PartialEq)]
@@ -16,6 +16,19 @@ pub struct Pflal {
 pub enum PflalContent {
     /// Power and operating temperature diagnostics (`39 PWR`).
     Power(PflalPower),
+    /// A firmware-specific configuration entry (`07`).
+    Configuration(PflalConfiguration),
+}
+
+/// A key and raw text value from a `PFLAL` configuration diagnostic.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PflalConfiguration {
+    /// Configuration key reported by the device. Invalid UTF-8 uses the
+    /// Unicode replacement character.
+    pub key: Box<str>,
+    /// Complete value after the key separator, including embedded spaces.
+    /// Invalid UTF-8 uses the Unicode replacement character.
+    pub value: Box<str>,
 }
 
 /// Values reported by `PFLAL` power diagnostics.
@@ -44,6 +57,10 @@ impl Pflal {
 
 impl PflalContent {
     fn parse(payload: &[u8]) -> Option<Self> {
+        if let Some(payload) = payload.strip_prefix(b"07") {
+            return PflalConfiguration::parse(payload).map(Self::Configuration);
+        }
+
         let mut tokens = payload
             .split(u8::is_ascii_whitespace)
             .filter(|token| !token.is_empty());
@@ -69,6 +86,17 @@ impl PflalContent {
     }
 }
 
+impl PflalConfiguration {
+    fn parse(payload: &[u8]) -> Option<Self> {
+        let separator = payload.iter().position(u8::is_ascii_whitespace)?;
+        let (key, value) = payload.split_at(separator);
+        (!key.is_empty()).then_some(Self {
+            key: text(key),
+            value: text(&value[1..]),
+        })
+    }
+}
+
 fn expect_token<'a>(tokens: &mut impl Iterator<Item = &'a [u8]>, expected: &[u8]) -> Option<()> {
     (tokens.next()? == expected).then_some(())
 }
@@ -85,12 +113,58 @@ mod tests {
             b"09541739 PWR STATE 4 LVL 28 BAT 0.00 EXT 13.06 TEMP 37.8",
         )));
         assert_eq!(pflal.timestamp, timestamp);
-        let PflalContent::Power(power) = pflal.content;
+        let PflalContent::Power(power) = pflal.content else {
+            panic!("expected power diagnostics");
+        };
         assert_eq!(power.state, 4);
         assert_eq!(power.level, 28);
         assert_eq!(power.battery, 0.0);
         assert_eq!(power.external_voltage, 13.06);
         assert_eq!(power.operating_temperature, 37.8);
+    }
+
+    #[test]
+    fn parses_a_configuration_diagnostic() {
+        let pflal = assert_some!(Pflal::parse(FieldsIter::new(b"09593807FRW 7.40")));
+        assert_eq!(
+            pflal.content,
+            PflalContent::Configuration(PflalConfiguration {
+                key: "FRW".into(),
+                value: "7.40".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn preserves_an_empty_configuration_value() {
+        let pflal = assert_some!(Pflal::parse(FieldsIter::new(b"09593807OBSTEXP ")));
+        assert_eq!(
+            pflal.content,
+            PflalContent::Configuration(PflalConfiguration {
+                key: "OBSTEXP".into(),
+                value: "".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn preserves_an_unknown_configuration_key_and_value_spaces() {
+        let pflal = assert_some!(Pflal::parse(FieldsIter::new(
+            b"09593807FUTURE raw value with spaces",
+        )));
+        assert_eq!(
+            pflal.content,
+            PflalContent::Configuration(PflalConfiguration {
+                key: "FUTURE".into(),
+                value: "raw value with spaces".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_a_configuration_without_a_key_or_separator() {
+        assert_none!(Pflal::parse(FieldsIter::new(b"09593807FRW")));
+        assert_none!(Pflal::parse(FieldsIter::new(b"09593807 7.40")));
     }
 
     #[test]
@@ -129,12 +203,16 @@ mod tests {
     fn parses_non_finite_power_values() {
         let fields = FieldsIter::new(b"09541739 PWR STATE 4 LVL 28 BAT 0.00 EXT NaN TEMP 37.8");
         let pflal = assert_some!(Pflal::parse(fields));
-        let PflalContent::Power(power) = pflal.content;
+        let PflalContent::Power(power) = pflal.content else {
+            panic!("expected power diagnostics");
+        };
         assert!(power.external_voltage.is_nan());
 
         let fields = FieldsIter::new(b"09541739 PWR STATE 4 LVL 28 BAT 0.00 EXT 13.06 TEMP inf");
         let pflal = assert_some!(Pflal::parse(fields));
-        let PflalContent::Power(power) = pflal.content;
+        let PflalContent::Power(power) = pflal.content else {
+            panic!("expected power diagnostics");
+        };
         assert_eq!(power.operating_temperature, f64::INFINITY);
     }
 

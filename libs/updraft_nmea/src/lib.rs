@@ -27,7 +27,7 @@ pub use sentences::{
     CaiG, CaiSetting, CaiW, FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource,
     Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, Lxwp0, Lxwp1, Lxwp2, Lxwp3,
     Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Pcaid, Pflaa, Pflac, PflacQueryType, Pflal,
-    PflalContent, PflalPower, Pflau, PflauAlarmType, PflauGpsStatus, Pflav, Pgrmz,
-    PgrmzFixDimension, Plxv0, Plxv0Direction, Plxvc, PlxvcMessageType, Plxvf, Plxvs, PlxvsMode,
-    Plxvtarg, PositioningMode, Pov, PovDatum, Rmc, RmcStatus,
+    PflalConfiguration, PflalContent, PflalPower, Pflau, PflauAlarmType, PflauGpsStatus, Pflav,
+    Pgrmz, PgrmzFixDimension, Plxv0, Plxv0Direction, Plxvc, PlxvcMessageType, Plxvf, Plxvs,
+    PlxvsMode, Plxvtarg, PositioningMode, Pov, PovDatum, Rmc, RmcStatus,
 };

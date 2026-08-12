@@ -26,8 +26,9 @@ pub use message::{Message, Talker, Unknown};
 pub use sentences::{
     CaiG, CaiSetting, CaiW, FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource,
     Gga, GgaFixQuality, Gsa, GsaFixType, GsaSelectionMode, Lxwp0, Lxwp1, Lxwp2, Lxwp3,
-    Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Pcaid, Pflaa, Pflac, PflacQueryType, Pflau,
-    PflauAlarmType, PflauGpsStatus, Pgrmz, PgrmzFixDimension, Plxv0, Plxv0Direction, Plxvc,
+    Lxwp3SpeedCommandMode, Lxwp3SwitchMode, Pcaid, Pflaa, Pflac, PflacQueryType, Pflal,
+    PflalConfiguration, PflalContent, PflalOwnId, PflalPower, Pflau, PflauAlarmType,
+    PflauGpsStatus, Pflav, Pgrmz, PgrmzFixDimension, Plxv0, Plxv0Direction, Plxvc,
     PlxvcMessageType, Plxvf, Plxvs, PlxvsMode, Plxvtarg, PositioningMode, Pov, PovDatum, Rmc,
     RmcStatus,
 };

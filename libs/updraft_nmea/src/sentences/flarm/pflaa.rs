@@ -88,7 +88,8 @@ pub enum FlarmIdType {
 }
 
 impl FlarmIdType {
-    fn from_field(field: &[u8]) -> Option<Self> {
+    /// Parses a numeric FLARM ID type field.
+    pub fn from_field(field: &[u8]) -> Option<Self> {
         match field {
             b"0" => Some(Self::Random),
             b"1" => Some(Self::Icao),

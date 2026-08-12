@@ -90,6 +90,7 @@ pub fn run() {
             ipc::edit_external_device,
             ipc::set_external_device_enabled,
             ipc::subscribe,
+            ipc::quit,
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -151,6 +152,8 @@ pub fn run() {
                 // tao's Android event loop calls `std::process::exit` when the
                 // last window closes, which kills the foreground service with
                 // it. A session has to outlive the activity that started it.
+                // A deliberate quit ends the process through the platform
+                // instead, which this arm never sees. See `ipc::quit`.
                 api.prevent_exit();
             }
             _ => {}

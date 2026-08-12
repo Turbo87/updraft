@@ -4,7 +4,7 @@
   import { getLocale } from '$lib/paraglide/runtime.js';
   import SettingsIndexScreen from '$lib/SettingsIndexScreen.svelte';
 
-  const { settings } = getAppContext();
+  const { client, settings } = getAppContext();
 
   const activeLocale = $derived(settings.current.locale ?? getLocale());
   const language = $derived(languageOptions.find(({ locale }) => locale === activeLocale)?.label);
@@ -13,6 +13,12 @@
       new Date(__BUILD_TIMESTAMP__),
     ),
   );
+
+  function quit(): void {
+    void client.quit().catch((error: unknown) => {
+      console.error('Failed to quit', error);
+    });
+  }
 </script>
 
-<SettingsIndexScreen {language} {buildDate} />
+<SettingsIndexScreen {language} {buildDate} onQuit={quit} />

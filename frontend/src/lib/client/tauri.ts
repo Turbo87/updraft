@@ -38,6 +38,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('remove_airspace');
   }
 
+  quit(): Promise<void> {
+    return invoke('quit');
+  }
+
   setLocale(locale: Locale): Promise<void> {
     return invoke('set_locale', { locale });
   }

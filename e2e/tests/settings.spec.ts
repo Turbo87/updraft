@@ -10,10 +10,12 @@ const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
 
 type TestWindow = Window & {
   __airspaceImportCalls?: number;
+  __quitCalls?: number;
   __updraftApp?: AppContext;
   __updraftFake?: {
     emit: (topic: unknown) => void;
     importAirspace: () => Promise<{ type: 'cancelled' }>;
+    quit: () => Promise<void>;
   };
 };
 
@@ -122,6 +124,23 @@ test('uses the screen scaffold when an external device is not found', async ({ p
   await expect(page.getByText('External device not found')).toBeVisible();
   await expect(back).toHaveAttribute('href', '/settings/devices');
   await expect(page.getByRole('main')).not.toContainText('Back to external devices');
+});
+
+test('quits through the client from the settings menu', async ({ page }) => {
+  await page.goto('/settings?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.evaluate(() => {
+    let testWindow = window as TestWindow;
+    let client = testWindow.__updraftFake;
+    if (!client) throw new Error('the fake client should be available');
+    client.quit = async () => {
+      testWindow.__quitCalls = (testWindow.__quitCalls ?? 0) + 1;
+    };
+  });
+
+  await expect(page.getByText('Stops background navigation and closes the app.')).toBeVisible();
+  await page.getByRole('button', { name: 'Quit Updraft' }).click();
+  await expect.poll(() => page.evaluate(() => (window as TestWindow).__quitCalls)).toBe(1);
 });
 
 test('shows source and build information on the About page', async ({ page }) => {

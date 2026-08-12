@@ -212,6 +212,15 @@ pub fn bonded_bluetooth_devices<R: tauri::Runtime>(
         .map_err(|_| BondedBluetoothDevicesCommandError::QueryFailed)
 }
 
+/// Ends the app at the pilot's request.
+#[tauri::command]
+pub fn quit<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    tracing::info!("Quitting at the pilot's request");
+    if let Err(error) = app.updraft_mobile().quit() {
+        tracing::error!(%error, "Could not quit");
+    }
+}
+
 #[tauri::command]
 pub async fn set_locale(
     locale: updraft_core::Locale,

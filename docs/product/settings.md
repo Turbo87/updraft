@@ -19,6 +19,9 @@ current settings topic and sends typed commands for changes.
 Each category page links back to `/settings`. Device creation and editing use
 routes below `/settings/devices`.
 
+`/settings` also contains a quit action that stops the platform session and
+closes the application.
+
 The root layout keeps the Flight View and map mounted while a Settings route is
 open. A return to the Flight View therefore keeps temporary map state.
 

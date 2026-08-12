@@ -57,6 +57,9 @@ export class FakeClient implements UpdraftClient {
 
   async removeAirspace(): Promise<void> {}
 
+  /** Browser development has no session and no process to end. */
+  async quit(): Promise<void> {}
+
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'settings', value: this.#settings });

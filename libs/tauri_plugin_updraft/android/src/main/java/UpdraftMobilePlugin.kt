@@ -15,6 +15,7 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Channel
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.Plugin
+import kotlin.system.exitProcess
 
 private const val LOCATION_ALIAS = "location"
 private const val NEARBY_DEVICES_ALIAS = "nearbyDevices"
@@ -159,6 +160,31 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
     fun stopSession(invoke: Invoke) {
         SessionService.stop(application)
         invoke.resolve()
+    }
+
+    /**
+     * Stops the session and ends the process.
+     *
+     * Resolves before the exit, so the caller learns that the command arrived
+     * rather than losing its response to the process ending.
+     */
+    @Command
+    fun quit(invoke: Invoke) {
+        invoke.resolve()
+        quitApp()
+    }
+
+    /**
+     * Stops the session and ends the process that carries it.
+     *
+     * The platform performs the exit because Rust cannot wake its event loop after
+     * Android removes the window. The service must stop first so Android records
+     * the stop before the process exits and does not restart the sticky service.
+     */
+    private fun quitApp(): Nothing {
+        Logger.info(TAG, "Stopping the session and ending the process")
+        SessionService.stop(application)
+        exitProcess(0)
     }
 
     @Command

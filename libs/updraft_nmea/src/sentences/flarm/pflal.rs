@@ -1,3 +1,4 @@
+use super::{FlarmId, FlarmIdType};
 use crate::Time;
 use crate::field::{FieldsIter, text};
 
@@ -18,6 +19,8 @@ pub enum PflalContent {
     Power(PflalPower),
     /// A firmware-specific configuration entry (`07`).
     Configuration(PflalConfiguration),
+    /// The transmitting device's own FLARM ID (`ID`).
+    OwnId(PflalOwnId),
 }
 
 /// A key and raw text value from a `PFLAL` configuration diagnostic.
@@ -29,6 +32,15 @@ pub struct PflalConfiguration {
     /// Complete value after the key separator, including embedded spaces.
     /// Invalid UTF-8 uses the Unicode replacement character.
     pub value: Box<str>,
+}
+
+/// The transmitting device's own FLARM ID and its address type.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PflalOwnId {
+    /// How to interpret the device ID.
+    pub id_type: FlarmIdType,
+    /// The ID reported by the transmitting device.
+    pub id: FlarmId,
 }
 
 /// Values reported by `PFLAL` power diagnostics.
@@ -59,6 +71,9 @@ impl PflalContent {
     fn parse(payload: &[u8]) -> Option<Self> {
         if let Some(payload) = payload.strip_prefix(b"07") {
             return PflalConfiguration::parse(payload).map(Self::Configuration);
+        }
+        if let Some(payload) = payload.strip_prefix(b"ID") {
+            return PflalOwnId::parse(payload).map(Self::OwnId);
         }
 
         let mut tokens = payload
@@ -94,6 +109,18 @@ impl PflalConfiguration {
             key: text(key),
             value: text(&value[1..]),
         })
+    }
+}
+
+impl PflalOwnId {
+    fn parse(payload: &[u8]) -> Option<Self> {
+        payload.first()?.is_ascii_whitespace().then_some(())?;
+        let mut tokens = payload
+            .split(u8::is_ascii_whitespace)
+            .filter(|token| !token.is_empty());
+        let id_type = FlarmIdType::from_field(tokens.next()?)?;
+        let id = FlarmId::parse(tokens.next()?)?;
+        Some(Self { id_type, id })
     }
 }
 
@@ -159,6 +186,46 @@ mod tests {
                 value: "raw value with spaces".into(),
             })
         );
+    }
+
+    #[test]
+    fn parses_every_documented_own_id_type() {
+        let cases = [
+            (
+                b"095938ID 0 A1B2C3".as_slice(),
+                FlarmIdType::Random,
+                0xA1B2C3,
+            ),
+            (b"095938ID 1 B2C3D4".as_slice(), FlarmIdType::Icao, 0xB2C3D4),
+            (
+                b"095938ID 2 C3D4E5".as_slice(),
+                FlarmIdType::Flarm,
+                0xC3D4E5,
+            ),
+        ];
+
+        for (message, id_type, address) in cases {
+            let pflal = assert_some!(Pflal::parse(FieldsIter::new(message)));
+            assert_eq!(
+                pflal.content,
+                PflalContent::OwnId(PflalOwnId {
+                    id_type,
+                    id: FlarmId {
+                        address,
+                        callsign: None,
+                    },
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_a_malformed_own_id_diagnostic() {
+        assert_none!(Pflal::parse(FieldsIter::new(b"095938ID")));
+        assert_none!(Pflal::parse(FieldsIter::new(b"095938ID 1")));
+        assert_none!(Pflal::parse(FieldsIter::new(b"095938ID X A1B2C3")));
+        assert_none!(Pflal::parse(FieldsIter::new(b"095938ID 1 INVALID")));
+        assert_none!(Pflal::parse(FieldsIter::new(b"095938ID1 A1B2C3")));
     }
 
     #[test]

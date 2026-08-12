@@ -10,8 +10,8 @@ mod openvario;
 pub use cambridge::{CaiG, CaiSetting, CaiW, Pcaid};
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
-    PflacQueryType, Pflal, PflalConfiguration, PflalContent, PflalPower, Pflau, PflauAlarmType,
-    PflauGpsStatus, Pflav,
+    PflacQueryType, Pflal, PflalConfiguration, PflalContent, PflalOwnId, PflalPower, Pflau,
+    PflauAlarmType, PflauGpsStatus, Pflav,
 };
 pub use garmin::{Pgrmz, PgrmzFixDimension};
 pub use gnss::{

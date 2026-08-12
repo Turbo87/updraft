@@ -13,6 +13,6 @@ mod pflav;
 pub use common::{FlarmAlarmLevel, FlarmId};
 pub use pflaa::{FlarmAircraftType, FlarmIdType, FlarmSource, Pflaa};
 pub use pflac::{Pflac, PflacQueryType};
-pub use pflal::{Pflal, PflalConfiguration, PflalContent, PflalPower};
+pub use pflal::{Pflal, PflalConfiguration, PflalContent, PflalOwnId, PflalPower};
 pub use pflau::{Pflau, PflauAlarmType, PflauGpsStatus};
 pub use pflav::Pflav;

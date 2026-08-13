@@ -1,0 +1,45 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Motion" />
+
+# Motion
+
+Motion communicates where a surface came from. The resulting state must remain clear when the
+movement is not visible. Updraft does not use decorative motion.
+
+## Timing
+
+### Fast transition
+
+`--duration-fast` is 120 milliseconds. Use it for pressed states and toggle knobs.
+
+With reduced motion, change color immediately and do not transform the control.
+
+### Base transition
+
+`--duration-base` is 180 milliseconds. Use it when a screen cover enters or leaves and when a modal
+dialog appears.
+
+With reduced motion, screen covers cross-fade without sliding. Dialogs and their scrims fade without
+scaling.
+
+### Loading indicator
+
+A loading spinner completes one turn in 900 milliseconds. It uses a linear, infinite animation. This
+duration is specific to the spinner and is not a reusable token.
+
+With reduced motion, replace rotation with a 1.2-second opacity pulse. The indicator stays in place,
+so its busy state remains visible.
+
+## Easing
+
+`--ease-standard` is `cubic-bezier(0.2, 0, 0.2, 1)`. Use it with fast and base transitions. Loading
+spinner rotation remains linear.
+
+## Reduced-motion requirements
+
+- Remove translation and scale.
+- Keep short opacity changes when they explain a surface transition.
+- Keep the final state identifiable without relying on the transition.
+- Replace continuous movement with a stationary opacity pulse when the busy state must remain
+  visible.

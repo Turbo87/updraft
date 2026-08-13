@@ -40,6 +40,10 @@
   --color-action-primary-surface: light-dark(var(--color-blue-700), var(--color-blue-400));
   --color-action-primary-text: light-dark(var(--color-white), var(--color-slate-950));
   --color-action-secondary-surface: light-dark(var(--color-slate-200), var(--color-slate-700));
+  --color-action-secondary-surface-pressed: light-dark(
+    var(--color-slate-300),
+    var(--color-slate-600)
+  );
   --color-action-secondary-text: light-dark(var(--color-slate-950), var(--color-slate-50));
   --color-action-destructive-surface: light-dark(var(--color-red-700), var(--color-red-400));
   --color-action-destructive-text: light-dark(var(--color-white), var(--color-slate-950));
@@ -56,6 +60,8 @@
   --text-row-value: 600 1.125rem / 1.3 var(--font-numeric);
   --text-body: 400 1.0625rem / 1.5 var(--font-ui);
   --text-caption: 400 0.9375rem / 1.4 var(--font-ui);
+  --text-button: 600 1.0625rem / 1 var(--font-ui);
+  --text-button-large: 600 1.125rem / 1 var(--font-ui);
   --text-value-sm: 700 1.5rem / 1.1 var(--font-numeric);
   --text-value-md: 700 2rem / 1.1 var(--font-numeric);
   --text-value-lg: 700 2.75rem / 1.05 var(--font-numeric);

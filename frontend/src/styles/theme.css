@@ -47,6 +47,19 @@
   --color-value-text: light-dark(var(--color-slate-950), var(--color-slate-50));
   --color-value-stale: light-dark(var(--color-slate-500), var(--color-slate-400));
 
+  --font-ui: 'Barlow', system-ui, sans-serif;
+  --font-numeric: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
+
+  --text-screen-title: 700 1.5rem / 1.2 var(--font-ui);
+  --text-section-title: 600 0.875rem / 1.2 var(--font-ui);
+  --text-row-label: 600 1.125rem / 1.3 var(--font-ui);
+  --text-row-value: 600 1.125rem / 1.3 var(--font-numeric);
+  --text-body: 400 1.0625rem / 1.5 var(--font-ui);
+  --text-caption: 400 0.9375rem / 1.4 var(--font-ui);
+  --text-value-sm: 700 1.5rem / 1.1 var(--font-numeric);
+  --text-value-md: 700 2rem / 1.1 var(--font-numeric);
+  --text-value-lg: 700 2.75rem / 1.05 var(--font-numeric);
+
   /* Existing routes keep these values until their design-system migrations. */
   --color-app-surface: light-dark(var(--color-white), var(--color-gray-950));
   --color-overlay-surface: rgb(0 0 0 / 75%);

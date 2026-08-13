@@ -1,10 +1,54 @@
 :root {
   color-scheme: light dark;
 
-  --color-app-surface: light-dark(var(--color-white), var(--color-gray-950));
-  --color-text: light-dark(var(--color-gray-950), var(--color-gray-50));
+  --color-screen-surface: light-dark(var(--color-white), var(--color-slate-900));
+  --color-screen-surface-sunken: light-dark(var(--color-slate-100), var(--color-slate-950));
+  --color-card-surface: light-dark(var(--color-white), var(--color-slate-800));
+  --color-control-surface: light-dark(var(--color-slate-100), var(--color-slate-800));
+  --color-control-surface-pressed: light-dark(var(--color-slate-200), var(--color-slate-700));
+  --color-map-overlay-surface: light-dark(var(--color-white), var(--color-slate-900));
+  --color-map-overlay-text: light-dark(var(--color-slate-950), var(--color-slate-50));
+  --color-map-overlay-scrim: light-dark(rgb(255 255 255 / 35%), rgb(2 6 23 / 35%));
+  --color-map-overlay-scrim-pressed: light-dark(rgb(255 255 255 / 72%), rgb(2 6 23 / 72%));
+  --color-scrim: light-dark(rgb(15 23 42 / 45%), rgb(2 6 23 / 70%));
+
+  --color-text: light-dark(var(--color-slate-950), var(--color-slate-100));
+  --color-text-muted: light-dark(var(--color-slate-600), var(--color-slate-400));
+  --color-text-faint: light-dark(var(--color-slate-400), var(--color-slate-500));
   --color-link: light-dark(var(--color-blue-700), var(--color-blue-300));
   --color-focus-ring: light-dark(var(--color-blue-600), var(--color-blue-400));
+
+  --color-border: light-dark(var(--color-slate-300), var(--color-slate-800));
+  --color-border-strong: light-dark(var(--color-slate-400), var(--color-slate-700));
+  --color-separator: light-dark(var(--color-slate-200), var(--color-slate-700));
+
+  --color-normal-surface: light-dark(var(--color-slate-100), var(--color-slate-800));
+  --color-normal-text: light-dark(var(--color-slate-600), var(--color-slate-300));
+  --color-caution-surface: light-dark(var(--color-amber-100), var(--color-amber-950));
+  --color-caution-text: light-dark(var(--color-amber-700), var(--color-amber-300));
+  --color-warning-surface: var(--color-amber-500);
+  --color-warning-text: var(--color-slate-900);
+  --color-danger-surface: var(--color-red-600);
+  --color-danger-text: var(--color-white);
+  --color-danger-subtle-surface: light-dark(var(--color-red-100), var(--color-red-950));
+  --color-danger-subtle-text: light-dark(var(--color-red-700), var(--color-red-300));
+  --color-success-surface: light-dark(var(--color-emerald-100), var(--color-emerald-950));
+  --color-success-text: light-dark(var(--color-emerald-700), var(--color-emerald-300));
+  --color-disabled-surface: light-dark(var(--color-slate-200), var(--color-slate-800));
+  --color-disabled-text: light-dark(var(--color-slate-500), var(--color-slate-400));
+
+  --color-action-primary-surface: light-dark(var(--color-blue-700), var(--color-blue-400));
+  --color-action-primary-text: light-dark(var(--color-white), var(--color-slate-950));
+  --color-action-secondary-surface: light-dark(var(--color-slate-200), var(--color-slate-700));
+  --color-action-secondary-text: light-dark(var(--color-slate-950), var(--color-slate-50));
+  --color-action-destructive-surface: light-dark(var(--color-red-700), var(--color-red-400));
+  --color-action-destructive-text: light-dark(var(--color-white), var(--color-slate-950));
+
+  --color-value-text: light-dark(var(--color-slate-950), var(--color-slate-50));
+  --color-value-stale: light-dark(var(--color-slate-500), var(--color-slate-400));
+
+  /* Existing routes keep these values until their design-system migrations. */
+  --color-app-surface: light-dark(var(--color-white), var(--color-gray-950));
   --color-overlay-surface: rgb(0 0 0 / 75%);
   --color-overlay-text: var(--color-white);
 }

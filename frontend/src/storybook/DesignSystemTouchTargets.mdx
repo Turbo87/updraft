@@ -1,0 +1,99 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Touch targets" />
+
+# Touch targets
+
+Every interactive target is at least 48 by 48 pixels. Flight View controls and rows that navigate
+use 56-pixel targets. Adjacent targets have at least 8 pixels of clear space.
+
+The diagnostic specimen uses a dashed outline for each hit box. The amber band shows the clear
+space between neighboring targets. Use this check on every new screen.
+
+## Compliant target stack
+
+<div
+  style={{
+    display: 'grid',
+    maxWidth: '23.5rem',
+    padding: 'var(--space-5)',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-card)',
+    background: 'var(--color-screen-surface)',
+  }}
+>
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      height: 'var(--target-flight)',
+      paddingInline: 'var(--space-4)',
+      outline: '2px dashed var(--color-focus-ring)',
+      outlineOffset: '-2px',
+      borderRadius: 'var(--radius-control)',
+      background: 'var(--color-control-surface)',
+    }}
+  >
+    <strong>{'Settings'}</strong>
+    <code>56px</code>
+  </div>
+  <div style={{ height: 'var(--space-2)', background: 'var(--color-caution-surface)' }} />
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      height: 'var(--target-flight)',
+      paddingInline: 'var(--space-4)',
+      outline: '2px dashed var(--color-focus-ring)',
+      outlineOffset: '-2px',
+      borderRadius: 'var(--radius-control)',
+      background: 'var(--color-control-surface)',
+    }}
+  >
+    <strong>{'Units'}</strong>
+    <code>56px</code>
+  </div>
+  <div style={{ height: 'var(--space-2)', background: 'var(--color-caution-surface)' }} />
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr var(--space-2) 1fr' }}>
+    <div
+      style={{
+        display: 'grid',
+        placeItems: 'center',
+        height: 'var(--target-min)',
+        outline: '2px dashed var(--color-focus-ring)',
+        outlineOffset: '-2px',
+        borderRadius: 'var(--radius-control)',
+        background: 'var(--color-action-secondary-surface)',
+      }}
+    >
+      <code>48px</code>
+    </div>
+    <div style={{ background: 'var(--color-caution-surface)' }} />
+    <div
+      style={{
+        display: 'grid',
+        placeItems: 'center',
+        height: 'var(--target-min)',
+        outline: '2px dashed var(--color-focus-ring)',
+        outlineOffset: '-2px',
+        borderRadius: 'var(--radius-control)',
+        background: 'var(--color-action-secondary-surface)',
+      }}
+    >
+      <code>48px</code>
+    </div>
+  </div>
+</div>
+
+## Size rules
+
+- `--target-min` is 3rem or 48 pixels. It is the absolute minimum throughout the application.
+- `--target-flight` is 3.5rem or 56 pixels. It applies to map controls and rows that navigate.
+- `--button-height-flight` is 3.5rem or 56 pixels. It applies to large buttons and scaffold bars.
+- A single-choice row with a flag or second line is at least 56 pixels high.
+- Adjacent targets have at least `--space-2`, or 8 pixels, between them.
+- Destructive actions have at least `--space-6`, or 24 pixels, of separation and a separator.
+
+Do not use hover-only affordances, swipe-only actions, or interactive targets inside body text.

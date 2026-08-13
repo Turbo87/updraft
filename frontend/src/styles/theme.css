@@ -60,6 +60,22 @@
   --text-value-md: 700 2rem / 1.1 var(--font-numeric);
   --text-value-lg: 700 2.75rem / 1.05 var(--font-numeric);
 
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  --radius-control: 0.625rem;
+  --radius-card: 0.75rem;
+  --radius-screen: 1.5rem;
+
+  --shadow-overlay: 0 0.375rem 1.25rem light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 42%));
+  --shadow-modal: 0 1.25rem 3rem light-dark(rgb(8 14 22 / 30%), rgb(0 0 0 / 60%));
+
   /* Existing routes keep these values until their design-system migrations. */
   --color-app-surface: light-dark(var(--color-white), var(--color-gray-950));
   --color-overlay-surface: rgb(0 0 0 / 75%);

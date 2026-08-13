@@ -1,0 +1,239 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Spacing, radius, and elevation" />
+
+# Spacing, radius, and elevation
+
+Updraft uses one spacing scale in rem units. A standard row uses `--space-4` for block padding and
+`--space-5` for inline padding. Adjacent targets have at least `--space-2` between them. A
+destructive action is separated from frequent actions by `--space-6` and a separator.
+
+## Spacing scale
+
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-1</code>
+  <span
+    style={{
+      width: 'var(--space-1)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'0.25rem · 4px · icon-to-label gap'}</span>
+</div>
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-2</code>
+  <span
+    style={{
+      width: 'var(--space-2)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'0.5rem · 8px · gap between targets'}</span>
+</div>
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-3</code>
+  <span
+    style={{
+      width: 'var(--space-3)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'0.75rem · 12px'}</span>
+</div>
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-4</code>
+  <span
+    style={{
+      width: 'var(--space-4)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'1rem · 16px · row block padding'}</span>
+</div>
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-5</code>
+  <span
+    style={{
+      width: 'var(--space-5)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'1.25rem · 20px · row inline padding and screen gutter'}</span>
+</div>
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-6</code>
+  <span
+    style={{
+      width: 'var(--space-6)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'1.5rem · 24px · block separation'}</span>
+</div>
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-8</code>
+  <span
+    style={{
+      width: 'var(--space-8)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'2rem · 32px · section separation'}</span>
+</div>
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '7rem 3rem 1fr',
+    alignItems: 'center',
+    gap: '0.75rem',
+  }}
+>
+  <code>--space-12</code>
+  <span
+    style={{
+      width: 'var(--space-12)',
+      height: '1rem',
+      background: 'var(--color-action-primary-surface)',
+    }}
+  />
+  <span>{'3rem · 48px · end of scroll content'}</span>
+</div>
+
+## Radius
+
+Controls, cards, and screen panels each use one radius. Circular indicators and controls use 50%
+instead of a radius token.
+
+<div style={{ display: 'flex', alignItems: 'end', gap: '1.5rem', flexWrap: 'wrap' }}>
+  <div>
+    <div
+      style={{
+        width: '5rem',
+        height: '3rem',
+        border: '1px solid var(--color-border-strong)',
+        borderRadius: 'var(--radius-control)',
+        background: 'var(--color-control-surface)',
+      }}
+    />
+    <code>--radius-control · 0.625rem</code>
+  </div>
+  <div>
+    <div
+      style={{
+        width: '5rem',
+        height: '3rem',
+        border: '1px solid var(--color-border-strong)',
+        borderRadius: 'var(--radius-card)',
+        background: 'var(--color-card-surface)',
+      }}
+    />
+    <code>--radius-card · 0.75rem</code>
+  </div>
+  <div>
+    <div
+      style={{
+        width: '5rem',
+        height: '3rem',
+        border: '1px solid var(--color-border-strong)',
+        borderRadius: 'var(--radius-screen) var(--radius-screen) 0 0',
+        background: 'var(--color-screen-surface)',
+      }}
+    />
+    <code>--radius-screen · 1.5rem</code>
+  </div>
+</div>
+
+## Elevation
+
+Updraft uses three elevation levels. Opaque screens use a border without a shadow. Floating map
+overlays use `--shadow-overlay`. Modal dialogs use `--shadow-modal`. Components do not introduce
+additional shadow levels.
+
+<div style={{ display: 'grid', gap: '1.5rem', maxWidth: '34rem' }}>
+  <div
+    style={{
+      padding: '1rem',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--radius-card)',
+      background: 'var(--color-card-surface)',
+    }}
+  >
+    {'Level 0 · opaque screen surface · border only'}
+  </div>
+  <div
+    style={{
+      padding: '1rem',
+      borderRadius: 'var(--radius-card)',
+      background: 'var(--color-card-surface)',
+      boxShadow: 'var(--shadow-overlay)',
+    }}
+  >
+    {'Level 1 · floating map overlay'}
+  </div>
+  <div
+    style={{
+      padding: '1rem',
+      borderRadius: 'var(--radius-card)',
+      background: 'var(--color-card-surface)',
+      boxShadow: 'var(--shadow-modal)',
+    }}
+  >
+    {'Level 2 · modal dialog'}
+  </div>
+</div>

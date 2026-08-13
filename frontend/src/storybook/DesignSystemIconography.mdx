@@ -1,0 +1,129 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Iconography" />
+
+# Iconography
+
+Updraft uses Material Design Icons through the existing Iconify and UnoCSS pipeline. Icons use a
+24-pixel grid and inherit `currentColor`. Render icons at a minimum of 24 pixels. Render icons at 28
+pixels inside a 56-pixel Flight View control.
+
+Use one visual weight on each screen. Do not mix outline and filled versions of the same icon on one
+screen.
+
+## Icon catalogue
+
+This catalogue is not exhaustive. It records the current meaning of common icons. Reuse the same
+icon when the same meaning appears in another component or screen. Do not use one icon for
+different meanings.
+
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(10rem, 1fr))',
+    gap: 'var(--space-3) var(--space-4)',
+  }}
+>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-arrow-left" style={{ fontSize: '1.5rem' }} />
+    <code>arrow-left</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-close" style={{ fontSize: '1.5rem' }} />
+    <code>close</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-chevron-right" style={{ fontSize: '1.5rem' }} />
+    <code>chevron-right</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-check" style={{ fontSize: '1.5rem' }} />
+    <code>check</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-cog-outline" style={{ fontSize: '1.5rem' }} />
+    <code>cog-outline</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-translate" style={{ fontSize: '1.5rem' }} />
+    <code>translate</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-ruler" style={{ fontSize: '1.5rem' }} />
+    <code>ruler</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-vector-square" style={{ fontSize: '1.5rem' }} />
+    <code>vector-square</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-bluetooth" style={{ fontSize: '1.5rem' }} />
+    <code>bluetooth</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-lan-connect" style={{ fontSize: '1.5rem' }} />
+    <code>lan-connect</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-information-outline" style={{ fontSize: '1.5rem' }} />
+    <code>information-outline</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-map-outline" style={{ fontSize: '1.5rem' }} />
+    <code>map-outline</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-crosshairs-gps" style={{ fontSize: '1.5rem' }} />
+    <code>crosshairs-gps</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-airplane" style={{ fontSize: '1.5rem' }} />
+    <code>airplane</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-alert-outline" style={{ fontSize: '1.5rem' }} />
+    <code>alert-outline</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-delete-outline" style={{ fontSize: '1.5rem' }} />
+    <code>delete-outline</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-file-import-outline" style={{ fontSize: '1.5rem' }} />
+    <code>file-import-outline</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-refresh" style={{ fontSize: '1.5rem' }} />
+    <code>refresh</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-plus" style={{ fontSize: '1.5rem' }} />
+    <code>plus</code>
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+    <span aria-hidden="true" className="i-mdi-lock-outline" style={{ fontSize: '1.5rem' }} />
+    <code>lock-outline</code>
+  </span>
+</div>
+
+## Meaning rules
+
+- Use `arrow-left` to return, `close` to dismiss, and `chevron-right` to open a row destination.
+- Use `check` to confirm a selection or a completed state.
+- Use `cog-outline`, `translate`, `ruler`, `vector-square`, `map-outline`, and `airplane` for
+  Settings, Language, Units, Airspace, nearby map features, and Traffic.
+- Use `bluetooth` and `lan-connect` for Bluetooth and network connections.
+- Use `crosshairs-gps` only to return the map to the current position.
+- Use `information-outline` for information or About. Use `alert-outline` for a warning that needs
+  attention.
+- Use `delete-outline`, `file-import-outline`, `refresh`, `plus`, and `lock-outline` to remove,
+  import, refresh or retry, add, and show a fixed value.
+
+## Accessibility
+
+An icon in a labelled row or control is decorative. Hide it from assistive technology with
+`aria-hidden="true"` because the text carries the meaning.
+
+An icon-only control must have an accessible name. Give the control an `aria-label` and a hit box
+that is at least 48 by 48 pixels. Do not use the icon name as the accessible name. Describe the
+action instead.

@@ -41,6 +41,26 @@ const preview: Preview = {
     docs: {
       container: ThemeDocsContainer,
     },
+    viewport: {
+      options: {
+        galaxyS23: {
+          name: 'Galaxy S23',
+          styles: {
+            width: '360px',
+            height: '780px',
+          },
+          type: 'mobile',
+        },
+        ipad: {
+          name: 'iPad',
+          styles: {
+            width: '768px',
+            height: '1024px',
+          },
+          type: 'tablet',
+        },
+      },
+    },
   },
 };
 

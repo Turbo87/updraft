@@ -1,0 +1,36 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Overview and assumptions" />
+
+# Overview and assumptions
+
+This design system turns the Flight Deck visual language into reusable patterns for every Updraft
+screen. It records the decisions that components and application screens must share.
+
+## Source of truth
+
+The Flight Deck supplies the visual language. The system reuses its palette, Barlow typefaces,
+hairline separators, and map-overlay treatment. Current product documents define behavior. Existing
+application routes and components show which states must remain supported.
+
+## Application constraints
+
+- Updraft runs in Tauri system webviews with the CSS compatibility floor in the repository.
+- Components use semantic tokens, scoped styles, and CSS custom properties.
+- Light and dark themes must carry the same information and interaction states.
+- Phone layouts cover the map. Supported wide layouts can use a panel over the live map.
+- Safe-area insets protect controls on mobile displays.
+
+## Interaction principles
+
+- Every interactive target is at least 48 by 48 pixels.
+- Navigation rows and map controls use 56-pixel targets.
+- Adjacent targets have at least 8 pixels of clear space.
+- Destructive actions are separated from frequent actions.
+- Nothing depends on hover, and every gesture has a visible control.
+- State and errors never rely on color alone.
+
+## Unknown product data
+
+Proposed fields stay visible before the backend can calculate them. The application shows an em dash
+with the unknown-value style. It does not add fake protocol fields or placeholder calculations.

@@ -57,6 +57,7 @@
   --text-screen-title: 700 1.5rem / 1.2 var(--font-ui);
   --text-section-title: 600 0.875rem / 1.2 var(--font-ui);
   --text-row-label: 600 1.125rem / 1.3 var(--font-ui);
+  --text-row-detail: 500 1.0625rem / 1.3 var(--font-ui);
   --text-row-value: 600 1.125rem / 1.3 var(--font-numeric);
   --text-body: 400 1.0625rem / 1.5 var(--font-ui);
   --text-caption: 400 0.9375rem / 1.4 var(--font-ui);

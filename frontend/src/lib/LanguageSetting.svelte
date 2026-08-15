@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Locale } from '$lib/protocol/generated/Locale';
 
+  import { languageOptions } from '$lib/language-options';
   import { m } from '$lib/paraglide/messages.js';
 
   type Props = {
@@ -9,17 +10,12 @@
   };
 
   let { locale, onLocaleChange }: Props = $props();
-
-  const options = [
-    { locale: 'en', label: 'English', icon: 'i-circle-flags-lang-en' },
-    { locale: 'de', label: 'Deutsch', icon: 'i-circle-flags-lang-de' },
-  ] satisfies Array<{ locale: Locale; label: string; icon: string }>;
 </script>
 
 <fieldset>
   <legend>{m.language_label()}</legend>
   <div class="choices">
-    {#each options as option (option.locale)}
+    {#each languageOptions as option (option.locale)}
       <label>
         <input
           type="radio"

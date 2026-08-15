@@ -2,6 +2,8 @@ import { expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../../app.css';
+
 import ReturnToPositionButton from './ReturnToPositionButton.svelte';
 
 it('uses the MDI icon without a global stacking override', async () => {
@@ -18,7 +20,9 @@ it('uses the MDI icon without a global stacking override', async () => {
   let icon = buttonElement.querySelector<HTMLElement>('.i-mdi-crosshairs-gps');
   if (!icon) throw new Error('Return to position icon is not available');
 
-  expect(icon.getBoundingClientRect().width).toBe(24);
-  expect(icon.getBoundingClientRect().height).toBe(24);
+  expect(icon.getBoundingClientRect().width).toBe(28);
+  expect(icon.getBoundingClientRect().height).toBe(28);
+  expect(buttonElement.getBoundingClientRect().width).toBe(56);
+  expect(buttonElement.getBoundingClientRect().height).toBe(56);
   expect(getComputedStyle(buttonElement).zIndex).toBe('auto');
 });

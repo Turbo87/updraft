@@ -121,8 +121,10 @@ test('keeps the Settings button inside the safe area', async ({ page }) => {
   );
 
   let settingsButton = page.getByRole('link', { name: 'Settings' });
-  await expect(settingsButton.locator('..')).toHaveCSS('top', '40px');
-  await expect(settingsButton.locator('..')).toHaveCSS('right', '32px');
+  await expect(settingsButton).toHaveCSS('width', '56px');
+  await expect(settingsButton).toHaveCSS('height', '56px');
+  await expect(settingsButton.locator('..')).toHaveCSS('top', '48px');
+  await expect(settingsButton.locator('..')).toHaveCSS('right', '40px');
 });
 
 test('keeps the return-to-position button inside the safe area', async ({ page }) => {
@@ -134,8 +136,10 @@ test('keeps the return-to-position button inside the safe area', async ({ page }
 
   await panMap(page);
   let returnButton = page.getByRole('button', { name: 'Return to position' });
-  await expect(returnButton).toHaveCSS('right', '40px');
-  await expect(returnButton).toHaveCSS('bottom', '36px');
+  await expect(returnButton).toHaveCSS('width', '56px');
+  await expect(returnButton).toHaveCSS('height', '56px');
+  await expect(returnButton.locator('..')).toHaveCSS('right', '40px');
+  await expect(returnButton.locator('..')).toHaveCSS('bottom', '36px');
 });
 
 test('renders active airspace below traffic and ownship', async ({ page }) => {

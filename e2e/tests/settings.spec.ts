@@ -54,6 +54,14 @@ test.describe('with an unsupported browser language', () => {
 test('shows a menu with dedicated settings routes and top back links', async ({ page }) => {
   await page.goto('/settings?testMode=1');
 
+  await expect(page.getByRole('link', { name: 'Language English' })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /^About [A-Z][a-z]{2} \d{1,2}, \d{4}$/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Back to flight view' }).locator('.i-mdi-arrow-left'),
+  ).toBeVisible();
+
   let routes = [
     ['Language', '/settings/language'],
     ['Units', '/settings/units'],

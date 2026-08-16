@@ -4,6 +4,7 @@
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 
   import { m } from '$lib/paraglide/messages.js';
+  import StatusPill from './StatusPill.svelte';
 
   type Props = {
     status: AirspaceStatus;
@@ -86,7 +87,9 @@
 </script>
 
 <fieldset>
-  <legend class:sr-only={status.type === 'none'}>{m.airspace_label()}</legend>
+  <legend class:sr-only={status.type === 'none' || status.type === 'active'}>
+    {m.airspace_label()}
+  </legend>
   {#if status.type === 'none'}
     <div class="empty-state">
       <span aria-hidden="true" class="i-mdi-vector-square"></span>
@@ -97,14 +100,26 @@
       {m.airspace_import()}
     </button>
   {:else}
-    <p>{status.sourceName ?? m.airspace_source_fallback()}</p>
     {#if status.type === 'active'}
-      <p>
-        {status.airspaceCount === 1
-          ? m.airspace_count_one()
-          : m.airspace_count({ count: status.airspaceCount })}
-      </p>
+      <section class="source-summary" aria-labelledby="current-source-heading">
+        <h2 id="current-source-heading">{m.airspace_current_source()}</h2>
+        <dl>
+          <div class="source-row">
+            <dt>{m.airspace_file_label()}</dt>
+            <dd>{status.sourceName ?? m.airspace_source_fallback()}</dd>
+          </div>
+          <div class="source-row">
+            <dt>{m.airspaces_heading()}</dt>
+            <dd class="numeric">{status.airspaceCount}</dd>
+          </div>
+          <div class="source-row">
+            <dt>{m.state_label()}</dt>
+            <dd><StatusPill label={m.airspace_active()} tone="success" /></dd>
+          </div>
+        </dl>
+      </section>
     {:else}
+      <p>{status.sourceName ?? m.airspace_source_fallback()}</p>
       <p>{loadErrorMessage(status.error)}</p>
     {/if}
     <div class="actions">
@@ -165,6 +180,55 @@
     max-width: 18rem;
     color: var(--color-text-muted);
     font: var(--text-body);
+  }
+
+  .source-summary {
+    margin-block-end: var(--space-6);
+  }
+
+  h2 {
+    margin: 0 var(--space-1) var(--space-2);
+    color: var(--color-text-muted);
+    font: var(--text-section-title);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  dl {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-card-surface);
+  }
+
+  .source-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: var(--target-min);
+    padding: var(--space-2) var(--space-5);
+  }
+
+  .source-row + .source-row {
+    border-block-start: 1px solid var(--color-separator);
+  }
+
+  dt {
+    font: var(--text-row-label);
+  }
+
+  dd {
+    margin: 0;
+    font: var(--text-row-detail);
+    font-weight: 600;
+    text-align: end;
+  }
+
+  dd.numeric {
+    font: var(--text-row-value);
+    font-variant-numeric: tabular-nums;
   }
 
   button {

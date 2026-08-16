@@ -215,6 +215,7 @@ test('propagates airspace status and invokes import through the fake client', as
     });
   });
 
+  await expect(page.getByRole('heading', { name: 'Current source' })).toBeVisible();
   await expect(page.getByText('rheinland.txt')).toBeVisible();
-  await expect(page.getByText('42 airspaces')).toBeVisible();
+  await expect(page.getByText('42', { exact: true })).toBeVisible();
 });

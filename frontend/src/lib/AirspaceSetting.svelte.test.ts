@@ -45,8 +45,13 @@ describe('AirspaceSetting.svelte', () => {
       onRemove,
     });
 
+    await expect.element(page.getByRole('heading', { name: 'Current source' })).toBeVisible();
+    await expect.element(page.getByText('File', { exact: true })).toBeVisible();
     await expect.element(page.getByText('rheinland.txt')).toBeVisible();
-    await expect.element(page.getByText('42 airspaces')).toBeVisible();
+    await expect.element(page.getByText('Airspaces', { exact: true })).toBeVisible();
+    await expect.element(page.getByText('42', { exact: true })).toBeVisible();
+    await expect.element(page.getByText('State', { exact: true })).toBeVisible();
+    await expect.element(page.getByText('Active', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Replace' }).click();
     expect(onImport).toHaveBeenCalledOnce();
@@ -68,7 +73,7 @@ describe('AirspaceSetting.svelte', () => {
     });
 
     await expect.element(page.getByText('Imported airspace file')).toBeVisible();
-    await expect.element(page.getByText('1 airspace', { exact: true })).toBeVisible();
+    await expect.element(page.getByText('1', { exact: true })).toBeVisible();
   });
 
   it.each([

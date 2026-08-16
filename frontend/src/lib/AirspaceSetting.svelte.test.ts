@@ -33,9 +33,8 @@ describe('AirspaceSetting.svelte', () => {
     expect(importButton.element().closest('footer')).not.toBeNull();
   });
 
-  it('shows the active source and wires replacement and removal', async () => {
+  it('shows the active source and wires replacement', async () => {
     let onImport = vi.fn(async () => ({ type: 'cancelled' as const }));
-    let onRemove = vi.fn(async () => {});
     render(AirspaceSetting, {
       status: {
         type: 'active',
@@ -44,7 +43,7 @@ describe('AirspaceSetting.svelte', () => {
         generation: 1,
       },
       onImport,
-      onRemove,
+      onRemove: vi.fn(async () => {}),
     });
 
     await expect.element(page.getByRole('heading', { name: 'Current source' })).toBeVisible();
@@ -63,14 +62,46 @@ describe('AirspaceSetting.svelte', () => {
       .toBeVisible();
 
     let replace = page.getByRole('button', { name: 'Replace file' });
-    let remove = page.getByRole('button', { name: 'Remove airspace source' });
     expect(replace.element().closest('footer')).not.toBeNull();
-    expect(remove.element().closest('main')).not.toBeNull();
+    expect(
+      page.getByRole('button', { name: 'Remove airspace source' }).element().closest('main'),
+    ).not.toBeNull();
 
     await replace.click();
     expect(onImport).toHaveBeenCalledOnce();
+  });
+
+  it('removes the source only after confirmation', async () => {
+    let onRemove = vi.fn(async () => {});
+    render(AirspaceSetting, {
+      status: {
+        type: 'active',
+        sourceName: 'rheinland.txt',
+        airspaceCount: 42,
+        generation: 1,
+      },
+      onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
+      onRemove,
+    });
+
+    let remove = page.getByRole('button', { name: 'Remove airspace source' });
+    await remove.click();
+
+    let dialog = page.getByRole('alertdialog', { name: 'Remove rheinland.txt?' });
+    await expect.element(dialog).toBeVisible();
+    await expect
+      .element(dialog)
+      .toHaveAccessibleDescription(
+        'The file is deleted from this device and airspace disappears from the map. You can import it again later.',
+      );
+    expect(onRemove).not.toHaveBeenCalled();
+
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect.element(dialog).not.toBeInTheDocument();
+    expect(onRemove).not.toHaveBeenCalled();
 
     await remove.click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
     expect(onRemove).toHaveBeenCalledOnce();
   });
 

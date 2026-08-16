@@ -5,6 +5,7 @@
 
   import { m } from '$lib/paraglide/messages.js';
   import Button from './Button.svelte';
+  import ConfirmDialog from './ConfirmDialog.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';
 
@@ -26,6 +27,7 @@
 
   let { status, onImport, onRemove }: Props = $props();
   let mutation = $state.raw<MutationState>({ type: 'idle' });
+  let removeDialogOpen = $state(false);
   const pending = $derived(mutation.type === 'pending');
 
   async function mutate(action: () => Promise<unknown>): Promise<void> {
@@ -36,6 +38,10 @@
     } catch (error) {
       mutation = { type: 'failed', message: commandErrorMessage(error) };
     }
+  }
+
+  function confirmRemoval(): void {
+    void mutate(onRemove);
   }
 
   function commandErrorKind(error: unknown): AirspaceCommandErrorKind | null {
@@ -153,7 +159,7 @@
           disabled={pending}
           style="width: 100%"
           variant="destructive-outline"
-          onclick={() => void mutate(onRemove)}
+          onclick={() => (removeDialogOpen = true)}
         >
           <span aria-hidden="true" class="i-mdi-delete-outline action-icon"></span>
           {m.airspace_remove()}
@@ -165,6 +171,20 @@
     {/if}
   </fieldset>
 </ScreenScaffold>
+
+{#if status.type !== 'none'}
+  <ConfirmDialog
+    bind:open={removeDialogOpen}
+    title={m.airspace_remove_confirm_title({
+      sourceName: status.sourceName ?? m.airspace_source_fallback(),
+    })}
+    description={m.airspace_remove_confirm_description()}
+    cancelLabel={m.cancel()}
+    confirmLabel={m.airspace_remove_confirm()}
+    onCancel={() => (removeDialogOpen = false)}
+    onConfirm={confirmRemoval}
+  />
+{/if}
 
 <style>
   fieldset {

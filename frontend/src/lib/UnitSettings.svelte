@@ -5,6 +5,7 @@
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
 
+  import InlineChoiceGroup from '$lib/InlineChoiceGroup.svelte';
   import { m } from '$lib/paraglide/messages.js';
 
   type UnitSettingsProps = {
@@ -14,106 +15,64 @@
 
   let { units, onUnitsChange }: UnitSettingsProps = $props();
 
-  const altitudeUnits: AltitudeUnit[] = ['m', 'ft'];
-  const distanceUnits: DistanceUnit[] = ['km', 'mi', 'nm'];
-  const speedUnits: SpeedUnit[] = ['km/h', 'kt', 'mph'];
-  const verticalSpeedUnits: VerticalSpeedUnit[] = ['m/s', 'kt', 'ft/min'];
+  const altitudeOptions = [
+    { value: 'm', label: 'm' },
+    { value: 'ft', label: 'ft' },
+  ] satisfies ReadonlyArray<{ value: AltitudeUnit; label: string }>;
+
+  const distanceOptions = [
+    { value: 'km', label: 'km' },
+    { value: 'mi', label: 'mi' },
+    { value: 'nm', label: 'nm' },
+  ] satisfies ReadonlyArray<{ value: DistanceUnit; label: string }>;
+
+  const speedOptions = [
+    { value: 'km/h', label: 'km/h' },
+    { value: 'kt', label: 'kt' },
+    { value: 'mph', label: 'mph' },
+  ] satisfies ReadonlyArray<{ value: SpeedUnit; label: string }>;
+
+  const verticalSpeedOptions = [
+    { value: 'm/s', label: 'm/s' },
+    { value: 'kt', label: 'kt' },
+    { value: 'ft/min', label: 'ft/min' },
+  ] satisfies ReadonlyArray<{ value: VerticalSpeedUnit; label: string }>;
 </script>
 
-<fieldset>
-  <legend>{m.units_label()}</legend>
-  <div class="selections">
-    <label>
-      <span>{m.altitude_label()}</span>
-      <select
-        name="altitude"
-        value={units.altitude}
-        onchange={(event) =>
-          onUnitsChange({
-            ...units,
-            altitude: event.currentTarget.value as AltitudeUnit,
-          })}
-      >
-        {#each altitudeUnits as unit (unit)}
-          <option value={unit}>{unit}</option>
-        {/each}
-      </select>
-    </label>
-    <label>
-      <span>{m.distance_label()}</span>
-      <select
-        name="distance"
-        value={units.distance}
-        onchange={(event) =>
-          onUnitsChange({
-            ...units,
-            distance: event.currentTarget.value as DistanceUnit,
-          })}
-      >
-        {#each distanceUnits as unit (unit)}
-          <option value={unit}>{unit}</option>
-        {/each}
-      </select>
-    </label>
-    <label>
-      <span>{m.speed_label()}</span>
-      <select
-        name="speed"
-        value={units.speed}
-        onchange={(event) =>
-          onUnitsChange({
-            ...units,
-            speed: event.currentTarget.value as SpeedUnit,
-          })}
-      >
-        {#each speedUnits as unit (unit)}
-          <option value={unit}>{unit}</option>
-        {/each}
-      </select>
-    </label>
-    <label>
-      <span>{m.vertical_speed_label()}</span>
-      <select
-        name="verticalSpeed"
-        value={units.verticalSpeed}
-        onchange={(event) =>
-          onUnitsChange({
-            ...units,
-            verticalSpeed: event.currentTarget.value as VerticalSpeedUnit,
-          })}
-      >
-        {#each verticalSpeedUnits as unit (unit)}
-          <option value={unit}>{unit}</option>
-        {/each}
-      </select>
-    </label>
-  </div>
-</fieldset>
+<div class="selections">
+  <InlineChoiceGroup
+    name="altitude"
+    legend={m.altitude_label()}
+    options={altitudeOptions}
+    value={units.altitude}
+    onChange={(altitude) => onUnitsChange({ ...units, altitude })}
+  />
+  <InlineChoiceGroup
+    name="distance"
+    legend={m.distance_label()}
+    options={distanceOptions}
+    value={units.distance}
+    onChange={(distance) => onUnitsChange({ ...units, distance })}
+  />
+  <InlineChoiceGroup
+    name="speed"
+    legend={m.speed_label()}
+    options={speedOptions}
+    value={units.speed}
+    onChange={(speed) => onUnitsChange({ ...units, speed })}
+  />
+  <InlineChoiceGroup
+    name="verticalSpeed"
+    legend={m.vertical_speed_label()}
+    options={verticalSpeedOptions}
+    value={units.verticalSpeed}
+    onChange={(verticalSpeed) => onUnitsChange({ ...units, verticalSpeed })}
+  />
+</div>
 
 <style>
-  fieldset {
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  legend {
-    margin-block-end: 0.75rem;
-    font-weight: 600;
-  }
-
   .selections {
     display: grid;
-    max-width: 20rem;
-    gap: 0.75rem;
-  }
-
-  label {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  select {
-    min-height: 3rem;
+    gap: var(--space-6);
   }
 </style>

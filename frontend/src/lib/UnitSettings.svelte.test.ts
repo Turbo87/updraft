@@ -5,24 +5,21 @@ import { page } from 'vitest/browser';
 import UnitSettings from './UnitSettings.svelte';
 
 describe('UnitSettings.svelte', () => {
-  it('shows one labeled select for each unit selection', async () => {
+  it('shows one radio group for each unit selection', async () => {
     render(UnitSettings, {
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       onUnitsChange: async () => {},
     });
 
-    await expect
-      .element(page.getByRole('combobox', { name: 'Altitude', exact: true }))
-      .toHaveValue('m');
-    await expect
-      .element(page.getByRole('combobox', { name: 'Distance', exact: true }))
-      .toHaveValue('km');
-    await expect
-      .element(page.getByRole('combobox', { name: 'Speed', exact: true }))
-      .toHaveValue('km/h');
-    await expect
-      .element(page.getByRole('combobox', { name: 'Vertical speed', exact: true }))
-      .toHaveValue('m/s');
+    await expect.element(page.getByRole('group', { name: 'Altitude' })).toBeVisible();
+    await expect.element(page.getByRole('group', { name: 'Distance' })).toBeVisible();
+    await expect.element(page.getByRole('group', { name: 'Speed', exact: true })).toBeVisible();
+    await expect.element(page.getByRole('group', { name: 'Vertical speed' })).toBeVisible();
+    await expect.element(page.getByRole('radio', { name: 'm', exact: true })).toBeChecked();
+    await expect.element(page.getByRole('radio', { name: 'km', exact: true })).toBeChecked();
+    await expect.element(page.getByRole('radio', { name: 'km/h', exact: true })).toBeChecked();
+    await expect.element(page.getByRole('radio', { name: 'm/s', exact: true })).toBeChecked();
+    await expect.element(page.getByRole('combobox')).not.toBeInTheDocument();
   });
 
   it('reports one complete value when a selection changes', async () => {
@@ -32,7 +29,7 @@ describe('UnitSettings.svelte', () => {
       onUnitsChange,
     });
 
-    await page.getByRole('combobox', { name: 'Altitude', exact: true }).selectOptions('ft');
+    await page.getByText('ft', { exact: true }).click();
 
     expect(onUnitsChange).toHaveBeenCalledExactlyOnceWith({
       altitude: 'ft',
@@ -54,12 +51,12 @@ describe('UnitSettings.svelte', () => {
       onUnitsChange,
     });
 
-    await page.getByRole('combobox', { name: 'Altitude', exact: true }).selectOptions('ft');
+    await page.getByText('ft', { exact: true }).click();
     await view.rerender({
       units: { altitude: 'ft', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       onUnitsChange,
     });
-    await page.getByRole('combobox', { name: 'Distance', exact: true }).selectOptions('nm');
+    await page.getByText('nm', { exact: true }).click();
 
     try {
       expect(onUnitsChange).toHaveBeenNthCalledWith(1, {

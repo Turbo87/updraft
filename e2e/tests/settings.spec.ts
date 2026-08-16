@@ -40,10 +40,10 @@ test.describe('with an unsupported browser language', () => {
     await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible();
 
     await page.getByRole('link', { name: 'Einheiten' }).click();
-    let altitude = page.getByRole('combobox', { name: 'Höhe', exact: true });
-    await expect(altitude).toHaveValue('m');
-    await altitude.selectOption('ft');
-    await expect(altitude).toHaveValue('ft');
+    let altitude = page.getByRole('group', { name: 'Höhe', exact: true });
+    await expect(altitude.getByRole('radio', { name: 'm', exact: true })).toBeChecked();
+    await altitude.getByText('ft', { exact: true }).click();
+    await expect(altitude.getByRole('radio', { name: 'ft', exact: true })).toBeChecked();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
     await page.getByRole('link', { name: 'Zurück zur Flugansicht' }).click();
@@ -85,6 +85,16 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
 
 test('uses the screen scaffold for language settings', async ({ page }) => {
   await page.goto('/settings/language?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to settings' });
+
+  await expect(back).toHaveAttribute('href', '/settings');
+  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to settings');
+});
+
+test('uses the screen scaffold for unit settings', async ({ page }) => {
+  await page.goto('/settings/units?testMode=1');
 
   let back = page.getByRole('link', { name: 'Back to settings' });
 
@@ -155,8 +165,12 @@ test.describe('with a supported German browser language', () => {
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
     await page.getByRole('link', { name: 'Einheiten' }).click();
-    await expect(page.getByRole('combobox', { name: 'Distanz', exact: true })).toHaveValue('km');
-    await expect(page.getByRole('combobox', { name: 'Steigen', exact: true })).toHaveValue('m/s');
+    await expect(
+      page.getByRole('group', { name: 'Distanz', exact: true }).getByRole('radio', { name: 'km' }),
+    ).toBeChecked();
+    await expect(
+      page.getByRole('group', { name: 'Steigen', exact: true }).getByRole('radio', { name: 'm/s' }),
+    ).toBeChecked();
   });
 });
 

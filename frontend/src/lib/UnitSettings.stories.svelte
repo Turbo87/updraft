@@ -11,7 +11,7 @@
       docs: {
         description: {
           component:
-            'Use unit settings to choose altitude, distance, speed, and vertical-speed units. Each native select shows the current value and reports a complete `UnitSettings` value when its selection changes. The component remains controlled through `units` and `onUnitsChange`.',
+            'Use unit settings to choose altitude, distance, speed, and vertical-speed units. Each inline group keeps its complete option set visible and reports a complete `UnitSettings` value when the selection changes. The component remains controlled through `units` and `onUnitsChange`.',
         },
       },
     },

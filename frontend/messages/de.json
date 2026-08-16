@@ -220,8 +220,10 @@
   "external_devices_heading": "Externe Geräte",
   "loading_external_devices": "Externe Geräte werden geladen…",
   "no_external_devices_configured": "Keine externen Geräte konfiguriert.",
+  "external_devices_empty_description": "Füge eine TCP- oder Bluetooth-Verbindung hinzu, um GPS-, Höhen- und Verkehrsdaten zu empfangen.",
   "add_external_device": "Externes Gerät hinzufügen",
   "edit_external_device": "{endpoint} bearbeiten",
+  "edit_connection": "Verbindung bearbeiten",
   "edit_external_device_heading": "Externes Gerät bearbeiten",
   "save_external_device": "Änderungen speichern",
   "delete_external_device": "Externes Gerät löschen",
@@ -248,5 +250,7 @@
   "bluetooth_spp_device_type": "Bluetooth SPP",
   "custom_service_uuid": "Benutzerdefinierte Service-UUID",
   "device_enabled": "Aktiviert",
+  "device_disabled": "Deaktiviert",
+  "device_connection_status_unknown": "Verbindungsstatus unbekannt",
   "update_device_error": "Dieses Gerät konnte nicht aktualisiert werden."
 }

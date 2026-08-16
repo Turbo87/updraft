@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../app.css';
+
 import DevicesScreen from './DevicesScreen.svelte';
 
 describe('DevicesScreen.svelte', () => {
@@ -26,9 +28,14 @@ describe('DevicesScreen.svelte', () => {
     });
 
     await expect
-      .element(page.getByRole('heading', { name: 'External devices' }))
+      .element(page.getByRole('heading', { name: 'External devices', exact: true }))
       .toBeInTheDocument();
     await expect.element(page.getByText('No external devices configured.')).toBeInTheDocument();
+    await expect
+      .element(
+        page.getByText('Add a TCP or Bluetooth connection to receive GPS, altitude, and traffic.'),
+      )
+      .toBeInTheDocument();
   });
 
   it('links back to the Settings screen', async () => {
@@ -129,6 +136,8 @@ describe('DevicesScreen.svelte', () => {
     let rows = page.getByRole('listitem');
     await expect.element(rows.nth(0).getByRole('switch', { name: 'Enabled' })).toBeChecked();
     await expect.element(rows.nth(1).getByRole('switch', { name: 'Enabled' })).not.toBeChecked();
+    await expect.element(rows.nth(0).getByText('—', { exact: true })).toBeInTheDocument();
+    await expect.element(rows.nth(1).getByText('Disabled', { exact: true })).toBeInTheDocument();
   });
 
   it('requests an enabled change and waits for a published device update', async () => {

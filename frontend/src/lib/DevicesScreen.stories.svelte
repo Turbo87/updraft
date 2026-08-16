@@ -37,7 +37,7 @@
       docs: {
         description: {
           component:
-            'Use this screen to list and manage external data sources. Keep loading and empty states distinct. A configured device shows its connection type, endpoint, enabled state, and edit action. Show the bonded Bluetooth name when the platform provides one. Keep the Bluetooth address visible for identification. Show a custom service UUID only when the device uses one. An enabled-state update disables only the affected device until the command finishes. A failed update keeps the previous state and displays an error.',
+            'Use this screen to list and manage external data sources. Keep loading and empty states distinct. A configured device shows its connection type, endpoint, enabled state, and edit action. Show the bonded Bluetooth name when the platform provides one. Keep the Bluetooth address visible for identification. Show a custom service UUID only when the device uses one. Live connection status stays visible as an em dash until the backend publishes it. A disabled device shows Disabled instead. An enabled-state update disables only the affected device until the command finishes. A failed update keeps the previous state and displays an error.',
         },
       },
     },

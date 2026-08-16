@@ -220,8 +220,10 @@
   "external_devices_heading": "External devices",
   "loading_external_devices": "Loading external devices…",
   "no_external_devices_configured": "No external devices configured.",
+  "external_devices_empty_description": "Add a TCP or Bluetooth connection to receive GPS, altitude, and traffic.",
   "add_external_device": "Add external device",
   "edit_external_device": "Edit {endpoint}",
+  "edit_connection": "Edit connection",
   "edit_external_device_heading": "Edit external device",
   "save_external_device": "Save changes",
   "delete_external_device": "Delete external device",
@@ -248,5 +250,7 @@
   "bluetooth_spp_device_type": "Bluetooth SPP",
   "custom_service_uuid": "Custom service UUID",
   "device_enabled": "Enabled",
+  "device_disabled": "Disabled",
+  "device_connection_status_unknown": "Connection status unknown",
   "update_device_error": "Could not update this device."
 }

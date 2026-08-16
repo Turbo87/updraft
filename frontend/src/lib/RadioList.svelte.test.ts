@@ -17,6 +17,11 @@ const languageOptions = [
   { value: 'de', label: 'Deutsch', icon: 'i-circle-flags-lang-de' },
 ] as const;
 
+const deviceOptions = [
+  { value: '00:11:22:33:44:55', label: 'Flight recorder', description: '00:11:22:33:44:55' },
+  { value: 'AA:BB:CC:DD:EE:FF', label: 'AA:BB:CC:DD:EE:FF' },
+] as const;
+
 describe('RadioList.svelte', () => {
   it('renders one card of native radio targets without changing selected text weight', async () => {
     render(RadioList, {
@@ -68,5 +73,21 @@ describe('RadioList.svelte', () => {
     expect(icon).not.toBeNull();
     expect(icon).toHaveAttribute('aria-hidden', 'true');
     expect(getComputedStyle(legend.element()).position).toBe('absolute');
+  });
+
+  it('renders secondary option text within the label target', async () => {
+    let onChange = vi.fn();
+    render(RadioList, {
+      name: 'device',
+      legend: 'Bonded device',
+      options: deviceOptions,
+      value: 'AA:BB:CC:DD:EE:FF',
+      onChange,
+    });
+
+    expect(document.body.textContent).toContain('00:11:22:33:44:55');
+    await page.getByText('00:11:22:33:44:55', { exact: true }).click();
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('00:11:22:33:44:55');
   });
 });

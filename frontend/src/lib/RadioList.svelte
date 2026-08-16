@@ -2,7 +2,7 @@
   type Props = {
     name: string;
     legend: string;
-    options: ReadonlyArray<{ value: Value; label: string; icon?: string }>;
+    options: ReadonlyArray<{ value: Value; label: string; description?: string; icon?: string }>;
     value: Value;
     hideLegend?: boolean;
     onChange: (value: Value) => void;
@@ -26,7 +26,12 @@
         {#if option.icon}
           <span aria-hidden="true" class={[option.icon, 'icon']}></span>
         {/if}
-        <span>{option.label}</span>
+        <span class="option-text">
+          <span>{option.label}</span>
+          {#if option.description}
+            <span class="description">{option.description}</span>
+          {/if}
+        </span>
       </label>
     {/each}
   </div>
@@ -62,7 +67,7 @@
     align-items: center;
     gap: var(--space-3);
     min-height: var(--target-min);
-    padding-inline: var(--space-5);
+    padding: var(--space-2) var(--space-5);
     color: var(--color-text);
     font: var(--text-row-label);
     font-weight: 500;
@@ -88,5 +93,17 @@
   .icon {
     flex: 0 0 auto;
     font-size: 1.5rem;
+  }
+
+  .option-text {
+    min-width: 0;
+  }
+
+  .description {
+    display: block;
+    color: var(--color-text-muted);
+    font: var(--text-caption);
+    font-family: var(--font-numeric);
+    font-weight: 500;
   }
 </style>

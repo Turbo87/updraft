@@ -90,4 +90,23 @@ describe('RadioList.svelte', () => {
 
     expect(onChange).toHaveBeenCalledExactlyOnceWith('00:11:22:33:44:55');
   });
+
+  it('associates a validation error with the radio group', async () => {
+    render(RadioList, {
+      name: 'device',
+      legend: 'Bonded device',
+      options: deviceOptions,
+      value: '',
+      error: 'Select a bonded Bluetooth device.',
+      onChange: () => {},
+    });
+
+    let group = page.getByRole('group', { name: 'Bonded device' });
+    let error = page.getByRole('alert');
+
+    expect(group.element().getAttribute('aria-describedby')).toBe(error.element().id);
+    for (let radio of page.getByRole('radio').all()) {
+      expect(radio.element().getAttribute('aria-describedby')).toBe(error.element().id);
+    }
+  });
 });

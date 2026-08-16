@@ -5,15 +5,20 @@
     options: ReadonlyArray<{ value: Value; label: string; description?: string; icon?: string }>;
     value: Value;
     hideLegend?: boolean;
+    error?: string;
     onChange: (value: Value) => void;
   };
 
-  let { name, legend, options, value, hideLegend = false, onChange }: Props = $props();
+  const generatedId = $props.id();
+
+  let { name, legend, options, value, hideLegend = false, error, onChange }: Props = $props();
+
+  let errorId = $derived(`${generatedId}-error`);
 </script>
 
-<fieldset>
+<fieldset aria-describedby={error ? errorId : undefined}>
   <legend class:sr-only={hideLegend}>{legend}</legend>
-  <div class="options">
+  <div class:error-state={Boolean(error)} class="options">
     {#each options as option (option.value)}
       <label>
         <input
@@ -21,6 +26,7 @@
           {name}
           value={option.value}
           checked={option.value === value}
+          aria-describedby={error ? errorId : undefined}
           onchange={() => onChange(option.value)}
         />
         {#if option.icon}
@@ -35,6 +41,14 @@
       </label>
     {/each}
   </div>
+  {#if error}
+    <p id={errorId} class="error" role="alert">
+      <span aria-hidden="true" class="error-icon">
+        <span class="i-mdi-alert-circle-outline"></span>
+      </span>
+      <span>{error}</span>
+    </p>
+  {/if}
 </fieldset>
 
 <style>
@@ -59,6 +73,11 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
+  }
+
+  .options.error-state {
+    border-color: var(--color-action-destructive-surface);
+    box-shadow: inset 0 0 0 1px var(--color-action-destructive-surface);
   }
 
   label {
@@ -105,5 +124,27 @@
     font: var(--text-caption);
     font-family: var(--font-numeric);
     font-weight: 500;
+  }
+
+  .error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+    margin: var(--space-2) var(--space-1) 0;
+    color: var(--color-danger-subtle-text);
+    font: var(--text-caption);
+    font-weight: 500;
+  }
+
+  .error-icon {
+    display: inline-grid;
+    flex: 0 0 auto;
+    block-size: 1.5em;
+    place-items: center;
+  }
+
+  .error-icon > span {
+    font-size: 1.125em;
+    line-height: 1;
   }
 </style>

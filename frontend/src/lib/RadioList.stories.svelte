@@ -29,7 +29,7 @@
       docs: {
         description: {
           component:
-            'Use a radio list for one decision with labels that need the width of a list row. The options share one card with hairline separators. A visible native radio indicates the selected option without changing the label width. Options can include a decorative icon or secondary identifier. Hide the legend only when a surrounding screen heading gives the group the same name. Every label is at least a 48-pixel target. The component is controlled through `value` and `onChange`.',
+            'Use a radio list for one decision with labels that need the width of a list row. The options share one card with hairline separators. A visible native radio indicates the selected option without changing the label width. Options can include a decorative icon or secondary identifier. Hide the legend only when a surrounding screen heading gives the group the same name. Every label is at least a 48-pixel target. A validation error marks and describes the group without relying on color alone. The component is controlled through `value` and `onChange`.',
         },
       },
     },
@@ -59,6 +59,17 @@
     options={deviceOptions}
     value={device}
     onChange={(value) => (device = value)}
+  />
+</Story>
+
+<Story name="Validation error" asChild>
+  <RadioList
+    name="device-error"
+    legend="Bonded device"
+    options={deviceOptions}
+    value=""
+    error="Select a bonded Bluetooth device."
+    onChange={() => {}}
   />
 </Story>
 

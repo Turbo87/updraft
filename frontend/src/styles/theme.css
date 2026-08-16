@@ -63,6 +63,7 @@
   --text-caption: 400 0.9375rem / 1.4 var(--font-ui);
   --text-button: 600 1.0625rem / 1 var(--font-ui);
   --text-button-large: 600 1.125rem / 1 var(--font-ui);
+  --text-input: 500 1.25rem / 1 var(--font-numeric);
   --text-value-sm: 700 1.5rem / 1.1 var(--font-numeric);
   --text-value-md: 700 2rem / 1.1 var(--font-numeric);
   --text-value-lg: 700 2.75rem / 1.05 var(--font-numeric);

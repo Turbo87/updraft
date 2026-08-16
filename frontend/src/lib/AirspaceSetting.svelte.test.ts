@@ -28,7 +28,9 @@ describe('AirspaceSetting.svelte', () => {
         ),
       )
       .toBeVisible();
-    await expect.element(page.getByRole('button', { name: 'Import' })).toBeEnabled();
+    let importButton = page.getByRole('button', { name: 'Import' });
+    await expect.element(importButton).toBeEnabled();
+    expect(importButton.element().closest('footer')).not.toBeNull();
   });
 
   it('shows the active source and wires replacement and removal', async () => {
@@ -53,10 +55,22 @@ describe('AirspaceSetting.svelte', () => {
     await expect.element(page.getByText('State', { exact: true })).toBeVisible();
     await expect.element(page.getByText('Active', { exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Replace' }).click();
+    await expect
+      .element(page.getByText('Importing a file replaces the current source.'))
+      .toBeVisible();
+    await expect
+      .element(page.getByText('Airspace disappears from the map until you import a file again.'))
+      .toBeVisible();
+
+    let replace = page.getByRole('button', { name: 'Replace file' });
+    let remove = page.getByRole('button', { name: 'Remove airspace source' });
+    expect(replace.element().closest('footer')).not.toBeNull();
+    expect(remove.element().closest('main')).not.toBeNull();
+
+    await replace.click();
     expect(onImport).toHaveBeenCalledOnce();
 
-    await page.getByRole('button', { name: 'Remove' }).click();
+    await remove.click();
     expect(onRemove).toHaveBeenCalledOnce();
   });
 
@@ -97,8 +111,10 @@ describe('AirspaceSetting.svelte', () => {
     await expect.element(page.getByText('State', { exact: true })).toBeVisible();
     await expect.element(page.getByText('Unavailable', { exact: true })).toBeVisible();
     await expect.element(page.getByText(message)).toBeVisible();
-    await expect.element(page.getByRole('button', { name: 'Replace' })).toBeEnabled();
-    await expect.element(page.getByRole('button', { name: 'Remove' })).toBeEnabled();
+    await expect.element(page.getByRole('button', { name: 'Replace file' })).toBeEnabled();
+    await expect
+      .element(page.getByRole('button', { name: 'Remove airspace source' }))
+      .toBeEnabled();
   });
 
   it('disables all mutation controls while an action is pending', async () => {
@@ -117,8 +133,8 @@ describe('AirspaceSetting.svelte', () => {
       onRemove: vi.fn(async () => {}),
     });
 
-    let replace = page.getByRole('button', { name: 'Replace' });
-    let remove = page.getByRole('button', { name: 'Remove' });
+    let replace = page.getByRole('button', { name: 'Replace file' });
+    let remove = page.getByRole('button', { name: 'Remove airspace source' });
     await replace.click();
 
     await expect.element(replace).toBeDisabled();

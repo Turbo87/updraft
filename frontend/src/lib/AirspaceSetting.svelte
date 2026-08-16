@@ -4,6 +4,7 @@
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 
   import { m } from '$lib/paraglide/messages.js';
+  import Button from './Button.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';
 
@@ -87,7 +88,19 @@
   }
 </script>
 
-<ScreenScaffold backHref="/settings" backLabel={m.back_to_settings()} title={m.airspace_label()}>
+{#snippet actions()}
+  <Button disabled={pending} size="large" style="width: 100%" onclick={() => void mutate(onImport)}>
+    <span aria-hidden="true" class="i-mdi-file-import-outline action-icon replace-icon"></span>
+    {status.type === 'none' ? m.airspace_import() : m.airspace_replace()}
+  </Button>
+{/snippet}
+
+<ScreenScaffold
+  {actions}
+  backHref="/settings"
+  backLabel={m.back_to_settings()}
+  title={m.airspace_label()}
+>
   <fieldset>
     <legend class="sr-only">{m.airspace_label()}</legend>
     {#if status.type === 'none'}
@@ -96,9 +109,6 @@
         <p class="empty-title">{m.airspace_none()}</p>
         <p class="empty-description">{m.airspace_none_description()}</p>
       </div>
-      <button type="button" disabled={pending} onclick={() => void mutate(onImport)}>
-        {m.airspace_import()}
-      </button>
     {:else}
       <section class="source-summary" aria-labelledby="current-source-heading">
         <h2 id="current-source-heading">{m.airspace_current_source()}</h2>
@@ -135,14 +145,20 @@
           </p>
         {/if}
       </section>
-      <div class="actions">
-        <button type="button" disabled={pending} onclick={() => void mutate(onImport)}>
-          {m.airspace_replace()}
-        </button>
-        <button type="button" disabled={pending} onclick={() => void mutate(onRemove)}>
+      <p class="source-help">{m.airspace_replace_description()}</p>
+      <section class="remove-source" aria-labelledby="remove-source-heading">
+        <h2 id="remove-source-heading">{m.airspace_remove_heading()}</h2>
+        <p>{m.airspace_remove_description()}</p>
+        <Button
+          disabled={pending}
+          style="width: 100%"
+          variant="destructive-outline"
+          onclick={() => void mutate(onRemove)}
+        >
+          <span aria-hidden="true" class="i-mdi-delete-outline action-icon"></span>
           {m.airspace_remove()}
-        </button>
-      </div>
+        </Button>
+      </section>
     {/if}
     {#if mutation.type === 'failed'}
       <p role="alert">{mutation.message}</p>
@@ -160,10 +176,6 @@
   legend {
     margin-block-end: 0.75rem;
     font-weight: 600;
-  }
-
-  p {
-    margin-block: 0 0.75rem;
   }
 
   .empty-state {
@@ -197,7 +209,7 @@
   }
 
   .source-summary {
-    margin-block-end: var(--space-6);
+    margin-block-end: var(--space-3);
   }
 
   h2 {
@@ -264,13 +276,35 @@
     line-height: 1;
   }
 
-  button {
-    min-height: 3rem;
+  .source-help,
+  .remove-source p {
+    color: var(--color-text-muted);
+    font: 400 1rem / 1.5 var(--font-ui);
   }
 
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+  .source-help {
+    margin: 0 var(--space-1) var(--space-6);
+  }
+
+  .remove-source {
+    padding-block-start: var(--space-6);
+    border-block-start: 1px solid var(--color-separator);
+  }
+
+  .remove-source h2 {
+    color: var(--color-danger-subtle-text);
+  }
+
+  .remove-source p {
+    margin: 0 var(--space-1) var(--space-3);
+  }
+
+  .action-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .replace-icon {
+    font-size: 1.75rem;
   }
 </style>

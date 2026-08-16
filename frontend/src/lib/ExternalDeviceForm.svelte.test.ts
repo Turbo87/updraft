@@ -29,7 +29,7 @@ describe('ExternalDeviceForm.svelte', () => {
     });
 
     await page.getByLabelText('Connection type').selectOptions('bluetooth');
-    await page.getByLabelText('Bonded device').selectOptions('00:11:22:33:44:55');
+    await page.getByRole('radio', { name: 'Flight recorder 00:11:22:33:44:55' }).click();
     await page.getByRole('button', { name: 'Add external device' }).click();
 
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
@@ -59,7 +59,7 @@ describe('ExternalDeviceForm.svelte', () => {
     await page.getByRole('button', { name: 'Refresh bonded devices' }).click();
 
     await expect
-      .element(page.getByRole('option', { name: '00:11:22:33:44:55' }))
+      .element(page.getByRole('radio', { name: '00:11:22:33:44:55' }))
       .toBeInTheDocument();
     expect(getBondedBluetoothDevices).toHaveBeenCalledTimes(2);
   });
@@ -141,13 +141,13 @@ describe('ExternalDeviceForm.svelte', () => {
     });
 
     await expect
-      .element(page.getByRole('option', { name: '00:11:22:33:44:55 (not currently bonded)' }))
+      .element(page.getByRole('radio', { name: '00:11:22:33:44:55 (not currently bonded)' }))
       .toBeInTheDocument();
     await expect
       .element(page.getByText('12345678-1234-1234-1234-123456789abc', { exact: true }))
       .toBeInTheDocument();
 
-    await page.getByLabelText('Bonded device').selectOptions('AA:BB:CC:DD:EE:FF');
+    await page.getByRole('radio', { name: 'New flight recorder AA:BB:CC:DD:EE:FF' }).click();
     await page.getByRole('button', { name: 'Save changes' }).click();
 
     expect(onSave).toHaveBeenCalledExactlyOnceWith({

@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
 
   import { m } from '$lib/paraglide/messages.js';
+  import RadioList from './RadioList.svelte';
   import TextField from './TextField.svelte';
 
   type ExternalDeviceFormProps = {
@@ -122,6 +123,29 @@
   function visibleEndpoint(device: PublishedExternalDevice): string {
     return device.type === 'tcp' ? `${device.host}:${device.port}` : device.address;
   }
+
+  function bondedDeviceOptions(): Array<{
+    value: string;
+    label: string;
+    description?: string;
+  }> {
+    if (bondedBluetoothDevices.status !== 'available') return [];
+
+    let options = bondedBluetoothDevices.devices.map((bondedDevice) => ({
+      value: bondedDevice.address,
+      label: bondedDevice.name ?? bondedDevice.address,
+      ...(bondedDevice.name && { description: bondedDevice.address }),
+    }));
+
+    if (currentBluetoothAddressUnbonded && device?.type === 'bluetooth') {
+      options.unshift({
+        value: device.address,
+        label: m.bluetooth_device_not_bonded({ address: device.address }),
+      });
+    }
+
+    return options;
+  }
 </script>
 
 <form onsubmit={(event) => void submit(event)}>
@@ -159,33 +183,14 @@
     {#if bondedBluetoothDevices.devices.length === 0 && !currentBluetoothAddressUnbonded}
       <p>{m.no_bonded_bluetooth_devices()}</p>
     {:else}
-      <label>
-        <span>{m.bonded_bluetooth_device()}</span>
-        <select
-          aria-invalid={submitted && !bluetoothAddress}
-          aria-describedby={submitted && !bluetoothAddress ? 'bluetooth-device-error' : undefined}
-          bind:value={bluetoothAddress}
-        >
-          <option value="">{m.select_bonded_bluetooth_device()}</option>
-          {#if currentBluetoothAddressUnbonded && device?.type === 'bluetooth'}
-            <option value={device.address}
-              >{m.bluetooth_device_not_bonded({ address: device.address })}</option
-            >
-          {/if}
-          {#each bondedBluetoothDevices.devices as bondedDevice (bondedDevice.address)}
-            <option value={bondedDevice.address}
-              >{bondedDevice.name
-                ? `${bondedDevice.name} (${bondedDevice.address})`
-                : bondedDevice.address}</option
-            >
-          {/each}
-        </select>
-        {#if submitted && !bluetoothAddress}
-          <span id="bluetooth-device-error" class="error" role="alert"
-            >{m.bonded_bluetooth_device_error()}</span
-          >
-        {/if}
-      </label>
+      <RadioList
+        name="bonded-device"
+        legend={m.bonded_bluetooth_device()}
+        options={bondedDeviceOptions()}
+        value={bluetoothAddress}
+        error={submitted && !bluetoothAddress ? m.bonded_bluetooth_device_error() : undefined}
+        onChange={(value) => (bluetoothAddress = value)}
+      />
     {/if}
   {:else if bondedBluetoothDevices.status === 'permissionDenied'}
     <p>{m.bluetooth_permission_denied()}</p>

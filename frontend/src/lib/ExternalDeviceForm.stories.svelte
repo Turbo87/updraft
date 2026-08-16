@@ -62,6 +62,7 @@
           component:
             'Use this form to add or edit one TCP or Bluetooth SPP connection. TCP requires a non-empty host and a whole-number port from 1 to 65535. Android can select a bonded Bluetooth device, refresh the bonded-device list, and distinguish denied permission, disabled Bluetooth, and an empty list. Desktop keeps existing Bluetooth settings read-only because Bluetooth discovery is unavailable. Preserve a custom service UUID when an existing device uses one. Saving and deletion keep the form open after an error so the user can retry.',
         },
+        story: { autoplay: true },
       },
     },
   });
@@ -72,32 +73,28 @@
 <Story
   name="TCP validation errors"
   play={async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(m.tcp_port()), '70000');
     await userEvent.click(canvas.getByRole('button', { name: m.add_external_device() }));
   }}
 />
 
 <Story
   name="Save pending"
-  args={{ onSave: fn(() => new Promise<void>(() => {})) }}
+  args={{ device: tcpDevice, onSave: fn(() => new Promise<void>(() => {})) }}
   play={async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(m.tcp_host()), '192.0.2.1');
-    await userEvent.type(canvas.getByLabelText(m.tcp_port()), '4353');
-    await userEvent.click(canvas.getByRole('button', { name: m.add_external_device() }));
+    await userEvent.click(canvas.getByRole('button', { name: m.save_external_device() }));
   }}
 />
 
 <Story
   name="Save error"
   args={{
+    device: tcpDevice,
     onSave: fn(async () => {
       throw new Error('Device command rejected');
     }),
   }}
   play={async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(m.tcp_host()), '192.0.2.1');
-    await userEvent.type(canvas.getByLabelText(m.tcp_port()), '4353');
-    await userEvent.click(canvas.getByRole('button', { name: m.add_external_device() }));
+    await userEvent.click(canvas.getByRole('button', { name: m.save_external_device() }));
   }}
 />
 
@@ -106,6 +103,7 @@
 <Story
   name="Delete confirmation"
   args={{ device: tcpDevice, onDelete: fn(async () => {}) }}
+  parameters={{ docs: { story: { autoplay: false } } }}
   play={async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: m.delete_external_device() }));
   }}

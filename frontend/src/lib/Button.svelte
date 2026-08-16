@@ -4,7 +4,7 @@
 
   type Props = Omit<HTMLButtonAttributes, 'children'> & {
     children: Snippet;
-    variant?: 'primary' | 'secondary' | 'destructive';
+    variant?: 'primary' | 'secondary' | 'destructive' | 'destructive-outline';
     size?: 'standard' | 'large';
     loading?: boolean;
   };
@@ -43,7 +43,7 @@
     gap: var(--space-2);
     height: var(--button-height);
     padding-inline: var(--space-4);
-    border: 0;
+    border: var(--button-border, 0);
     border-radius: var(--radius-control);
     background: var(--button-surface);
     color: var(--button-text);
@@ -80,6 +80,13 @@
     --button-surface: var(--color-action-destructive-surface);
     --button-text: var(--color-action-destructive-text);
     --button-pressed-surface: light-dark(var(--color-red-600), var(--color-red-300));
+  }
+
+  .destructive-outline {
+    --button-surface: transparent;
+    --button-text: var(--color-action-destructive-surface);
+    --button-border: 1px solid var(--color-action-destructive-surface);
+    --button-pressed-surface: var(--color-danger-subtle-surface);
   }
 
   button:active:not(:disabled) {

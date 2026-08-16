@@ -65,6 +65,22 @@ describe('Button.svelte', () => {
     expect(presentation).toEqual(expectedPresentation);
   });
 
+  it('uses destructive colors for the outlined variant', () => {
+    render(Button, { children, variant: 'destructive-outline' });
+    let button = page.getByRole('button', { name: 'Save changes' }).element();
+    let reference = document.createElement('div');
+    reference.style.color = 'var(--color-action-destructive-surface)';
+    document.body.append(reference);
+
+    let buttonStyle = getComputedStyle(button);
+    let referenceColor = getComputedStyle(reference).color;
+    let presentation = [buttonStyle.backgroundColor, buttonStyle.borderTopColor, buttonStyle.color];
+
+    reference.remove();
+
+    expect(presentation).toEqual(['rgba(0, 0, 0, 0)', referenceColor, referenceColor]);
+  });
+
   it('uses a visible dark secondary pressed surface', () => {
     let root = document.documentElement;
     let previousTheme = root.dataset.theme;

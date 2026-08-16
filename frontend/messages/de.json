@@ -9,6 +9,7 @@
   "vertical_speed_label": "Steigen",
   "airspace_label": "Lufträume",
   "airspace_none": "Keine Luftraumdatei ausgewählt.",
+  "airspace_none_description": "Importiere eine OpenAir-Datei, um Lufträume auf der Karte anzuzeigen und Luftraumdetails zu aktivieren.",
   "airspace_import": "Importieren",
   "airspace_source_fallback": "Importierte Luftraumdatei",
   "airspace_count_one": "1 Luftraum",

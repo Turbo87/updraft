@@ -86,9 +86,13 @@
 </script>
 
 <fieldset>
-  <legend>{m.airspace_label()}</legend>
+  <legend class:sr-only={status.type === 'none'}>{m.airspace_label()}</legend>
   {#if status.type === 'none'}
-    <p>{m.airspace_none()}</p>
+    <div class="empty-state">
+      <span aria-hidden="true" class="i-mdi-vector-square"></span>
+      <p class="empty-title">{m.airspace_none()}</p>
+      <p class="empty-description">{m.airspace_none_description()}</p>
+    </div>
     <button type="button" disabled={pending} onclick={() => void mutate(onImport)}>
       {m.airspace_import()}
     </button>
@@ -131,6 +135,36 @@
 
   p {
     margin-block: 0 0.75rem;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-5);
+    text-align: center;
+  }
+
+  .empty-state > span {
+    color: var(--color-text-muted);
+    font-size: 3rem;
+  }
+
+  .empty-title,
+  .empty-description {
+    margin: 0;
+  }
+
+  .empty-title {
+    color: var(--color-text);
+    font: 700 1.375rem / 1.3 var(--font-ui);
+  }
+
+  .empty-description {
+    max-width: 18rem;
+    color: var(--color-text-muted);
+    font: var(--text-body);
   }
 
   button {

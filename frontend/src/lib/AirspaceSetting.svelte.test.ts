@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../app.css';
+
 import AirspaceSetting from './AirspaceSetting.svelte';
 
 describe('AirspaceSetting.svelte', () => {
@@ -12,8 +14,20 @@ describe('AirspaceSetting.svelte', () => {
       onRemove: vi.fn(async () => {}),
     });
 
-    await expect.element(page.getByRole('group', { name: 'Airspace' })).toBeVisible();
+    let group = page.getByRole('group', { name: 'Airspace' });
+    await expect.element(group).toBeVisible();
+    expect(group.element().querySelector('.i-mdi-vector-square')).not.toBeNull();
+    expect(getComputedStyle(page.getByText('Airspace', { exact: true }).element()).position).toBe(
+      'absolute',
+    );
     await expect.element(page.getByText('No airspace file selected.')).toBeVisible();
+    await expect
+      .element(
+        page.getByText(
+          'Import an OpenAir file to draw airspace on the map and enable airspace details.',
+        ),
+      )
+      .toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Import' })).toBeEnabled();
   });
 

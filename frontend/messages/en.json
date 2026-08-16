@@ -9,6 +9,7 @@
   "vertical_speed_label": "Vertical speed",
   "airspace_label": "Airspace",
   "airspace_none": "No airspace file selected.",
+  "airspace_none_description": "Import an OpenAir file to draw airspace on the map and enable airspace details.",
   "airspace_import": "Import",
   "airspace_source_fallback": "Imported airspace file",
   "airspace_count_one": "1 airspace",

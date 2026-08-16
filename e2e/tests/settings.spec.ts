@@ -103,6 +103,16 @@ test('uses the screen scaffold for unit settings', async ({ page }) => {
   await expect(page.getByRole('main')).not.toContainText('Back to settings');
 });
 
+test('uses the screen scaffold for airspace settings', async ({ page }) => {
+  await page.goto('/settings/airspace?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to settings' });
+
+  await expect(back).toHaveAttribute('href', '/settings');
+  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to settings');
+});
+
 test('shows source and build information on the About page', async ({ page }) => {
   await page.goto('/settings/about?testMode=1');
 

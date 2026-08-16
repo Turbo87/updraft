@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../app.css';
+
 import LanguageSetting from './LanguageSetting.svelte';
 
 describe('LanguageSetting.svelte', () => {

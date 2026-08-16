@@ -12,7 +12,7 @@
 </script>
 
 <fieldset>
-  <legend class:visually-hidden={hideLegend}>{legend}</legend>
+  <legend class:sr-only={hideLegend}>{legend}</legend>
   <div class="options">
     {#each options as option (option.value)}
       <label>
@@ -47,18 +47,6 @@
     font: var(--text-section-title);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-
-  legend.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    border: 0;
-    white-space: nowrap;
-    clip-path: inset(50%);
   }
 
   .options {

@@ -87,9 +87,7 @@
 </script>
 
 <fieldset>
-  <legend class:sr-only={status.type === 'none' || status.type === 'active'}>
-    {m.airspace_label()}
-  </legend>
+  <legend class="sr-only">{m.airspace_label()}</legend>
   {#if status.type === 'none'}
     <div class="empty-state">
       <span aria-hidden="true" class="i-mdi-vector-square"></span>
@@ -100,28 +98,41 @@
       {m.airspace_import()}
     </button>
   {:else}
-    {#if status.type === 'active'}
-      <section class="source-summary" aria-labelledby="current-source-heading">
-        <h2 id="current-source-heading">{m.airspace_current_source()}</h2>
-        <dl>
-          <div class="source-row">
-            <dt>{m.airspace_file_label()}</dt>
-            <dd>{status.sourceName ?? m.airspace_source_fallback()}</dd>
-          </div>
+    <section class="source-summary" aria-labelledby="current-source-heading">
+      <h2 id="current-source-heading">{m.airspace_current_source()}</h2>
+      <dl>
+        <div class="source-row">
+          <dt>{m.airspace_file_label()}</dt>
+          <dd>{status.sourceName ?? m.airspace_source_fallback()}</dd>
+        </div>
+        {#if status.type === 'active'}
           <div class="source-row">
             <dt>{m.airspaces_heading()}</dt>
             <dd class="numeric">{status.airspaceCount}</dd>
           </div>
-          <div class="source-row">
-            <dt>{m.state_label()}</dt>
-            <dd><StatusPill label={m.airspace_active()} tone="success" /></dd>
-          </div>
-        </dl>
-      </section>
-    {:else}
-      <p>{status.sourceName ?? m.airspace_source_fallback()}</p>
-      <p>{loadErrorMessage(status.error)}</p>
-    {/if}
+        {/if}
+        <div class="source-row">
+          <dt>{m.state_label()}</dt>
+          <dd>
+            {#if status.type === 'active'}
+              <StatusPill label={m.airspace_active()} tone="success" />
+            {:else}
+              <StatusPill
+                icon="i-mdi-alert-circle"
+                label={m.unavailable_value()}
+                tone="danger-subtle"
+              />
+            {/if}
+          </dd>
+        </div>
+      </dl>
+      {#if status.type === 'unavailable'}
+        <p class="source-error">
+          <span aria-hidden="true" class="i-mdi-alert-circle-outline"></span>
+          <span>{loadErrorMessage(status.error)}</span>
+        </p>
+      {/if}
+    </section>
     <div class="actions">
       <button type="button" disabled={pending} onclick={() => void mutate(onImport)}>
         {m.airspace_replace()}
@@ -229,6 +240,25 @@
   dd.numeric {
     font: var(--text-row-value);
     font-variant-numeric: tabular-nums;
+  }
+
+  .source-error {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-control);
+    background: var(--color-danger-subtle-surface);
+    color: var(--color-danger-subtle-text);
+    font: var(--text-body);
+    font-weight: 500;
+  }
+
+  .source-error > :first-child {
+    flex: 0 0 auto;
+    font-size: 1.5rem;
+    line-height: 1;
   }
 
   button {

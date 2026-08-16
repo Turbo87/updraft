@@ -91,7 +91,11 @@ describe('AirspaceSetting.svelte', () => {
       onRemove: vi.fn(async () => {}),
     });
 
+    await expect.element(page.getByRole('heading', { name: 'Current source' })).toBeVisible();
+    await expect.element(page.getByText('File', { exact: true })).toBeVisible();
     await expect.element(page.getByText('broken.txt')).toBeVisible();
+    await expect.element(page.getByText('State', { exact: true })).toBeVisible();
+    await expect.element(page.getByText('Unavailable', { exact: true })).toBeVisible();
     await expect.element(page.getByText(message)).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Replace' })).toBeEnabled();
     await expect.element(page.getByRole('button', { name: 'Remove' })).toBeEnabled();

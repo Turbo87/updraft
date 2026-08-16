@@ -77,12 +77,20 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
   for (let [name, route] of routes) {
     await page.getByRole('link', { name }).click();
     await expect(page).toHaveURL(route);
-    await expect(page.getByRole('main').locator(':scope > a').first()).toHaveAttribute(
-      'href',
-      '/settings',
-    );
-    await page.getByRole('link', { name: 'Back to settings' }).click();
+    let back = page.getByRole('link', { name: 'Back to settings' });
+    await expect(back).toHaveAttribute('href', '/settings');
+    await back.click();
   }
+});
+
+test('uses the screen scaffold for language settings', async ({ page }) => {
+  await page.goto('/settings/language?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to settings' });
+
+  await expect(back).toHaveAttribute('href', '/settings');
+  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to settings');
 });
 
 test('shows source and build information on the About page', async ({ page }) => {

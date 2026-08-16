@@ -4,6 +4,7 @@
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 
   import { m } from '$lib/paraglide/messages.js';
+  import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';
 
   type Props = {
@@ -86,66 +87,68 @@
   }
 </script>
 
-<fieldset>
-  <legend class="sr-only">{m.airspace_label()}</legend>
-  {#if status.type === 'none'}
-    <div class="empty-state">
-      <span aria-hidden="true" class="i-mdi-vector-square"></span>
-      <p class="empty-title">{m.airspace_none()}</p>
-      <p class="empty-description">{m.airspace_none_description()}</p>
-    </div>
-    <button type="button" disabled={pending} onclick={() => void mutate(onImport)}>
-      {m.airspace_import()}
-    </button>
-  {:else}
-    <section class="source-summary" aria-labelledby="current-source-heading">
-      <h2 id="current-source-heading">{m.airspace_current_source()}</h2>
-      <dl>
-        <div class="source-row">
-          <dt>{m.airspace_file_label()}</dt>
-          <dd>{status.sourceName ?? m.airspace_source_fallback()}</dd>
-        </div>
-        {#if status.type === 'active'}
-          <div class="source-row">
-            <dt>{m.airspaces_heading()}</dt>
-            <dd class="numeric">{status.airspaceCount}</dd>
-          </div>
-        {/if}
-        <div class="source-row">
-          <dt>{m.state_label()}</dt>
-          <dd>
-            {#if status.type === 'active'}
-              <StatusPill label={m.airspace_active()} tone="success" />
-            {:else}
-              <StatusPill
-                icon="i-mdi-alert-circle"
-                label={m.unavailable_value()}
-                tone="danger-subtle"
-              />
-            {/if}
-          </dd>
-        </div>
-      </dl>
-      {#if status.type === 'unavailable'}
-        <p class="source-error">
-          <span aria-hidden="true" class="i-mdi-alert-circle-outline"></span>
-          <span>{loadErrorMessage(status.error)}</span>
-        </p>
-      {/if}
-    </section>
-    <div class="actions">
+<ScreenScaffold backHref="/settings" backLabel={m.back_to_settings()} title={m.airspace_label()}>
+  <fieldset>
+    <legend class="sr-only">{m.airspace_label()}</legend>
+    {#if status.type === 'none'}
+      <div class="empty-state">
+        <span aria-hidden="true" class="i-mdi-vector-square"></span>
+        <p class="empty-title">{m.airspace_none()}</p>
+        <p class="empty-description">{m.airspace_none_description()}</p>
+      </div>
       <button type="button" disabled={pending} onclick={() => void mutate(onImport)}>
-        {m.airspace_replace()}
+        {m.airspace_import()}
       </button>
-      <button type="button" disabled={pending} onclick={() => void mutate(onRemove)}>
-        {m.airspace_remove()}
-      </button>
-    </div>
-  {/if}
-  {#if mutation.type === 'failed'}
-    <p role="alert">{mutation.message}</p>
-  {/if}
-</fieldset>
+    {:else}
+      <section class="source-summary" aria-labelledby="current-source-heading">
+        <h2 id="current-source-heading">{m.airspace_current_source()}</h2>
+        <dl>
+          <div class="source-row">
+            <dt>{m.airspace_file_label()}</dt>
+            <dd>{status.sourceName ?? m.airspace_source_fallback()}</dd>
+          </div>
+          {#if status.type === 'active'}
+            <div class="source-row">
+              <dt>{m.airspaces_heading()}</dt>
+              <dd class="numeric">{status.airspaceCount}</dd>
+            </div>
+          {/if}
+          <div class="source-row">
+            <dt>{m.state_label()}</dt>
+            <dd>
+              {#if status.type === 'active'}
+                <StatusPill label={m.airspace_active()} tone="success" />
+              {:else}
+                <StatusPill
+                  icon="i-mdi-alert-circle"
+                  label={m.unavailable_value()}
+                  tone="danger-subtle"
+                />
+              {/if}
+            </dd>
+          </div>
+        </dl>
+        {#if status.type === 'unavailable'}
+          <p class="source-error">
+            <span aria-hidden="true" class="i-mdi-alert-circle-outline"></span>
+            <span>{loadErrorMessage(status.error)}</span>
+          </p>
+        {/if}
+      </section>
+      <div class="actions">
+        <button type="button" disabled={pending} onclick={() => void mutate(onImport)}>
+          {m.airspace_replace()}
+        </button>
+        <button type="button" disabled={pending} onclick={() => void mutate(onRemove)}>
+          {m.airspace_remove()}
+        </button>
+      </div>
+    {/if}
+    {#if mutation.type === 'failed'}
+      <p role="alert">{mutation.message}</p>
+    {/if}
+  </fieldset>
+</ScreenScaffold>
 
 <style>
   fieldset {

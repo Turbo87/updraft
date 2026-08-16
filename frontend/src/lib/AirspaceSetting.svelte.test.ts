@@ -17,7 +17,7 @@ describe('AirspaceSetting.svelte', () => {
     let group = page.getByRole('group', { name: 'Airspace' });
     await expect.element(group).toBeVisible();
     expect(group.element().querySelector('.i-mdi-vector-square')).not.toBeNull();
-    expect(getComputedStyle(page.getByText('Airspace', { exact: true }).element()).position).toBe(
+    expect(getComputedStyle(group.getByText('Airspace', { exact: true }).element()).position).toBe(
       'absolute',
     );
     await expect.element(page.getByText('No airspace file selected.')).toBeVisible();

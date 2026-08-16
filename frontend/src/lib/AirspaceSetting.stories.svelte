@@ -12,7 +12,7 @@
       onRemove: fn(async () => {}),
     },
     parameters: {
-      layout: 'centered',
+      layout: 'fullscreen',
       docs: {
         description: {
           component:

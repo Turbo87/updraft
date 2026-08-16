@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
 
   import { m } from '$lib/paraglide/messages.js';
+  import TextField from './TextField.svelte';
 
   type ExternalDeviceFormProps = {
     device?: PublishedExternalDevice;
@@ -124,45 +125,36 @@
 </script>
 
 <form onsubmit={(event) => void submit(event)}>
-  <label>
+  <label class="connection-type">
     <span>{m.connection_type()}</span>
-    <select disabled={!bluetoothSupported} bind:value={connectionType}>
-      {#if bluetoothSupported}
-        <option value="tcp">{m.tcp_device_type()}</option>
-        <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
-      {:else if connectionType === 'bluetooth'}
-        <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
-      {:else}
-        <option value="tcp">{m.tcp_device_type()}</option>
-      {/if}
-    </select>
+    <span class="select-wrapper">
+      <select disabled={!bluetoothSupported} bind:value={connectionType}>
+        {#if bluetoothSupported}
+          <option value="tcp">{m.tcp_device_type()}</option>
+          <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
+        {:else if connectionType === 'bluetooth'}
+          <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
+        {:else}
+          <option value="tcp">{m.tcp_device_type()}</option>
+        {/if}
+      </select>
+      <span aria-hidden="true" class="i-mdi-chevron-down select-icon"></span>
+    </span>
   </label>
   {#if connectionType === 'tcp'}
-    <label>
-      <span>{m.tcp_host()}</span>
-      <input
-        name="host"
-        aria-invalid={submitted && !trimmedHost}
-        aria-describedby={submitted && !trimmedHost ? 'host-error' : undefined}
-        bind:value={host}
-      />
-      {#if submitted && !trimmedHost}
-        <span id="host-error" class="error" role="alert">{m.tcp_host_error()}</span>
-      {/if}
-    </label>
-    <label>
-      <span>{m.tcp_port()}</span>
-      <input
-        name="port"
-        inputmode="numeric"
-        aria-invalid={submitted && !validPort}
-        aria-describedby={submitted && !validPort ? 'port-error' : undefined}
-        bind:value={port}
-      />
-      {#if submitted && !validPort}
-        <span id="port-error" class="error" role="alert">{m.tcp_port_error()}</span>
-      {/if}
-    </label>
+    <TextField
+      name="host"
+      label={m.tcp_host()}
+      error={submitted && !trimmedHost ? m.tcp_host_error() : undefined}
+      bind:value={host}
+    />
+    <TextField
+      name="port"
+      inputmode="numeric"
+      label={m.tcp_port()}
+      error={submitted && !validPort ? m.tcp_port_error() : undefined}
+      bind:value={port}
+    />
   {:else if bondedBluetoothDevices.status === 'available'}
     {#if bondedBluetoothDevices.devices.length === 0 && !currentBluetoothAddressUnbonded}
       <p>{m.no_bonded_bluetooth_devices()}</p>
@@ -259,18 +251,63 @@
 {/if}
 
 <style>
-  form,
-  label {
-    display: grid;
-  }
-
   form {
+    display: grid;
     max-width: 30rem;
     gap: 1rem;
   }
 
   label {
+    display: grid;
     gap: 0.25rem;
+  }
+
+  .connection-type {
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font: var(--text-section-title);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .select-wrapper {
+    position: relative;
+  }
+
+  .connection-type select {
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--target-min);
+    padding: 0 3rem 0 0.875rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    appearance: none;
+    background: var(--color-card-surface);
+    color: var(--color-text);
+    font: var(--text-row-label);
+    cursor: pointer;
+  }
+
+  .connection-type select:focus-visible {
+    border-color: var(--color-focus-ring);
+    box-shadow: inset 0 0 0 1px var(--color-focus-ring);
+  }
+
+  .connection-type select:disabled {
+    border-color: var(--color-border);
+    background: var(--color-disabled-surface);
+    color: var(--color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  .select-icon {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: 0.875rem;
+    color: var(--color-text-muted);
+    font-size: 1.5rem;
+    pointer-events: none;
+    transform: translateY(-50%);
   }
 
   .error {
@@ -288,7 +325,6 @@
     font-weight: 600;
   }
 
-  input,
   select,
   button {
     min-height: 2.75rem;

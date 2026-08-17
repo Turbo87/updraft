@@ -61,6 +61,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-1);
+    min-width: 0;
     padding-block-start: var(--safe-area-top);
     padding-inline: calc(var(--space-2) + var(--safe-area-left))
       calc(var(--space-2) + var(--safe-area-right));

@@ -45,6 +45,19 @@ describe('ScreenScaffold.svelte', () => {
     await expect.element(back).toHaveAttribute('type', 'button');
   });
 
+  it('truncates a long title without horizontal overflow', () => {
+    render(ScreenScaffold, {
+      backLabel: 'Back',
+      children,
+      onBack: () => {},
+      title: 'LF-R196A1 TEST GAP (NOTAM) '.repeat(10),
+    });
+
+    let scaffold = page.getByRole('heading', { level: 1 }).element().closest('.screen-scaffold');
+    expect(scaffold).not.toBeNull();
+    expect(scaffold!.scrollWidth).toBe(scaffold!.clientWidth);
+  });
+
   it('renders an optional fixed action bar outside the scrolling region', async () => {
     render(ScreenScaffold, {
       actions,

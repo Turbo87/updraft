@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
   import { getAppContext } from '$lib/app-context';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
+  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import AirspaceDetails from './AirspaceDetails.svelte';
 
   const { airspace, mapState, settings } = getAppContext();
@@ -21,44 +21,33 @@
   }
 </script>
 
-<main>
-  <nav>
-    <button type="button" onclick={goBack}>{m.airspace_back()}</button>
-    <a href={resolve('/')}>{m.airspace_map()}</a>
-  </nav>
-
-  {#if airspaceId === null}
-    <p>{m.airspace_not_found()}</p>
-  {:else if !airspace.initialized}
-    <p>{m.airspace_details_loading()}</p>
-  {:else if airspace.current.type !== 'active'}
-    <p>{m.airspace_not_found()}</p>
-  {:else if mapState.map}
-    <AirspaceDetails
-      altitudeUnit={settings.current.units.altitude}
-      id={airspaceId}
-      {locale}
-      map={mapState.map}
-    />
-  {:else}
-    <p>{m.airspace_details_loading()}</p>
-  {/if}
-</main>
+{#if airspaceId !== null && airspace.initialized && airspace.current.type === 'active' && mapState.map}
+  <AirspaceDetails
+    altitudeUnit={settings.current.units.altitude}
+    backLabel={m.airspace_back()}
+    id={airspaceId}
+    {locale}
+    map={mapState.map}
+    onBack={goBack}
+  />
+{:else}
+  <ScreenScaffold backLabel={m.airspace_back()} onBack={goBack} title={m.airspace_label()}>
+    <p class="empty-state">
+      {airspaceId === null || (airspace.initialized && airspace.current.type !== 'active')
+        ? m.airspace_not_found()
+        : m.airspace_details_loading()}
+    </p>
+  </ScreenScaffold>
+{/if}
 
 <style>
-  main {
-    box-sizing: border-box;
-    min-height: 100%;
-    padding: 1.5rem;
-    overflow: auto;
-    background-color: var(--color-app-surface);
-    color: var(--color-text);
-  }
-
-  nav {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    margin-block-end: 1rem;
+  .empty-state {
+    margin: 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-card-surface);
+    color: var(--color-text-muted);
+    font: var(--text-body);
   }
 </style>

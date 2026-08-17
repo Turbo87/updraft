@@ -1,8 +1,10 @@
 <script module lang="ts">
   import type * as GeoJSON from 'geojson';
   import type { GeoJSONSource, Map } from 'maplibre-gl';
+  import type { ComponentProps } from 'svelte';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
+  import { fn } from 'storybook/test';
 
   import { AIRSPACE_BROWSER_FIXTURE } from '$lib/map/airspace.fixture';
   import AirspaceDetails from '../routes/airspaces/[id]/AirspaceDetails.svelte';
@@ -26,17 +28,21 @@
   }
 
   const loadedMap = createMap({ data: AIRSPACE_BROWSER_FIXTURE });
+  type Args = ComponentProps<typeof AirspaceDetails>;
 
   const { Story } = defineMeta({
     title: 'Screens/Airspace details',
     component: AirspaceDetails,
     args: {
       altitudeUnit: 'm',
+      backLabel: 'Back',
       id: 0,
       locale: 'en',
       map: loadedMap,
+      onBack: fn(),
     },
     parameters: {
+      layout: 'fullscreen',
       docs: {
         description: {
           component:
@@ -47,15 +53,28 @@
   });
 </script>
 
-<Story name="Complete airspace" />
+{#snippet template(args: Args)}
+  <div class="airspace-details-story">
+    <AirspaceDetails {...args} />
+  </div>
+{/snippet}
 
-<Story name="Minimal airspace" args={{ id: 1 }} />
+<Story name="Complete airspace" {template} />
 
-<Story name="Loading" args={{ map: createMap({}) }} />
+<Story name="Minimal airspace" args={{ id: 1 }} {template} />
+
+<Story name="Loading" args={{ map: createMap({}) }} {template} />
 
 <Story
   name="Load failure"
   args={{ map: createMap({ data: AIRSPACE_BROWSER_FIXTURE, error: new Error('Load failed') }) }}
+  {template}
 />
 
-<Story name="Not found" args={{ id: 999 }} />
+<Story name="Not found" args={{ id: 999 }} {template} />
+
+<style>
+  .airspace-details-story {
+    height: 100vh;
+  }
+</style>

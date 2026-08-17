@@ -387,12 +387,9 @@ test('shows complete airspace details on direct visits and reloads', async ({ pa
   await emitAirspace(page, { type: 'active', generation: 1 });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
-  await expect(page.locator('main')).toMatchAriaSnapshot(`
-    - navigation:
-      - button "Back"
-      - link "Map":
-        - /url: /
-    - heading "Düsseldorf CTR" [level=1]
+  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
+  await expect(page.locator('main > div')).toMatchAriaSnapshot(`
+    - text: Upper 1524 m MSL Lower GND Class D
     - heading "Classification" [level=2]
     - term: Type
     - definition: Control zone
@@ -442,8 +439,7 @@ test('shows complete airspace details on direct visits and reloads', async ({ pa
     - term: Active until
     - definition: Apr 12, 2026, 5:45 PM
     - heading "Operating hours" [level=3]
-    - term: Sunday
-    - definition
+    - heading "Sunday" [level=4]
     - term: Start
     - definition: Sunrise
     - term: End

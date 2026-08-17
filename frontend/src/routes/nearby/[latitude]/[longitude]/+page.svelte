@@ -45,7 +45,7 @@
   {#snippet airspaces()}
     {#if airspace.initialized && mapState.map}
       {#key `${selectedPosition.latitudeDegrees}/${selectedPosition.longitudeDegrees}`}
-        <NearbyAirspaces {airspace} map={mapState.map} position={selectedPosition} />
+        <NearbyAirspaces {airspace} {locale} map={mapState.map} position={selectedPosition} />
       {/key}
     {:else}
       <p>{m.loading_nearby_airspaces()}</p>

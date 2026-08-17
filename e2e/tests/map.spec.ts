@@ -214,9 +214,13 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
 });
 
 test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  let airspaceFixture = structuredClone(AIRSPACE_BROWSER_FIXTURE);
+  airspaceFixture.features[1].properties.name = 'SIV MARSEILLE NORD 1 EXTENDED AIRSPACE';
+  airspaceFixture.features[1].properties.type = 29;
   await page.addInitScript((data) => {
     (window as TestWindow).__updraftTestAirspaceData = data;
-  }, AIRSPACE_BROWSER_FIXTURE);
+  }, airspaceFixture);
   await page.goto('/?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await emitAirspace(page, { type: 'active', generation: 1 });
@@ -224,7 +228,36 @@ test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) =>
 
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.182 });
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
-  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+  await expect(airspaces.getByRole('listitem')).toHaveText([
+    /SIV MARSEILLE NORD 1 EXTENDED AIRSPACE\s+Low-altitude overflight restriction · Class E/,
+    /Düsseldorf CTR\s+Control zone · Class D/,
+  ]);
+  let firstRow = airspaces.getByRole('listitem').first();
+  let name = airspaces.getByText('SIV MARSEILLE NORD 1 EXTENDED AIRSPACE');
+  let detail = airspaces.getByText(/Low-altitude overflight restriction/);
+  let nameBox = await name.boundingBox();
+  let detailBox = await detail.boundingBox();
+  if (!nameBox || !detailBox) throw new Error('Airspace row text is not visible');
+  expect(detailBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height);
+  for (let value of [name, detail]) {
+    await expect
+      .poll(() =>
+        value.evaluate((element) => {
+          let style = getComputedStyle(element);
+          return [style.overflow, style.textOverflow, style.whiteSpace];
+        }),
+      )
+      .toEqual(['hidden', 'ellipsis', 'nowrap']);
+  }
+  let rowBox = await firstRow.boundingBox();
+  let chevronBox = await firstRow.locator('.chevron').boundingBox();
+  if (!rowBox || !chevronBox) throw new Error('Airspace row is not visible');
+  expect(chevronBox.x + chevronBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+  await expect(firstRow.getByRole('link')).toHaveCSS('border-width', '0px');
+  let scrollingRegion = page.getByRole('main');
+  expect(await scrollingRegion.evaluate((element) => element.scrollWidth)).toBe(
+    await scrollingRegion.evaluate((element) => element.clientWidth),
+  );
 });
 
 test('shows empty states without rendered features', async ({ page }) => {
@@ -256,14 +289,18 @@ test('keeps the first nearby airspace result', async ({ page }) => {
 
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.19 });
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
-  await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+  await expect(airspaces.getByRole('listitem')).toHaveText(
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+  );
   await expect(airspaces.getByRole('link', { name: 'Köln RMZ' })).toHaveAttribute(
     'href',
     '/airspaces/1',
   );
 
   await emitAirspace(page, { type: 'unavailable' });
-  await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+  await expect(airspaces.getByRole('listitem')).toHaveText(
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+  );
 });
 
 test('keeps nearby traffic membership while targets update', async ({ page }) => {
@@ -581,7 +618,10 @@ test('opens inspector details and requeries the map after browser Back', async (
   let nearbyUrl = page.url();
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   let traffic = page.getByRole('region', { name: 'Traffic' });
-  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+  await expect(airspaces.getByRole('listitem')).toHaveText([
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+    /Düsseldorf CTR\s+Control zone · Class D/,
+  ]);
   await expect(traffic.getByRole('listitem')).toHaveText('Glider · FLARM 000001');
 
   await airspaces.getByRole('link', { name: 'Köln RMZ' }).click();
@@ -604,7 +644,10 @@ test('opens inspector details and requeries the map after browser Back', async (
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page).toHaveURL(nearbyUrl);
   await expect(traffic.getByText('No traffic at this position.')).toBeVisible();
-  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+  await expect(airspaces.getByRole('listitem')).toHaveText([
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+    /Düsseldorf CTR\s+Control zone · Class D/,
+  ]);
 });
 
 async function emitInstruments(page: Page, gps: GpsInstruments) {

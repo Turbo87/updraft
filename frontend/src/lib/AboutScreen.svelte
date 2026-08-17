@@ -2,8 +2,11 @@
   import type { AttributionPart } from './map-attribution';
 
   import { m } from '$lib/paraglide/messages.js';
+  import ExternalLink from './ExternalLink.svelte';
   import { parseMapAttributions } from './map-attribution';
   import ScreenScaffold from './ScreenScaffold.svelte';
+
+  type AttributionLink = AttributionPart & { href: string };
 
   type Props = {
     attributions: string[];
@@ -29,9 +32,9 @@
     return parts.map(({ text }) => text).join('');
   }
 
-  function attributionLinks(parts: AttributionPart[]): AttributionPart[] {
+  function attributionLinks(parts: AttributionPart[]): AttributionLink[] {
     return parts.filter(
-      (part, index) =>
+      (part, index): part is AttributionLink =>
         part.href !== undefined &&
         parts.findIndex(({ href }) => href !== undefined && href === part.href) === index,
     );
@@ -55,8 +58,9 @@
           <dt>{m.about_build_commit()}</dt>
           <dd>
             {#if commitUrl && abbreviatedCommitSha}
-              <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- The commit URL is an external GitHub URL. -->
-              <a href={commitUrl}>{abbreviatedCommitSha}</a>
+              <ExternalLink class="external-link" href={commitUrl}>
+                {abbreviatedCommitSha}
+              </ExternalLink>
             {:else}
               <span class="muted">{m.about_unknown_version()}</span>
             {/if}
@@ -67,12 +71,11 @@
           <dd><time datetime={timestamp}>{formattedTimestamp}</time></dd>
         </div>
       </dl>
-      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- The repository URL is an external GitHub URL. -->
-      <a class="link-row" href="https://github.com/Turbo87/updraft">
+      <ExternalLink class="external-link link-row" href="https://github.com/Turbo87/updraft">
         <span aria-hidden="true" class="i-mdi-github leading-icon"></span>
         <span>{m.about_repository_link()}</span>
         <span aria-hidden="true" class="i-mdi-open-in-new external-icon"></span>
-      </a>
+      </ExternalLink>
     </div>
   </section>
 
@@ -83,11 +86,10 @@
         {#each parsedAttributions as attribution (attribution.source)}
           <p>{attributionText(attribution.parts)}</p>
           {#each attributionLinks(attribution.parts) as link (link.href)}
-            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Attribution URLs are validated external HTTP(S) URLs. -->
-            <a class="link-row" href={link.href}>
+            <ExternalLink class="external-link link-row" href={link.href}>
               <span>{link.text}</span>
               <span aria-hidden="true" class="i-mdi-open-in-new external-icon"></span>
-            </a>
+            </ExternalLink>
           {/each}
         {/each}
       </div>
@@ -162,7 +164,7 @@
   }
 
   .row + .row,
-  .link-row,
+  .card :global(.link-row),
   .credits > :not(:first-child) {
     border-block-start: 1px solid var(--color-separator);
   }
@@ -185,11 +187,11 @@
     color: var(--color-text-muted);
   }
 
-  a {
+  .card :global(.external-link) {
     color: var(--color-link);
   }
 
-  .link-row {
+  .card :global(.link-row) {
     box-sizing: border-box;
     display: flex;
     align-items: center;

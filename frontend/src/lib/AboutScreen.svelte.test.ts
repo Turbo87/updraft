@@ -27,6 +27,11 @@ it('shows build details, source links, credits, and licence information', async 
   await expect
     .element(page.getByRole('link', { name: 'OpenFreeMap' }))
     .toHaveAttribute('href', 'https://openfreemap.org/');
+  for (let linkName of ['a1c93f4', 'GitHub repository', 'OpenFreeMap']) {
+    let link = page.getByRole('link', { name: linkName });
+    await expect.element(link).toHaveAttribute('target', '_blank');
+    await expect.element(link).toHaveAttribute('rel', 'noopener noreferrer');
+  }
   await expect.element(page.getByRole('heading', { name: 'Licences' })).toBeInTheDocument();
 });
 

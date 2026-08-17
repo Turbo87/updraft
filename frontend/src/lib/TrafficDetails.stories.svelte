@@ -5,6 +5,7 @@
   import type { TrafficSubscriber } from '$lib/stores/traffic.svelte';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
+  import { fn } from 'storybook/test';
 
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -69,14 +70,16 @@
     title: 'Screens/Traffic details',
     component: TrafficDetails,
     args: {
-      altitudeUnit: 'm',
-      distanceUnit: 'km',
+      backLabel: 'Back',
       id: target.id,
       instruments,
       locale: 'en',
+      onBack: fn(),
       traffic: createTrafficStore(target),
+      units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     },
     parameters: {
+      layout: 'fullscreen',
       docs: {
         description: {
           component:

@@ -197,6 +197,7 @@
   "traffic_map": "Karte",
   "traffic_id_label": "ID",
   "traffic_type_label": "Typ",
+  "traffic_target_heading": "Ziel",
   "position_label": "Position",
   "track_label": "Kurs",
   "alarm_level_label": "Warnstufe",

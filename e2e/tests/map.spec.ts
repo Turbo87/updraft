@@ -528,30 +528,24 @@ test('shows complete traffic details on direct visits and reloads', async ({ pag
   await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
+  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
   await expect(page.locator('main')).toMatchAriaSnapshot(`
-    - navigation:
-      - button "Back"
-      - link "Map":
-        - /url: /
-    - heading "FLARM 000001" [level=1]
-    - term: ID
-    - definition: flarm:000001
-    - term: Type
-    - definition: Glider
-    - term: Position
-    - definition: 50.82300, 6.18600
-    - term: Altitude
-    - definition: 400 m MSL
-    - term: Track
-    - definition: 45° true
-    - term: Alarm level
-    - definition: None
-    - term: State
-    - definition: Fresh
-    - term: Distance
-    - definition: 0.0 km
-    - term: Bearing
-    - definition: 0° true
+    - main:
+      - text: Distance 0.0 km Bearing 000 ° Alarm level None
+      - heading "Target" [level=2]
+      - term: ID
+      - definition: flarm:000001
+      - term: Type
+      - definition: Glider
+      - term: State
+      - definition: Fresh
+      - heading "Position" [level=2]
+      - term: Position
+      - definition: 50.82300° N, 6.18600° E
+      - term: Altitude
+      - definition: 400 m MSL 0 m
+      - term: Track
+      - definition: 45° true
   `);
 
   await page.reload();
@@ -578,29 +572,29 @@ test('updates and retains traffic details', async ({ page }) => {
     type: 'delta',
     value: { upserts: [movedTarget], removed: [] },
   });
-  await expect(page.getByText('50.82400, 6.18700')).toBeVisible();
+  await expect(page.getByText('50.82400° N, 6.18700° E')).toBeVisible();
   await expect(page.getByText('0.1 km', { exact: true })).toBeVisible();
-  await expect(page.getByText('32° true')).toBeVisible();
+  await expect(page.getByText('032', { exact: true })).toBeVisible();
   await expect(page.getByText('Stale', { exact: true })).toBeVisible();
   await expect(page.getByText('Important', { exact: true })).toBeVisible();
-  await expect(page.getByText('Unavailable', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('—', { exact: true })).toHaveCount(3);
 
   await emitInstruments(page, POSITION_C);
-  await expect(page.getByText('212° true')).toBeVisible();
+  await expect(page.getByText('212', { exact: true })).toBeVisible();
 
   await emitTraffic(page, {
     type: 'delta',
     value: { upserts: [], removed: [TRAFFIC_A.id] },
   });
-  await expect(page.getByText('Unavailable', { exact: true })).toHaveCount(3);
-  await expect(page.getByText('50.82400, 6.18700')).toBeVisible();
+  await expect(page.getByText('Unavailable', { exact: true })).toBeVisible();
+  await expect(page.getByText('50.82400° N, 6.18700° E')).toBeVisible();
 
   await emitTraffic(page, {
     type: 'delta',
     value: { upserts: [TRAFFIC_A], removed: [] },
   });
   await expect(page.getByText('Fresh', { exact: true })).toBeVisible();
-  await expect(page.getByText('50.82300, 6.18600')).toBeVisible();
+  await expect(page.getByText('50.82300° N, 6.18600° E')).toBeVisible();
 });
 
 test('shows traffic not found for missing IDs', async ({ page }) => {

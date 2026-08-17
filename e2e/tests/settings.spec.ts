@@ -113,6 +113,17 @@ test('uses the screen scaffold for airspace settings', async ({ page }) => {
   await expect(page.getByRole('main')).not.toContainText('Back to settings');
 });
 
+test('uses the screen scaffold when an external device is not found', async ({ page }) => {
+  await page.goto('/settings/devices/999?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to external devices' });
+
+  await expect(page.getByRole('heading', { name: 'External devices' })).toBeVisible();
+  await expect(page.getByText('External device not found')).toBeVisible();
+  await expect(back).toHaveAttribute('href', '/settings/devices');
+  await expect(page.getByRole('main')).not.toContainText('Back to external devices');
+});
+
 test('shows source and build information on the About page', async ({ page }) => {
   await page.goto('/settings/about?testMode=1');
 

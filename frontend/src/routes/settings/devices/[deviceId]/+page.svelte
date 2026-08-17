@@ -8,6 +8,7 @@
   import { getAppContext } from '$lib/app-context';
   import ExternalDeviceForm from '$lib/ExternalDeviceForm.svelte';
   import { m } from '$lib/paraglide/messages.js';
+  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
 
   const { client, externalDevices } = getAppContext();
   const deviceId = $derived.by(() => {
@@ -57,15 +58,21 @@
 </script>
 
 {#if !externalDevices.initialized}
-  <main>
-    <a class="back-link" href={resolve('/settings/devices')}>{m.back_to_external_devices()}</a>
+  <ScreenScaffold
+    backHref="/settings/devices"
+    backLabel={m.back_to_external_devices()}
+    title={m.external_devices_heading()}
+  >
     <p>{m.loading_external_devices()}</p>
-  </main>
+  </ScreenScaffold>
 {:else if !device || commandDeviceNotFound}
-  <main>
-    <a class="back-link" href={resolve('/settings/devices')}>{m.back_to_external_devices()}</a>
-    <h1>{m.external_device_not_found()}</h1>
-  </main>
+  <ScreenScaffold
+    backHref="/settings/devices"
+    backLabel={m.back_to_external_devices()}
+    title={m.external_devices_heading()}
+  >
+    <p>{m.external_device_not_found()}</p>
+  </ScreenScaffold>
 {:else}
   <ExternalDeviceForm
     {device}
@@ -74,22 +81,3 @@
     onDelete={deleteExternalDevice}
   />
 {/if}
-
-<style>
-  main {
-    min-height: 100%;
-    padding: 1.5rem;
-    background-color: var(--color-app-surface);
-    color: var(--color-text);
-  }
-
-  .back-link {
-    display: inline-block;
-    margin-block-end: 1rem;
-  }
-
-  h1,
-  p {
-    margin: 0;
-  }
-</style>

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
   import { getAppContext } from '$lib/app-context';
@@ -7,6 +6,7 @@
   import NearbyResultsScreen from '$lib/NearbyResultsScreen.svelte';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
+  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import { convertDistance } from '$lib/units';
   import NearbyAirspaces from './NearbyAirspaces.svelte';
   import NearbyTraffic from './NearbyTraffic.svelte';
@@ -79,23 +79,7 @@
     traffic={trafficResults}
   />
 {:else}
-  <main>
-    <a class="back-link" href={resolve('/')}>{m.back_to_map()}</a>
+  <ScreenScaffold backHref="/" backLabel={m.back_to_map()} title={m.nearby_heading()}>
     <p role="alert">{m.invalid_inspection()}</p>
-  </main>
+  </ScreenScaffold>
 {/if}
-
-<style>
-  main {
-    box-sizing: border-box;
-    min-height: 100%;
-    padding: 1.5rem;
-    background-color: var(--color-app-surface);
-    color: var(--color-text);
-  }
-
-  .back-link {
-    display: inline-block;
-    margin-block-end: 1rem;
-  }
-</style>

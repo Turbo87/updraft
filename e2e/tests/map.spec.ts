@@ -208,7 +208,9 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
   await expect(page).toHaveURL('/');
 
   await page.goto('/nearby/91/6.186?testMode=1');
+  await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
   await expect(page.getByText('The selected map position is invalid.')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to map');
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
 });

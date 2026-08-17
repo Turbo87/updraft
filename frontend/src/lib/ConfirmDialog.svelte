@@ -10,6 +10,7 @@
     cancelLabel: string;
     confirmLabel: string;
     pending?: boolean;
+    error?: string;
     onCancel: () => void;
     onConfirm: () => void;
   };
@@ -21,6 +22,7 @@
     cancelLabel,
     confirmLabel,
     pending = false,
+    error,
     onCancel,
     onConfirm,
   }: Props = $props();
@@ -54,6 +56,9 @@
       <AlertDialog.Description class="confirm-dialog-description">
         {description}
       </AlertDialog.Description>
+      {#if error}
+        <p class="error" role="alert">{error}</p>
+      {/if}
       <div class="actions">
         <AlertDialog.Cancel bind:ref={cancelButton} onclick={onCancel}>
           {#snippet child({ props })}
@@ -116,13 +121,21 @@
   }
 
   :global(.confirm-dialog-description) {
-    margin: var(--space-3) 0 var(--space-6);
+    margin: var(--space-3) 0 0;
     color: var(--color-text-muted);
+  }
+
+  .error {
+    margin: var(--space-4) 0 0;
+    color: var(--color-danger-subtle-text);
+    font: var(--text-body);
+    font-weight: 500;
   }
 
   .actions {
     display: grid;
     gap: var(--space-2);
+    margin-block-start: var(--space-6);
   }
 
   @media (orientation: landscape) and (min-width: 36rem) {

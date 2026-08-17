@@ -80,6 +80,23 @@ describe('ConfirmDialog.svelte', () => {
     await page.getByRole('button', { name: props.cancelLabel }).click();
   });
 
+  it('shows an error after confirmation stops pending', async () => {
+    let view = await render(ConfirmDialog, { ...props, pending: true });
+
+    await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+
+    await view.rerender({
+      ...props,
+      pending: false,
+      error: 'Could not remove the external device.',
+    });
+
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent('Could not remove the external device.');
+    await page.getByRole('button', { name: props.cancelLabel }).click();
+  });
+
   it('traps focus and cancels with Escape', async () => {
     let onCancel = vi.fn();
     await render(ConfirmDialog, { ...props, onCancel });

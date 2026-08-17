@@ -9,6 +9,7 @@
     description: string;
     cancelLabel: string;
     confirmLabel: string;
+    pending?: boolean;
     onCancel: () => void;
     onConfirm: () => void;
   };
@@ -19,6 +20,7 @@
     description,
     cancelLabel,
     confirmLabel,
+    pending = false,
     onCancel,
     onConfirm,
   }: Props = $props();
@@ -29,6 +31,15 @@
     event.preventDefault();
     cancelButton?.focus();
   }
+
+  function handleEscape(event: KeyboardEvent) {
+    if (pending) {
+      event.preventDefault();
+      return;
+    }
+
+    onCancel();
+  }
 </script>
 
 <AlertDialog.Root bind:open>
@@ -36,7 +47,7 @@
     <AlertDialog.Overlay class="confirm-dialog-overlay" />
     <AlertDialog.Content
       class="confirm-dialog-content"
-      onEscapeKeydown={onCancel}
+      onEscapeKeydown={handleEscape}
       onOpenAutoFocus={focusCancel}
     >
       <AlertDialog.Title class="confirm-dialog-title" level={2}>{title}</AlertDialog.Title>
@@ -46,7 +57,13 @@
       <div class="actions">
         <AlertDialog.Cancel bind:ref={cancelButton} onclick={onCancel}>
           {#snippet child({ props })}
-            <Button {...props} size="large" variant="secondary" style="width: 100%">
+            <Button
+              {...props}
+              disabled={pending}
+              size="large"
+              variant="secondary"
+              style="width: 100%"
+            >
               {cancelLabel}
             </Button>
           {/snippet}
@@ -55,6 +72,7 @@
           {#snippet child({ props })}
             <Button
               {...props}
+              loading={pending}
               size="large"
               variant="destructive"
               style="width: 100%"

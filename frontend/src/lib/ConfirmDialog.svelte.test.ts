@@ -63,6 +63,23 @@ describe('ConfirmDialog.svelte', () => {
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 
+  it('disables its actions while confirmation is pending', async () => {
+    let onCancel = vi.fn();
+    let view = await render(ConfirmDialog, { ...props, pending: true, onCancel });
+
+    await expect.element(page.getByRole('button', { name: props.cancelLabel })).toBeDisabled();
+    await expect.element(page.getByRole('button', { name: props.confirmLabel })).toBeDisabled();
+    await expect
+      .element(page.getByRole('button', { name: props.confirmLabel }))
+      .toHaveAttribute('aria-busy', 'true');
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('alertdialog', { name: props.title })).toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+
+    await view.rerender({ ...props, pending: false, onCancel });
+    await page.getByRole('button', { name: props.cancelLabel }).click();
+  });
+
   it('traps focus and cancels with Escape', async () => {
     let onCancel = vi.fn();
     await render(ConfirmDialog, { ...props, onCancel });

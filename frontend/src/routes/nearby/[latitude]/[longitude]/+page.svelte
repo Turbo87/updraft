@@ -55,7 +55,14 @@
   {#snippet trafficResults()}
     {#if traffic.initialized && mapState.map}
       {#key `${selectedPosition.latitudeDegrees}/${selectedPosition.longitudeDegrees}`}
-        <NearbyTraffic {locale} map={mapState.map} position={selectedPosition} {traffic} />
+        <NearbyTraffic
+          {locale}
+          map={mapState.map}
+          ownship={instruments.current.gps}
+          position={selectedPosition}
+          {traffic}
+          units={settings.current.units}
+        />
       {/key}
     {:else}
       <p>{m.loading_nearby_traffic()}</p>

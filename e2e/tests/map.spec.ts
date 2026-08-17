@@ -304,8 +304,10 @@ test('keeps the first nearby airspace result', async ({ page }) => {
 });
 
 test('keeps nearby traffic membership while targets update', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
   await page.goto('/?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
+  await emitInstruments(page, POSITION_A);
   await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A, TRAFFIC_B] });
   let selectedPosition = TRAFFIC_A.position;
   await expect
@@ -315,9 +317,17 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
   await clickMapPosition(page, selectedPosition);
   let traffic = page.getByRole('region', { name: 'Traffic' });
   await expect(traffic.getByRole('listitem')).toHaveText([
-    'Tow plane · FLARM 000002',
-    'Glider · FLARM 000001',
+    /Tow plane · FLARM 000002\s+500 m MSL · \+100 m · 0\.0 km/,
+    /Glider · FLARM 000001\s+400 m MSL · 0 m · 0\.0 km/,
   ]);
+  let firstTrafficRow = traffic.getByRole('listitem').first();
+  let trafficLabel = firstTrafficRow.getByText('Tow plane · FLARM 000002');
+  let trafficDetail = firstTrafficRow.getByText('500 m MSL · +100 m · 0.0 km');
+  let trafficLabelBox = await trafficLabel.boundingBox();
+  let trafficDetailBox = await trafficDetail.boundingBox();
+  if (!trafficLabelBox || !trafficDetailBox) throw new Error('Traffic row text is not visible');
+  expect(trafficDetailBox.y).toBeGreaterThanOrEqual(trafficLabelBox.y + trafficLabelBox.height);
+  await expect(firstTrafficRow.locator('.traffic-symbol')).toHaveCSS('width', '32px');
 
   let updated = {
     ...TRAFFIC_A,
@@ -330,8 +340,8 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
     value: { upserts: [updated, unrelated], removed: [TRAFFIC_B.id] },
   });
   await expect(traffic.getByRole('listitem')).toHaveText([
-    'Tow plane · FLARM 000002 · Unavailable',
-    'Balloon · FLARM 000001',
+    /Tow plane · FLARM 000002 · Unavailable\s+500 m MSL · \+100 m · 0\.0 km/,
+    /Balloon · FLARM 000001/,
   ]);
 
   let recovered = { ...TRAFFIC_B, trafficType: 'paraglider' as const };
@@ -340,15 +350,15 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
     value: { upserts: [recovered], removed: [] },
   });
   await expect(traffic.getByRole('listitem')).toHaveText([
-    'Paraglider · FLARM 000002',
-    'Balloon · FLARM 000001',
+    /Paraglider · FLARM 000002\s+500 m MSL · \+100 m · 0\.0 km/,
+    /Balloon · FLARM 000001/,
   ]);
 
   await emitTraffic(page, {
     type: 'delta',
     value: { upserts: [], removed: [TRAFFIC_B.id] },
   });
-  await traffic.getByRole('link', { name: 'paraglider · FLARM 000002 · Unavailable' }).click();
+  await traffic.getByRole('link', { name: /Paraglider · FLARM 000002 · Unavailable/ }).click();
   await expect(page).toHaveURL('/traffic/flarm:000002');
   await expect(page.getByText('Traffic not found.')).toBeVisible();
 });
@@ -622,15 +632,17 @@ test('opens inspector details and requeries the map after browser Back', async (
     /Köln RMZ\s+Radio mandatory zone · Class E/,
     /Düsseldorf CTR\s+Control zone · Class D/,
   ]);
-  await expect(traffic.getByRole('listitem')).toHaveText('Glider · FLARM 000001');
+  await expect(traffic.getByRole('listitem')).toHaveText(
+    /Glider · FLARM 000001\s+400 m MSL · — · —/,
+  );
 
   await airspaces.getByRole('link', { name: 'Köln RMZ' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Köln RMZ');
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page).toHaveURL(nearbyUrl);
-  await expect(traffic.getByRole('link', { name: 'Glider · FLARM 000001' })).toBeVisible();
+  await expect(traffic.getByRole('link', { name: /^Glider · FLARM 000001/ })).toBeVisible();
 
-  await traffic.getByRole('link', { name: 'Glider · FLARM 000001' }).click();
+  await traffic.getByRole('link', { name: /^Glider · FLARM 000001/ }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
   await emitTraffic(page, {
     type: 'delta',

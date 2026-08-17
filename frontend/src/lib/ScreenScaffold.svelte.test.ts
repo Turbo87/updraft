@@ -24,6 +24,7 @@ describe('ScreenScaffold.svelte', () => {
 
     await expect.element(back).toHaveAttribute('href', '/settings');
     await expect.element(page.getByRole('heading', { level: 1, name: 'Units' })).toBeVisible();
+    await expect.element(content).toHaveAttribute('tabindex', '0');
     expect(getComputedStyle(back.element()).height).toBe('56px');
     expect(getComputedStyle(content.element()).overflowY).toBe('auto');
   });

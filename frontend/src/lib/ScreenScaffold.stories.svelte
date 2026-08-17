@@ -27,7 +27,7 @@
       docs: {
         description: {
           component:
-            'Use this scaffold for every screen outside the Flight View. The fixed header contains only a return control and the screen title. Use a destination link when the screen has a fixed parent route. Use the callback mode when the correct destination depends on navigation history. The content region is the only scrolling region. Add an action bar only when the screen has a primary action such as import, add, or save. The header and action bar include safe-area insets. Forms and prose have a maximum width of 34rem.',
+            'Use this scaffold for every screen outside the Flight View. The fixed header contains only a return control and the screen title. Use a destination link when the screen has a fixed parent route. Use the callback mode when the correct destination depends on navigation history. The content region is the only scrolling region and receives keyboard focus so every user can scroll it. Add an action bar only when the screen has a primary action such as import, add, or save. The header and action bar include safe-area insets. Forms and prose have a maximum width of 34rem.',
         },
       },
     },

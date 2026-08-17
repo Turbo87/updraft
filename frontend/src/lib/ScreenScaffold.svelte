@@ -32,7 +32,9 @@
     <h1>{title}</h1>
   </header>
 
-  <main>
+  <!-- The scrolling region must be keyboard-focusable. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <main tabindex="0">
     <div class="content">{@render children()}</div>
   </main>
 

@@ -83,6 +83,27 @@ describe('ExternalDeviceForm.svelte', () => {
     expect(getBondedBluetoothDevices).toHaveBeenCalledTimes(2);
   });
 
+  it('reports a bonded-device refresh as busy', async () => {
+    let finishRefresh = () => {};
+    let pendingRefresh = new Promise<{ status: 'available'; devices: [] }>((resolve) => {
+      finishRefresh = () => resolve({ status: 'available', devices: [] });
+    });
+    let getBondedBluetoothDevices = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'permissionDenied' })
+      .mockImplementationOnce(() => pendingRefresh);
+    renderExternalDeviceForm({ getBondedBluetoothDevices, onSave: async () => {} });
+
+    await page.getByLabelText('Connection type').selectOptions('bluetooth');
+    let refreshButton = page.getByRole('button', { name: 'Refresh bonded devices' });
+    await refreshButton.click();
+
+    await expect.element(refreshButton).toBeDisabled();
+    await expect.element(refreshButton).toHaveAttribute('aria-busy', 'true');
+    finishRefresh();
+    await expect.element(refreshButton).toBeEnabled();
+  });
+
   it('distinguishes disabled Bluetooth from denied permission', async () => {
     renderExternalDeviceForm({
       getBondedBluetoothDevices: async () => ({ status: 'disabled' }),

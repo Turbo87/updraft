@@ -223,21 +223,31 @@
       <p class="endpoint">{device.address}</p>
     {/if}
     {#if connectionType === 'bluetooth' && bluetoothSupported && !bluetoothQueryFailed}
-      <button
-        type="button"
-        disabled={bluetoothQueryPending}
+      <Button
+        loading={bluetoothQueryPending}
+        style="width: 100%"
+        variant="secondary"
         onclick={() => void refreshBondedBluetoothDevices()}
-        >{m.refresh_bonded_bluetooth_devices()}</button
       >
+        {#if !bluetoothQueryPending}
+          <span aria-hidden="true" class="i-mdi-refresh action-icon"></span>
+        {/if}
+        {m.refresh_bonded_bluetooth_devices()}
+      </Button>
     {/if}
     {#if bluetoothQueryFailed}
       <p class="error" role="alert">{m.bonded_bluetooth_devices_error()}</p>
-      <button
-        type="button"
-        disabled={bluetoothQueryPending}
+      <Button
+        loading={bluetoothQueryPending}
+        style="width: 100%"
+        variant="secondary"
         onclick={() => void refreshBondedBluetoothDevices()}
-        >{m.refresh_bonded_bluetooth_devices()}</button
       >
+        {#if !bluetoothQueryPending}
+          <span aria-hidden="true" class="i-mdi-refresh action-icon"></span>
+        {/if}
+        {m.refresh_bonded_bluetooth_devices()}
+      </Button>
     {/if}
     {#if connectionType === 'bluetooth' && device?.type === 'bluetooth' && device.serviceUuid}
       <p class="service-uuid">
@@ -353,8 +363,7 @@
     font-weight: 600;
   }
 
-  select,
-  button {
+  select {
     min-height: 2.75rem;
     font: inherit;
   }

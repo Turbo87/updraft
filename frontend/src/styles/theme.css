@@ -91,11 +91,6 @@
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
-
-  /* Existing routes keep these values until their design-system migrations. */
-  --color-app-surface: light-dark(var(--color-white), var(--color-gray-950));
-  --color-overlay-surface: rgb(0 0 0 / 75%);
-  --color-overlay-text: var(--color-white);
 }
 
 :root[data-theme='light'] {

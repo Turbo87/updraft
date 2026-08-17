@@ -160,8 +160,8 @@
     z-index: 10;
     padding: 0.5rem 0.75rem;
     border-radius: 0.25rem;
-    background: var(--color-overlay-surface);
-    color: var(--color-overlay-text);
+    background: rgb(0 0 0 / 75%);
+    color: var(--color-white);
     font-family: monospace;
     font-size: 0.75rem;
     line-height: 1.4;

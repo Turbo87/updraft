@@ -131,6 +131,7 @@ test('shows source and build information on the About page', async ({ page }) =>
   await expect(buildTime).toBeVisible();
   expect(Date.parse((await buildTime.getAttribute('datetime')) ?? '')).not.toBeNaN();
   await expect(page.getByRole('heading', { name: 'Data credits' })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Licences' })).toBeVisible();
 });
 
 test('shows a snapshot of the current map source credits', async ({ page }) => {

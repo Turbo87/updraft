@@ -32,7 +32,6 @@
 
   function setOpen(value: boolean) {
     open = value;
-    if (!value && !result) result = 'cancel';
   }
 
   function choose(nextResult: 'cancel' | 'confirm') {
@@ -62,7 +61,11 @@
 <AlertDialog.Root bind:open={getOpen, setOpen} onOpenChangeComplete={reportResult}>
   <AlertDialog.Portal>
     <AlertDialog.Overlay class="confirm-dialog-overlay" />
-    <AlertDialog.Content class="confirm-dialog-content" onOpenAutoFocus={focusCancel}>
+    <AlertDialog.Content
+      class="confirm-dialog-content"
+      onEscapeKeydown={onCancel}
+      onOpenAutoFocus={focusCancel}
+    >
       <AlertDialog.Title class="confirm-dialog-title" level={2}>{title}</AlertDialog.Title>
       <AlertDialog.Description class="confirm-dialog-description">
         {description}

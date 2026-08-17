@@ -190,13 +190,19 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
   await expect(page).toHaveURL('/nearby/50.823000/6.186000');
   await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
-  await expect(page.getByText('50.82300, 6.18600')).toBeVisible();
-  await expect(page.getByText('0.0 km', { exact: true })).toBeVisible();
-  await expect(page.getByText('0°', { exact: true })).toBeVisible();
+  await expect(page.getByText('50.82300° N, 6.18600° E')).toBeVisible();
+  await expect(page.getByText('0.0', { exact: true })).toBeVisible();
+  await expect(page.getByText('km', { exact: true })).toBeVisible();
+  await expect(page.getByText('0', { exact: true })).toBeVisible();
+  await expect(page.getByText('°', { exact: true })).toBeVisible();
+  await expect(page.getByText('Arrival')).toBeVisible();
+  await expect(page.getByText('Req. L/D')).toBeVisible();
+  await expect(page.getByText('Elevation')).toBeVisible();
+  await expect(page.getByText('—', { exact: true })).toHaveCount(3);
 
   await emitInstruments(page, POSITION_B);
-  await expect(page.getByText('0.1 km', { exact: true })).toBeVisible();
-  await expect(page.getByText('212°', { exact: true })).toBeVisible();
+  await expect(page.getByText('0.1', { exact: true })).toBeVisible();
+  await expect(page.getByText('212', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
@@ -224,6 +230,9 @@ test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) =>
 test('shows empty states without rendered features', async ({ page }) => {
   await page.goto('/nearby/50.82/6.15?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
+  await expect(
+    page.getByText('No GPS position is available. Values relative to ownship are unknown.'),
+  ).toBeVisible();
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
   let traffic = page.getByRole('region', { name: 'Traffic' });

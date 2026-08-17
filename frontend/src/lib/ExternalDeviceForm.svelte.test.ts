@@ -29,6 +29,14 @@ describe('ExternalDeviceForm.svelte', () => {
       .toHaveAttribute('href', '/settings/devices');
   });
 
+  it('places the primary action in the fixed action bar', async () => {
+    renderExternalDeviceForm({ onSave: async () => {} });
+
+    await expect
+      .element(page.getByRole('contentinfo').getByRole('button', { name: 'Add external device' }))
+      .toBeInTheDocument();
+  });
+
   it('creates a bonded Bluetooth device with the standard service', async () => {
     let onSave = vi.fn(async () => {});
     renderExternalDeviceForm({
@@ -339,6 +347,7 @@ describe('ExternalDeviceForm.svelte', () => {
     await saveButton.click();
 
     await expect.element(saveButton).toBeDisabled();
+    await expect.element(saveButton).toHaveAttribute('aria-busy', 'true');
     finishSave();
     await expect.element(saveButton).toBeEnabled();
   });
@@ -373,7 +382,12 @@ describe('ExternalDeviceForm.svelte', () => {
     await page.getByRole('button', { name: 'Delete external device' }).click();
 
     await expect
-      .element(page.getByRole('dialog', { name: 'Delete 192.0.2.1:4353?' }))
+      .element(page.getByRole('alertdialog', { name: 'Delete 192.0.2.1:4353?' }))
+      .toBeInTheDocument();
+    await expect
+      .element(
+        page.getByText('The external device is removed from Updraft. You can add it again later.'),
+      )
       .toBeInTheDocument();
     expect(onDelete).not.toHaveBeenCalled();
 
@@ -394,7 +408,7 @@ describe('ExternalDeviceForm.svelte', () => {
     await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
     await expect
-      .element(page.getByRole('dialog', { name: 'Delete 192.0.2.1:4353?' }))
+      .element(page.getByRole('alertdialog', { name: 'Delete 192.0.2.1:4353?' }))
       .toBeInTheDocument();
     await expect
       .element(page.getByRole('alert'))

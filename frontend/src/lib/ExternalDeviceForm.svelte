@@ -6,6 +6,8 @@
   import { onMount } from 'svelte';
 
   import { m } from '$lib/paraglide/messages.js';
+  import Button from './Button.svelte';
+  import ConfirmDialog from './ConfirmDialog.svelte';
   import RadioList from './RadioList.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import TextField from './TextField.svelte';
@@ -35,6 +37,7 @@
   const numericPort = $derived(Number(port));
   const validPort = $derived(/^\d+$/.test(port) && numericPort >= 1 && numericPort <= 65535);
   const bluetoothSupported = $derived(bondedBluetoothDevices.status !== 'unsupported');
+  const canSave = $derived(connectionType === 'tcp' || bluetoothSupported);
   const currentBluetoothAddressUnbonded = $derived.by(() => {
     if (device?.type !== 'bluetooth' || bondedBluetoothDevices.status !== 'available') {
       return false;
@@ -149,12 +152,25 @@
   }
 </script>
 
+{#snippet actions()}
+  <Button
+    form="external-device-form"
+    loading={pending}
+    size="large"
+    style="width: 100%"
+    type="submit"
+  >
+    {device ? m.save_external_device() : m.add_external_device()}
+  </Button>
+{/snippet}
+
 <ScreenScaffold
+  actions={canSave ? actions : undefined}
   backHref="/settings/devices"
   backLabel={m.back_to_external_devices()}
   title={device ? m.edit_external_device_heading() : m.add_external_device()}
 >
-  <form onsubmit={(event) => void submit(event)}>
+  <form id="external-device-form" onsubmit={(event) => void submit(event)}>
     <label class="connection-type">
       <span>{m.connection_type()}</span>
       <span class="select-wrapper">
@@ -229,37 +245,37 @@
         <code>{device.serviceUuid}</code>
       </p>
     {/if}
-    {#if connectionType === 'tcp' || bluetoothSupported}
-      <button type="submit" disabled={pending}
-        >{device ? m.save_external_device() : m.add_external_device()}</button
-      >
-    {/if}
     {#if commandFailed}
       <p class="error" role="alert">{m.save_external_device_error()}</p>
     {/if}
     {#if device && onDelete}
-      <button type="button" onclick={openDeleteConfirmation}>{m.delete_external_device()}</button>
+      <div class="delete-device">
+        <Button
+          disabled={deletePending}
+          style="width: 100%"
+          variant="destructive-outline"
+          onclick={openDeleteConfirmation}
+        >
+          <span aria-hidden="true" class="i-mdi-delete-outline action-icon"></span>
+          {m.delete_external_device()}
+        </Button>
+      </div>
     {/if}
   </form>
 </ScreenScaffold>
 
-{#if confirmingDelete && device}
-  <dialog open aria-labelledby="delete-heading">
-    <h2 id="delete-heading">
-      {m.confirm_delete_external_device({ endpoint: visibleEndpoint(device) })}
-    </h2>
-    {#if deleteFailed}
-      <p class="error" role="alert">{m.delete_external_device_error()}</p>
-    {/if}
-    <div class="dialog-actions">
-      <button type="button" disabled={deletePending} onclick={() => (confirmingDelete = false)}
-        >{m.cancel()}</button
-      >
-      <button type="button" disabled={deletePending} onclick={() => void deleteExternalDevice()}
-        >{m.confirm_delete()}</button
-      >
-    </div>
-  </dialog>
+{#if device && onDelete}
+  <ConfirmDialog
+    bind:open={confirmingDelete}
+    title={m.confirm_delete_external_device({ endpoint: visibleEndpoint(device) })}
+    description={m.delete_external_device_description()}
+    cancelLabel={m.cancel()}
+    confirmLabel={m.confirm_delete()}
+    pending={deletePending}
+    error={deleteFailed ? m.delete_external_device_error() : undefined}
+    onCancel={() => (confirmingDelete = false)}
+    onConfirm={() => void deleteExternalDevice()}
+  />
 {/if}
 
 <style>
@@ -343,22 +359,13 @@
     font: inherit;
   }
 
-  dialog {
-    max-width: calc(100% - 3rem);
-    padding: 1.5rem;
-    border: 0.0625rem solid light-dark(var(--color-gray-300), var(--color-gray-700));
-    border-radius: 0.5rem;
-    background-color: var(--color-app-surface);
-    color: var(--color-text);
+  .delete-device {
+    margin-block-start: var(--space-2);
+    padding-block-start: var(--space-6);
+    border-block-start: 1px solid var(--color-separator);
   }
 
-  dialog h2 {
-    margin-block-start: 0;
-  }
-
-  .dialog-actions {
-    display: flex;
-    justify-content: end;
-    gap: 0.75rem;
+  .action-icon {
+    font-size: 1.5rem;
   }
 </style>

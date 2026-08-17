@@ -228,6 +228,7 @@
   "save_external_device": "Änderungen speichern",
   "delete_external_device": "Externes Gerät löschen",
   "confirm_delete_external_device": "{endpoint} löschen?",
+  "delete_external_device_description": "Das externe Gerät wird aus Updraft entfernt. Du kannst es später erneut hinzufügen.",
   "confirm_delete": "Löschen",
   "cancel": "Abbrechen",
   "connection_type": "Verbindungstyp",

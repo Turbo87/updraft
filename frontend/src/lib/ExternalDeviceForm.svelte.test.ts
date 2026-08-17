@@ -18,6 +18,17 @@ function renderExternalDeviceForm({
 }
 
 describe('ExternalDeviceForm.svelte', () => {
+  it('owns the add-device screen navigation', async () => {
+    renderExternalDeviceForm({ onSave: async () => {} });
+
+    await expect
+      .element(page.getByRole('heading', { name: 'Add external device' }))
+      .toBeInTheDocument();
+    await expect
+      .element(page.getByRole('link', { name: 'Back to external devices' }))
+      .toHaveAttribute('href', '/settings/devices');
+  });
+
   it('creates a bonded Bluetooth device with the standard service', async () => {
     let onSave = vi.fn(async () => {});
     renderExternalDeviceForm({

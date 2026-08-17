@@ -56,22 +56,24 @@
   }
 </script>
 
-<main>
-  <a class="back-link" href={resolve('/settings/devices')}>{m.back_to_external_devices()}</a>
-  {#if !externalDevices.initialized}
+{#if !externalDevices.initialized}
+  <main>
+    <a class="back-link" href={resolve('/settings/devices')}>{m.back_to_external_devices()}</a>
     <p>{m.loading_external_devices()}</p>
-  {:else if !device || commandDeviceNotFound}
+  </main>
+{:else if !device || commandDeviceNotFound}
+  <main>
+    <a class="back-link" href={resolve('/settings/devices')}>{m.back_to_external_devices()}</a>
     <h1>{m.external_device_not_found()}</h1>
-  {:else}
-    <h1>{m.edit_external_device_heading()}</h1>
-    <ExternalDeviceForm
-      {device}
-      getBondedBluetoothDevices={() => client.getBondedBluetoothDevices()}
-      onSave={editExternalDevice}
-      onDelete={deleteExternalDevice}
-    />
-  {/if}
-</main>
+  </main>
+{:else}
+  <ExternalDeviceForm
+    {device}
+    getBondedBluetoothDevices={() => client.getBondedBluetoothDevices()}
+    onSave={editExternalDevice}
+    onDelete={deleteExternalDevice}
+  />
+{/if}
 
 <style>
   main {

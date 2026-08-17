@@ -57,6 +57,7 @@
       onSave: fn(async () => {}),
     },
     parameters: {
+      layout: 'fullscreen',
       docs: {
         description: {
           component:

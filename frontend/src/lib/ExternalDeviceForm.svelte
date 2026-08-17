@@ -7,6 +7,7 @@
 
   import { m } from '$lib/paraglide/messages.js';
   import RadioList from './RadioList.svelte';
+  import ScreenScaffold from './ScreenScaffold.svelte';
   import TextField from './TextField.svelte';
 
   type ExternalDeviceFormProps = {
@@ -148,93 +149,99 @@
   }
 </script>
 
-<form onsubmit={(event) => void submit(event)}>
-  <label class="connection-type">
-    <span>{m.connection_type()}</span>
-    <span class="select-wrapper">
-      <select disabled={!bluetoothSupported} bind:value={connectionType}>
-        {#if bluetoothSupported}
-          <option value="tcp">{m.tcp_device_type()}</option>
-          <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
-        {:else if connectionType === 'bluetooth'}
-          <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
-        {:else}
-          <option value="tcp">{m.tcp_device_type()}</option>
-        {/if}
-      </select>
-      <span aria-hidden="true" class="i-mdi-chevron-down select-icon"></span>
-    </span>
-  </label>
-  {#if connectionType === 'tcp'}
-    <TextField
-      name="host"
-      label={m.tcp_host()}
-      error={submitted && !trimmedHost ? m.tcp_host_error() : undefined}
-      bind:value={host}
-    />
-    <TextField
-      name="port"
-      inputmode="numeric"
-      label={m.tcp_port()}
-      error={submitted && !validPort ? m.tcp_port_error() : undefined}
-      bind:value={port}
-    />
-  {:else if bondedBluetoothDevices.status === 'available'}
-    {#if bondedBluetoothDevices.devices.length === 0 && !currentBluetoothAddressUnbonded}
-      <p>{m.no_bonded_bluetooth_devices()}</p>
-    {:else}
-      <RadioList
-        name="bonded-device"
-        legend={m.bonded_bluetooth_device()}
-        options={bondedDeviceOptions()}
-        value={bluetoothAddress}
-        error={submitted && !bluetoothAddress ? m.bonded_bluetooth_device_error() : undefined}
-        onChange={(value) => (bluetoothAddress = value)}
+<ScreenScaffold
+  backHref="/settings/devices"
+  backLabel={m.back_to_external_devices()}
+  title={device ? m.edit_external_device_heading() : m.add_external_device()}
+>
+  <form onsubmit={(event) => void submit(event)}>
+    <label class="connection-type">
+      <span>{m.connection_type()}</span>
+      <span class="select-wrapper">
+        <select disabled={!bluetoothSupported} bind:value={connectionType}>
+          {#if bluetoothSupported}
+            <option value="tcp">{m.tcp_device_type()}</option>
+            <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
+          {:else if connectionType === 'bluetooth'}
+            <option value="bluetooth">{m.bluetooth_spp_device_type()}</option>
+          {:else}
+            <option value="tcp">{m.tcp_device_type()}</option>
+          {/if}
+        </select>
+        <span aria-hidden="true" class="i-mdi-chevron-down select-icon"></span>
+      </span>
+    </label>
+    {#if connectionType === 'tcp'}
+      <TextField
+        name="host"
+        label={m.tcp_host()}
+        error={submitted && !trimmedHost ? m.tcp_host_error() : undefined}
+        bind:value={host}
       />
+      <TextField
+        name="port"
+        inputmode="numeric"
+        label={m.tcp_port()}
+        error={submitted && !validPort ? m.tcp_port_error() : undefined}
+        bind:value={port}
+      />
+    {:else if bondedBluetoothDevices.status === 'available'}
+      {#if bondedBluetoothDevices.devices.length === 0 && !currentBluetoothAddressUnbonded}
+        <p>{m.no_bonded_bluetooth_devices()}</p>
+      {:else}
+        <RadioList
+          name="bonded-device"
+          legend={m.bonded_bluetooth_device()}
+          options={bondedDeviceOptions()}
+          value={bluetoothAddress}
+          error={submitted && !bluetoothAddress ? m.bonded_bluetooth_device_error() : undefined}
+          onChange={(value) => (bluetoothAddress = value)}
+        />
+      {/if}
+    {:else if bondedBluetoothDevices.status === 'permissionDenied'}
+      <p>{m.bluetooth_permission_denied()}</p>
+    {:else if bondedBluetoothDevices.status === 'disabled'}
+      <p>{m.bluetooth_disabled()}</p>
     {/if}
-  {:else if bondedBluetoothDevices.status === 'permissionDenied'}
-    <p>{m.bluetooth_permission_denied()}</p>
-  {:else if bondedBluetoothDevices.status === 'disabled'}
-    <p>{m.bluetooth_disabled()}</p>
-  {/if}
-  {#if connectionType === 'bluetooth' && device?.type === 'bluetooth' && bondedBluetoothDevices.status !== 'available'}
-    <p class="endpoint">{device.address}</p>
-  {/if}
-  {#if connectionType === 'bluetooth' && bluetoothSupported && !bluetoothQueryFailed}
-    <button
-      type="button"
-      disabled={bluetoothQueryPending}
-      onclick={() => void refreshBondedBluetoothDevices()}
-      >{m.refresh_bonded_bluetooth_devices()}</button
-    >
-  {/if}
-  {#if bluetoothQueryFailed}
-    <p class="error" role="alert">{m.bonded_bluetooth_devices_error()}</p>
-    <button
-      type="button"
-      disabled={bluetoothQueryPending}
-      onclick={() => void refreshBondedBluetoothDevices()}
-      >{m.refresh_bonded_bluetooth_devices()}</button
-    >
-  {/if}
-  {#if connectionType === 'bluetooth' && device?.type === 'bluetooth' && device.serviceUuid}
-    <p class="service-uuid">
-      <span>{m.custom_service_uuid()}</span>
-      <code>{device.serviceUuid}</code>
-    </p>
-  {/if}
-  {#if connectionType === 'tcp' || bluetoothSupported}
-    <button type="submit" disabled={pending}
-      >{device ? m.save_external_device() : m.add_external_device()}</button
-    >
-  {/if}
-  {#if commandFailed}
-    <p class="error" role="alert">{m.save_external_device_error()}</p>
-  {/if}
-  {#if device && onDelete}
-    <button type="button" onclick={openDeleteConfirmation}>{m.delete_external_device()}</button>
-  {/if}
-</form>
+    {#if connectionType === 'bluetooth' && device?.type === 'bluetooth' && bondedBluetoothDevices.status !== 'available'}
+      <p class="endpoint">{device.address}</p>
+    {/if}
+    {#if connectionType === 'bluetooth' && bluetoothSupported && !bluetoothQueryFailed}
+      <button
+        type="button"
+        disabled={bluetoothQueryPending}
+        onclick={() => void refreshBondedBluetoothDevices()}
+        >{m.refresh_bonded_bluetooth_devices()}</button
+      >
+    {/if}
+    {#if bluetoothQueryFailed}
+      <p class="error" role="alert">{m.bonded_bluetooth_devices_error()}</p>
+      <button
+        type="button"
+        disabled={bluetoothQueryPending}
+        onclick={() => void refreshBondedBluetoothDevices()}
+        >{m.refresh_bonded_bluetooth_devices()}</button
+      >
+    {/if}
+    {#if connectionType === 'bluetooth' && device?.type === 'bluetooth' && device.serviceUuid}
+      <p class="service-uuid">
+        <span>{m.custom_service_uuid()}</span>
+        <code>{device.serviceUuid}</code>
+      </p>
+    {/if}
+    {#if connectionType === 'tcp' || bluetoothSupported}
+      <button type="submit" disabled={pending}
+        >{device ? m.save_external_device() : m.add_external_device()}</button
+      >
+    {/if}
+    {#if commandFailed}
+      <p class="error" role="alert">{m.save_external_device_error()}</p>
+    {/if}
+    {#if device && onDelete}
+      <button type="button" onclick={openDeleteConfirmation}>{m.delete_external_device()}</button>
+    {/if}
+  </form>
+</ScreenScaffold>
 
 {#if confirmingDelete && device}
   <dialog open aria-labelledby="delete-heading">

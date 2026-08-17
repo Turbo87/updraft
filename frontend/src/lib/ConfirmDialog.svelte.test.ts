@@ -48,11 +48,18 @@ describe('ConfirmDialog.svelte', () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it('reports confirmation', async () => {
+  it('reports confirmation and waits for its parent to close', async () => {
     let onConfirm = vi.fn();
-    await render(ConfirmDialog, { ...props, onConfirm });
+    let view = await render(ConfirmDialog, { ...props, onConfirm });
 
     await page.getByRole('button', { name: props.confirmLabel }).click();
+    expect(onConfirm).toHaveBeenCalledOnce();
+    await expect.element(page.getByRole('alertdialog', { name: props.title })).toBeInTheDocument();
+
+    await view.rerender({ ...props, onConfirm, open: false });
+    await expect
+      .element(page.getByRole('alertdialog', { name: props.title }))
+      .not.toBeInTheDocument();
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 

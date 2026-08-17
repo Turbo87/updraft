@@ -41,6 +41,7 @@
   }
 
   function confirmRemoval(): void {
+    removeDialogOpen = false;
     void mutate(onRemove);
   }
 

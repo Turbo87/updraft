@@ -16,7 +16,7 @@
       docs: {
         description: {
           component:
-            'Use this dialog to confirm an action with a significant consequence. The safe action receives initial focus. Focus stays inside the dialog and returns to the previous element when the dialog closes. Escape cancels the action. Outside interaction does not close the dialog.',
+            'Use this dialog to confirm an action with a significant consequence. The safe action receives initial focus. Focus stays inside the dialog and returns to the previous element when the dialog closes. Escape cancels the action. Outside interaction does not close the dialog. The parent closes the controlled dialog from `onConfirm` after the operation succeeds.',
         },
       },
     },
@@ -25,6 +25,16 @@
 
 <script lang="ts">
   let open = $state(false);
+
+  function cancel() {
+    open = false;
+    onCancel();
+  }
+
+  function confirm() {
+    open = false;
+    onConfirm();
+  }
 </script>
 
 <Story name="Remove airspace file" asChild>
@@ -35,7 +45,7 @@
     description="The file is deleted from this device and airspace disappears from the map. You can import it again later."
     cancelLabel="Cancel"
     confirmLabel="Remove"
-    {onCancel}
-    {onConfirm}
+    onCancel={cancel}
+    onConfirm={confirm}
   />
 </Story>

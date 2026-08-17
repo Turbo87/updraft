@@ -23,42 +23,15 @@
     onConfirm,
   }: Props = $props();
 
-  let result = $state<'cancel' | 'confirm'>();
   let cancelButton = $state<HTMLButtonElement | null>(null);
-
-  function getOpen() {
-    return open;
-  }
-
-  function setOpen(value: boolean) {
-    open = value;
-  }
-
-  function choose(nextResult: 'cancel' | 'confirm') {
-    result = nextResult;
-  }
-
-  function confirm() {
-    choose('confirm');
-    open = false;
-  }
 
   function focusCancel(event: Event) {
     event.preventDefault();
     cancelButton?.focus();
   }
-
-  function reportResult(value: boolean) {
-    if (value || !result) return;
-
-    let completedResult = result;
-    result = undefined;
-    if (completedResult === 'confirm') onConfirm();
-    else onCancel();
-  }
 </script>
 
-<AlertDialog.Root bind:open={getOpen, setOpen} onOpenChangeComplete={reportResult}>
+<AlertDialog.Root bind:open>
   <AlertDialog.Portal>
     <AlertDialog.Overlay class="confirm-dialog-overlay" />
     <AlertDialog.Content
@@ -71,7 +44,7 @@
         {description}
       </AlertDialog.Description>
       <div class="actions">
-        <AlertDialog.Cancel bind:ref={cancelButton} onclick={() => choose('cancel')}>
+        <AlertDialog.Cancel bind:ref={cancelButton} onclick={onCancel}>
           {#snippet child({ props })}
             <Button {...props} size="large" variant="secondary" style="width: 100%">
               {cancelLabel}
@@ -85,7 +58,7 @@
               size="large"
               variant="destructive"
               style="width: 100%"
-              onclick={confirm}
+              onclick={onConfirm}
             >
               {confirmLabel}
             </Button>

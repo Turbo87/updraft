@@ -103,8 +103,8 @@ importers:
         specifier: 2.2.9
         version: 2.2.9
       '@inlang/plugin-message-format':
-        specifier: 4.4.1
-        version: 4.4.1
+        specifier: 4.4.3
+        version: 4.4.3
       '@storybook/addon-a11y':
         specifier: 10.5.8
         version: 10.5.8(storybook@10.5.8(@types/react@19.2.18)(prettier@3.9.6)(react@19.2.8))
@@ -529,8 +529,8 @@ packages:
   '@inlang/plugin-m-function-matcher@2.2.9':
     resolution: {integrity: sha512-FqrEw6p5UKn0fVLedILx5vjEAPAl01Uuv1xlF6pQ9XMxpDsTUSOAPrjWuus1jiPBnYEdbK8cP43Ni0e3IPz9aQ==}
 
-  '@inlang/plugin-message-format@4.4.1':
-    resolution: {integrity: sha512-gI918CgIbOzrSk8BdETtARYVo3WcojjD33ASmn+taeNunkgrN5U4TkEqpC3yDJ+G0tMZm1mhEzS3dn3JwJpQoA==}
+  '@inlang/plugin-message-format@4.4.3':
+    resolution: {integrity: sha512-jBOT0CKgG49mctJZZ3Ltz4o9xkxbCYM1xXhKXl+1dIRV+IedpS93q1jAdMKGSfexgGxcagFopdNbnLb7wq/OZg==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
@@ -3135,7 +3135,7 @@ snapshots:
     transitivePeerDependencies:
       - babel-plugin-macros
 
-  '@inlang/plugin-message-format@4.4.1':
+  '@inlang/plugin-message-format@4.4.3':
     dependencies:
       flat: 6.0.1
 

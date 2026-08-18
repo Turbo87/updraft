@@ -1,0 +1,192 @@
+import { ColorItem, ColorPalette, Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Colors" />
+
+# Semantic colors
+
+Components use semantic color tokens. They do not select palette hues directly. Switch the theme
+from the toolbar to inspect each token in light and dark mode.
+
+Color does not communicate state by itself. Components also use text, icons, shape, or position to
+make each state identifiable.
+
+## Surfaces
+
+<ColorPalette>
+  <ColorItem
+    title="--color-screen-surface"
+    subtitle="Opaque screens that cover the map"
+    colors={['var(--color-screen-surface)']}
+  />
+  <ColorItem
+    title="--color-screen-surface-sunken"
+    subtitle="Background behind grouped cards"
+    colors={['var(--color-screen-surface-sunken)']}
+  />
+  <ColorItem
+    title="--color-card-surface"
+    subtitle="Grouped settings cards"
+    colors={['var(--color-card-surface)']}
+  />
+  <ColorItem
+    title="--color-control-surface"
+    subtitle="Inputs and controls"
+    colors={['var(--color-control-surface)']}
+  />
+  <ColorItem
+    title="--color-control-surface-pressed"
+    subtitle="Pressed rows and opaque controls"
+    colors={['var(--color-control-surface-pressed)']}
+  />
+  <ColorItem
+    title="--color-map-overlay-surface / --color-map-overlay-text"
+    subtitle="Opaque map overlays for values that need continuous reading"
+    colors={{ Surface: 'var(--color-map-overlay-surface)', Text: 'var(--color-map-overlay-text)' }}
+  />
+  <ColorItem
+    title="--color-map-overlay-scrim"
+    subtitle="Floating map controls that keep the map visible"
+    colors={['var(--color-map-overlay-scrim)']}
+  />
+  <ColorItem
+    title="--color-map-overlay-scrim-pressed"
+    subtitle="Pressed floating map controls"
+    colors={['var(--color-map-overlay-scrim-pressed)']}
+  />
+  <ColorItem
+    title="--color-scrim"
+    subtitle="Content behind a modal dialog"
+    colors={['var(--color-scrim)']}
+  />
+</ColorPalette>
+
+## Text and boundaries
+
+Muted text is suitable for secondary content. Faint text is only for decorative glyphs and
+separators. It is not suitable for labels.
+
+<ColorPalette>
+  <ColorItem
+    title="--color-text"
+    subtitle="Titles, labels, and values"
+    colors={['var(--color-text)']}
+  />
+  <ColorItem
+    title="--color-text-muted"
+    subtitle="Hints, units, and secondary values"
+    colors={['var(--color-text-muted)']}
+  />
+  <ColorItem
+    title="--color-text-faint"
+    subtitle="Decorative glyphs only"
+    colors={['var(--color-text-faint)']}
+  />
+  <ColorItem title="--color-link" subtitle="Inline links" colors={['var(--color-link)']} />
+  <ColorItem
+    title="--color-focus-ring"
+    subtitle="Keyboard focus indicators"
+    colors={['var(--color-focus-ring)']}
+  />
+  <ColorItem title="--color-border" subtitle="Hairlines" colors={['var(--color-border)']} />
+  <ColorItem
+    title="--color-border-strong"
+    subtitle="Input and control outlines"
+    colors={['var(--color-border-strong)']}
+  />
+  <ColorItem
+    title="--color-separator"
+    subtitle="Row separators inside cards"
+    colors={['var(--color-separator)']}
+  />
+</ColorPalette>
+
+## Status and alarm roles
+
+Normal and caution states use tinted surfaces. Warning and danger states use solid surfaces. This
+fill change makes the alarm escalation visible without relying only on hue.
+
+<ColorPalette>
+  <ColorItem
+    title="--color-normal-surface / --color-normal-text"
+    subtitle="Normal status"
+    colors={{ Surface: 'var(--color-normal-surface)', Text: 'var(--color-normal-text)' }}
+  />
+  <ColorItem
+    title="--color-caution-surface / --color-caution-text"
+    subtitle="Caution status"
+    colors={{ Surface: 'var(--color-caution-surface)', Text: 'var(--color-caution-text)' }}
+  />
+  <ColorItem
+    title="--color-warning-surface / --color-warning-text"
+    subtitle="Warning alarm"
+    colors={{ Surface: 'var(--color-warning-surface)', Text: 'var(--color-warning-text)' }}
+  />
+  <ColorItem
+    title="--color-danger-surface / --color-danger-text"
+    subtitle="Danger alarm"
+    colors={{ Surface: 'var(--color-danger-surface)', Text: 'var(--color-danger-text)' }}
+  />
+  <ColorItem
+    title="--color-danger-subtle-surface / --color-danger-subtle-text"
+    subtitle="Inline errors"
+    colors={{
+      Surface: 'var(--color-danger-subtle-surface)',
+      Text: 'var(--color-danger-subtle-text)',
+    }}
+  />
+  <ColorItem
+    title="--color-success-surface / --color-success-text"
+    subtitle="Successful status"
+    colors={{ Surface: 'var(--color-success-surface)', Text: 'var(--color-success-text)' }}
+  />
+  <ColorItem
+    title="--color-disabled-surface / --color-disabled-text"
+    subtitle="Unavailable controls"
+    colors={{ Surface: 'var(--color-disabled-surface)', Text: 'var(--color-disabled-text)' }}
+  />
+</ColorPalette>
+
+## Actions
+
+<ColorPalette>
+  <ColorItem
+    title="--color-action-primary-surface / --color-action-primary-text"
+    subtitle="Primary actions"
+    colors={{
+      Surface: 'var(--color-action-primary-surface)',
+      Text: 'var(--color-action-primary-text)',
+    }}
+  />
+  <ColorItem
+    title="--color-action-secondary-surface / --color-action-secondary-surface-pressed / --color-action-secondary-text"
+    subtitle="Secondary actions"
+    colors={{
+      Surface: 'var(--color-action-secondary-surface)',
+      Pressed: 'var(--color-action-secondary-surface-pressed)',
+      Text: 'var(--color-action-secondary-text)',
+    }}
+  />
+  <ColorItem
+    title="--color-action-destructive-surface / --color-action-destructive-text"
+    subtitle="Destructive actions"
+    colors={{
+      Surface: 'var(--color-action-destructive-surface)',
+      Text: 'var(--color-action-destructive-text)',
+    }}
+  />
+</ColorPalette>
+
+## Instrument values
+
+<ColorPalette>
+  <ColorItem
+    title="--color-value-text"
+    subtitle="Current instrument values"
+    colors={['var(--color-value-text)']}
+  />
+  <ColorItem
+    title="--color-value-stale"
+    subtitle="The last value from a stale source"
+    colors={['var(--color-value-stale)']}
+  />
+</ColorPalette>

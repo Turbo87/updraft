@@ -11,9 +11,9 @@ body {
 }
 
 body {
-  background-color: var(--color-app-surface);
+  background-color: var(--color-screen-surface);
   color: var(--color-text);
-  font-family: 'Barlow', system-ui, sans-serif;
+  font-family: var(--font-ui);
   line-height: 1.5;
 }
 

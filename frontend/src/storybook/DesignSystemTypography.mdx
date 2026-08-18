@@ -1,0 +1,161 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Typography" />
+
+# Typography
+
+Updraft uses Barlow for interface text. It uses Barlow Semi Condensed for values that the pilot
+reads as numbers. The condensed family keeps changing values compact without reducing their size.
+
+Body text is at least 17 pixels. Captions use 15 pixels. The 14-pixel role is reserved for short,
+uppercase section titles. Numeric values use tabular figures so that digits do not move when values
+change.
+
+## Interface family
+
+<div style={{ fontFamily: 'var(--font-ui)', fontSize: '2rem' }}>Aa Bb Cc 0123456789</div>
+
+<div style={{ fontFamily: 'var(--font-ui)', fontSize: '1.375rem', fontWeight: 400 }}>
+  {'Regular 400 for running text and hints'}
+</div>
+<div style={{ fontFamily: 'var(--font-ui)', fontSize: '1.375rem', fontWeight: 500 }}>
+  {'Medium 500 for list-row values'}
+</div>
+<div style={{ fontFamily: 'var(--font-ui)', fontSize: '1.375rem', fontWeight: 600 }}>
+  {'Semibold 600 for labels and buttons'}
+</div>
+<div style={{ fontFamily: 'var(--font-ui)', fontSize: '1.375rem', fontWeight: 700 }}>
+  {'Bold 700 for titles'}
+</div>
+
+## Numeric family
+
+<div
+  style={{
+    fontFamily: 'var(--font-numeric)',
+    fontSize: '2rem',
+    fontWeight: 700,
+    fontVariantNumeric: 'tabular-nums',
+  }}
+>
+  {'0123456789 +1.8 248°'}
+</div>
+
+Numeric text uses weights 500, 600, and 700. Use `font-variant-numeric: tabular-nums` with every
+numeric role.
+
+## Interface roles
+
+### Screen title
+
+`--text-screen-title`
+
+<div style={{ font: 'var(--text-screen-title)', letterSpacing: '-0.01em' }}>External devices</div>
+
+### Section title
+
+`--text-section-title`
+
+<div
+  style={{
+    font: 'var(--text-section-title)',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+  }}
+>
+  {'Vertical limits'}
+</div>
+
+### Row label
+
+`--text-row-label`
+
+<div style={{ font: 'var(--text-row-label)' }}>Vertical speed</div>
+
+### Row detail
+
+`--text-row-detail`
+
+<div style={{ font: 'var(--text-row-detail)' }}>Germany 2026</div>
+
+### Body
+
+`--text-body`
+
+<div style={{ font: 'var(--text-body)' }}>No airspace file selected.</div>
+
+### Caption
+
+`--text-caption`
+
+<div style={{ font: 'var(--text-caption)' }}>Enter a whole-number port from 1 to 65535.</div>
+
+### Button
+
+`--text-button`
+
+<div style={{ font: 'var(--text-button)' }}>Cancel</div>
+
+`--text-button-large`
+
+<div style={{ font: 'var(--text-button-large)' }}>Import file</div>
+
+### Input value
+
+`--text-input`
+
+<div style={{ font: 'var(--text-input)' }}>192.168.4.1</div>
+
+## Numeric roles
+
+All numeric roles use tabular figures.
+
+### Row value
+
+`--text-row-value`
+
+<div style={{ font: 'var(--text-row-value)', fontVariantNumeric: 'tabular-nums' }}>
+  {'1.2 km · 046°'}
+</div>
+
+### Small value
+
+`--text-value-sm`
+
+<div
+  style={{
+    font: 'var(--text-value-sm)',
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '-0.01em',
+  }}
+>
+  {'72.8'}
+</div>
+
+### Medium value
+
+`--text-value-md`
+
+<div
+  style={{
+    font: 'var(--text-value-md)',
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '-0.01em',
+  }}
+>
+  {'1245'}
+</div>
+
+### Large value
+
+`--text-value-lg`
+
+<div
+  style={{
+    font: 'var(--text-value-lg)',
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '-0.01em',
+  }}
+>
+  {'+1.8'}
+</div>

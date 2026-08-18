@@ -40,10 +40,10 @@ test.describe('with an unsupported browser language', () => {
     await expect(page.getByRole('heading', { name: 'Einstellungen' })).toBeVisible();
 
     await page.getByRole('link', { name: 'Einheiten' }).click();
-    let altitude = page.getByRole('combobox', { name: 'Höhe', exact: true });
-    await expect(altitude).toHaveValue('m');
-    await altitude.selectOption('ft');
-    await expect(altitude).toHaveValue('ft');
+    let altitude = page.getByRole('group', { name: 'Höhe', exact: true });
+    await expect(altitude.getByRole('radio', { name: 'm', exact: true })).toBeChecked();
+    await altitude.getByText('ft', { exact: true }).click();
+    await expect(altitude.getByRole('radio', { name: 'ft', exact: true })).toBeChecked();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
     await page.getByRole('link', { name: 'Zurück zur Flugansicht' }).click();
@@ -53,6 +53,14 @@ test.describe('with an unsupported browser language', () => {
 
 test('shows a menu with dedicated settings routes and top back links', async ({ page }) => {
   await page.goto('/settings?testMode=1');
+
+  await expect(page.getByRole('link', { name: 'Language English' })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /^About [A-Z][a-z]{2} \d{1,2}, \d{4}$/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Back to flight view' }).locator('.i-mdi-arrow-left'),
+  ).toBeVisible();
 
   let routes = [
     ['Language', '/settings/language'],
@@ -69,12 +77,51 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
   for (let [name, route] of routes) {
     await page.getByRole('link', { name }).click();
     await expect(page).toHaveURL(route);
-    await expect(page.getByRole('main').locator(':scope > a').first()).toHaveAttribute(
-      'href',
-      '/settings',
-    );
-    await page.getByRole('link', { name: 'Back to settings' }).click();
+    let back = page.getByRole('link', { name: 'Back to settings' });
+    await expect(back).toHaveAttribute('href', '/settings');
+    await back.click();
   }
+});
+
+test('uses the screen scaffold for language settings', async ({ page }) => {
+  await page.goto('/settings/language?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to settings' });
+
+  await expect(back).toHaveAttribute('href', '/settings');
+  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to settings');
+});
+
+test('uses the screen scaffold for unit settings', async ({ page }) => {
+  await page.goto('/settings/units?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to settings' });
+
+  await expect(back).toHaveAttribute('href', '/settings');
+  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to settings');
+});
+
+test('uses the screen scaffold for airspace settings', async ({ page }) => {
+  await page.goto('/settings/airspace?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to settings' });
+
+  await expect(back).toHaveAttribute('href', '/settings');
+  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to settings');
+});
+
+test('uses the screen scaffold when an external device is not found', async ({ page }) => {
+  await page.goto('/settings/devices/999?testMode=1');
+
+  let back = page.getByRole('link', { name: 'Back to external devices' });
+
+  await expect(page.getByRole('heading', { name: 'External devices' })).toBeVisible();
+  await expect(page.getByText('External device not found')).toBeVisible();
+  await expect(back).toHaveAttribute('href', '/settings/devices');
+  await expect(page.getByRole('main')).not.toContainText('Back to external devices');
 });
 
 test('shows source and build information on the About page', async ({ page }) => {
@@ -95,6 +142,7 @@ test('shows source and build information on the About page', async ({ page }) =>
   await expect(buildTime).toBeVisible();
   expect(Date.parse((await buildTime.getAttribute('datetime')) ?? '')).not.toBeNaN();
   await expect(page.getByRole('heading', { name: 'Data credits' })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Licences' })).toBeVisible();
 });
 
 test('shows a snapshot of the current map source credits', async ({ page }) => {
@@ -139,8 +187,12 @@ test.describe('with a supported German browser language', () => {
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
     await page.getByRole('link', { name: 'Einheiten' }).click();
-    await expect(page.getByRole('combobox', { name: 'Distanz', exact: true })).toHaveValue('km');
-    await expect(page.getByRole('combobox', { name: 'Steigen', exact: true })).toHaveValue('m/s');
+    await expect(
+      page.getByRole('group', { name: 'Distanz', exact: true }).getByRole('radio', { name: 'km' }),
+    ).toBeChecked();
+    await expect(
+      page.getByRole('group', { name: 'Steigen', exact: true }).getByRole('radio', { name: 'm/s' }),
+    ).toBeChecked();
   });
 });
 
@@ -175,6 +227,7 @@ test('propagates airspace status and invokes import through the fake client', as
     });
   });
 
+  await expect(page.getByRole('heading', { name: 'Current source' })).toBeVisible();
   await expect(page.getByText('rheinland.txt')).toBeVisible();
-  await expect(page.getByText('42 airspaces')).toBeVisible();
+  await expect(page.getByText('42', { exact: true })).toBeVisible();
 });

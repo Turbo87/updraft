@@ -1,13 +1,16 @@
 <script lang="ts">
   import type * as GeoJSON from 'geojson';
   import type { GeoJSONSource, Map, MapEventType } from 'maplibre-gl';
-  import type { AirspaceProperties } from '$lib/airspace';
+  import type { AirspaceLimit, AirspaceProperties } from '$lib/airspace';
   import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
   import type { Locale } from '$lib/protocol/generated/Locale';
 
   import { onMount } from 'svelte';
 
+  import Button from '$lib/Button.svelte';
   import { m } from '$lib/paraglide/messages.js';
+  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import ValueTile from '$lib/ValueTile.svelte';
   import {
     formatAirspaceActivity,
     formatAirspaceClass,
@@ -26,10 +29,19 @@
 
   let {
     altitudeUnit,
+    backLabel,
     id,
     locale,
     map,
-  }: { altitudeUnit: AltitudeUnit; id: number; locale: Locale; map: Map } = $props();
+    onBack,
+  }: {
+    altitudeUnit: AltitudeUnit;
+    backLabel: string;
+    id: number;
+    locale: Locale;
+    map: Map;
+    onBack: (event: MouseEvent) => void;
+  } = $props();
   let queryState = $state.raw<QueryState>({ type: 'loading' });
   let activeRequest = 0;
   let querying = false;
@@ -74,6 +86,14 @@
     return value ? m.yes_value() : m.no_value();
   }
 
+  function limitSummary(limit: AirspaceLimit): { value: string; unit?: string } {
+    let formatted = formatAirspaceLimit(limit, altitudeUnit);
+    let numericLimit = formatted.match(/^(-?\d+) (m|ft) (AGL|MSL)$/);
+    return numericLimit
+      ? { value: numericLimit[1], unit: `${numericLimit[2]} ${numericLimit[3]}` }
+      : { value: formatted };
+  }
+
   onMount(() => {
     map.on('styledata', queryAirspace);
     map.on('sourcedata', queryAirspace);
@@ -89,220 +109,413 @@
   });
 </script>
 
-{#if queryState.type === 'loading'}
-  <p>{m.airspace_details_loading()}</p>
-{:else if queryState.type === 'failed'}
-  <p>{m.airspace_details_failed()}</p>
-  <button type="button" onclick={retry}>{m.retry()}</button>
-{:else if queryState.type === 'notFound'}
-  <p>{m.airspace_not_found()}</p>
-{:else}
-  {@const properties = queryState.properties}
-  {@const countries = Array.isArray(properties.country)
-    ? properties.country
-    : properties.country
-      ? [properties.country]
-      : []}
-  <h1>{properties.name ?? m.unnamed_airspace()}</h1>
+<ScreenScaffold
+  {backLabel}
+  {onBack}
+  title={queryState.type === 'ready'
+    ? (queryState.properties.name ?? m.unnamed_airspace())
+    : m.airspace_label()}
+>
+  {#if queryState.type === 'loading'}
+    <p class="empty-state">{m.airspace_details_loading()}</p>
+  {:else if queryState.type === 'failed'}
+    <div class="empty-state">
+      <p>{m.airspace_details_failed()}</p>
+      <Button variant="secondary" onclick={retry}>{m.retry()}</Button>
+    </div>
+  {:else if queryState.type === 'notFound'}
+    <p class="empty-state">{m.airspace_not_found()}</p>
+  {:else}
+    {let properties = queryState.properties}
+    {let countries = Array.isArray(properties.country)
+      ? properties.country
+      : properties.country
+        ? [properties.country]
+        : []}
+    {let upperLimit = formatAirspaceLimit(properties.upperLimit, altitudeUnit)}
+    {let lowerLimit = formatAirspaceLimit(properties.lowerLimit, altitudeUnit)}
 
-  <section>
-    <h2>{m.classification_heading()}</h2>
-    <dl>
-      <dt>{m.airspace_type_label()}</dt>
-      <dd>{formatAirspaceType(properties.type, locale)}</dd>
+    <div class:without-class={properties.icaoClass === 8} class="summary">
+      <ValueTile
+        {...limitSummary(properties.upperLimit)}
+        --value-tile-value-font="var(--text-value-sm)"
+        class="summary-value"
+        label={m.airspace_upper_summary_label()}
+      />
+      <ValueTile
+        {...limitSummary(properties.lowerLimit)}
+        --value-tile-value-font="var(--text-value-sm)"
+        class="summary-value"
+        label={m.airspace_lower_summary_label()}
+      />
       {#if properties.icaoClass !== 8}
-        <dt>{m.icao_class_label()}</dt>
-        <dd>{formatAirspaceClass(properties.icaoClass, locale)}</dd>
+        <ValueTile
+          --value-tile-value-font="var(--text-value-sm)"
+          class="summary-value"
+          label={m.airspace_class_summary_label()}
+          value={'ABCDEFG'[properties.icaoClass] ??
+            formatAirspaceClass(properties.icaoClass, locale)}
+        />
       {/if}
-      {#if properties.activity !== undefined}
-        <dt>{m.activity_label()}</dt>
-        <dd>{formatAirspaceActivity(properties.activity, locale)}</dd>
-      {/if}
-    </dl>
-  </section>
+    </div>
 
-  <section>
-    <h2>{m.vertical_limits_heading()}</h2>
-    <dl>
-      <dt>{m.upper_limit_label()}</dt>
-      <dd>
-        <!-- eslint-disable-next-line prefer-let/prefer-let -- Svelte element declarations require `const`. -->
-        {const upperLimit = formatAirspaceLimit(properties.upperLimit, altitudeUnit)}
-        {properties.upperLimitMax
-          ? m.airspace_limit_maximum({
-              limit: upperLimit,
-              maximum: formatAirspaceLimit(properties.upperLimitMax, altitudeUnit),
-            })
-          : upperLimit}
-      </dd>
-      <dt>{m.lower_limit_label()}</dt>
-      <dd>
-        <!-- eslint-disable-next-line prefer-let/prefer-let -- Svelte element declarations require `const`. -->
-        {const lowerLimit = formatAirspaceLimit(properties.lowerLimit, altitudeUnit)}
-        {properties.lowerLimitMin
-          ? m.airspace_limit_minimum({
-              limit: lowerLimit,
-              minimum: formatAirspaceLimit(properties.lowerLimitMin, altitudeUnit),
-            })
-          : lowerLimit}
-      </dd>
-    </dl>
-  </section>
-
-  {#if countries.length > 0}
     <section>
-      <h2>{m.countries_heading()}</h2>
-      <ul>
-        {#each countries as country (country)}
-          <li>{country}</li>
-        {/each}
-      </ul>
-    </section>
-  {/if}
-
-  {#if properties.frequencies?.length || properties.transponderSettings?.length}
-    <section>
-      <h2>{m.communications_heading()}</h2>
-      {#if properties.frequencies?.length}
-        <dl>
-          {#each properties.frequencies as frequency (frequency)}
-            <dt>{frequency.name ?? m.frequency_label()}</dt>
-            <dd>{frequency.value} MHz</dd>
-            {#if frequency.primary !== undefined}
-              <dt>{m.primary_label()}</dt>
-              <dd>{booleanValue(frequency.primary)}</dd>
-            {/if}
-            {#if frequency.remarks}
-              <dt>{m.remarks_label()}</dt>
-              <dd>{frequency.remarks}</dd>
-            {/if}
-          {/each}
-        </dl>
-      {/if}
-      {#if properties.transponderSettings?.length}
-        <dl>
-          {#each properties.transponderSettings as setting (setting)}
-            <dt>{m.transponder_code_label()}</dt>
-            <dd>{setting.code}</dd>
-            <dt>{m.primary_label()}</dt>
-            <dd>{booleanValue(setting.primary)}</dd>
-            {#if setting.remarks}
-              <dt>{m.remarks_label()}</dt>
-              <dd>{setting.remarks}</dd>
-            {/if}
-          {/each}
-        </dl>
-      {/if}
-    </section>
-  {/if}
-
-  {#if properties.onDemand !== undefined || properties.onRequest !== undefined || properties.byNotam !== undefined || properties.specialAgreement !== undefined || properties.requestCompliance !== undefined || properties.activeFrom || properties.activeUntil || properties.hoursOfOperation}
-    <section>
-      <h2>{m.activation_heading()}</h2>
-      <dl>
-        {#if properties.onDemand !== undefined}
-          <dt>{m.on_demand_label()}</dt>
-          <dd>{booleanValue(properties.onDemand)}</dd>
+      <h2>{m.classification_heading()}</h2>
+      <dl class="detail-card">
+        <div>
+          <dt>{m.airspace_type_label()}</dt>
+          <dd>{formatAirspaceType(properties.type, locale)}</dd>
+        </div>
+        {#if properties.icaoClass !== 8}
+          <div>
+            <dt>{m.icao_class_label()}</dt>
+            <dd>{formatAirspaceClass(properties.icaoClass, locale)}</dd>
+          </div>
         {/if}
-        {#if properties.onRequest !== undefined}
-          <dt>{m.on_request_label()}</dt>
-          <dd>{booleanValue(properties.onRequest)}</dd>
-        {/if}
-        {#if properties.byNotam !== undefined}
-          <dt>{m.by_notam_label()}</dt>
-          <dd>{booleanValue(properties.byNotam)}</dd>
-        {/if}
-        {#if properties.specialAgreement !== undefined}
-          <dt>{m.special_agreement_label()}</dt>
-          <dd>{booleanValue(properties.specialAgreement)}</dd>
-        {/if}
-        {#if properties.requestCompliance !== undefined}
-          <dt>{m.request_compliance_label()}</dt>
-          <dd>{booleanValue(properties.requestCompliance)}</dd>
-        {/if}
-        {#if properties.activeFrom}
-          <dt>{m.active_from_label()}</dt>
-          <dd>{formatAirspaceDateTime(properties.activeFrom, locale)}</dd>
-        {/if}
-        {#if properties.activeUntil}
-          <dt>{m.active_until_label()}</dt>
-          <dd>{formatAirspaceDateTime(properties.activeUntil, locale)}</dd>
+        {#if properties.activity !== undefined}
+          <div>
+            <dt>{m.activity_label()}</dt>
+            <dd>{formatAirspaceActivity(properties.activity, locale)}</dd>
+          </div>
         {/if}
       </dl>
+    </section>
 
-      {#if properties.hoursOfOperation}
-        <h3>{m.operating_hours_heading()}</h3>
-        {#each properties.hoursOfOperation.operatingHours as period (period)}
-          <dl>
-            <dt>{formatAirspaceDay(period.dayOfWeek, locale)}</dt>
-            <dd></dd>
-            <dt>{m.start_time_label()}</dt>
-            <dd>
-              {#if period.sunrise}
-                {m.sunrise_value()}
-              {:else if period.startTime}
-                {formatAirspaceTime(period.startTime)}
-              {:else}
-                {m.unspecified_time_value()}
-              {/if}
+    {#if properties.upperLimitMax || properties.lowerLimitMin}
+      <section>
+        <h2>{m.vertical_limits_heading()}</h2>
+        <dl class="detail-card">
+          <div>
+            <dt>{m.upper_limit_label()}</dt>
+            <dd class="numeric">
+              {properties.upperLimitMax
+                ? m.airspace_limit_maximum({
+                    limit: upperLimit,
+                    maximum: formatAirspaceLimit(properties.upperLimitMax, altitudeUnit),
+                  })
+                : upperLimit}
             </dd>
-            <dt>{m.end_time_label()}</dt>
-            <dd>
-              {#if period.sunset}
-                {m.sunset_value()}
-              {:else if period.endTime}
-                {formatAirspaceTime(period.endTime)}
-              {:else}
-                {m.unspecified_time_value()}
-              {/if}
+          </div>
+          <div>
+            <dt>{m.lower_limit_label()}</dt>
+            <dd class="numeric">
+              {properties.lowerLimitMin
+                ? m.airspace_limit_minimum({
+                    limit: lowerLimit,
+                    minimum: formatAirspaceLimit(properties.lowerLimitMin, altitudeUnit),
+                  })
+                : lowerLimit}
             </dd>
-            <dt>{m.by_notam_label()}</dt>
-            <dd>{booleanValue(period.byNotam)}</dd>
-            <dt>{m.public_holidays_excluded_label()}</dt>
-            <dd>{booleanValue(period.publicHolidaysExcluded)}</dd>
-            {#if period.remarks}
-              <dt>{m.remarks_label()}</dt>
-              <dd>{period.remarks}</dd>
+          </div>
+        </dl>
+      </section>
+    {/if}
+
+    {#if countries.length > 0}
+      <section>
+        <h2>{m.countries_heading()}</h2>
+        <ul class="country-card">
+          {#each countries as country (country)}
+            <li>{country}</li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {#if properties.frequencies?.length || properties.transponderSettings?.length}
+      <section>
+        <h2>{m.communications_heading()}</h2>
+        <dl class="detail-card">
+          {#each properties.frequencies ?? [] as frequency (frequency)}
+            <div>
+              <dt>{frequency.name ?? m.frequency_label()}</dt>
+              <dd class="numeric">{frequency.value} MHz</dd>
+            </div>
+            {#if frequency.primary !== undefined}
+              <div>
+                <dt>{m.primary_label()}</dt>
+                <dd>{booleanValue(frequency.primary)}</dd>
+              </div>
             {/if}
-          </dl>
-        {/each}
-        {#if properties.hoursOfOperation.remarks}
-          <dl>
-            <dt>{m.remarks_label()}</dt>
-            <dd>{properties.hoursOfOperation.remarks}</dd>
-          </dl>
-        {/if}
-      {/if}
-    </section>
-  {/if}
+            {#if frequency.remarks}
+              <div>
+                <dt>{m.remarks_label()}</dt>
+                <dd>{frequency.remarks}</dd>
+              </div>
+            {/if}
+          {/each}
+          {#each properties.transponderSettings ?? [] as setting (setting)}
+            <div>
+              <dt>{m.transponder_code_label()}</dt>
+              <dd class="numeric">{setting.code}</dd>
+            </div>
+            <div>
+              <dt>{m.primary_label()}</dt>
+              <dd>{booleanValue(setting.primary)}</dd>
+            </div>
+            {#if setting.remarks}
+              <div>
+                <dt>{m.remarks_label()}</dt>
+                <dd>{setting.remarks}</dd>
+              </div>
+            {/if}
+          {/each}
+        </dl>
+      </section>
+    {/if}
 
-  {#if properties.remarks}
-    <section>
-      <h2>{m.remarks_heading()}</h2>
-      <p>{properties.remarks}</p>
-    </section>
+    {#if properties.onDemand !== undefined || properties.onRequest !== undefined || properties.byNotam !== undefined || properties.specialAgreement !== undefined || properties.requestCompliance !== undefined || properties.activeFrom || properties.activeUntil || properties.hoursOfOperation}
+      <section>
+        <h2>{m.activation_heading()}</h2>
+        <dl class="detail-card">
+          {#if properties.onDemand !== undefined}
+            <div>
+              <dt>{m.on_demand_label()}</dt>
+              <dd>{booleanValue(properties.onDemand)}</dd>
+            </div>
+          {/if}
+          {#if properties.onRequest !== undefined}
+            <div>
+              <dt>{m.on_request_label()}</dt>
+              <dd>{booleanValue(properties.onRequest)}</dd>
+            </div>
+          {/if}
+          {#if properties.byNotam !== undefined}
+            <div>
+              <dt>{m.by_notam_label()}</dt>
+              <dd>{booleanValue(properties.byNotam)}</dd>
+            </div>
+          {/if}
+          {#if properties.specialAgreement !== undefined}
+            <div>
+              <dt>{m.special_agreement_label()}</dt>
+              <dd>{booleanValue(properties.specialAgreement)}</dd>
+            </div>
+          {/if}
+          {#if properties.requestCompliance !== undefined}
+            <div>
+              <dt>{m.request_compliance_label()}</dt>
+              <dd>{booleanValue(properties.requestCompliance)}</dd>
+            </div>
+          {/if}
+          {#if properties.activeFrom}
+            <div>
+              <dt>{m.active_from_label()}</dt>
+              <dd class="numeric">{formatAirspaceDateTime(properties.activeFrom, locale)}</dd>
+            </div>
+          {/if}
+          {#if properties.activeUntil}
+            <div>
+              <dt>{m.active_until_label()}</dt>
+              <dd class="numeric">{formatAirspaceDateTime(properties.activeUntil, locale)}</dd>
+            </div>
+          {/if}
+        </dl>
+
+        {#if properties.hoursOfOperation}
+          <h3>{m.operating_hours_heading()}</h3>
+          {#each properties.hoursOfOperation.operatingHours as period (period)}
+            <div class="operating-period">
+              <h4>{formatAirspaceDay(period.dayOfWeek, locale)}</h4>
+              <dl class="detail-card">
+                <div>
+                  <dt>{m.start_time_label()}</dt>
+                  <dd class="numeric">
+                    {#if period.sunrise}
+                      {m.sunrise_value()}
+                    {:else if period.startTime}
+                      {formatAirspaceTime(period.startTime)}
+                    {:else}
+                      {m.unspecified_time_value()}
+                    {/if}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{m.end_time_label()}</dt>
+                  <dd class="numeric">
+                    {#if period.sunset}
+                      {m.sunset_value()}
+                    {:else if period.endTime}
+                      {formatAirspaceTime(period.endTime)}
+                    {:else}
+                      {m.unspecified_time_value()}
+                    {/if}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{m.by_notam_label()}</dt>
+                  <dd>{booleanValue(period.byNotam)}</dd>
+                </div>
+                <div>
+                  <dt>{m.public_holidays_excluded_label()}</dt>
+                  <dd>{booleanValue(period.publicHolidaysExcluded)}</dd>
+                </div>
+                {#if period.remarks}
+                  <div>
+                    <dt>{m.remarks_label()}</dt>
+                    <dd>{period.remarks}</dd>
+                  </div>
+                {/if}
+              </dl>
+            </div>
+          {/each}
+          {#if properties.hoursOfOperation.remarks}
+            <dl class="detail-card operating-remarks">
+              <div>
+                <dt>{m.remarks_label()}</dt>
+                <dd>{properties.hoursOfOperation.remarks}</dd>
+              </div>
+            </dl>
+          {/if}
+        {/if}
+      </section>
+    {/if}
+
+    {#if properties.remarks}
+      <section>
+        <h2>{m.remarks_heading()}</h2>
+        <p class="remarks-card">{properties.remarks}</p>
+      </section>
+    {/if}
   {/if}
-{/if}
+</ScreenScaffold>
 
 <style>
-  section {
-    margin-block-start: 1.5rem;
+  .empty-state {
+    margin: 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-card-surface);
+    color: var(--color-text-muted);
+    font: var(--text-body);
   }
 
-  h1,
-  h2,
-  h3 {
-    margin-block-end: 0.5rem;
+  div.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
   }
 
-  dl {
+  .empty-state p {
+    margin: 0;
+  }
+
+  .summary {
     display: grid;
-    grid-template-columns: max-content auto;
-    gap: 0.5rem 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin-block-end: var(--space-6);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-separator);
+  }
+
+  .summary :global(.summary-value) {
+    min-width: 0;
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .summary.without-class {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  section + section {
+    margin-block-start: var(--space-6);
+  }
+
+  h2,
+  h3,
+  h4 {
+    margin: 0 var(--space-1) var(--space-2);
+    color: var(--color-text-muted);
+    font: var(--text-section-title);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h3 {
+    margin-block-start: var(--space-4);
+  }
+
+  h4 {
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .detail-card,
+  .country-card,
+  .remarks-card {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-card-surface);
+  }
+
+  .detail-card > div {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: var(--target-min);
+    padding: var(--space-2) var(--space-5);
+  }
+
+  .detail-card > div + div {
+    border-block-start: 1px solid var(--color-separator);
+  }
+
+  dt {
+    flex: 0 1 auto;
+    font: var(--text-row-label);
   }
 
   dd {
+    min-width: 0;
     margin: 0;
+    color: var(--color-text-muted);
+    font: var(--text-row-detail);
+    overflow-wrap: anywhere;
+    text-align: end;
+  }
+
+  dd.numeric {
+    color: var(--color-value-text);
+    font-family: var(--font-numeric);
     font-variant-numeric: tabular-nums;
+  }
+
+  .country-card {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    list-style: none;
+  }
+
+  .country-card li {
+    color: var(--color-text-muted);
+    font: var(--text-row-detail);
+  }
+
+  .operating-period + .operating-period,
+  .operating-remarks {
+    margin-block-start: var(--space-3);
+  }
+
+  .remarks-card {
+    padding: var(--space-3) var(--space-5);
+    color: var(--color-text);
+    font: var(--text-body);
+  }
+
+  @media (max-width: 22rem) {
+    .summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 </style>

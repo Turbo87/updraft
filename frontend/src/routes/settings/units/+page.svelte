@@ -1,10 +1,9 @@
 <script lang="ts">
   import type { UnitSettings as UnitSettingsValue } from '$lib/protocol/generated/UnitSettings';
 
-  import { resolve } from '$app/paths';
-
   import { getAppContext } from '$lib/app-context';
   import { m } from '$lib/paraglide/messages.js';
+  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import UnitSettings from '$lib/UnitSettings.svelte';
 
   const { client, settings } = getAppContext();
@@ -24,26 +23,6 @@
   }
 </script>
 
-<main>
-  <a class="back-link" href={resolve('/settings')}>{m.back_to_settings()}</a>
-  <h1>{m.units_label()}</h1>
+<ScreenScaffold backHref="/settings" backLabel={m.back_to_settings()} title={m.units_label()}>
   <UnitSettings units={activeUnits} onUnitsChange={selectUnits} />
-</main>
-
-<style>
-  main {
-    min-height: 100%;
-    padding: 1.5rem;
-    background-color: var(--color-app-surface);
-    color: var(--color-text);
-  }
-
-  .back-link {
-    display: inline-block;
-    margin-block-end: 1rem;
-  }
-
-  h1 {
-    margin-block-start: 0;
-  }
-</style>
+</ScreenScaffold>

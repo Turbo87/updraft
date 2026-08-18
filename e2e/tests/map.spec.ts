@@ -121,8 +121,10 @@ test('keeps the Settings button inside the safe area', async ({ page }) => {
   );
 
   let settingsButton = page.getByRole('link', { name: 'Settings' });
-  await expect(settingsButton.locator('..')).toHaveCSS('top', '40px');
-  await expect(settingsButton.locator('..')).toHaveCSS('right', '32px');
+  await expect(settingsButton).toHaveCSS('width', '56px');
+  await expect(settingsButton).toHaveCSS('height', '56px');
+  await expect(settingsButton.locator('..')).toHaveCSS('top', '48px');
+  await expect(settingsButton.locator('..')).toHaveCSS('right', '40px');
 });
 
 test('keeps the return-to-position button inside the safe area', async ({ page }) => {
@@ -134,8 +136,10 @@ test('keeps the return-to-position button inside the safe area', async ({ page }
 
   await panMap(page);
   let returnButton = page.getByRole('button', { name: 'Return to position' });
-  await expect(returnButton).toHaveCSS('right', '40px');
-  await expect(returnButton).toHaveCSS('bottom', '36px');
+  await expect(returnButton).toHaveCSS('width', '56px');
+  await expect(returnButton).toHaveCSS('height', '56px');
+  await expect(returnButton.locator('..')).toHaveCSS('right', '40px');
+  await expect(returnButton.locator('..')).toHaveCSS('bottom', '36px');
 });
 
 test('renders active airspace below traffic and ownship', async ({ page }) => {
@@ -186,27 +190,39 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
   await expect(page).toHaveURL('/nearby/50.823000/6.186000');
   await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
-  await expect(page.getByText('50.82300, 6.18600')).toBeVisible();
-  await expect(page.getByText('0.0 km', { exact: true })).toBeVisible();
-  await expect(page.getByText('0°', { exact: true })).toBeVisible();
+  await expect(page.getByText('50.82300° N, 6.18600° E')).toBeVisible();
+  await expect(page.getByText('0.0', { exact: true })).toBeVisible();
+  await expect(page.getByText('km', { exact: true })).toBeVisible();
+  await expect(page.getByText('0', { exact: true })).toBeVisible();
+  await expect(page.getByText('°', { exact: true })).toBeVisible();
+  await expect(page.getByText('Arrival')).toBeVisible();
+  await expect(page.getByText('Req. L/D')).toBeVisible();
+  await expect(page.getByText('Elevation')).toBeVisible();
+  await expect(page.getByText('—', { exact: true })).toHaveCount(3);
 
   await emitInstruments(page, POSITION_B);
-  await expect(page.getByText('0.1 km', { exact: true })).toBeVisible();
-  await expect(page.getByText('212°', { exact: true })).toBeVisible();
+  await expect(page.getByText('0.1', { exact: true })).toBeVisible();
+  await expect(page.getByText('212', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
 
   await page.goto('/nearby/91/6.186?testMode=1');
+  await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
   await expect(page.getByText('The selected map position is invalid.')).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText('Back to map');
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
 });
 
 test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  let airspaceFixture = structuredClone(AIRSPACE_BROWSER_FIXTURE);
+  airspaceFixture.features[1].properties.name = 'SIV MARSEILLE NORD 1 EXTENDED AIRSPACE';
+  airspaceFixture.features[1].properties.type = 29;
   await page.addInitScript((data) => {
     (window as TestWindow).__updraftTestAirspaceData = data;
-  }, AIRSPACE_BROWSER_FIXTURE);
+  }, airspaceFixture);
   await page.goto('/?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await emitAirspace(page, { type: 'active', generation: 1 });
@@ -214,12 +230,44 @@ test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) =>
 
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.182 });
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
-  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+  await expect(airspaces.getByRole('listitem')).toHaveText([
+    /SIV MARSEILLE NORD 1 EXTENDED AIRSPACE\s+Low-altitude overflight restriction · Class E/,
+    /Düsseldorf CTR\s+Control zone · Class D/,
+  ]);
+  let firstRow = airspaces.getByRole('listitem').first();
+  let name = airspaces.getByText('SIV MARSEILLE NORD 1 EXTENDED AIRSPACE');
+  let detail = airspaces.getByText(/Low-altitude overflight restriction/);
+  let nameBox = await name.boundingBox();
+  let detailBox = await detail.boundingBox();
+  if (!nameBox || !detailBox) throw new Error('Airspace row text is not visible');
+  expect(detailBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height);
+  for (let value of [name, detail]) {
+    await expect
+      .poll(() =>
+        value.evaluate((element) => {
+          let style = getComputedStyle(element);
+          return [style.overflow, style.textOverflow, style.whiteSpace];
+        }),
+      )
+      .toEqual(['hidden', 'ellipsis', 'nowrap']);
+  }
+  let rowBox = await firstRow.boundingBox();
+  let chevronBox = await firstRow.locator('.chevron').boundingBox();
+  if (!rowBox || !chevronBox) throw new Error('Airspace row is not visible');
+  expect(chevronBox.x + chevronBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+  await expect(firstRow.getByRole('link')).toHaveCSS('border-width', '0px');
+  let scrollingRegion = page.getByRole('main');
+  expect(await scrollingRegion.evaluate((element) => element.scrollWidth)).toBe(
+    await scrollingRegion.evaluate((element) => element.clientWidth),
+  );
 });
 
 test('shows empty states without rendered features', async ({ page }) => {
   await page.goto('/nearby/50.82/6.15?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
+  await expect(
+    page.getByText('No GPS position is available. Values relative to ownship are unknown.'),
+  ).toBeVisible();
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
   let traffic = page.getByRole('region', { name: 'Traffic' });
@@ -243,19 +291,25 @@ test('keeps the first nearby airspace result', async ({ page }) => {
 
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.19 });
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
-  await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+  await expect(airspaces.getByRole('listitem')).toHaveText(
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+  );
   await expect(airspaces.getByRole('link', { name: 'Köln RMZ' })).toHaveAttribute(
     'href',
     '/airspaces/1',
   );
 
   await emitAirspace(page, { type: 'unavailable' });
-  await expect(airspaces.getByRole('listitem')).toHaveText('Köln RMZ');
+  await expect(airspaces.getByRole('listitem')).toHaveText(
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+  );
 });
 
 test('keeps nearby traffic membership while targets update', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
   await page.goto('/?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
+  await emitInstruments(page, POSITION_A);
   await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A, TRAFFIC_B] });
   let selectedPosition = TRAFFIC_A.position;
   await expect
@@ -265,9 +319,17 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
   await clickMapPosition(page, selectedPosition);
   let traffic = page.getByRole('region', { name: 'Traffic' });
   await expect(traffic.getByRole('listitem')).toHaveText([
-    'Tow plane · FLARM 000002',
-    'Glider · FLARM 000001',
+    /Tow plane · FLARM 000002\s+500 m MSL · \+100 m · 0\.0 km/,
+    /Glider · FLARM 000001\s+400 m MSL · 0 m · 0\.0 km/,
   ]);
+  let firstTrafficRow = traffic.getByRole('listitem').first();
+  let trafficLabel = firstTrafficRow.getByText('Tow plane · FLARM 000002');
+  let trafficDetail = firstTrafficRow.getByText('500 m MSL · +100 m · 0.0 km');
+  let trafficLabelBox = await trafficLabel.boundingBox();
+  let trafficDetailBox = await trafficDetail.boundingBox();
+  if (!trafficLabelBox || !trafficDetailBox) throw new Error('Traffic row text is not visible');
+  expect(trafficDetailBox.y).toBeGreaterThanOrEqual(trafficLabelBox.y + trafficLabelBox.height);
+  await expect(firstTrafficRow.locator('.traffic-symbol')).toHaveCSS('width', '32px');
 
   let updated = {
     ...TRAFFIC_A,
@@ -280,8 +342,8 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
     value: { upserts: [updated, unrelated], removed: [TRAFFIC_B.id] },
   });
   await expect(traffic.getByRole('listitem')).toHaveText([
-    'Tow plane · FLARM 000002 · Unavailable',
-    'Balloon · FLARM 000001',
+    /Tow plane · FLARM 000002 · Unavailable\s+500 m MSL · \+100 m · 0\.0 km/,
+    /Balloon · FLARM 000001/,
   ]);
 
   let recovered = { ...TRAFFIC_B, trafficType: 'paraglider' as const };
@@ -290,15 +352,15 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
     value: { upserts: [recovered], removed: [] },
   });
   await expect(traffic.getByRole('listitem')).toHaveText([
-    'Paraglider · FLARM 000002',
-    'Balloon · FLARM 000001',
+    /Paraglider · FLARM 000002\s+500 m MSL · \+100 m · 0\.0 km/,
+    /Balloon · FLARM 000001/,
   ]);
 
   await emitTraffic(page, {
     type: 'delta',
     value: { upserts: [], removed: [TRAFFIC_B.id] },
   });
-  await traffic.getByRole('link', { name: 'paraglider · FLARM 000002 · Unavailable' }).click();
+  await traffic.getByRole('link', { name: /Paraglider · FLARM 000002 · Unavailable/ }).click();
   await expect(page).toHaveURL('/traffic/flarm:000002');
   await expect(page.getByText('Traffic not found.')).toBeVisible();
 });
@@ -327,12 +389,9 @@ test('shows complete airspace details on direct visits and reloads', async ({ pa
   await emitAirspace(page, { type: 'active', generation: 1 });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
-  await expect(page.locator('main')).toMatchAriaSnapshot(`
-    - navigation:
-      - button "Back"
-      - link "Map":
-        - /url: /
-    - heading "Düsseldorf CTR" [level=1]
+  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
+  await expect(page.locator('main > div')).toMatchAriaSnapshot(`
+    - text: Upper 1524 m MSL Lower GND Class D
     - heading "Classification" [level=2]
     - term: Type
     - definition: Control zone
@@ -382,8 +441,7 @@ test('shows complete airspace details on direct visits and reloads', async ({ pa
     - term: Active until
     - definition: Apr 12, 2026, 5:45 PM
     - heading "Operating hours" [level=3]
-    - term: Sunday
-    - definition
+    - heading "Sunday" [level=4]
     - term: Start
     - definition: Sunrise
     - term: End
@@ -468,30 +526,24 @@ test('shows complete traffic details on direct visits and reloads', async ({ pag
   await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
+  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
   await expect(page.locator('main')).toMatchAriaSnapshot(`
-    - navigation:
-      - button "Back"
-      - link "Map":
-        - /url: /
-    - heading "FLARM 000001" [level=1]
-    - term: ID
-    - definition: flarm:000001
-    - term: Type
-    - definition: Glider
-    - term: Position
-    - definition: 50.82300, 6.18600
-    - term: Altitude
-    - definition: 400 m MSL
-    - term: Track
-    - definition: 45° true
-    - term: Alarm level
-    - definition: None
-    - term: State
-    - definition: Fresh
-    - term: Distance
-    - definition: 0.0 km
-    - term: Bearing
-    - definition: 0° true
+    - main:
+      - text: Distance 0.0 km Bearing 000 ° Alarm level None
+      - heading "Target" [level=2]
+      - term: ID
+      - definition: flarm:000001
+      - term: Type
+      - definition: Glider
+      - term: State
+      - definition: Fresh
+      - heading "Position" [level=2]
+      - term: Position
+      - definition: 50.82300° N, 6.18600° E
+      - term: Altitude
+      - definition: 400 m MSL 0 m
+      - term: Track
+      - definition: 45° true
   `);
 
   await page.reload();
@@ -518,29 +570,29 @@ test('updates and retains traffic details', async ({ page }) => {
     type: 'delta',
     value: { upserts: [movedTarget], removed: [] },
   });
-  await expect(page.getByText('50.82400, 6.18700')).toBeVisible();
+  await expect(page.getByText('50.82400° N, 6.18700° E')).toBeVisible();
   await expect(page.getByText('0.1 km', { exact: true })).toBeVisible();
-  await expect(page.getByText('32° true')).toBeVisible();
+  await expect(page.getByText('032', { exact: true })).toBeVisible();
   await expect(page.getByText('Stale', { exact: true })).toBeVisible();
   await expect(page.getByText('Important', { exact: true })).toBeVisible();
-  await expect(page.getByText('Unavailable', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('—', { exact: true })).toHaveCount(3);
 
   await emitInstruments(page, POSITION_C);
-  await expect(page.getByText('212° true')).toBeVisible();
+  await expect(page.getByText('212', { exact: true })).toBeVisible();
 
   await emitTraffic(page, {
     type: 'delta',
     value: { upserts: [], removed: [TRAFFIC_A.id] },
   });
-  await expect(page.getByText('Unavailable', { exact: true })).toHaveCount(3);
-  await expect(page.getByText('50.82400, 6.18700')).toBeVisible();
+  await expect(page.getByText('Unavailable', { exact: true })).toBeVisible();
+  await expect(page.getByText('50.82400° N, 6.18700° E')).toBeVisible();
 
   await emitTraffic(page, {
     type: 'delta',
     value: { upserts: [TRAFFIC_A], removed: [] },
   });
   await expect(page.getByText('Fresh', { exact: true })).toBeVisible();
-  await expect(page.getByText('50.82300, 6.18600')).toBeVisible();
+  await expect(page.getByText('50.82300° N, 6.18600° E')).toBeVisible();
 });
 
 test('shows traffic not found for missing IDs', async ({ page }) => {
@@ -568,16 +620,21 @@ test('opens inspector details and requeries the map after browser Back', async (
   let nearbyUrl = page.url();
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   let traffic = page.getByRole('region', { name: 'Traffic' });
-  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
-  await expect(traffic.getByRole('listitem')).toHaveText('Glider · FLARM 000001');
+  await expect(airspaces.getByRole('listitem')).toHaveText([
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+    /Düsseldorf CTR\s+Control zone · Class D/,
+  ]);
+  await expect(traffic.getByRole('listitem')).toHaveText(
+    /Glider · FLARM 000001\s+400 m MSL · — · —/,
+  );
 
   await airspaces.getByRole('link', { name: 'Köln RMZ' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Köln RMZ');
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page).toHaveURL(nearbyUrl);
-  await expect(traffic.getByRole('link', { name: 'Glider · FLARM 000001' })).toBeVisible();
+  await expect(traffic.getByRole('link', { name: /^Glider · FLARM 000001/ })).toBeVisible();
 
-  await traffic.getByRole('link', { name: 'Glider · FLARM 000001' }).click();
+  await traffic.getByRole('link', { name: /^Glider · FLARM 000001/ }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
   await emitTraffic(page, {
     type: 'delta',
@@ -591,7 +648,10 @@ test('opens inspector details and requeries the map after browser Back', async (
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page).toHaveURL(nearbyUrl);
   await expect(traffic.getByText('No traffic at this position.')).toBeVisible();
-  await expect(airspaces.getByRole('listitem')).toHaveText(['Köln RMZ', 'Düsseldorf CTR']);
+  await expect(airspaces.getByRole('listitem')).toHaveText([
+    /Köln RMZ\s+Radio mandatory zone · Class E/,
+    /Düsseldorf CTR\s+Control zone · Class D/,
+  ]);
 });
 
 async function emitInstruments(page: Page, gps: GpsInstruments) {

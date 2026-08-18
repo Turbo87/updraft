@@ -18,6 +18,25 @@ function renderExternalDeviceForm({
 }
 
 describe('ExternalDeviceForm.svelte', () => {
+  it('owns the add-device screen navigation', async () => {
+    renderExternalDeviceForm({ onSave: async () => {} });
+
+    await expect
+      .element(page.getByRole('heading', { name: 'Add external device' }))
+      .toBeInTheDocument();
+    await expect
+      .element(page.getByRole('link', { name: 'Back to external devices' }))
+      .toHaveAttribute('href', '/settings/devices');
+  });
+
+  it('places the primary action in the fixed action bar', async () => {
+    renderExternalDeviceForm({ onSave: async () => {} });
+
+    await expect
+      .element(page.getByRole('contentinfo').getByRole('button', { name: 'Add external device' }))
+      .toBeInTheDocument();
+  });
+
   it('creates a bonded Bluetooth device with the standard service', async () => {
     let onSave = vi.fn(async () => {});
     renderExternalDeviceForm({
@@ -29,7 +48,7 @@ describe('ExternalDeviceForm.svelte', () => {
     });
 
     await page.getByLabelText('Connection type').selectOptions('bluetooth');
-    await page.getByLabelText('Bonded device').selectOptions('00:11:22:33:44:55');
+    await page.getByRole('radio', { name: 'Flight recorder 00:11:22:33:44:55' }).click();
     await page.getByRole('button', { name: 'Add external device' }).click();
 
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
@@ -59,9 +78,30 @@ describe('ExternalDeviceForm.svelte', () => {
     await page.getByRole('button', { name: 'Refresh bonded devices' }).click();
 
     await expect
-      .element(page.getByRole('option', { name: '00:11:22:33:44:55' }))
+      .element(page.getByRole('radio', { name: '00:11:22:33:44:55' }))
       .toBeInTheDocument();
     expect(getBondedBluetoothDevices).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a bonded-device refresh as busy', async () => {
+    let finishRefresh = () => {};
+    let pendingRefresh = new Promise<{ status: 'available'; devices: [] }>((resolve) => {
+      finishRefresh = () => resolve({ status: 'available', devices: [] });
+    });
+    let getBondedBluetoothDevices = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'permissionDenied' })
+      .mockImplementationOnce(() => pendingRefresh);
+    renderExternalDeviceForm({ getBondedBluetoothDevices, onSave: async () => {} });
+
+    await page.getByLabelText('Connection type').selectOptions('bluetooth');
+    let refreshButton = page.getByRole('button', { name: 'Refresh bonded devices' });
+    await refreshButton.click();
+
+    await expect.element(refreshButton).toBeDisabled();
+    await expect.element(refreshButton).toHaveAttribute('aria-busy', 'true');
+    finishRefresh();
+    await expect.element(refreshButton).toBeEnabled();
   });
 
   it('distinguishes disabled Bluetooth from denied permission', async () => {
@@ -141,13 +181,13 @@ describe('ExternalDeviceForm.svelte', () => {
     });
 
     await expect
-      .element(page.getByRole('option', { name: '00:11:22:33:44:55 (not currently bonded)' }))
+      .element(page.getByRole('radio', { name: '00:11:22:33:44:55 (not currently bonded)' }))
       .toBeInTheDocument();
     await expect
       .element(page.getByText('12345678-1234-1234-1234-123456789abc', { exact: true }))
       .toBeInTheDocument();
 
-    await page.getByLabelText('Bonded device').selectOptions('AA:BB:CC:DD:EE:FF');
+    await page.getByRole('radio', { name: 'New flight recorder AA:BB:CC:DD:EE:FF' }).click();
     await page.getByRole('button', { name: 'Save changes' }).click();
 
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
@@ -328,6 +368,7 @@ describe('ExternalDeviceForm.svelte', () => {
     await saveButton.click();
 
     await expect.element(saveButton).toBeDisabled();
+    await expect.element(saveButton).toHaveAttribute('aria-busy', 'true');
     finishSave();
     await expect.element(saveButton).toBeEnabled();
   });
@@ -362,7 +403,12 @@ describe('ExternalDeviceForm.svelte', () => {
     await page.getByRole('button', { name: 'Delete external device' }).click();
 
     await expect
-      .element(page.getByRole('dialog', { name: 'Delete 192.0.2.1:4353?' }))
+      .element(page.getByRole('alertdialog', { name: 'Delete 192.0.2.1:4353?' }))
+      .toBeInTheDocument();
+    await expect
+      .element(
+        page.getByText('The external device is removed from Updraft. You can add it again later.'),
+      )
       .toBeInTheDocument();
     expect(onDelete).not.toHaveBeenCalled();
 
@@ -383,7 +429,7 @@ describe('ExternalDeviceForm.svelte', () => {
     await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
     await expect
-      .element(page.getByRole('dialog', { name: 'Delete 192.0.2.1:4353?' }))
+      .element(page.getByRole('alertdialog', { name: 'Delete 192.0.2.1:4353?' }))
       .toBeInTheDocument();
     await expect
       .element(page.getByRole('alert'))

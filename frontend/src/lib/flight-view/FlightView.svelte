@@ -10,6 +10,7 @@
   import { resolve } from '$app/paths';
 
   import Map from '$lib/map/Map.svelte';
+  import MapOverlayControl from '$lib/MapOverlayControl.svelte';
   import { m } from '$lib/paraglide/messages.js';
 
   let {
@@ -48,7 +49,7 @@
     onInspect={openNearbyRoute}
   />
   <div class="overlay">
-    <a href={resolve('/settings')}>{m.settings_heading()}</a>
+    <MapOverlayControl href="/settings" icon="i-mdi-menu" label={m.settings_heading()} />
   </div>
 </section>
 
@@ -61,15 +62,7 @@
 
   .overlay {
     position: absolute;
-    top: calc(0.5rem + var(--safe-area-top));
-    right: calc(0.5rem + var(--safe-area-right));
-  }
-
-  a {
-    display: block;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    background-color: var(--color-overlay-surface);
-    color: var(--color-overlay-text);
+    top: calc(1rem + var(--safe-area-top));
+    right: calc(1rem + var(--safe-area-right));
   }
 </style>

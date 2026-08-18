@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../app.css';
+
 import LanguageSetting from './LanguageSetting.svelte';
 
 describe('LanguageSetting.svelte', () => {
@@ -13,7 +15,10 @@ describe('LanguageSetting.svelte', () => {
 
     await expect.element(page.getByRole('radio', { name: 'English' })).toBeChecked();
     await expect.element(page.getByRole('radio', { name: 'Deutsch' })).not.toBeChecked();
-    expect(document.querySelectorAll('.flag')).toHaveLength(2);
+    expect(document.querySelectorAll('[class*="i-circle-flags-lang-"]')).toHaveLength(2);
+    expect(getComputedStyle(page.getByText('Language', { exact: true }).element()).position).toBe(
+      'absolute',
+    );
   });
 
   it('reports and optimistically selects the chosen locale', async () => {

@@ -19,8 +19,10 @@
     "@fontsource/barlow": "5.3.0",
     "@fontsource/barlow-semi-condensed": "5.3.0",
     "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-opener": "2.5.4",
     "@turf/bearing": "7.4.0",
-    "@turf/distance": "7.4.0"
+    "@turf/distance": "7.4.0",
+    "bits-ui": "2.18.1"
   },
   "devDependencies": {
     "@iconify-json/circle-flags": "1.2.10",

@@ -48,7 +48,7 @@
     "storybook": "10.5.8",
     "svelte": "5.56.9",
     "svelte-check": "4.7.6",
-    "svelte-maplibre-gl": "2.2.0",
+    "svelte-maplibre-gl": "2.2.1",
     "typescript": "6.0.3",
     "unocss": "66.7.5",
     "vite": "8.2.1",

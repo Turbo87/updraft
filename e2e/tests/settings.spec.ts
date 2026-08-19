@@ -126,7 +126,7 @@ test('uses the screen scaffold when an external device is not found', async ({ p
   await expect(page.getByRole('main')).not.toContainText('Back to external devices');
 });
 
-test('quits through the client from the settings menu', async ({ page }) => {
+test('confirms before quitting through the client from the settings menu', async ({ page }) => {
   await page.goto('/settings?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
@@ -140,6 +140,16 @@ test('quits through the client from the settings menu', async ({ page }) => {
 
   await expect(page.getByText('Stops background navigation and closes the app.')).toBeVisible();
   await page.getByRole('button', { name: 'Quit Updraft' }).click();
+
+  let dialog = page.getByRole('alertdialog', { name: 'Quit Updraft?' });
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as TestWindow).__quitCalls ?? 0)).toBe(0);
+
+  await page.getByRole('button', { name: 'Quit Updraft' }).click();
+  await dialog.getByRole('button', { name: 'Quit Updraft' }).click();
   await expect.poll(() => page.evaluate(() => (window as TestWindow).__quitCalls)).toBe(1);
 });
 

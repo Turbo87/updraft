@@ -214,6 +214,7 @@
   "settings_heading": "Einstellungen",
   "back_to_flight_view": "Zurück zur Flugansicht",
   "quit_app": "Updraft beenden",
+  "quit_app_confirm_title": "Updraft beenden?",
   "quit_app_hint": "Beendet die Navigation im Hintergrund und schließt die App.",
   "back_to_settings": "Zurück zu den Einstellungen",
   "about_heading": "Über Updraft",

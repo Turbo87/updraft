@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from './Button.svelte';
   import ListRow from './ListRow.svelte';
   import { m } from './paraglide/messages.js';
   import ScreenScaffold from './ScreenScaffold.svelte';
@@ -6,9 +7,10 @@
   type Props = {
     language?: string;
     buildDate?: string;
+    onQuit?: () => void;
   };
 
-  let { language, buildDate }: Props = $props();
+  let { language, buildDate, onQuit }: Props = $props();
 </script>
 
 <ScreenScaffold backHref="/" backLabel={m.back_to_flight_view()} title={m.settings_heading()}>
@@ -41,11 +43,34 @@
       value={buildDate ?? '—'}
     />
   </nav>
+  {#if onQuit}
+    <section class="quit-action">
+      <p>{m.quit_app_hint()}</p>
+      <Button size="large" style="width: 100%" variant="destructive-outline" onclick={onQuit}>
+        <span aria-hidden="true" class="i-mdi-power action-icon"></span>
+        {m.quit_app()}
+      </Button>
+    </section>
+  {/if}
 </ScreenScaffold>
 
 <style>
   nav {
     display: grid;
     gap: var(--space-2);
+  }
+
+  .quit-action {
+    margin-block-start: var(--space-8);
+  }
+
+  .quit-action p {
+    margin: 0 0 var(--space-3);
+    color: var(--color-text-muted);
+    font: var(--text-body);
+  }
+
+  .action-icon {
+    font-size: 1.25rem;
   }
 </style>

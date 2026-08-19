@@ -41,4 +41,11 @@ export interface UpdraftClient {
   setUnits(units: UnitSettings): Promise<void>;
   importAirspace(): Promise<ImportAirspaceResult>;
   removeAirspace(): Promise<void>;
+  /**
+   * Stops the platform session and ends the app.
+   *
+   * The promise reports that the shell accepted the quit. It does not report
+   * that the app ended, because the process goes away underneath it.
+   */
+  quit(): Promise<void>;
 }

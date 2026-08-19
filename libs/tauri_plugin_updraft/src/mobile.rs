@@ -63,6 +63,14 @@ impl<R: Runtime> UpdraftMobile<R> {
             .map_err(Into::into)
     }
 
+    /// Stops the session and ends the process.
+    ///
+    /// The platform ends the process while the call is in flight, so an `Ok`
+    /// says only that the platform accepted the quit.
+    pub fn quit(&self) -> crate::Result<()> {
+        self.0.run_mobile_plugin("quit", ()).map_err(Into::into)
+    }
+
     pub fn start_spp_attempt(
         &self,
         address: &str,

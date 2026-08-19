@@ -33,6 +33,12 @@ Foreground-service startup reports success only after the service enters the
 foreground and starts the requested source. A security or lifecycle failure is
 returned to the Rust caller.
 
+## Quit
+
+A quit stops `SessionService`, removes the application task from Recents, and
+ends the process. Android owns the exit because Rust cannot wake its event loop
+after Android removes the window.
+
 ## Permissions
 
 Internal GNSS requires fine and coarse location permission. Android 12 and

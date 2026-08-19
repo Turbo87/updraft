@@ -26,6 +26,12 @@ impl<R: Runtime> UpdraftMobile<R> {
         Ok(())
     }
 
+    /// Ends the desktop app.
+    pub fn quit(&self) -> crate::Result<()> {
+        self.0.exit(0);
+        Ok(())
+    }
+
     pub fn start_spp_attempt(
         &self,
         _address: &str,

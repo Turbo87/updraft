@@ -43,3 +43,7 @@ vite.config.ts.timestamp-*
 /tauri/gen/android/app/src/main/assets/tauri.conf.json
 /tauri/gen/android/app/src/main/jniLibs/**/*.so
 /libs/*/android/.tauri
+
+# Insta writes these beside a snapshot when one does not match.
+*.snap.new
+*.pending-snap

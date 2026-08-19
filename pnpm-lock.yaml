@@ -97,8 +97,8 @@ importers:
         specifier: 1.2.3
         version: 1.2.3
       '@inlang/paraglide-js':
-        specifier: 2.24.0
-        version: 2.24.0(typescript@6.0.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0))
+        specifier: 2.24.1
+        version: 2.24.1(typescript@6.0.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0))
       '@inlang/plugin-m-function-matcher':
         specifier: 2.2.11
         version: 2.2.11
@@ -514,8 +514,8 @@ packages:
   '@iconify/utils@3.1.4':
     resolution: {integrity: sha512-b1S7B1k9ohZ+iNTi2ATxbRYG9fTrJmUT0rc46bvVnNxqNRGW7dyo/vRREwyniI5IRN2RSJHDcm+s3BjWrSAjHw==}
 
-  '@inlang/paraglide-js@2.24.0':
-    resolution: {integrity: sha512-xI5nFnqcapa2CrSY0Z0VotC1Dt6+vBZEcb8zqR7mX6C+NP5CfztxxTccjBwdVmPZqm7OzmEY9auhRA7W54jibg==}
+  '@inlang/paraglide-js@2.24.1':
+    resolution: {integrity: sha512-r/gak0kY2yuqgz0RFxccb7A89fgcLpiqoEbYfv3nxlqyhdW2v8NajE1A2xiXrv/iAo7WCX4zk8EJAhL69rcp0g==}
     hasBin: true
     peerDependencies:
       typescript: '>=5.6'
@@ -3118,7 +3118,7 @@ snapshots:
       '@iconify/types': 2.0.0
       import-meta-resolve: 4.2.0
 
-  '@inlang/paraglide-js@2.24.0(typescript@6.0.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0))':
+  '@inlang/paraglide-js@2.24.1(typescript@6.0.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0))':
     dependencies:
       '@inlang/recommend-sherlock': 0.2.1
       '@inlang/sdk': 3.0.1

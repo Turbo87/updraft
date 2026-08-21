@@ -13,7 +13,7 @@ fn emitted_instruments(effects: &[Effect]) -> Vec<Instruments> {
             let Effect::Emit(Topic::Instruments(instruments)) = effect else {
                 return None;
             };
-            Some(*instruments)
+            Some(instruments.clone())
         })
         .collect()
 }

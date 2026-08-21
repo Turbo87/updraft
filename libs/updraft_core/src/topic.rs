@@ -76,7 +76,7 @@ pub struct TrueAirspeedInstruments {
 }
 
 /// Fast-changing instrument values grouped by source-selection domain.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct Instruments {
@@ -87,7 +87,7 @@ pub struct Instruments {
 
 impl Instruments {
     pub fn as_topic(&self) -> Topic {
-        Topic::Instruments(*self)
+        Topic::Instruments(self.clone())
     }
 }
 

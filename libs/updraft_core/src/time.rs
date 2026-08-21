@@ -16,6 +16,11 @@ impl Timestamp {
         self.0.as_millis() as u64
     }
 
+    /// Time since the shell started.
+    pub const fn since_start(self) -> Duration {
+        self.0
+    }
+
     /// Time elapsed since `earlier`, clamped at zero so a late or
     /// out-of-order input can never produce a negative duration.
     pub fn saturating_since(self, earlier: Timestamp) -> Duration {
@@ -34,5 +39,12 @@ mod tests {
 
         assert_eq!(later.saturating_since(earlier), Duration::from_millis(250));
         assert_eq!(earlier.saturating_since(later), Duration::ZERO);
+    }
+
+    #[test]
+    fn exposes_time_since_the_shell_started() {
+        let timestamp = Timestamp::from_millis(1_250);
+
+        assert_eq!(timestamp.since_start(), Duration::from_millis(1_250));
     }
 }

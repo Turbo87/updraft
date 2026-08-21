@@ -20,14 +20,14 @@ const metricUnits: UnitSettings = {
   verticalSpeed: 'm/s',
 };
 
+function text(element: Element): string {
+  return element.textContent.replace(/\s+/g, ' ').trim();
+}
+
 function readValues(container: HTMLElement): { label: string; value: string }[] {
   let labels = Array.from(container.querySelectorAll('dt'));
   let values = Array.from(container.querySelectorAll('dd'));
   if (labels.length !== values.length) throw new Error('Debug value labels do not match values');
-
-  function text(element: Element): string {
-    return element.textContent.replace(/\s+/g, ' ').trim();
-  }
 
   return labels.map((label, index) => ({
     label: text(label),
@@ -104,10 +104,6 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "–",
         },
         {
-          "label": "GPS state",
-          "value": "Unavailable",
-        },
-        {
           "label": "MSL altitude",
           "value": "–",
         },
@@ -120,16 +116,8 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "–",
         },
         {
-          "label": "True airspeed state",
-          "value": "Unavailable",
-        },
-        {
           "label": "Pressure altitude",
           "value": "–",
-        },
-        {
-          "label": "Pressure altitude state",
-          "value": "Unavailable",
         },
       ]
     `);
@@ -175,10 +163,6 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "2026-01-01 12:00:00.000 UTC",
         },
         {
-          "label": "GPS state",
-          "value": "Current",
-        },
-        {
           "label": "MSL altitude",
           "value": "190 m",
         },
@@ -191,19 +175,12 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "180.0 km/h",
         },
         {
-          "label": "True airspeed state",
-          "value": "Current",
-        },
-        {
           "label": "Pressure altitude",
           "value": "1000 m",
         },
-        {
-          "label": "Pressure altitude state",
-          "value": "Current",
-        },
       ]
     `);
+    expect(view.container.querySelectorAll('dd.stale')).toHaveLength(0);
   });
 
   it('uses the selected altitude and speed units', async () => {
@@ -248,10 +225,6 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "12:00:01.250 UTC",
         },
         {
-          "label": "GPS state",
-          "value": "Stale",
-        },
-        {
           "label": "MSL altitude",
           "value": "623 ft",
         },
@@ -264,18 +237,18 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "97.2 kt",
         },
         {
-          "label": "True airspeed state",
-          "value": "Stale",
-        },
-        {
           "label": "Pressure altitude",
           "value": "3281 ft",
         },
-        {
-          "label": "Pressure altitude state",
-          "value": "Stale",
-        },
       ]
     `);
+    expect(Array.from(view.container.querySelectorAll('dd.stale'), text)).toEqual([
+      '50.82300, 6.18600',
+      '12:00:01.250 UTC',
+      '623 ft',
+      '58.3 kt',
+      '97.2 kt',
+      '3281 ft',
+    ]);
   });
 });

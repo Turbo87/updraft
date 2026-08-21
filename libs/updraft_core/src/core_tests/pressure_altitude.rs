@@ -1,14 +1,21 @@
 use super::super::*;
 use super::support::*;
 use crate::ownship::Selected;
-use claims::assert_some;
+use claims::{assert_ok, assert_some};
 use std::assert_matches;
+use updraft_nmea::PgrmzFixDimension::{NoFix, ThreeDimensional};
+use updraft_nmea::{Pgrmz, PgrmzFixDimension};
 use updraft_units::{Length, PressureAltitude};
 
-const PGRMZ_NO_FIX: &[u8] = b"$PGRMZ,1000,m,1\r\n";
-const PGRMZ_SECOND: &[u8] = b"$PGRMZ,2000,m,3\r\n";
-const PGRMZ_WITHOUT_ALTITUDE: &[u8] = b"$PGRMZ,,m,3\r\n";
 const PLXVF_WITH_PRESSURE_ALTITUDE: &[u8] = b"$PLXVF,,1.00,0.87,-0.12,-0.25,90.2,244.3,\r\n";
+
+fn pgrmz(meters: Option<f64>, fix_dimension: PgrmzFixDimension) -> Vec<u8> {
+    let altitude = meters.map(Length::from_meters);
+    assert_ok!(Vec::try_from(&Pgrmz {
+        altitude,
+        fix_dimension,
+    }))
+}
 
 fn current_pressure_altitude(core: &Core) -> Selected<PressureAltitude> {
     let DomainState::Current(selected) = core.pressure_altitude else {
@@ -22,7 +29,7 @@ fn pgrmz_selects_pressure_altitude_without_using_fix_dimension() {
     let (mut core, device_id) = core_with_external_device();
 
     let effects = core
-        .apply(Bytes::new(device_id, PGRMZ_NO_FIX), at(0))
+        .apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0))
         .effects;
 
     let selected = current_pressure_altitude(&core);
@@ -44,8 +51,11 @@ fn unsupported_or_incomplete_pressure_altitude_does_not_update_the_candidate() {
     core.apply(Bytes::new(device_id, PLXVF_WITH_PRESSURE_ALTITUDE), at(0));
     assert_matches!(core.pressure_altitude, DomainState::Unavailable);
 
-    core.apply(Bytes::new(device_id, PGRMZ_NO_FIX), at(0));
-    core.apply(Bytes::new(device_id, PGRMZ_WITHOUT_ALTITUDE), at(2_500));
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(
+        Bytes::new(device_id, pgrmz(None, ThreeDimensional)),
+        at(2_500),
+    );
     core.apply(Tick, at(3_000));
 
     assert_matches!(core.pressure_altitude, DomainState::LastKnown(_));
@@ -56,12 +66,12 @@ fn identical_pressure_altitude_refreshes_without_repeating_current_output() {
     let (mut core, device_id) = core_with_external_device();
 
     let effects = core
-        .apply(Bytes::new(device_id, PGRMZ_NO_FIX), at(0))
+        .apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0))
         .effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 
     let effects = core
-        .apply(Bytes::new(device_id, PGRMZ_NO_FIX), at(2_500))
+        .apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(2_500))
         .effects;
     assert!(effects.is_empty());
 
@@ -77,7 +87,10 @@ fn identical_pressure_altitude_refreshes_without_repeating_current_output() {
 fn gps_and_pressure_altitude_select_independent_sources() {
     let (mut core, first, second) = core_with_two_external_devices();
     core.apply(Bytes::new(first, RMC), at(0));
-    core.apply(Bytes::new(second, PGRMZ_SECOND), at(1));
+    core.apply(
+        Bytes::new(second, pgrmz(Some(2_000.), ThreeDimensional)),
+        at(1),
+    );
 
     let DomainState::Current(gps) = core.gps else {
         panic!("GPS should be current");
@@ -90,8 +103,11 @@ fn gps_and_pressure_altitude_select_independent_sources() {
 #[test]
 fn pressure_altitude_falls_back_then_becomes_last_known() {
     let (mut core, first, second) = core_with_two_external_devices();
-    core.apply(Bytes::new(first, PGRMZ_NO_FIX), at(0));
-    core.apply(Bytes::new(second, PGRMZ_SECOND), at(1_000));
+    core.apply(Bytes::new(first, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(
+        Bytes::new(second, pgrmz(Some(2_000.), ThreeDimensional)),
+        at(1_000),
+    );
 
     let selected = current_pressure_altitude(&core);
     assert_eq!(selected.source, SourceId::External(first));
@@ -125,8 +141,11 @@ fn pressure_altitude_falls_back_then_becomes_last_known() {
 #[test]
 fn reorder_reselects_fresh_pressure_altitude_without_discarding_candidates() {
     let (mut core, first, second) = core_with_two_external_devices();
-    core.apply(Bytes::new(first, PGRMZ_NO_FIX), at(0));
-    core.apply(Bytes::new(second, PGRMZ_SECOND), at(1));
+    core.apply(Bytes::new(first, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(
+        Bytes::new(second, pgrmz(Some(2_000.), ThreeDimensional)),
+        at(1),
+    );
 
     core.apply(ReorderExternalDevices::new(vec![second, first]), at(2));
     let selected = current_pressure_altitude(&core);
@@ -140,8 +159,11 @@ fn reorder_reselects_fresh_pressure_altitude_without_discarding_candidates() {
 #[test]
 fn disabling_pressure_sources_reselects_and_discards_candidates() {
     let (mut core, first, second) = core_with_two_external_devices();
-    core.apply(Bytes::new(first, PGRMZ_NO_FIX), at(0));
-    core.apply(Bytes::new(second, PGRMZ_SECOND), at(1));
+    core.apply(Bytes::new(first, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(
+        Bytes::new(second, pgrmz(Some(2_000.), ThreeDimensional)),
+        at(1),
+    );
 
     core.apply(SetExternalDeviceEnabled::disabled(first), at(2));
 

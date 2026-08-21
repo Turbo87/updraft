@@ -62,7 +62,8 @@ jobs:
           UPDRAFT_CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
           for UPDRAFT_PLUGIN_DIR in \
             "$UPDRAFT_CARGO_HOME"/registry/src/*/tauri-plugin-dialog-2.7.2/android \
-            "$UPDRAFT_CARGO_HOME"/registry/src/*/tauri-plugin-fs-2.5.1/android
+            "$UPDRAFT_CARGO_HOME"/registry/src/*/tauri-plugin-fs-2.5.1/android \
+            "$UPDRAFT_CARGO_HOME"/registry/src/*/tauri-plugin-opener-2.5.4/android
           do
             cp "$UPDRAFT_PLUGIN_DIR/proguard-rules.pro" \
               "$UPDRAFT_PLUGIN_DIR/consumer-rules.pro"

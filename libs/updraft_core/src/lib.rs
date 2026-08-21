@@ -15,6 +15,7 @@ mod fix;
 mod input;
 mod ownship;
 mod settings;
+mod signal_state;
 mod time;
 mod topic;
 mod traffic;

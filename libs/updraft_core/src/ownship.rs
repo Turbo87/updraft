@@ -1,5 +1,6 @@
 use crate::connection::ExternalDeviceId;
 use crate::fix::{FixTime, UtcInstant, UtcTime};
+use crate::signal_state::SignalState;
 use crate::time::Timestamp;
 use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments, TrueAirspeedInstruments};
 use std::time::Duration;
@@ -60,16 +61,10 @@ pub struct Selected<T> {
     pub value: T,
 }
 
-/// Represents an unavailable, current, or frozen last-known domain snapshot.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum DomainState<T> {
-    #[default]
-    Unavailable,
-    Current(Selected<T>),
-    LastKnown(Selected<T>),
-}
+/// Stores the availability and freshness of a selected domain snapshot.
+pub type DomainState<T> = SignalState<Selected<T>>;
 
-impl<T> DomainState<T> {
+impl<T> SignalState<Selected<T>> {
     /// Returns the selected snapshot for current and last-known states.
     pub fn selected(&self) -> Option<&Selected<T>> {
         match self {
@@ -79,7 +74,7 @@ impl<T> DomainState<T> {
     }
 }
 
-impl DomainState<GpsSnapshot> {
+impl SignalState<Selected<GpsSnapshot>> {
     /// Projects the selected GPS state without its source metadata.
     pub fn published(self) -> Option<GpsInstruments> {
         match self {
@@ -90,7 +85,7 @@ impl DomainState<GpsSnapshot> {
     }
 }
 
-impl DomainState<PressureAltitude> {
+impl SignalState<Selected<PressureAltitude>> {
     /// Projects the selected pressure-altitude state without its source metadata.
     pub fn published(self) -> Option<PressureAltitudeInstruments> {
         match self {
@@ -107,7 +102,7 @@ impl DomainState<PressureAltitude> {
     }
 }
 
-impl DomainState<Speed> {
+impl SignalState<Selected<Speed>> {
     /// Projects the selected true-airspeed state without its source metadata.
     pub fn published(self) -> Option<TrueAirspeedInstruments> {
         match self {

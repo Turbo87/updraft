@@ -445,15 +445,10 @@ impl Core {
             })
             .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at));
 
-        self.gps = match selected {
-            Some(selected) => DomainState::Current(selected),
-            None => match self.gps {
-                DomainState::Unavailable => DomainState::Unavailable,
-                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
-                    DomainState::LastKnown(selected)
-                }
-            },
-        };
+        match selected {
+            Some(selected) => self.gps.update(selected),
+            None => self.gps.mark_stale(),
+        }
     }
 
     fn select_pressure_altitude(&mut self, at: Timestamp) {
@@ -469,15 +464,10 @@ impl Core {
                 )
             });
 
-        self.pressure_altitude = match selected {
-            Some(selected) => DomainState::Current(selected),
-            None => match self.pressure_altitude {
-                DomainState::Unavailable => DomainState::Unavailable,
-                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
-                    DomainState::LastKnown(selected)
-                }
-            },
-        };
+        match selected {
+            Some(selected) => self.pressure_altitude.update(selected),
+            None => self.pressure_altitude.mark_stale(),
+        }
     }
 
     fn select_pressure_altitude_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
@@ -506,15 +496,10 @@ impl Core {
                 )
             });
 
-        self.true_airspeed = match selected {
-            Some(selected) => DomainState::Current(selected),
-            None => match self.true_airspeed {
-                DomainState::Unavailable => DomainState::Unavailable,
-                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
-                    DomainState::LastKnown(selected)
-                }
-            },
-        };
+        match selected {
+            Some(selected) => self.true_airspeed.update(selected),
+            None => self.true_airspeed.mark_stale(),
+        }
     }
 
     fn select_true_airspeed_after_source_reset(&mut self, source: SourceId, at: Timestamp) {

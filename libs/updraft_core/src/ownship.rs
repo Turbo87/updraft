@@ -77,45 +77,30 @@ impl<T> SignalState<Selected<T>> {
 impl SignalState<Selected<GpsSnapshot>> {
     /// Projects the selected GPS state without its source metadata.
     pub fn published(self) -> Option<GpsInstruments> {
-        match self {
-            Self::Unavailable => None,
-            Self::Current(selected) => Some(selected.value.published(false)),
-            Self::LastKnown(selected) => Some(selected.value.published(true)),
-        }
+        let (selected, stale) = self.value_with_stale()?;
+        Some(selected.value.published(stale))
     }
 }
 
 impl SignalState<Selected<PressureAltitude>> {
     /// Projects the selected pressure-altitude state without its source metadata.
     pub fn published(self) -> Option<PressureAltitudeInstruments> {
-        match self {
-            Self::Unavailable => None,
-            Self::Current(selected) => Some(PressureAltitudeInstruments {
-                meters: selected.value.into_inner().as_meters(),
-                stale: false,
-            }),
-            Self::LastKnown(selected) => Some(PressureAltitudeInstruments {
-                meters: selected.value.into_inner().as_meters(),
-                stale: true,
-            }),
-        }
+        let (selected, stale) = self.value_with_stale()?;
+        Some(PressureAltitudeInstruments {
+            meters: selected.value.into_inner().as_meters(),
+            stale,
+        })
     }
 }
 
 impl SignalState<Selected<Speed>> {
     /// Projects the selected true-airspeed state without its source metadata.
     pub fn published(self) -> Option<TrueAirspeedInstruments> {
-        match self {
-            Self::Unavailable => None,
-            Self::Current(selected) => Some(TrueAirspeedInstruments {
-                meters_per_second: selected.value.as_meters_per_second(),
-                stale: false,
-            }),
-            Self::LastKnown(selected) => Some(TrueAirspeedInstruments {
-                meters_per_second: selected.value.as_meters_per_second(),
-                stale: true,
-            }),
-        }
+        let (selected, stale) = self.value_with_stale()?;
+        Some(TrueAirspeedInstruments {
+            meters_per_second: selected.value.as_meters_per_second(),
+            stale,
+        })
     }
 }
 

@@ -21,6 +21,7 @@ describe('MapOverlayControl.svelte', () => {
     expect(style.width).toBe('56px');
     expect(style.height).toBe('56px');
     expect(style.borderRadius).toBe('50%');
+    expect(style.getPropertyValue('-webkit-tap-highlight-color')).toBe('rgba(0, 0, 0, 0)');
     expect(link.element().querySelector('.i-mdi-menu')).not.toBeNull();
   });
 

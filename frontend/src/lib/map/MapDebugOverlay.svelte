@@ -21,16 +21,8 @@
   const altitudeMeters = $derived(gps?.altitudeMeters ?? null);
   const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);
   const fixTime = $derived(formatFixTime(gps?.fixTime ?? null));
-  const gpsState = $derived(formatDomainState(gps));
   const trueAirspeed = $derived(instruments.trueAirspeed);
-  const trueAirspeedState = $derived(formatDomainState(trueAirspeed));
   const pressureAltitude = $derived(instruments.pressureAltitude);
-  const pressureAltitudeState = $derived(formatDomainState(pressureAltitude));
-
-  function formatDomainState(value: { stale: boolean } | null): string {
-    if (value === null) return 'Unavailable';
-    return value.stale ? 'Stale' : 'Current';
-  }
 
   function formatFixTime(value: FixTime | null): string {
     if (value === null) return '–';
@@ -100,46 +92,40 @@
       <dt>Center</dt>
       <dd>{lat.toFixed(5)}, {lng.toFixed(5)}</dd>
       <dt>Position</dt>
-      {#if gps}
-        <dd>
+      <dd class:stale={gps?.stale}>
+        {#if gps}
           {gps.position.latitudeDegrees.toFixed(5)},
           {gps.position.longitudeDegrees.toFixed(5)}
-        </dd>
-      {:else}
-        <dd>–</dd>
-      {/if}
+        {:else}
+          –
+        {/if}
+      </dd>
       <dt>GPS fix time</dt>
-      <dd>{fixTime}</dd>
-      <dt>GPS state</dt>
-      <dd>{gpsState}</dd>
+      <dd class:stale={gps?.stale}>{fixTime}</dd>
       <dt>MSL altitude</dt>
-      <dd>
+      <dd class:stale={gps?.stale}>
         {altitudeMeters === null
           ? '–'
           : `${convertAltitude(altitudeMeters, units.altitude).toFixed(0)} ${units.altitude}`}
       </dd>
       <dt>Ground speed</dt>
-      <dd>
+      <dd class:stale={gps?.stale}>
         {groundSpeedMetersPerSecond === null
           ? '–'
           : `${convertSpeed(groundSpeedMetersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
       </dd>
       <dt>True airspeed</dt>
-      <dd>
+      <dd class:stale={trueAirspeed?.stale}>
         {trueAirspeed === null
           ? '–'
           : `${convertSpeed(trueAirspeed.metersPerSecond, units.speed).toFixed(1)} ${units.speed}`}
       </dd>
-      <dt>True airspeed state</dt>
-      <dd>{trueAirspeedState}</dd>
       <dt>Pressure altitude</dt>
-      <dd>
+      <dd class:stale={pressureAltitude?.stale}>
         {pressureAltitude === null
           ? '–'
           : `${convertAltitude(pressureAltitude.meters, units.altitude).toFixed(0)} ${units.altitude}`}
       </dd>
-      <dt>Pressure altitude state</dt>
-      <dd>{pressureAltitudeState}</dd>
     </dl>
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />
@@ -181,6 +167,10 @@
 
   dd {
     margin: 0;
+  }
+
+  dd.stale {
+    color: var(--color-value-stale);
   }
 
   label {

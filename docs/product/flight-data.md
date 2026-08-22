@@ -76,7 +76,8 @@ new series after a pressure-source reset, a source change, or a gap longer than
 
 The instruments topic retains the previous raw vertical speed with `stale: true`
 while the pressure altitude is stale or a new series waits for its second
-sample. There is no pilot-facing vario display yet.
+sample. The debug overlay displays the value with the configured vertical-speed
+unit. There is no pilot-facing vario display yet.
 
 ## True airspeed
 

@@ -4,7 +4,7 @@
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
-  import { convertAltitude, convertSpeed } from '$lib/units';
+  import { convertAltitude, convertSpeed, convertVerticalSpeed } from '$lib/units';
 
   let {
     map,
@@ -23,6 +23,13 @@
   const fixTime = $derived(formatFixTime(gps?.fixTime ?? null));
   const trueAirspeed = $derived(instruments.trueAirspeed);
   const pressureAltitude = $derived(instruments.pressureAltitude);
+  const derivedInstruments = $derived(instruments.derived);
+
+  function verticalSpeed(metersPerSecond: number | null | undefined): string {
+    return metersPerSecond === null || metersPerSecond === undefined
+      ? '–'
+      : `${convertVerticalSpeed(metersPerSecond, units.verticalSpeed).toFixed(2)} ${units.verticalSpeed}`;
+  }
 
   function formatFixTime(value: FixTime | null): string {
     if (value === null) return '–';
@@ -125,6 +132,10 @@
         {pressureAltitude === null
           ? '–'
           : `${convertAltitude(pressureAltitude.meters, units.altitude).toFixed(0)} ${units.altitude}`}
+      </dd>
+      <dt>Raw vertical speed</dt>
+      <dd class:stale={derivedInstruments?.rawVerticalSpeed?.stale}>
+        {verticalSpeed(derivedInstruments?.rawVerticalSpeed?.metersPerSecond)}
       </dd>
     </dl>
     <label>

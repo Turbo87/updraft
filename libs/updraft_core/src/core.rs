@@ -9,12 +9,14 @@ use crate::input::{
     Start, Tick, Update,
 };
 use crate::ownship::{
-    DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
+    DomainState, GpsCandidate, GpsSnapshot, Selected, SourceId, Timed, select_gps_candidate,
     select_pressure_altitude_candidate, select_true_airspeed_candidate,
 };
+use crate::sensor_fusion::{SampleAcceptance, Vario};
 use crate::settings::{Settings, SettingsSnapshot};
+use crate::signal_state::SignalState;
 use crate::time::Timestamp;
-use crate::topic::{Instruments, Topic};
+use crate::topic::{DerivedInstruments, Instruments, SpeedInstrument, Topic};
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use serde::Serialize;
 use std::sync::Arc;
@@ -208,6 +210,9 @@ pub struct Core {
     gps: DomainState<GpsSnapshot>,
     pressure_altitude: DomainState<PressureAltitude>,
     true_airspeed: DomainState<Speed>,
+    vario: Vario,
+    vario_pressure_altitude: Option<Selected<PressureAltitude>>,
+    raw_vertical_speed: SignalState<Speed>,
     traffic: TrafficState,
 }
 
@@ -230,6 +235,9 @@ impl Core {
             gps: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
             true_airspeed: DomainState::Unavailable,
+            vario: Vario::default(),
+            vario_pressure_altitude: None,
+            raw_vertical_speed: SignalState::Unavailable,
             traffic: TrafficState::default(),
         }
     }
@@ -468,6 +476,40 @@ impl Core {
             Some(selected) => self.pressure_altitude.update(selected),
             None => self.pressure_altitude.mark_stale(),
         }
+        self.update_raw_vertical_speed();
+    }
+
+    fn update_raw_vertical_speed(&mut self) {
+        let DomainState::Current(selected) = self.pressure_altitude else {
+            self.raw_vertical_speed.mark_stale();
+            if matches!(self.pressure_altitude, DomainState::Unavailable) {
+                self.vario = Vario::default();
+                self.vario_pressure_altitude = None;
+            }
+            return;
+        };
+
+        if self.vario_pressure_altitude == Some(selected) {
+            return;
+        }
+        if self
+            .vario_pressure_altitude
+            .is_some_and(|previous| previous.source != selected.source)
+        {
+            self.vario = Vario::default();
+            self.raw_vertical_speed.mark_stale();
+        }
+        self.vario_pressure_altitude = Some(selected);
+        let SampleAcceptance::Accepted = self.vario.advance(
+            selected.ingested_at.since_start(),
+            selected.value.into_inner(),
+        ) else {
+            return;
+        };
+        match self.vario.value() {
+            Some(raw_vertical_speed) => self.raw_vertical_speed.update(raw_vertical_speed),
+            None => self.raw_vertical_speed.mark_stale(),
+        }
     }
 
     fn select_pressure_altitude_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
@@ -480,6 +522,7 @@ impl Core {
         if selected_source_was_reset && matches!(self.pressure_altitude, DomainState::LastKnown(_))
         {
             self.pressure_altitude = DomainState::Unavailable;
+            self.update_raw_vertical_speed();
         }
     }
 
@@ -535,7 +578,18 @@ impl Core {
             gps: self.gps.published(),
             pressure_altitude: self.pressure_altitude.published(),
             true_airspeed: self.true_airspeed.published(),
+            derived: self.derived_instruments().map(Box::new),
         }
+    }
+
+    fn derived_instruments(&self) -> Option<DerivedInstruments> {
+        let (raw_vertical_speed, stale) = self.raw_vertical_speed.value_with_stale()?;
+        Some(DerivedInstruments {
+            raw_vertical_speed: Some(SpeedInstrument {
+                meters_per_second: raw_vertical_speed.as_meters_per_second(),
+                stale,
+            }),
+        })
     }
 }
 

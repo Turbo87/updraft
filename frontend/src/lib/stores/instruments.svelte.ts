@@ -5,6 +5,7 @@ const EMPTY: Instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  derived: null,
 };
 
 /**

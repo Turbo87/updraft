@@ -29,6 +29,7 @@ claims = "=0.8.0"
 insta = { version = "=1.48.0", features = ["filters", "json"] }
 tempfile = "=3.27.0"
 tracing-test = "=0.2.6"
+updraft_units = { path = "../updraft_units", features = ["approx"] }
 
 [[example]]
 name = "generate_protocol_bindings"

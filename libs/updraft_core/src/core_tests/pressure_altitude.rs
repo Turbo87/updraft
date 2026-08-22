@@ -1,7 +1,9 @@
 use super::super::*;
 use super::support::*;
+use crate::connection::ConnectionSpec;
 use crate::ownship::Selected;
-use claims::{assert_ok, assert_some};
+use approx::assert_abs_diff_eq;
+use claims::{assert_none, assert_ok, assert_some};
 use std::assert_matches;
 use updraft_nmea::PgrmzFixDimension::{NoFix, ThreeDimensional};
 use updraft_nmea::{Pgrmz, PgrmzFixDimension};
@@ -62,18 +64,23 @@ fn unsupported_or_incomplete_pressure_altitude_does_not_update_the_candidate() {
 }
 
 #[test]
-fn identical_pressure_altitude_refreshes_without_repeating_current_output() {
+fn identical_pressure_altitude_initializes_the_fused_rate() {
     let (mut core, device_id) = core_with_external_device();
 
     let effects = core
         .apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0))
         .effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    assert_none!(instruments(&core).derived);
 
     let effects = core
         .apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(2_500))
         .effects;
-    assert!(effects.is_empty());
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+    let derived = assert_some!(instruments(&core).derived);
+    let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
+    assert_eq!(raw_vertical_speed.meters_per_second, 0.0);
+    assert!(!raw_vertical_speed.stale);
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert!(effects.is_empty());
@@ -81,6 +88,141 @@ fn identical_pressure_altitude_refreshes_without_repeating_current_output() {
     let effects = core.apply(Tick, at(5_500)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
     assert_matches!(core.pressure_altitude, DomainState::LastKnown(_));
+}
+
+#[test]
+fn pressure_altitude_climb_updates_fused_instruments() {
+    let (mut core, device_id) = core_with_external_device();
+
+    let mut last_effects = Vec::new();
+    for second in 0..60u64 {
+        let meters = 1_000.0 + 2.0 * second as f64;
+        last_effects = core
+            .apply(
+                Bytes::new(device_id, pgrmz(Some(meters), NoFix)),
+                at(second * 1_000),
+            )
+            .effects;
+    }
+
+    let [Effect::Emit(Topic::Instruments(instruments))] = last_effects.as_slice() else {
+        panic!("the climb should emit derived instruments");
+    };
+    let derived = assert_some!(instruments.derived.as_ref());
+    let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
+    assert_abs_diff_eq!(raw_vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
+    assert!(!raw_vertical_speed.stale);
+}
+
+#[test]
+fn pressure_source_change_keeps_the_previous_vertical_speed_stale() {
+    let (mut core, first, second) = core_with_two_external_devices();
+    core.apply(Bytes::new(first, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(Bytes::new(first, pgrmz(Some(1_000.), NoFix)), at(1_000));
+    core.apply(Bytes::new(second, pgrmz(Some(2_000.), NoFix)), at(2_000));
+
+    let current = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(current.meters_per_second, 0.0);
+    assert!(!current.stale);
+
+    core.apply(Tick, at(4_000));
+
+    let selected = current_pressure_altitude(&core);
+    assert_eq!(selected.source, SourceId::External(second));
+    let stale = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(stale.meters_per_second, 0.0);
+    assert!(stale.stale);
+}
+
+#[test]
+fn stale_pressure_altitude_keeps_the_previous_vertical_speed_stale() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(1_000));
+
+    core.apply(Tick, at(4_000));
+
+    let stale = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(stale.meters_per_second, 0.0);
+    assert!(stale.stale);
+}
+
+#[test]
+fn out_of_order_pressure_altitude_keeps_the_previous_vertical_speed_stale() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(1_000));
+    core.apply(Tick, at(4_000));
+
+    core.apply(Bytes::new(device_id, pgrmz(Some(2_000.), NoFix)), at(500));
+
+    let stale = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(stale.meters_per_second, 0.0);
+    assert!(stale.stale);
+}
+
+#[test]
+fn pressure_altitude_gap_restarts_its_vertical_speed_series_without_a_tick() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(1_000));
+
+    core.apply(
+        Bytes::new(device_id, pgrmz(Some(2_000.), NoFix)),
+        at(31_001),
+    );
+
+    let stale = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(stale.meters_per_second, 0.0);
+    assert!(stale.stale);
+
+    core.apply(
+        Bytes::new(device_id, pgrmz(Some(2_000.), NoFix)),
+        at(32_001),
+    );
+    let current = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(current.meters_per_second, 0.0);
+    assert!(!current.stale);
+}
+
+#[test]
+fn reset_pressure_source_restarts_its_vertical_speed_series() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(1_000));
+
+    core.apply(SetExternalDeviceEnabled::disabled(device_id), at(2_000));
+    core.apply(SetExternalDeviceEnabled::enabled(device_id), at(3_000));
+    core.apply(Bytes::new(device_id, pgrmz(Some(2_000.), NoFix)), at(4_000));
+
+    let stale = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(stale.meters_per_second, 0.0);
+    assert!(stale.stale);
+
+    core.apply(Bytes::new(device_id, pgrmz(Some(2_000.), NoFix)), at(5_000));
+    let current = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(current.meters_per_second, 0.0);
+    assert!(!current.stale);
+}
+
+#[test]
+fn editing_pressure_source_restarts_its_vertical_speed_series() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0));
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(1_000));
+
+    let spec = ConnectionSpec::tcp("192.0.2.1", 10110);
+    core.apply(EditExternalDevice::new(device_id, spec), at(2_000));
+    core.apply(Bytes::new(device_id, pgrmz(Some(2_000.), NoFix)), at(3_000));
+
+    let stale = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(stale.meters_per_second, 0.0);
+    assert!(stale.stale);
+
+    core.apply(Bytes::new(device_id, pgrmz(Some(2_000.), NoFix)), at(4_000));
+    let current = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
+    assert_eq!(current.meters_per_second, 0.0);
+    assert!(!current.stale);
 }
 
 #[test]

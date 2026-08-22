@@ -64,6 +64,20 @@ order wins.
 Pressure altitude is independent from GPS altitude. The two values can come
 from different devices.
 
+## Raw vertical speed
+
+The core derives raw vertical speed from consecutive selected pressure-altitude
+samples. A positive value means that pressure altitude is increasing. The value
+is not smoothed or energy compensated.
+
+The estimator ignores samples whose ingestion times do not advance. It starts a
+new series after a pressure-source reset, a source change, or a gap longer than
+30 seconds. The first sample in a series does not produce a rate.
+
+The instruments topic retains the previous raw vertical speed with `stale: true`
+while the pressure altitude is stale or a new series waits for its second
+sample. There is no pilot-facing vario display yet.
+
 ## True airspeed
 
 The current core accepts true airspeed from `$LXWP0`. It does not calculate TAS
@@ -75,8 +89,9 @@ configured horizontal-speed unit. There is no pilot-facing TAS infobox yet.
 
 ## Frontend projection
 
-The `Instruments` topic contains optional GPS, pressure-altitude, and
-true-airspeed objects. It does not publish source identity.
+The `Instruments` topic contains optional GPS, pressure-altitude, true-airspeed,
+and derived objects. The derived object contains the optional raw vertical
+speed. The topic does not publish source identity.
 
 Canonical values cross the protocol in decimal degrees, metres, metres per
 second, and milliseconds. Frontend code applies display units and locale
@@ -89,4 +104,5 @@ core emits it only when that projection changes.
 
 The current contract does not include manual per-domain source selection,
 source identity in the frontend, GPS quality presentation, IAS, additional
-internal sensors, derived vario values, or a generic source-selector framework.
+internal sensors, smoothed or energy-compensated vario values, netto, or a
+generic source-selector framework.

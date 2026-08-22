@@ -26,6 +26,12 @@ expression: topic
     "trueAirspeed": {
       "metersPerSecond": 50.0,
       "stale": false
+    },
+    "derived": {
+      "rawVerticalSpeed": {
+        "metersPerSecond": 1.2,
+        "stale": false
+      }
     }
   }
 }

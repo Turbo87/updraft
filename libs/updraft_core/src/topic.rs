@@ -75,6 +75,14 @@ pub struct SpeedInstrument {
     pub stale: bool,
 }
 
+/// Values that the sensor-fusion estimate derives from selected sensor data.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct DerivedInstruments {
+    pub raw_vertical_speed: Option<SpeedInstrument>,
+}
+
 /// Fast-changing instrument values grouped by source-selection domain.
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -83,6 +91,7 @@ pub struct Instruments {
     pub gps: Option<GpsInstruments>,
     pub pressure_altitude: Option<AltitudeInstrument>,
     pub true_airspeed: Option<SpeedInstrument>,
+    pub derived: Option<Box<DerivedInstruments>>,
 }
 
 impl Instruments {
@@ -164,6 +173,12 @@ mod tests {
                 meters_per_second: 50.0,
                 stale: false,
             }),
+            derived: Some(Box::new(DerivedInstruments {
+                raw_vertical_speed: Some(SpeedInstrument {
+                    meters_per_second: 1.2,
+                    stale: false,
+                }),
+            })),
         }
         .as_topic();
 

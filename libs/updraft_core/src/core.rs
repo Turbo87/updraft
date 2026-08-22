@@ -12,7 +12,7 @@ use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, Selected, SourceId, Timed, select_gps_candidate,
     select_pressure_altitude_candidate, select_true_airspeed_candidate,
 };
-use crate::sensor_fusion::{SampleAcceptance, Vario};
+use crate::sensor_fusion::{Estimator, SampleAcceptance};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::signal_state::SignalState;
 use crate::time::Timestamp;
@@ -210,8 +210,8 @@ pub struct Core {
     gps: DomainState<GpsSnapshot>,
     pressure_altitude: DomainState<PressureAltitude>,
     true_airspeed: DomainState<Speed>,
-    vario: Vario,
-    vario_pressure_altitude: Option<Selected<PressureAltitude>>,
+    estimator: Estimator,
+    estimator_pressure_altitude: Option<Selected<PressureAltitude>>,
     raw_vertical_speed: SignalState<Speed>,
     traffic: TrafficState,
 }
@@ -235,8 +235,8 @@ impl Core {
             gps: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
             true_airspeed: DomainState::Unavailable,
-            vario: Vario::default(),
-            vario_pressure_altitude: None,
+            estimator: Estimator::default(),
+            estimator_pressure_altitude: None,
             raw_vertical_speed: SignalState::Unavailable,
             traffic: TrafficState::default(),
         }
@@ -483,30 +483,30 @@ impl Core {
         let DomainState::Current(selected) = self.pressure_altitude else {
             self.raw_vertical_speed.mark_stale();
             if matches!(self.pressure_altitude, DomainState::Unavailable) {
-                self.vario = Vario::default();
-                self.vario_pressure_altitude = None;
+                self.estimator.reset_altitude();
+                self.estimator_pressure_altitude = None;
             }
             return;
         };
 
-        if self.vario_pressure_altitude == Some(selected) {
+        if self.estimator_pressure_altitude == Some(selected) {
             return;
         }
         if self
-            .vario_pressure_altitude
+            .estimator_pressure_altitude
             .is_some_and(|previous| previous.source != selected.source)
         {
-            self.vario = Vario::default();
+            self.estimator.reset_altitude();
             self.raw_vertical_speed.mark_stale();
         }
-        self.vario_pressure_altitude = Some(selected);
-        let SampleAcceptance::Accepted = self.vario.advance(
-            selected.ingested_at.since_start(),
-            selected.value.into_inner(),
-        ) else {
+        self.estimator_pressure_altitude = Some(selected);
+        let SampleAcceptance::Accepted = self
+            .estimator
+            .pressure_altitude(selected.ingested_at.since_start(), selected.value)
+        else {
             return;
         };
-        match self.vario.value() {
+        match self.estimator.estimate().raw_vertical_speed {
             Some(raw_vertical_speed) => self.raw_vertical_speed.update(raw_vertical_speed),
             None => self.raw_vertical_speed.mark_stale(),
         }

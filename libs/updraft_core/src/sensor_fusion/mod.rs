@@ -1,3 +1,5 @@
+mod estimator;
 mod vario;
 
-pub use vario::{SampleAcceptance, Vario};
+pub use estimator::Estimator;
+pub use vario::SampleAcceptance;

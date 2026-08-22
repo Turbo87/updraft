@@ -18,7 +18,7 @@ updraft_egm96 = { path = "../updraft_egm96" }
 updraft_geo = { path = "../updraft_geo" }
 updraft_nmea = { path = "../updraft_nmea" }
 updraft_units = { path = "../updraft_units" }
-uuid = { version = "=1.24.1", features = ["serde"] }
+uuid = { version = "=1.25.0", features = ["serde"] }
 
 [features]
 ts = ["dep:ts-rs"]

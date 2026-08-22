@@ -18,6 +18,7 @@
     },
     pressureAltitude: { meters: 1_000, stale: false },
     trueAirspeed: { metersPerSecond: 50, stale: false },
+    derived: null,
   } satisfies Instruments;
 
   const staleInstruments = {
@@ -31,6 +32,7 @@
     },
     pressureAltitude: { meters: 1_000, stale: true },
     trueAirspeed: { metersPerSecond: 50, stale: true },
+    derived: null,
   } satisfies Instruments;
 
   const metricUnits = {

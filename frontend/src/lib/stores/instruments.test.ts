@@ -19,6 +19,7 @@ describe('InstrumentsStore', () => {
         },
         pressureAltitude: null,
         trueAirspeed: null,
+        derived: null,
       },
     });
 

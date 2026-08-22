@@ -14,7 +14,9 @@ mod external_device;
 mod fix;
 mod input;
 mod ownship;
+mod sensor_fusion;
 mod settings;
+mod signal_state;
 mod time;
 mod topic;
 mod traffic;
@@ -42,8 +44,8 @@ pub use settings::{
 };
 pub use time::Timestamp;
 pub use topic::{
-    FixTime as PublishedFixTime, GpsInstruments, Instruments, LatLon, PressureAltitudeInstruments,
-    Topic, TrueAirspeedInstruments,
+    AltitudeInstrument, DerivedInstruments, FixTime as PublishedFixTime, GpsInstruments,
+    Instruments, LatLon, SpeedInstrument, Topic,
 };
 pub use traffic::{
     PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,

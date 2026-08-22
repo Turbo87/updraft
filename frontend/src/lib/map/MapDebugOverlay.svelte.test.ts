@@ -5,12 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
+import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '$lib/stores/instruments.svelte';
 import MapDebugOverlay from './MapDebugOverlay.svelte';
 
 const emptyInstruments: Instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  derived: null,
 };
 
 const metricUnits: UnitSettings = {
@@ -119,6 +121,10 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Pressure altitude",
           "value": "–",
         },
+        {
+          "label": "Raw vertical speed",
+          "value": "–",
+        },
       ]
     `);
   });
@@ -135,6 +141,7 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: false },
       trueAirspeed: { metersPerSecond: 50, stale: false },
+      derived: null,
     };
     let view = await render(MapDebugOverlay, {
       map: undefined,
@@ -178,9 +185,47 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Pressure altitude",
           "value": "1000 m",
         },
+        {
+          "label": "Raw vertical speed",
+          "value": "–",
+        },
       ]
     `);
     expect(view.container.querySelectorAll('dd.stale')).toHaveLength(0);
+  });
+
+  it('shows every estimate the core derived', async () => {
+    let instruments: Instruments = {
+      ...EMPTY_INSTRUMENTS,
+      derived: {
+        ...EMPTY_DERIVED_INSTRUMENTS,
+        rawVerticalSpeed: { metersPerSecond: 1.7, stale: false },
+      },
+    };
+    render(MapDebugOverlay, { map: undefined, instruments, units: metricUnits });
+
+    await userEvent.keyboard('d');
+
+    await expect.element(page.getByText('1.70 m/s', { exact: true })).toBeInTheDocument();
+  });
+
+  it('uses the selected vertical-speed unit and stale styling', async () => {
+    let instruments: Instruments = {
+      ...EMPTY_INSTRUMENTS,
+      derived: {
+        ...EMPTY_DERIVED_INSTRUMENTS,
+        rawVerticalSpeed: { metersPerSecond: 1, stale: true },
+      },
+    };
+    let units: UnitSettings = { ...metricUnits, verticalSpeed: 'ft/min' };
+    let view = await render(MapDebugOverlay, { map: undefined, instruments, units });
+
+    await userEvent.keyboard('d');
+
+    await expect.element(page.getByText('196.85 ft/min', { exact: true })).toBeInTheDocument();
+    expect(Array.from(view.container.querySelectorAll('dd.stale'), text)).toEqual([
+      '196.85 ft/min',
+    ]);
   });
 
   it('uses the selected altitude and speed units', async () => {
@@ -195,6 +240,7 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: true },
       trueAirspeed: { metersPerSecond: 50, stale: true },
+      derived: null,
     };
     let units: UnitSettings = {
       altitude: 'ft',
@@ -239,6 +285,10 @@ describe('MapDebugOverlay.svelte', () => {
         {
           "label": "Pressure altitude",
           "value": "3281 ft",
+        },
+        {
+          "label": "Raw vertical speed",
+          "value": "–",
         },
       ]
     `);

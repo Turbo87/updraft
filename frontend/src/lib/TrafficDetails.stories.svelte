@@ -34,7 +34,7 @@
     let instruments = new InstrumentsStore();
     instruments.apply({
       topic: 'instruments',
-      value: { gps, pressureAltitude: null, trueAirspeed: null },
+      value: { gps, pressureAltitude: null, trueAirspeed: null, derived: null },
     });
     return instruments;
   }

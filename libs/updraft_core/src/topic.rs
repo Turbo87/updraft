@@ -57,37 +57,46 @@ pub struct GpsInstruments {
     pub stale: bool,
 }
 
-/// The selected pressure-altitude domain at the frontend boundary.
+/// An altitude with its freshness state.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
-pub struct PressureAltitudeInstruments {
+pub struct AltitudeInstrument {
     pub meters: f64,
     pub stale: bool,
 }
 
-/// The selected true-airspeed domain at the frontend boundary.
+/// A speed with its freshness state.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
-pub struct TrueAirspeedInstruments {
+pub struct SpeedInstrument {
     pub meters_per_second: f64,
     pub stale: bool,
 }
 
+/// Values that the sensor-fusion estimate derives from selected sensor data.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct DerivedInstruments {
+    pub raw_vertical_speed: Option<SpeedInstrument>,
+}
+
 /// Fast-changing instrument values grouped by source-selection domain.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct Instruments {
     pub gps: Option<GpsInstruments>,
-    pub pressure_altitude: Option<PressureAltitudeInstruments>,
-    pub true_airspeed: Option<TrueAirspeedInstruments>,
+    pub pressure_altitude: Option<AltitudeInstrument>,
+    pub true_airspeed: Option<SpeedInstrument>,
+    pub derived: Option<Box<DerivedInstruments>>,
 }
 
 impl Instruments {
     pub fn as_topic(&self) -> Topic {
-        Topic::Instruments(*self)
+        Topic::Instruments(self.clone())
     }
 }
 
@@ -156,14 +165,20 @@ mod tests {
                 }),
                 stale: false,
             }),
-            pressure_altitude: Some(PressureAltitudeInstruments {
+            pressure_altitude: Some(AltitudeInstrument {
                 meters: 1_000.0,
                 stale: true,
             }),
-            true_airspeed: Some(TrueAirspeedInstruments {
+            true_airspeed: Some(SpeedInstrument {
                 meters_per_second: 50.0,
                 stale: false,
             }),
+            derived: Some(Box::new(DerivedInstruments {
+                raw_vertical_speed: Some(SpeedInstrument {
+                    meters_per_second: 1.2,
+                    stale: false,
+                }),
+            })),
         }
         .as_topic();
 

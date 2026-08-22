@@ -12,6 +12,7 @@ use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
     select_pressure_altitude_candidate, select_true_airspeed_candidate,
 };
+use crate::sensor_fusion::SensorFusion;
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
@@ -208,6 +209,7 @@ pub struct Core {
     gps: DomainState<GpsSnapshot>,
     pressure_altitude: DomainState<PressureAltitude>,
     true_airspeed: DomainState<Speed>,
+    sensor_fusion: SensorFusion,
     traffic: TrafficState,
 }
 
@@ -230,6 +232,7 @@ impl Core {
             gps: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
             true_airspeed: DomainState::Unavailable,
+            sensor_fusion: SensorFusion::default(),
             traffic: TrafficState::default(),
         }
     }
@@ -445,15 +448,10 @@ impl Core {
             })
             .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at));
 
-        self.gps = match selected {
-            Some(selected) => DomainState::Current(selected),
-            None => match self.gps {
-                DomainState::Unavailable => DomainState::Unavailable,
-                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
-                    DomainState::LastKnown(selected)
-                }
-            },
-        };
+        match selected {
+            Some(selected) => self.gps.update(selected),
+            None => self.gps.mark_stale(),
+        }
     }
 
     fn select_pressure_altitude(&mut self, at: Timestamp) {
@@ -469,15 +467,11 @@ impl Core {
                 )
             });
 
-        self.pressure_altitude = match selected {
-            Some(selected) => DomainState::Current(selected),
-            None => match self.pressure_altitude {
-                DomainState::Unavailable => DomainState::Unavailable,
-                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
-                    DomainState::LastKnown(selected)
-                }
-            },
-        };
+        match selected {
+            Some(selected) => self.pressure_altitude.update(selected),
+            None => self.pressure_altitude.mark_stale(),
+        }
+        self.sensor_fusion.pressure_altitude(self.pressure_altitude);
     }
 
     fn select_pressure_altitude_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
@@ -490,6 +484,7 @@ impl Core {
         if selected_source_was_reset && matches!(self.pressure_altitude, DomainState::LastKnown(_))
         {
             self.pressure_altitude = DomainState::Unavailable;
+            self.sensor_fusion.pressure_altitude(self.pressure_altitude);
         }
     }
 
@@ -506,15 +501,10 @@ impl Core {
                 )
             });
 
-        self.true_airspeed = match selected {
-            Some(selected) => DomainState::Current(selected),
-            None => match self.true_airspeed {
-                DomainState::Unavailable => DomainState::Unavailable,
-                DomainState::Current(selected) | DomainState::LastKnown(selected) => {
-                    DomainState::LastKnown(selected)
-                }
-            },
-        };
+        match selected {
+            Some(selected) => self.true_airspeed.update(selected),
+            None => self.true_airspeed.mark_stale(),
+        }
     }
 
     fn select_true_airspeed_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
@@ -550,6 +540,7 @@ impl Core {
             gps: self.gps.published(),
             pressure_altitude: self.pressure_altitude.published(),
             true_airspeed: self.true_airspeed.published(),
+            derived: self.sensor_fusion.instruments().map(Box::new),
         }
     }
 }

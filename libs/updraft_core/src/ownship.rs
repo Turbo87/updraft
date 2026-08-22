@@ -1,7 +1,8 @@
 use crate::connection::ExternalDeviceId;
 use crate::fix::{FixTime, UtcInstant, UtcTime};
+use crate::signal_state::SignalState;
 use crate::time::Timestamp;
-use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments, TrueAirspeedInstruments};
+use crate::topic::{AltitudeInstrument, GpsInstruments, LatLon, SpeedInstrument};
 use std::time::Duration;
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
@@ -60,16 +61,10 @@ pub struct Selected<T> {
     pub value: T,
 }
 
-/// Represents an unavailable, current, or frozen last-known domain snapshot.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum DomainState<T> {
-    #[default]
-    Unavailable,
-    Current(Selected<T>),
-    LastKnown(Selected<T>),
-}
+/// Stores the availability and freshness of a selected domain snapshot.
+pub type DomainState<T> = SignalState<Selected<T>>;
 
-impl<T> DomainState<T> {
+impl<T> SignalState<Selected<T>> {
     /// Returns the selected snapshot for current and last-known states.
     pub fn selected(&self) -> Option<&Selected<T>> {
         match self {
@@ -79,48 +74,33 @@ impl<T> DomainState<T> {
     }
 }
 
-impl DomainState<GpsSnapshot> {
+impl SignalState<Selected<GpsSnapshot>> {
     /// Projects the selected GPS state without its source metadata.
     pub fn published(self) -> Option<GpsInstruments> {
-        match self {
-            Self::Unavailable => None,
-            Self::Current(selected) => Some(selected.value.published(false)),
-            Self::LastKnown(selected) => Some(selected.value.published(true)),
-        }
+        let (selected, stale) = self.value_with_stale()?;
+        Some(selected.value.published(stale))
     }
 }
 
-impl DomainState<PressureAltitude> {
+impl SignalState<Selected<PressureAltitude>> {
     /// Projects the selected pressure-altitude state without its source metadata.
-    pub fn published(self) -> Option<PressureAltitudeInstruments> {
-        match self {
-            Self::Unavailable => None,
-            Self::Current(selected) => Some(PressureAltitudeInstruments {
-                meters: selected.value.into_inner().as_meters(),
-                stale: false,
-            }),
-            Self::LastKnown(selected) => Some(PressureAltitudeInstruments {
-                meters: selected.value.into_inner().as_meters(),
-                stale: true,
-            }),
-        }
+    pub fn published(self) -> Option<AltitudeInstrument> {
+        let (selected, stale) = self.value_with_stale()?;
+        Some(AltitudeInstrument {
+            meters: selected.value.into_inner().as_meters(),
+            stale,
+        })
     }
 }
 
-impl DomainState<Speed> {
+impl SignalState<Selected<Speed>> {
     /// Projects the selected true-airspeed state without its source metadata.
-    pub fn published(self) -> Option<TrueAirspeedInstruments> {
-        match self {
-            Self::Unavailable => None,
-            Self::Current(selected) => Some(TrueAirspeedInstruments {
-                meters_per_second: selected.value.as_meters_per_second(),
-                stale: false,
-            }),
-            Self::LastKnown(selected) => Some(TrueAirspeedInstruments {
-                meters_per_second: selected.value.as_meters_per_second(),
-                stale: true,
-            }),
-        }
+    pub fn published(self) -> Option<SpeedInstrument> {
+        let (selected, stale) = self.value_with_stale()?;
+        Some(SpeedInstrument {
+            meters_per_second: selected.value.as_meters_per_second(),
+            stale,
+        })
     }
 }
 

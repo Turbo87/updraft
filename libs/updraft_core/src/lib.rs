@@ -43,7 +43,7 @@ pub use settings::{
 };
 pub use time::Timestamp;
 pub use topic::{
-    FixTime as PublishedFixTime, GpsInstruments, Instruments, LatLon, PressureAltitudeInstruments,
+    AltitudeInstrument, FixTime as PublishedFixTime, GpsInstruments, Instruments, LatLon,
     SpeedInstrument, Topic,
 };
 pub use traffic::{

@@ -2,7 +2,7 @@ use crate::connection::ExternalDeviceId;
 use crate::fix::{FixTime, UtcInstant, UtcTime};
 use crate::signal_state::SignalState;
 use crate::time::Timestamp;
-use crate::topic::{GpsInstruments, LatLon, PressureAltitudeInstruments, SpeedInstrument};
+use crate::topic::{AltitudeInstrument, GpsInstruments, LatLon, SpeedInstrument};
 use std::time::Duration;
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
@@ -84,9 +84,9 @@ impl SignalState<Selected<GpsSnapshot>> {
 
 impl SignalState<Selected<PressureAltitude>> {
     /// Projects the selected pressure-altitude state without its source metadata.
-    pub fn published(self) -> Option<PressureAltitudeInstruments> {
+    pub fn published(self) -> Option<AltitudeInstrument> {
         let (selected, stale) = self.value_with_stale()?;
-        Some(PressureAltitudeInstruments {
+        Some(AltitudeInstrument {
             meters: selected.value.into_inner().as_meters(),
             stale,
         })

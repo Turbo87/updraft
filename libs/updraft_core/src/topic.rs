@@ -57,11 +57,11 @@ pub struct GpsInstruments {
     pub stale: bool,
 }
 
-/// The selected pressure-altitude domain at the frontend boundary.
+/// An altitude with its freshness state.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
-pub struct PressureAltitudeInstruments {
+pub struct AltitudeInstrument {
     pub meters: f64,
     pub stale: bool,
 }
@@ -81,7 +81,7 @@ pub struct SpeedInstrument {
 #[serde(rename_all = "camelCase")]
 pub struct Instruments {
     pub gps: Option<GpsInstruments>,
-    pub pressure_altitude: Option<PressureAltitudeInstruments>,
+    pub pressure_altitude: Option<AltitudeInstrument>,
     pub true_airspeed: Option<SpeedInstrument>,
 }
 
@@ -156,7 +156,7 @@ mod tests {
                 }),
                 stale: false,
             }),
-            pressure_altitude: Some(PressureAltitudeInstruments {
+            pressure_altitude: Some(AltitudeInstrument {
                 meters: 1_000.0,
                 stale: true,
             }),

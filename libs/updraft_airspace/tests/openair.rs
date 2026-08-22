@@ -26,6 +26,7 @@ const UNSUPPORTED_ALTITUDE: &[u8] =
     include_bytes!("../../../testdata/airspace/unsupported_altitude.txt");
 const LEGACY_NONE: &[u8] = include_bytes!("../../../testdata/airspace/legacy_none.txt");
 const ONE_BAD_AIRSPACE: &[u8] = include_bytes!("../../../testdata/airspace/one_bad_airspace.txt");
+const EUREGIOCUP_2026: &[u8] = include_bytes!("../../../testdata/airspace/euregiocup_2026.txt");
 
 /// Returns the canonical dataset for valid fixture bytes.
 fn parse_fixture(bytes: &[u8]) -> AirspaceDataset {
@@ -418,37 +419,92 @@ fn normalizes_legacy_classes_to_openaip_classifications() {
             AirspaceType::Restricted,
             AirspaceType::Danger,
             AirspaceType::Prohibited,
-            AirspaceType::Other,
+            AirspaceType::LowAltitudeOverflightRestriction,
             AirspaceType::GlidingSector,
             AirspaceType::RadioMandatoryZone,
             AirspaceType::TransponderMandatoryZone,
         ]
     );
     assert_eq!(airspaces[16].class, AirspaceClass::Unclassified);
-    assert_eq!(airspaces[16].type_code, AirspaceType::Restricted);
+    assert_eq!(airspaces[16].type_code, AirspaceType::Other);
     assert_eq!(airspaces[17].class, AirspaceClass::G);
     assert_eq!(airspaces[17].type_code, AirspaceType::Other);
 }
 
-/// Verifies that an unsupported explicit type retains the legacy classification.
+/// Verifies that the real-world legacy `AC GSEC` form becomes a gliding sector.
 #[test]
-fn retains_legacy_type_for_explicit_none() {
-    let dataset = parse_fixture(LEGACY_NONE);
-    let airspace = &dataset.airspaces()[0];
-
-    assert_eq!(airspace.class, AirspaceClass::Unclassified);
-    assert_eq!(airspace.type_code, AirspaceType::Restricted);
-}
-
-/// Verifies that an empty explicit type becomes `Other` for a modern class.
-#[test]
-fn maps_an_empty_explicit_type_to_other() {
-    let bytes = b"AC D\nAY \nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+fn normalizes_legacy_gsec_class() {
+    let bytes = b"AC GSEC\nAN Gliding sector\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
     let dataset = parse_fixture(bytes);
     let airspace = &dataset.airspaces()[0];
 
-    assert_eq!(airspace.class, AirspaceClass::D);
-    assert_eq!(airspace.type_code, AirspaceType::Other);
+    assert_eq!(airspace.class, AirspaceClass::Unclassified);
+    assert_eq!(airspace.type_code, AirspaceType::GlidingSector);
+}
+
+/// Verifies that the complete `EuregioCup` 2026 source imports without partial results.
+#[test]
+fn imports_euregiocup_2026_airspaces() {
+    let dataset = parse_fixture(EUREGIOCUP_2026);
+
+    assert_eq!(dataset.airspaces().len(), 742);
+}
+
+/// Verifies that an explicit no-type value conflicts with a legacy class type.
+#[test]
+fn rejects_legacy_class_with_explicit_no_type() {
+    assert_err_eq!(
+        AirspaceDataset::from_openair(LEGACY_NONE),
+        AirspaceImportError::Parse {
+            airspace_id: Some(AirspaceId(0)),
+            kind: AirspaceParseError::ConflictingClassification,
+        }
+    );
+}
+
+/// Verifies that the OpenAir v2 parser rejects an empty explicit type.
+#[test]
+fn rejects_an_empty_explicit_type() {
+    let bytes = b"AC D\nAY \nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+
+    assert_err_eq!(
+        AirspaceDataset::from_openair(bytes),
+        AirspaceImportError::Parse {
+            airspace_id: None,
+            kind: AirspaceParseError::SourceParser("Airspace type is empty".to_string()),
+        }
+    );
+}
+
+/// Verifies that legacy classes cannot contradict explicit OpenAir v2 types.
+#[test]
+fn rejects_conflicting_legacy_classifications() {
+    for bytes in [
+        b"AC R\nAY RMZ\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n".as_slice(),
+        b"AC GSEC\nAY CTA\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n".as_slice(),
+    ] {
+        assert_err_eq!(
+            AirspaceDataset::from_openair(bytes),
+            AirspaceImportError::Parse {
+                airspace_id: Some(AirspaceId(0)),
+                kind: AirspaceParseError::ConflictingClassification,
+            }
+        );
+    }
+}
+
+/// Verifies that an unknown class does not become a misleading unclassified airspace.
+#[test]
+fn rejects_an_unsupported_class() {
+    let bytes = b"AC FUTURE\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:01:00 N 010:00:00 E\n";
+
+    assert_err_eq!(
+        AirspaceDataset::from_openair(bytes),
+        AirspaceImportError::Parse {
+            airspace_id: Some(AirspaceId(0)),
+            kind: AirspaceParseError::UnsupportedClass,
+        }
+    );
 }
 
 /// Verifies that supported altitude forms use the correct typed units.

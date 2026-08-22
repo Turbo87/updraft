@@ -415,6 +415,10 @@ pub enum AirspaceParseError {
     SourceParser(String),
     #[error("the source contains too many airspaces")]
     TooManyAirspaces,
+    #[error("the airspace class is not supported")]
+    UnsupportedClass,
+    #[error("the airspace class conflicts with its type")]
+    ConflictingClassification,
     #[error("the airspace altitude is not supported")]
     UnsupportedAltitude,
     #[error("the airspace frequency is invalid")]

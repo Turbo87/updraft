@@ -2981,9 +2981,9 @@ dependencies = [
 
 [[package]]
 name = "openair"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00d2c75d344b2210cc972ca6de28204730cdba7ac9f0d969d4f8f991b73d95f3"
+checksum = "81f9ebaa68501b9b6e7ff094566d8a6c6ad5a9e0d3d632b30e259a842b7da91d"
 dependencies = [
  "iso8601",
  "log",

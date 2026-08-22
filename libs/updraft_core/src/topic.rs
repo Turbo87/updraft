@@ -66,11 +66,11 @@ pub struct PressureAltitudeInstruments {
     pub stale: bool,
 }
 
-/// The selected true-airspeed domain at the frontend boundary.
+/// A speed with its freshness state.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
-pub struct TrueAirspeedInstruments {
+pub struct SpeedInstrument {
     pub meters_per_second: f64,
     pub stale: bool,
 }
@@ -82,7 +82,7 @@ pub struct TrueAirspeedInstruments {
 pub struct Instruments {
     pub gps: Option<GpsInstruments>,
     pub pressure_altitude: Option<PressureAltitudeInstruments>,
-    pub true_airspeed: Option<TrueAirspeedInstruments>,
+    pub true_airspeed: Option<SpeedInstrument>,
 }
 
 impl Instruments {
@@ -160,7 +160,7 @@ mod tests {
                 meters: 1_000.0,
                 stale: true,
             }),
-            true_airspeed: Some(TrueAirspeedInstruments {
+            true_airspeed: Some(SpeedInstrument {
                 meters_per_second: 50.0,
                 stale: false,
             }),

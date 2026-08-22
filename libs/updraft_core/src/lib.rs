@@ -44,7 +44,7 @@ pub use settings::{
 pub use time::Timestamp;
 pub use topic::{
     FixTime as PublishedFixTime, GpsInstruments, Instruments, LatLon, PressureAltitudeInstruments,
-    Topic, TrueAirspeedInstruments,
+    SpeedInstrument, Topic,
 };
 pub use traffic::{
     PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,

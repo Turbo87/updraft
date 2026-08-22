@@ -1,5 +1,5 @@
 mod estimator;
+mod fusion;
 mod vario;
 
-pub use estimator::Estimator;
-pub use vario::SampleAcceptance;
+pub use fusion::SensorFusion;

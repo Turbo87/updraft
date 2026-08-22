@@ -10,6 +10,9 @@ pub struct Estimate {
 }
 
 /// Derives flight values from timestamped physical measurements.
+///
+/// This layer owns numerical estimator state. [`SensorFusion`](super::SensorFusion)
+/// owns selected-source continuity, freshness, and protocol projection.
 #[derive(Clone, Debug)]
 pub struct Estimator {
     uncompensated: Vario,

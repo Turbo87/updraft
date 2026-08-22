@@ -35,9 +35,13 @@ The canonical `Airspace` stores:
 Altitude limits distinguish ground, MSL altitude, AGL height, flight level, and
 unlimited. Physical values use typed units.
 
-OpenAir class and type values map to the OpenAIP numeric model where possible.
-An unsupported or absent type becomes `Other`. OpenAir currently supplies no
-country value, activity, activation dates, or operating hours.
+OpenAir v2 class and type values map to the OpenAIP numeric model where
+possible. The importer converts recognized legacy class values to an
+unclassified airspace with the matching type. It also converts the nonstandard
+legacy `AC GSEC` form to a gliding sector. A conflicting class and type or an
+unsupported class rejects the complete source. An unsupported or absent type
+becomes `Other`. OpenAir currently supplies no country value, activity,
+activation dates, or operating hours.
 
 Country values are unvalidated source text. A later OpenAIP importer must keep
 one scalar or ordered array without applying a country registry.

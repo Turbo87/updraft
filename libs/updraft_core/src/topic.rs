@@ -81,6 +81,7 @@ pub struct SpeedInstrument {
 #[serde(rename_all = "camelCase")]
 pub struct DerivedInstruments {
     pub raw_vertical_speed: Option<SpeedInstrument>,
+    pub vertical_speed: Option<SpeedInstrument>,
 }
 
 /// Fast-changing instrument values grouped by source-selection domain.
@@ -176,6 +177,10 @@ mod tests {
             derived: Some(Box::new(DerivedInstruments {
                 raw_vertical_speed: Some(SpeedInstrument {
                     meters_per_second: 1.2,
+                    stale: false,
+                }),
+                vertical_speed: Some(SpeedInstrument {
+                    meters_per_second: 1.1,
                     stale: false,
                 }),
             })),

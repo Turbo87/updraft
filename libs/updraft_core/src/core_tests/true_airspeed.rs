@@ -76,6 +76,20 @@ fn gps_pressure_altitude_and_true_airspeed_select_independent_sources() {
 }
 
 #[test]
+fn true_airspeed_input_expires_gps_at_the_exact_freshness_boundary() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(0));
+
+    let effects = core
+        .apply(Bytes::new(device_id, LXWP0_FIRST), at(3_000))
+        .effects;
+
+    assert_matches!(core.gps, DomainState::LastKnown(_));
+    assert_matches!(core.true_airspeed, DomainState::Current(_));
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+}
+
+#[test]
 fn true_airspeed_follows_source_priority_fallback_and_reset() {
     let (mut core, first, second) = core_with_two_external_devices();
     core.apply(Bytes::new(first, LXWP0_FIRST), at(0));

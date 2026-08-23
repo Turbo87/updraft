@@ -130,6 +130,7 @@ fn pressure_altitude_climb_updates_fused_instruments() {
     assert!(!raw_vertical_speed.stale);
     let vertical_speed = assert_some!(derived.vertical_speed);
     assert_abs_diff_eq!(vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
+    assert_none!(derived.vario);
     assert!(!vertical_speed.stale);
 }
 

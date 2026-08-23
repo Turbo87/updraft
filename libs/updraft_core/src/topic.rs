@@ -82,6 +82,7 @@ pub struct SpeedInstrument {
 pub struct DerivedInstruments {
     pub raw_vertical_speed: Option<SpeedInstrument>,
     pub vertical_speed: Option<SpeedInstrument>,
+    pub vario: Option<SpeedInstrument>,
 }
 
 /// Fast-changing instrument values grouped by source-selection domain.
@@ -182,6 +183,10 @@ mod tests {
                 vertical_speed: Some(SpeedInstrument {
                     meters_per_second: 1.1,
                     stale: false,
+                }),
+                vario: Some(SpeedInstrument {
+                    meters_per_second: 1.5,
+                    stale: true,
                 }),
             })),
         }

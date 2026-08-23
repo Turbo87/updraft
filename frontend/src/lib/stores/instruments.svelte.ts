@@ -6,6 +6,7 @@ import type { Topic } from '$lib/protocol/generated/Topic';
 export const EMPTY_DERIVED_INSTRUMENTS: DerivedInstruments = {
   rawVerticalSpeed: null,
   verticalSpeed: null,
+  vario: null,
 };
 
 /**

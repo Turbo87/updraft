@@ -1,13 +1,36 @@
 use super::super::*;
 use super::support::*;
 use crate::ownship::Selected;
-use claims::assert_some;
+use approx::assert_abs_diff_eq;
+use claims::{assert_ok, assert_some};
 use std::assert_matches;
-use updraft_units::Speed;
+use updraft_nmea::{Lxwp0, Pgrmz, PgrmzFixDimension};
+use updraft_units::{Length, Speed};
 
 const LXWP0_FIRST: &[u8] = b"$LXWP0,Y,180,1000,1,1,1,1,1,1,239,174,10\r\n";
 const LXWP0_SECOND: &[u8] = b"$LXWP0,Y,360,2000,2,2,2,2,2,2,180,90,20\r\n";
 const LXWP0_WITHOUT_TAS: &[u8] = b"$LXWP0,Y,,3000,3,3,3,3,3,3,90,45,30\r\n";
+
+fn pressure_altitude(altitude: Length) -> Vec<u8> {
+    assert_ok!(Vec::try_from(&Pgrmz {
+        altitude: Some(altitude),
+        fix_dimension: PgrmzFixDimension::NoFix,
+    }))
+}
+
+fn pressure_altitude_with_airspeed(altitude: Length, true_airspeed: Speed) -> Vec<u8> {
+    let mut bytes = pressure_altitude(altitude);
+    bytes.extend(assert_ok!(Vec::try_from(&Lxwp0 {
+        logger_running: None,
+        true_airspeed: Some(true_airspeed),
+        pressure_altitude: None,
+        vario_samples: Vec::new(),
+        heading: None,
+        wind_direction: None,
+        wind_speed: None,
+    })));
+    bytes
+}
 
 fn current_true_airspeed(core: &Core) -> Selected<Speed> {
     let DomainState::Current(selected) = core.true_airspeed else {
@@ -67,6 +90,49 @@ fn changed_true_airspeed_at_same_timestamp_keeps_the_first_value() {
 
     let selected = current_true_airspeed(&core);
     assert_eq!(selected.value, Speed::from_kilometers_per_hour(180.));
+}
+
+#[test]
+fn same_batch_airspeed_compensates_the_current_pressure_altitude() {
+    let (mut core, device_id) = core_with_external_device();
+    let first_speed = Speed::from_meters_per_second(50.);
+    let first_altitude = Length::from_meters(1_000.);
+    let bytes = pressure_altitude_with_airspeed(first_altitude, first_speed);
+    core.apply(Bytes::new(device_id, bytes), at(0));
+
+    let second_speed = Speed::from_meters_per_second(40.);
+    let first_speed_squared = first_speed.as_meters_per_second().powi(2);
+    let second_speed_squared = second_speed.as_meters_per_second().powi(2);
+    let altitude_gain = (first_speed_squared - second_speed_squared) / (2. * 9.80665);
+    let second_altitude = Length::from_meters(1_000. + altitude_gain);
+    let bytes = pressure_altitude_with_airspeed(second_altitude, second_speed);
+    core.apply(Bytes::new(device_id, bytes), at(1_000));
+
+    let derived = assert_some!(instruments(&core).derived);
+    let vario = assert_some!(derived.vario);
+    assert_abs_diff_eq!(vario.meters_per_second, 0., epsilon = 0.01);
+}
+
+#[test]
+fn pressure_input_at_the_airspeed_freshness_boundary_keeps_the_vario_stale() {
+    let (mut core, device_id) = core_with_external_device();
+    let altitude = Length::from_meters(1_000.);
+    let air_speed = Speed::from_meters_per_second(50.);
+    let bytes = pressure_altitude_with_airspeed(altitude, air_speed);
+    core.apply(Bytes::new(device_id, bytes), at(0));
+    let bytes = pressure_altitude(altitude);
+    core.apply(Bytes::new(device_id, bytes), at(1_000));
+    let derived = assert_some!(instruments(&core).derived);
+    let current = assert_some!(derived.vario);
+    assert!(!current.stale);
+
+    let bytes = pressure_altitude(altitude);
+    core.apply(Bytes::new(device_id, bytes), at(3_000));
+
+    assert_matches!(core.true_airspeed, DomainState::LastKnown(_));
+    let derived = assert_some!(instruments(&core).derived);
+    let stale = assert_some!(derived.vario);
+    assert!(stale.stale);
 }
 
 #[test]

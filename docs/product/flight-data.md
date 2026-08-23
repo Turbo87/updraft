@@ -80,9 +80,16 @@ values at 1 Hz. This tuning is only validated for 1 Hz pressure-altitude updates
 The second stage uses the updated first stage, so other update rates produce a
 different amount of smoothing and delay.
 
-The instruments topic retains both previous vertical-speed values with
-`stale: true` while the pressure altitude is stale or a new series waits for its
-second sample. The debug overlay displays both values with the configured
+When current TAS is available, the core also derives an energy-compensated
+vario from pressure altitude plus the airspeed energy term `v²/2g`. The
+compensated series resets when TAS becomes unavailable or its source changes.
+Pressure-altitude samples do not advance this series while TAS is unavailable.
+Two pressure-altitude samples with current TAS are necessary before the vario
+becomes current again.
+
+The instruments topic retains each previous vertical-speed value with
+`stale: true` while its input is stale or a new series waits for its second
+sample. The debug overlay displays all three values with the configured
 vertical-speed unit. There is no pilot-facing vario display yet.
 
 ## True airspeed
@@ -97,8 +104,8 @@ configured horizontal-speed unit. There is no pilot-facing TAS infobox yet.
 ## Frontend projection
 
 The `Instruments` topic contains optional GPS, pressure-altitude, true-airspeed,
-and derived objects. The derived object contains optional raw and smoothed
-vertical speeds. The topic does not publish source identity.
+and derived objects. The derived object contains optional raw, smoothed, and
+energy-compensated vertical speeds. The topic does not publish source identity.
 
 Canonical values cross the protocol in decimal degrees, metres, metres per
 second, and milliseconds. Frontend code applies display units and locale
@@ -111,5 +118,4 @@ core emits it only when that projection changes.
 
 The current contract does not include manual per-domain source selection,
 source identity in the frontend, GPS quality presentation, IAS, additional
-internal sensors, energy-compensated vario values, netto, or a generic
-source-selector framework.
+internal sensors, netto, or a generic source-selector framework.

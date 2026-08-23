@@ -4,4 +4,4 @@ import type { SpeedInstrument } from "./SpeedInstrument";
 /**
  * Values that the sensor-fusion estimate derives from selected sensor data.
  */
-export type DerivedInstruments = { rawVerticalSpeed: SpeedInstrument | null, verticalSpeed: SpeedInstrument | null, };
+export type DerivedInstruments = { rawVerticalSpeed: SpeedInstrument | null, verticalSpeed: SpeedInstrument | null, vario: SpeedInstrument | null, };

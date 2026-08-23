@@ -7,6 +7,8 @@ use updraft_units::{PressureAltitude, Speed};
 pub struct Estimate {
     /// Rate of change of pressure altitude. Positive means climbing.
     pub raw_vertical_speed: Option<Speed>,
+    /// Smoothed rate of change of pressure altitude. Positive means climbing.
+    pub vertical_speed: Option<Speed>,
 }
 
 /// Derives flight values from timestamped physical measurements.
@@ -47,7 +49,11 @@ impl Estimator {
 
     pub fn estimate(&self) -> Estimate {
         let raw_vertical_speed = self.uncompensated.value();
-        Estimate { raw_vertical_speed }
+        let vertical_speed = self.uncompensated.smoothed_value();
+        Estimate {
+            raw_vertical_speed,
+            vertical_speed,
+        }
     }
 }
 
@@ -90,10 +96,17 @@ mod tests {
 
     #[test]
     fn steady_climb_produces_its_rate() {
-        let raw_vertical_speed = assert_some!(climb(2., 60).estimate().raw_vertical_speed);
+        let estimate = climb(2., 60).estimate();
+        let raw_vertical_speed = assert_some!(estimate.raw_vertical_speed);
+        let vertical_speed = assert_some!(estimate.vertical_speed);
 
         assert_abs_diff_eq!(
             raw_vertical_speed,
+            Speed::from_meters_per_second(2.),
+            epsilon = 0.01
+        );
+        assert_abs_diff_eq!(
+            vertical_speed,
             Speed::from_meters_per_second(2.),
             epsilon = 0.01
         );
@@ -140,6 +153,36 @@ mod tests {
     }
 
     #[test]
+    fn one_hertz_climb_has_the_fitted_vertical_speed_response() {
+        let mut estimator = Estimator::new();
+        assert_eq!(
+            estimator.pressure_altitude(Duration::ZERO, meters(1000.)),
+            Accepted
+        );
+
+        let expected = [
+            0.309_636_243_492_350_97,
+            0.685_243_993_565_065_4,
+            1.026_970_418_232_237_4,
+            1.303_327_156_625_063_5,
+        ];
+        for (second, expected) in (1..).zip(expected) {
+            assert_eq!(
+                estimator.pressure_altitude(
+                    Duration::from_secs(second),
+                    meters(1000. + 2. * second as f64),
+                ),
+                Accepted
+            );
+            assert_abs_diff_eq!(
+                assert_some!(estimator.estimate().vertical_speed),
+                Speed::from_meters_per_second(expected),
+                epsilon = 1e-9
+            );
+        }
+    }
+
+    #[test]
     fn coarse_timestamps_preserve_the_vertical_speed() {
         let mut estimator = Estimator::new();
         for half in 0..120 {
@@ -177,5 +220,36 @@ mod tests {
         assert_eq!(control.pressure_altitude(time, altitude), Accepted);
 
         assert_eq!(estimator.estimate(), control.estimate());
+    }
+
+    #[test]
+    fn sample_rates_converge_to_the_same_steady_climb() {
+        let slow = climb(2., 11).estimate();
+        let mut fast = Estimator::new();
+        for tenth in 0..=100u64 {
+            let time = Duration::from_millis(tenth * 100);
+            assert_eq!(
+                fast.pressure_altitude(time, meters(1000. + 0.2 * tenth as f64)),
+                Accepted
+            );
+        }
+        let fast = fast.estimate();
+
+        let expected = Speed::from_meters_per_second(2.);
+        assert_abs_diff_eq!(
+            assert_some!(slow.raw_vertical_speed),
+            expected,
+            epsilon = 1e-9
+        );
+        assert_abs_diff_eq!(
+            assert_some!(fast.raw_vertical_speed),
+            expected,
+            epsilon = 1e-9
+        );
+        assert_abs_diff_eq!(
+            assert_some!(fast.vertical_speed),
+            assert_some!(slow.vertical_speed),
+            epsilon = 0.05
+        );
     }
 }

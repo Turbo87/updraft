@@ -31,6 +31,10 @@ expression: topic
       "rawVerticalSpeed": {
         "metersPerSecond": 1.2,
         "stale": false
+      },
+      "verticalSpeed": {
+        "metersPerSecond": 1.1,
+        "stale": false
       }
     }
   }

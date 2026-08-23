@@ -81,6 +81,9 @@ fn identical_pressure_altitude_initializes_the_fused_rate() {
     let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
     assert_eq!(raw_vertical_speed.meters_per_second, 0.0);
     assert!(!raw_vertical_speed.stale);
+    let vertical_speed = assert_some!(derived.vertical_speed);
+    assert_eq!(vertical_speed.meters_per_second, 0.0);
+    assert!(!vertical_speed.stale);
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert!(effects.is_empty());
@@ -112,6 +115,9 @@ fn pressure_altitude_climb_updates_fused_instruments() {
     let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
     assert_abs_diff_eq!(raw_vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
     assert!(!raw_vertical_speed.stale);
+    let vertical_speed = assert_some!(derived.vertical_speed);
+    assert_abs_diff_eq!(vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
+    assert!(!vertical_speed.stale);
 }
 
 #[test]
@@ -129,9 +135,13 @@ fn pressure_source_change_keeps_the_previous_vertical_speed_stale() {
 
     let selected = current_pressure_altitude(&core);
     assert_eq!(selected.source, SourceId::External(second));
-    let stale = assert_some!(assert_some!(instruments(&core).derived).raw_vertical_speed);
-    assert_eq!(stale.meters_per_second, 0.0);
-    assert!(stale.stale);
+    let derived = assert_some!(instruments(&core).derived);
+    let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
+    assert_eq!(raw_vertical_speed.meters_per_second, 0.0);
+    assert!(raw_vertical_speed.stale);
+    let vertical_speed = assert_some!(derived.vertical_speed);
+    assert_eq!(vertical_speed.meters_per_second, 0.0);
+    assert!(vertical_speed.stale);
 }
 
 #[test]

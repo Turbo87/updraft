@@ -1,0 +1,8 @@
+---
+source: libs/updraft_core/src/sensor_fusion/recorded_flight_tests.rs
+expression: report
+---
+quantity           unit        n    rms    mae   bias   corr
+total energy       m/s    17581   0.52   0.40  -0.01   0.95
+-- without an airspeed sensor --
+smoothed climb     m/s    17581   1.22   0.91  -0.01   0.83

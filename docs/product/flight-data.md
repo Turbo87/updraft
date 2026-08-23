@@ -82,7 +82,7 @@ different amount of smoothing and delay.
 
 The instruments topic retains both previous vertical-speed values with
 `stale: true` while the pressure altitude is stale or a new series waits for its
-second sample. The debug overlay displays the raw value with the configured
+second sample. The debug overlay displays both values with the configured
 vertical-speed unit. There is no pilot-facing vario display yet.
 
 ## True airspeed

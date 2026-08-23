@@ -125,6 +125,10 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Raw vertical speed",
           "value": "–",
         },
+        {
+          "label": "Vertical speed",
+          "value": "–",
+        },
       ]
     `);
   });
@@ -189,6 +193,10 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Raw vertical speed",
           "value": "–",
         },
+        {
+          "label": "Vertical speed",
+          "value": "–",
+        },
       ]
     `);
     expect(view.container.querySelectorAll('dd.stale')).toHaveLength(0);
@@ -200,6 +208,7 @@ describe('MapDebugOverlay.svelte', () => {
       derived: {
         ...EMPTY_DERIVED_INSTRUMENTS,
         rawVerticalSpeed: { metersPerSecond: 1.7, stale: false },
+        verticalSpeed: { metersPerSecond: 1.6, stale: false },
       },
     };
     render(MapDebugOverlay, { map: undefined, instruments, units: metricUnits });
@@ -207,6 +216,7 @@ describe('MapDebugOverlay.svelte', () => {
     await userEvent.keyboard('d');
 
     await expect.element(page.getByText('1.70 m/s', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('1.60 m/s', { exact: true })).toBeInTheDocument();
   });
 
   it('uses the selected vertical-speed unit and stale styling', async () => {
@@ -215,6 +225,7 @@ describe('MapDebugOverlay.svelte', () => {
       derived: {
         ...EMPTY_DERIVED_INSTRUMENTS,
         rawVerticalSpeed: { metersPerSecond: 1, stale: true },
+        verticalSpeed: { metersPerSecond: 2, stale: false },
       },
     };
     let units: UnitSettings = { ...metricUnits, verticalSpeed: 'ft/min' };
@@ -225,6 +236,21 @@ describe('MapDebugOverlay.svelte', () => {
     await expect.element(page.getByText('196.85 ft/min', { exact: true })).toBeInTheDocument();
     expect(Array.from(view.container.querySelectorAll('dd.stale'), text)).toEqual([
       '196.85 ft/min',
+    ]);
+
+    instruments = {
+      ...EMPTY_INSTRUMENTS,
+      derived: {
+        ...EMPTY_DERIVED_INSTRUMENTS,
+        rawVerticalSpeed: { metersPerSecond: 1, stale: false },
+        verticalSpeed: { metersPerSecond: 2, stale: true },
+      },
+    };
+    await view.rerender({ map: undefined, instruments, units });
+
+    await expect.element(page.getByText('393.70 ft/min', { exact: true })).toBeInTheDocument();
+    expect(Array.from(view.container.querySelectorAll('dd.stale'), text)).toEqual([
+      '393.70 ft/min',
     ]);
   });
 
@@ -288,6 +314,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Raw vertical speed",
+          "value": "–",
+        },
+        {
+          "label": "Vertical speed",
           "value": "–",
         },
       ]

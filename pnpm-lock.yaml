@@ -60,8 +60,8 @@ importers:
         specifier: 24.13.3
         version: 24.13.3
       maplibre-gl:
-        specifier: 6.4.1
-        version: 6.4.1
+        specifier: 6.6.0
+        version: 6.6.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -142,8 +142,8 @@ importers:
         specifier: 1.33.0
         version: 1.33.0
       maplibre-gl:
-        specifier: 6.4.1
-        version: 6.4.1
+        specifier: 6.6.0
+        version: 6.6.0
       normalize.css:
         specifier: 8.0.1
         version: 8.0.1
@@ -161,7 +161,7 @@ importers:
         version: 4.7.6(picomatch@4.0.5)(svelte@5.56.10(@typescript-eslint/types@8.67.0))(typescript@6.0.3)
       svelte-maplibre-gl:
         specifier: 2.2.1
-        version: 2.2.1(maplibre-gl@6.4.1)(svelte@5.56.10(@typescript-eslint/types@8.67.0))
+        version: 2.2.1(maplibre-gl@6.6.0)(svelte@5.56.10(@typescript-eslint/types@8.67.0))
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -600,8 +600,8 @@ packages:
   '@maplibre/geojson-vt@6.1.1':
     resolution: {integrity: sha512-FVMOcmSP/yqol45t7StApEyTL5/vmqBCuFhH9n+fFuINenhaX+YgHHIt1yJ86S8kln3uJLcMvmEU2cfn6E2eCQ==}
 
-  '@maplibre/maplibre-gl-style-spec@26.2.1':
-    resolution: {integrity: sha512-QFKCXkOeSzOr8jF75jm6kySOg+dUvOehPhRi68gcOYPHb7U5JloUq0dJW0Y5/fZV8ygfT0Vp2RWodvq+fyxFWA==}
+  '@maplibre/maplibre-gl-style-spec@26.4.1':
+    resolution: {integrity: sha512-I/qcIKVFHFSg1Meu/eqHrkSTjIez0gCsSaK56TNPutM3TkE61aSq6F1cZ4Kg4KiNs3cpViLtubDjfyRcQCdEJQ==}
     hasBin: true
 
   '@maplibre/mlt@1.2.0':
@@ -2188,8 +2188,8 @@ packages:
   magic-string@1.2.2:
     resolution: {integrity: sha512-veT/+7iXrXzT39XnEN4lOxtNl72dMgJ8Lp+5Bd6YcMSWpb0n0MjBM8Uuooi6jgJr8dhUW2swQgBmoZVMni5SVg==}
 
-  maplibre-gl@6.4.1:
-    resolution: {integrity: sha512-KzxQKtfBu/pSz1C+yW1hNS9eyj2h2lC7ufdAi6/SEt177n3oAfDfmUmslRfJdXY7ReAFBcnvwsqmiyoDhtA9GQ==}
+  maplibre-gl@6.6.0:
+    resolution: {integrity: sha512-EQql6eZYPhbHvJpqY4AwoiuLkUfXFRBHk67S8mDtzNo1F/jAo7xAxunIzO7gJ1vwTcPMgrK9b64dqKHvnkTlDQ==}
     engines: {node: '>=16.14.0', npm: '>=8.1.0'}
 
   mdn-data@2.27.1:
@@ -3219,7 +3219,7 @@ snapshots:
     dependencies:
       kdbush: 4.1.0
 
-  '@maplibre/maplibre-gl-style-spec@26.2.1':
+  '@maplibre/maplibre-gl-style-spec@26.4.1':
     dependencies:
       '@mapbox/jsonlint-lines-primitives': 2.0.3
       '@mapbox/unitbezier': 1.0.0
@@ -4665,14 +4665,14 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  maplibre-gl@6.4.1:
+  maplibre-gl@6.6.0:
     dependencies:
       '@mapbox/point-geometry': 1.1.0
       '@mapbox/tiny-sdf': 2.2.0
       '@mapbox/unitbezier': 1.0.0
       '@mapbox/vector-tile': 3.0.0
       '@maplibre/geojson-vt': 6.1.1
-      '@maplibre/maplibre-gl-style-spec': 26.2.1
+      '@maplibre/maplibre-gl-style-spec': 26.4.1
       '@maplibre/mlt': 1.2.0
       '@maplibre/vt-pbf': 4.3.2
       '@types/geojson': 7946.0.16
@@ -5085,9 +5085,9 @@ snapshots:
     optionalDependencies:
       svelte: 5.56.10(@typescript-eslint/types@8.67.0)
 
-  svelte-maplibre-gl@2.2.1(maplibre-gl@6.4.1)(svelte@5.56.10(@typescript-eslint/types@8.67.0)):
+  svelte-maplibre-gl@2.2.1(maplibre-gl@6.6.0)(svelte@5.56.10(@typescript-eslint/types@8.67.0)):
     dependencies:
-      maplibre-gl: 6.4.1
+      maplibre-gl: 6.6.0
       svelte: 5.56.10(@typescript-eslint/types@8.67.0)
 
   svelte-toolbelt@0.10.6(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.56.10(@typescript-eslint/types@8.67.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)))(svelte@5.56.10(@typescript-eslint/types@8.67.0))(typescript@6.0.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)))(svelte@5.56.10(@typescript-eslint/types@8.67.0)):

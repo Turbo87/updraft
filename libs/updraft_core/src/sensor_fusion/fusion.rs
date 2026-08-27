@@ -37,12 +37,25 @@ impl SensorFusion {
 
     fn update_true_airspeed(&mut self, state: DomainState<Speed>) {
         let DomainState::Current(selected) = state else {
+            self.estimator.clear_air_speed();
             self.air_speed = None;
             return;
         };
         if self.air_speed == Some(selected) {
             return;
         }
+        if self
+            .air_speed
+            .is_some_and(|previous| previous.source != selected.source)
+        {
+            self.estimator.reset_air_speed();
+        }
+        let SampleAcceptance::Accepted = self
+            .estimator
+            .air_speed(selected.ingested_at.since_start(), selected.value)
+        else {
+            return;
+        };
         self.air_speed = Some(selected);
     }
 

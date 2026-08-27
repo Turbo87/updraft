@@ -35,6 +35,10 @@ expression: topic
       "verticalSpeed": {
         "metersPerSecond": 1.1,
         "stale": false
+      },
+      "vario": {
+        "metersPerSecond": 1.5,
+        "stale": true
       }
     }
   }

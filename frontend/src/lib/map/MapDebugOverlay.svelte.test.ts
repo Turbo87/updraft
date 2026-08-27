@@ -129,6 +129,10 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Vertical speed",
           "value": "–",
         },
+        {
+          "label": "Vario",
+          "value": "–",
+        },
       ]
     `);
   });
@@ -197,6 +201,10 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Vertical speed",
           "value": "–",
         },
+        {
+          "label": "Vario",
+          "value": "–",
+        },
       ]
     `);
     expect(view.container.querySelectorAll('dd.stale')).toHaveLength(0);
@@ -209,12 +217,14 @@ describe('MapDebugOverlay.svelte', () => {
         ...EMPTY_DERIVED_INSTRUMENTS,
         rawVerticalSpeed: { metersPerSecond: 1.7, stale: false },
         verticalSpeed: { metersPerSecond: 1.6, stale: false },
+        vario: { metersPerSecond: 1.8, stale: false },
       },
     };
     render(MapDebugOverlay, { map: undefined, instruments, units: metricUnits });
 
     await userEvent.keyboard('d');
 
+    await expect.element(page.getByText('1.80 m/s', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('1.70 m/s', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('1.60 m/s', { exact: true })).toBeInTheDocument();
   });
@@ -244,13 +254,16 @@ describe('MapDebugOverlay.svelte', () => {
         ...EMPTY_DERIVED_INSTRUMENTS,
         rawVerticalSpeed: { metersPerSecond: 1, stale: false },
         verticalSpeed: { metersPerSecond: 2, stale: true },
+        vario: { metersPerSecond: 3, stale: true },
       },
     };
     await view.rerender({ map: undefined, instruments, units });
 
     await expect.element(page.getByText('393.70 ft/min', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('590.55 ft/min', { exact: true })).toBeInTheDocument();
     expect(Array.from(view.container.querySelectorAll('dd.stale'), text)).toEqual([
       '393.70 ft/min',
+      '590.55 ft/min',
     ]);
   });
 
@@ -318,6 +331,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Vertical speed",
+          "value": "–",
+        },
+        {
+          "label": "Vario",
           "value": "–",
         },
       ]

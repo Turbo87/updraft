@@ -2,4 +2,7 @@ mod estimator;
 mod fusion;
 mod vario;
 
-pub use fusion::SensorFusion;
+#[cfg(test)]
+mod recorded_flight_tests;
+
+pub use fusion::{FusionInputs, SensorFusion};

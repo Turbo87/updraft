@@ -141,6 +141,10 @@
       <dd class:stale={derivedInstruments?.verticalSpeed?.stale}>
         {verticalSpeed(derivedInstruments?.verticalSpeed?.metersPerSecond)}
       </dd>
+      <dt>Vario</dt>
+      <dd class:stale={derivedInstruments?.vario?.stale}>
+        {verticalSpeed(derivedInstruments?.vario?.metersPerSecond)}
+      </dd>
     </dl>
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />

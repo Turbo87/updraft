@@ -94,6 +94,19 @@ fn identical_pressure_altitude_initializes_the_fused_rate() {
 }
 
 #[test]
+fn internal_gps_input_expires_pressure_altitude_at_the_exact_freshness_boundary() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0));
+
+    let effects = core
+        .apply(InternalGps::new(fix(50.823, 6.186)), at(3_000))
+        .effects;
+
+    assert_matches!(core.pressure_altitude, DomainState::LastKnown(_));
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
+}
+
+#[test]
 fn pressure_altitude_climb_updates_fused_instruments() {
     let (mut core, device_id) = core_with_external_device();
 
@@ -117,6 +130,7 @@ fn pressure_altitude_climb_updates_fused_instruments() {
     assert!(!raw_vertical_speed.stale);
     let vertical_speed = assert_some!(derived.vertical_speed);
     assert_abs_diff_eq!(vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
+    assert_none!(derived.vario);
     assert!(!vertical_speed.stale);
 }
 

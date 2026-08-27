@@ -12,7 +12,7 @@ use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
     select_pressure_altitude_candidate, select_true_airspeed_candidate,
 };
-use crate::sensor_fusion::SensorFusion;
+use crate::sensor_fusion::{FusionInputs, SensorFusion};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
@@ -23,12 +23,6 @@ use updraft_airspace::AirspaceDataset;
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
 use updraft_units::{MslAltitude, PressureAltitude, Speed};
-
-enum UpdatedDomain {
-    Gps,
-    PressureAltitude,
-    TrueAirspeed,
-}
 
 /// A safe machine-readable failure from loading a stored airspace source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -280,26 +274,10 @@ impl Core {
 
         let before = self.instruments();
         let mut traffic_changes = TrafficChanges::default();
-        let mut gps_updated = false;
-        let mut pressure_altitude_updated = false;
-        let mut true_airspeed_updated = false;
         for (message, ingested_at) in messages {
-            match self.handle_message(device_id, message, ingested_at, &mut traffic_changes) {
-                Some(UpdatedDomain::Gps) => gps_updated = true,
-                Some(UpdatedDomain::PressureAltitude) => pressure_altitude_updated = true,
-                Some(UpdatedDomain::TrueAirspeed) => true_airspeed_updated = true,
-                None => {}
-            }
+            self.handle_message(device_id, message, ingested_at, &mut traffic_changes);
         }
-        if gps_updated {
-            self.select_gps(at);
-        }
-        if pressure_altitude_updated {
-            self.select_pressure_altitude(at);
-        }
-        if true_airspeed_updated {
-            self.select_true_airspeed(at);
-        }
+        self.reevaluate_flight_data(at);
 
         let mut effects = Vec::new();
         let after = self.instruments();
@@ -338,7 +316,7 @@ impl Core {
             self.internal_gps.fix_time.full = Some(Timed::new(fix_time, at));
         }
 
-        self.select_gps(at);
+        self.reevaluate_flight_data(at);
         let after = self.instruments();
         if after == before {
             return Vec::new();
@@ -353,89 +331,113 @@ impl Core {
         message: Message,
         at: Timestamp,
         traffic_changes: &mut TrafficChanges,
-    ) -> Option<UpdatedDomain> {
+    ) {
         match message {
             Message::Rmc(rmc)
                 if rmc.status == RmcStatus::Active
                     && rmc.mode != Some(PositioningMode::NotValid) =>
             {
-                let device = self.external_devices.get_mut(device_id)?;
-                let mut updated = false;
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    return;
+                };
                 if let Some(time) = rmc.utc_time {
                     if let Some(date) = rmc.date {
                         if let Some(fix_time) = UtcInstant::from_nmea_date_time(date, time) {
                             device.gps.fix_time.full = Some(Timed::new(fix_time, at));
-                            updated = true;
                         }
                     } else {
                         let fix_time = UtcTime::from_nmea_time(time);
                         device.gps.fix_time.time_only = Some(Timed::new(fix_time, at));
-                        updated = true;
                     }
                 }
                 if let Some(position) = rmc.position {
                     device.gps.position = Some(Timed::new(position, at));
-                    updated = true;
                 }
                 if let Some(course) = rmc.course_over_ground {
                     device.gps.track = Some(Timed::new(course, at));
-                    updated = true;
                 }
                 if let Some(speed) = rmc.speed_over_ground {
                     device.gps.ground_speed = Some(Timed::new(speed, at));
-                    updated = true;
                 }
-                updated.then_some(UpdatedDomain::Gps)
             }
             Message::Gga(gga) if gga.fix_quality != GgaFixQuality::Invalid => {
-                let device = self.external_devices.get_mut(device_id)?;
-                let mut updated = false;
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    return;
+                };
                 if let Some(time) = gga.utc_time {
                     let fix_time = UtcTime::from_nmea_time(time);
                     device.gps.fix_time.time_only = Some(Timed::new(fix_time, at));
-                    updated = true;
                 }
                 if let Some(position) = gga.position {
                     device.gps.position = Some(Timed::new(position, at));
-                    updated = true;
                 }
                 if let Some(altitude) = gga.altitude {
                     let altitude = MslAltitude::new(altitude);
                     device.gps.altitude = Some(Timed::new(altitude, at));
-                    updated = true;
                 }
-                updated.then_some(UpdatedDomain::Gps)
             }
             Message::Pgrmz(pgrmz) => {
-                let altitude = pgrmz.altitude?;
-                let device = self.external_devices.get_mut(device_id)?;
+                let Some(altitude) = pgrmz.altitude else {
+                    return;
+                };
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    return;
+                };
                 device.pressure_altitude = Some(Timed::new(PressureAltitude::new(altitude), at));
-                Some(UpdatedDomain::PressureAltitude)
             }
             Message::Lxwp0(lxwp0) => {
-                let true_airspeed = lxwp0.true_airspeed?;
-                let device = self.external_devices.get_mut(device_id)?;
+                let Some(true_airspeed) = lxwp0.true_airspeed else {
+                    return;
+                };
+                let Some(device) = self.external_devices.get_mut(device_id) else {
+                    return;
+                };
+                if device
+                    .true_airspeed
+                    .is_some_and(|previous| at <= previous.ingested_at)
+                {
+                    return;
+                }
                 device.true_airspeed = Some(Timed::new(true_airspeed, at));
-                Some(UpdatedDomain::TrueAirspeed)
             }
             Message::Pflaa(pflaa) => {
-                let device = self.external_devices.get(device_id)?;
+                let Some(device) = self.external_devices.get(device_id) else {
+                    return;
+                };
                 let same_device = device.gps;
                 let displayed = self.displayed_gps();
-                let position = same_device
+                let Some(position) = same_device
                     .position
                     .map(|position| position.value)
-                    .or(displayed.map(|gps| gps.position))?;
+                    .or(displayed.map(|gps| gps.position))
+                else {
+                    return;
+                };
                 let altitude = same_device
                     .altitude
                     .map(|altitude| altitude.value)
                     .or(displayed.and_then(|gps| gps.altitude_msl));
-                let target = target_from_pflaa(&pflaa, position, altitude)?;
+                let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
+                    return;
+                };
                 self.traffic.observe(target, at, traffic_changes);
-                None
             }
-            _ => None,
+            _ => {}
         }
+    }
+
+    fn reevaluate_flight_data(&mut self, at: Timestamp) {
+        self.select_gps(at);
+        self.select_pressure_altitude(at);
+        self.select_true_airspeed(at);
+        self.update_sensor_fusion();
+    }
+
+    fn update_sensor_fusion(&mut self) {
+        self.sensor_fusion.update(FusionInputs {
+            true_airspeed: self.true_airspeed,
+            pressure_altitude: self.pressure_altitude,
+        });
     }
 
     fn select_gps(&mut self, at: Timestamp) {
@@ -471,7 +473,6 @@ impl Core {
             Some(selected) => self.pressure_altitude.update(selected),
             None => self.pressure_altitude.mark_stale(),
         }
-        self.sensor_fusion.pressure_altitude(self.pressure_altitude);
     }
 
     fn select_pressure_altitude_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
@@ -484,7 +485,6 @@ impl Core {
         if selected_source_was_reset && matches!(self.pressure_altitude, DomainState::LastKnown(_))
         {
             self.pressure_altitude = DomainState::Unavailable;
-            self.sensor_fusion.pressure_altitude(self.pressure_altitude);
         }
     }
 
@@ -599,9 +599,7 @@ impl Input for Tick {
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
         let before = core.instruments();
-        core.select_gps(at);
-        core.select_pressure_altitude(at);
-        core.select_true_airspeed(at);
+        core.reevaluate_flight_data(at);
         let after = core.instruments();
 
         let mut effects = Vec::new();
@@ -712,6 +710,7 @@ impl Input for DeleteExternalDevice {
         core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
         core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
         core.select_true_airspeed_after_source_reset(SourceId::External(self.device_id), at);
+        core.update_sensor_fusion();
         let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
@@ -732,9 +731,7 @@ impl Input for ReorderExternalDevices {
             Ok(true) => {}
             Err(error) => return Update::empty().with_response(Err(error)),
         }
-        core.select_gps(at);
-        core.select_pressure_altitude(at);
-        core.select_true_airspeed(at);
+        core.reevaluate_flight_data(at);
 
         let mut effects = Vec::new();
         let after = core.instruments();
@@ -772,6 +769,7 @@ impl Input for EditExternalDevice {
         core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
         core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
         core.select_true_airspeed_after_source_reset(SourceId::External(self.device_id), at);
+        core.update_sensor_fusion();
         let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
@@ -807,6 +805,7 @@ impl Input for SetExternalDeviceEnabled {
         core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
         core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
         core.select_true_airspeed_after_source_reset(SourceId::External(self.device_id), at);
+        core.update_sensor_fusion();
         let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));

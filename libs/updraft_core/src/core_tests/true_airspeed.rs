@@ -59,6 +59,17 @@ fn identical_true_airspeed_refreshes_the_candidate() {
 }
 
 #[test]
+fn changed_true_airspeed_at_same_timestamp_keeps_the_first_value() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, LXWP0_FIRST), at(0));
+
+    core.apply(Bytes::new(device_id, LXWP0_SECOND), at(0));
+
+    let selected = current_true_airspeed(&core);
+    assert_eq!(selected.value, Speed::from_kilometers_per_hour(180.));
+}
+
+#[test]
 fn gps_pressure_altitude_and_true_airspeed_select_independent_sources() {
     let (mut core, first, second) = core_with_two_external_devices();
     core.apply(Bytes::new(first, RMC), at(0));

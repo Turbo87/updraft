@@ -392,6 +392,12 @@ impl Core {
                 let Some(device) = self.external_devices.get_mut(device_id) else {
                     return;
                 };
+                if device
+                    .true_airspeed
+                    .is_some_and(|previous| at <= previous.ingested_at)
+                {
+                    return;
+                }
                 device.true_airspeed = Some(Timed::new(true_airspeed, at));
             }
             Message::Pflaa(pflaa) => {
@@ -429,6 +435,7 @@ impl Core {
 
     fn update_sensor_fusion(&mut self) {
         self.sensor_fusion.update(FusionInputs {
+            true_airspeed: self.true_airspeed,
             pressure_altitude: self.pressure_altitude,
         });
     }

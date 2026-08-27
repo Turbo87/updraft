@@ -11,6 +11,7 @@ use updraft_units::{PressureAltitude, Speed};
 /// call order.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FusionInputs {
+    pub true_airspeed: DomainState<Speed>,
     pub pressure_altitude: DomainState<PressureAltitude>,
 }
 
@@ -21,6 +22,7 @@ pub struct FusionInputs {
 #[derive(Clone, Debug, Default)]
 pub struct SensorFusion {
     estimator: Estimator,
+    air_speed: Option<Selected<Speed>>,
     pressure_altitude: Option<Selected<PressureAltitude>>,
     raw_vertical_speed: SignalState<Speed>,
     vertical_speed: SignalState<Speed>,
@@ -29,7 +31,19 @@ pub struct SensorFusion {
 impl SensorFusion {
     /// Applies one coherent set of selected sensor states.
     pub fn update(&mut self, inputs: FusionInputs) {
+        self.update_true_airspeed(inputs.true_airspeed);
         self.update_pressure_altitude(inputs.pressure_altitude);
+    }
+
+    fn update_true_airspeed(&mut self, state: DomainState<Speed>) {
+        let DomainState::Current(selected) = state else {
+            self.air_speed = None;
+            return;
+        };
+        if self.air_speed == Some(selected) {
+            return;
+        }
+        self.air_speed = Some(selected);
     }
 
     fn update_pressure_altitude(&mut self, state: DomainState<PressureAltitude>) {

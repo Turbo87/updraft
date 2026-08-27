@@ -2,4 +2,4 @@ mod estimator;
 mod fusion;
 mod vario;
 
-pub use fusion::SensorFusion;
+pub use fusion::{FusionInputs, SensorFusion};

@@ -5,6 +5,15 @@ use crate::signal_state::SignalState;
 use crate::topic::{DerivedInstruments, SpeedInstrument};
 use updraft_units::{PressureAltitude, Speed};
 
+/// Selected sensor states for one core time advancement.
+///
+/// The complete input keeps estimator updates independent of source-selection
+/// call order.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FusionInputs {
+    pub pressure_altitude: DomainState<PressureAltitude>,
+}
+
 /// Connects selected sensor domains to the flight-data estimator.
 ///
 /// This layer owns source identity, input continuity, freshness, and protocol
@@ -18,7 +27,12 @@ pub struct SensorFusion {
 }
 
 impl SensorFusion {
-    pub fn pressure_altitude(&mut self, state: DomainState<PressureAltitude>) {
+    /// Applies one coherent set of selected sensor states.
+    pub fn update(&mut self, inputs: FusionInputs) {
+        self.update_pressure_altitude(inputs.pressure_altitude);
+    }
+
+    fn update_pressure_altitude(&mut self, state: DomainState<PressureAltitude>) {
         let DomainState::Current(selected) = state else {
             self.raw_vertical_speed.mark_stale();
             self.vertical_speed.mark_stale();

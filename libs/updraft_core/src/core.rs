@@ -12,7 +12,7 @@ use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
     select_pressure_altitude_candidate, select_true_airspeed_candidate,
 };
-use crate::sensor_fusion::SensorFusion;
+use crate::sensor_fusion::{FusionInputs, SensorFusion};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
@@ -428,7 +428,9 @@ impl Core {
     }
 
     fn update_sensor_fusion(&mut self) {
-        self.sensor_fusion.pressure_altitude(self.pressure_altitude);
+        self.sensor_fusion.update(FusionInputs {
+            pressure_altitude: self.pressure_altitude,
+        });
     }
 
     fn select_gps(&mut self, at: Timestamp) {

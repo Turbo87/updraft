@@ -2,7 +2,8 @@ use super::altitude::AltitudeFilter;
 use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::vario::Vario;
 use std::time::Duration;
-use updraft_units::{EllipsoidAltitude, Length, PressureAltitude, Speed};
+use updraft_geo::LatLon;
+use updraft_units::{EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
 
 const GRAVITY: f64 = 9.80665;
 
@@ -20,6 +21,7 @@ pub struct Estimate {
     /// Smoothed vertical speed. Positive means climbing.
     pub vertical_speed: Option<Speed>,
     pub vario: Option<Speed>,
+    pub altitude: Option<MslAltitude>,
 }
 
 /// Derives flight values from timestamped physical measurements.
@@ -34,6 +36,8 @@ pub struct Estimator {
     uncompensated: Vario,
     measured_air_speed: Option<AirSpeedSample>,
     gnss_time: Option<Duration>,
+    position: Option<LatLon>,
+    referenced_altitude: Option<EllipsoidAltitude>,
 }
 
 impl Default for Estimator {
@@ -51,6 +55,8 @@ impl Estimator {
             uncompensated: Vario::default(),
             measured_air_speed: None,
             gnss_time: None,
+            position: None,
+            referenced_altitude: None,
         }
     }
 
@@ -70,6 +76,10 @@ impl Estimator {
         let altitude = altitude.into_inner();
         self.pressure_altitude_current = true;
         let altitude = self.altitude.pressure(time, altitude);
+        self.referenced_altitude = self
+            .altitude
+            .referenced_altitude()
+            .map(EllipsoidAltitude::new);
         self.advance_vertical_speed(time, altitude, AltitudeDomain::Pressure)
     }
 
@@ -81,8 +91,10 @@ impl Estimator {
     pub fn reset_gnss_altitude(&mut self) {
         self.altitude.clear_gnss_reference();
         self.gnss_time = None;
+        self.referenced_altitude = None;
     }
 
+    /// Adds an ellipsoid-altitude sample when its timestamp advances.
     pub fn gnss_altitude(
         &mut self,
         time: Duration,
@@ -93,12 +105,21 @@ impl Estimator {
         }
         self.gnss_time = Some(time);
 
-        let altitude = altitude.into_inner();
+        let altitude_value = altitude.into_inner();
         if self.pressure_altitude_current {
-            self.altitude.gnss(time, altitude);
+            self.altitude.gnss(time, altitude_value);
+            self.referenced_altitude = self
+                .altitude
+                .referenced_altitude()
+                .map(EllipsoidAltitude::new);
             SampleAcceptance::Accepted
         } else {
-            self.advance_vertical_speed(time, altitude, AltitudeDomain::Gnss)
+            let acceptance =
+                self.advance_vertical_speed(time, altitude_value, AltitudeDomain::Gnss);
+            if acceptance == SampleAcceptance::Accepted {
+                self.referenced_altitude = Some(altitude);
+            }
+            acceptance
         }
     }
 
@@ -114,6 +135,17 @@ impl Estimator {
         SampleAcceptance::Accepted
     }
 
+    fn altitude_msl(&self) -> Option<MslAltitude> {
+        Some(updraft_egm96::ellipsoidal_to_msl(
+            self.position?,
+            self.referenced_altitude?,
+        ))
+    }
+
+    /// Updates the position used to convert ellipsoid altitude to MSL altitude.
+    pub fn position(&mut self, position: LatLon) {
+        self.position = Some(position);
+    }
     pub fn clear_air_speed(&mut self) {
         self.reset_air_speed();
     }
@@ -155,6 +187,7 @@ impl Estimator {
         self.vario = Vario::default();
         self.uncompensated = Vario::default();
         self.gnss_time = None;
+        self.referenced_altitude = None;
     }
 
     pub fn estimate(&self) -> Estimate {
@@ -165,6 +198,7 @@ impl Estimator {
             raw_vertical_speed,
             vertical_speed,
             vario,
+            altitude: self.altitude_msl(),
         }
     }
 }
@@ -586,6 +620,35 @@ mod tests {
         }
 
         assert!(worst < 0.01, "reading reached {worst} m/s");
+    }
+
+    #[test]
+    fn pressure_first_pair_publishes_gnss_referenced_altitude() {
+        let mut estimator = Estimator::new();
+        let position = LatLon::from_degrees(50.823, 6.186);
+        estimator.position(position);
+        assert_eq!(
+            estimator.pressure_altitude(Duration::ZERO, meters(1_000.)),
+            Accepted
+        );
+        assert_eq!(
+            estimator.pressure_altitude(Duration::from_secs(1), meters(1_000.)),
+            Accepted
+        );
+
+        let gnss = EllipsoidAltitude::new(Length::from_meters(1_200.));
+        assert_eq!(
+            estimator.gnss_altitude(Duration::from_secs(1), gnss),
+            Accepted
+        );
+
+        let actual = assert_some!(estimator.estimate().altitude);
+        let expected = updraft_egm96::ellipsoidal_to_msl(position, gnss);
+        assert_abs_diff_eq!(
+            actual.into_inner().as_meters(),
+            expected.into_inner().as_meters(),
+            epsilon = 0.01
+        );
     }
 
     #[test]

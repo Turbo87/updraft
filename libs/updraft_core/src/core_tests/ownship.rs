@@ -562,6 +562,7 @@ fn gnss_climb_updates_fused_vertical_speed_without_a_barometer() {
     }
 
     let derived = assert_some!(instruments(&core).derived);
+    assert_some!(derived.altitude);
     let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
     assert_abs_diff_eq!(raw_vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
     assert!(!raw_vertical_speed.stale);

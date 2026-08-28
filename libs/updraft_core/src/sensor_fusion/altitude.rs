@@ -73,6 +73,13 @@ impl AltitudeFilter {
         self.previous = None;
     }
 
+    /// Returns the latest pressure-driven altitude after GNSS establishes
+    /// its reference.
+    pub fn referenced_altitude(&self) -> Option<Length> {
+        let (_, pressure) = self.pressure?;
+        Some(pressure + self.offset?)
+    }
+
     /// Takes a GNSS altitude. It moves the offset that
     /// [`pressure`](Self::pressure) adds, and never the altitude directly.
     pub fn gnss(&mut self, time: Duration, altitude: Length) {

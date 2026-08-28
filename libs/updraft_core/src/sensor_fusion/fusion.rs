@@ -2,8 +2,8 @@ use super::estimator::Estimator;
 use super::sample::SampleAcceptance;
 use crate::ownship::{DomainState, GpsSnapshot, Selected, SourceId};
 use crate::signal_state::SignalState;
-use crate::topic::{DerivedInstruments, SpeedInstrument};
-use updraft_units::{PressureAltitude, Speed};
+use crate::topic::{DerivedAltitudeInstruments, DerivedInstruments, SpeedInstrument};
+use updraft_units::{MslAltitude, PressureAltitude, Speed};
 
 /// Selected sensor states for one core time advancement.
 ///
@@ -32,6 +32,7 @@ pub struct SensorFusion {
     raw_vertical_speed: SignalState<Speed>,
     vertical_speed: SignalState<Speed>,
     vario: SignalState<Speed>,
+    altitude: SignalState<MslAltitude>,
 }
 
 impl SensorFusion {
@@ -61,6 +62,7 @@ impl SensorFusion {
             self.estimator.reset_gnss_altitude();
             self.gps = None;
             self.gps_altitude_source = None;
+            self.altitude.mark_stale();
         }
 
         let gps_altitude_current = match inputs.gps {
@@ -125,6 +127,7 @@ impl SensorFusion {
             return;
         }
         self.gps = Some(selected);
+        self.estimator.position(selected.value.position);
 
         let Some(altitude) = selected.value.altitude_msl else {
             if !self.pressure_altitude_current {
@@ -147,9 +150,7 @@ impl SensorFusion {
         let DomainState::Current(selected) = state else {
             self.estimator.clear_pressure_altitude();
             if !self.gps_current {
-                self.raw_vertical_speed.mark_stale();
-                self.vertical_speed.mark_stale();
-                self.vario.mark_stale();
+                self.mark_altitude_estimates_stale();
             }
             if matches!(state, DomainState::Unavailable) {
                 self.pressure_altitude = None;
@@ -174,6 +175,7 @@ impl SensorFusion {
         self.raw_vertical_speed.mark_stale();
         self.vertical_speed.mark_stale();
         self.vario.mark_stale();
+        self.altitude.mark_stale();
     }
 
     fn update_estimate(&mut self) {
@@ -191,10 +193,19 @@ impl SensorFusion {
         } else {
             self.vario.mark_stale();
         }
+        if let Some(altitude) = estimate.altitude {
+            self.altitude.update(altitude);
+        }
     }
 
     pub fn instruments(&self) -> Option<DerivedInstruments> {
-        let (raw_vertical_speed, stale) = self.raw_vertical_speed.value_with_stale()?;
+        let raw_vertical_speed = self
+            .raw_vertical_speed
+            .value_with_stale()
+            .map(|(rate, stale)| SpeedInstrument {
+                meters_per_second: rate.as_meters_per_second(),
+                stale,
+            });
         let vertical_speed =
             self.vertical_speed
                 .value_with_stale()
@@ -209,13 +220,23 @@ impl SensorFusion {
                 meters_per_second: vertical_speed.as_meters_per_second(),
                 stale,
             });
-        Some(DerivedInstruments {
-            raw_vertical_speed: Some(SpeedInstrument {
-                meters_per_second: raw_vertical_speed.as_meters_per_second(),
-                stale,
-            }),
+        let altitude =
+            self.altitude
+                .value_with_stale()
+                .map(|(altitude, stale)| DerivedAltitudeInstruments {
+                    altitude_msl_meters: altitude.into_inner().as_meters(),
+                    stale,
+                });
+
+        let available = raw_vertical_speed.is_some()
+            || vertical_speed.is_some()
+            || vario.is_some()
+            || altitude.is_some();
+        available.then_some(DerivedInstruments {
+            raw_vertical_speed,
             vertical_speed,
             vario,
+            altitude,
         })
     }
 }
@@ -338,6 +359,7 @@ mod tests {
         let instruments = assert_some!(fusion.instruments());
         assert!(!assert_some!(instruments.raw_vertical_speed).stale);
         assert!(!assert_some!(instruments.vertical_speed).stale);
+        assert!(!assert_some!(instruments.altitude).stale);
     }
 
     #[test]
@@ -395,6 +417,7 @@ mod tests {
             assert_some!(instruments.raw_vertical_speed).meters_per_second,
             0.
         );
+        assert!(assert_some!(instruments.altitude).stale);
     }
 
     #[test]
@@ -449,10 +472,11 @@ mod tests {
             assert_some!(instruments.raw_vertical_speed).meters_per_second,
             0.
         );
+        assert!(assert_some!(instruments.altitude).stale);
     }
 
     #[test]
-    fn position_refresh_does_not_repeat_a_gnss_altitude() {
+    fn position_refresh_preserves_gnss_altitude_without_repeating_its_sample() {
         let mut fusion = SensorFusion::default();
         let snapshot = |longitude, milliseconds| {
             selected(
@@ -475,12 +499,18 @@ mod tests {
             true_airspeed: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
         });
+        let instruments = assert_some!(fusion.instruments());
+        assert_none!(instruments.raw_vertical_speed);
+        assert!(!assert_some!(instruments.altitude).stale);
+
         fusion.update(FusionInputs {
             gps: DomainState::Current(snapshot(6.001, 1_000)),
             true_airspeed: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
         });
 
-        assert_none!(fusion.instruments());
+        let instruments = assert_some!(fusion.instruments());
+        assert_none!(instruments.raw_vertical_speed);
+        assert!(!assert_some!(instruments.altitude).stale);
     }
 }

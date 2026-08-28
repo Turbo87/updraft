@@ -44,8 +44,8 @@ pub use settings::{
 };
 pub use time::Timestamp;
 pub use topic::{
-    AltitudeInstrument, DerivedInstruments, FixTime as PublishedFixTime, GpsInstruments,
-    Instruments, LatLon, SpeedInstrument, Topic,
+    AltitudeInstrument, DerivedAltitudeInstruments, DerivedInstruments,
+    FixTime as PublishedFixTime, GpsInstruments, Instruments, LatLon, SpeedInstrument, Topic,
 };
 pub use traffic::{
     PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,

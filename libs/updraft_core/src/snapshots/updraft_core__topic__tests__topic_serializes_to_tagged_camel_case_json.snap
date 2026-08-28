@@ -39,6 +39,10 @@ expression: topic
       "vario": {
         "metersPerSecond": 1.5,
         "stale": true
+      },
+      "altitude": {
+        "altitudeMslMeters": 1234.5,
+        "stale": false
       }
     }
   }

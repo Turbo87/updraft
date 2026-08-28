@@ -435,6 +435,7 @@ impl Core {
 
     fn update_sensor_fusion(&mut self) {
         self.sensor_fusion.update(FusionInputs {
+            gps: self.gps,
             true_airspeed: self.true_airspeed,
             pressure_altitude: self.pressure_altitude,
         });

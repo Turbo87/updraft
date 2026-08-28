@@ -1,4 +1,4 @@
-use super::sample::SampleAcceptance;
+use super::sample::{AltitudeDomain, SampleAcceptance};
 use std::time::Duration;
 use updraft_units::{Length, Speed};
 
@@ -14,6 +14,7 @@ const MAX_ALTITUDE_INTERVAL: Duration = Duration::from_secs(30);
 struct Previous {
     time: Duration,
     altitude: Length,
+    domain: AltitudeDomain,
 }
 
 /// Differentiates an altitude series and smooths the result through two stages.
@@ -31,15 +32,26 @@ impl Vario {
     /// The method ignores samples whose timestamps do not advance. A gap that
     /// exceeds [`MAX_ALTITUDE_INTERVAL`] starts a new series. Another sample
     /// must arrive before a vertical speed is available.
-    pub fn advance(&mut self, time: Duration, altitude: Length) -> SampleAcceptance {
+    pub fn advance(
+        &mut self,
+        time: Duration,
+        altitude: Length,
+        domain: AltitudeDomain,
+    ) -> SampleAcceptance {
         // A sample at a time that has not advanced carries nothing to
         // differentiate. It must not replace the reference for the next sample.
-        if self.previous.is_some_and(|previous| time <= previous.time) {
+        if self
+            .previous
+            .is_some_and(|previous| previous.domain == domain && time <= previous.time)
+        {
             return SampleAcceptance::Ignored;
         }
-
-        let previous = self.previous.replace(Previous { time, altitude });
-        let Some(previous) = previous else {
+        let previous = self.previous.replace(Previous {
+            time,
+            altitude,
+            domain,
+        });
+        let Some(previous) = previous.filter(|previous| previous.domain == domain) else {
             self.first_stage = Speed::default();
             self.value = None;
             self.smoothed_value = None;

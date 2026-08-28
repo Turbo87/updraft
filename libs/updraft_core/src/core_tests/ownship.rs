@@ -5,7 +5,7 @@ use crate::{FixTime, UtcInstant, UtcTime};
 use approx::assert_abs_diff_eq;
 use claims::{assert_some, assert_some_eq};
 use std::assert_matches;
-use updraft_units::{Length, MslAltitude};
+use updraft_units::{EllipsoidAltitude, Length, MslAltitude};
 
 fn selected_fix_time(sentence: &[u8]) -> FixTime {
     let (mut core, device_id) = core_with_external_device();
@@ -550,6 +550,24 @@ fn internal_gps_altitude_is_converted_to_msl() {
 }
 
 #[test]
+fn gnss_climb_updates_fused_vertical_speed_without_a_barometer() {
+    let mut core = Core::new(config());
+
+    for second in 0..60u64 {
+        let mut sample = fix(50.823, 6.186);
+        sample.altitude_ellipsoid = Some(EllipsoidAltitude::new(Length::from_meters(
+            1_000.0 + 2.0 * second as f64,
+        )));
+        core.apply(InternalGps::new(sample), at(second * 1_000));
+    }
+
+    let derived = assert_some!(instruments(&core).derived);
+    let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
+    assert_abs_diff_eq!(raw_vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
+    assert!(!raw_vertical_speed.stale);
+}
+
+#[test]
 fn repeated_identical_fixes_emit_only_once() {
     let mut core = Core::new(config());
     let mut emissions = 0;
@@ -559,7 +577,10 @@ fn repeated_identical_fixes_emit_only_once() {
         emissions += core.apply(input, at(millis)).effects.len();
     }
 
-    assert_eq!(emissions, 1, "only the first fix changed any value");
+    assert_eq!(
+        emissions, 2,
+        "the second fix also establishes vertical speed"
+    );
     assert_eq!(
         assert_some!(core.internal_gps.position).ingested_at,
         at(104)

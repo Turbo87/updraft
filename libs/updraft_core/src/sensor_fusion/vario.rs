@@ -1,3 +1,4 @@
+use super::sample::SampleAcceptance;
 use std::time::Duration;
 use updraft_units::{Length, Speed};
 
@@ -13,14 +14,6 @@ const MAX_ALTITUDE_INTERVAL: Duration = Duration::from_secs(30);
 struct Previous {
     time: Duration,
     altitude: Length,
-}
-
-/// Whether an estimator accepted a sample for its time series.
-#[must_use]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SampleAcceptance {
-    Accepted,
-    Ignored,
 }
 
 /// Differentiates an altitude series and smooths the result through two stages.

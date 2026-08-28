@@ -1,4 +1,5 @@
-use super::vario::{SampleAcceptance, Vario};
+use super::sample::SampleAcceptance;
+use super::vario::Vario;
 use std::time::Duration;
 use updraft_units::{Length, PressureAltitude, Speed};
 

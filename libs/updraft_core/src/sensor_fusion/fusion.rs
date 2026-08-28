@@ -1,5 +1,5 @@
 use super::estimator::Estimator;
-use super::vario::SampleAcceptance;
+use super::sample::SampleAcceptance;
 use crate::ownship::{DomainState, Selected};
 use crate::signal_state::SignalState;
 use crate::topic::{DerivedInstruments, SpeedInstrument};

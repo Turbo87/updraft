@@ -21,7 +21,7 @@ use std::time::Duration;
 use updraft_units::{Length, PressureAltitude, Speed};
 
 use super::estimator::Estimator;
-use super::vario::SampleAcceptance::Accepted;
+use super::sample::SampleAcceptance::Accepted;
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.

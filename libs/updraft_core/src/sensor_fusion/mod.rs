@@ -1,5 +1,6 @@
 mod estimator;
 mod fusion;
+mod sample;
 mod vario;
 
 #[cfg(test)]

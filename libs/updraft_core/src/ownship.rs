@@ -24,8 +24,16 @@ impl<T> Timed<T> {
 }
 
 impl<T: Copy> Timed<T> {
+    fn fresh(self, at: Timestamp) -> Option<Self> {
+        (at.saturating_since(self.ingested_at) < DOMAIN_FRESHNESS_LIMIT).then_some(self)
+    }
+
     fn fresh_value(self, at: Timestamp) -> Option<T> {
-        (at.saturating_since(self.ingested_at) < DOMAIN_FRESHNESS_LIMIT).then_some(self.value)
+        self.fresh(at).map(|timed| timed.value)
+    }
+
+    fn map<U>(self, map: impl FnOnce(T) -> U) -> Timed<U> {
+        Timed::new(map(self.value), self.ingested_at)
     }
 }
 
@@ -108,10 +116,10 @@ impl SignalState<Selected<Speed>> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsSnapshot {
     pub position: GeoLatLon,
-    pub altitude_msl: Option<MslAltitude>,
-    pub track: Option<Angle>,
-    pub ground_speed: Option<Speed>,
-    pub fix_time: Option<FixTime>,
+    pub altitude_msl: Option<Timed<MslAltitude>>,
+    pub track: Option<Timed<Angle>>,
+    pub ground_speed: Option<Timed<Speed>>,
+    pub fix_time: Option<Timed<FixTime>>,
 }
 
 impl GpsSnapshot {
@@ -122,12 +130,14 @@ impl GpsSnapshot {
                 latitude_degrees: self.position.latitude().as_degrees(),
                 longitude_degrees: self.position.longitude().as_degrees(),
             },
-            track_degrees: self.track.map(Angle::as_degrees),
-            ground_speed_meters_per_second: self.ground_speed.map(Speed::as_meters_per_second),
+            track_degrees: self.track.map(|track| track.value.as_degrees()),
+            ground_speed_meters_per_second: self
+                .ground_speed
+                .map(|speed| speed.value.as_meters_per_second()),
             altitude_meters: self
                 .altitude_msl
-                .map(|altitude| altitude.into_inner().as_meters()),
-            fix_time: self.fix_time.map(Into::into),
+                .map(|altitude| altitude.value.into_inner().as_meters()),
+            fix_time: self.fix_time.map(|time| time.value.into()),
             stale,
         }
     }
@@ -141,24 +151,20 @@ pub fn select_gps_candidate(
 ) -> Option<Selected<GpsSnapshot>> {
     let position = candidate.position?;
     let position_value = position.fresh_value(at)?;
-    let altitude_msl = candidate
-        .altitude
-        .and_then(|altitude| altitude.fresh_value(at));
-    let track = candidate.track.and_then(|track| track.fresh_value(at));
-    let ground_speed = candidate
-        .ground_speed
-        .and_then(|speed| speed.fresh_value(at));
+    let altitude_msl = candidate.altitude.and_then(|altitude| altitude.fresh(at));
+    let track = candidate.track.and_then(|track| track.fresh(at));
+    let ground_speed = candidate.ground_speed.and_then(|speed| speed.fresh(at));
     let fix_time = candidate
         .fix_time
         .full
-        .and_then(|time| time.fresh_value(at))
-        .map(FixTime::UtcInstant)
+        .and_then(|time| time.fresh(at))
+        .map(|time| time.map(FixTime::UtcInstant))
         .or_else(|| {
             candidate
                 .fix_time
                 .time_only
-                .and_then(|time| time.fresh_value(at))
-                .map(FixTime::UtcTimeOfDay)
+                .and_then(|time| time.fresh(at))
+                .map(|time| time.map(FixTime::UtcTimeOfDay))
         });
 
     Some(Selected {
@@ -213,9 +219,18 @@ mod tests {
     fn projects_domain_values_to_the_instruments_topic() {
         let snapshot = GpsSnapshot {
             position: GeoLatLon::from_degrees(50.823, 6.186),
-            altitude_msl: Some(MslAltitude::new(Length::from_meters(200.0))),
-            track: Some(Angle::from_degrees(270.0)),
-            ground_speed: Some(Speed::from_meters_per_second(45.0)),
+            altitude_msl: Some(Timed::new(
+                MslAltitude::new(Length::from_meters(200.0)),
+                Timestamp::from_millis(0),
+            )),
+            track: Some(Timed::new(
+                Angle::from_degrees(270.0),
+                Timestamp::from_millis(0),
+            )),
+            ground_speed: Some(Timed::new(
+                Speed::from_meters_per_second(45.0),
+                Timestamp::from_millis(0),
+            )),
             fix_time: None,
         };
 

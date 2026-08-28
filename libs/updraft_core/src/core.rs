@@ -416,7 +416,7 @@ impl Core {
                 let altitude = same_device
                     .altitude
                     .map(|altitude| altitude.value)
-                    .or(displayed.and_then(|gps| gps.altitude_msl));
+                    .or(displayed.and_then(|gps| gps.altitude_msl.map(|altitude| altitude.value)));
                 let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
                     return;
                 };

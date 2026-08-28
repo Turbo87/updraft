@@ -1,6 +1,8 @@
+mod altitude;
 mod estimator;
 mod fusion;
 mod sample;
+mod smoothing;
 mod vario;
 
 #[cfg(test)]

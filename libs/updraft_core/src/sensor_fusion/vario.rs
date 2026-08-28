@@ -1,4 +1,5 @@
 use super::sample::{AltitudeDomain, SampleAcceptance};
+use super::smoothing::smoothing_weight;
 use std::time::Duration;
 use updraft_units::{Length, Speed};
 
@@ -36,16 +37,19 @@ impl Vario {
         &mut self,
         time: Duration,
         altitude: Length,
+        rebase: Length,
         domain: AltitudeDomain,
     ) -> SampleAcceptance {
+        let acceptance = self.acceptance(time, domain);
         // A sample at a time that has not advanced carries nothing to
         // differentiate. It must not replace the reference for the next sample.
-        if self
-            .previous
-            .is_some_and(|previous| previous.domain == domain && time <= previous.time)
-        {
-            return SampleAcceptance::Ignored;
+        if acceptance == SampleAcceptance::Ignored {
+            return acceptance;
         }
+        if let Some(previous) = self.previous.as_mut() {
+            previous.altitude += rebase;
+        }
+
         let previous = self.previous.replace(Previous {
             time,
             altitude,
@@ -83,6 +87,18 @@ impl Vario {
         SampleAcceptance::Accepted
     }
 
+    /// Reports whether a sample would advance its altitude domain's series.
+    pub fn acceptance(&self, time: Duration, domain: AltitudeDomain) -> SampleAcceptance {
+        if self
+            .previous
+            .is_some_and(|previous| previous.domain == domain && time <= previous.time)
+        {
+            SampleAcceptance::Ignored
+        } else {
+            SampleAcceptance::Accepted
+        }
+    }
+
     pub fn value(&self) -> Option<Speed> {
         self.value
     }
@@ -90,8 +106,4 @@ impl Vario {
     pub fn smoothed_value(&self) -> Option<Speed> {
         self.smoothed_value
     }
-}
-
-fn smoothing_weight(interval: Duration, time_constant: Duration) -> f64 {
-    1. - (-interval.as_secs_f64() / time_constant.as_secs_f64()).exp()
 }

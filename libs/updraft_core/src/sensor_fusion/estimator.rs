@@ -1,3 +1,4 @@
+use super::altitude::AltitudeFilter;
 use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::vario::Vario;
 use std::time::Duration;
@@ -27,6 +28,7 @@ pub struct Estimate {
 /// owns selected-source continuity, freshness, and protocol projection.
 #[derive(Clone, Debug)]
 pub struct Estimator {
+    altitude: AltitudeFilter,
     pressure_altitude_current: bool,
     vario: Vario,
     uncompensated: Vario,
@@ -43,6 +45,7 @@ impl Default for Estimator {
 impl Estimator {
     pub fn new() -> Self {
         Self {
+            altitude: AltitudeFilter::default(),
             pressure_altitude_current: false,
             vario: Vario::default(),
             uncompensated: Vario::default(),
@@ -57,12 +60,17 @@ impl Estimator {
         time: Duration,
         altitude: PressureAltitude,
     ) -> SampleAcceptance {
-        let acceptance =
-            self.advance_vertical_speed(time, altitude.into_inner(), AltitudeDomain::Pressure);
-        if acceptance == SampleAcceptance::Accepted {
-            self.pressure_altitude_current = true;
+        let acceptance = self
+            .uncompensated
+            .acceptance(time, AltitudeDomain::Pressure);
+        if acceptance == SampleAcceptance::Ignored {
+            return acceptance;
         }
-        acceptance
+
+        let altitude = altitude.into_inner();
+        self.pressure_altitude_current = true;
+        let altitude = self.altitude.pressure(time, altitude);
+        self.advance_vertical_speed(time, altitude, AltitudeDomain::Pressure)
     }
 
     pub fn clear_pressure_altitude(&mut self) {
@@ -71,6 +79,7 @@ impl Estimator {
 
     /// Clears state that assumes continuity with one GNSS altitude source.
     pub fn reset_gnss_altitude(&mut self) {
+        self.altitude.clear_gnss_reference();
         self.gnss_time = None;
     }
 
@@ -84,10 +93,12 @@ impl Estimator {
         }
         self.gnss_time = Some(time);
 
+        let altitude = altitude.into_inner();
         if self.pressure_altitude_current {
+            self.altitude.gnss(time, altitude);
             SampleAcceptance::Accepted
         } else {
-            self.advance_vertical_speed(time, altitude.into_inner(), AltitudeDomain::Gnss)
+            self.advance_vertical_speed(time, altitude, AltitudeDomain::Gnss)
         }
     }
 
@@ -119,23 +130,27 @@ impl Estimator {
         altitude: Length,
         domain: AltitudeDomain,
     ) -> SampleAcceptance {
-        let acceptance = self.uncompensated.advance(time, altitude, domain);
+        let acceptance = self.uncompensated.acceptance(time, domain);
         if acceptance == SampleAcceptance::Ignored {
             return acceptance;
         }
+        let fusion = self.altitude.take_step();
+        let uncompensated = self.uncompensated.advance(time, altitude, fusion, domain);
+        debug_assert_eq!(uncompensated, acceptance);
 
         let Some(AirSpeedSample { speed, .. }) = self.measured_air_speed else {
             return acceptance;
         };
         let speed = speed.as_meters_per_second();
         let energy = Length::from_meters(speed * speed / (2. * GRAVITY));
-        let compensated = self.vario.advance(time, altitude + energy, domain);
+        let compensated = self.vario.advance(time, altitude + energy, fusion, domain);
         debug_assert_eq!(compensated, acceptance);
         acceptance
     }
 
     /// Clears state that assumes continuity with one altitude source.
     pub fn reset_altitude(&mut self) {
+        self.altitude = AltitudeFilter::default();
         self.pressure_altitude_current = false;
         self.vario = Vario::default();
         self.uncompensated = Vario::default();
@@ -546,6 +561,31 @@ mod tests {
             Speed::from_meters_per_second(2.),
             epsilon = 0.01
         );
+    }
+
+    #[test]
+    fn establishing_the_gnss_offset_does_not_show_as_a_climb() {
+        let mut estimator = Estimator::new();
+        for second in 0..60u64 {
+            assert_eq!(
+                estimator.pressure_altitude(Duration::from_secs(second), meters(1000.)),
+                Accepted
+            );
+        }
+
+        let mut worst = 0f64;
+        for second in 60..90u64 {
+            let time = Duration::from_secs(second);
+            assert_eq!(
+                estimator.gnss_altitude(time, EllipsoidAltitude::new(Length::from_meters(1200.))),
+                Accepted
+            );
+            assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
+            let vertical_speed = assert_some!(estimator.estimate().raw_vertical_speed);
+            worst = worst.max(vertical_speed.as_meters_per_second().abs());
+        }
+
+        assert!(worst < 0.01, "reading reached {worst} m/s");
     }
 
     #[test]

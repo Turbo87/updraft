@@ -133,6 +133,10 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Vario",
           "value": "–",
         },
+        {
+          "label": "Derived altitude",
+          "value": "–",
+        },
       ]
     `);
   });
@@ -203,6 +207,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Vario",
+          "value": "–",
+        },
+        {
+          "label": "Derived altitude",
           "value": "–",
         },
       ]
@@ -335,6 +343,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Vario",
+          "value": "–",
+        },
+        {
+          "label": "Derived altitude",
           "value": "–",
         },
       ]

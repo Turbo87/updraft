@@ -83,7 +83,19 @@ pub struct DerivedInstruments {
     pub raw_vertical_speed: Option<SpeedInstrument>,
     pub vertical_speed: Option<SpeedInstrument>,
     pub vario: Option<SpeedInstrument>,
+    pub wind: Option<DerivedWindInstruments>,
     pub altitude: Option<DerivedAltitudeInstruments>,
+}
+
+/// Derived wind values with their shared freshness state.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct DerivedWindInstruments {
+    /// Direction that the wind comes from.
+    pub direction_degrees: f64,
+    pub speed_meters_per_second: f64,
+    pub stale: bool,
 }
 
 /// Derived altitude with its freshness state.
@@ -197,6 +209,11 @@ mod tests {
                 vario: Some(SpeedInstrument {
                     meters_per_second: 1.5,
                     stale: true,
+                }),
+                wind: Some(DerivedWindInstruments {
+                    direction_degrees: 240.0,
+                    speed_meters_per_second: 5.0,
+                    stale: false,
                 }),
                 altitude: Some(DerivedAltitudeInstruments {
                     altitude_msl_meters: 1_234.5,

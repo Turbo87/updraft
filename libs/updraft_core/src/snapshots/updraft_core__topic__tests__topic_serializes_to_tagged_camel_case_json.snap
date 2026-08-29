@@ -40,6 +40,11 @@ expression: topic
         "metersPerSecond": 1.5,
         "stale": true
       },
+      "wind": {
+        "directionDegrees": 240.0,
+        "speedMetersPerSecond": 5.0,
+        "stale": false
+      },
       "altitude": {
         "altitudeMslMeters": 1234.5,
         "stale": false

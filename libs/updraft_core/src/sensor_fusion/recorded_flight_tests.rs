@@ -18,10 +18,10 @@
 use igc::records::{Extendable, Extension, Record};
 use std::fmt::Write as _;
 use std::time::Duration;
-use updraft_units::{Length, PressureAltitude, Speed};
+use updraft_units::{EllipsoidAltitude, Length, PressureAltitude, Speed};
 
 use super::estimator::Estimator;
-use super::vario::SampleAcceptance::Accepted;
+use super::sample::SampleAcceptance::Accepted;
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.
@@ -73,6 +73,13 @@ fn measure(air_speed: AirSpeed) -> String {
                 if air_speed == AirSpeed::FromSensor {
                     let air_speed = hundredths_kmh(value("TAS"));
                     let acceptance = estimator.air_speed(time, air_speed);
+                    assert_eq!(acceptance, Accepted);
+                }
+                // A zero GNSS altitude means the recorder had no fix.
+                if record.gps_alt != 0 {
+                    let altitude = Length::from_meters(f64::from(record.gps_alt));
+                    let altitude = EllipsoidAltitude::new(altitude);
+                    let acceptance = estimator.gnss_altitude(time, altitude);
                     assert_eq!(acceptance, Accepted);
                 }
                 let altitude = Length::from_meters(f64::from(record.pressure_alt));

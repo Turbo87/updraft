@@ -5,7 +5,7 @@ use crate::{FixTime, UtcInstant, UtcTime};
 use approx::assert_abs_diff_eq;
 use claims::{assert_some, assert_some_eq};
 use std::assert_matches;
-use updraft_units::{Length, MslAltitude};
+use updraft_units::{EllipsoidAltitude, Length, MslAltitude};
 
 fn selected_fix_time(sentence: &[u8]) -> FixTime {
     let (mut core, device_id) = core_with_external_device();
@@ -13,7 +13,7 @@ fn selected_fix_time(sentence: &[u8]) -> FixTime {
     let DomainState::Current(selected) = core.gps else {
         panic!("GPS should be current");
     };
-    assert_some!(selected.value.fix_time)
+    assert_some!(selected.value.fix_time).value
 }
 
 fn utc_time(milliseconds_since_midnight: u32) -> UtcTime {
@@ -37,6 +37,26 @@ fn fix_emits_instruments_immediately() {
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);
     assert_some_eq!(gps.track_degrees, 270.0);
+}
+
+#[test]
+fn selected_gps_fields_keep_their_ingestion_times() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(100));
+    core.apply(Bytes::new(device_id, GGA), at(200));
+
+    let DomainState::Current(selected) = core.gps else {
+        panic!("GPS should be current");
+    };
+    assert_eq!(assert_some!(selected.value.track).ingested_at, at(100));
+    assert_eq!(
+        assert_some!(selected.value.ground_speed).ingested_at,
+        at(100)
+    );
+    assert_eq!(
+        assert_some!(selected.value.altitude_msl).ingested_at,
+        at(200)
+    );
 }
 
 #[test]
@@ -68,7 +88,7 @@ fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
     let DomainState::Current(selected) = core.gps else {
         panic!("GPS should be current");
     };
-    assert_some_eq!(selected.value.fix_time, full);
+    assert_some_eq!(selected.value.fix_time.map(|time| time.value), full);
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
@@ -76,7 +96,7 @@ fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
     let DomainState::Current(selected) = core.gps else {
         panic!("GPS should remain current");
     };
-    assert_some_eq!(selected.value.fix_time, time_only);
+    assert_some_eq!(selected.value.fix_time.map(|time| time.value), time_only);
 
     let effects = core.apply(Tick, at(4_000)).effects;
 
@@ -495,7 +515,10 @@ fn internal_gps_selects_full_fix_time() {
     let DomainState::Current(selected) = core.gps else {
         panic!("GPS should be current");
     };
-    assert_some_eq!(selected.value.fix_time, FixTime::UtcInstant(fix_time));
+    assert_some_eq!(
+        selected.value.fix_time.map(|time| time.value),
+        FixTime::UtcInstant(fix_time)
+    );
 }
 
 #[test]
@@ -527,6 +550,25 @@ fn internal_gps_altitude_is_converted_to_msl() {
 }
 
 #[test]
+fn gnss_climb_updates_fused_vertical_speed_without_a_barometer() {
+    let mut core = Core::new(config());
+
+    for second in 0..60u64 {
+        let mut sample = fix(50.823, 6.186);
+        sample.altitude_ellipsoid = Some(EllipsoidAltitude::new(Length::from_meters(
+            1_000.0 + 2.0 * second as f64,
+        )));
+        core.apply(InternalGps::new(sample), at(second * 1_000));
+    }
+
+    let derived = assert_some!(instruments(&core).derived);
+    assert_some!(derived.altitude);
+    let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
+    assert_abs_diff_eq!(raw_vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
+    assert!(!raw_vertical_speed.stale);
+}
+
+#[test]
 fn repeated_identical_fixes_emit_only_once() {
     let mut core = Core::new(config());
     let mut emissions = 0;
@@ -536,7 +578,10 @@ fn repeated_identical_fixes_emit_only_once() {
         emissions += core.apply(input, at(millis)).effects.len();
     }
 
-    assert_eq!(emissions, 1, "only the first fix changed any value");
+    assert_eq!(
+        emissions, 2,
+        "the second fix also establishes vertical speed"
+    );
     assert_eq!(
         assert_some!(core.internal_gps.position).ingested_at,
         at(104)

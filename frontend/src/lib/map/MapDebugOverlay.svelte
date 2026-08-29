@@ -24,6 +24,11 @@
   const trueAirspeed = $derived(instruments.trueAirspeed);
   const pressureAltitude = $derived(instruments.pressureAltitude);
   const derivedInstruments = $derived(instruments.derived);
+  function altitude(meters: number | null | undefined): string {
+    return meters === null || meters === undefined
+      ? '–'
+      : `${convertAltitude(meters, units.altitude).toFixed(0)} ${units.altitude}`;
+  }
 
   function verticalSpeed(metersPerSecond: number | null | undefined): string {
     return metersPerSecond === null || metersPerSecond === undefined
@@ -144,6 +149,10 @@
       <dt>Vario</dt>
       <dd class:stale={derivedInstruments?.vario?.stale}>
         {verticalSpeed(derivedInstruments?.vario?.metersPerSecond)}
+      </dd>
+      <dt>Derived altitude</dt>
+      <dd class:stale={derivedInstruments?.altitude?.stale}>
+        {altitude(derivedInstruments?.altitude?.altitudeMslMeters)}
       </dd>
     </dl>
     <label>

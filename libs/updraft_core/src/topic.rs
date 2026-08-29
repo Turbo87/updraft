@@ -83,6 +83,16 @@ pub struct DerivedInstruments {
     pub raw_vertical_speed: Option<SpeedInstrument>,
     pub vertical_speed: Option<SpeedInstrument>,
     pub vario: Option<SpeedInstrument>,
+    pub altitude: Option<DerivedAltitudeInstruments>,
+}
+
+/// Derived altitude with its freshness state.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct DerivedAltitudeInstruments {
+    pub altitude_msl_meters: f64,
+    pub stale: bool,
 }
 
 /// Fast-changing instrument values grouped by source-selection domain.
@@ -187,6 +197,10 @@ mod tests {
                 vario: Some(SpeedInstrument {
                     meters_per_second: 1.5,
                     stale: true,
+                }),
+                altitude: Some(DerivedAltitudeInstruments {
+                    altitude_msl_meters: 1_234.5,
+                    stale: false,
                 }),
             })),
         }

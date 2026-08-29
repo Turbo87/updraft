@@ -1,9 +1,9 @@
 use super::estimator::Estimator;
-use super::vario::SampleAcceptance;
-use crate::ownship::{DomainState, Selected};
+use super::sample::SampleAcceptance;
+use crate::ownship::{DomainState, GpsSnapshot, Selected, SourceId};
 use crate::signal_state::SignalState;
-use crate::topic::{DerivedInstruments, SpeedInstrument};
-use updraft_units::{PressureAltitude, Speed};
+use crate::topic::{DerivedAltitudeInstruments, DerivedInstruments, SpeedInstrument};
+use updraft_units::{MslAltitude, PressureAltitude, Speed};
 
 /// Selected sensor states for one core time advancement.
 ///
@@ -11,6 +11,7 @@ use updraft_units::{PressureAltitude, Speed};
 /// call order.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FusionInputs {
+    pub gps: DomainState<GpsSnapshot>,
     pub true_airspeed: DomainState<Speed>,
     pub pressure_altitude: DomainState<PressureAltitude>,
 }
@@ -23,17 +24,66 @@ pub struct FusionInputs {
 pub struct SensorFusion {
     estimator: Estimator,
     air_speed: Option<Selected<Speed>>,
+    gps: Option<Selected<GpsSnapshot>>,
+    gps_altitude_source: Option<SourceId>,
     pressure_altitude: Option<Selected<PressureAltitude>>,
+    gps_current: bool,
+    pressure_altitude_current: bool,
     raw_vertical_speed: SignalState<Speed>,
     vertical_speed: SignalState<Speed>,
     vario: SignalState<Speed>,
+    altitude: SignalState<MslAltitude>,
 }
 
 impl SensorFusion {
     /// Applies one coherent set of selected sensor states.
     pub fn update(&mut self, inputs: FusionInputs) {
+        let gps_current = matches!(inputs.gps, DomainState::Current(_));
+        let pressure_current = matches!(inputs.pressure_altitude, DomainState::Current(_));
+        let gps_discontinuity = match (self.gps_altitude_source, inputs.gps) {
+            (Some(_), DomainState::Unavailable) => true,
+            (Some(source), DomainState::Current(selected)) => source != selected.source,
+            _ => false,
+        };
+        let pressure_discontinuity = match inputs.pressure_altitude {
+            DomainState::Unavailable => self.pressure_altitude.is_some(),
+            DomainState::Current(selected) => self
+                .pressure_altitude
+                .is_some_and(|previous| previous.source != selected.source),
+            DomainState::LastKnown(_) => false,
+        };
+        if pressure_discontinuity || (gps_discontinuity && !pressure_current) {
+            self.estimator.reset_altitude();
+            self.gps = None;
+            self.gps_altitude_source = None;
+            self.pressure_altitude = None;
+            self.mark_altitude_estimates_stale();
+        } else if gps_discontinuity {
+            self.estimator.reset_gnss_altitude();
+            self.gps = None;
+            self.gps_altitude_source = None;
+            self.altitude.mark_stale();
+        }
+
+        let gps_altitude_current = match inputs.gps {
+            DomainState::Current(selected) => selected.value.altitude_msl.is_some(),
+            _ => false,
+        };
+        self.gps_current = gps_altitude_current;
+        self.pressure_altitude_current = pressure_current;
         self.update_true_airspeed(inputs.true_airspeed);
-        self.update_pressure_altitude(inputs.pressure_altitude);
+        if !gps_current {
+            self.update_gps(inputs.gps);
+        }
+        if !pressure_current {
+            self.update_pressure_altitude(inputs.pressure_altitude);
+        }
+        if gps_current {
+            self.update_gps(inputs.gps);
+        }
+        if pressure_current {
+            self.update_pressure_altitude(inputs.pressure_altitude);
+        }
     }
 
     fn update_true_airspeed(&mut self, state: DomainState<Speed>) {
@@ -62,13 +112,47 @@ impl SensorFusion {
         self.air_speed = Some(selected);
     }
 
+    fn update_gps(&mut self, state: DomainState<GpsSnapshot>) {
+        let DomainState::Current(selected) = state else {
+            if !self.pressure_altitude_current {
+                self.mark_altitude_estimates_stale();
+            }
+            if matches!(state, DomainState::Unavailable) {
+                self.gps = None;
+            }
+            return;
+        };
+
+        if self.gps == Some(selected) {
+            return;
+        }
+        self.gps = Some(selected);
+        self.estimator.position(selected.value.position);
+
+        let Some(altitude) = selected.value.altitude_msl else {
+            if !self.pressure_altitude_current {
+                self.mark_altitude_estimates_stale();
+            }
+            return;
+        };
+        let ellipsoid = updraft_egm96::msl_to_ellipsoidal(selected.value.position, altitude.value);
+        let SampleAcceptance::Accepted = self
+            .estimator
+            .gnss_altitude(altitude.ingested_at.since_start(), ellipsoid)
+        else {
+            return;
+        };
+        self.gps_altitude_source = Some(selected.source);
+        self.update_estimate();
+    }
+
     fn update_pressure_altitude(&mut self, state: DomainState<PressureAltitude>) {
         let DomainState::Current(selected) = state else {
-            self.raw_vertical_speed.mark_stale();
-            self.vertical_speed.mark_stale();
-            self.vario.mark_stale();
+            self.estimator.clear_pressure_altitude();
+            if !self.gps_current {
+                self.mark_altitude_estimates_stale();
+            }
             if matches!(state, DomainState::Unavailable) {
-                self.estimator.reset_altitude();
                 self.pressure_altitude = None;
             }
             return;
@@ -77,15 +161,6 @@ impl SensorFusion {
         if self.pressure_altitude == Some(selected) {
             return;
         }
-        if self
-            .pressure_altitude
-            .is_some_and(|previous| previous.source != selected.source)
-        {
-            self.estimator.reset_altitude();
-            self.raw_vertical_speed.mark_stale();
-            self.vertical_speed.mark_stale();
-            self.vario.mark_stale();
-        }
         self.pressure_altitude = Some(selected);
         let SampleAcceptance::Accepted = self
             .estimator
@@ -93,6 +168,17 @@ impl SensorFusion {
         else {
             return;
         };
+        self.update_estimate();
+    }
+
+    fn mark_altitude_estimates_stale(&mut self) {
+        self.raw_vertical_speed.mark_stale();
+        self.vertical_speed.mark_stale();
+        self.vario.mark_stale();
+        self.altitude.mark_stale();
+    }
+
+    fn update_estimate(&mut self) {
         let estimate = self.estimator.estimate();
         match estimate.raw_vertical_speed {
             Some(raw_vertical_speed) => self.raw_vertical_speed.update(raw_vertical_speed),
@@ -107,10 +193,19 @@ impl SensorFusion {
         } else {
             self.vario.mark_stale();
         }
+        if let Some(altitude) = estimate.altitude {
+            self.altitude.update(altitude);
+        }
     }
 
     pub fn instruments(&self) -> Option<DerivedInstruments> {
-        let (raw_vertical_speed, stale) = self.raw_vertical_speed.value_with_stale()?;
+        let raw_vertical_speed = self
+            .raw_vertical_speed
+            .value_with_stale()
+            .map(|(rate, stale)| SpeedInstrument {
+                meters_per_second: rate.as_meters_per_second(),
+                stale,
+            });
         let vertical_speed =
             self.vertical_speed
                 .value_with_stale()
@@ -125,13 +220,23 @@ impl SensorFusion {
                 meters_per_second: vertical_speed.as_meters_per_second(),
                 stale,
             });
-        Some(DerivedInstruments {
-            raw_vertical_speed: Some(SpeedInstrument {
-                meters_per_second: raw_vertical_speed.as_meters_per_second(),
-                stale,
-            }),
+        let altitude =
+            self.altitude
+                .value_with_stale()
+                .map(|(altitude, stale)| DerivedAltitudeInstruments {
+                    altitude_msl_meters: altitude.into_inner().as_meters(),
+                    stale,
+                });
+
+        let available = raw_vertical_speed.is_some()
+            || vertical_speed.is_some()
+            || vario.is_some()
+            || altitude.is_some();
+        available.then_some(DerivedInstruments {
+            raw_vertical_speed,
             vertical_speed,
             vario,
+            altitude,
         })
     }
 }
@@ -142,8 +247,9 @@ mod tests {
     use crate::ExternalDeviceId;
     use crate::ownship::SourceId;
     use crate::time::Timestamp;
-    use claims::assert_some;
-    use updraft_units::Length;
+    use claims::{assert_none, assert_some};
+    use updraft_geo::LatLon;
+    use updraft_units::{Length, MslAltitude};
 
     fn selected_from<T>(source: SourceId, value: T, milliseconds: u64) -> Selected<T> {
         Selected {
@@ -162,6 +268,7 @@ mod tests {
         pressure_altitude: DomainState<PressureAltitude>,
     ) -> FusionInputs {
         FusionInputs {
+            gps: DomainState::Unavailable,
             true_airspeed,
             pressure_altitude,
         }
@@ -220,5 +327,190 @@ mod tests {
         let current = assert_some!(assert_some!(fusion.instruments()).vario);
         assert_eq!(current.meters_per_second, 0.);
         assert!(!current.stale);
+    }
+
+    #[test]
+    fn current_gnss_altitude_remains_fresh_without_pressure() {
+        let mut fusion = SensorFusion::default();
+        let gps = |meters, milliseconds| {
+            let snapshot = GpsSnapshot {
+                position: LatLon::from_degrees(50., 6.),
+                altitude_msl: Some(crate::ownship::Timed::new(
+                    MslAltitude::new(Length::from_meters(meters)),
+                    Timestamp::from_millis(milliseconds),
+                )),
+                track: None,
+                ground_speed: None,
+                fix_time: None,
+            };
+            DomainState::Current(selected(snapshot, milliseconds))
+        };
+        let inputs = |gps| FusionInputs {
+            gps,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Unavailable,
+        };
+
+        fusion.update(inputs(gps(1_000., 0)));
+        let current = gps(1_001., 1_000);
+        fusion.update(inputs(current));
+        fusion.update(inputs(current));
+
+        let instruments = assert_some!(fusion.instruments());
+        assert!(!assert_some!(instruments.raw_vertical_speed).stale);
+        assert!(!assert_some!(instruments.vertical_speed).stale);
+        assert!(!assert_some!(instruments.altitude).stale);
+    }
+
+    #[test]
+    fn gps_source_change_to_position_only_preserves_pressure_vertical_speed() {
+        let mut fusion = SensorFusion::default();
+        let gps = |source, longitude, altitude: Option<f64>, milliseconds| {
+            let snapshot = GpsSnapshot {
+                position: LatLon::from_degrees(50., longitude),
+                altitude_msl: altitude.map(|meters| {
+                    crate::ownship::Timed::new(
+                        MslAltitude::new(Length::from_meters(meters)),
+                        Timestamp::from_millis(milliseconds),
+                    )
+                }),
+                track: None,
+                ground_speed: None,
+                fix_time: None,
+            };
+            DomainState::Current(selected_from(source, snapshot, milliseconds))
+        };
+        let first_source = SourceId::External(ExternalDeviceId(1));
+        let second_source = SourceId::External(ExternalDeviceId(2));
+        let first_gps = gps(first_source, 6., Some(1_200.), 0);
+        let altitude = PressureAltitude::new(Length::from_meters(1_000.));
+        let first_pressure = DomainState::Current(selected(altitude, 0));
+        let second_pressure = DomainState::Current(selected(altitude, 1_000));
+
+        fusion.update(FusionInputs {
+            gps: first_gps,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: first_pressure,
+        });
+        fusion.update(FusionInputs {
+            gps: gps(first_source, 6., Some(1_200.), 1_000),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: second_pressure,
+        });
+        fusion.update(FusionInputs {
+            gps: gps(second_source, 7., None, 2_000),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: second_pressure,
+        });
+
+        let instruments = assert_some!(fusion.instruments());
+        assert!(!assert_some!(instruments.raw_vertical_speed).stale);
+        assert!(!assert_some!(instruments.vertical_speed).stale);
+
+        fusion.update(FusionInputs {
+            gps: gps(second_source, 7., None, 2_000),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Current(selected(altitude, 2_000)),
+        });
+        let instruments = assert_some!(fusion.instruments());
+        assert_eq!(
+            assert_some!(instruments.raw_vertical_speed).meters_per_second,
+            0.
+        );
+        assert!(assert_some!(instruments.altitude).stale);
+    }
+
+    #[test]
+    fn unavailable_gps_preserves_pressure_vertical_speed() {
+        let mut fusion = SensorFusion::default();
+        let altitude = PressureAltitude::new(Length::from_meters(1_000.));
+        let pressure = |milliseconds| DomainState::Current(selected(altitude, milliseconds));
+        let gps = |milliseconds| {
+            DomainState::Current(selected(
+                GpsSnapshot {
+                    position: LatLon::from_degrees(50., 6.),
+                    altitude_msl: Some(crate::ownship::Timed::new(
+                        MslAltitude::new(Length::from_meters(1_200.)),
+                        Timestamp::from_millis(milliseconds),
+                    )),
+                    track: None,
+                    ground_speed: None,
+                    fix_time: None,
+                },
+                milliseconds,
+            ))
+        };
+
+        fusion.update(FusionInputs {
+            gps: gps(0),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: pressure(0),
+        });
+        let current_pressure = pressure(1_000);
+        fusion.update(FusionInputs {
+            gps: gps(1_000),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: current_pressure,
+        });
+        fusion.update(FusionInputs {
+            gps: DomainState::Unavailable,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: current_pressure,
+        });
+
+        let instruments = assert_some!(fusion.instruments());
+        assert!(!assert_some!(instruments.raw_vertical_speed).stale);
+        assert!(!assert_some!(instruments.vertical_speed).stale);
+
+        fusion.update(FusionInputs {
+            gps: DomainState::Unavailable,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: pressure(2_000),
+        });
+        let instruments = assert_some!(fusion.instruments());
+        assert_eq!(
+            assert_some!(instruments.raw_vertical_speed).meters_per_second,
+            0.
+        );
+        assert!(assert_some!(instruments.altitude).stale);
+    }
+
+    #[test]
+    fn position_refresh_preserves_gnss_altitude_without_repeating_its_sample() {
+        let mut fusion = SensorFusion::default();
+        let snapshot = |longitude, milliseconds| {
+            selected(
+                GpsSnapshot {
+                    position: LatLon::from_degrees(50., longitude),
+                    altitude_msl: Some(crate::ownship::Timed::new(
+                        MslAltitude::new(Length::from_meters(1_000.)),
+                        Timestamp::from_millis(0),
+                    )),
+                    track: None,
+                    ground_speed: None,
+                    fix_time: None,
+                },
+                milliseconds,
+            )
+        };
+
+        fusion.update(FusionInputs {
+            gps: DomainState::Current(snapshot(6., 0)),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Unavailable,
+        });
+        let instruments = assert_some!(fusion.instruments());
+        assert_none!(instruments.raw_vertical_speed);
+        assert!(!assert_some!(instruments.altitude).stale);
+
+        fusion.update(FusionInputs {
+            gps: DomainState::Current(snapshot(6.001, 1_000)),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Unavailable,
+        });
+
+        let instruments = assert_some!(fusion.instruments());
+        assert_none!(instruments.raw_vertical_speed);
+        assert!(!assert_some!(instruments.altitude).stale);
     }
 }

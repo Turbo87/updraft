@@ -2,6 +2,7 @@ mod altitude;
 mod circling;
 mod estimator;
 mod fusion;
+mod inferred_airspeed;
 mod sample;
 mod smoothing;
 mod vario;

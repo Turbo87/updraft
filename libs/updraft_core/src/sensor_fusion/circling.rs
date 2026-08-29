@@ -162,7 +162,7 @@ impl CirclingWind {
     /// drags the fit off the wind it had.
     fn completed_turn(&self) -> Option<usize> {
         let latest = self.samples.back()?;
-        if !self.is_turning(latest) {
+        if !self.is_turning() {
             return None;
         }
         (0..=self.samples.len().checked_sub(MIN_SAMPLES)?)
@@ -171,7 +171,10 @@ impl CirclingWind {
     }
 
     /// Whether the track is still sweeping, over the newest few seconds.
-    fn is_turning(&self, latest: &Sample) -> bool {
+    pub fn is_turning(&self) -> bool {
+        let Some(latest) = self.samples.back() else {
+            return false;
+        };
         self.samples
             .iter()
             .rev()

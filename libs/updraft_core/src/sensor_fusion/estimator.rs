@@ -1,5 +1,6 @@
 use super::altitude::AltitudeFilter;
 use super::circling::{CirclingWind, MEASUREMENT_VARIANCE};
+use super::inferred_airspeed::InferredAirspeed;
 use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::vario::Vario;
 use super::wind::{Wind, WindFilter};
@@ -39,6 +40,7 @@ pub struct Estimate {
     pub vertical_speed: Option<Speed>,
     pub vario: Option<Speed>,
     pub wind: Option<Wind>,
+    pub air_speed: Option<Speed>,
     pub altitude: Option<MslAltitude>,
 }
 
@@ -53,6 +55,7 @@ pub struct Estimator {
     vario: Vario,
     uncompensated: Vario,
     measured_air_speed: Option<AirSpeedSample>,
+    inferred_air_speed: InferredAirspeed,
     gnss_time: Option<Duration>,
     position: Option<LatLon>,
     referenced_altitude: Option<EllipsoidAltitude>,
@@ -76,6 +79,7 @@ impl Estimator {
             vario: Vario::default(),
             uncompensated: Vario::default(),
             measured_air_speed: None,
+            inferred_air_speed: InferredAirspeed::default(),
             gnss_time: None,
             position: None,
             referenced_altitude: None,
@@ -214,14 +218,22 @@ impl Estimator {
                 acceptance
             })
         };
-        self.previous_fix_time = Some(time);
-        if wind_measurement == SampleAcceptance::Accepted {
+        let acceptance = if wind_measurement == SampleAcceptance::Accepted {
             FixAcceptance::AcceptedWithWindMeasurement
         } else if air_speed_sample.is_some() || fit.is_some() {
             FixAcceptance::RejectedWindMeasurement
         } else {
             FixAcceptance::Predicted
+        };
+        if let Some((wind_east, wind_north)) = self.wind.vector() {
+            let east = (east - wind_east).as_meters_per_second();
+            let north = (north - wind_north).as_meters_per_second();
+            let speed = Speed::from_meters_per_second(east.hypot(north));
+            self.inferred_air_speed
+                .update(time, speed, self.circling.is_turning());
         }
+        self.previous_fix_time = Some(time);
+        acceptance
     }
 
     pub fn clear_air_speed(&mut self) {
@@ -272,6 +284,7 @@ impl Estimator {
         self.wind = WindFilter::default();
         self.wind_air_speed_time = None;
         self.circling = CirclingWind::default();
+        self.inferred_air_speed = InferredAirspeed::default();
         self.previous_fix_time = None;
     }
 
@@ -292,6 +305,10 @@ impl Estimator {
             vertical_speed,
             vario,
             wind,
+            air_speed: self
+                .measured_air_speed
+                .map(|sample| sample.speed)
+                .or_else(|| self.inferred_air_speed.latest_raw()),
             altitude: self.altitude_msl(),
         }
     }
@@ -883,5 +900,21 @@ mod tests {
         let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
 
         assert_eq!(estimator.fix(time, &fix), FixWithWind);
+    }
+
+    #[test]
+    fn circling_without_a_sensor_infers_airspeed() {
+        let mut estimator = Estimator::new();
+        for second in 0..60 {
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            let _ = estimator.fix(Duration::from_secs(second), &fix);
+        }
+
+        assert_abs_diff_eq!(
+            assert_some!(estimator.estimate().air_speed),
+            Speed::from_meters_per_second(30.),
+            epsilon = 0.3
+        );
     }
 }

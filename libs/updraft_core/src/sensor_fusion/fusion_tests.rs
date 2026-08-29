@@ -163,6 +163,7 @@ fn rejected_airspeed_measurement_keeps_motion_estimates_stale() {
     let instruments = assert_some!(fusion.instruments());
     let wind = assert_some!(instruments.wind);
     assert!(wind.stale);
+    assert!(assert_some!(instruments.heading).stale);
 }
 
 #[test]
@@ -247,7 +248,7 @@ fn unconverged_wind_stales_inferred_airspeed() {
 }
 
 #[test]
-fn stale_inputs_do_not_make_cached_airspeed_current() {
+fn stale_inputs_do_not_make_cached_motion_estimates_current() {
     let mut fusion = SensorFusion::default();
     let mut last_air_speed = None;
     let mut last_gps = None;
@@ -278,6 +279,7 @@ fn stale_inputs_do_not_make_cached_airspeed_current() {
     });
     let gps_stale = assert_some!(fusion.instruments());
     assert!(assert_some!(gps_stale.wind).stale);
+    assert!(assert_some!(gps_stale.heading).stale);
     assert!(!assert_some!(gps_stale.airspeed).stale);
 
     fusion.update(FusionInputs {
@@ -285,5 +287,7 @@ fn stale_inputs_do_not_make_cached_airspeed_current() {
         true_airspeed: DomainState::LastKnown(last_air_speed),
         pressure_altitude: DomainState::Current(last_pressure_altitude),
     });
-    assert!(assert_some!(assert_some!(fusion.instruments()).airspeed).stale);
+    let all_stale = assert_some!(fusion.instruments());
+    assert!(assert_some!(all_stale.heading).stale);
+    assert!(assert_some!(all_stale.airspeed).stale);
 }

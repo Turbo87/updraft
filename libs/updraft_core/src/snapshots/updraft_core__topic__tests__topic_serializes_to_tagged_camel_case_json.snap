@@ -49,6 +49,10 @@ expression: topic
         "metersPerSecond": 28.0,
         "stale": false
       },
+      "heading": {
+        "degrees": 265.0,
+        "stale": false
+      },
       "altitude": {
         "altitudeMslMeters": 1234.5,
         "stale": false

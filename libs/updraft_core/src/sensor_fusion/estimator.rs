@@ -10,6 +10,7 @@ use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltit
 
 const GRAVITY: f64 = 9.80665;
 const MAX_WIND_AIR_SPEED_SKEW: Duration = Duration::from_secs(1);
+const MIN_AIR_SPEED: Speed = Speed::from_meters_per_second(1.);
 
 #[derive(Clone, Copy, Debug)]
 struct AirSpeedSample {
@@ -41,6 +42,7 @@ pub struct Estimate {
     pub vario: Option<Speed>,
     pub wind: Option<Wind>,
     pub air_speed: Option<Speed>,
+    pub heading: Option<Angle>,
     pub altitude: Option<MslAltitude>,
 }
 
@@ -64,7 +66,14 @@ pub struct Estimator {
     wind: WindFilter,
     wind_air_speed_time: Option<Duration>,
     circling: CirclingWind,
-    previous_fix_time: Option<Duration>,
+    ground: Option<GroundVelocity>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct GroundVelocity {
+    time: Duration,
+    east: Speed,
+    north: Speed,
 }
 
 impl Default for Estimator {
@@ -90,7 +99,7 @@ impl Estimator {
             wind: WindFilter::default(),
             wind_air_speed_time: None,
             circling: CirclingWind::default(),
-            previous_fix_time: None,
+            ground: None,
         }
     }
 
@@ -186,10 +195,7 @@ impl Estimator {
 
     /// Adds a ground-velocity sample when its timestamp advances.
     pub fn fix(&mut self, time: Duration, fix: &Fix) -> FixAcceptance {
-        if self
-            .previous_fix_time
-            .is_some_and(|previous| time <= previous)
-        {
+        if self.ground.is_some_and(|previous| time <= previous.time) {
             return FixAcceptance::Ignored;
         }
 
@@ -197,8 +203,8 @@ impl Estimator {
         let east = fix.ground_speed * sin_track;
         let north = fix.ground_speed * cos_track;
 
-        if let Some(previous) = self.previous_fix_time {
-            self.wind.predict(time - previous);
+        if let Some(previous) = self.ground {
+            self.wind.predict(time - previous.time);
         }
         let fit = self.circling.update(time, east, north);
         let air_speed_sample = self.measured_air_speed.filter(|sample| {
@@ -239,7 +245,7 @@ impl Estimator {
             self.inferred_air_speed
                 .update(time, speed, self.circling.is_turning());
         }
-        self.previous_fix_time = Some(time);
+        self.ground = Some(GroundVelocity { time, east, north });
         acceptance
     }
 
@@ -263,6 +269,15 @@ impl Estimator {
         self.measured_air_speed
             .map(|sample| sample.speed)
             .or_else(|| self.inferred_air_speed.fresh_at(now))
+    }
+
+    fn heading(&self) -> Option<Angle> {
+        let ground = self.ground?;
+        let (wind_east, wind_north) = self.wind.vector()?;
+        let east = (ground.east - wind_east).as_meters_per_second();
+        let north = (ground.north - wind_north).as_meters_per_second();
+        let speed = Speed::from_meters_per_second(east.hypot(north));
+        (speed >= MIN_AIR_SPEED).then(|| Angle::from_radians(east.atan2(north)).normalized())
     }
 
     /// Clears state that assumes continuity with one airspeed source.
@@ -320,7 +335,7 @@ impl Estimator {
         self.wind_air_speed_time = None;
         self.circling = CirclingWind::default();
         self.inferred_air_speed = InferredAirspeed::default();
-        self.previous_fix_time = None;
+        self.ground = None;
     }
 
     pub fn estimate(&self) -> Estimate {
@@ -342,16 +357,14 @@ impl Estimator {
         let air_speed = self
             .measured_air_speed
             .map(|sample| sample.speed)
-            .or_else(|| {
-                self.previous_fix_time
-                    .and_then(|time| self.inferred_air_speed.current_raw_at(time))
-            });
+            .or_else(|| self.inferred_air_speed.current_raw_at(self.ground?.time));
         Estimate {
             raw_vertical_speed,
             vertical_speed,
             vario,
             wind,
             air_speed,
+            heading: self.heading(),
             altitude: self.altitude_msl(),
         }
     }
@@ -958,6 +971,22 @@ mod tests {
             assert_some!(estimator.estimate().air_speed),
             Speed::from_meters_per_second(30.),
             epsilon = 0.3
+        );
+    }
+
+    #[test]
+    fn circling_without_a_sensor_infers_heading() {
+        let mut estimator = Estimator::new();
+        for second in 0..60 {
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            let _ = estimator.fix(Duration::from_secs(second), &fix);
+        }
+
+        assert_abs_diff_eq!(
+            assert_some!(estimator.estimate().heading),
+            Angle::from_degrees(342.),
+            epsilon = 0.5
         );
     }
 }

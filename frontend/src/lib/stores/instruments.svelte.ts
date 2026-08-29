@@ -9,6 +9,7 @@ export const EMPTY_DERIVED_INSTRUMENTS: DerivedInstruments = {
   vario: null,
   wind: null,
   airspeed: null,
+  heading: null,
   altitude: null,
 };
 

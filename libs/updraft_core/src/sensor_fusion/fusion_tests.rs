@@ -132,9 +132,12 @@ fn mismatched_ground_velocity_timestamps_stale_the_wind() {
 #[test]
 fn rejected_airspeed_measurement_stales_the_wind() {
     let mut fusion = fusion_with_converged_wind();
+    let mut gps = gps(60);
+    let at = Timestamp::from_millis(60_000);
+    gps.track = Some(Timed::new(Angle::from_degrees(355.), at));
 
     fusion.update(FusionInputs {
-        gps: DomainState::Current(selected(60_000, gps(60))),
+        gps: DomainState::Current(selected(60_000, gps)),
         true_airspeed: DomainState::Current(selected(60_000, Speed::ZERO)),
         pressure_altitude: DomainState::Unavailable,
     });

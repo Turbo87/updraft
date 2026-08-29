@@ -135,12 +135,42 @@ impl WindFilter {
         SampleAcceptance::Accepted
     }
 
+    /// Folds a complete wind vector into the estimate, with an isotropic
+    /// variance of `variance` on each component. A circle fit produces
+    /// one of these where no usable airspeed measurement does.
+    pub fn update_vector(&mut self, east: Speed, north: Speed, variance: f64) -> SampleAcceptance {
+        if variance <= 0. {
+            return SampleAcceptance::Ignored;
+        }
+
+        let (pe, c, pn) = (self.variance_east, self.covariance, self.variance_north);
+        let determinant = (pe + variance) * (pn + variance) - c * c;
+        if determinant <= 0. {
+            return SampleAcceptance::Ignored;
+        }
+
+        // Gain of a two-dimensional update with H = I.
+        let gain_ee = (pe * pn + pe * variance - c * c) / determinant;
+        let gain_en = c * variance / determinant;
+        let gain_nn = (pe * pn + pn * variance - c * c) / determinant;
+
+        let innovation_east = east - self.east;
+        let innovation_north = north - self.north;
+        self.east += gain_ee * innovation_east + gain_en * innovation_north;
+        self.north += gain_en * innovation_east + gain_nn * innovation_north;
+
+        // P -= K·P, with K symmetric.
+        self.variance_east -= gain_ee * pe + gain_en * c;
+        self.covariance -= gain_ee * c + gain_en * pn;
+        self.variance_north -= gain_en * c + gain_nn * pn;
+        SampleAcceptance::Accepted
+    }
+
     /// The wind vector in m/s towards east and north, or `None` while the
     /// estimate is still too uncertain to report.
     ///
-    /// Before the first circle the state is still the zero it started
-    /// at, and a consumer that drew that as a calm day would be wrong
-    /// rather than uncertain.
+    /// Before the filter converges, a consumer that drew its initial zero
+    /// state as a calm day would be wrong rather than uncertain.
     pub fn vector(&self) -> Option<(Speed, Speed)> {
         let converged = self.variance_east + self.variance_north <= CONVERGED_VARIANCE;
         converged.then_some((self.east, self.north))

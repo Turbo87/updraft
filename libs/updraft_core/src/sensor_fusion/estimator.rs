@@ -1,4 +1,5 @@
 use super::altitude::AltitudeFilter;
+use super::circling::{CirclingWind, MEASUREMENT_VARIANCE};
 use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::vario::Vario;
 use super::wind::{Wind, WindFilter};
@@ -57,6 +58,7 @@ pub struct Estimator {
     referenced_altitude: Option<EllipsoidAltitude>,
     wind: WindFilter,
     wind_air_speed_time: Option<Duration>,
+    circling: CirclingWind,
     previous_fix_time: Option<Duration>,
 }
 
@@ -79,6 +81,7 @@ impl Estimator {
             referenced_altitude: None,
             wind: WindFilter::default(),
             wind_air_speed_time: None,
+            circling: CirclingWind::default(),
             previous_fix_time: None,
         }
     }
@@ -186,21 +189,35 @@ impl Estimator {
         if let Some(previous) = self.previous_fix_time {
             self.wind.predict(time - previous);
         }
+        let fit = self.circling.update(time, east, north);
         let air_speed_sample = self.measured_air_speed.filter(|sample| {
             self.wind_air_speed_time != Some(sample.time)
                 && sample.time.abs_diff(time) <= MAX_WIND_AIR_SPEED_SKEW
         });
-        let wind_measurement = air_speed_sample.map_or(SampleAcceptance::Ignored, |sample| {
+        let air_speed_measurement = air_speed_sample.map_or(SampleAcceptance::Ignored, |sample| {
             let acceptance = self.wind.update(east, north, sample.speed);
             if acceptance == SampleAcceptance::Accepted {
                 self.wind_air_speed_time = Some(sample.time);
             }
             acceptance
         });
+        let wind_measurement = if air_speed_measurement == SampleAcceptance::Accepted {
+            air_speed_measurement
+        } else {
+            fit.map_or(SampleAcceptance::Ignored, |fit| {
+                let acceptance = self
+                    .wind
+                    .update_vector(fit.east, fit.north, MEASUREMENT_VARIANCE);
+                if acceptance == SampleAcceptance::Accepted {
+                    self.circling.accept(fit);
+                }
+                acceptance
+            })
+        };
         self.previous_fix_time = Some(time);
         if wind_measurement == SampleAcceptance::Accepted {
             FixAcceptance::AcceptedWithWindMeasurement
-        } else if air_speed_sample.is_some() {
+        } else if air_speed_sample.is_some() || fit.is_some() {
             FixAcceptance::RejectedWindMeasurement
         } else {
             FixAcceptance::Predicted
@@ -254,6 +271,7 @@ impl Estimator {
     pub fn reset_wind(&mut self) {
         self.wind = WindFilter::default();
         self.wind_air_speed_time = None;
+        self.circling = CirclingWind::default();
         self.previous_fix_time = None;
     }
 
@@ -261,15 +279,13 @@ impl Estimator {
         let raw_vertical_speed = self.uncompensated.value();
         let vertical_speed = self.uncompensated.smoothed_value();
         let vario = self.measured_air_speed.and(self.vario.smoothed_value());
-        let wind = self.measured_air_speed.and_then(|_| {
-            self.wind.vector().map(|(east, north)| {
-                let east = east.as_meters_per_second();
-                let north = north.as_meters_per_second();
-                Wind {
-                    direction: Angle::from_radians((-east).atan2(-north)).normalized(),
-                    speed: Speed::from_meters_per_second(east.hypot(north)),
-                }
-            })
+        let wind = self.wind.vector().map(|(east, north)| {
+            let east = east.as_meters_per_second();
+            let north = north.as_meters_per_second();
+            Wind {
+                direction: Angle::from_radians((-east).atan2(-north)).normalized(),
+                speed: Speed::from_meters_per_second(east.hypot(north)),
+            }
         });
         Estimate {
             raw_vertical_speed,
@@ -285,7 +301,7 @@ impl Estimator {
 mod tests {
     use super::FixAcceptance::{
         AcceptedWithWindMeasurement as FixWithWind, Ignored as FixIgnored,
-        Predicted as FixPredicted,
+        Predicted as FixPredicted, RejectedWindMeasurement as FixRejectedWind,
     };
     use super::SampleAcceptance::{Accepted, Ignored};
     use super::*;
@@ -306,6 +322,10 @@ mod tests {
             track: Angle::from_degrees(track),
             ground_speed: Speed::from_meters_per_second(ground_speed),
         }
+    }
+
+    fn velocity_fix(east: f64, north: f64) -> Fix {
+        fix(east.atan2(north).to_degrees(), east.hypot(north))
     }
 
     fn climb(rate: f64, seconds: u64) -> Estimator {
@@ -824,5 +844,44 @@ mod tests {
         }
 
         assert_none!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn rejected_airspeed_uses_a_complete_circle_measurement() {
+        let mut estimator = Estimator::new();
+        for second in 0..=20 {
+            let time = Duration::from_secs(second);
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            add_air_speed(&mut estimator, time, Speed::ZERO);
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            let expected = if second == 20 {
+                FixWithWind
+            } else {
+                FixRejectedWind
+            };
+
+            assert_eq!(estimator.fix(time, &fix), expected);
+        }
+
+        assert_some!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn unused_circle_measurement_remains_available() {
+        let mut estimator = Estimator::new();
+        for second in 0..=20 {
+            let time = Duration::from_secs(second);
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            add_air_speed(&mut estimator, time, Speed::from_meters_per_second(30.));
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            assert_eq!(estimator.fix(time, &fix), FixWithWind);
+        }
+
+        estimator.clear_air_speed();
+        let time = Duration::from_secs(21);
+        let heading = std::f64::consts::TAU * 21. / 20.;
+        let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+
+        assert_eq!(estimator.fix(time, &fix), FixWithWind);
     }
 }

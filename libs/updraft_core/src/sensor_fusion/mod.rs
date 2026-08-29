@@ -1,4 +1,5 @@
 mod altitude;
+mod circling;
 mod estimator;
 mod fusion;
 mod sample;

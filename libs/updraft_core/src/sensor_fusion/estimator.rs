@@ -1,16 +1,33 @@
 use super::altitude::AltitudeFilter;
+use super::circling::{CirclingWind, MEASUREMENT_VARIANCE};
 use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::vario::Vario;
+use super::wind::{Wind, WindFilter};
 use std::time::Duration;
 use updraft_geo::LatLon;
-use updraft_units::{EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
+use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
 
 const GRAVITY: f64 = 9.80665;
+const MAX_WIND_AIR_SPEED_SKEW: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Copy, Debug)]
 struct AirSpeedSample {
     time: Duration,
     speed: Speed,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Fix {
+    pub track: Angle,
+    pub ground_speed: Speed,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FixAcceptance {
+    Ignored,
+    Predicted,
+    RejectedWindMeasurement,
+    AcceptedWithWindMeasurement,
 }
 
 /// Flight values derived from the available sensor inputs.
@@ -21,6 +38,7 @@ pub struct Estimate {
     /// Smoothed vertical speed. Positive means climbing.
     pub vertical_speed: Option<Speed>,
     pub vario: Option<Speed>,
+    pub wind: Option<Wind>,
     pub altitude: Option<MslAltitude>,
 }
 
@@ -38,6 +56,10 @@ pub struct Estimator {
     gnss_time: Option<Duration>,
     position: Option<LatLon>,
     referenced_altitude: Option<EllipsoidAltitude>,
+    wind: WindFilter,
+    wind_air_speed_time: Option<Duration>,
+    circling: CirclingWind,
+    previous_fix_time: Option<Duration>,
 }
 
 impl Default for Estimator {
@@ -57,6 +79,10 @@ impl Estimator {
             gnss_time: None,
             position: None,
             referenced_altitude: None,
+            wind: WindFilter::default(),
+            wind_air_speed_time: None,
+            circling: CirclingWind::default(),
+            previous_fix_time: None,
         }
     }
 
@@ -146,6 +172,58 @@ impl Estimator {
     pub fn position(&mut self, position: LatLon) {
         self.position = Some(position);
     }
+
+    /// Adds a ground-velocity sample when its timestamp advances.
+    pub fn fix(&mut self, time: Duration, fix: &Fix) -> FixAcceptance {
+        if self
+            .previous_fix_time
+            .is_some_and(|previous| time <= previous)
+        {
+            return FixAcceptance::Ignored;
+        }
+
+        let (sin_track, cos_track) = fix.track.sin_cos();
+        let east = fix.ground_speed * sin_track;
+        let north = fix.ground_speed * cos_track;
+
+        if let Some(previous) = self.previous_fix_time {
+            self.wind.predict(time - previous);
+        }
+        let fit = self.circling.update(time, east, north);
+        let air_speed_sample = self.measured_air_speed.filter(|sample| {
+            self.wind_air_speed_time != Some(sample.time)
+                && sample.time.abs_diff(time) <= MAX_WIND_AIR_SPEED_SKEW
+        });
+        let air_speed_measurement = air_speed_sample.map_or(SampleAcceptance::Ignored, |sample| {
+            let acceptance = self.wind.update(east, north, sample.speed);
+            if acceptance == SampleAcceptance::Accepted {
+                self.wind_air_speed_time = Some(sample.time);
+            }
+            acceptance
+        });
+        let wind_measurement = if air_speed_measurement == SampleAcceptance::Accepted {
+            air_speed_measurement
+        } else {
+            fit.map_or(SampleAcceptance::Ignored, |fit| {
+                let acceptance = self
+                    .wind
+                    .update_vector(fit.east, fit.north, MEASUREMENT_VARIANCE);
+                if acceptance == SampleAcceptance::Accepted {
+                    self.circling.accept(fit);
+                }
+                acceptance
+            })
+        };
+        self.previous_fix_time = Some(time);
+        if wind_measurement == SampleAcceptance::Accepted {
+            FixAcceptance::AcceptedWithWindMeasurement
+        } else if air_speed_sample.is_some() || fit.is_some() {
+            FixAcceptance::RejectedWindMeasurement
+        } else {
+            FixAcceptance::Predicted
+        }
+    }
+
     pub fn clear_air_speed(&mut self) {
         self.reset_air_speed();
     }
@@ -190,14 +268,30 @@ impl Estimator {
         self.referenced_altitude = None;
     }
 
+    pub fn reset_wind(&mut self) {
+        self.wind = WindFilter::default();
+        self.wind_air_speed_time = None;
+        self.circling = CirclingWind::default();
+        self.previous_fix_time = None;
+    }
+
     pub fn estimate(&self) -> Estimate {
         let raw_vertical_speed = self.uncompensated.value();
         let vertical_speed = self.uncompensated.smoothed_value();
         let vario = self.measured_air_speed.and(self.vario.smoothed_value());
+        let wind = self.wind.vector().map(|(east, north)| {
+            let east = east.as_meters_per_second();
+            let north = north.as_meters_per_second();
+            Wind {
+                direction: Angle::from_radians((-east).atan2(-north)).normalized(),
+                speed: Speed::from_meters_per_second(east.hypot(north)),
+            }
+        });
         Estimate {
             raw_vertical_speed,
             vertical_speed,
             vario,
+            wind,
             altitude: self.altitude_msl(),
         }
     }
@@ -205,6 +299,10 @@ impl Estimator {
 
 #[cfg(test)]
 mod tests {
+    use super::FixAcceptance::{
+        AcceptedWithWindMeasurement as FixWithWind, Ignored as FixIgnored,
+        Predicted as FixPredicted, RejectedWindMeasurement as FixRejectedWind,
+    };
     use super::SampleAcceptance::{Accepted, Ignored};
     use super::*;
     use approx::assert_abs_diff_eq;
@@ -217,6 +315,17 @@ mod tests {
 
     fn add_air_speed(estimator: &mut Estimator, time: Duration, speed: Speed) {
         assert_eq!(estimator.air_speed(time, speed), Accepted);
+    }
+
+    fn fix(track: f64, ground_speed: f64) -> Fix {
+        Fix {
+            track: Angle::from_degrees(track),
+            ground_speed: Speed::from_meters_per_second(ground_speed),
+        }
+    }
+
+    fn velocity_fix(east: f64, north: f64) -> Fix {
+        fix(east.atan2(north).to_degrees(), east.hypot(north))
     }
 
     fn climb(rate: f64, seconds: u64) -> Estimator {
@@ -677,5 +786,102 @@ mod tests {
         assert_eq!(estimator.gnss_altitude(time, altitude), Accepted);
         assert_eq!(control.gnss_altitude(time, altitude), Accepted);
         assert_eq!(estimator.estimate(), control.estimate());
+    }
+    #[test]
+    fn older_fix_preserves_the_wind_estimate_and_reference() {
+        let mut estimator = Estimator::new();
+        let air_speed = Speed::from_meters_per_second(30.);
+        add_air_speed(&mut estimator, Duration::ZERO, air_speed);
+        assert_eq!(estimator.fix(Duration::ZERO, &fix(0., 35.)), FixWithWind);
+        assert_eq!(
+            estimator.fix(Duration::from_secs(2), &fix(0., 35.)),
+            FixPredicted
+        );
+        let mut control = estimator.clone();
+        let before = estimator.estimate();
+
+        assert_eq!(
+            estimator.fix(Duration::from_secs(1), &fix(180., 100.)),
+            FixIgnored
+        );
+        assert_eq!(estimator.estimate(), before);
+
+        let time = Duration::from_secs(3);
+        let fix = fix(0., 35.);
+        assert_eq!(estimator.fix(time, &fix), FixPredicted);
+        assert_eq!(control.fix(time, &fix), FixPredicted);
+        assert_eq!(estimator.estimate(), control.estimate());
+    }
+
+    #[test]
+    fn one_airspeed_sample_updates_wind_once() {
+        let mut estimator = Estimator::new();
+        let air_speed = Speed::from_meters_per_second(30.);
+        add_air_speed(&mut estimator, Duration::ZERO, air_speed);
+        for sample in 0..20 {
+            let time = Duration::from_millis(sample * 50);
+            let track = sample as f64 * 18.;
+            let expected = if sample == 0 {
+                FixWithWind
+            } else {
+                FixPredicted
+            };
+            assert_eq!(estimator.fix(time, &fix(track, 30.)), expected);
+        }
+
+        assert_none!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn old_airspeed_sample_does_not_update_wind() {
+        let mut estimator = Estimator::new();
+        let air_speed = Speed::from_meters_per_second(30.);
+        add_air_speed(&mut estimator, Duration::ZERO, air_speed);
+        for sample in 0..20 {
+            let time = Duration::from_secs(sample + 2);
+            let track = sample as f64 * 18.;
+            assert_eq!(estimator.fix(time, &fix(track, 30.)), FixPredicted);
+        }
+
+        assert_none!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn rejected_airspeed_uses_a_complete_circle_measurement() {
+        let mut estimator = Estimator::new();
+        for second in 0..=20 {
+            let time = Duration::from_secs(second);
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            add_air_speed(&mut estimator, time, Speed::ZERO);
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            let expected = if second == 20 {
+                FixWithWind
+            } else {
+                FixRejectedWind
+            };
+
+            assert_eq!(estimator.fix(time, &fix), expected);
+        }
+
+        assert_some!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn unused_circle_measurement_remains_available() {
+        let mut estimator = Estimator::new();
+        for second in 0..=20 {
+            let time = Duration::from_secs(second);
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            add_air_speed(&mut estimator, time, Speed::from_meters_per_second(30.));
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            assert_eq!(estimator.fix(time, &fix), FixWithWind);
+        }
+
+        estimator.clear_air_speed();
+        let time = Duration::from_secs(21);
+        let heading = std::f64::consts::TAU * 21. / 20.;
+        let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+
+        assert_eq!(estimator.fix(time, &fix), FixWithWind);
     }
 }

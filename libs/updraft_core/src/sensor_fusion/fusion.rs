@@ -1,8 +1,11 @@
-use super::estimator::Estimator;
+use super::estimator::{Estimator, Fix, FixAcceptance};
 use super::sample::SampleAcceptance;
+use super::wind::Wind;
 use crate::ownship::{DomainState, GpsSnapshot, Selected, SourceId};
 use crate::signal_state::SignalState;
-use crate::topic::{DerivedAltitudeInstruments, DerivedInstruments, SpeedInstrument};
+use crate::topic::{
+    DerivedAltitudeInstruments, DerivedInstruments, DerivedWindInstruments, SpeedInstrument,
+};
 use updraft_units::{MslAltitude, PressureAltitude, Speed};
 
 /// Selected sensor states for one core time advancement.
@@ -24,14 +27,16 @@ pub struct FusionInputs {
 pub struct SensorFusion {
     estimator: Estimator,
     air_speed: Option<Selected<Speed>>,
+    air_speed_source: Option<SourceId>,
     gps: Option<Selected<GpsSnapshot>>,
     gps_altitude_source: Option<SourceId>,
     pressure_altitude: Option<Selected<PressureAltitude>>,
-    gps_current: bool,
+    gps_altitude_current: bool,
     pressure_altitude_current: bool,
     raw_vertical_speed: SignalState<Speed>,
     vertical_speed: SignalState<Speed>,
     vario: SignalState<Speed>,
+    wind: SignalState<Wind>,
     altitude: SignalState<MslAltitude>,
 }
 
@@ -40,7 +45,14 @@ impl SensorFusion {
     pub fn update(&mut self, inputs: FusionInputs) {
         let gps_current = matches!(inputs.gps, DomainState::Current(_));
         let pressure_current = matches!(inputs.pressure_altitude, DomainState::Current(_));
-        let gps_discontinuity = match (self.gps_altitude_source, inputs.gps) {
+        let gps_discontinuity = match inputs.gps {
+            DomainState::Unavailable => self.gps.is_some(),
+            DomainState::Current(selected) => self
+                .gps
+                .is_some_and(|previous| previous.source != selected.source),
+            DomainState::LastKnown(_) => false,
+        };
+        let gps_altitude_discontinuity = match (self.gps_altitude_source, inputs.gps) {
             (Some(_), DomainState::Unavailable) => true,
             (Some(source), DomainState::Current(selected)) => source != selected.source,
             _ => false,
@@ -52,24 +64,28 @@ impl SensorFusion {
                 .is_some_and(|previous| previous.source != selected.source),
             DomainState::LastKnown(_) => false,
         };
-        if pressure_discontinuity || (gps_discontinuity && !pressure_current) {
+        if pressure_discontinuity || (gps_altitude_discontinuity && !pressure_current) {
             self.estimator.reset_altitude();
             self.gps = None;
             self.gps_altitude_source = None;
             self.pressure_altitude = None;
             self.mark_altitude_estimates_stale();
-        } else if gps_discontinuity {
+        } else if gps_altitude_discontinuity {
             self.estimator.reset_gnss_altitude();
             self.gps = None;
             self.gps_altitude_source = None;
             self.altitude.mark_stale();
+        }
+        if gps_discontinuity {
+            self.estimator.reset_wind();
+            self.wind.mark_stale();
         }
 
         let gps_altitude_current = match inputs.gps {
             DomainState::Current(selected) => selected.value.altitude_msl.is_some(),
             _ => false,
         };
-        self.gps_current = gps_altitude_current;
+        self.gps_altitude_current = gps_altitude_current;
         self.pressure_altitude_current = pressure_current;
         self.update_true_airspeed(inputs.true_airspeed);
         if !gps_current {
@@ -89,19 +105,21 @@ impl SensorFusion {
     fn update_true_airspeed(&mut self, state: DomainState<Speed>) {
         let DomainState::Current(selected) = state else {
             self.estimator.clear_air_speed();
-            self.air_speed = None;
             self.vario.mark_stale();
+            self.air_speed = None;
             return;
         };
         if self.air_speed == Some(selected) {
             return;
         }
         if self
-            .air_speed
-            .is_some_and(|previous| previous.source != selected.source)
+            .air_speed_source
+            .is_some_and(|source| source != selected.source)
         {
             self.estimator.reset_air_speed();
             self.vario.mark_stale();
+            self.estimator.reset_wind();
+            self.wind.mark_stale();
         }
         let SampleAcceptance::Accepted = self
             .estimator
@@ -110,10 +128,12 @@ impl SensorFusion {
             return;
         };
         self.air_speed = Some(selected);
+        self.air_speed_source = Some(selected.source);
     }
 
     fn update_gps(&mut self, state: DomainState<GpsSnapshot>) {
         let DomainState::Current(selected) = state else {
+            self.wind.mark_stale();
             if !self.pressure_altitude_current {
                 self.mark_altitude_estimates_stale();
             }
@@ -129,27 +149,48 @@ impl SensorFusion {
         self.gps = Some(selected);
         self.estimator.position(selected.value.position);
 
-        let Some(altitude) = selected.value.altitude_msl else {
-            if !self.pressure_altitude_current {
-                self.mark_altitude_estimates_stale();
+        if let Some(altitude) = selected.value.altitude_msl {
+            let ellipsoid =
+                updraft_egm96::msl_to_ellipsoidal(selected.value.position, altitude.value);
+            if self
+                .estimator
+                .gnss_altitude(altitude.ingested_at.since_start(), ellipsoid)
+                == SampleAcceptance::Accepted
+            {
+                self.gps_altitude_source = Some(selected.source);
+                self.update_altitude_estimate();
             }
-            return;
-        };
-        let ellipsoid = updraft_egm96::msl_to_ellipsoidal(selected.value.position, altitude.value);
-        let SampleAcceptance::Accepted = self
-            .estimator
-            .gnss_altitude(altitude.ingested_at.since_start(), ellipsoid)
+        } else if !self.pressure_altitude_current {
+            self.mark_altitude_estimates_stale();
+        }
+
+        let Some((track, ground_speed)) = selected
+            .value
+            .track
+            .zip(selected.value.ground_speed)
+            .filter(|(track, ground_speed)| track.ingested_at == ground_speed.ingested_at)
         else {
+            self.wind.mark_stale();
             return;
         };
-        self.gps_altitude_source = Some(selected.source);
-        self.update_estimate();
+        match self.estimator.fix(
+            track.ingested_at.since_start(),
+            &Fix {
+                track: track.value,
+                ground_speed: ground_speed.value,
+            },
+        ) {
+            FixAcceptance::AcceptedWithWindMeasurement => self.update_wind(),
+            FixAcceptance::RejectedWindMeasurement => self.wind.mark_stale(),
+            FixAcceptance::Predicted => {}
+            FixAcceptance::Ignored => {}
+        }
     }
 
     fn update_pressure_altitude(&mut self, state: DomainState<PressureAltitude>) {
         let DomainState::Current(selected) = state else {
             self.estimator.clear_pressure_altitude();
-            if !self.gps_current {
+            if !self.gps_altitude_current {
                 self.mark_altitude_estimates_stale();
             }
             if matches!(state, DomainState::Unavailable) {
@@ -168,7 +209,7 @@ impl SensorFusion {
         else {
             return;
         };
-        self.update_estimate();
+        self.update_altitude_estimate();
     }
 
     fn mark_altitude_estimates_stale(&mut self) {
@@ -178,7 +219,7 @@ impl SensorFusion {
         self.altitude.mark_stale();
     }
 
-    fn update_estimate(&mut self) {
+    fn update_altitude_estimate(&mut self) {
         let estimate = self.estimator.estimate();
         match estimate.raw_vertical_speed {
             Some(raw_vertical_speed) => self.raw_vertical_speed.update(raw_vertical_speed),
@@ -195,6 +236,14 @@ impl SensorFusion {
         }
         if let Some(altitude) = estimate.altitude {
             self.altitude.update(altitude);
+        }
+    }
+
+    fn update_wind(&mut self) {
+        if let Some(wind) = self.estimator.estimate().wind {
+            self.wind.update(wind);
+        } else {
+            self.wind.mark_stale();
         }
     }
 
@@ -220,6 +269,14 @@ impl SensorFusion {
                 meters_per_second: vertical_speed.as_meters_per_second(),
                 stale,
             });
+        let wind = self
+            .wind
+            .value_with_stale()
+            .map(|(wind, stale)| DerivedWindInstruments {
+                direction_degrees: wind.direction.as_degrees(),
+                speed_meters_per_second: wind.speed.as_meters_per_second(),
+                stale,
+            });
         let altitude =
             self.altitude
                 .value_with_stale()
@@ -231,11 +288,13 @@ impl SensorFusion {
         let available = raw_vertical_speed.is_some()
             || vertical_speed.is_some()
             || vario.is_some()
+            || wind.is_some()
             || altitude.is_some();
         available.then_some(DerivedInstruments {
             raw_vertical_speed,
             vertical_speed,
             vario,
+            wind,
             altitude,
         })
     }

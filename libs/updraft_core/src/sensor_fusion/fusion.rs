@@ -133,6 +133,7 @@ impl SensorFusion {
 
     fn update_gps(&mut self, state: DomainState<GpsSnapshot>) {
         let DomainState::Current(selected) = state else {
+            self.estimator.clear_inferred_air_speed();
             self.wind.mark_stale();
             if !self.pressure_altitude_current {
                 self.mark_altitude_estimates_stale();
@@ -148,6 +149,7 @@ impl SensorFusion {
         }
         self.gps = Some(selected);
         self.estimator.position(selected.value.position);
+        self.update_ground_velocity(selected.value);
 
         if let Some(altitude) = selected.value.altitude_msl {
             let ellipsoid =
@@ -163,13 +165,15 @@ impl SensorFusion {
         } else if !self.pressure_altitude_current {
             self.mark_altitude_estimates_stale();
         }
+    }
 
-        let Some((track, ground_speed)) = selected
-            .value
+    fn update_ground_velocity(&mut self, gps: GpsSnapshot) {
+        let Some((track, ground_speed)) = gps
             .track
-            .zip(selected.value.ground_speed)
+            .zip(gps.ground_speed)
             .filter(|(track, ground_speed)| track.ingested_at == ground_speed.ingested_at)
         else {
+            self.estimator.clear_inferred_air_speed();
             self.wind.mark_stale();
             return;
         };

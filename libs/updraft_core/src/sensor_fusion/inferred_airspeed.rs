@@ -54,12 +54,20 @@ impl InferredAirspeed {
     pub fn latest_raw(&self) -> Option<Speed> {
         self.sample.map(|sample| sample.raw)
     }
+
+    pub fn fresh_at(&self, now: Duration) -> Option<Speed> {
+        let sample = self.sample?;
+        now.checked_sub(sample.time)
+            .filter(|age| *age <= MAX_INTERVAL)
+            .map(|_| sample.filtered)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+    use claims::assert_none;
 
     #[test]
     fn turning_airspeed_changes_more_slowly() {
@@ -82,5 +90,13 @@ mod tests {
             Speed::from_meters_per_second(28.187307530779817),
             epsilon = 1e-12
         );
+    }
+
+    #[test]
+    fn stale_airspeed_is_not_reported() {
+        let mut airspeed = InferredAirspeed::default();
+        airspeed.update(Duration::ZERO, Speed::from_meters_per_second(30.), false);
+
+        assert_none!(airspeed.fresh_at(MAX_INTERVAL + Duration::from_nanos(1)));
     }
 }

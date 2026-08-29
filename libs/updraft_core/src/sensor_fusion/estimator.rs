@@ -56,6 +56,8 @@ pub struct Estimator {
     uncompensated: Vario,
     measured_air_speed: Option<AirSpeedSample>,
     inferred_air_speed: InferredAirspeed,
+    vario_available: bool,
+    previous_energy: Option<Length>,
     gnss_time: Option<Duration>,
     position: Option<LatLon>,
     referenced_altitude: Option<EllipsoidAltitude>,
@@ -80,6 +82,8 @@ impl Estimator {
             uncompensated: Vario::default(),
             measured_air_speed: None,
             inferred_air_speed: InferredAirspeed::default(),
+            vario_available: false,
+            previous_energy: None,
             gnss_time: None,
             position: None,
             referenced_altitude: None,
@@ -161,6 +165,9 @@ impl Estimator {
         {
             return SampleAcceptance::Ignored;
         }
+        if self.measured_air_speed.is_none() {
+            self.reset_total_energy();
+        }
         self.measured_air_speed = Some(AirSpeedSample { time, speed });
         SampleAcceptance::Accepted
     }
@@ -237,13 +244,31 @@ impl Estimator {
     }
 
     pub fn clear_air_speed(&mut self) {
-        self.reset_air_speed();
+        if self.measured_air_speed.take().is_some() {
+            self.reset_total_energy();
+        }
+    }
+
+    pub fn clear_inferred_air_speed(&mut self) {
+        self.inferred_air_speed = InferredAirspeed::default();
+    }
+
+    fn reset_total_energy(&mut self) {
+        self.vario = Vario::default();
+        self.vario_available = false;
+        self.previous_energy = None;
+    }
+
+    fn air_speed_at(&self, now: Duration) -> Option<Speed> {
+        self.measured_air_speed
+            .map(|sample| sample.speed)
+            .or_else(|| self.inferred_air_speed.fresh_at(now))
     }
 
     /// Clears state that assumes continuity with one airspeed source.
     pub fn reset_air_speed(&mut self) {
         self.measured_air_speed = None;
-        self.vario = Vario::default();
+        self.reset_total_energy();
     }
 
     fn advance_vertical_speed(
@@ -256,17 +281,25 @@ impl Estimator {
         if acceptance == SampleAcceptance::Ignored {
             return acceptance;
         }
-        let fusion = self.altitude.take_step();
-        let uncompensated = self.uncompensated.advance(time, altitude, fusion, domain);
-        debug_assert_eq!(uncompensated, acceptance);
-
-        let Some(AirSpeedSample { speed, .. }) = self.measured_air_speed else {
-            return acceptance;
+        let air_speed = self.air_speed_at(time);
+        self.vario_available = air_speed.is_some();
+        let energy = air_speed.map_or(Length::ZERO, |speed| {
+            let speed = speed.as_meters_per_second();
+            Length::from_meters(speed * speed / (2. * GRAVITY))
+        });
+        let compensation = match (self.previous_energy, air_speed.is_some()) {
+            (None, true) => energy,
+            (Some(previous), false) => -previous,
+            _ => Length::ZERO,
         };
-        let speed = speed.as_meters_per_second();
-        let energy = Length::from_meters(speed * speed / (2. * GRAVITY));
-        let compensated = self.vario.advance(time, altitude + energy, fusion, domain);
+        let fusion = self.altitude.take_step();
+        self.previous_energy = air_speed.map(|_| energy);
+        let compensated =
+            self.vario
+                .advance(time, altitude + energy, fusion + compensation, domain);
+        let uncompensated = self.uncompensated.advance(time, altitude, fusion, domain);
         debug_assert_eq!(compensated, acceptance);
+        debug_assert_eq!(uncompensated, acceptance);
         acceptance
     }
 
@@ -276,8 +309,10 @@ impl Estimator {
         self.pressure_altitude_current = false;
         self.vario = Vario::default();
         self.uncompensated = Vario::default();
+        self.previous_energy = None;
         self.gnss_time = None;
         self.referenced_altitude = None;
+        self.vario_available = false;
     }
 
     pub fn reset_wind(&mut self) {
@@ -291,7 +326,11 @@ impl Estimator {
     pub fn estimate(&self) -> Estimate {
         let raw_vertical_speed = self.uncompensated.value();
         let vertical_speed = self.uncompensated.smoothed_value();
-        let vario = self.measured_air_speed.and(self.vario.smoothed_value());
+        let vario = if self.vario_available {
+            self.vario.smoothed_value()
+        } else {
+            None
+        };
         let wind = self.wind.vector().map(|(east, north)| {
             let east = east.as_meters_per_second();
             let north = north.as_meters_per_second();

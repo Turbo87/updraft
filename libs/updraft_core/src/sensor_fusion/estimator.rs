@@ -339,15 +339,19 @@ impl Estimator {
                 speed: Speed::from_meters_per_second(east.hypot(north)),
             }
         });
+        let air_speed = self
+            .measured_air_speed
+            .map(|sample| sample.speed)
+            .or_else(|| {
+                self.previous_fix_time
+                    .and_then(|time| self.inferred_air_speed.current_raw_at(time))
+            });
         Estimate {
             raw_vertical_speed,
             vertical_speed,
             vario,
             wind,
-            air_speed: self
-                .measured_air_speed
-                .map(|sample| sample.speed)
-                .or_else(|| self.inferred_air_speed.latest_raw()),
+            air_speed,
             altitude: self.altitude_msl(),
         }
     }

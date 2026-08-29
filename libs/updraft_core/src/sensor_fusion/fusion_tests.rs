@@ -139,19 +139,29 @@ fn mismatched_ground_velocity_timestamps_stale_the_wind() {
 }
 
 #[test]
-fn rejected_airspeed_measurement_stales_the_wind() {
+fn rejected_airspeed_measurement_keeps_motion_estimates_stale() {
     let mut fusion = fusion_with_converged_wind();
-    let mut gps = gps(60);
+    let mut rejected_gps = gps(60);
     let at = Timestamp::from_millis(60_000);
-    gps.track = Some(Timed::new(Angle::from_degrees(355.), at));
+    rejected_gps.track = Some(Timed::new(Angle::from_degrees(355.), at));
+    let rejected_air_speed = selected(60_000, Speed::ZERO);
 
     fusion.update(FusionInputs {
-        gps: DomainState::Current(selected(60_000, gps)),
-        true_airspeed: DomainState::Current(selected(60_000, Speed::ZERO)),
+        gps: DomainState::Current(selected(60_000, rejected_gps)),
+        true_airspeed: DomainState::Current(rejected_air_speed),
         pressure_altitude: DomainState::Unavailable,
     });
 
-    let wind = assert_some!(assert_some!(fusion.instruments()).wind);
+    for second in 61..=62 {
+        fusion.update(FusionInputs {
+            gps: DomainState::Current(selected(second * 1_000, gps(second))),
+            true_airspeed: DomainState::Current(rejected_air_speed),
+            pressure_altitude: DomainState::Unavailable,
+        });
+    }
+
+    let instruments = assert_some!(fusion.instruments());
+    let wind = assert_some!(instruments.wind);
     assert!(wind.stale);
 }
 
@@ -215,4 +225,65 @@ fn stale_gps_stales_inferred_vario() {
 
     let stale = assert_some!(assert_some!(fusion.instruments()).vario);
     assert!(stale.stale);
+}
+
+#[test]
+fn unconverged_wind_stales_inferred_airspeed() {
+    let mut fusion = fusion_with_converged_wind();
+    for second in 60..=3_600 {
+        let millis = second * 1_000;
+        let mut gps = gps(second);
+        gps.track = Some(Timed::new(Angle::ZERO, Timestamp::from_millis(millis)));
+        fusion.update(FusionInputs {
+            gps: DomainState::Current(selected(millis, gps)),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Unavailable,
+        });
+    }
+
+    let instruments = assert_some!(fusion.instruments());
+    assert!(assert_some!(instruments.wind).stale);
+    assert!(assert_some!(instruments.airspeed).stale);
+}
+
+#[test]
+fn stale_inputs_do_not_make_cached_airspeed_current() {
+    let mut fusion = SensorFusion::default();
+    let mut last_air_speed = None;
+    let mut last_gps = None;
+    let mut last_pressure_altitude = None;
+    for second in 0..60 {
+        let millis = second * 1_000;
+        let air_speed = selected(millis, Speed::from_kilometers_per_hour(100.));
+        let gps = selected(millis, gps(second));
+        let pressure_altitude =
+            selected(millis, PressureAltitude::new(Length::from_meters(1_000.)));
+        fusion.update(FusionInputs {
+            gps: DomainState::Current(gps),
+            true_airspeed: DomainState::Current(air_speed),
+            pressure_altitude: DomainState::Current(pressure_altitude),
+        });
+        last_air_speed = Some(air_speed);
+        last_gps = Some(gps);
+        last_pressure_altitude = Some(pressure_altitude);
+    }
+
+    let last_air_speed = assert_some!(last_air_speed);
+    let last_gps = assert_some!(last_gps);
+    let last_pressure_altitude = assert_some!(last_pressure_altitude);
+    fusion.update(FusionInputs {
+        gps: DomainState::LastKnown(last_gps),
+        true_airspeed: DomainState::Current(last_air_speed),
+        pressure_altitude: DomainState::Current(last_pressure_altitude),
+    });
+    let gps_stale = assert_some!(fusion.instruments());
+    assert!(assert_some!(gps_stale.wind).stale);
+    assert!(!assert_some!(gps_stale.airspeed).stale);
+
+    fusion.update(FusionInputs {
+        gps: DomainState::LastKnown(last_gps),
+        true_airspeed: DomainState::LastKnown(last_air_speed),
+        pressure_altitude: DomainState::Current(last_pressure_altitude),
+    });
+    assert!(assert_some!(assert_some!(fusion.instruments()).airspeed).stale);
 }

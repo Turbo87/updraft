@@ -45,6 +45,10 @@ expression: topic
         "speedMetersPerSecond": 5.0,
         "stale": false
       },
+      "airspeed": {
+        "metersPerSecond": 28.0,
+        "stale": false
+      },
       "altitude": {
         "altitudeMslMeters": 1234.5,
         "stale": false

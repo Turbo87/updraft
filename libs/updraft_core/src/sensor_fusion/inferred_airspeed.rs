@@ -51,8 +51,11 @@ impl InferredAirspeed {
         value
     }
 
-    pub fn latest_raw(&self) -> Option<Speed> {
-        self.sample.map(|sample| sample.raw)
+    /// Returns raw inferred airspeed from the specified ground-velocity sample.
+    pub fn current_raw_at(&self, time: Duration) -> Option<Speed> {
+        self.sample
+            .filter(|sample| sample.time == time)
+            .map(|sample| sample.raw)
     }
 
     pub fn fresh_at(&self, now: Duration) -> Option<Speed> {

@@ -5,7 +5,7 @@ use crate::settings::Settings;
 use crate::traffic::TrafficUpdate;
 use serde::Serialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct LatLon {
@@ -84,6 +84,7 @@ pub struct DerivedInstruments {
     pub vertical_speed: Option<SpeedInstrument>,
     pub vario: Option<SpeedInstrument>,
     pub wind: Option<DerivedWindInstruments>,
+    pub airspeed: Option<SpeedInstrument>,
     pub altitude: Option<DerivedAltitudeInstruments>,
 }
 
@@ -213,6 +214,10 @@ mod tests {
                 wind: Some(DerivedWindInstruments {
                     direction_degrees: 240.0,
                     speed_meters_per_second: 5.0,
+                    stale: false,
+                }),
+                airspeed: Some(SpeedInstrument {
+                    meters_per_second: 28.0,
                     stale: false,
                 }),
                 altitude: Some(DerivedAltitudeInstruments {

@@ -146,13 +146,16 @@ fn extension(record: &impl Extendable, extensions: &[Extension<'_>], mnemonic: &
 }
 
 /// Running error statistics against a reference series.
+///
+/// Correlation needs both series. Compass directions only have an angular
+/// difference, so their correlation is not reported.
 #[derive(Default)]
 struct Errors {
     count: usize,
     error_sum: f64,
     absolute_sum: f64,
     square_sum: f64,
-    correlation: Correlation,
+    correlation: Option<Correlation>,
 }
 
 #[derive(Default)]
@@ -166,13 +169,9 @@ struct Correlation {
 
 impl Errors {
     fn add(&mut self, estimate: f64, reference: f64) {
-        let error = estimate - reference;
-        self.count += 1;
-        self.error_sum += error;
-        self.absolute_sum += error.abs();
-        self.square_sum += error * error;
+        self.add_difference(estimate - reference);
 
-        let correlation = &mut self.correlation;
+        let correlation = self.correlation.get_or_insert_default();
         correlation.estimates += estimate;
         correlation.estimate_squares += estimate * estimate;
         correlation.references += reference;
@@ -180,20 +179,36 @@ impl Errors {
         correlation.products += estimate * reference;
     }
 
+    fn add_difference(&mut self, error: f64) {
+        self.count += 1;
+        self.error_sum += error;
+        self.absolute_sum += error.abs();
+        self.square_sum += error * error;
+    }
+
     fn row(&self) -> String {
-        let sample_count = self.count;
-        let count = sample_count as f64;
-        let correlation = &self.correlation;
-        let covariance = correlation.products / count
-            - correlation.estimates * correlation.references / (count * count);
-        let estimates =
-            correlation.estimate_squares / count - (correlation.estimates / count).powi(2);
-        let references =
-            correlation.reference_squares / count - (correlation.references / count).powi(2);
-        let correlation = covariance / (estimates * references).sqrt();
-        let rms = (self.square_sum / count).sqrt();
-        let mae = self.absolute_sum / count;
-        let bias = self.error_sum / count;
-        format!("{sample_count:6} {rms:6.2} {mae:6.2} {bias:+6.2} {correlation:6.2}")
+        if self.count == 0 {
+            return format!("{:6} {:>6} {:>6} {:>6} {:>6}", 0, "-", "-", "-", "-");
+        }
+        let count = self.count as f64;
+        let correlation = match &self.correlation {
+            Some(correlation) => {
+                let covariance = correlation.products / count
+                    - correlation.estimates * correlation.references / (count * count);
+                let estimates =
+                    correlation.estimate_squares / count - (correlation.estimates / count).powi(2);
+                let references = correlation.reference_squares / count
+                    - (correlation.references / count).powi(2);
+                format!("{:6.2}", covariance / (estimates * references).sqrt())
+            }
+            None => "     -".to_owned(),
+        };
+        format!(
+            "{:6} {:6.2} {:6.2} {:+6.2} {correlation}",
+            self.count,
+            (self.square_sum / count).sqrt(),
+            self.absolute_sum / count,
+            self.error_sum / count,
+        )
     }
 }

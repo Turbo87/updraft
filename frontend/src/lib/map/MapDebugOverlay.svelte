@@ -163,6 +163,10 @@
       <dd class:stale={derivedInstruments?.vario?.stale}>
         {verticalSpeed(derivedInstruments?.vario?.metersPerSecond)}
       </dd>
+      <dt>Air speed</dt>
+      <dd class:stale={derivedInstruments?.airspeed?.stale}>
+        {speed(derivedInstruments?.airspeed?.metersPerSecond)}
+      </dd>
       <dt>Wind</dt>
       <dd class:stale={derivedInstruments?.wind?.stale}>{wind()}</dd>
       <dt>Derived altitude</dt>

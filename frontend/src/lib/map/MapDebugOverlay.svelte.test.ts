@@ -134,6 +134,10 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "–",
         },
         {
+          "label": "Air speed",
+          "value": "–",
+        },
+        {
           "label": "Wind",
           "value": "–",
         },
@@ -211,6 +215,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Vario",
+          "value": "–",
+        },
+        {
+          "label": "Air speed",
           "value": "–",
         },
         {
@@ -376,6 +384,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Vario",
+          "value": "–",
+        },
+        {
+          "label": "Air speed",
           "value": "–",
         },
         {

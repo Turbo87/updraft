@@ -45,6 +45,13 @@ POSSIBILITY OF SUCH DAMAGE.
 The visual design uses the
 [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/).
 
+`frontend/static/basemap/sprites` contains the OpenFreeMap sprite sheets that
+the Positron style uses. The sprite sheets were retrieved on 2026-08-29 from
+`https://tiles.openfreemap.org/sprites/ofm_f384/ofm` at 1x and 2x resolutions.
+The sheets use the [Maki](https://github.com/mapbox/maki) POI icon set under the
+[CC0 1.0 license](https://creativecommons.org/publicdomain/zero/1.0/). The
+right-arrow icon is in the public domain.
+
 ## Tailwind CSS
 
 `frontend/src/styles/colors.ts` contains the default color palette from

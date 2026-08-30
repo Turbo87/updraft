@@ -21,7 +21,10 @@ const TEST_STYLE: StyleSpecification = {
   layers: [],
 };
 
-/** Returns a blank style in test mode and the bundled Positron style otherwise. */
-export function getBasemapStyle(testMode: boolean): StyleSpecification {
-  return testMode ? TEST_STYLE : { ...POSITRON_STYLE };
+/** Returns a blank style in test mode or Positron with sprites at the specified origin. */
+export function getBasemapStyle(testMode: boolean, origin: string): StyleSpecification {
+  if (testMode) return TEST_STYLE;
+
+  let sprite = `${origin}/basemap/sprites/ofm`;
+  return { ...POSITRON_STYLE, sprite };
 }

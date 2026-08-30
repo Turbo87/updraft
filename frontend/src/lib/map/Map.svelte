@@ -51,7 +51,7 @@
   const map = $derived(mapState.map);
   const gps = $derived(instruments.gps);
   const position = $derived(gps?.position ?? null);
-  const mapStyle = $derived(getBasemapStyle(testMode));
+  const mapStyle = $derived(getBasemapStyle(testMode, window.location.origin));
   const inlineAirspaceData = $derived(
     testMode ? (testAirspaceData ?? (window as TestWindow).__updraftTestAirspaceData) : undefined,
   );

@@ -12,6 +12,8 @@ import positron from './style/positron.json';
  *   https://tiles.openfreemap.org/styles/positron \
  *   --output frontend/src/lib/map/style/positron.json
  * pnpm prettier --write frontend/src/lib/map/style/positron.json
+ *
+ * Remove `sources.ne2_shaded` after each refresh. No layer uses this source.
  */
 const POSITRON_STYLE = positron as StyleSpecification;
 

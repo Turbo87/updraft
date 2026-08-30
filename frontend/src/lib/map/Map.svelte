@@ -2,7 +2,7 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
 
-  import type { GeoJSONSourceSpecification, MapMouseEvent, StyleSpecification } from 'maplibre-gl';
+  import type { GeoJSONSourceSpecification, MapMouseEvent } from 'maplibre-gl';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
@@ -14,6 +14,7 @@
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import Airspace from './Airspace.svelte';
+  import { getBasemapStyle } from './basemap-style';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
@@ -25,12 +26,6 @@
   };
 
   const FOLLOW_DURATION_MS = 300;
-  const TEST_STYLE: StyleSpecification = {
-    version: 8,
-    sources: {},
-    layers: [],
-  };
-
   let {
     airspace,
     instruments,
@@ -56,9 +51,7 @@
   const map = $derived(mapState.map);
   const gps = $derived(instruments.gps);
   const position = $derived(gps?.position ?? null);
-  const mapStyle = $derived(
-    testMode ? TEST_STYLE : 'https://tiles.openfreemap.org/styles/positron',
-  );
+  const mapStyle = $derived(getBasemapStyle(testMode));
   const inlineAirspaceData = $derived(
     testMode ? (testAirspaceData ?? (window as TestWindow).__updraftTestAirspaceData) : undefined,
   );

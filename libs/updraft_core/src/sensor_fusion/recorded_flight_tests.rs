@@ -1,11 +1,12 @@
-//! Measures the estimator against a recorded flight.
+//! Measures the estimator against recorded flights.
 //!
-//! `testdata/weglide_1141558.igc` is a five-hour cross-country flight in a
-//! JS-3-18m, logged by an LXNAV LX9070 with a V9 vario. Its B records
-//! carry the instrument's own total-energy vario (`VAT`), and its K
-//! records the instrument's wind (`WDI`, `WSP`). The instrument derived
-//! those from sensors the estimator does not have: a total-energy probe
-//! and an inertial platform. The recorded values are therefore a
+//! `testdata/weglide_1141558.igc` is a five-hour cross-country flight.
+//! `testdata/weglide_1015312.igc` is a six-hour wave flight. Both flights
+//! used a JS-3-18m with an LXNAV LX9070 and V9 vario. Their B records
+//! carry the instrument's own total-energy vario (`VAT`). Their K records
+//! carry its wind (`WDI`, `WSP` or `WVE`). The instrument derived those
+//! values from sensors that the estimator does not have: a total-energy
+//! probe and an inertial platform. The recorded values are therefore a
 //! reference to measure against, not a ground truth.
 //!
 //! Only soaring flight is scored. Scoring excludes engine-running periods,
@@ -26,7 +27,8 @@ use super::sample::SampleAcceptance::Accepted;
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.
-const RECORDING: &str = include_str!("../../../../testdata/weglide_1141558.igc");
+const CROSS_COUNTRY_RECORDING: &str = include_str!("../../../../testdata/weglide_1141558.igc");
+const WAVE_RECORDING: &str = include_str!("../../../../testdata/weglide_1015312.igc");
 
 /// Engine noise level above which the engine counts as running.
 const ENGINE_RUNNING: f64 = 200.;
@@ -40,7 +42,12 @@ const AIRBORNE_ALTITUDE_GAIN: f64 = 100.;
 
 #[test]
 fn estimates_match_the_recorded_instrument_values() {
-    insta::assert_snapshot!(recorded_flight_report(RECORDING));
+    insta::assert_snapshot!(recorded_flight_report(CROSS_COUNTRY_RECORDING));
+}
+
+#[test]
+fn wave_flight_estimates_match_the_recorded_instrument_values() {
+    insta::assert_snapshot!(recorded_flight_report(WAVE_RECORDING));
 }
 
 fn recorded_flight_report(recording: &str) -> String {

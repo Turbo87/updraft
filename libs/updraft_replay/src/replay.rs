@@ -488,14 +488,18 @@ impl Replay {
                         &mut warnings,
                     )
                     .map(Angle::from_degrees);
-                    let wind_speed = extension_value::<f64>(
-                        &record,
-                        &wind_extensions,
-                        "WSP",
-                        line_number,
-                        &mut warnings,
-                    )
-                    .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
+                    let wind_speed = ["WSP", "WVE"]
+                        .into_iter()
+                        .find_map(|mnemonic| {
+                            extension_value::<f64>(
+                                &record,
+                                &wind_extensions,
+                                mnemonic,
+                                line_number,
+                                &mut warnings,
+                            )
+                        })
+                        .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
                     if wind_direction.is_none() && wind_speed.is_none() {
                         continue;
                     }
@@ -1038,6 +1042,21 @@ mod tests {
             wind.wind_direction.map(|direction| direction.as_degrees()),
             271.0
         );
+        assert_some_eq!(
+            wind.wind_speed.map(|speed| speed.as_kilometers_per_hour()),
+            185.2
+        );
+    }
+
+    #[test]
+    fn maps_wve_to_lxwp0_wind_speed() {
+        let replay = assert_ok!(Replay::from_igc(
+            "J010812WVE\n\
+             K13474918520\n\
+             B1347505200000N00700000EA0304801000\n"
+        ));
+
+        let wind = first_lxwp0(&replay.events()[0]);
         assert_some_eq!(
             wind.wind_speed.map(|speed| speed.as_kilometers_per_hour()),
             185.2

@@ -35,7 +35,10 @@ documents for accepted behavior.
   airspace and traffic results with detail routes.
 - [ ] **map-orientation-setting** — persist map orientation and add its Settings control. _(needs: map-orientation, settings-persistence)_
 - [ ] **flight-data-fields** — add a fixed-slot Flight View dock for the first altitude, speed, direction, and time values. _(needs: route-shell, frontend-protocol, units-settings)_
-- [ ] **offline-basemap** — import one local MBTiles basemap and serve its vector tiles through `updraft://localhost/basemap/`.
+- [ ] **basemap-assets** — bundle the basemap style, glyphs, and sprites while keeping the online vector tile source. _(needs: frontend-map)_
+- [ ] **basemap-mode-setting** — persist an Online or Offline selection on a Map data Settings route. Default to Online. Offline mode does not request online tiles and links an empty Flight View map to Map data. _(needs: basemap-assets, settings-persistence)_
+- [ ] **offline-basemap-serving** — scan the application data directory for MBTiles basemaps and serve their vector tiles through `updraft://localhost/basemap/`. _(needs: basemap-mode-setting, resource-scheme)_
+- [ ] **basemap-downloads** — download, update, and delete repository-backed basemap regions on the Map data screen. _(needs: offline-basemap-serving)_
 
 ## Scaffolding
 
@@ -217,8 +220,7 @@ documents for accepted behavior.
 Online services use async effect adapters. Bulk imagery and datasets use the resource path. They do not run as compute jobs.
 
 - [ ] **connectivity** — online/offline detection and state in core, offline-first hooks (status indicator, queue-and-retry for uploads). _(needs: core-app)_
-- [ ] **basemap-packs** — import one local MBTiles basemap and serve its vector tiles to MapLibre through `updraft://localhost/basemap/`. Evaluate other pack formats after the MVP. _(needs: resource-scheme, frontend-map)_
-- [ ] **data-downloads** — in-app download manager for waypoint / airspace / map / DEM data with repository manifest and offline caching. _(needs: connectivity)_
+- [ ] **data-downloads** — extend the basemap download facility with waypoint, airspace, and DEM data. Add more repositories with the first feature that needs each one. _(needs: basemap-downloads, connectivity)_
 - [ ] **metar-taf** — METAR/TAF fetch, decode, map flags, QNH extraction. _(needs: core-app, frontend-map)_
 - [ ] **weather-overlays** — rain radar and satellite imagery overlays with time slider; forecast overlays (SkySight/TopMeteo) behind the same interface. _(needs: frontend-map)_
 - [ ] **map-inspector-weather** — add weather features and their time/context information to map-inspector results. _(needs: weather-overlays, map-inspector-waypoints)_

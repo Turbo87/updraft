@@ -40,13 +40,17 @@ const AIRBORNE_ALTITUDE_GAIN: f64 = 100.;
 
 #[test]
 fn estimates_match_the_recorded_instrument_values() {
+    insta::assert_snapshot!(recorded_flight_report(RECORDING));
+}
+
+fn recorded_flight_report(recording: &str) -> String {
     let mut report = String::new();
     let header = "quantity           unit        n    rms    mae   bias   corr";
     writeln!(report, "{header}").unwrap();
-    write!(report, "{}", measure(AirSpeed::FromSensor)).unwrap();
+    write!(report, "{}", measure(recording, AirSpeed::FromSensor)).unwrap();
     writeln!(report, "-- without an airspeed sensor --").unwrap();
-    write!(report, "{}", measure(AirSpeed::Withheld)).unwrap();
-    insta::assert_snapshot!(report);
+    write!(report, "{}", measure(recording, AirSpeed::Withheld)).unwrap();
+    report
 }
 
 /// Whether the recorded airspeed is passed on, so that the run measures
@@ -57,7 +61,7 @@ enum AirSpeed {
     Withheld,
 }
 
-fn measure(air_speed: AirSpeed) -> String {
+fn measure(recording: &str, air_speed: AirSpeed) -> String {
     let mut estimator = Estimator::new();
     let mut vertical_speed = Errors::default();
     let mut wind_speed = Errors::default();
@@ -70,7 +74,7 @@ fn measure(air_speed: AirSpeed) -> String {
     let mut lowest = f64::INFINITY;
     let mut soaring = false;
 
-    for line in RECORDING.lines() {
+    for line in recording.lines() {
         match Record::parse_line(line) {
             Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
             Ok(Record::J(definition)) => wind_extensions = definition.0.extensions,

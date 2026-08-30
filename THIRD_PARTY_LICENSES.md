@@ -45,6 +45,22 @@ POSSIBILITY OF SUCH DAMAGE.
 The visual design uses the
 [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/).
 
+## Basemap fonts
+
+`frontend/static/basemap/fonts` contains MapLibre glyph files for Barlow Semi
+Condensed Medium, Medium Italic, and Bold. The stacks use Noto Sans with the
+same weight and style as a fallback. This adds Greek and Cyrillic coverage.
+
+The Barlow files come from
+[Google Fonts revision `ade3d153`](https://github.com/google/fonts/tree/ade3d1533e06b2b1462ffcde8e08b129627ca360/ofl/barlowsemicondensed).
+The Noto Sans files come from the
+[Noto Sans 2.015 release](https://github.com/notofonts/latin-greek-cyrillic/releases/tag/NotoSans-v2.015).
+
+[Barlow](https://tribby.com/fonts/barlow/) is copyright 2017 The Barlow Project
+Authors. [Noto Sans](https://fonts.google.com/noto) is copyright Google LLC.
+Both fonts use the
+[SIL Open Font License, Version 1.1](https://openfontlicense.org/).
+
 `frontend/static/basemap/sprites` contains the OpenFreeMap sprite sheets that
 the Positron style uses. The sprite sheets were retrieved on 2026-08-29 from
 `https://tiles.openfreemap.org/sprites/ofm_f384/ofm` at 1x and 2x resolutions.

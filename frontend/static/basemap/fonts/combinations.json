@@ -1,0 +1,11 @@
+{
+  "Barlow Semi Condensed Medium,Noto Sans Medium": [
+    "BarlowSemiCondensed-Medium",
+    "NotoSans-Medium"
+  ],
+  "Barlow Semi Condensed Medium Italic,Noto Sans Medium Italic": [
+    "BarlowSemiCondensed-MediumItalic",
+    "NotoSans-MediumItalic"
+  ],
+  "Barlow Semi Condensed Bold,Noto Sans Bold": ["BarlowSemiCondensed-Bold", "NotoSans-Bold"]
+}

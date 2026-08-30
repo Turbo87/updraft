@@ -16,7 +16,7 @@
 //! The snapshot is a regression guard on estimate quality. A change that
 //! moves it has to say which way the numbers moved, and why.
 
-use igc::records::{Extendable, Extension, Record};
+use igc::records::{Extendable, Extension, KRecord, Record};
 use std::fmt::Write as _;
 use std::time::Duration;
 use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
@@ -131,7 +131,7 @@ fn measure(recording: &str, air_speed: AirSpeed) -> String {
                 let value = |mnemonic| extension(&record, &wind_extensions, mnemonic);
                 wind_speed.add(
                     wind.speed.as_meters_per_second(),
-                    hundredths_kmh(value("WSP")).as_meters_per_second(),
+                    recorded_wind_speed(&record, &wind_extensions).as_meters_per_second(),
                 );
                 wind_direction.add_difference(
                     (wind.direction - Angle::from_degrees(value("WDI")))
@@ -158,6 +158,15 @@ fn seconds(time: &igc::util::Time) -> Duration {
 /// LXNAV writes speeds as hundredths of a kilometre per hour.
 fn hundredths_kmh(value: f64) -> Speed {
     Speed::from_kilometers_per_hour(value / 100.)
+}
+
+/// Reads the recorded wind speed from either LXNAV extension mnemonic.
+fn recorded_wind_speed(record: &impl Extendable, extensions: &[Extension<'_>]) -> Speed {
+    let mnemonic = ["WSP", "WVE"]
+        .into_iter()
+        .find(|name| extensions.iter().any(|ext| ext.mnemonic == *name))
+        .expect("the recording defines the WSP or WVE extension");
+    hundredths_kmh(extension(record, extensions, mnemonic))
 }
 
 /// Reads one numeric extension. The recording defines every extension the
@@ -240,4 +249,13 @@ impl Errors {
             self.error_sum / count,
         )
     }
+}
+
+#[test]
+fn reads_wve_wind_speed() {
+    let extensions = [Extension::new("WVE", 8, 12)];
+    let record = claims::assert_ok!(KRecord::parse("K13474918520"));
+    let speed = recorded_wind_speed(&record, &extensions);
+
+    assert_eq!(speed, Speed::from_kilometers_per_hour(185.2));
 }

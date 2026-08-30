@@ -42,7 +42,13 @@ const MAX_RESIDUAL: Speed = Speed::from_meters_per_second(3.);
 /// flight from 2.13 to 2.17 m/s RMS. A fit that closes at all measures
 /// its own circle well, and what limits the measurement is how much the
 /// wind changed while the glider flew that circle.
-pub const MEASUREMENT_VARIANCE: f64 = 0.25;
+///
+/// A variance of 0.5 makes the filter average consecutive circles. It
+/// reduced the wind RMS of the recorded flight without an airspeed
+/// sensor from 2.04 to 1.93 m/s. Larger values did not improve accuracy
+/// and slowed the response to wind changes. A value above 0.5 also keeps
+/// the first circle from reaching the wind filter's reporting threshold.
+pub const MEASUREMENT_VARIANCE: f64 = 0.5;
 
 /// Measures the wind from the shape of a circle, without an airspeed
 /// measurement.

@@ -5,7 +5,7 @@ use crate::settings::Settings;
 use crate::traffic::TrafficUpdate;
 use serde::Serialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct LatLon {
@@ -84,6 +84,8 @@ pub struct DerivedInstruments {
     pub vertical_speed: Option<SpeedInstrument>,
     pub vario: Option<SpeedInstrument>,
     pub wind: Option<DerivedWindInstruments>,
+    pub airspeed: Option<SpeedInstrument>,
+    pub heading: Option<DerivedHeadingInstruments>,
     pub altitude: Option<DerivedAltitudeInstruments>,
 }
 
@@ -95,6 +97,15 @@ pub struct DerivedWindInstruments {
     /// Direction that the wind comes from.
     pub direction_degrees: f64,
     pub speed_meters_per_second: f64,
+    pub stale: bool,
+}
+
+/// Derived heading with its freshness state.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct DerivedHeadingInstruments {
+    pub degrees: f64,
     pub stale: bool,
 }
 
@@ -213,6 +224,14 @@ mod tests {
                 wind: Some(DerivedWindInstruments {
                     direction_degrees: 240.0,
                     speed_meters_per_second: 5.0,
+                    stale: false,
+                }),
+                airspeed: Some(SpeedInstrument {
+                    meters_per_second: 28.0,
+                    stale: false,
+                }),
+                heading: Some(DerivedHeadingInstruments {
+                    degrees: 265.0,
                     stale: false,
                 }),
                 altitude: Some(DerivedAltitudeInstruments {

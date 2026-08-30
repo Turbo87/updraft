@@ -7,6 +7,6 @@ total energy       m/s    17581   0.47   0.36  -0.01   0.96
 wind speed         m/s    12680   1.73   1.32  -0.25   0.52
 wind direction     deg    12680  17.16  12.74  -1.01      -
 -- without an airspeed sensor --
-smoothed climb     m/s    17581   1.29   0.96  -0.01   0.82
+total energy       m/s    17572   0.83   0.65  -0.01   0.88
 wind speed         m/s    12671   2.04   1.54  -0.58   0.35
 wind direction     deg    12671  17.52  13.61  -0.78      -

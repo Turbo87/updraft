@@ -115,10 +115,7 @@ fn measure(air_speed: AirSpeed) -> String {
                 if !soaring {
                     continue;
                 }
-                let estimated = match air_speed {
-                    AirSpeed::FromSensor => estimate.vario,
-                    AirSpeed::Withheld => estimate.vertical_speed,
-                };
+                let estimated = estimate.vario;
                 if let Some(estimated) = estimated {
                     vertical_speed.add(estimated.as_meters_per_second(), value("VAT") / 100.);
                 }
@@ -143,11 +140,7 @@ fn measure(air_speed: AirSpeed) -> String {
     }
 
     let mut rows = String::new();
-    let quantity = match air_speed {
-        AirSpeed::FromSensor => "total energy",
-        AirSpeed::Withheld => "smoothed climb",
-    };
-    writeln!(rows, "{quantity:<18} m/s   {}", vertical_speed.row()).unwrap();
+    writeln!(rows, "total energy       m/s   {}", vertical_speed.row()).unwrap();
     writeln!(rows, "wind speed         m/s   {}", wind_speed.row()).unwrap();
     writeln!(rows, "wind direction     deg   {}", wind_direction.row()).unwrap();
     rows

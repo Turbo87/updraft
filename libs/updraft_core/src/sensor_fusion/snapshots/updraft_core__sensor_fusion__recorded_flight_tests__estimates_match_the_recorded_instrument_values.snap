@@ -1,12 +1,12 @@
 ---
 source: libs/updraft_core/src/sensor_fusion/recorded_flight_tests.rs
-expression: report
+expression: recorded_flight_report(CROSS_COUNTRY_RECORDING)
 ---
 quantity           unit        n    rms    mae   bias   corr
 total energy       m/s    17581   0.47   0.36  -0.01   0.96
 wind speed         m/s    12680   1.73   1.32  -0.25   0.52
 wind direction     deg    12680  17.16  12.74  -1.01      -
 -- without an airspeed sensor --
-total energy       m/s    17516   0.83   0.65  -0.01   0.88
-wind speed         m/s    12622   1.93   1.50  -0.55   0.38
-wind direction     deg    12622  17.35  13.51  -1.16      -
+total energy       m/s    17530   0.83   0.65  -0.01   0.88
+wind speed         m/s    12636   1.93   1.50  -0.56   0.38
+wind direction     deg    12636  17.35  13.51  -1.18      -

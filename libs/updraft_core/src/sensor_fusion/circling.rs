@@ -4,6 +4,7 @@ use std::time::Duration;
 use updraft_units::{Angle, Speed};
 
 const FULL_TURN: Angle = Angle::from_radians(TAU);
+const PARTIAL_ARC: Angle = Angle::from_radians(TAU / 4.);
 
 /// Shortest gap between buffered samples, in seconds. It keeps the buffer
 /// spanning the same amount of *time* whatever rate the fixes arrive at.
@@ -35,7 +36,7 @@ const MAX_AIR_SPEED: Speed = Speed::from_meters_per_second(70.);
 /// Largest scatter around the fitted circle that is still accepted, in m/s.
 const MAX_RESIDUAL: Speed = Speed::from_meters_per_second(3.);
 
-/// Variance of one circle measurement, in `(m/s)²`.
+/// Variance of one full-circle measurement, in `(m/s)²`.
 ///
 /// It is a constant. Scaling it with the scatter around the fitted
 /// circle was measured and rejected: it moved the wind of the recorded
@@ -48,7 +49,21 @@ const MAX_RESIDUAL: Speed = Speed::from_meters_per_second(3.);
 /// sensor from 2.04 to 1.93 m/s. Larger values did not improve accuracy
 /// and slowed the response to wind changes. A value above 0.5 also keeps
 /// the first circle from reaching the wind filter's reporting threshold.
-pub const MEASUREMENT_VARIANCE: f64 = 0.5;
+pub const FULL_CIRCLE_VARIANCE: f64 = 0.5;
+
+/// Variance of one partial-arc measurement, in `(m/s)²`.
+///
+/// A partial arc constrains the circle centre less than a full circle.
+/// This variance keeps the first partial arc of a new estimate below the
+/// reporting threshold while repeated arcs can converge.
+const PARTIAL_ARC_VARIANCE: f64 = 3.;
+
+/// Circle fits that the current estimator state can use.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FitPolicy {
+    FullCircleOnly,
+    AllowPartialArc,
+}
 
 /// Measures the wind from the shape of a circle, without an airspeed
 /// measurement.
@@ -68,8 +83,10 @@ pub struct CirclingWind {
     /// Track of the newest sample, unwrapped so that a full turn shows as
     /// a change of 2π rather than wrapping around.
     track: Angle,
-    /// Unwrapped track of the last successful wind measurement.
-    last_measurement_track: Option<Angle>,
+    /// Unwrapped track of the last successful full-circle measurement.
+    last_full_circle_track: Option<Angle>,
+    /// Unwrapped track of the last successful partial-arc measurement.
+    last_partial_arc_track: Option<Angle>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -80,19 +97,49 @@ struct Sample {
     track: Angle,
 }
 
-/// One wind measurement from a closed circle, in m/s towards east and
-/// north. Its variance is [`MEASUREMENT_VARIANCE`].
+/// A fitted wind vector and its unwrapped measurement track.
 #[derive(Clone, Copy, Debug)]
-pub struct Fit {
-    pub east: Speed,
-    pub north: Speed,
+pub struct CircleMeasurement {
+    east: Speed,
+    north: Speed,
     measurement_track: Angle,
 }
 
+/// One wind measurement from a circle fit.
+#[derive(Clone, Copy, Debug)]
+pub enum Fit {
+    FullCircle(CircleMeasurement),
+    PartialArc(CircleMeasurement),
+}
+
+impl Fit {
+    /// Wind vector in m/s towards east and north.
+    pub fn wind_vector(self) -> (Speed, Speed) {
+        let measurement = match self {
+            Self::FullCircle(measurement) | Self::PartialArc(measurement) => measurement,
+        };
+        (measurement.east, measurement.north)
+    }
+
+    /// Variance on each wind-vector component, in `(m/s)²`.
+    pub fn measurement_variance(self) -> f64 {
+        match self {
+            Self::FullCircle(_) => FULL_CIRCLE_VARIANCE,
+            Self::PartialArc(_) => PARTIAL_ARC_VARIANCE,
+        }
+    }
+}
+
 impl CirclingWind {
-    /// Folds one ground velocity in and returns a candidate whenever a
-    /// complete circle closes.
-    pub fn update(&mut self, time: Duration, east: Speed, north: Speed) -> Option<Fit> {
+    /// Folds one ground velocity into the selected circle-fit policy.
+    /// A full circle takes priority when a partial arc is also available.
+    pub fn update(
+        &mut self,
+        time: Duration,
+        east: Speed,
+        north: Speed,
+        policy: FitPolicy,
+    ) -> Option<Fit> {
         let track = unwrapped_track(east, north, self.track)?;
         self.track = track;
         self.push(Sample {
@@ -102,12 +149,20 @@ impl CirclingWind {
             track,
         });
 
-        let start = self.completed_turn()?;
+        if let Some(measurement) = self.fit_arc(FULL_TURN, self.last_full_circle_track) {
+            return Some(Fit::FullCircle(measurement));
+        }
+        if policy == FitPolicy::FullCircleOnly {
+            return None;
+        }
+        self.fit_arc(PARTIAL_ARC, self.last_partial_arc_track)
+            .map(Fit::PartialArc)
+    }
+
+    fn fit_arc(&self, arc: Angle, previous: Option<Angle>) -> Option<CircleMeasurement> {
+        let start = self.completed_arc(arc)?;
         let measurement_track = self.samples.back()?.track;
-        if self
-            .last_measurement_track
-            .is_some_and(|previous| (measurement_track - previous).abs() < FULL_TURN)
-        {
+        if previous.is_some_and(|previous| (measurement_track - previous).abs() < arc) {
             return None;
         }
         let points: Vec<_> = self
@@ -125,7 +180,14 @@ impl CirclingWind {
 
     /// Records that the candidate was applied to the wind estimate.
     pub fn accept(&mut self, fit: Fit) {
-        self.last_measurement_track = Some(fit.measurement_track);
+        match fit {
+            Fit::FullCircle(measurement) => {
+                self.last_full_circle_track = Some(measurement.measurement_track)
+            }
+            Fit::PartialArc(measurement) => {
+                self.last_partial_arc_track = Some(measurement.measurement_track)
+            }
+        }
     }
 
     fn push(&mut self, sample: Sample) {
@@ -137,7 +199,8 @@ impl CirclingWind {
             .is_some_and(|last| sample.time < last.time)
         {
             self.samples.clear();
-            self.last_measurement_track = None;
+            self.last_full_circle_track = None;
+            self.last_partial_arc_track = None;
         }
         let spaced = self
             .samples
@@ -157,8 +220,8 @@ impl CirclingWind {
         }
     }
 
-    /// Index of the newest buffered sample that a full turn separates from
-    /// the current one, so that the fit uses the shortest complete circle.
+    /// Index of the newest buffered sample that `arc` separates from the
+    /// current one, so that the fit uses the shortest sufficient arc.
     ///
     /// The glider also has to still be turning. A buffer that merely
     /// *contains* a circle keeps fitting for a whole window after the
@@ -166,14 +229,14 @@ impl CirclingWind {
     /// and a thermal exit is normally flown with an acceleration to
     /// cruise: the tail then sits on a circle of a different radius and
     /// drags the fit off the wind it had.
-    fn completed_turn(&self) -> Option<usize> {
+    fn completed_arc(&self, arc: Angle) -> Option<usize> {
         let latest = self.samples.back()?;
         if !self.is_turning() {
             return None;
         }
         (0..=self.samples.len().checked_sub(MIN_SAMPLES)?)
             .rev()
-            .find(|&index| (latest.track - self.samples[index].track).abs() >= FULL_TURN)
+            .find(|&index| (latest.track - self.samples[index].track).abs() >= arc)
     }
 
     /// Whether the track is still sweeping, over the newest few seconds.
@@ -204,7 +267,7 @@ fn unwrapped_track(east: Speed, north: Speed, previous: Angle) -> Option<Angle> 
 
 /// Fits a circle through velocity-space points, by the algebraic
 /// (Kåsa) method on points shifted to their own mean.
-fn fit_circle(points: &[(f64, f64)], measurement_track: Angle) -> Option<Fit> {
+fn fit_circle(points: &[(f64, f64)], measurement_track: Angle) -> Option<CircleMeasurement> {
     if points.len() < MIN_SAMPLES {
         return None;
     }
@@ -247,7 +310,7 @@ fn fit_circle(points: &[(f64, f64)], measurement_track: Angle) -> Option<Fit> {
         .sum::<f64>()
         / count)
         .sqrt();
-    (Speed::from_meters_per_second(residual) <= MAX_RESIDUAL).then_some(Fit {
+    (Speed::from_meters_per_second(residual) <= MAX_RESIDUAL).then_some(CircleMeasurement {
         east: Speed::from_meters_per_second(east),
         north: Speed::from_meters_per_second(north),
         measurement_track,
@@ -259,13 +322,36 @@ mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
     use claims::{assert_none, assert_some};
+    use std::assert_matches;
 
     fn speed(value: f64) -> Speed {
         Speed::from_meters_per_second(value)
     }
 
     fn update(wind: &mut CirclingWind, time: f64, east: f64, north: f64) -> Option<Fit> {
-        wind.update(Duration::from_secs_f64(time), speed(east), speed(north))
+        update_with_policy(wind, time, east, north, FitPolicy::FullCircleOnly)
+    }
+
+    fn update_with_policy(
+        wind: &mut CirclingWind,
+        time: f64,
+        east: f64,
+        north: f64,
+        policy: FitPolicy,
+    ) -> Option<Fit> {
+        let time = Duration::from_secs_f64(time);
+        wind.update(time, speed(east), speed(north), policy)
+    }
+
+    fn update_arc(wind: &mut CirclingWind, sample: usize, arc: Angle) -> Option<Fit> {
+        let heading = arc.as_radians() * sample as f64 / (MIN_SAMPLES - 1) as f64;
+        update_with_policy(
+            wind,
+            sample as f64,
+            30. * heading.sin(),
+            30. * heading.cos(),
+            FitPolicy::AllowPartialArc,
+        )
     }
 
     /// Circles for `seconds` at `AIR_SPEED` through a wind of
@@ -292,9 +378,12 @@ mod tests {
     #[test]
     fn full_circle_produces_wind() {
         let fit = assert_some!(circle(30, -6., -8.));
+        let (east, north) = fit.wind_vector();
 
-        assert_abs_diff_eq!(fit.east, speed(-6.), epsilon = 0.2);
-        assert_abs_diff_eq!(fit.north, speed(-8.), epsilon = 0.2);
+        assert_matches!(fit, Fit::FullCircle(_));
+        assert_eq!(fit.measurement_variance(), FULL_CIRCLE_VARIANCE);
+        assert_abs_diff_eq!(east, speed(-6.), epsilon = 0.2);
+        assert_abs_diff_eq!(north, speed(-8.), epsilon = 0.2);
     }
 
     #[test]
@@ -312,13 +401,85 @@ mod tests {
         }
 
         let fit = assert_some!(fit);
-        assert_abs_diff_eq!(fit.east, speed(-6.), epsilon = 0.2);
-        assert_abs_diff_eq!(fit.north, speed(-8.), epsilon = 0.2);
+        let (east, north) = fit.wind_vector();
+        assert_abs_diff_eq!(east, speed(-6.), epsilon = 0.2);
+        assert_abs_diff_eq!(north, speed(-8.), epsilon = 0.2);
     }
 
     #[test]
     fn partial_circle_produces_no_wind() {
         assert_none!(circle(15, -6., -8.));
+    }
+
+    #[test]
+    fn partial_arc_requires_ninety_degrees() {
+        let mut wind = CirclingWind::default();
+        for sample in 0..MIN_SAMPLES {
+            assert_none!(update_arc(&mut wind, sample, Angle::from_degrees(89.)));
+        }
+    }
+
+    #[test]
+    fn partial_arc_produces_a_weaker_wind_measurement() {
+        let mut wind = CirclingWind::default();
+        let mut fit = None;
+        for sample in 0..MIN_SAMPLES {
+            fit = update_arc(&mut wind, sample, PARTIAL_ARC);
+        }
+
+        let fit = assert_some!(fit);
+        let (east, north) = fit.wind_vector();
+        assert_matches!(fit, Fit::PartialArc(_));
+        assert_eq!(fit.measurement_variance(), PARTIAL_ARC_VARIANCE);
+        assert_abs_diff_eq!(east, Speed::ZERO, epsilon = 0.2);
+        assert_abs_diff_eq!(north, Speed::ZERO, epsilon = 0.2);
+    }
+
+    #[test]
+    fn partial_arcs_repeat_after_each_quarter_turn() {
+        let mut wind = CirclingWind::default();
+        let mut measurements = Vec::new();
+        for sample in 0..=3 * (MIN_SAMPLES - 1) {
+            if let Some(fit) = update_arc(&mut wind, sample, PARTIAL_ARC) {
+                assert_matches!(fit, Fit::PartialArc(_));
+                wind.accept(fit);
+                measurements.push(sample);
+            }
+        }
+
+        assert_eq!(measurements, [7, 14, 21]);
+    }
+
+    #[test]
+    fn time_running_backwards_resets_partial_arc_cadence() {
+        let mut wind = CirclingWind::default();
+        let mut measurements = 0;
+        for _ in 0..2 {
+            for sample in 0..MIN_SAMPLES {
+                if let Some(fit) = update_arc(&mut wind, sample, PARTIAL_ARC) {
+                    wind.accept(fit);
+                    measurements += 1;
+                }
+            }
+        }
+
+        assert_eq!(measurements, 2);
+    }
+
+    #[test]
+    fn full_circle_has_priority_over_partial_arc() {
+        let mut wind = CirclingWind::default();
+        let mut fit = None;
+        for sample in 0..=4 * (MIN_SAMPLES - 1) {
+            fit = update_arc(&mut wind, sample, PARTIAL_ARC);
+            if let Some(candidate) = fit {
+                wind.accept(candidate);
+            }
+        }
+
+        let fit = assert_some!(fit);
+        assert_matches!(fit, Fit::FullCircle(_));
+        assert_eq!(fit.measurement_variance(), FULL_CIRCLE_VARIANCE);
     }
 
     #[test]
@@ -365,8 +526,9 @@ mod tests {
         }
 
         let fit = assert_some!(last);
-        assert_abs_diff_eq!(fit.east, speed(-6.), epsilon = 0.2);
-        assert_abs_diff_eq!(fit.north, speed(-8.), epsilon = 0.2);
+        let (east, north) = fit.wind_vector();
+        assert_abs_diff_eq!(east, speed(-6.), epsilon = 0.2);
+        assert_abs_diff_eq!(north, speed(-8.), epsilon = 0.2);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use super::altitude::AltitudeFilter;
-use super::circling::{CirclingWind, MEASUREMENT_VARIANCE};
+use super::circling::{CirclingWind, Fit, FitPolicy};
 use super::inferred_airspeed::InferredAirspeed;
 use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::vario::Vario;
@@ -206,7 +206,12 @@ impl Estimator {
         if let Some(previous) = self.ground {
             self.wind.predict(time - previous.time);
         }
-        let fit = self.circling.update(time, east, north);
+        let policy = if self.wind.vector().is_none() {
+            FitPolicy::AllowPartialArc
+        } else {
+            FitPolicy::FullCircleOnly
+        };
+        let fit = self.circling.update(time, east, north, policy);
         let air_speed_sample = self.measured_air_speed.filter(|sample| {
             self.wind_air_speed_time != Some(sample.time)
                 && sample.time.abs_diff(time) <= MAX_WIND_AIR_SPEED_SKEW
@@ -222,9 +227,13 @@ impl Estimator {
             air_speed_measurement
         } else {
             fit.map_or(SampleAcceptance::Ignored, |fit| {
+                let (east, north) = fit.wind_vector();
+                if policy == FitPolicy::AllowPartialArc && matches!(fit, Fit::FullCircle(_)) {
+                    self.wind = WindFilter::default();
+                }
                 let acceptance = self
                     .wind
-                    .update_vector(fit.east, fit.north, MEASUREMENT_VARIANCE);
+                    .update_vector(east, north, fit.measurement_variance());
                 if acceptance == SampleAcceptance::Accepted {
                     self.circling.accept(fit);
                 }
@@ -378,6 +387,7 @@ mod tests {
     };
     use super::SampleAcceptance::{Accepted, Ignored};
     use super::*;
+    use crate::sensor_fusion::circling::FULL_CIRCLE_VARIANCE;
     use approx::assert_abs_diff_eq;
     use claims::{assert_none, assert_some};
     use updraft_units::Length;
@@ -906,37 +916,136 @@ mod tests {
     }
 
     #[test]
-    fn old_airspeed_sample_does_not_update_wind() {
+    fn old_airspeed_sample_falls_back_to_partial_arc_measurements() {
         let mut estimator = Estimator::new();
         let air_speed = Speed::from_meters_per_second(30.);
         add_air_speed(&mut estimator, Duration::ZERO, air_speed);
         for sample in 0..20 {
             let time = Duration::from_secs(sample + 2);
             let track = sample as f64 * 18.;
-            assert_eq!(estimator.fix(time, &fix(track, 30.)), FixPredicted);
+            let expected = if [7, 12, 17].contains(&sample) {
+                FixWithWind
+            } else {
+                FixPredicted
+            };
+            assert_eq!(estimator.fix(time, &fix(track, 30.)), expected);
         }
 
         assert_none!(estimator.estimate().wind);
     }
 
     #[test]
-    fn rejected_airspeed_uses_a_complete_circle_measurement() {
+    fn rejected_airspeed_uses_circle_fit_measurements() {
         let mut estimator = Estimator::new();
+        let mut measurements = Vec::new();
         for second in 0..=20 {
             let time = Duration::from_secs(second);
             let heading = std::f64::consts::TAU * second as f64 / 20.;
             add_air_speed(&mut estimator, time, Speed::ZERO);
             let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
-            let expected = if second == 20 {
+            match estimator.fix(time, &fix) {
+                FixWithWind => measurements.push(second),
+                FixRejectedWind => {}
+                acceptance => panic!("unexpected acceptance at second {second}: {acceptance:?}"),
+            }
+        }
+
+        assert_eq!(measurements, [7, 14, 20]);
+        assert_some!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn missing_wind_accepts_a_partial_arc_without_publishing_motion() {
+        let mut estimator = Estimator::new();
+        for sample in 0..8 {
+            let time = Duration::from_secs(sample);
+            let heading = std::f64::consts::FRAC_PI_2 * sample as f64 / 7.;
+            let fix = velocity_fix(30. * heading.sin(), 30. * heading.cos());
+            let expected = if sample == 7 {
                 FixWithWind
             } else {
-                FixRejectedWind
+                FixPredicted
             };
-
             assert_eq!(estimator.fix(time, &fix), expected);
         }
 
+        let estimate = estimator.estimate();
+        assert_none!(estimate.wind);
+        assert_none!(estimate.air_speed);
+        assert_none!(estimate.heading);
+    }
+
+    #[test]
+    fn repeated_partial_arcs_recover_motion() {
+        let mut estimator = Estimator::new();
+        let mut time = 0;
+        let mut measurements = 0;
+        for arc in 0..6 {
+            let first_sample = if arc == 0 { 0 } else { 1 };
+            for sample in first_sample..8 {
+                let progress = sample as f64 / 7.;
+                let heading = if arc % 2 == 0 {
+                    std::f64::consts::FRAC_PI_2 * progress
+                } else {
+                    std::f64::consts::FRAC_PI_2 * (1. - progress)
+                };
+                let fix = velocity_fix(30. * heading.sin(), 30. * heading.cos());
+                if estimator.fix(Duration::from_secs(time), &fix) == FixWithWind {
+                    measurements += 1;
+                }
+                time += 1;
+            }
+        }
+
+        assert_eq!(measurements, 6);
+        let estimate = estimator.estimate();
+        assert_some!(estimate.wind);
+        assert_some!(estimate.air_speed);
+        assert_some!(estimate.heading);
+    }
+
+    #[test]
+    fn full_circle_replaces_partial_arc_confidence() {
+        let mut estimator = Estimator::new();
+        let mut measurements = Vec::new();
+        for second in 0..=20 {
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            let fix = velocity_fix(30. * heading.sin(), 30. * heading.cos());
+            if estimator.fix(Duration::from_secs(second), &fix) == FixWithWind {
+                measurements.push(second);
+            }
+        }
+        assert_eq!(measurements, [7, 12, 17, 20]);
         assert_some!(estimator.estimate().wind);
+
+        for second in 21..=80 {
+            assert_eq!(
+                estimator.fix(Duration::from_secs(second), &velocity_fix(0., 30.)),
+                FixPredicted
+            );
+        }
+        assert_none!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn reported_wind_suppresses_partial_arc_measurements() {
+        let mut estimator = Estimator::new();
+        assert_eq!(
+            estimator.wind.update_vector(
+                Speed::from_meters_per_second(-6.),
+                Speed::from_meters_per_second(-8.),
+                FULL_CIRCLE_VARIANCE,
+            ),
+            Accepted
+        );
+        assert_some!(estimator.estimate().wind);
+
+        for sample in 0..8 {
+            let time = Duration::from_secs(sample);
+            let heading = std::f64::consts::FRAC_PI_2 * sample as f64 / 7.;
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            assert_eq!(estimator.fix(time, &fix), FixPredicted);
+        }
     }
 
     #[test]

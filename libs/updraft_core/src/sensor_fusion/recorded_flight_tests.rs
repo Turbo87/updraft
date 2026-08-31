@@ -1,11 +1,12 @@
-//! Measures the estimator against a recorded flight.
+//! Measures the estimator against recorded flights.
 //!
-//! `testdata/weglide_1141558.igc` is a five-hour cross-country flight in a
-//! JS-3-18m, logged by an LXNAV LX9070 with a V9 vario. Its B records
-//! carry the instrument's own total-energy vario (`VAT`), and its K
-//! records the instrument's wind (`WDI`, `WSP`). The instrument derived
-//! those from sensors the estimator does not have: a total-energy probe
-//! and an inertial platform. The recorded values are therefore a
+//! `testdata/weglide_1141558.igc` is a five-hour cross-country flight.
+//! `testdata/weglide_1015312.igc` is a six-hour wave flight. Both flights
+//! used a JS-3-18m with an LXNAV LX9070 and V9 vario. Their B records
+//! carry the instrument's own total-energy vario (`VAT`). Their K records
+//! carry its wind (`WDI`, `WSP` or `WVE`). The instrument derived those
+//! values from sensors that the estimator does not have: a total-energy
+//! probe and an inertial platform. The recorded values are therefore a
 //! reference to measure against, not a ground truth.
 //!
 //! Only soaring flight is scored. Scoring excludes engine-running periods,
@@ -16,7 +17,7 @@
 //! The snapshot is a regression guard on estimate quality. A change that
 //! moves it has to say which way the numbers moved, and why.
 
-use igc::records::{Extendable, Extension, Record};
+use igc::records::{Extendable, Extension, KRecord, Record};
 use std::fmt::Write as _;
 use std::time::Duration;
 use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
@@ -26,7 +27,8 @@ use super::sample::SampleAcceptance::Accepted;
 
 /// Read at compile time so that the parsed extension definitions can
 /// borrow from it across records.
-const RECORDING: &str = include_str!("../../../../testdata/weglide_1141558.igc");
+const CROSS_COUNTRY_RECORDING: &str = include_str!("../../../../testdata/weglide_1141558.igc");
+const WAVE_RECORDING: &str = include_str!("../../../../testdata/weglide_1015312.igc");
 
 /// Engine noise level above which the engine counts as running.
 const ENGINE_RUNNING: f64 = 200.;
@@ -40,13 +42,22 @@ const AIRBORNE_ALTITUDE_GAIN: f64 = 100.;
 
 #[test]
 fn estimates_match_the_recorded_instrument_values() {
+    insta::assert_snapshot!(recorded_flight_report(CROSS_COUNTRY_RECORDING));
+}
+
+#[test]
+fn wave_flight_estimates_match_the_recorded_instrument_values() {
+    insta::assert_snapshot!(recorded_flight_report(WAVE_RECORDING));
+}
+
+fn recorded_flight_report(recording: &str) -> String {
     let mut report = String::new();
     let header = "quantity           unit        n    rms    mae   bias   corr";
     writeln!(report, "{header}").unwrap();
-    write!(report, "{}", measure(AirSpeed::FromSensor)).unwrap();
+    write!(report, "{}", measure(recording, AirSpeed::FromSensor)).unwrap();
     writeln!(report, "-- without an airspeed sensor --").unwrap();
-    write!(report, "{}", measure(AirSpeed::Withheld)).unwrap();
-    insta::assert_snapshot!(report);
+    write!(report, "{}", measure(recording, AirSpeed::Withheld)).unwrap();
+    report
 }
 
 /// Whether the recorded airspeed is passed on, so that the run measures
@@ -57,7 +68,7 @@ enum AirSpeed {
     Withheld,
 }
 
-fn measure(air_speed: AirSpeed) -> String {
+fn measure(recording: &str, air_speed: AirSpeed) -> String {
     let mut estimator = Estimator::new();
     let mut vertical_speed = Errors::default();
     let mut wind_speed = Errors::default();
@@ -70,7 +81,7 @@ fn measure(air_speed: AirSpeed) -> String {
     let mut lowest = f64::INFINITY;
     let mut soaring = false;
 
-    for line in RECORDING.lines() {
+    for line in recording.lines() {
         match Record::parse_line(line) {
             Ok(Record::I(definition)) => fix_extensions = definition.0.extensions,
             Ok(Record::J(definition)) => wind_extensions = definition.0.extensions,
@@ -127,7 +138,7 @@ fn measure(air_speed: AirSpeed) -> String {
                 let value = |mnemonic| extension(&record, &wind_extensions, mnemonic);
                 wind_speed.add(
                     wind.speed.as_meters_per_second(),
-                    hundredths_kmh(value("WSP")).as_meters_per_second(),
+                    recorded_wind_speed(&record, &wind_extensions).as_meters_per_second(),
                 );
                 wind_direction.add_difference(
                     (wind.direction - Angle::from_degrees(value("WDI")))
@@ -154,6 +165,15 @@ fn seconds(time: &igc::util::Time) -> Duration {
 /// LXNAV writes speeds as hundredths of a kilometre per hour.
 fn hundredths_kmh(value: f64) -> Speed {
     Speed::from_kilometers_per_hour(value / 100.)
+}
+
+/// Reads the recorded wind speed from either LXNAV extension mnemonic.
+fn recorded_wind_speed(record: &impl Extendable, extensions: &[Extension<'_>]) -> Speed {
+    let mnemonic = ["WSP", "WVE"]
+        .into_iter()
+        .find(|name| extensions.iter().any(|ext| ext.mnemonic == *name))
+        .expect("the recording defines the WSP or WVE extension");
+    hundredths_kmh(extension(record, extensions, mnemonic))
 }
 
 /// Reads one numeric extension. The recording defines every extension the
@@ -236,4 +256,13 @@ impl Errors {
             self.error_sum / count,
         )
     }
+}
+
+#[test]
+fn reads_wve_wind_speed() {
+    let extensions = [Extension::new("WVE", 8, 12)];
+    let record = claims::assert_ok!(KRecord::parse("K13474918520"));
+    let speed = recorded_wind_speed(&record, &extensions);
+
+    assert_eq!(speed, Speed::from_kilometers_per_hour(185.2));
 }

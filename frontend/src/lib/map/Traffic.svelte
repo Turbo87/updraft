@@ -10,6 +10,7 @@
   import { onMount } from 'svelte';
   import { CircleLayer, GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
 
+  import { FONT_REGULAR } from './basemap-style';
   import {
     COLOR_AMBER_500,
     COLOR_ORANGE_500,
@@ -57,6 +58,7 @@
       7,
       ['coalesce', ['get', 'altitudeLabel'], ''],
     ],
+    'text-font': FONT_REGULAR,
     'text-size': 11,
     'text-rotation-alignment': 'viewport',
     'text-allow-overlap': true,

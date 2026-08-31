@@ -58,6 +58,8 @@ fn fusion_with_converged_wind() -> SensorFusion {
 
     let wind = assert_some!(assert_some!(fusion.instruments()).wind);
     assert!(!wind.stale);
+    let bank = assert_some!(assert_some!(fusion.instruments()).bank);
+    assert!(!bank.stale);
     fusion
 }
 
@@ -164,6 +166,7 @@ fn rejected_airspeed_measurement_keeps_motion_estimates_stale() {
     let wind = assert_some!(instruments.wind);
     assert!(wind.stale);
     assert!(assert_some!(instruments.heading).stale);
+    assert!(assert_some!(instruments.bank).stale);
 }
 
 #[test]
@@ -280,6 +283,7 @@ fn stale_inputs_do_not_make_cached_motion_estimates_current() {
     let gps_stale = assert_some!(fusion.instruments());
     assert!(assert_some!(gps_stale.wind).stale);
     assert!(assert_some!(gps_stale.heading).stale);
+    assert!(assert_some!(gps_stale.bank).stale);
     assert!(!assert_some!(gps_stale.airspeed).stale);
 
     fusion.update(FusionInputs {
@@ -289,5 +293,6 @@ fn stale_inputs_do_not_make_cached_motion_estimates_current() {
     });
     let all_stale = assert_some!(fusion.instruments());
     assert!(assert_some!(all_stale.heading).stale);
+    assert!(assert_some!(all_stale.bank).stale);
     assert!(assert_some!(all_stale.airspeed).stale);
 }

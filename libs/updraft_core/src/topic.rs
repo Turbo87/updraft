@@ -87,6 +87,7 @@ pub struct DerivedInstruments {
     pub airspeed: Option<SpeedInstrument>,
     pub heading: Option<DerivedHeadingInstruments>,
     pub altitude: Option<DerivedAltitudeInstruments>,
+    pub bank: Option<DerivedBankInstruments>,
 }
 
 /// Derived wind values with their shared freshness state.
@@ -115,6 +116,15 @@ pub struct DerivedHeadingInstruments {
 #[serde(rename_all = "camelCase")]
 pub struct DerivedAltitudeInstruments {
     pub altitude_msl_meters: f64,
+    pub stale: bool,
+}
+
+/// Derived bank angle with its freshness state.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct DerivedBankInstruments {
+    pub angle_degrees: f64,
     pub stale: bool,
 }
 
@@ -236,6 +246,10 @@ mod tests {
                 }),
                 altitude: Some(DerivedAltitudeInstruments {
                     altitude_msl_meters: 1_234.5,
+                    stale: false,
+                }),
+                bank: Some(DerivedBankInstruments {
+                    angle_degrees: -42.0,
                     stale: false,
                 }),
             })),

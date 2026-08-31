@@ -56,6 +56,10 @@ expression: topic
       "altitude": {
         "altitudeMslMeters": 1234.5,
         "stale": false
+      },
+      "bank": {
+        "angleDegrees": -42.0,
+        "stale": false
       }
     }
   }

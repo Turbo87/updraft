@@ -142,6 +142,10 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "–",
         },
         {
+          "label": "Bank angle",
+          "value": "–",
+        },
+        {
           "label": "Wind",
           "value": "–",
         },
@@ -230,6 +234,10 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "–",
         },
         {
+          "label": "Bank angle",
+          "value": "–",
+        },
+        {
           "label": "Wind",
           "value": "–",
         },
@@ -250,6 +258,7 @@ describe('MapDebugOverlay.svelte', () => {
         rawVerticalSpeed: { metersPerSecond: 1.7, stale: false },
         verticalSpeed: { metersPerSecond: 1.6, stale: false },
         vario: { metersPerSecond: 1.8, stale: false },
+        bank: { angleDegrees: -38, stale: false },
         wind: {
           directionDegrees: 240,
           speedMetersPerSecond: 5.2,
@@ -266,6 +275,7 @@ describe('MapDebugOverlay.svelte', () => {
     await expect.element(page.getByText('1.70 m/s', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('1.60 m/s', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('265°', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('-38°', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('240° / 18.7 km/h', { exact: true })).toBeInTheDocument();
   });
 
@@ -286,6 +296,21 @@ describe('MapDebugOverlay.svelte', () => {
     await userEvent.keyboard('d');
 
     await expect.element(page.getByText('0° / 18.7 km/h', { exact: true })).toBeInTheDocument();
+  });
+
+  it('wraps a rounded heading at north', async () => {
+    let instruments: Instruments = {
+      ...EMPTY_INSTRUMENTS,
+      derived: {
+        ...EMPTY_DERIVED_INSTRUMENTS,
+        heading: { degrees: 359.6, stale: false },
+      },
+    };
+    render(MapDebugOverlay, { map: undefined, instruments, units: metricUnits });
+
+    await userEvent.keyboard('d');
+
+    await expect.element(page.getByText('0°', { exact: true })).toBeInTheDocument();
   });
 
   it('uses the selected vertical-speed unit and stale styling', async () => {
@@ -402,6 +427,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Heading",
+          "value": "–",
+        },
+        {
+          "label": "Bank angle",
           "value": "–",
         },
         {

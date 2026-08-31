@@ -31,6 +31,10 @@
     return `${direction}° / ${speed(wind.speedMetersPerSecond)}`;
   }
 
+  function degrees(value: number | null | undefined): string {
+    return value === null || value === undefined ? '–' : `${Math.round(value)}°`;
+  }
+
   function heading(): string {
     let heading = derivedInstruments?.heading;
     return heading ? `${Math.round(heading.degrees) % 360}°` : '–';
@@ -174,6 +178,10 @@
       </dd>
       <dt>Heading</dt>
       <dd class:stale={derivedInstruments?.heading?.stale}>{heading()}</dd>
+      <dt>Bank angle</dt>
+      <dd class:stale={derivedInstruments?.bank?.stale}>
+        {degrees(derivedInstruments?.bank?.angleDegrees)}
+      </dd>
       <dt>Wind</dt>
       <dd class:stale={derivedInstruments?.wind?.stale}>{wind()}</dd>
       <dt>Derived altitude</dt>

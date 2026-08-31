@@ -4,8 +4,8 @@ use super::wind::Wind;
 use crate::ownship::{DomainState, GpsSnapshot, Selected, SourceId};
 use crate::signal_state::SignalState;
 use crate::topic::{
-    DerivedAltitudeInstruments, DerivedHeadingInstruments, DerivedInstruments,
-    DerivedWindInstruments, SpeedInstrument,
+    DerivedAltitudeInstruments, DerivedBankInstruments, DerivedHeadingInstruments,
+    DerivedInstruments, DerivedWindInstruments, SpeedInstrument,
 };
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
 
@@ -42,6 +42,7 @@ pub struct SensorFusion {
     derived_air_speed: SignalState<Speed>,
     heading: SignalState<Angle>,
     altitude: SignalState<MslAltitude>,
+    bank: SignalState<Angle>,
 }
 
 impl SensorFusion {
@@ -85,6 +86,7 @@ impl SensorFusion {
             self.estimator.reset_wind();
             self.wind.mark_stale();
             self.heading.mark_stale();
+            self.bank.mark_stale();
             if !air_speed_current {
                 self.derived_air_speed.mark_stale();
             }
@@ -133,6 +135,7 @@ impl SensorFusion {
             self.estimator.reset_wind();
             self.wind.mark_stale();
             self.heading.mark_stale();
+            self.bank.mark_stale();
         }
         let SampleAcceptance::Accepted = self
             .estimator
@@ -142,7 +145,7 @@ impl SensorFusion {
         };
         self.air_speed = Some(selected);
         self.air_speed_source = Some(selected.source);
-        self.derived_air_speed.update(selected.value);
+        self.update_motion_estimate();
     }
 
     fn update_gps(&mut self, state: DomainState<GpsSnapshot>) {
@@ -150,6 +153,7 @@ impl SensorFusion {
             self.estimator.clear_inferred_air_speed();
             self.wind.mark_stale();
             self.heading.mark_stale();
+            self.bank.mark_stale();
             if !self.air_speed_current {
                 self.derived_air_speed.mark_stale();
             }
@@ -194,6 +198,7 @@ impl SensorFusion {
             self.estimator.clear_inferred_air_speed();
             self.wind.mark_stale();
             self.heading.mark_stale();
+            self.bank.mark_stale();
             if !self.air_speed_current {
                 self.derived_air_speed.mark_stale();
             }
@@ -215,6 +220,7 @@ impl SensorFusion {
         if acceptance == FixAcceptance::RejectedWindMeasurement {
             self.wind.mark_stale();
             self.heading.mark_stale();
+            self.bank.mark_stale();
         }
     }
 
@@ -287,6 +293,11 @@ impl SensorFusion {
         } else {
             self.heading.mark_stale();
         }
+        if let Some(bank_angle) = estimate.bank_angle {
+            self.bank.update(bank_angle);
+        } else {
+            self.bank.mark_stale();
+        }
     }
 
     pub fn instruments(&self) -> Option<DerivedInstruments> {
@@ -340,6 +351,13 @@ impl SensorFusion {
                     altitude_msl_meters: altitude.into_inner().as_meters(),
                     stale,
                 });
+        let bank = self
+            .bank
+            .value_with_stale()
+            .map(|(angle, stale)| DerivedBankInstruments {
+                angle_degrees: angle.as_degrees(),
+                stale,
+            });
 
         let available = raw_vertical_speed.is_some()
             || vertical_speed.is_some()
@@ -347,7 +365,8 @@ impl SensorFusion {
             || wind.is_some()
             || airspeed.is_some()
             || heading.is_some()
-            || altitude.is_some();
+            || altitude.is_some()
+            || bank.is_some();
         available.then_some(DerivedInstruments {
             raw_vertical_speed,
             vertical_speed,
@@ -356,6 +375,7 @@ impl SensorFusion {
             airspeed,
             heading,
             altitude,
+            bank,
         })
     }
 }

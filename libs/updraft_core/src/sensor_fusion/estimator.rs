@@ -2,6 +2,7 @@ use super::altitude::AltitudeFilter;
 use super::circling::{CirclingWind, Fit, FitPolicy};
 use super::inferred_airspeed::InferredAirspeed;
 use super::sample::{AltitudeDomain, SampleAcceptance};
+use super::smoothing::smoothing_weight;
 use super::vario::Vario;
 use super::wind::{Wind, WindFilter};
 use std::time::Duration;
@@ -10,7 +11,9 @@ use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltit
 
 const GRAVITY: f64 = 9.80665;
 const MAX_WIND_AIR_SPEED_SKEW: Duration = Duration::from_secs(1);
+const TURN_RATE_TIME_CONSTANT: Duration = Duration::from_secs(3);
 const MIN_AIR_SPEED: Speed = Speed::from_meters_per_second(1.);
+const MAX_LOAD_FACTOR: f64 = 3.;
 
 #[derive(Clone, Copy, Debug)]
 struct AirSpeedSample {
@@ -44,6 +47,7 @@ pub struct Estimate {
     pub air_speed: Option<Speed>,
     pub heading: Option<Angle>,
     pub altitude: Option<MslAltitude>,
+    pub bank_angle: Option<Angle>,
 }
 
 /// Derives flight values from timestamped physical measurements.
@@ -67,6 +71,8 @@ pub struct Estimator {
     wind_air_speed_time: Option<Duration>,
     circling: CirclingWind,
     ground: Option<GroundVelocity>,
+    previous_heading: Option<Angle>,
+    turn_rate: Option<f64>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -100,6 +106,8 @@ impl Estimator {
             wind_air_speed_time: None,
             circling: CirclingWind::default(),
             ground: None,
+            previous_heading: None,
+            turn_rate: None,
         }
     }
 
@@ -254,6 +262,7 @@ impl Estimator {
             self.inferred_air_speed
                 .update(time, speed, self.circling.is_turning());
         }
+        self.update_turn_rate(time, east, north);
         self.ground = Some(GroundVelocity { time, east, north });
         acceptance
     }
@@ -278,6 +287,40 @@ impl Estimator {
         self.measured_air_speed
             .map(|sample| sample.speed)
             .or_else(|| self.inferred_air_speed.fresh_at(now))
+    }
+
+    fn update_turn_rate(&mut self, time: Duration, ground_east: Speed, ground_north: Speed) {
+        let Some((wind_east, wind_north)) = self.wind.vector() else {
+            self.previous_heading = None;
+            self.turn_rate = None;
+            return;
+        };
+        let air_east = (ground_east - wind_east).as_meters_per_second();
+        let air_north = (ground_north - wind_north).as_meters_per_second();
+        let air_speed = Speed::from_meters_per_second(air_east.hypot(air_north));
+        if air_speed < MIN_AIR_SPEED {
+            self.previous_heading = None;
+            self.turn_rate = None;
+            return;
+        }
+
+        let heading = Angle::from_radians(air_east.atan2(air_north));
+        let interval = self.ground.map(|previous| time - previous.time);
+        if let Some((interval, previous)) = interval.zip(self.previous_heading) {
+            let change = (heading - previous).normalized_signed().as_radians();
+            let weight = smoothing_weight(interval, TURN_RATE_TIME_CONSTANT);
+            let measured_turn_rate = change / interval.as_secs_f64();
+            let turn_rate = self.turn_rate.unwrap_or(0.);
+            self.turn_rate = Some(turn_rate + weight * (measured_turn_rate - turn_rate));
+        }
+        self.previous_heading = Some(heading);
+    }
+
+    fn bank_angle(&self, air_speed: Speed) -> Option<Angle> {
+        let turn_rate = self.turn_rate?;
+        let limit = (MAX_LOAD_FACTOR * MAX_LOAD_FACTOR - 1.).sqrt();
+        let tangent = (turn_rate * air_speed.as_meters_per_second() / GRAVITY).clamp(-limit, limit);
+        Some(Angle::from_radians(tangent.atan()))
     }
 
     fn heading(&self) -> Option<Angle> {
@@ -345,6 +388,8 @@ impl Estimator {
         self.circling = CirclingWind::default();
         self.inferred_air_speed = InferredAirspeed::default();
         self.ground = None;
+        self.previous_heading = None;
+        self.turn_rate = None;
     }
 
     pub fn estimate(&self) -> Estimate {
@@ -375,6 +420,7 @@ impl Estimator {
             air_speed,
             heading: self.heading(),
             altitude: self.altitude_msl(),
+            bank_angle: air_speed.and_then(|speed| self.bank_angle(speed)),
         }
     }
 }
@@ -421,6 +467,27 @@ mod tests {
                 ),
                 Accepted
             );
+        }
+        estimator
+    }
+
+    fn circle_without_air_speed(seconds: u64) -> Estimator {
+        let mut estimator = Estimator::new();
+        for second in 0..seconds {
+            let heading = std::f64::consts::TAU * second as f64 / 20.;
+            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
+            let _ = estimator.fix(Duration::from_secs(second), &fix);
+        }
+        estimator
+    }
+
+    fn circling(turn_seconds: f64, speed: Speed) -> Estimator {
+        let mut estimator = Estimator::new();
+        for second in 0..120 {
+            let time = Duration::from_secs(second);
+            let track = 360. * second as f64 / turn_seconds;
+            add_air_speed(&mut estimator, time, speed);
+            let _ = estimator.fix(time, &fix(track, speed.as_meters_per_second()));
         }
         estimator
     }
@@ -1069,12 +1136,7 @@ mod tests {
 
     #[test]
     fn circling_without_a_sensor_infers_airspeed() {
-        let mut estimator = Estimator::new();
-        for second in 0..60 {
-            let heading = std::f64::consts::TAU * second as f64 / 20.;
-            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
-            let _ = estimator.fix(Duration::from_secs(second), &fix);
-        }
+        let estimator = circle_without_air_speed(60);
 
         assert_abs_diff_eq!(
             assert_some!(estimator.estimate().air_speed),
@@ -1085,17 +1147,77 @@ mod tests {
 
     #[test]
     fn circling_without_a_sensor_infers_heading() {
-        let mut estimator = Estimator::new();
-        for second in 0..60 {
-            let heading = std::f64::consts::TAU * second as f64 / 20.;
-            let fix = velocity_fix(-6. + 30. * heading.sin(), -8. + 30. * heading.cos());
-            let _ = estimator.fix(Duration::from_secs(second), &fix);
-        }
+        let estimator = circle_without_air_speed(60);
 
         assert_abs_diff_eq!(
             assert_some!(estimator.estimate().heading),
             Angle::from_degrees(342.),
             epsilon = 0.5
         );
+    }
+
+    #[test]
+    fn reset_wind_restarts_the_turn_rate() {
+        let mut estimator = circling(20., Speed::from_meters_per_second(30.));
+        let bank = assert_some!(estimator.estimate().bank_angle);
+        assert!(bank.as_degrees().abs() > 1.);
+
+        estimator.reset_wind();
+        assert_eq!(
+            estimator.fix(Duration::from_secs(121), &fix(0., 35.)),
+            FixPredicted
+        );
+
+        assert_none!(estimator.estimate().bank_angle);
+    }
+
+    #[test]
+    fn turn_is_reported_as_bank_angle() {
+        let estimator = circling(20., Speed::from_meters_per_second(30.));
+
+        assert_abs_diff_eq!(
+            assert_some!(estimator.estimate().bank_angle).as_degrees(),
+            43.86,
+            epsilon = 0.05
+        );
+    }
+
+    #[test]
+    fn turn_direction_changes_bank_direction() {
+        let speed = Speed::from_meters_per_second(30.);
+        let right = assert_some!(circling(20., speed).estimate().bank_angle);
+        let left = assert_some!(circling(-20., speed).estimate().bank_angle);
+
+        assert_abs_diff_eq!(right.as_degrees(), -left.as_degrees(), epsilon = 0.05);
+    }
+
+    #[test]
+    fn extreme_turn_rate_stops_at_load_factor_limit() {
+        let estimator = circling(4., Speed::from_meters_per_second(30.));
+
+        assert_abs_diff_eq!(
+            assert_some!(estimator.estimate().bank_angle).as_degrees(),
+            70.53,
+            epsilon = 0.05
+        );
+    }
+
+    #[test]
+    fn bank_angle_waits_for_air_speed() {
+        assert_none!(circle_without_air_speed(10).estimate().bank_angle);
+        assert_some!(circle_without_air_speed(60).estimate().bank_angle);
+    }
+
+    #[test]
+    fn bank_angle_waits_for_wind() {
+        let mut estimator = Estimator::new();
+        let speed = Speed::from_meters_per_second(30.);
+        for second in 0..3 {
+            let time = Duration::from_secs(second);
+            add_air_speed(&mut estimator, time, speed);
+            let _ = estimator.fix(time, &fix(18. * second as f64, 30.));
+        }
+
+        assert_none!(estimator.estimate().bank_angle);
     }
 }

@@ -72,9 +72,11 @@ The derivative of this value is total-energy vertical speed. Two filters, each
 with a two-second time constant, smooth the result.
 
 Pressure altitude supplies fast changes. GNSS altitude supplies slow changes.
-This combination improves the vertical-speed result by about 10% on the six
+This combination improves the vertical-speed result by about 12% on the five
 recordings used for the altitude comparison. It also avoids dependence on an
-altimeter setting.
+altimeter setting. The
+[altitude-reference investigation](2026-08-31-altitude-references.md) records
+the source comparison and the rejected atmospheric inputs.
 
 The one-second recordings cannot reproduce all movement of a faster vario.
 This explains much of the short-term RMS difference. In an earlier set of 350
@@ -178,7 +180,9 @@ An experiment tried to detect this delay from recent altitude rates.
 
 The detector was not kept. It added state and special cases for one observed
 source. Timestamp checks already reject altitudes that arrive too far apart.
-Device adapters must assign correct timestamps before sensor fusion.
+Device adapters must assign correct timestamps before sensor fusion. The
+[altitude-reference investigation](2026-08-31-altitude-references.md#delayed-gnss-altitude)
+records the measured delay and the adapter boundary.
 
 ### Wind uncertainty from altitude change
 

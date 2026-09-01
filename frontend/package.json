@@ -49,7 +49,7 @@
     "svelte": "5.57.0",
     "svelte-check": "4.7.6",
     "svelte-maplibre-gl": "2.2.1",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "unocss": "66.8.1",
     "vite": "8.2.2",
     "vitest": "4.1.11",

@@ -16,7 +16,12 @@ const GLIDER_TYPE: &str = "JS-3-18m";
 /// Bank angle above which a sample counts as circling, in degrees.
 const CIRCLING_BANK: f64 = 20.;
 
-fn replay() -> Vec<Estimate> {
+struct Sample {
+    time: Duration,
+    state: Estimate,
+}
+
+fn replay() -> Vec<Sample> {
     let mut estimator = Estimator::new();
     estimator.set_polar(polar());
     let mut extensions = Vec::new();
@@ -51,7 +56,8 @@ fn replay() -> Vec<Estimate> {
                     time,
                     PressureAltitude::new(Length::from_meters(f64::from(record.pressure_alt))),
                 );
-                samples.push(estimator.estimate());
+                let state = estimator.estimate();
+                samples.push(Sample { time, state });
             }
             _ => {}
         }
@@ -69,7 +75,7 @@ fn applied_sink(state: &Estimate) -> Option<f64> {
 fn applied_sink_rate_is_never_negative() {
     let worst = replay()
         .iter()
-        .filter_map(applied_sink)
+        .filter_map(|sample| applied_sink(&sample.state))
         .fold(f64::INFINITY, f64::min);
 
     // A glider cannot sink slower than its own best sink rate, whatever
@@ -95,15 +101,15 @@ fn applied_sink_rate_does_not_depend_on_turn_direction() {
     let mean = |right: bool, band: i32| {
         let (sum, count) = samples
             .iter()
-            .filter(|state| {
-                state.bank_angle.is_some_and(|angle| {
+            .filter(|sample| {
+                sample.state.bank_angle.is_some_and(|angle| {
                     let degrees = angle.as_degrees();
                     degrees.abs() >= CIRCLING_BANK
                         && (degrees > 0.) == right
                         && (degrees.abs() / BAND) as i32 == band
                 })
             })
-            .filter_map(applied_sink)
+            .filter_map(|sample| applied_sink(&sample.state))
             .fold((0., 0), |(sum, count), value| (sum + value, count + 1));
         (sum / count as f64, count)
     };
@@ -131,6 +137,42 @@ fn applied_sink_rate_does_not_depend_on_turn_direction() {
         assert_le!((right - left).abs(), 0.03);
     }
     assert_ge!(compared, MIN_BANDS);
+}
+
+#[test]
+fn raw_vertical_speed_integrates_to_reported_altitude() {
+    let samples = replay();
+    let recording_end = samples.last().expect("the recording has a sample").time;
+    let mut integrated = 0.;
+    let mut start = None;
+    let mut last = None;
+    let mut previous = None;
+
+    for sample in &samples {
+        // Both sides have to begin together, so nothing counts until the
+        // altitude has a sea-level reference to be measured against.
+        let Some(altitude) = sample.state.altitude else {
+            continue;
+        };
+        let Some(raw_vertical_speed) = sample.state.raw_vertical_speed else {
+            continue;
+        };
+        let altitude = altitude.into_inner().as_meters();
+        let start = *start.get_or_insert(altitude);
+
+        if let Some(previous) = previous.replace(sample.time) {
+            let interval = (sample.time - previous).as_secs_f64();
+            integrated += raw_vertical_speed.as_meters_per_second() * interval;
+        }
+        last = Some((sample.time, integrated - (altitude - start)));
+    }
+
+    // The integral must close against the reported altitude over five hours
+    // and 1900 m. A filter restart loses the altitude it was reporting.
+    // Applying a reference step twice adds the same altitude twice.
+    let (end, closing) = last.expect("the recording reports an altitude");
+    assert_eq!(end, recording_end);
+    assert_le!(closing.abs(), 5.);
 }
 
 fn polar() -> GlidePolar {

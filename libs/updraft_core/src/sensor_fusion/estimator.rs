@@ -478,6 +478,7 @@ mod tests {
 
     const GLIDER_TYPE: &str = "JS-3-18m";
     const LEVEL_SPEED: Speed = Speed::from_kilometers_per_hour(108.);
+    const POSITION: LatLon = LatLon::from_degrees(50.8, 6.2);
 
     fn polar() -> GlidePolar {
         updraft_polar::POLAR_STORE
@@ -1359,6 +1360,124 @@ mod tests {
         let level = applied_sink(SPEED / load.sqrt(), None);
 
         assert_abs_diff_eq!(turning / level, load * load.sqrt(), epsilon = 0.01);
+    }
+
+    #[test]
+    fn measured_airspeed_is_reported_as_it_arrives() {
+        let mut estimator = Estimator::new();
+        let speed = Speed::from_kilometers_per_hour(120.);
+        add_air_speed(&mut estimator, Duration::ZERO, speed);
+
+        let reported = assert_some!(estimator.air_speed_at(Duration::ZERO));
+        assert_abs_diff_eq!(reported, speed, epsilon = 1e-9);
+    }
+
+    #[test]
+    fn inferred_airspeed_changes_gradually() {
+        let mut estimator = Estimator::new();
+        let _ = estimator.wind.update_vector(Speed::ZERO, Speed::ZERO, 0.01);
+        let _ = estimator.fix(Duration::ZERO, &fix_kph(90., 108.));
+        let _ = estimator.fix(Duration::from_secs(1), &fix_kph(90., 72.));
+
+        let airspeed = assert_some!(estimator.air_speed_at(Duration::from_secs(1)));
+        let expected = Speed::from_meters_per_second(26.07);
+        assert_abs_diff_eq!(airspeed, expected, epsilon = 0.01);
+    }
+
+    #[test]
+    fn heading_waits_for_wind() {
+        assert_none!(circle_without_air_speed(10).estimate().heading);
+        assert_some!(circle_without_air_speed(60).estimate().heading);
+    }
+
+    #[test]
+    fn circling_recovers_wind_without_airspeed_sensor() {
+        let wind = assert_some!(circle_without_air_speed(60).estimate().wind);
+        let expected_speed = Speed::from_meters_per_second(10.);
+        assert_abs_diff_eq!(wind.speed, expected_speed, epsilon = 0.3);
+        assert_abs_diff_eq!(wind.direction, Angle::from_degrees(36.87), epsilon = 0.5);
+    }
+
+    #[test]
+    fn wind_survives_cleared_airspeed() {
+        const TURN_SECONDS: f64 = 20.;
+        let air_speed = Speed::from_kilometers_per_hour(108.);
+        let speed = air_speed.as_meters_per_second();
+        let mut estimator = Estimator::new();
+        let mut worst = 0f64;
+        let mut circling_measurement_accepted = false;
+
+        // One filter takes sensor measurements before the clear and
+        // circling measurements after it, so the estimate must not restart.
+        for step in 0..120u64 {
+            let heading = std::f64::consts::TAU * step as f64 / TURN_SECONDS;
+            let east = -6. + speed * heading.sin();
+            let north = -8. + speed * heading.cos();
+            let time = Duration::from_secs(step);
+            if step < 60 {
+                add_air_speed(&mut estimator, time, air_speed);
+            } else if step == 60 {
+                estimator.clear_air_speed();
+            }
+            let acceptance = estimator.fix(time, &velocity_fix(east, north));
+            circling_measurement_accepted |= step >= 60 && acceptance == FixWithWind;
+            if step > 60 {
+                let wind = assert_some!(estimator.estimate().wind);
+                worst = worst.max((wind.speed.as_meters_per_second() - 10.).abs());
+            }
+        }
+
+        assert!(circling_measurement_accepted);
+        assert_lt!(worst, 0.5);
+    }
+
+    #[test]
+    fn altitude_requires_gnss_reference() {
+        let mut estimator = Estimator::new();
+        let acceptance = estimator.pressure_altitude(Duration::ZERO, meters(1000.));
+        assert_eq!(acceptance, Accepted);
+
+        assert_none!(estimator.estimate().altitude);
+    }
+
+    #[test]
+    fn altitude_follows_gnss_through_geoid() {
+        let mut estimator = Estimator::new();
+        estimator.position(POSITION);
+        let altitude = EllipsoidAltitude::new(Length::from_meters(1046.));
+        let acceptance = estimator.pressure_altitude(Duration::ZERO, meters(1000.));
+        assert_eq!(acceptance, Accepted);
+        let _ = estimator.gnss_altitude(Duration::ZERO, altitude);
+
+        let expected = updraft_egm96::ellipsoidal_to_msl(POSITION, altitude);
+        let reported = assert_some!(estimator.estimate().altitude);
+        assert_abs_diff_eq!(reported, expected, epsilon = 0.01);
+    }
+
+    #[test]
+    fn expired_barometer_preserves_reported_altitude() {
+        let mut estimator = Estimator::new();
+        estimator.position(POSITION);
+        let altitude = EllipsoidAltitude::new(Length::from_meters(1200.));
+
+        for second in 0..60 {
+            let time = Duration::from_secs(second);
+            assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
+            let _ = estimator.gnss_altitude(time, altitude);
+        }
+        let before = assert_some!(estimator.estimate().altitude);
+        estimator.clear_pressure_altitude();
+
+        for second in 60..120 {
+            let time = Duration::from_secs(second);
+            let acceptance = estimator.gnss_altitude(time, altitude);
+            assert_eq!(acceptance, Accepted);
+        }
+        let after = assert_some!(estimator.estimate().altitude);
+
+        // The GNSS altitude is already on the far side of the datum
+        // offset, so expiry must not apply that offset a second time.
+        assert_eq!(after, before);
     }
 
     #[test]

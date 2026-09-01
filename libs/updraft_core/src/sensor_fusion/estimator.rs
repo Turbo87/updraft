@@ -1362,6 +1362,75 @@ mod tests {
     }
 
     #[test]
+    fn measured_airspeed_is_reported_as_it_arrives() {
+        let mut estimator = Estimator::new();
+        let speed = Speed::from_kilometers_per_hour(120.);
+        add_air_speed(&mut estimator, Duration::ZERO, speed);
+
+        let reported = assert_some!(estimator.air_speed_at(Duration::ZERO));
+        assert_abs_diff_eq!(reported, speed, epsilon = 1e-9);
+    }
+
+    #[test]
+    fn inferred_airspeed_changes_gradually() {
+        let mut estimator = Estimator::new();
+        let _ = estimator.wind.update_vector(Speed::ZERO, Speed::ZERO, 0.01);
+        let _ = estimator.fix(Duration::ZERO, &fix_kph(90., 108.));
+        let _ = estimator.fix(Duration::from_secs(1), &fix_kph(90., 72.));
+
+        let airspeed = assert_some!(estimator.air_speed_at(Duration::from_secs(1)));
+        let expected = Speed::from_meters_per_second(26.07);
+        assert_abs_diff_eq!(airspeed, expected, epsilon = 0.01);
+    }
+
+    #[test]
+    fn heading_waits_for_wind() {
+        assert_none!(circle_without_air_speed(10).estimate().heading);
+        assert_some!(circle_without_air_speed(60).estimate().heading);
+    }
+
+    #[test]
+    fn circling_recovers_wind_without_airspeed_sensor() {
+        let wind = assert_some!(circle_without_air_speed(60).estimate().wind);
+        let expected_speed = Speed::from_meters_per_second(10.);
+        assert_abs_diff_eq!(wind.speed, expected_speed, epsilon = 0.3);
+        assert_abs_diff_eq!(wind.direction, Angle::from_degrees(36.87), epsilon = 0.5);
+    }
+
+    #[test]
+    fn wind_survives_cleared_airspeed() {
+        const TURN_SECONDS: f64 = 20.;
+        let air_speed = Speed::from_kilometers_per_hour(108.);
+        let speed = air_speed.as_meters_per_second();
+        let mut estimator = Estimator::new();
+        let mut worst = 0f64;
+        let mut circling_measurement_accepted = false;
+
+        // One filter takes sensor measurements before the clear and
+        // circling measurements after it, so the estimate must not restart.
+        for step in 0..120u64 {
+            let heading = std::f64::consts::TAU * step as f64 / TURN_SECONDS;
+            let east = -6. + speed * heading.sin();
+            let north = -8. + speed * heading.cos();
+            let time = Duration::from_secs(step);
+            if step < 60 {
+                add_air_speed(&mut estimator, time, air_speed);
+            } else if step == 60 {
+                estimator.clear_air_speed();
+            }
+            let acceptance = estimator.fix(time, &velocity_fix(east, north));
+            circling_measurement_accepted |= step >= 60 && acceptance == FixWithWind;
+            if step > 60 {
+                let wind = assert_some!(estimator.estimate().wind);
+                worst = worst.max((wind.speed.as_meters_per_second() - 10.).abs());
+            }
+        }
+
+        assert!(circling_measurement_accepted);
+        assert_lt!(worst, 0.5);
+    }
+
+    #[test]
     fn the_isa_model_matches_the_published_density_ratios() {
         let at_1000m = isa_density_ratio(Length::from_meters(1000.));
         let at_3000m = isa_density_ratio(Length::from_meters(3000.));

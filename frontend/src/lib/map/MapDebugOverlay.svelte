@@ -172,6 +172,10 @@
       <dd class:stale={derivedInstruments?.vario?.stale}>
         {verticalSpeed(derivedInstruments?.vario?.metersPerSecond)}
       </dd>
+      <dt>Netto</dt>
+      <dd class:stale={derivedInstruments?.netto?.stale}>
+        {verticalSpeed(derivedInstruments?.netto?.metersPerSecond)}
+      </dd>
       <dt>Air speed</dt>
       <dd class:stale={derivedInstruments?.airspeed?.stale}>
         {speed(derivedInstruments?.airspeed?.metersPerSecond)}

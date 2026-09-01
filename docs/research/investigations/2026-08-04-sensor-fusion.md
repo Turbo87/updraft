@@ -166,7 +166,9 @@ two-second time constant, and 0.024 m with a 0.25-second time constant.
 The experiment was not kept. Noise alone cannot show whether a sensor driver
 has already removed useful movement and added delay. The one-second IGC fixture
 also used the fixed fallback, so it did not test the adaptive path. The fixed
-two-second value remains the accepted behavior.
+two-second value remains the accepted behavior. The
+[device-barometer investigation](2026-08-29-device-barometer-response.md)
+records the bench measurements and the evidence needed to revisit the choice.
 
 ### Delayed GNSS altitude detection
 

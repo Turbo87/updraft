@@ -4,6 +4,7 @@ These records contain dated root-cause evidence for problems that need more
 than a current design statement. They do not define current product behavior.
 
 - [Android WebView 113 blank map](2026-07-26-android-webview-blank-map.md)
+- [Vario and wind from recorded flights](2026-08-04-sensor-fusion.md)
 - [Waypoint and arrival-altitude display on MapLibre](2026-08-19-waypoint-arrival-display.md)
 
 Keep the conclusion, decisive evidence, eliminated causes, and limits. Remove

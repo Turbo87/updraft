@@ -23,6 +23,32 @@ fn selected_from<T>(source: SourceId, millis: u64, value: T) -> Selected<T> {
     }
 }
 
+fn fusion_with_current_netto() -> (SensorFusion, Selected<Speed>, Selected<PressureAltitude>) {
+    let polar = updraft_polar::POLAR_STORE
+        .iter()
+        .find(|entry| entry.name == "JS-3-18m")
+        .expect("the built-in store has this glider type")
+        .glide_polar();
+    let mut fusion = SensorFusion::default();
+    fusion.set_polar(polar);
+
+    for second in 0..60 {
+        let millis = second * 1_000;
+        let air_speed = selected(millis, Speed::from_kilometers_per_hour(108.));
+        let pressure_altitude =
+            selected(millis, PressureAltitude::new(Length::from_meters(1_000.)));
+        fusion.update(FusionInputs {
+            gps: DomainState::Unavailable,
+            true_airspeed: DomainState::Current(air_speed),
+            pressure_altitude: DomainState::Current(pressure_altitude),
+        });
+    }
+
+    let air_speed = selected(59_000, Speed::from_kilometers_per_hour(108.));
+    let pressure_altitude = selected(59_000, PressureAltitude::new(Length::from_meters(1_000.)));
+    (fusion, air_speed, pressure_altitude)
+}
+
 fn gps(second: u64) -> GpsSnapshot {
     let at = Timestamp::from_millis(second * 1_000);
     let altitude = MslAltitude::new(Length::from_meters(1_000.));
@@ -295,4 +321,40 @@ fn stale_inputs_do_not_make_cached_motion_estimates_current() {
     assert!(assert_some!(all_stale.heading).stale);
     assert!(assert_some!(all_stale.bank).stale);
     assert!(assert_some!(all_stale.airspeed).stale);
+}
+
+#[test]
+fn stale_airspeed_stales_netto_independently() {
+    let (mut fusion, air_speed, pressure_altitude) = fusion_with_current_netto();
+
+    let current = assert_some!(assert_some!(fusion.instruments()).netto);
+    assert!(!current.stale);
+
+    fusion.update(FusionInputs {
+        gps: DomainState::Unavailable,
+        true_airspeed: DomainState::LastKnown(air_speed),
+        pressure_altitude: DomainState::Current(pressure_altitude),
+    });
+
+    let retained = assert_some!(assert_some!(fusion.instruments()).netto);
+    assert_eq!(retained.meters_per_second, current.meters_per_second);
+    assert!(retained.stale);
+}
+
+#[test]
+fn stale_pressure_altitude_stales_netto_independently() {
+    let (mut fusion, air_speed, pressure_altitude) = fusion_with_current_netto();
+
+    let current = assert_some!(assert_some!(fusion.instruments()).netto);
+    assert!(!current.stale);
+
+    fusion.update(FusionInputs {
+        gps: DomainState::Unavailable,
+        true_airspeed: DomainState::Current(air_speed),
+        pressure_altitude: DomainState::LastKnown(pressure_altitude),
+    });
+
+    let retained = assert_some!(assert_some!(fusion.instruments()).netto);
+    assert_eq!(retained.meters_per_second, current.meters_per_second);
+    assert!(retained.stale);
 }

@@ -12,6 +12,7 @@ export const EMPTY_DERIVED_INSTRUMENTS: DerivedInstruments = {
   heading: null,
   altitude: null,
   bank: null,
+  netto: null,
 };
 
 /**

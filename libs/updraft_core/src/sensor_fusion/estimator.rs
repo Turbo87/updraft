@@ -7,6 +7,7 @@ use super::vario::Vario;
 use super::wind::{Wind, WindFilter};
 use std::time::Duration;
 use updraft_geo::LatLon;
+use updraft_polar::GlidePolar;
 use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
 
 const GRAVITY: f64 = 9.80665;
@@ -48,6 +49,7 @@ pub struct Estimate {
     pub heading: Option<Angle>,
     pub altitude: Option<MslAltitude>,
     pub bank_angle: Option<Angle>,
+    pub netto: Option<Speed>,
 }
 
 /// Derives flight values from timestamped physical measurements.
@@ -56,6 +58,7 @@ pub struct Estimate {
 /// owns selected-source continuity, freshness, and protocol projection.
 #[derive(Clone, Debug)]
 pub struct Estimator {
+    polar: Option<GlidePolar>,
     altitude: AltitudeFilter,
     pressure_altitude_current: bool,
     vario: Vario,
@@ -73,6 +76,7 @@ pub struct Estimator {
     ground: Option<GroundVelocity>,
     previous_heading: Option<Angle>,
     turn_rate: Option<f64>,
+    isa_altitude_sample: Option<(Duration, Length)>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -91,6 +95,7 @@ impl Default for Estimator {
 impl Estimator {
     pub fn new() -> Self {
         Self {
+            polar: None,
             altitude: AltitudeFilter::default(),
             pressure_altitude_current: false,
             vario: Vario::default(),
@@ -108,9 +113,14 @@ impl Estimator {
             ground: None,
             previous_heading: None,
             turn_rate: None,
+            isa_altitude_sample: None,
         }
     }
 
+    #[cfg(test)]
+    pub fn set_polar(&mut self, polar: GlidePolar) {
+        self.polar = Some(polar);
+    }
     /// Takes a barometric altitude against the 1013.25 hPa datum.
     pub fn pressure_altitude(
         &mut self,
@@ -124,13 +134,14 @@ impl Estimator {
             return acceptance;
         }
 
-        let altitude = altitude.into_inner();
+        let pressure_altitude = altitude.into_inner();
         self.pressure_altitude_current = true;
-        let altitude = self.altitude.pressure(time, altitude);
+        let altitude = self.altitude.pressure(time, pressure_altitude);
         self.referenced_altitude = self
             .altitude
             .referenced_altitude()
             .map(EllipsoidAltitude::new);
+        self.isa_altitude_sample = Some((time, pressure_altitude));
         self.advance_vertical_speed(time, altitude, AltitudeDomain::Pressure)
     }
 
@@ -169,6 +180,7 @@ impl Estimator {
                 self.advance_vertical_speed(time, altitude_value, AltitudeDomain::Gnss);
             if acceptance == SampleAcceptance::Accepted {
                 self.referenced_altitude = Some(altitude);
+                self.isa_altitude_sample = Some((time, altitude_value));
             }
             acceptance
         }
@@ -323,6 +335,17 @@ impl Estimator {
         Some(Angle::from_radians(tangent.atan()))
     }
 
+    fn sink_rate(&self, altitude: Length, air_speed: Speed) -> Option<Speed> {
+        let polar = self.polar.as_ref()?;
+        let density = isa_density_ratio(altitude);
+        let root_density = density.sqrt();
+        let bank_angle = self.bank_angle(air_speed).unwrap_or(Angle::ZERO);
+        let load = 1. / bank_angle.cos();
+        let root_load = load.sqrt();
+        let equivalent = air_speed * root_density / root_load;
+        Some(polar.sink_rate(equivalent) * load * root_load / root_density)
+    }
+
     fn heading(&self) -> Option<Angle> {
         let ground = self.ground?;
         let (wind_east, wind_north) = self.wind.vector()?;
@@ -380,6 +403,7 @@ impl Estimator {
         self.gnss_time = None;
         self.referenced_altitude = None;
         self.vario_available = false;
+        self.isa_altitude_sample = None;
     }
 
     pub fn reset_wind(&mut self) {
@@ -421,8 +445,22 @@ impl Estimator {
             heading: self.heading(),
             altitude: self.altitude_msl(),
             bank_angle: air_speed.and_then(|speed| self.bank_angle(speed)),
+            netto: self.isa_altitude_sample.and_then(|(time, altitude)| {
+                let vertical_speed = vario?;
+                let air_speed = self.air_speed_at(time)?;
+                let sink_rate = self.sink_rate(altitude, air_speed)?;
+                Some(vertical_speed + sink_rate)
+            }),
         }
     }
+}
+
+fn isa_density_ratio(altitude: Length) -> f64 {
+    const LAPSE_RATE: f64 = 2.255_77e-5;
+    const EXPONENT: f64 = 4.255_88;
+
+    let temperature_ratio = (1. - LAPSE_RATE * altitude.as_meters()).max(0.);
+    temperature_ratio.powf(EXPONENT)
 }
 
 #[cfg(test)]
@@ -435,8 +473,56 @@ mod tests {
     use super::*;
     use crate::sensor_fusion::circling::FULL_CIRCLE_VARIANCE;
     use approx::assert_abs_diff_eq;
-    use claims::{assert_none, assert_some};
-    use updraft_units::Length;
+    use claims::{assert_lt, assert_none, assert_some};
+    use updraft_units::{Length, Mass};
+
+    const GLIDER_TYPE: &str = "JS-3-18m";
+    const LEVEL_SPEED: Speed = Speed::from_kilometers_per_hour(108.);
+
+    fn polar() -> GlidePolar {
+        updraft_polar::POLAR_STORE
+            .iter()
+            .find(|entry| entry.name == GLIDER_TYPE)
+            .expect("the built-in store has this glider type")
+            .glide_polar()
+    }
+
+    fn estimator_with_polar(polar: GlidePolar) -> Estimator {
+        let mut estimator = Estimator::new();
+        estimator.set_polar(polar);
+        estimator
+    }
+
+    fn fix_kph(track: f64, ground_speed: f64) -> Fix {
+        Fix {
+            track: Angle::from_degrees(track),
+            ground_speed: Speed::from_kilometers_per_hour(ground_speed),
+        }
+    }
+
+    fn applied_sink(speed: f64, circle: Option<f64>) -> f64 {
+        let mut estimator = estimator_with_polar(polar());
+        for step in 0..120u64 {
+            let time = Duration::from_secs(step);
+            let track = circle.map_or(90., |circle| 360. * step as f64 / circle);
+            add_air_speed(&mut estimator, time, Speed::from_kilometers_per_hour(speed));
+            let _ = estimator.fix(time, &fix_kph(track, speed));
+            assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
+        }
+        let state = estimator.estimate();
+        (assert_some!(state.netto) - assert_some!(state.vario)).as_meters_per_second()
+    }
+
+    fn fly_level(estimator: &mut Estimator, air_speed: Option<Speed>) {
+        for second in 0..60u64 {
+            let time = Duration::from_secs(second);
+            if let Some(speed) = air_speed {
+                add_air_speed(estimator, time, speed);
+                let _ = estimator.fix(time, &fix_kph(90., speed.as_kilometers_per_hour()));
+            }
+            assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
+        }
+    }
 
     fn meters(value: f64) -> PressureAltitude {
         PressureAltitude::new(Length::from_meters(value))
@@ -1200,6 +1286,91 @@ mod tests {
             70.53,
             epsilon = 0.05
         );
+    }
+
+    #[test]
+    fn netto_adds_the_glider_sink_rate() {
+        let mut estimator = estimator_with_polar(polar());
+        fly_level(&mut estimator, Some(LEVEL_SPEED));
+
+        let state = estimator.estimate();
+        let expected = Speed::from_meters_per_second(0.571);
+        assert_abs_diff_eq!(assert_some!(state.vario), Speed::ZERO, epsilon = 0.01);
+        assert_abs_diff_eq!(assert_some!(state.netto), expected, epsilon = 0.01);
+    }
+
+    #[test]
+    fn netto_uses_pressure_altitude_for_density() {
+        fn level_flight(gnss_offset: Option<Length>) -> Speed {
+            let mut estimator = estimator_with_polar(polar());
+            for step in 0..60u64 {
+                let time = Duration::from_secs(step);
+                add_air_speed(&mut estimator, time, LEVEL_SPEED);
+                let _ = estimator.fix(time, &fix_kph(90., 108.));
+                assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
+                if let Some(offset) = gnss_offset {
+                    let altitude = EllipsoidAltitude::new(Length::from_meters(1000.) + offset);
+                    assert_eq!(estimator.gnss_altitude(time, altitude), Accepted);
+                }
+            }
+            assert_some!(estimator.estimate().netto)
+        }
+
+        let pressure_only = level_flight(None);
+        let gnss_referenced = level_flight(Some(Length::from_meters(1000.)));
+
+        assert_abs_diff_eq!(gnss_referenced, pressure_only, epsilon = 1e-9);
+    }
+
+    #[test]
+    fn netto_requires_a_polar_and_airspeed() {
+        let mut without_polar = Estimator::new();
+        let mut without_airspeed = estimator_with_polar(polar());
+        fly_level(&mut without_polar, Some(LEVEL_SPEED));
+        fly_level(&mut without_airspeed, None);
+
+        assert_none!(without_polar.estimate().netto);
+        assert_none!(without_airspeed.estimate().netto);
+    }
+
+    #[test]
+    fn dumping_water_ballast_lightens_the_sink_rate_at_once() {
+        let heavy = polar().with_total_mass(Mass::from_kilograms(600.));
+        let light = polar().with_total_mass(Mass::from_kilograms(400.));
+
+        let mut estimator = estimator_with_polar(heavy);
+        fly_level(&mut estimator, Some(LEVEL_SPEED));
+        let ballasted = assert_some!(estimator.estimate().netto);
+
+        estimator.set_polar(light);
+        let dumped = assert_some!(estimator.estimate().netto);
+
+        assert_lt!(dumped, ballasted);
+    }
+
+    #[test]
+    fn turning_sink_rate_follows_the_load_factor_law() {
+        const CIRCLE: f64 = 20.;
+        const SPEED: f64 = 108.;
+
+        let turn_rate = std::f64::consts::TAU / CIRCLE;
+        let load = (1. + (turn_rate * SPEED / 3.6 / GRAVITY).powi(2)).sqrt();
+        let turning = applied_sink(SPEED, Some(CIRCLE));
+        let level = applied_sink(SPEED / load.sqrt(), None);
+
+        assert_abs_diff_eq!(turning / level, load * load.sqrt(), epsilon = 0.01);
+    }
+
+    #[test]
+    fn the_isa_model_matches_the_published_density_ratios() {
+        let at_1000m = isa_density_ratio(Length::from_meters(1000.));
+        let at_3000m = isa_density_ratio(Length::from_meters(3000.));
+        let at_5000m = isa_density_ratio(Length::from_meters(5000.));
+
+        assert_abs_diff_eq!(isa_density_ratio(Length::ZERO), 1., epsilon = 1e-9);
+        assert_abs_diff_eq!(at_1000m, 0.9075, epsilon = 0.0005);
+        assert_abs_diff_eq!(at_3000m, 0.7423, epsilon = 0.0005);
+        assert_abs_diff_eq!(at_5000m, 0.6012, epsilon = 0.0005);
     }
 
     #[test]

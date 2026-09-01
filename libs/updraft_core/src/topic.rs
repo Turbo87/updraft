@@ -88,6 +88,7 @@ pub struct DerivedInstruments {
     pub heading: Option<DerivedHeadingInstruments>,
     pub altitude: Option<DerivedAltitudeInstruments>,
     pub bank: Option<DerivedBankInstruments>,
+    pub netto: Option<SpeedInstrument>,
 }
 
 /// Derived wind values with their shared freshness state.
@@ -250,6 +251,10 @@ mod tests {
                 }),
                 bank: Some(DerivedBankInstruments {
                     angle_degrees: -42.0,
+                    stale: false,
+                }),
+                netto: Some(SpeedInstrument {
+                    meters_per_second: 2.1,
                     stale: false,
                 }),
             })),

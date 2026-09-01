@@ -7,6 +7,8 @@ use crate::topic::{
     DerivedAltitudeInstruments, DerivedBankInstruments, DerivedHeadingInstruments,
     DerivedInstruments, DerivedWindInstruments, SpeedInstrument,
 };
+#[cfg(test)]
+use updraft_polar::GlidePolar;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
 
 /// Selected sensor states for one core time advancement.
@@ -43,9 +45,16 @@ pub struct SensorFusion {
     heading: SignalState<Angle>,
     altitude: SignalState<MslAltitude>,
     bank: SignalState<Angle>,
+    netto: SignalState<Speed>,
 }
 
 impl SensorFusion {
+    #[cfg(test)]
+    pub fn set_polar(&mut self, polar: GlidePolar) {
+        self.estimator.set_polar(polar);
+        self.update_netto();
+    }
+
     /// Applies one coherent set of selected sensor states.
     pub fn update(&mut self, inputs: FusionInputs) {
         let gps_current = matches!(inputs.gps, DomainState::Current(_));
@@ -118,6 +127,7 @@ impl SensorFusion {
         let DomainState::Current(selected) = state else {
             self.estimator.clear_air_speed();
             self.vario.mark_stale();
+            self.netto.mark_stale();
             self.air_speed_current = false;
             self.derived_air_speed.mark_stale();
             self.air_speed = None;
@@ -253,6 +263,7 @@ impl SensorFusion {
         self.raw_vertical_speed.mark_stale();
         self.vertical_speed.mark_stale();
         self.vario.mark_stale();
+        self.netto.mark_stale();
         self.altitude.mark_stale();
     }
 
@@ -274,6 +285,7 @@ impl SensorFusion {
         if let Some(altitude) = estimate.altitude {
             self.altitude.update(altitude);
         }
+        self.update_netto();
     }
 
     fn update_motion_estimate(&mut self) {
@@ -297,6 +309,21 @@ impl SensorFusion {
             self.bank.update(bank_angle);
         } else {
             self.bank.mark_stale();
+        }
+        self.update_netto();
+    }
+
+    fn update_netto(&mut self) {
+        if !matches!(self.vario, SignalState::Current(_))
+            || !matches!(self.derived_air_speed, SignalState::Current(_))
+        {
+            self.netto.mark_stale();
+            return;
+        }
+        if let Some(netto) = self.estimator.estimate().netto {
+            self.netto.update(netto);
+        } else {
+            self.netto.mark_stale();
         }
     }
 
@@ -358,6 +385,13 @@ impl SensorFusion {
                 angle_degrees: angle.as_degrees(),
                 stale,
             });
+        let netto = self
+            .netto
+            .value_with_stale()
+            .map(|(speed, stale)| SpeedInstrument {
+                meters_per_second: speed.as_meters_per_second(),
+                stale,
+            });
 
         let available = raw_vertical_speed.is_some()
             || vertical_speed.is_some()
@@ -366,7 +400,8 @@ impl SensorFusion {
             || airspeed.is_some()
             || heading.is_some()
             || altitude.is_some()
-            || bank.is_some();
+            || bank.is_some()
+            || netto.is_some();
         available.then_some(DerivedInstruments {
             raw_vertical_speed,
             vertical_speed,
@@ -376,6 +411,7 @@ impl SensorFusion {
             heading,
             altitude,
             bank,
+            netto,
         })
     }
 }

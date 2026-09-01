@@ -8,6 +8,8 @@
 //! values from sensors that the estimator does not have: a total-energy
 //! probe and an inertial platform. The recorded values are therefore a
 //! reference to measure against, not a ground truth.
+//! The test does not score netto. The recorded netto changes with the
+//! direction of turn and can imply a negative sink rate.
 //!
 //! Only soaring flight is scored. Scoring excludes engine-running periods,
 //! the following settling minute, and samples below the airborne threshold.

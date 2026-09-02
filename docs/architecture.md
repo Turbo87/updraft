@@ -89,6 +89,10 @@ Resource projection and serialization run outside the core driver task. The
 core can own an immutable canonical dataset when domain queries need it. The
 shell owns platform storage and the frontend-specific resource representation.
 
+The shell also reads offline Enroute MBTiles files and serves vector tiles
+under `updraft://localhost/basemap/`. SQLite access and gzip decompression run
+on blocking workers. The frontend uses Tauri's platform-specific resource URLs.
+
 ## State ownership
 
 Shared domain state has one owner:

@@ -14,7 +14,7 @@
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import Airspace from './Airspace.svelte';
-  import { getBasemapStyle } from './basemap-style';
+  import { BASEMAP_MIN_ZOOM, getBasemapStyle } from './basemap-style';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
@@ -101,6 +101,7 @@
   <MapLibre
     inlineStyle="height: 100%; width: 100%"
     style={mapStyle}
+    minZoom={BASEMAP_MIN_ZOOM}
     {...testMode ? { fadeDuration: 0 } : {}}
     attributionControl={false}
     autoloadGlobalCss={false}

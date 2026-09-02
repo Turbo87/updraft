@@ -29,6 +29,8 @@ must state whether its behavior is current or planned.
   selection, and frontend projection.
 - [Airspace](product/airspace.md) defines import, canonical data, storage,
   resources, and current map presentation.
+- [Basemap](product/basemap.md) defines offline Enroute files, tile lookup,
+  zoom limits, and attribution.
 - [Traffic](product/traffic.md) defines FLARM observation, identity, freshness,
   topic updates, map presentation, and details.
 - [Flight View](product/flight-view.md) defines the map session, position follow

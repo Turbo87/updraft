@@ -1,5 +1,7 @@
 import type { StyleSpecification } from 'maplibre-gl';
 
+import { convertFileSrc } from '@tauri-apps/api/core';
+
 import positron from './style/positron.json';
 
 /*
@@ -16,6 +18,8 @@ import positron from './style/positron.json';
  * Remove `sources.ne2_shaded` after each refresh. No layer uses this source.
  */
 const POSITRON_STYLE = positron as StyleSpecification;
+
+export const BASEMAP_MIN_ZOOM = 6;
 
 /** The bundled font stack for map overlay text. */
 export const FONT_REGULAR = ['Barlow Semi Condensed Medium', 'Noto Sans Medium'];
@@ -35,11 +39,22 @@ const TEST_STYLE: StyleSpecification = {
   layers: [],
 };
 
-/** Returns a blank style in test mode or Positron with bundled presentation assets. */
+/** Returns a blank test style or Positron with local Enroute tiles and bundled assets. */
 export function getBasemapStyle(testMode: boolean, origin: string): StyleSpecification {
   if (testMode) return TEST_STYLE;
 
   let style = structuredClone(POSITRON_STYLE);
+  let basemapUrl = convertFileSrc('basemap', 'updraft');
+  style.sources.openmaptiles = {
+    type: 'vector',
+    tiles: [`${basemapUrl}/{z}/{x}/{y}.pbf`],
+    minzoom: BASEMAP_MIN_ZOOM,
+    maxzoom: 10,
+    attribution:
+      '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> | ' +
+      '<a href="https://akaflieg-freiburg.github.io/enroute/">Enroute Flight Navigation</a> | ' +
+      '<a href="https://www.akaflieg-freiburg.de/">Akaflieg Freiburg</a>',
+  };
   style.glyphs = `${origin}/basemap/fonts/{fontstack}/{range}.pbf`;
   style.sprite = `${origin}/basemap/sprites/ofm`;
 

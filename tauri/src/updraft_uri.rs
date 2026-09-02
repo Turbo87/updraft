@@ -1,5 +1,7 @@
 use crate::airspace_resource;
+use crate::basemap::{Basemaps, basemap_resource_response};
 use crate::driver::DriverHandle;
+use std::sync::{Arc, Mutex};
 use tauri::http::{HeaderValue, Request, Response, StatusCode, header};
 use tauri::{Manager, UriSchemeContext, UriSchemeResponder};
 
@@ -11,15 +13,18 @@ pub fn handle_updraft_uri<R: tauri::Runtime>(
     request: Request<Vec<u8>>,
     responder: UriSchemeResponder,
 ) {
-    let handle = context.app_handle().state::<DriverHandle>().inner().clone();
+    let app = context.app_handle();
+    let handle = app.state::<DriverHandle>().inner().clone();
+    let basemaps = app.state::<Arc<Mutex<Basemaps>>>().inner().clone();
     tauri::async_runtime::spawn(async move {
-        responder.respond(updraft_uri_response(request, handle).await);
+        responder.respond(updraft_uri_response(request, handle, basemaps).await);
     });
 }
 
 async fn updraft_uri_response(
     request: Request<Vec<u8>>,
     handle: DriverHandle,
+    basemaps: Arc<Mutex<Basemaps>>,
 ) -> Response<Vec<u8>> {
     let mut response = if request.uri().scheme_str() != Some("updraft")
         || request.uri().authority().map(|value| value.as_str()) != Some(UPDRAFT_URI_AUTHORITY)
@@ -28,6 +33,10 @@ async fn updraft_uri_response(
     } else {
         match request.uri().path() {
             "/airspace.geojson" => airspace_resource::airspace_resource_response(handle).await,
+            path if path.starts_with("/basemap/") => {
+                let path = path["/basemap/".len()..].to_owned();
+                basemap_resource_response(basemaps, path).await
+            }
             _ => not_found_response(),
         }
     };
@@ -75,8 +84,8 @@ mod tests {
     async fn routes_airspace_by_path_under_the_localhost_authority() {
         let handle = driver();
 
-        let response =
-            updraft_uri_response(request("updraft://localhost/airspace.geojson?v=0"), handle).await;
+        let request = request("updraft://localhost/airspace.geojson?v=0");
+        let response = updraft_uri_response(request, handle, Default::default()).await;
 
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
@@ -86,9 +95,17 @@ mod tests {
     async fn rejects_airspace_in_the_authority() {
         let handle = driver();
 
-        let response =
-            updraft_uri_response(request("updraft://airspace.geojson?v=0"), handle).await;
+        let request = request("updraft://airspace.geojson?v=0");
+        let response = updraft_uri_response(request, handle, Default::default()).await;
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn routes_missing_basemap_tiles() {
+        let request = request("updraft://localhost/basemap/6/33/20.pbf");
+        let response = updraft_uri_response(request, driver(), Default::default()).await;
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
     }
 }

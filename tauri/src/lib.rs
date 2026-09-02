@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::Rotation;
@@ -6,6 +7,7 @@ use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 mod activity;
 mod airspace_resource;
 mod airspace_storage;
+mod basemap;
 mod driver;
 mod file_picker;
 mod ipc;
@@ -105,6 +107,12 @@ pub fn run() {
             let airspace_storage =
                 airspace_storage::AirspaceStorage::new(app.path().app_data_dir()?);
             let airspace = airspace_storage.load();
+            let basemap_directory = app.path().app_data_dir()?.join("enroute");
+            let basemaps = basemap::Basemaps::load(&basemap_directory).unwrap_or_else(|error| {
+                tracing::warn!(%error, "Could not scan offline basemap directory");
+                basemap::Basemaps::default()
+            });
+            app.manage(Arc::new(Mutex::new(basemaps)));
 
             // `setup` runs on the main thread outside any runtime context,
             // so `tokio::spawn` inside the driver would panic. Enter Tauri's

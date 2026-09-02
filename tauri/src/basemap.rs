@@ -5,6 +5,7 @@ use std::io::{ErrorKind, Read};
 use std::sync::{Arc, Mutex};
 use std::{fs, path::Path};
 use tauri::http::{Response, StatusCode, header};
+use tauri::{AppHandle, Manager};
 
 const TILE_QUERY: &str =
     "SELECT tile_data FROM tiles WHERE zoom_level = ?1 AND tile_column = ?2 AND tile_row = ?3";
@@ -78,10 +79,11 @@ impl Basemaps {
 }
 
 /// Serves a vector tile on a blocking worker.
-pub async fn basemap_resource_response(
-    basemaps: Arc<Mutex<Basemaps>>,
+pub async fn basemap_resource_response<R: tauri::Runtime>(
+    app: AppHandle<R>,
     path: String,
 ) -> Response<Vec<u8>> {
+    let basemaps = app.state::<Arc<Mutex<Basemaps>>>().inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let basemaps = basemaps.lock().expect("basemap access should not panic");
         basemaps.resource_response(&path)

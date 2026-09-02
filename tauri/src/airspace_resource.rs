@@ -1,11 +1,13 @@
 use crate::driver::DriverHandle;
 use serde_json::{Value, json};
 use tauri::http::{Response, StatusCode, header};
+use tauri::{AppHandle, Manager};
 use updraft_airspace::{Airspace, AirspaceDataset};
 use updraft_core::GetAirspaceSnapshot;
 
 /// Builds a `GeoJSON` response from the active airspace dataset.
-pub async fn airspace_resource_response(handle: DriverHandle) -> Response<Vec<u8>> {
+pub async fn airspace_resource_response<R: tauri::Runtime>(app: AppHandle<R>) -> Response<Vec<u8>> {
+    let handle = app.state::<DriverHandle>().inner().clone();
     let dataset = match handle.send(GetAirspaceSnapshot).await {
         Ok(dataset) => dataset,
         Err(error) => {
@@ -46,6 +48,7 @@ mod tests {
     use std::sync::Arc;
     use std::time::Duration;
     use tauri::http::{StatusCode, header};
+    use tauri::test::mock_app;
     use tracing_test::traced_test;
     use updraft_core::{ActivateAirspaceDataset, AirspaceState, SettingsSnapshot};
 
@@ -78,8 +81,10 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn inactive_airspace_returns_an_empty_collection_without_caching() {
         let handle = driver(AirspaceState::none_at_startup());
+        let app = mock_app();
+        app.manage(handle);
 
-        let response = airspace_resource_response(handle).await;
+        let response = airspace_resource_response(app.handle().clone()).await;
 
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
@@ -103,14 +108,16 @@ mod tests {
             AirspaceDataset::from_openair(POLYGON).expect("a valid initial OpenAir fixture"),
         );
         let handle = driver(AirspaceState::active_at_startup(initial, None));
-        let initial_response = airspace_resource_response(handle.clone()).await;
+        let app = mock_app();
+        app.manage(handle.clone());
+        let initial_response = airspace_resource_response(app.handle().clone()).await;
 
         let replacement = Arc::new(AirspaceDataset::default());
         handle
             .send(ActivateAirspaceDataset::new(replacement, None))
             .await
             .expect("the active driver should accept the replacement");
-        let replacement_response = airspace_resource_response(handle).await;
+        let replacement_response = airspace_resource_response(app.handle().clone()).await;
 
         let initial_body: Value = serde_json::from_slice(initial_response.body())
             .expect("valid initial airspace GeoJSON");
@@ -123,7 +130,9 @@ mod tests {
     #[tokio::test]
     #[traced_test]
     async fn stopped_driver_returns_service_unavailable() {
-        let response = airspace_resource_response(DriverHandle::stopped()).await;
+        let app = mock_app();
+        app.manage(DriverHandle::stopped());
+        let response = airspace_resource_response(app.handle().clone()).await;
 
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert!(logs_contain(

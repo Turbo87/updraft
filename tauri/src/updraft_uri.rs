@@ -3,8 +3,6 @@ use crate::basemap::basemap_resource_response;
 use tauri::http::{HeaderValue, Request, Response, StatusCode, header};
 use tauri::{AppHandle, UriSchemeContext, UriSchemeResponder};
 
-const UPDRAFT_URI_AUTHORITY: &str = "localhost";
-
 /// Routes resources that use the `updraft` URI scheme.
 pub fn handle_updraft_uri<R: tauri::Runtime>(
     context: UriSchemeContext<'_, R>,
@@ -21,19 +19,13 @@ async fn updraft_uri_response<R: tauri::Runtime>(
     request: Request<Vec<u8>>,
     app: AppHandle<R>,
 ) -> Response<Vec<u8>> {
-    let mut response = if request.uri().scheme_str() != Some("updraft")
-        || request.uri().authority().map(|value| value.as_str()) != Some(UPDRAFT_URI_AUTHORITY)
-    {
-        not_found_response()
-    } else {
-        match request.uri().path() {
-            "/airspace.geojson" => airspace_resource::airspace_resource_response(app).await,
-            path if path.starts_with("/basemap/") => {
-                let path = path["/basemap/".len()..].to_owned();
-                basemap_resource_response(app, path).await
-            }
-            _ => not_found_response(),
+    let mut response = match request.uri().path() {
+        "/airspace.geojson" => airspace_resource::airspace_resource_response(app).await,
+        path if path.starts_with("/basemap/") => {
+            let path = path["/basemap/".len()..].to_owned();
+            basemap_resource_response(app, path).await
         }
+        _ => not_found_response(),
     };
 
     response.headers_mut().insert(
@@ -79,25 +71,34 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn routes_airspace_by_path_under_the_localhost_authority() {
+    async fn routes_airspace_by_path() {
         let app = mock_app();
         app.manage(driver());
 
-        let request = request("updraft://localhost/airspace.geojson?v=0");
-        let response = updraft_uri_response(request, app.handle().clone()).await;
+        for uri in [
+            "updraft://localhost/airspace.geojson?v=0",
+            "updraft://other/airspace.geojson?v=0",
+            "http://localhost/airspace.geojson?v=0",
+        ] {
+            let response = updraft_uri_response(request(uri), app.handle().clone()).await;
 
-        assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
+            assert_eq!(response.status(), StatusCode::OK, "{uri}");
+            assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn rejects_airspace_in_the_authority() {
+    async fn unknown_paths_return_not_found() {
         let app = mock_app();
 
-        let request = request("updraft://airspace.geojson?v=0");
-        let response = updraft_uri_response(request, app.handle().clone()).await;
+        for uri in [
+            "updraft://airspace.geojson?v=0",
+            "updraft://localhost/missing",
+        ] {
+            let response = updraft_uri_response(request(uri), app.handle().clone()).await;
 
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+            assert_eq!(response.status(), StatusCode::NOT_FOUND, "{uri}");
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -59,4 +59,4 @@ map preserves its camera and follow state.
 
 The current flight view does not include map orientation policy, automatic
 zoom, smart ownship offsets, flight-mode behavior, task navigation, terrain,
-weather, offline base maps, or configurable map layers.
+weather, or configurable map layers.

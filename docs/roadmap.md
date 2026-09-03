@@ -35,9 +35,8 @@ documents for accepted behavior.
   airspace and traffic results with detail routes.
 - [ ] **map-orientation-setting** — persist map orientation and add its Settings control. _(needs: map-orientation, settings-persistence)_
 - [ ] **flight-data-fields** — add a fixed-slot Flight View dock for the first altitude, speed, direction, and time values. _(needs: route-shell, frontend-protocol, units-settings)_
-- [ ] **basemap-assets** — bundle the basemap style, glyphs, and sprites while keeping the online vector tile source. _(needs: frontend-map)_
-- [ ] **basemap-mode-setting** — persist an Online or Offline selection on a Map data Settings route. Default to Online. Offline mode does not request online tiles and links an empty Flight View map to Map data. _(needs: basemap-assets, settings-persistence)_
-- [ ] **offline-basemap-serving** — scan the application data directory for MBTiles basemaps and serve their vector tiles through `updraft://localhost/basemap/`. _(needs: basemap-mode-setting, resource-scheme)_
+- [x] **basemap-assets** — bundle the basemap style, glyphs, and sprites. _(needs: frontend-map)_
+- [x] **offline-basemap-serving** — scan the application data directory's `enroute` folder for MBTiles basemaps and serve the first matching vector tile. The map uses offline tiles only, with fixed Enroute zoom limits. _(needs: basemap-assets, resource-scheme)_
 - [ ] **basemap-downloads** — download, update, and delete repository-backed basemap regions on the Map data screen. _(needs: offline-basemap-serving)_
 
 ## Scaffolding

@@ -12,6 +12,7 @@ mod driver;
 mod file_picker;
 mod ipc;
 mod settings;
+mod terrain;
 // A session only exists on Android. `test` keeps the adapter, and the tests
 // that pin the wire contract it implements, compiling on the host.
 #[cfg(any(target_os = "android", test))]
@@ -113,6 +114,11 @@ pub fn run() {
                 basemap::Basemaps::default()
             });
             app.manage(Arc::new(Mutex::new(basemaps)));
+            let terrain = terrain::Terrain::load(&basemap_directory).unwrap_or_else(|error| {
+                tracing::warn!(%error, "Could not scan offline terrain directory");
+                terrain::Terrain::default()
+            });
+            app.manage(Arc::new(Mutex::new(terrain)));
 
             // `setup` runs on the main thread outside any runtime context,
             // so `tokio::spawn` inside the driver would panic. Enter Tauri's

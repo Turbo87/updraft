@@ -45,7 +45,7 @@ template. Android and Windows use the corresponding HTTP(S) URL with the
 
 The About screen credits OpenStreetMap contributors, Enroute Flight Navigation,
 and Akaflieg Freiburg. Zoom limits and attribution are fixed in the style.
-The shell does not expose a metadata endpoint.
+The shell does not expose a basemap metadata endpoint.
 
 ## Excluded behavior
 

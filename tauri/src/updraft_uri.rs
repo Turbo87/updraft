@@ -1,5 +1,6 @@
 use crate::airspace_resource::airspace_resource_response;
 use crate::basemap::basemap_resource_response;
+use crate::terrain::terrain_resource_response;
 use std::future::Future;
 use tauri::http::{HeaderValue, Request, Response, StatusCode, header};
 use tauri::{UriSchemeContext, UriSchemeResponder};
@@ -24,6 +25,10 @@ pub fn handle_updraft_uri<R: tauri::Runtime>(
         path if path.starts_with("/basemap/") => {
             let path = path["/basemap/".len()..].to_owned();
             spawn_response(basemap_resource_response(app, path), respond);
+        }
+        path if path.starts_with("/terrain/") => {
+            let path = path["/terrain/".len()..].to_owned();
+            spawn_response(terrain_resource_response(app, path), respond);
         }
         _ => respond(not_found_response()),
     }

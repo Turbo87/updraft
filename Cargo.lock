@@ -5553,6 +5553,7 @@ dependencies = [
  "base64 0.23.1",
  "claims",
  "flate2",
+ "imagesize",
  "insta",
  "rusqlite",
  "serde",

@@ -29,7 +29,7 @@
         ["match", ["geometry-type"], ["MultiPolygon", "Polygon"], true, false],
         ["!=", ["get", "brunnel"], "tunnel"]
       ],
-      "paint": { "fill-antialias": true, "fill-color": "rgb(194, 200, 202)" }
+      "paint": { "fill-antialias": true, "fill-color": "rgb(180, 190, 202)" }
     },
     {
       "id": "landcover_ice_shelf",
@@ -88,8 +88,8 @@
         ["==", ["get", "class"], "wood"]
       ],
       "paint": {
-        "fill-color": "rgb(220,224,220)",
-        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 12, 1]
+        "fill-color": "rgb(210,224,210)",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 11, 0.5]
       }
     },
     {

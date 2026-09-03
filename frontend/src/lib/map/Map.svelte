@@ -19,6 +19,7 @@
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
   import ReturnToPositionButton from './ReturnToPositionButton.svelte';
+  import Terrain from './Terrain.svelte';
   import Traffic from './Traffic.svelte';
 
   type TestWindow = Window & {
@@ -114,6 +115,9 @@
     ondragstart={enterManualMode}
     onload={loadSprites}
   >
+    {#if !testMode}
+      <Terrain />
+    {/if}
     {#if spritesLoaded}
       <Traffic {traffic} altitudeUnit={units.altitude} {showTrafficHitAreas} />
       {#if position}

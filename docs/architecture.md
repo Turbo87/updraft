@@ -93,6 +93,11 @@ The shell also reads offline Enroute MBTiles files and serves vector tiles
 under `updraft://localhost/basemap/`. SQLite access and gzip decompression run
 on blocking workers. The frontend uses Tauri's platform-specific resource URLs.
 
+Offline Enroute terrain follows the same shell boundary. The shell serves
+encoded elevation tiles and installed attribution under
+`updraft://localhost/terrain/`. MapLibre decodes the tiles for hillshade and
+elevation colours.
+
 ## State ownership
 
 Shared domain state has one owner:

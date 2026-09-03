@@ -156,8 +156,13 @@ jobs:
       - run: rustup component add clippy
       - run: rustup target add aarch64-linux-android
       - run: pnpm install --frozen-lockfile
-      - run: cargo clippy -p updraft_tauri --target aarch64-linux-android --all-targets --all-features -- -D warnings
-      - run: cargo clippy -p tauri-plugin-updraft --target aarch64-linux-android --all-targets --all-features -- -D warnings
+      - name: Run Clippy for Android
+        env:
+          CC_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
+          AR_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+        run: |
+          cargo clippy -p updraft_tauri --target aarch64-linux-android --all-targets --all-features -- -D warnings
+          cargo clippy -p tauri-plugin-updraft --target aarch64-linux-android --all-targets --all-features -- -D warnings
       - run: pnpm tauri android build --target aarch64 --apk --debug
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}

@@ -2,7 +2,8 @@
 
 Status: Current behavior
 
-Updraft shows hillshade automatically from offline Enroute `.terrain` files.
+Updraft shows hillshade and elevation colours automatically from offline
+Enroute `.terrain` files.
 The map uses the Igor method with MapLibre's default intensity and viewport
 lighting. Shadows use black at 65% opacity. The hillshade sits before the
 basemap's `waterway` layer. Terrain does not change the camera pitch or enable
@@ -10,6 +11,12 @@ a 3D surface.
 
 Enroute files are a temporary source during development until Updraft can
 generate and host its own terrain assets.
+
+Elevation colours sit before the basemap's `water` layer, beneath land cover.
+The colour ramp uses 50% opacity and interpolates linearly between elevation
+stops. It uses white for lowlands, pale green and yellow for hills, tan and pink for
+mountains, and pale grey and blue for high elevations. Both terrain layers
+share one elevation source.
 
 ## Files and lookup
 

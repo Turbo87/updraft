@@ -123,6 +123,7 @@ documents for accepted behavior.
 ## Terrain
 
 - [x] **terrain-hillshade** — display offline Enroute terrain with Igor hillshade and installed source attribution. _(needs: offline-basemap-serving)_
+- [x] **terrain-colours** — show elevation colours beneath land cover from the same offline terrain source. _(needs: terrain-hillshade)_
 - [ ] **dem** — `libs/updraft_dem`: DEM tile format, elevation lookup, download manifest format. _(needs: geo)_
 - [ ] **agl-terrain** — AGL computation in core. _(needs: dem)_
 - [ ] **map-inspector-terrain** — add terrain elevation, AGL information, and arrival height at the selected map position. _(needs: agl-terrain, final-glide, map-inspector-waypoints)_

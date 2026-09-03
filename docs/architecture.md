@@ -95,7 +95,8 @@ on blocking workers. The frontend uses Tauri's platform-specific resource URLs.
 
 Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under
-`updraft://localhost/terrain/`. MapLibre decodes the tiles for hillshade.
+`updraft://localhost/terrain/`. MapLibre decodes the tiles for hillshade and
+elevation colours.
 
 ## State ownership
 

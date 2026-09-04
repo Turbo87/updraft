@@ -280,5 +280,45 @@
   "waypoints_remove_file": "Datei entfernen",
   "waypoints_remove_title": "{name} entfernen?",
   "waypoints_remove_description": "Die Datei wird von diesem Gerät gelöscht und ihre Wegpunkte verschwinden von der Karte.",
-  "waypoints_remove_confirm": "Entfernen"
+  "waypoints_remove_confirm": "Entfernen",
+  "waypoint_type_value": [
+    {
+      "match": {
+        "kind=0": "Unbekannt",
+        "kind=1": "Wegpunkt",
+        "kind=2": "Grasflugplatz",
+        "kind=3": "Außenlandefeld",
+        "kind=4": "Segelflugplatz",
+        "kind=5": "Flugplatz mit befestigter Piste",
+        "kind=6": "Gebirgspass",
+        "kind=7": "Berggipfel",
+        "kind=8": "Sendemast",
+        "kind=9": "VOR",
+        "kind=10": "NDB",
+        "kind=11": "Kühlturm",
+        "kind=12": "Staudamm",
+        "kind=13": "Tunnel",
+        "kind=14": "Brücke",
+        "kind=15": "Kraftwerk",
+        "kind=16": "Burg",
+        "kind=17": "Kreuzung",
+        "kind=18": "Markierung",
+        "kind=19": "Kontrollpunkt",
+        "kind=20": "Gleitschirmstartplatz",
+        "kind=21": "Gleitschirmlandeplatz",
+        "kind=*": "Unbekannt"
+      }
+    }
+  ],
+  "waypoint_back": "Zurück",
+  "waypoint_coordinates": "Koordinaten",
+  "waypoint_runway_direction": "Pistenrichtung",
+  "waypoint_runway_length": "Pistenlänge",
+  "waypoint_runway_width": "Pistenbreite",
+  "waypoint_source": "Quelldatei",
+  "waypoint_notes": "Hinweise",
+  "waypoint_loading": "Wegpunkte werden geladen…",
+  "waypoint_not_found": "Dieser Wegpunkt ist nicht mehr verfügbar.",
+  "waypoint_load_failed": "Wegpunkte konnten nicht geladen werden.",
+  "waypoint_none_nearby": "Keine Wegpunkte in der Nähe."
 }

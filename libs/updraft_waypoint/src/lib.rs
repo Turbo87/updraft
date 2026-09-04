@@ -10,6 +10,7 @@ pub use seeyou_cup::WaypointStyle as WaypointKind;
 pub struct Waypoint {
     pub name: String,
     pub frequency: String,
+    pub notes: String,
     pub position: LatLon,
     pub kind: WaypointKind,
     pub elevation: MslAltitude,
@@ -74,6 +75,7 @@ impl From<seeyou_cup::Waypoint> for Waypoint {
         Self {
             name: point.name,
             frequency: point.frequency,
+            notes: point.description,
             position: LatLon::from_degrees(point.latitude, point.longitude),
             kind: point.style,
             elevation: MslAltitude::new(Length::from_meters(point.elevation.to_meters())),

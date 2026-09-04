@@ -71,3 +71,10 @@ fn retains_radio_frequency_text() {
     ));
     assert_eq!(dataset.waypoints()[0].frequency, "123.500");
 }
+
+#[test]
+fn retains_multiline_notes() {
+    let source = format!("{HEADER}{}", FIELD.replace("Notes", "\"First\nLast\""));
+    let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
+    assert_eq!(dataset.waypoints()[0].notes, "First\nLast");
+}

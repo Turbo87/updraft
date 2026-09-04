@@ -12,6 +12,9 @@ pub struct Waypoint {
     pub position: LatLon,
     pub kind: WaypointKind,
     pub elevation: MslAltitude,
+    pub runway_direction: Option<u16>,
+    pub runway_length: Option<Length>,
+    pub runway_width: Option<Length>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,6 +75,13 @@ impl From<seeyou_cup::Waypoint> for Waypoint {
             position: LatLon::from_degrees(point.latitude, point.longitude),
             kind: point.style,
             elevation: MslAltitude::new(Length::from_meters(point.elevation.to_meters())),
+            runway_direction: point.runway_direction,
+            runway_length: point
+                .runway_length
+                .map(|value| Length::from_meters(value.to_meters())),
+            runway_width: point
+                .runway_width
+                .map(|value| Length::from_meters(value.to_meters())),
         }
     }
 }

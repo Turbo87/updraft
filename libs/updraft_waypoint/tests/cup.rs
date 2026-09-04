@@ -50,3 +50,16 @@ fn maps_elevation_to_mean_sea_level_meters() {
         304.8
     );
 }
+
+#[test]
+fn maps_runway_dimensions_and_direction() {
+    let source = format!("{HEADER}{FIELD}");
+    let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
+    let point = &dataset.waypoints()[0];
+    claims::assert_some_eq!(point.runway_direction, 90);
+    claims::assert_some_eq!(
+        point.runway_length,
+        updraft_units::Length::from_meters(800.0)
+    );
+    claims::assert_none!(point.runway_width);
+}

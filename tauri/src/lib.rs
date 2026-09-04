@@ -85,6 +85,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
             ipc::import_airspace,
+            waypoints::commands::import_waypoints,
             ipc::remove_airspace,
             ipc::set_locale,
             ipc::set_units,
@@ -109,6 +110,9 @@ pub fn run() {
             let airspace_storage =
                 airspace_storage::AirspaceStorage::new(app.path().app_data_dir()?);
             let airspace = airspace_storage.load();
+            let waypoint_storage =
+                waypoints::storage::WaypointStorage::new(app.path().app_data_dir()?);
+            let waypoint_catalog = Arc::new(waypoint_storage.load()?);
             let basemap_directory = app.path().app_data_dir()?.join("enroute");
             let basemaps = basemap::Basemaps::load(&basemap_directory).unwrap_or_else(|error| {
                 tracing::warn!(%error, "Could not scan offline basemap directory");
@@ -146,6 +150,12 @@ pub fn run() {
 
             let file_picker: file_picker::FileBytesPickerState =
                 Box::new(file_picker::TauriFileBytesPicker::new(app.handle().clone()));
+            tauri::async_runtime::block_on(
+                handle.send(updraft_core::ReplaceWaypointCatalog(waypoint_catalog)),
+            )?;
+            app.manage(waypoints::commands::WaypointCommandState::new(
+                waypoint_storage,
+            ));
             app.manage(handle);
             app.manage(file_picker);
             app.manage(ipc::AirspaceCommandState::new(airspace_storage));

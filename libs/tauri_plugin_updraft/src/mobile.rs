@@ -1,4 +1,4 @@
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tauri::{
     AppHandle, Runtime,
     ipc::Channel,
@@ -38,10 +38,28 @@ struct WatchActivitiesArgs {
     activities: Channel,
 }
 
+#[derive(Serialize)]
+struct DocumentDisplayNameArgs<'a> {
+    uri: &'a str,
+}
+
+#[derive(Deserialize)]
+struct DocumentDisplayName {
+    name: Option<String>,
+}
+
 /// Access to the session controls the Kotlin plugin implements.
 pub struct UpdraftMobile<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> UpdraftMobile<R> {
+    /// Reads the display name of a selected Android document URI.
+    pub fn document_display_name(&self, uri: &str) -> crate::Result<Option<String>> {
+        let result: DocumentDisplayName = self
+            .0
+            .run_mobile_plugin("documentDisplayName", DocumentDisplayNameArgs { uri })?;
+        Ok(result.name)
+    }
+
     /// Returns the current Android bonded-device state.
     pub fn bonded_bluetooth_devices(&self) -> crate::Result<crate::BondedBluetoothDevices> {
         self.0

@@ -44,7 +44,7 @@ fn app(
         .manage(WaypointCommandState::new(storage))
         .manage(handle)
         .manage(picker)
-        .invoke_handler(tauri::generate_handler![import_waypoints])
+        .invoke_handler(tauri::generate_handler![import_waypoints, remove_waypoints])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap()
 }
@@ -121,4 +121,58 @@ async fn stopped_driver_does_not_change_storage() {
         json!("driverStopped")
     );
     assert!(assert_ok!(storage.load()).sources.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn removal_clears_only_the_selected_file() {
+    let dir = assert_ok!(tempfile::tempdir());
+    let storage = WaypointStorage::new(dir.path().to_owned());
+    assert_ok!(storage.import("a.cup", CUP));
+    assert_ok!(storage.import("b.cup", CUP));
+    let catalog = Arc::new(assert_ok!(storage.load()));
+    let app = app(storage.clone(), None, false);
+    assert_ok!(
+        app.state::<DriverHandle>()
+            .send(ReplaceWaypointCatalog(catalog))
+            .await
+    );
+    assert_ok!(invoke(
+        &app,
+        "remove_waypoints",
+        json!({"sourceName":"a.cup"})
+    ));
+    let catalog = assert_ok!(app.state::<DriverHandle>().send(GetWaypointCatalog).await);
+    assert_eq!(catalog.sources.keys().collect::<Vec<_>>(), ["b.cup"]);
+    assert_eq!(assert_ok!(storage.load()), *catalog);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[tracing_test::traced_test]
+async fn failed_removal_keeps_the_active_catalog() {
+    let dir = assert_ok!(tempfile::tempdir());
+    let storage = WaypointStorage::new(dir.path().to_owned());
+    assert_ok!(storage.import("a.cup", CUP));
+    let catalog = Arc::new(assert_ok!(storage.load()));
+    let app = app(storage.clone(), None, false);
+    assert_ok!(
+        app.state::<DriverHandle>()
+            .send(ReplaceWaypointCatalog(catalog.clone()))
+            .await
+    );
+    assert_ok!(std::fs::remove_dir_all(dir.path().join("waypoints")));
+    assert_eq!(
+        assert_err!(invoke(
+            &app,
+            "remove_waypoints",
+            json!({"sourceName":"a.cup"})
+        )),
+        json!("storageFailed")
+    );
+    assert_eq!(
+        assert_ok!(app.state::<DriverHandle>().send(GetWaypointCatalog).await),
+        catalog
+    );
+    // Tauri runs IPC futures outside the test span.
+    let logs = tracing_test::internal::global_buf().lock().unwrap().clone();
+    assert!(String::from_utf8_lossy(&logs).contains("Could not remove waypoint source"));
 }

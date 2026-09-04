@@ -101,5 +101,48 @@ pub async fn import_waypoints(
     Ok(ImportWaypointsResult::Imported { source_name: name })
 }
 
+#[tauri::command]
+pub async fn remove_waypoints(
+    source_name: String,
+    state: tauri::State<'_, WaypointCommandState>,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), WaypointCommandError> {
+    let _guard = state
+        .mutation
+        .try_lock()
+        .map_err(|_| WaypointCommandError::Busy)?;
+    let catalog = handle
+        .send(GetWaypointCatalog)
+        .await
+        .map_err(|_| WaypointCommandError::DriverStopped)?;
+    let mut replacement = (*catalog).clone();
+    if replacement.sources.remove(&source_name).is_none() {
+        return Ok(());
+    }
+    let storage = state.storage.clone();
+    let change = tokio::task::spawn_blocking(move || storage.remove(&source_name))
+        .await
+        .map_err(|_| WaypointCommandError::WorkerFailed)?
+        .map_err(|error| {
+            tracing::warn!(%error, "Could not remove waypoint source");
+            WaypointCommandError::StorageFailed
+        })?;
+    if handle
+        .send(ReplaceWaypointCatalog(Arc::new(replacement)))
+        .await
+        .is_err()
+    {
+        tokio::task::spawn_blocking(move || change.rollback())
+            .await
+            .map_err(|_| WaypointCommandError::WorkerFailed)?
+            .map_err(|error| {
+                tracing::error!(%error, "Could not restore waypoint source after removal failed");
+                WaypointCommandError::StorageFailed
+            })?;
+        return Err(WaypointCommandError::DriverStopped);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests;

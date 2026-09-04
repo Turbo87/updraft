@@ -86,6 +86,7 @@ pub fn run() {
             ipc::bonded_bluetooth_devices,
             ipc::import_airspace,
             waypoints::commands::import_waypoints,
+            waypoints::commands::remove_waypoints,
             ipc::remove_airspace,
             ipc::set_locale,
             ipc::set_units,

@@ -120,6 +120,13 @@ impl WaypointStorage {
         Ok((dataset, WaypointSourceChange { path, previous }))
     }
 
+    pub fn remove(&self, name: &str) -> io::Result<WaypointSourceChange> {
+        let path = self.source_path(name);
+        let previous = self.backup(&path)?;
+        std::fs::remove_file(&path)?;
+        Ok(WaypointSourceChange { path, previous })
+    }
+
     fn backup(&self, path: &std::path::Path) -> io::Result<Option<TempPath>> {
         let backup = NamedTempFile::new_in(&self.directory)?.into_temp_path();
         std::fs::remove_file(&backup)?;
@@ -183,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn imports_and_replaces_long_source_names() {
+    fn imports_replaces_and_removes_long_source_names() {
         let dir = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(dir.path().to_owned());
         for name in [
@@ -198,35 +205,49 @@ mod tests {
                 "Field"
             );
             assert_eq!(assert_ok!(std::fs::read(storage.source_path(&name))), CUP);
+            let change = assert_ok!(storage.remove(&name));
+            assert_eq!(assert_ok!(storage.load()).sources.len(), 0);
+            assert_ok!(change.rollback());
+            assert_eq!(assert_ok!(storage.load()).sources.len(), 1);
+            assert_ok!(storage.remove(&name));
         }
     }
 
     #[cfg(unix)]
     #[test]
-    fn replaces_unreadable_sources_with_rollback() {
+    fn removes_and_replaces_unreadable_sources_with_rollback() {
         use std::os::unix::fs::PermissionsExt;
         let dir = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(dir.path().to_owned());
         let path = storage.source_path("a.cup");
         let replacement = String::from_utf8_lossy(CUP).replace("Field", "Replacement");
-        assert_ok!(storage.import("a.cup", CUP));
-        assert_ok!(std::fs::set_permissions(
-            &path,
-            std::fs::Permissions::from_mode(0o000)
-        ));
-        assert_err!(std::fs::read(&path));
-        let (_, change) = assert_ok!(storage.import("a.cup", replacement.as_bytes()));
-        assert_eq!(assert_ok!(std::fs::read(&path)), replacement.as_bytes());
-        assert_ok!(change.rollback());
-        assert_eq!(
-            assert_ok!(std::fs::metadata(&path)).permissions().mode() & 0o777,
-            0
-        );
-        assert_ok!(std::fs::set_permissions(
-            &path,
-            std::fs::Permissions::from_mode(0o600)
-        ));
-        assert_eq!(assert_ok!(std::fs::read(&path)), CUP);
+        for replace in [false, true] {
+            assert_ok!(storage.import("a.cup", CUP));
+            assert_ok!(std::fs::set_permissions(
+                &path,
+                std::fs::Permissions::from_mode(0o000)
+            ));
+            assert_err!(std::fs::read(&path));
+            let change = if replace {
+                let (_, change) = assert_ok!(storage.import("a.cup", replacement.as_bytes()));
+                assert_eq!(assert_ok!(std::fs::read(&path)), replacement.as_bytes());
+                change
+            } else {
+                let change = assert_ok!(storage.remove("a.cup"));
+                assert!(!path.exists());
+                change
+            };
+            assert_ok!(change.rollback());
+            assert_eq!(
+                assert_ok!(std::fs::metadata(&path)).permissions().mode() & 0o777,
+                0
+            );
+            assert_ok!(std::fs::set_permissions(
+                &path,
+                std::fs::Permissions::from_mode(0o600)
+            ));
+            assert_eq!(assert_ok!(std::fs::read(&path)), CUP);
+        }
     }
 
     #[test]

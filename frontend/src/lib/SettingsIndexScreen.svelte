@@ -22,6 +22,12 @@
       size="large"
       value={language ?? '—'}
     />
+    <ListRow
+      href="/settings/waypoints"
+      icon="i-mdi-map-marker"
+      label={m.waypoints_heading()}
+      size="large"
+    />
     <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
     <ListRow
       href="/settings/airspace"

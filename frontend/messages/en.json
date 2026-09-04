@@ -266,5 +266,15 @@
   "device_enabled": "Enabled",
   "device_disabled": "Disabled",
   "device_connection_status_unknown": "Connection status unknown",
-  "update_device_error": "Could not update this device."
+  "update_device_error": "Could not update this device.",
+  "waypoints_heading": "Waypoints",
+  "waypoints_import": "Import CUP file",
+  "waypoints_import_help": "All imported files appear on the map. Importing the same filename replaces that file.",
+  "waypoints_none": "No waypoint files imported.",
+  "waypoints_import_count": "{count} waypoints",
+  "waypoints_warnings": "Import warnings ({count})",
+  "waypoints_warning_line": "Line {line}: {message}",
+  "waypoints_read_failed": "Could not read this stored file.",
+  "waypoints_parse_failed": "The file has an invalid header or no valid waypoints.",
+  "waypoints_command_failed": "Could not update waypoint files. Please try again."
 }

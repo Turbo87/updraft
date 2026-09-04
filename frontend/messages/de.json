@@ -266,5 +266,15 @@
   "device_enabled": "Aktiviert",
   "device_disabled": "Deaktiviert",
   "device_connection_status_unknown": "Verbindungsstatus unbekannt",
-  "update_device_error": "Dieses Gerät konnte nicht aktualisiert werden."
+  "update_device_error": "Dieses Gerät konnte nicht aktualisiert werden.",
+  "waypoints_heading": "Wegpunkte",
+  "waypoints_import": "CUP-Datei importieren",
+  "waypoints_import_help": "Alle importierten Dateien erscheinen auf der Karte. Ein Import mit demselben Dateinamen ersetzt diese Datei.",
+  "waypoints_none": "Keine Wegpunktdateien importiert.",
+  "waypoints_import_count": "{count} Wegpunkte",
+  "waypoints_warnings": "Importhinweise ({count})",
+  "waypoints_warning_line": "Zeile {line}: {message}",
+  "waypoints_read_failed": "Diese gespeicherte Datei konnte nicht gelesen werden.",
+  "waypoints_parse_failed": "Die Datei hat eine ungültige Kopfzeile oder keine gültigen Wegpunkte.",
+  "waypoints_command_failed": "Wegpunktdateien konnten nicht aktualisiert werden. Bitte erneut versuchen."
 }

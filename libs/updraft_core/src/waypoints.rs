@@ -81,3 +81,10 @@ impl WaypointCatalog {
         }
     }
 }
+
+/// The catalog and its process-local generation from one core query.
+#[derive(Clone, Debug)]
+pub struct WaypointSnapshot {
+    pub generation: u64,
+    pub catalog: Arc<WaypointCatalog>,
+}

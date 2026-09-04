@@ -35,9 +35,9 @@ pub use external_device::{
 pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
 pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
-    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetWaypointCatalog, Input,
-    InternalGps, ReorderExternalDevices, ReplaceWaypointCatalog, SetAirspaceUnavailable,
-    SetExternalDeviceEnabled, SetLocale, SetUnits, Start, Tick, Update,
+    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetWaypointCatalog,
+    GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices, ReplaceWaypointCatalog,
+    SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits, Start, Tick, Update,
 };
 pub use settings::{
     AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
@@ -55,5 +55,6 @@ pub use traffic::{
     target_from_pflaa,
 };
 pub use waypoints::{
-    WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSourceStatus, WaypointStatus,
+    WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSnapshot, WaypointSourceStatus,
+    WaypointStatus,
 };

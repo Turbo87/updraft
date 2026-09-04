@@ -244,3 +244,7 @@ pub struct GetWaypointCatalog;
 
 impl private::Sealed for ReplaceWaypointCatalog {}
 impl private::Sealed for GetWaypointCatalog {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GetWaypointSnapshot;
+impl private::Sealed for GetWaypointSnapshot {}

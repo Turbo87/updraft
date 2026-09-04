@@ -841,6 +841,17 @@ impl Input for crate::GetWaypointCatalog {
     }
 }
 
+impl Input for crate::GetWaypointSnapshot {
+    type Response = crate::WaypointSnapshot;
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(crate::WaypointSnapshot {
+            generation: core.waypoint_generation,
+            catalog: core.waypoints.clone(),
+        })
+    }
+}
+
 #[cfg(test)]
 #[path = "core_tests/mod.rs"]
 mod tests;

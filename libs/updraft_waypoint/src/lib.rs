@@ -2,6 +2,7 @@
 
 use seeyou_cup::CupFile;
 use updraft_geo::LatLon;
+use updraft_units::{Length, MslAltitude};
 
 pub use seeyou_cup::WaypointStyle as WaypointKind;
 
@@ -10,6 +11,7 @@ pub struct Waypoint {
     pub name: String,
     pub position: LatLon,
     pub kind: WaypointKind,
+    pub elevation: MslAltitude,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -69,6 +71,7 @@ impl From<seeyou_cup::Waypoint> for Waypoint {
             name: point.name,
             position: LatLon::from_degrees(point.latitude, point.longitude),
             kind: point.style,
+            elevation: MslAltitude::new(Length::from_meters(point.elevation.to_meters())),
         }
     }
 }

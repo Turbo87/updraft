@@ -11,6 +11,7 @@ workspace = true
 seeyou-cup = "=0.3.1"
 thiserror = "=2.0.20"
 updraft_geo = { path = "../updraft_geo" }
+updraft_units = { path = "../updraft_units" }
 
 [dev-dependencies]
 claims = "=0.8.0"

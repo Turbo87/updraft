@@ -5648,6 +5648,7 @@ dependencies = [
  "seeyou-cup",
  "thiserror 2.0.20",
  "updraft_geo",
+ "updraft_units",
 ]
 
 [[package]]

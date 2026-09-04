@@ -40,3 +40,13 @@ fn retains_waypoints_with_invalid_optional_fields() {
     assert_eq!(dataset.waypoints().len(), 1);
     assert_eq!(dataset.warnings().len(), 1);
 }
+
+#[test]
+fn maps_elevation_to_mean_sea_level_meters() {
+    let source = format!("{HEADER}{}", FIELD.replace("100m", "1000ft"));
+    let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
+    assert_eq!(
+        dataset.waypoints()[0].elevation.into_inner().as_meters(),
+        304.8
+    );
+}

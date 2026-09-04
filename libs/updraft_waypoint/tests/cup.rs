@@ -63,3 +63,11 @@ fn maps_runway_dimensions_and_direction() {
     );
     claims::assert_none!(point.runway_width);
 }
+
+#[test]
+fn retains_radio_frequency_text() {
+    let dataset = assert_ok!(WaypointDataset::from_cup(
+        format!("{HEADER}{FIELD}").as_bytes()
+    ));
+    assert_eq!(dataset.waypoints()[0].frequency, "123.500");
+}

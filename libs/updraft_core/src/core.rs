@@ -199,6 +199,8 @@ pub struct Core {
     settings: Settings,
     external_devices: ExternalDevices,
     airspace: AirspaceState,
+    waypoints: Arc<crate::WaypointCatalog>,
+    waypoint_generation: u64,
     internal_gps: GpsCandidate,
     gps: DomainState<GpsSnapshot>,
     pressure_altitude: DomainState<PressureAltitude>,
@@ -222,6 +224,8 @@ impl Core {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
             airspace,
+            waypoints: Arc::default(),
+            waypoint_generation: 0,
             internal_gps: GpsCandidate::default(),
             gps: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
@@ -247,6 +251,7 @@ impl Core {
             self.settings.as_topic(),
             self.external_devices.as_topic(),
             Topic::Airspace(self.airspace.status()),
+            Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
             Topic::Traffic(TrafficUpdate::Snapshot(self.traffic.published_targets())),
         ]
     }
@@ -814,6 +819,25 @@ impl Input for SetExternalDeviceEnabled {
         effects.push(Effect::emit(core.external_devices.as_topic()));
         effects.push(Effect::persist_settings(core.settings_snapshot()));
         Update::effects(effects).with_response(Ok(()))
+    }
+}
+
+impl Input for crate::ReplaceWaypointCatalog {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        core.waypoints = self.0;
+        core.waypoint_generation += 1;
+        let status = core.waypoints.status(core.waypoint_generation);
+        Update::effects(vec![Effect::emit(Topic::Waypoints(status))])
+    }
+}
+
+impl Input for crate::GetWaypointCatalog {
+    type Response = Arc<crate::WaypointCatalog>;
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.waypoints.clone())
     }
 }
 

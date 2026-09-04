@@ -20,6 +20,7 @@ mod signal_state;
 mod time;
 mod topic;
 mod traffic;
+mod waypoints;
 
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
@@ -34,9 +35,9 @@ pub use external_device::{
 pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
 pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
-    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
-    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
-    Start, Tick, Update,
+    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetWaypointCatalog, Input,
+    InternalGps, ReorderExternalDevices, ReplaceWaypointCatalog, SetAirspaceUnavailable,
+    SetExternalDeviceEnabled, SetLocale, SetUnits, Start, Tick, Update,
 };
 pub use settings::{
     AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
@@ -52,4 +53,7 @@ pub use traffic::{
     PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,
     TrafficTarget, TrafficTargetId, TrafficTargetIdType, TrafficType, TrafficUpdate,
     target_from_pflaa,
+};
+pub use waypoints::{
+    WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSourceStatus, WaypointStatus,
 };

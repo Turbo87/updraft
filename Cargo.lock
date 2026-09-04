@@ -5513,6 +5513,7 @@ dependencies = [
  "updraft_nmea",
  "updraft_polar",
  "updraft_units",
+ "updraft_waypoint",
  "uuid",
 ]
 

@@ -4,6 +4,7 @@ import type { Instruments } from "./Instruments";
 import type { PublishedExternalDevice } from "./PublishedExternalDevice";
 import type { Settings } from "./Settings";
 import type { TrafficUpdate } from "./TrafficUpdate";
+import type { WaypointStatus } from "./WaypointStatus";
 
 /**
  * One group of client-visible state.
@@ -17,4 +18,4 @@ import type { TrafficUpdate } from "./TrafficUpdate";
  * and the generated TypeScript. An internally tagged enum would generate
  * an intersection type, which is awkward to narrow on in the frontend.
  */
-export type Topic = { "topic": "instruments", "value": Instruments } | { "topic": "settings", "value": Settings } | { "topic": "externalDevices", "value": Array<PublishedExternalDevice> } | { "topic": "airspace", "value": AirspaceStatus } | { "topic": "traffic", "value": TrafficUpdate };
+export type Topic = { "topic": "instruments", "value": Instruments } | { "topic": "settings", "value": Settings } | { "topic": "externalDevices", "value": Array<PublishedExternalDevice> } | { "topic": "airspace", "value": AirspaceStatus } | { "topic": "waypoints", "value": WaypointStatus } | { "topic": "traffic", "value": TrafficUpdate };

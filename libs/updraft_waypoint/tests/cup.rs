@@ -78,3 +78,10 @@ fn retains_multiline_notes() {
     let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
     assert_eq!(dataset.waypoints()[0].notes, "First\nLast");
 }
+
+#[test]
+#[should_panic(expected = "PosOverflow")]
+fn cup_dependency_panics_when_longitude_degrees_exceed_u8() {
+    let source = format!("{HEADER}{FIELD}Bad,,,5000.000N,99900.000E,0m,1\n");
+    let _ = WaypointDataset::from_cup(source.as_bytes());
+}

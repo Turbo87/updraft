@@ -61,4 +61,18 @@
     paint={{ 'circle-radius': 12, 'circle-opacity': 0 }}
   />
   <SymbolLayer id="waypoint-symbols" beforeId="traffic-fixed" {layout} {paint} />
+  <SymbolLayer
+    id="waypoint-runways"
+    beforeId="traffic-fixed"
+    filter={['all', ['in', ['get', 'kind'], ['literal', [2, 3, 4, 5]]], ['has', 'runwayDirection']]}
+    layout={{
+      'icon-image': 'updraft-sdf:runway',
+      'icon-size': 0.38,
+      'icon-rotate': ['get', 'runwayDirection'],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    }}
+    paint={{ 'icon-color': '#ffffff', 'icon-halo-color': COLOR_VIOLET_700, 'icon-halo-width': 0.5 }}
+  />
 </GeoJSONSource>

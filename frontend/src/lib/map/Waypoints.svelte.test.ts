@@ -36,6 +36,14 @@ it('renders waypoint types and removes the source when all files are removed', a
   expect(
     new Set(map.querySourceFeatures('waypoints').map((feature) => feature.properties.kind)),
   ).toEqual(new Set([2, 3, 7]));
+  expect(map.getLayer('waypoint-runways')).toBeDefined();
+  await vi.waitFor(() => {
+    let kinds = map
+      .queryRenderedFeatures({ layers: ['waypoint-runways'] })
+      .map((feature) => feature.properties.kind);
+    expect(new Set(kinds)).toEqual(new Set([2, 3]));
+  });
+  expect(map.getLayoutProperty('waypoint-runways', 'icon-rotation-alignment')).toBe('map');
   await component.rerender({ waypoints: { generation: 2, sources: [] } });
   await vi.waitFor(() => expect(map.getSource('waypoints')).toBeUndefined());
 });

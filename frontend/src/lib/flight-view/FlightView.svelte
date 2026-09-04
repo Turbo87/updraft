@@ -4,6 +4,7 @@
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+  import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { goto } from '$app/navigation';
@@ -15,6 +16,7 @@
 
   let {
     airspace,
+    waypoints,
     instruments,
     mapState,
     traffic,
@@ -22,6 +24,7 @@
     testMode = false,
   }: {
     airspace: AirspaceStatus;
+    waypoints?: WaypointStatus;
     instruments: Instruments;
     mapState: MapState;
     traffic: TrafficStore;
@@ -41,6 +44,7 @@
 <section class="flight-view" aria-label={m.flight_view()}>
   <Map
     {airspace}
+    {waypoints}
     {instruments}
     {mapState}
     {traffic}

@@ -85,6 +85,7 @@
 <div class="app">
   <FlightView
     airspace={airspace.current}
+    waypoints={waypoints.current}
     instruments={instruments.current}
     {mapState}
     {traffic}

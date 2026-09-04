@@ -27,12 +27,21 @@
     };
     airspaces: Snippet;
     traffic: Snippet;
+    waypoints?: Snippet;
   };
 
   const sectionId = $props.id();
 
-  let { title, backLabel, position, ownshipRelation, summary, airspaces, traffic }: Props =
-    $props();
+  let {
+    title,
+    backLabel,
+    position,
+    ownshipRelation,
+    summary,
+    airspaces,
+    traffic,
+    waypoints,
+  }: Props = $props();
 
   const coordinate = $derived(formatCoordinate(position));
 
@@ -116,6 +125,13 @@
     <h2 id={`${sectionId}-airspaces`}>{m.airspaces_heading()}</h2>
     {@render airspaces()}
   </section>
+
+  {#if waypoints}
+    <section aria-labelledby={`${sectionId}-waypoints`}>
+      <h2 id={`${sectionId}-waypoints`}>{m.waypoints_heading()}</h2>
+      {@render waypoints()}
+    </section>
+  {/if}
 
   <section aria-labelledby={`${sectionId}-traffic`}>
     <h2 id={`${sectionId}-traffic`}>{m.traffic_heading()}</h2>

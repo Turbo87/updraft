@@ -10,9 +10,10 @@
   import { convertDistance } from '$lib/units';
   import NearbyAirspaces from './NearbyAirspaces.svelte';
   import NearbyTraffic from './NearbyTraffic.svelte';
+  import NearbyWaypoints from './NearbyWaypoints.svelte';
   import { parseNearbyRouteCoordinates } from './params';
 
-  const { airspace, instruments, mapState, settings, traffic } = getAppContext();
+  const { airspace, instruments, mapState, settings, traffic, waypoints } = getAppContext();
   const selectedPosition = $derived(
     parseNearbyRouteCoordinates(page.params.latitude, page.params.longitude),
   );
@@ -69,7 +70,24 @@
     {/if}
   {/snippet}
 
+  {#snippet waypointResults()}
+    {#if !waypoints.initialized || !mapState.map}
+      <p>{m.waypoint_loading()}</p>
+    {:else if !waypoints.current.sources.some((source) => source.type === 'active')}
+      <p>{m.waypoint_none_nearby()}</p>
+    {:else}
+      {#key `${waypoints.current.generation}/${selectedPosition.latitudeDegrees}/${selectedPosition.longitudeDegrees}`}
+        <NearbyWaypoints
+          map={mapState.map}
+          position={selectedPosition}
+          sourceStatus={mapState.waypointSourceStatus}
+        />
+      {/key}
+    {/if}
+  {/snippet}
+
   <NearbyResultsScreen
+    waypoints={waypointResults}
     {airspaces}
     backLabel={m.back_to_map()}
     ownshipRelation={displayedOwnshipRelation}

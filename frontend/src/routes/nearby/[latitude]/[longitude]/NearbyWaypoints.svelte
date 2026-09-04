@@ -1,0 +1,99 @@
+<script lang="ts">
+  import type { MapGeoJSONFeature, Map as MapLibreMap } from 'maplibre-gl';
+  import type { MapState } from '$lib/map-state.svelte';
+  import type { LatLon } from '$lib/protocol/generated/LatLon';
+
+  import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
+
+  import { m } from '$lib/paraglide/messages.js';
+
+  let {
+    map,
+    position,
+    sourceStatus,
+  }: { map: MapLibreMap; position: LatLon; sourceStatus: MapState['waypointSourceStatus'] } =
+    $props();
+  let features = $state.raw<MapGeoJSONFeature[] | null>(null);
+
+  function query() {
+    if (
+      sourceStatus !== 'ready' ||
+      !map.getLayer('waypoint-hit') ||
+      !map.isSourceLoaded('waypoints')
+    )
+      return;
+    let point = map.project([position.longitudeDegrees, position.latitudeDegrees]);
+    let hits = map.queryRenderedFeatures(point, { layers: ['waypoint-hit'] });
+    features = [...new Map(hits.map((feature) => [feature.properties.id, feature])).values()];
+  }
+  $effect(query);
+  onMount(() => {
+    map.on('idle', query);
+    return () => {
+      map.off('idle', query);
+    };
+  });
+</script>
+
+{#if sourceStatus === 'failed'}
+  <p role="alert">{m.waypoint_load_failed()}</p>
+{:else if sourceStatus === 'loading' || features === null}
+  <p>{m.waypoint_loading()}</p>
+{:else if features.length === 0}
+  <p>{m.waypoint_none_nearby()}</p>
+{:else}
+  <ul>
+    {#each features as feature (feature.properties.id)}
+      <li>
+        <a href={resolve('/waypoints/[id]', { id: String(feature.properties.id) })}>
+          <span class="name">{feature.properties.name}</span>
+          <span class="detail"
+            >{m.waypoint_type_value({ kind: feature.properties.kind })} · {feature.properties
+              .sourceName}</span
+          >
+        </a>
+      </li>
+    {/each}
+  </ul>
+{/if}
+
+<style>
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-card-surface);
+    overflow: hidden;
+  }
+  li + li {
+    border-block-start: 1px solid var(--color-separator);
+  }
+  a {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: var(--target-flight);
+    padding: var(--space-2) var(--space-4);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+  a:active {
+    background: var(--color-control-surface-pressed);
+  }
+  .name,
+  .detail {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .name {
+    font: var(--text-row-label);
+  }
+  .detail {
+    color: var(--color-text-muted);
+    font: var(--text-row-detail);
+  }
+</style>

@@ -276,5 +276,9 @@
   "waypoints_warning_line": "Zeile {line}: {message}",
   "waypoints_read_failed": "Diese gespeicherte Datei konnte nicht gelesen werden.",
   "waypoints_parse_failed": "Die Datei hat eine ungültige Kopfzeile oder keine gültigen Wegpunkte.",
-  "waypoints_command_failed": "Wegpunktdateien konnten nicht aktualisiert werden. Bitte erneut versuchen."
+  "waypoints_command_failed": "Wegpunktdateien konnten nicht aktualisiert werden. Bitte erneut versuchen.",
+  "waypoints_remove_file": "Datei entfernen",
+  "waypoints_remove_title": "{name} entfernen?",
+  "waypoints_remove_description": "Die Datei wird von diesem Gerät gelöscht und ihre Wegpunkte verschwinden von der Karte.",
+  "waypoints_remove_confirm": "Entfernen"
 }

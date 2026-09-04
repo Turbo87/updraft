@@ -276,5 +276,9 @@
   "waypoints_warning_line": "Line {line}: {message}",
   "waypoints_read_failed": "Could not read this stored file.",
   "waypoints_parse_failed": "The file has an invalid header or no valid waypoints.",
-  "waypoints_command_failed": "Could not update waypoint files. Please try again."
+  "waypoints_command_failed": "Could not update waypoint files. Please try again.",
+  "waypoints_remove_file": "Remove file",
+  "waypoints_remove_title": "Remove {name}?",
+  "waypoints_remove_description": "The file is deleted from this device and its waypoints disappear from the map.",
+  "waypoints_remove_confirm": "Remove"
 }

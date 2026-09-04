@@ -7,7 +7,10 @@
   const { Story } = defineMeta({
     title: 'Components/WaypointSettings',
     component: WaypointSettings,
-    args: { onImport: fn(async () => ({ type: 'cancelled' as const })) },
+    args: {
+      onRemove: fn(async () => {}),
+      onImport: fn(async () => ({ type: 'cancelled' as const })),
+    },
     parameters: { layout: 'fullscreen' },
   });
 </script>

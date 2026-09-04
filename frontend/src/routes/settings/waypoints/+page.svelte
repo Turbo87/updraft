@@ -5,4 +5,8 @@
   const { client, waypoints } = getAppContext();
 </script>
 
-<WaypointSettings status={waypoints.current} onImport={() => client.importWaypoints()} />
+<WaypointSettings
+  status={waypoints.current}
+  onImport={() => client.importWaypoints()}
+  onRemove={(name) => client.removeWaypoints(name)}
+/>

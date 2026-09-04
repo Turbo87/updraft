@@ -3,15 +3,23 @@
   import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
 
   import Button from './Button.svelte';
+  import ConfirmDialog from './ConfirmDialog.svelte';
   import { m } from './paraglide/messages.js';
   import ScreenScaffold from './ScreenScaffold.svelte';
 
   let {
     status,
     onImport,
-  }: { status: WaypointStatus; onImport: () => Promise<ImportWaypointsResult> } = $props();
+    onRemove,
+  }: {
+    status: WaypointStatus;
+    onImport: () => Promise<ImportWaypointsResult>;
+    onRemove: (name: string) => Promise<void>;
+  } = $props();
   let pending = $state(false);
   let error = $state('');
+  let removeName = $state('');
+  let removeOpen = $state(false);
 
   async function importFile() {
     pending = true;
@@ -21,6 +29,18 @@
     } catch (cause) {
       error = cause === 'parseFailed' ? m.waypoints_parse_failed() : m.waypoints_command_failed();
     } finally {
+      pending = false;
+    }
+  }
+  async function removeFile() {
+    pending = true;
+    error = '';
+    try {
+      await onRemove(removeName);
+    } catch {
+      error = m.waypoints_command_failed();
+    } finally {
+      removeOpen = false;
       pending = false;
     }
   }
@@ -69,10 +89,31 @@
           {source.error === 'readFailed' ? m.waypoints_read_failed() : m.waypoints_parse_failed()}
         </p>
       {/if}
+      <Button
+        disabled={pending}
+        variant="destructive-outline"
+        onclick={() => {
+          removeName = source.sourceName;
+          removeOpen = true;
+        }}>{m.waypoints_remove_file()}</Button
+      >
     </section>
   {/each}
   {#if error}<p role="alert">{error}</p>{/if}
 </ScreenScaffold>
+
+<ConfirmDialog
+  bind:open={removeOpen}
+  title={m.waypoints_remove_title({ name: removeName })}
+  description={m.waypoints_remove_description()}
+  cancelLabel={m.cancel()}
+  confirmLabel={m.waypoints_remove_confirm()}
+  {pending}
+  onCancel={() => {
+    removeOpen = false;
+  }}
+  onConfirm={removeFile}
+/>
 
 <style>
   .help {

@@ -41,7 +41,7 @@ const TEST_STYLE: StyleSpecification = {
 
 /** Returns a blank test style or Positron with local Enroute tiles and bundled assets. */
 export function getBasemapStyle(testMode: boolean, origin: string): StyleSpecification {
-  if (testMode) return TEST_STYLE;
+  if (testMode) return { ...TEST_STYLE, glyphs: `${origin}/basemap/fonts/{fontstack}/{range}.pbf` };
 
   let style = structuredClone(POSITRON_STYLE);
   let basemapUrl = convertFileSrc('basemap', 'updraft');

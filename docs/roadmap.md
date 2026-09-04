@@ -101,8 +101,10 @@ documents for accepted behavior.
 
 ## Waypoints & navigation
 
-- [ ] **cup** — `libs/updraft_cup`: SeeYou CUP waypoint/task file parser (CUPX and other formats come later). _(needs: units, geo)_
-- [ ] **waypoint-db** — core waypoint store: multiple files, landable distinction, search, nearest-N queries. _(needs: cup, core-app)_
+- [x] **cup** — `libs/updraft_waypoint`: SeeYou CUP waypoint import with row diagnostics through `seeyou-cup`. Task sections are ignored. _(needs: units, geo)_
+- [x] **waypoint-sources** — independent core datasets, persistent CUP files, exact-filename replacement, and per-file removal. _(needs: cup, core-app)_
+- [ ] **waypoint-db** — extend the core waypoint store with search and nearest-N queries. _(needs: waypoint-sources)_
+- [x] **cup-file-import** — import CUP files through the platform file picker in Settings. _(needs: waypoint-sources, tauri-scaffold)_
 - [ ] **file-import** — import files through an OS picker or share intent. Route each file to the matching store by type. _(needs: waypoint-db, tauri-scaffold)_
 - [ ] **cupx** — SeeYou CUPX waypoint files (CUP plus embedded images). _(needs: cup)_
 - [ ] **openaip-waypoints** — OpenAIP airport/waypoint parser. _(needs: waypoint-db)_
@@ -110,9 +112,10 @@ documents for accepted behavior.
 - [ ] **geojson-waypoints** — GeoJSON waypoint parser. _(needs: waypoint-db)_
 - [ ] **dat-waypoints** — Cambridge DAT waypoint parser. _(needs: waypoint-db)_
 - [ ] **wpt-waypoints** — Winpilot/CompeGPS WPT waypoint parser. _(needs: waypoint-db)_
-- [ ] **waypoints-on-map** — waypoint/landable symbology, labels, and zoom-dependent declutter. _(needs: waypoint-db, frontend-map)_
+- [x] **waypoints-on-map** — waypoint/landable symbology, labels, and zoom-dependent declutter. _(needs: waypoint-sources, frontend-map)_
 - [ ] **navigation-targets** — direct-to navigation with one focused target and zero or more additional targets representing waypoints or arbitrary map positions in one ordered sequence. Switching focus updates guidance, distance and ground-track-relative bearing, target-dependent infoboxes, and the course line without discarding the other targets. _(needs: waypoint-db, infobox-values)_
 - [ ] **pinned-navigation-targets** — optional, unlimited target pins rendered in a content-sized area below the Situation Bar, ordered with the navigation sequence and sharing its target-list action. Focused targets appear only once. _(needs: navigation-targets)_
+- [x] **waypoint-details** — nearby map results and details with source, elevation, runway, frequency, and notes. _(needs: waypoints-on-map)_
 - [ ] **map-inspector-waypoints** — a point-first inspector that opens on every normal map tap, always shows distance and point actions beginning with **Navigate here**, and lists nearby waypoints and landables even for one result. Add fullscreen categorized result lists on phones and waypoint details such as elevation, runway, frequency, and notes. This establishes the extensible inspector result model. _(needs: waypoints-on-map, navigation-targets)_
 - [ ] **arrival-heights** — reachability of landables via final glide; arrival-height labels and reachability colouring. _(needs: final-glide, waypoints-on-map)_
 - [ ] **emergency-navigation** — Emergency target mode with up to three ranked reachable landables, including a suitable airfield when available. Preserve the selected candidate, update the other two, draw and label every route, and allow direct map selection. _(needs: arrival-heights, pinned-navigation-targets)_

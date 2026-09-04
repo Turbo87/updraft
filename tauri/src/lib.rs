@@ -19,6 +19,7 @@ mod terrain;
 mod session;
 mod transport;
 mod updraft_uri;
+pub mod waypoints;
 
 /// Installs the process-wide `tracing` subscriber for the Tauri host.
 ///

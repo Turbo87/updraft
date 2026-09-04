@@ -5607,6 +5607,7 @@ dependencies = [
  "base64 0.23.1",
  "claims",
  "flate2",
+ "hex",
  "imagesize 0.15.0",
  "insta",
  "rusqlite",
@@ -5629,6 +5630,7 @@ dependencies = [
  "updraft_core",
  "updraft_geo",
  "updraft_units",
+ "updraft_waypoint",
  "uuid",
 ]
 

@@ -13,6 +13,7 @@ pub struct WaypointCatalog {
 #[serde(rename_all = "camelCase")]
 pub enum WaypointLoadError {
     ParseFailed,
+    ReadFailed,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

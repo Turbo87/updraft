@@ -5,8 +5,14 @@ import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedE
 import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
-import type { ImportAirspaceResult, TopicListener, UpdraftClient } from './index';
+import type {
+  ImportAirspaceResult,
+  ImportWaypointsResult,
+  TopicListener,
+  UpdraftClient,
+} from './index';
 
 /** Initial platform and external-device state for browser development. */
 export type FakeClientOptions = {
@@ -33,6 +39,7 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #waypoints: WaypointStatus = { generation: 0, sources: [] };
   #listeners = new Set<TopicListener>();
   #externalDevices: PublishedExternalDevice[];
   #nextExternalDeviceId: ExternalDeviceId;
@@ -51,6 +58,20 @@ export class FakeClient implements UpdraftClient {
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
   }
 
+  async importWaypoints(): Promise<ImportWaypointsResult> {
+    return { type: 'cancelled' };
+  }
+
+  async removeWaypoints(sourceName: string): Promise<void> {
+    this.emit({
+      topic: 'waypoints',
+      value: {
+        generation: this.#waypoints.generation + 1,
+        sources: this.#waypoints.sources.filter((source) => source.sourceName !== sourceName),
+      },
+    });
+  }
+
   async importAirspace(): Promise<ImportAirspaceResult> {
     return { type: 'cancelled' };
   }
@@ -66,6 +87,7 @@ export class FakeClient implements UpdraftClient {
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });
     onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
     onTopic({ topic: 'airspace', value: { type: 'none' } });
+    onTopic({ topic: 'waypoints', value: this.#waypoints });
 
     return () => {
       this.#listeners.delete(onTopic);
@@ -147,6 +169,7 @@ export class FakeClient implements UpdraftClient {
 
   /** Publishes a topic as though the core had emitted it. */
   emit(topic: Topic): void {
+    if (topic.topic === 'waypoints') this.#waypoints = topic.value;
     for (let listener of this.#listeners) {
       listener(topic);
     }

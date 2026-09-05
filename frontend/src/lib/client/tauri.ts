@@ -6,16 +6,73 @@ import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
+  ArrivalSubscription,
+  ArrivalUpdate,
+  ArrivalViewport,
   ImportAirspaceResult,
   ImportWaypointsResult,
   TopicListener,
   UpdraftClient,
 } from './index';
 
-import { Channel, invoke } from '@tauri-apps/api/core';
+import { Channel, convertFileSrc, invoke } from '@tauri-apps/api/core';
+
+type ArrivalNotification =
+  { type: 'ready'; generation: number; revision: number } | { type: 'failed' };
 
 /** Invokes the concrete Tauri commands that form the frontend shell boundary. */
 export class TauriClient implements UpdraftClient {
+  subscribeArrivals(
+    bounds: ArrivalViewport,
+    onUpdate: (update: ArrivalUpdate) => void,
+    onError: (error: unknown) => void,
+  ): ArrivalSubscription {
+    let channel = new Channel<ArrivalNotification>();
+    let id: string | undefined;
+    let pending: Extract<ArrivalNotification, { type: 'ready' }> | undefined;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    function receive(notification: ArrivalNotification) {
+      if (closed) return;
+      if (notification.type === 'failed') {
+        pending = undefined;
+        onError(new Error('Arrival worker stopped'));
+      } else if (id === undefined) {
+        pending = notification;
+      } else {
+        let url = convertFileSrc(`arrivals/${id}.geojson`, 'updraft');
+        onUpdate({ generation: notification.generation, url: `${url}?v=${notification.revision}` });
+      }
+    }
+    channel.onmessage = receive;
+    let ready = invoke<string>('start_arrivals', { bounds, channel }).then(
+      (subscriptionId) => {
+        id = subscriptionId;
+        if (pending) receive(pending);
+        return id;
+      },
+      (error: unknown) => {
+        if (!closed) onError(error);
+        return undefined;
+      },
+    );
+    return {
+      async updateViewport(bounds) {
+        let id = await ready;
+        if (id !== undefined && !closed) await invoke('update_arrival_viewport', { id, bounds });
+      },
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (id) => {
+          if (id !== undefined) await invoke('stop_arrivals', { id });
+        });
+        return closing;
+      },
+    };
+  }
+
   addExternalDevice(spec: ConnectionSpec): Promise<ExternalDeviceId> {
     return invoke('add_external_device', { spec });
   }

@@ -7,6 +7,13 @@ import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 
 export type TopicListener = (topic: Topic) => void;
+/** Unwrapped map bounds: west, south, east, north, with east at least west. */
+export type ArrivalViewport = [number, number, number, number];
+export type ArrivalUpdate = { generation: number; url: string };
+export type ArrivalSubscription = {
+  updateViewport(bounds: ArrivalViewport): Promise<void>;
+  close(): Promise<void>;
+};
 export type ImportWaypointsResult =
   { type: 'imported'; sourceName: string } | { type: 'cancelled' };
 export type ImportAirspaceResult = { type: 'imported' } | { type: 'cancelled' };
@@ -20,6 +27,12 @@ export type ImportAirspaceResult = { type: 'imported' } | { type: 'cancelled' };
  * frontend state.
  */
 export interface UpdraftClient {
+  /** Reports startup and worker failures through onError. Command promises report their own failures. */
+  subscribeArrivals(
+    bounds: ArrivalViewport,
+    onUpdate: (update: ArrivalUpdate) => void,
+    onError: (error: unknown) => void,
+  ): ArrivalSubscription;
   /** Adds an enabled external device. */
   addExternalDevice(spec: ConnectionSpec): Promise<ExternalDeviceId>;
   /** Queries the current platform-owned bonded Bluetooth state. */

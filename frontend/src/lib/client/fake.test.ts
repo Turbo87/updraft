@@ -8,6 +8,18 @@ import { FakeClient } from './fake';
 
 type ExternalDevicesTopic = Extract<Topic, { topic: 'externalDevices' }>;
 
+it('delivers prepared arrival resources until the subscription closes', async () => {
+  let client = new FakeClient();
+  let listener = vi.fn();
+  let subscription = client.subscribeArrivals([0, 0, 1, 1], listener);
+  let update = { generation: 1, url: '/arrivals.geojson' };
+  client.emitArrivals(update);
+  expect(listener).toHaveBeenCalledExactlyOnceWith(update);
+  await subscription.close();
+  client.emitArrivals(update);
+  expect(listener).toHaveBeenCalledTimes(1);
+});
+
 function externalDeviceTopics(topics: Topic[]): ExternalDevicesTopic[] {
   return topics.filter((topic): topic is ExternalDevicesTopic => topic.topic === 'externalDevices');
 }

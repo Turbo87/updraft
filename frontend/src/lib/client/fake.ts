@@ -10,6 +10,9 @@ import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
+  ArrivalSubscription,
+  ArrivalUpdate,
+  ArrivalViewport,
   ImportAirspaceResult,
   ImportWaypointsResult,
   TopicListener,
@@ -41,6 +44,7 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
   #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
   #listeners = new Set<TopicListener>();
@@ -61,6 +65,24 @@ export class FakeClient implements UpdraftClient {
       1,
     );
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
+  }
+
+  subscribeArrivals(
+    _bounds: ArrivalViewport,
+    onUpdate: (update: ArrivalUpdate) => void,
+  ): ArrivalSubscription {
+    this.#arrivalListeners.add(onUpdate);
+    return {
+      async updateViewport() {},
+      close: async () => {
+        this.#arrivalListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  /** Supplies a prepared arrival resource for browser development and tests. */
+  emitArrivals(update: ArrivalUpdate): void {
+    for (let listener of this.#arrivalListeners) listener(update);
   }
 
   async importWaypoints(): Promise<ImportWaypointsResult> {

@@ -40,6 +40,7 @@ pub fn describe(effect: &Effect) -> String {
         Effect::Emit(Topic::ExternalDevices(devices)) => {
             format!("external devices {devices:?}")
         }
+        Effect::Emit(Topic::Waypoints(status)) => format!("waypoints {status:?}"),
         Effect::Emit(Topic::Airspace(status)) => format!("airspace {status:?}"),
         Effect::Emit(Topic::Traffic(update)) => format!("traffic {update:?}"),
         Effect::OpenConnection { device_id, spec } => format!("open {device_id:?} {spec:?}"),

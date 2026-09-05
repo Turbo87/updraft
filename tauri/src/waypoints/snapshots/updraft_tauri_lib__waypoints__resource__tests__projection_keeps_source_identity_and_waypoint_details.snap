@@ -1,0 +1,15 @@
+---
+source: tauri/src/waypoints/resource.rs
+expression: "value[\"features\"][0][\"properties\"]"
+---
+{
+  "elevationMeters": 100.0,
+  "frequency": "123.500",
+  "id": "7:0:0",
+  "kind": 2,
+  "name": "Field",
+  "notes": "Notes",
+  "runwayDirection": 90,
+  "runwayLengthMeters": 800.0,
+  "sourceName": "a.cup"
+}

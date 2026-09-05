@@ -2,12 +2,13 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
 
-  import type { GeoJSONSourceSpecification, MapMouseEvent } from 'maplibre-gl';
+  import type { GeoJSONSourceSpecification, MapEventType, MapMouseEvent } from 'maplibre-gl';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+  import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { convertFileSrc } from '@tauri-apps/api/core';
@@ -21,8 +22,10 @@
   import ReturnToPositionButton from './ReturnToPositionButton.svelte';
   import Terrain from './Terrain.svelte';
   import Traffic from './Traffic.svelte';
+  import Waypoints from './Waypoints.svelte';
 
   type TestWindow = Window & {
+    __updraftTestWaypointData?: GeoJSONSourceSpecification['data'];
     __updraftTestAirspaceData?: GeoJSONSourceSpecification['data'];
   };
 
@@ -35,9 +38,13 @@
     units,
     testMode = false,
     testAirspaceData,
+    testWaypointData,
+    waypoints = { generation: 0, sources: [] },
     onInspect,
   }: {
     airspace: AirspaceStatus;
+    waypoints?: WaypointStatus;
+    testWaypointData?: GeoJSONSourceSpecification['data'];
     instruments: Instruments;
     mapState: MapState;
     traffic: TrafficStore;
@@ -64,6 +71,31 @@
             : `${convertFileSrc('airspace.geojson', 'updraft')}?v=${airspace.generation}`))
       : null,
   );
+
+  const waypointData = $derived(
+    waypoints.sources.some((source) => source.type === 'active')
+      ? testMode
+        ? (testWaypointData ?? (window as TestWindow).__updraftTestWaypointData ?? null)
+        : `${convertFileSrc('waypoints.geojson', 'updraft')}?v=${waypoints.generation}`
+      : null,
+  );
+
+  $effect(() => {
+    void waypointData;
+    mapState.waypointSourceStatus = 'loading';
+  });
+
+  function handleSourceData(event: MapEventType['sourcedata']) {
+    if (event.sourceId === 'waypoints' && event.sourceDataType === 'content') {
+      mapState.waypointSourceStatus = 'ready';
+    }
+  }
+
+  function handleSourceError(event: MapEventType['error']) {
+    if ('sourceId' in event && event.sourceId === 'waypoints') {
+      mapState.waypointSourceStatus = 'failed';
+    }
+  }
 
   $effect(() => {
     if (!map || !mapState.followMode || !position) return;
@@ -111,6 +143,8 @@
     bind:center={mapState.center}
     bind:pitch={mapState.pitch}
     bind:zoom={mapState.zoom}
+    onsourcedata={handleSourceData}
+    onerror={handleSourceError}
     onclick={inspectMapPosition}
     ondragstart={enterManualMode}
     onload={loadSprites}
@@ -125,6 +159,9 @@
       {/if}
       {#if airspaceData}
         <Airspace data={airspaceData} beforeId="traffic-fixed" />
+      {/if}
+      {#if waypointData}
+        <Waypoints data={waypointData} />
       {/if}
     {/if}
   </MapLibre>

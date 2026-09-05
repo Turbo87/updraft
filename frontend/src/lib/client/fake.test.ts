@@ -250,3 +250,30 @@ describe('FakeClient', () => {
     await expect(client.getBondedBluetoothDevices()).resolves.toEqual(bondedBluetoothDevices);
   });
 });
+
+it('cancels native waypoint import and removes only the selected fake source', async () => {
+  let client = new FakeClient();
+  await expect(client.importWaypoints()).resolves.toEqual({ type: 'cancelled' });
+  let received: Topic[] = [];
+  client.subscribe((topic) => received.push(topic));
+  client.emit({
+    topic: 'waypoints',
+    value: {
+      generation: 1,
+      sources: ['a.cup', 'b.cup'].map((sourceName) => ({
+        type: 'active',
+        sourceName,
+        waypointCount: 1,
+        warnings: [],
+      })),
+    },
+  });
+  await client.removeWaypoints('a.cup');
+  expect(received.at(-1)).toEqual({
+    topic: 'waypoints',
+    value: {
+      generation: 2,
+      sources: [{ type: 'active', sourceName: 'b.cup', waypointCount: 1, warnings: [] }],
+    },
+  });
+});

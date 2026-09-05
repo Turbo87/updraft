@@ -233,3 +233,18 @@ impl private::Sealed for DeleteExternalDevice {}
 impl private::Sealed for ReorderExternalDevices {}
 impl private::Sealed for EditExternalDevice {}
 impl private::Sealed for SetExternalDeviceEnabled {}
+
+/// Replaces the immutable collection after a durable source mutation.
+#[derive(Clone, Debug)]
+pub struct ReplaceWaypointCatalog(pub Arc<crate::WaypointCatalog>);
+
+/// Returns a shared waypoint collection without cloning waypoint records.
+#[derive(Clone, Copy, Debug)]
+pub struct GetWaypointCatalog;
+
+impl private::Sealed for ReplaceWaypointCatalog {}
+impl private::Sealed for GetWaypointCatalog {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GetWaypointSnapshot;
+impl private::Sealed for GetWaypointSnapshot {}

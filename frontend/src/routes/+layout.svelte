@@ -20,6 +20,7 @@
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
   import { SettingsStore } from '$lib/stores/settings.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
+  import { WaypointsStore } from '$lib/stores/waypoints.svelte';
 
   type TestWindow = Window & {
     __updraftApp?: AppContext;
@@ -31,6 +32,7 @@
   const externalDevices = new ExternalDevicesStore();
   const instruments = new InstrumentsStore();
   const airspace = new AirspaceStore();
+  const waypoints = new WaypointsStore();
   const mapState = new MapState();
   const settings = new SettingsStore();
   const traffic = new TrafficStore();
@@ -40,6 +42,7 @@
   const appContext = {
     client,
     airspace,
+    waypoints,
     externalDevices,
     instruments,
     mapState,
@@ -61,6 +64,7 @@
       externalDevices.apply(topic);
       instruments.apply(topic);
       airspace.apply(topic);
+      waypoints.apply(topic);
       settings.apply(topic);
       traffic.apply(topic);
       if (topic.topic === 'settings') {
@@ -81,6 +85,7 @@
 <div class="app">
   <FlightView
     airspace={airspace.current}
+    waypoints={waypoints.current}
     instruments={instruments.current}
     {mapState}
     {traffic}

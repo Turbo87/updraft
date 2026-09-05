@@ -4,6 +4,9 @@ import android.Manifest
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.Application
+import android.net.Uri
+import android.provider.OpenableColumns
+import app.tauri.plugin.JSObject
 import android.os.Build
 import android.os.Bundle
 import app.tauri.Logger
@@ -85,6 +88,11 @@ internal fun startupAction(
 }
 
 @InvokeArg
+class DocumentDisplayNameArgs {
+    lateinit var uri: String
+}
+
+@InvokeArg
 class StartSessionArgs {
     lateinit var fixes: Channel
 }
@@ -134,6 +142,22 @@ class UpdraftMobilePlugin(activity: Activity) : Plugin(activity) {
      * one context that does too.
      */
     private val application = activity.application
+
+    @Command
+    fun documentDisplayName(invoke: Invoke) {
+        val args = invoke.parseArgs(DocumentDisplayNameArgs::class.java)
+        try {
+            val cursor = application.contentResolver.query(
+                Uri.parse(args.uri), arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
+            )
+            val name = documentDisplayName(cursor)
+            val result = JSObject()
+            result.put("name", name ?: org.json.JSONObject.NULL)
+            invoke.resolve(result)
+        } catch (error: Exception) {
+            invoke.reject("Could not read document display name", error)
+        }
+    }
 
     /** Returns the current bonded Bluetooth devices without starting discovery. */
     @Command

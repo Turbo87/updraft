@@ -32,7 +32,7 @@ fn topics_include_settings_and_external_devices() {
     });
 
     let topics = core.topics();
-    assert_eq!(topics.len(), 5);
+    assert_eq!(topics.len(), 6);
     assert_eq!(topics[0], Topic::Instruments(Instruments::default()));
     assert_eq!(topics[1], Topic::Settings(settings));
     let Topic::ExternalDevices(devices) = &topics[2] else {
@@ -77,6 +77,7 @@ fn setting_locale_updates_the_topic_and_requests_persistence() {
             Topic::Settings(settings),
             Topic::ExternalDevices(Vec::new()),
             Topic::Airspace(AirspaceStatus::None),
+            Topic::Waypoints(crate::WaypointStatus::default()),
             Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
         ]
     );
@@ -135,6 +136,7 @@ fn setting_units_updates_the_topic_and_requests_persistence() {
             Topic::Settings(settings),
             Topic::ExternalDevices(Vec::new()),
             Topic::Airspace(AirspaceStatus::None),
+            Topic::Waypoints(crate::WaypointStatus::default()),
             Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
         ]
     );

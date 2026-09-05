@@ -164,6 +164,7 @@ pub enum Topic {
     Settings(Settings),
     ExternalDevices(Vec<PublishedExternalDevice>),
     Airspace(AirspaceStatus),
+    Waypoints(crate::WaypointStatus),
     Traffic(TrafficUpdate),
 }
 

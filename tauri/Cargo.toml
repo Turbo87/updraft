@@ -17,6 +17,7 @@ tauri-build = { version = "=2.6.3", features = [] }
 [dependencies]
 anyhow = "=1.0.104"
 base64 = "=0.23.1"
+hex = "=0.4.3"
 flate2 = "=1.1.10"
 imagesize = "=0.15.0"
 rusqlite = { version = "=0.40.2", features = ["bundled"] }
@@ -32,6 +33,7 @@ tracing = "=0.1.44"
 tracing-appender = "=0.2.5"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 thiserror = "=2.0.20"
+updraft_waypoint = { path = "../libs/updraft_waypoint" }
 updraft_airspace = { path = "../libs/updraft_airspace" }
 updraft_core = { path = "../libs/updraft_core" }
 updraft_geo = { path = "../libs/updraft_geo" }

@@ -534,6 +534,7 @@ fn internal_gps_altitude_is_converted_to_msl() {
         Topic::Settings(_),
         Topic::ExternalDevices(_),
         Topic::Airspace(_),
+        Topic::Waypoints(_),
         Topic::Traffic(_),
     ] = topics.as_slice()
     else {

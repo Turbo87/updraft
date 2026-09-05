@@ -21,6 +21,10 @@ pub fn handle_updraft_uri<R: tauri::Runtime>(
     };
 
     match request.uri().path() {
+        "/waypoints.geojson" => spawn_response(
+            crate::waypoints::resource::waypoint_resource_response(app),
+            respond,
+        ),
         "/airspace.geojson" => spawn_response(airspace_resource_response(app), respond),
         path if path.starts_with("/basemap/") => {
             let path = path["/basemap/".len()..].to_owned();

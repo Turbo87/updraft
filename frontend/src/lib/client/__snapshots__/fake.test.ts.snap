@@ -66,6 +66,13 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
       "type": "none",
     },
   },
+  {
+    "topic": "waypoints",
+    "value": {
+      "generation": 0,
+      "sources": [],
+    },
+  },
 ]
 `;
 

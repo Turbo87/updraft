@@ -122,13 +122,6 @@
     mapState.followMode = true;
   }
 
-  function loadSprites() {
-    if (!map) return;
-
-    map.addSprite('updraft-sdf', `${window.location.origin}/sprites/updraft-sdf`);
-    spritesLoaded = true;
-  }
-
   function inspectMapPosition(event: MapMouseEvent) {
     onInspect?.({
       latitudeDegrees: event.lngLat.lat,
@@ -154,7 +147,9 @@
     onerror={handleSourceError}
     onclick={inspectMapPosition}
     ondragstart={enterManualMode}
-    onload={loadSprites}
+    onload={() => {
+      spritesLoaded = true;
+    }}
   >
     {#if !testMode}
       <Terrain />

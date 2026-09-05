@@ -37,29 +37,31 @@
   const visible: FilterSpecification = [
     'any',
     ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
-    ['>=', ['zoom'], 7],
+    ['>=', ['zoom'], 6],
   ];
   const layout: NonNullable<SymbolLayerSpecification['layout']> = {
     'icon-image': iconImage,
-    'icon-size': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      6,
-      ['match', ['get', 'kind'], LANDABLE_KINDS, 0.28, 0.16],
-      7,
-      ['match', ['get', 'kind'], LANDABLE_KINDS, 0.42, 0.16],
-      8,
-      0.56,
-    ],
+    'icon-size': scaledWaypointSize(0.5),
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
   };
   const paint: NonNullable<SymbolLayerSpecification['paint']> = {
     'icon-color': ['match', ['get', 'kind'], LANDABLE_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
     'icon-halo-color': '#ffffff',
-    'icon-halo-width': 1.5,
+    'icon-halo-width': scaledWaypointSize(1.5),
   };
+
+  function scaledWaypointSize(size: number): ExpressionSpecification {
+    return [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      6,
+      ['match', ['get', 'kind'], LANDABLE_KINDS, size * 0.5, size * 0.3],
+      8,
+      ['match', ['get', 'kind'], LANDABLE_KINDS, size, size * 0.8],
+    ];
+  }
 </script>
 
 <GeoJSONSource id="waypoints" {data}>
@@ -67,19 +69,6 @@
     id="waypoint-hit"
     beforeId="traffic-fixed"
     paint={{ 'circle-radius': 12, 'circle-opacity': 0 }}
-  />
-  <CircleLayer
-    id="waypoint-dots"
-    beforeId="traffic-fixed"
-    minzoom={6}
-    maxzoom={7}
-    filter={['!', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]]]}
-    paint={{
-      'circle-radius': 2,
-      'circle-color': COLOR_SLATE_700,
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1,
-    }}
   />
   <SymbolLayer id="waypoint-symbols" filter={visible} beforeId="traffic-fixed" {layout} {paint} />
   <SymbolLayer
@@ -98,7 +87,11 @@
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     }}
-    paint={{ 'icon-color': '#ffffff', 'icon-halo-color': COLOR_VIOLET_700, 'icon-halo-width': 0.5 }}
+    paint={{
+      'icon-color': '#ffffff',
+      'icon-halo-color': COLOR_VIOLET_700,
+      'icon-halo-width': ['interpolate', ['linear'], ['zoom'], 6, 0.25, 8, 0.5],
+    }}
   />
   <SymbolLayer
     id="waypoint-labels"
@@ -107,10 +100,10 @@
     layout={{
       'text-field': ['get', 'name'],
       'text-font': FONT_REGULAR,
-      'text-size': 13,
+      'text-size': 12,
       'text-padding': 8,
       'text-variable-anchor': ['top', 'bottom'],
-      'text-radial-offset': 0.96,
+      'text-radial-offset': 0.5,
       'symbol-sort-key': ['match', ['get', 'kind'], LANDABLE_KINDS, 0, 1],
     }}
     paint={{ 'text-color': COLOR_SLATE_700, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }}

@@ -77,12 +77,14 @@ impl ArrivalCalculator {
 mod tests {
     use super::*;
     use crate::driver::tests::spawn;
-    use claims::{assert_err, assert_none, assert_ok, assert_some};
+    use claims::{assert_err, assert_lt, assert_none, assert_ok, assert_some};
     use std::{collections::BTreeMap, sync::Arc};
     use updraft_core::{
-        MacCready, ReplaceWaypointCatalog, SetMacCready, SettingsSnapshot, WaypointCatalog,
+        Fix, Input, InternalGps, MacCready, PolarId, ReplaceWaypointCatalog, SetArrivalReserve,
+        SetBallast, SetBugs, SetMacCready, SetPolar, SettingsSnapshot, WaypointCatalog,
     };
-    use updraft_units::Angle;
+    use updraft_geo::LatLon;
+    use updraft_units::{Angle, EllipsoidAltitude, Length};
     use updraft_waypoint::WaypointDataset;
 
     fn feature_count(results: &watch::Receiver<Option<ArrivalResource>>) -> usize {
@@ -90,6 +92,24 @@ mod tests {
         let resource = assert_some!(resource.as_ref());
         let geojson: serde_json::Value = assert_ok!(serde_json::from_slice(&resource.body));
         assert_some!(geojson["features"].as_array()).len()
+    }
+
+    fn arrival_margin(results: &watch::Receiver<Option<ArrivalResource>>) -> f64 {
+        let resource = results.borrow();
+        let resource = assert_some!(resource.as_ref());
+        let geojson: serde_json::Value = assert_ok!(serde_json::from_slice(&resource.body));
+        assert_some!(geojson["features"][0]["properties"]["arrivalMarginMeters"].as_f64())
+    }
+
+    async fn updated_margin(
+        driver: &DriverHandle,
+        results: &mut watch::Receiver<Option<ArrivalResource>>,
+        input: impl Input<Response = ()>,
+    ) -> f64 {
+        assert_ok!(driver.send(input).await);
+        let changed = tokio::time::timeout(Duration::from_secs(2), results.changed()).await;
+        assert_ok!(assert_ok!(changed));
+        arrival_margin(results)
     }
 
     #[tokio::test(start_paused = true)]
@@ -107,6 +127,14 @@ mod tests {
             sources: BTreeMap::from([("field.cup".into(), Ok(dataset))]),
         });
         assert_ok!(driver.handle.send(ReplaceWaypointCatalog(catalog)).await);
+        let fix = Fix {
+            position: LatLon::from_degrees(0., 0.1),
+            altitude_ellipsoid: Some(EllipsoidAltitude::new(Length::from_meters(1000.))),
+            track: None,
+            ground_speed: None,
+            fix_time: None,
+        };
+        assert_ok!(driver.handle.send(InternalGps::new(fix)).await);
         let ArrivalCalculator {
             viewport,
             mut results,
@@ -114,6 +142,7 @@ mod tests {
         } = ArrivalCalculator::spawn(driver.handle.clone(), bounds);
         assert_ok!(results.changed().await);
         assert_eq!(feature_count(&results), 1);
+        let initial_margin = arrival_margin(&results);
         let first = Instant::now();
         viewport.send_replace(bounds);
         viewport.send_replace(bounds);
@@ -125,6 +154,22 @@ mod tests {
         assert_some!(results.borrow().as_ref());
         assert_ok!(results.changed().await);
         assert_eq!(Instant::now() - second, Duration::from_secs(1));
+        let mc_margin = arrival_margin(&results);
+        assert_lt!(mc_margin, initial_margin);
+        let bugs = assert_ok!(10.0.try_into());
+        let bugs_margin = updated_margin(&driver.handle, &mut results, SetBugs { bugs }).await;
+        assert_lt!(bugs_margin, mc_margin);
+        let ballast = assert_ok!(100.0.try_into());
+        let ballast_margin =
+            updated_margin(&driver.handle, &mut results, SetBallast { ballast }).await;
+        assert_ne!(ballast_margin, bugs_margin);
+        let polar = assert_ok!(PolarId::try_from("JS-3-18m".to_owned()));
+        let polar_margin = updated_margin(&driver.handle, &mut results, SetPolar { polar }).await;
+        assert_ne!(polar_margin, ballast_margin);
+        let reserve = assert_ok!(300.0.try_into());
+        let reserve_margin =
+            updated_margin(&driver.handle, &mut results, SetArrivalReserve { reserve }).await;
+        assert_eq!(reserve_margin, polar_margin - 100.);
         let third = Instant::now();
         let mac_cready = assert_ok!(MacCready::try_from(2.));
         assert_ok!(driver.handle.send(SetMacCready { mac_cready }).await);

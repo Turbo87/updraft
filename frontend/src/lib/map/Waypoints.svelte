@@ -37,7 +37,7 @@
   const visible: FilterSpecification = [
     'any',
     ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
-    ['>=', ['zoom'], 6],
+    ['>=', ['zoom'], 8],
   ];
   const layout: NonNullable<SymbolLayerSpecification['layout']> = {
     'icon-image': iconImage,
@@ -46,15 +46,6 @@
     'icon-ignore-placement': true,
   };
   const paint: NonNullable<SymbolLayerSpecification['paint']> = {
-    'icon-opacity': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      6,
-      ['match', ['get', 'kind'], LANDABLE_KINDS, 1, 0.25],
-      8,
-      1,
-    ],
     'icon-color': ['match', ['get', 'kind'], LANDABLE_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
     'icon-halo-color': '#ffffff',
     'icon-halo-width': 1.5,
@@ -66,6 +57,19 @@
     id="waypoint-hit"
     beforeId="traffic-fixed"
     paint={{ 'circle-radius': 12, 'circle-opacity': 0 }}
+  />
+  <CircleLayer
+    id="waypoint-dots"
+    beforeId="traffic-fixed"
+    minzoom={6}
+    maxzoom={8}
+    filter={['!', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]]]}
+    paint={{
+      'circle-radius': 2,
+      'circle-color': COLOR_SLATE_700,
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 1,
+    }}
   />
   <SymbolLayer id="waypoint-symbols" filter={visible} beforeId="traffic-fixed" {layout} {paint} />
   <SymbolLayer

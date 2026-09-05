@@ -55,8 +55,26 @@ it('renders waypoint types and removes the source when all files are removed', a
     let kinds = map
       .queryRenderedFeatures({ layers: ['waypoint-symbols'] })
       .map((feature) => feature.properties.kind);
-    expect(new Set(kinds)).toEqual(new Set([2, 3, 7]));
+    expect(new Set(kinds)).toEqual(new Set([2, 3]));
+    expect(
+      new Set(
+        map
+          .queryRenderedFeatures({ layers: ['waypoint-dots'] })
+          .map((feature) => feature.properties.kind),
+      ),
+    ).toEqual(new Set([7]));
     expect(map.queryRenderedFeatures({ layers: ['waypoint-labels'] })).toEqual([]);
+  });
+  map.jumpTo({ zoom: 8 });
+  await vi.waitFor(() => {
+    expect(map.queryRenderedFeatures({ layers: ['waypoint-dots'] })).toEqual([]);
+    expect(
+      new Set(
+        map
+          .queryRenderedFeatures({ layers: ['waypoint-symbols'] })
+          .map((feature) => feature.properties.kind),
+      ),
+    ).toEqual(new Set([2, 3, 7]));
   });
   map.jumpTo({ zoom: 11 });
   await vi.waitFor(() =>

@@ -17,6 +17,7 @@ expression: geojson
         "arrivalMarginMeters": 0.0,
         "arrivalStale": false,
         "arrivalStatus": "reachable",
+        "catalogGeneration": 7,
         "kind": 2,
         "name": "Field",
         "runwayDirection": 90

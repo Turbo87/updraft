@@ -1,15 +1,31 @@
 <script lang="ts">
-  import type {
-    ExpressionSpecification,
-    FilterSpecification,
-    SymbolLayerSpecification,
-  } from 'maplibre-gl';
+  import type { ExpressionSpecification, SymbolLayerSpecification } from 'maplibre-gl';
+  import type { AltitudeUnit } from '$lib/units';
 
   import { SymbolLayer } from 'svelte-maplibre-gl';
 
+  import { convertAltitude } from '$lib/units';
   import { waypointSymbols } from '$lib/waypoint-symbols';
   import { FONT_REGULAR } from './basemap-style';
-  import { COLOR_SLATE_700, COLOR_VIOLET_700 } from './colors.generated';
+  import {
+    COLOR_AMBER_500,
+    COLOR_GREEN_700,
+    COLOR_RED_700,
+    COLOR_SLATE_700,
+    COLOR_VIOLET_700,
+  } from './colors.generated';
+
+  let {
+    id = 'waypoint',
+    filter = true,
+    showLandables = true,
+    arrivalUnit,
+  }: {
+    id?: string;
+    filter?: ExpressionSpecification | boolean;
+    showLandables?: boolean;
+    arrivalUnit?: AltitudeUnit;
+  } = $props();
 
   const WAYPOINT_KIND = {
     UNKNOWN: 0,
@@ -32,22 +48,66 @@
     ...waypointSymbols.slice(1).flatMap(({ sprite }, kind) => [kind + 1, `updraft-sdf:${sprite}`]),
     'updraft-sdf:unknown',
   ];
-  const visible: FilterSpecification = [
-    'any',
-    ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
-    ['>=', ['zoom'], 6],
-  ];
+  const selected: ExpressionSpecification = $derived([
+    'all',
+    filter,
+    showLandables ? true : ['!', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]]],
+  ]);
+  const visible: ExpressionSpecification = $derived([
+    'all',
+    selected,
+    ['any', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]], ['>=', ['zoom'], 6]],
+  ]);
   const layout: NonNullable<SymbolLayerSpecification['layout']> = {
     'icon-image': iconImage,
     'icon-size': scaledWaypointSize(0.5),
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
   };
-  const paint: NonNullable<SymbolLayerSpecification['paint']> = {
-    'icon-color': ['match', ['get', 'kind'], LANDABLE_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
+  const color: ExpressionSpecification = $derived(
+    arrivalUnit
+      ? [
+          'match',
+          ['get', 'arrivalStatus'],
+          'reachable',
+          COLOR_GREEN_700,
+          'belowReserve',
+          COLOR_AMBER_500,
+          'unreachable',
+          COLOR_RED_700,
+          COLOR_VIOLET_700,
+        ]
+      : ['match', ['get', 'kind'], LANDABLE_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
+  );
+  const label: ExpressionSpecification = $derived(
+    arrivalUnit
+      ? [
+          'case',
+          ['has', 'arrivalMarginMeters'],
+          [
+            'let',
+            'height',
+            ['round', ['*', ['get', 'arrivalMarginMeters'], convertAltitude(1, arrivalUnit)]],
+            [
+              'concat',
+              ['get', 'name'],
+              '\n',
+              ['case', ['boolean', ['get', 'arrivalStale'], false], '(', ''],
+              ['case', ['>=', ['var', 'height'], 0], '+', ''],
+              ['to-string', ['var', 'height']],
+              arrivalUnit,
+              ['case', ['boolean', ['get', 'arrivalStale'], false], ')', ''],
+            ],
+          ],
+          ['get', 'name'],
+        ]
+      : ['get', 'name'],
+  );
+  const paint: NonNullable<SymbolLayerSpecification['paint']> = $derived({
+    'icon-color': color,
     'icon-halo-color': '#ffffff',
     'icon-halo-width': scaledWaypointSize(1.5),
-  };
+  });
 
   function scaledWaypointSize(size: number): ExpressionSpecification {
     return [
@@ -62,11 +122,16 @@
   }
 </script>
 
-<SymbolLayer id="waypoint-symbols" filter={visible} beforeId="traffic-fixed" {layout} {paint} />
+<SymbolLayer id={`${id}-symbols`} filter={visible} beforeId="traffic-fixed" {layout} {paint} />
 <SymbolLayer
-  id="waypoint-runways"
+  id={`${id}-runways`}
   beforeId="traffic-fixed"
-  filter={['all', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]], ['has', 'runwayDirection']]}
+  filter={[
+    'all',
+    selected,
+    ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
+    ['has', 'runwayDirection'],
+  ]}
   layout={{
     'icon-image': 'updraft-sdf:runway',
     'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.152, 8, 0.304],
@@ -77,16 +142,17 @@
   }}
   paint={{
     'icon-color': '#ffffff',
-    'icon-halo-color': COLOR_VIOLET_700,
+    'icon-halo-color': color,
     'icon-halo-width': ['interpolate', ['linear'], ['zoom'], 6, 0.25, 8, 0.5],
   }}
 />
 <SymbolLayer
-  id="waypoint-labels"
+  id={`${id}-labels`}
+  filter={selected}
   beforeId="traffic-fixed"
   minzoom={8}
   layout={{
-    'text-field': ['get', 'name'],
+    'text-field': label,
     'text-font': FONT_REGULAR,
     'text-size': 12,
     'text-padding': 8,

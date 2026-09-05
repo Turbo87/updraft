@@ -24,6 +24,7 @@ impl ArrivalResource {
                 arrivals.generation, entry.source_index, entry.waypoint_index
             );
             let mut properties = json!({"name": point.name, "kind": point.kind as u8});
+            properties["catalogGeneration"] = json!(arrivals.generation);
             if let Some(direction) = point.runway_direction {
                 properties["runwayDirection"] = json!(direction);
             }
@@ -104,6 +105,7 @@ mod tests {
             assert_eq!(resource.generation, 7);
             let geojson: Value = assert_ok!(serde_json::from_slice(&resource.body));
             let properties = &geojson["features"][0]["properties"];
+            assert_eq!(properties["catalogGeneration"], 7);
             assert_eq!(properties["arrivalStatus"], status);
             assert_eq!(properties["arrivalMarginMeters"], altitude - 300.);
             if altitude == 300. {

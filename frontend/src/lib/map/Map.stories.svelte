@@ -7,10 +7,15 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { expect, waitFor } from 'storybook/test';
 
+  import { FakeClient } from '$lib/client/fake';
   import { MapState } from '$lib/map-state.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
   import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
+  import { arrivalFixture } from './arrival.fixture';
   import Map from './Map.svelte';
+
+  const arrivalMap = new MapState();
+  const arrivalClient = new FakeClient();
 
   const instruments = {
     gps: {
@@ -163,6 +168,30 @@
       expect(map?.getLayer('airspace-inner-band')).toBeDefined();
       expect(map?.getLayer('airspace-outline')).toBeDefined();
     });
+  }}
+  {template}
+/>
+
+<Story
+  name="Arrival heights"
+  args={{
+    client: arrivalClient,
+    mapState: arrivalMap,
+    traffic: new TrafficStore(),
+    airspace: { type: 'none' },
+    instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
+    units,
+    testMode: true,
+    testWaypointData: arrivalFixture,
+    waypoints: {
+      generation: 1,
+      sources: [{ type: 'active', sourceName: 'fields.cup', waypointCount: 6, warnings: [] }],
+    },
+  }}
+  play={async () => {
+    await waitFor(() => expect(arrivalMap.map?.getLayer('waypoint-symbols')).toBeDefined());
+    let url = `data:application/geo+json,${encodeURIComponent(JSON.stringify(arrivalFixture))}`;
+    arrivalClient.emitArrivals({ generation: 1, url });
   }}
   {template}
 />

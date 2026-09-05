@@ -45,6 +45,8 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
     await vi.waitFor(() => expect(map.getSource('arrivals')).toBeDefined());
     let source = map.getSource('arrivals') as GeoJSONSource;
     expect(await source.getData()).toEqual(waypointsFixture);
+    await vi.waitFor(() => expect(map.getLayer('arrival-symbols')).toBeDefined());
+    expect(map.getLayer('arrival-labels')).toBeDefined();
     let invalidUrl = URL.createObjectURL(new Blob(['invalid GeoJSON']));
     let loadError = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {

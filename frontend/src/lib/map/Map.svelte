@@ -60,6 +60,7 @@
 
   let spritesLoaded = $state(false);
   let showHitAreas = $state(false);
+  let arrivalsReady = $state(false);
   const map = $derived(mapState.map);
   const gps = $derived(instruments.gps);
   const position = $derived(gps?.position ?? null);
@@ -93,6 +94,10 @@
     if (event.sourceId === 'waypoints' && event.sourceDataType === 'content') {
       mapState.waypointSourceStatus = 'ready';
     }
+  }
+
+  function setArrivalsReady(ready: boolean) {
+    arrivalsReady = ready;
   }
 
   function handleSourceError(event: MapEventType['error']) {
@@ -163,9 +168,15 @@
         <Airspace data={airspaceData} beforeId="traffic-fixed" />
       {/if}
       {#if waypointData}
-        <Waypoints data={waypointData} {showHitAreas} />
+        <Waypoints data={waypointData} {showHitAreas} showLandables={!arrivalsReady} />
         {#if client && map}
-          <Arrivals {client} {map} generation={waypoints.generation} />
+          <Arrivals
+            {client}
+            {map}
+            generation={waypoints.generation}
+            altitudeUnit={units.altitude}
+            onReady={setArrivalsReady}
+          />
         {/if}
       {/if}
     {/if}

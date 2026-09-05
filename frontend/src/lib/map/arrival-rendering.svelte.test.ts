@@ -76,6 +76,7 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
     });
     expect(map.queryRenderedFeatures({ layers: ['waypoint-hit'] })).toHaveLength(6);
     let labels = map.getLayer('arrival-labels')!;
+    expect(map.getLayoutProperty('arrival-labels', 'text-radial-offset')).toBe(0.5 + 8 / 12);
     let symbols = map.getLayer('arrival-symbols')!;
     let runways = map.getLayer('arrival-runways')!;
     let rows = arrivalFixture.features.map(({ properties }) => ({

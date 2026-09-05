@@ -27,6 +27,8 @@
     arrivalUnit?: AltitudeUnit;
   } = $props();
 
+  const LABEL_SIZE = 12;
+  const LABEL_PADDING = 8;
   const WAYPOINT_KIND = {
     UNKNOWN: 0,
     AIRFIELD_GRASS: 2,
@@ -154,13 +156,14 @@
   layout={{
     'text-field': label,
     'text-font': FONT_REGULAR,
-    'text-size': 12,
-    'text-padding': 8,
+    'text-size': LABEL_SIZE,
+    'text-padding': LABEL_PADDING,
     // Changing text must render before collision placement runs.
     ...(arrivalUnit
       ? { 'text-allow-overlap': true, 'text-anchor': 'top' }
       : { 'text-variable-anchor': ['top', 'bottom'] }),
-    'text-radial-offset': 0.5,
+    // Fixed anchors do not include collision padding in the label position.
+    'text-radial-offset': 0.5 + (arrivalUnit ? LABEL_PADDING / LABEL_SIZE : 0),
     'symbol-sort-key': ['match', ['get', 'kind'], LANDABLE_KINDS, 0, 1],
   }}
   paint={{ 'text-color': COLOR_SLATE_700, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }}

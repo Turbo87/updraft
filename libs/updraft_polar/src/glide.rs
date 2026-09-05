@@ -14,6 +14,12 @@ impl GlidePolar {
     /// Height loss uses physical sink only. Tailwind is positive towards the target.
     /// Crosswind can have either sign. Altitude sets a constant ISA density for the glide.
     ///
+    /// The search repeatedly halves the speed range. At each midpoint, the slope
+    /// tells us whether flying faster or slower improves the result. Twelve steps
+    /// put the selected speed within 0.05 km/h of the optimum. This keeps the
+    /// calculation fast without a headwind-based estimate or fallback search.
+    /// Crosswind makes a direct formula more complex than this bounded search.
+    ///
     /// The search runs from density-corrected minimum-sink speed to 400 km/h TAS.
     /// Returns `None` for invalid inputs or when no speed permits positive progress.
     /// Inputs must be finite, distance and MC nonnegative, and ISA density positive.
@@ -67,7 +73,7 @@ impl GlidePolar {
             lower
         } else {
             // Convex sink and concave ground speed give at most one derivative zero on this interval.
-            for _ in 0..48 {
+            for _ in 0..12 {
                 let middle = (lower + upper) / 2.;
                 if derivative_sign(middle) > 0. {
                     upper = middle;
@@ -99,6 +105,8 @@ mod tests {
     use claims::{assert_ge, assert_le, assert_none, assert_some};
     use updraft_units::{Length, Mass, Speed};
 
+    const SPEED_TOLERANCE: f64 = 0.05 / 3.6;
+
     fn polar() -> GlidePolar {
         let coefficients = assert_some!(PolarCoefficients::new(0.001, -0.04, 1.));
         assert_some!(GlidePolar::new(coefficients, Mass::from_kilograms(360.)))
@@ -112,12 +120,12 @@ mod tests {
     fn calm_air_uses_the_analytic_maccready_speed_and_physical_sink() {
         let polar = polar();
         let distance = Length::from_kilometers(30.);
-        for mc in [0., 1., 3.] {
-            let glide =
-                polar.solve_glide(distance, Length::ZERO, speed(mc), Speed::ZERO, Speed::ZERO);
+        for mc in [0_f64, 1., 3.] {
+            let expected = speed(((1. + mc) / 0.001).sqrt());
+            let mc = speed(mc);
+            let glide = polar.solve_glide(distance, Length::ZERO, mc, Speed::ZERO, Speed::ZERO);
             let glide = assert_some!(glide);
-            let expected_speed = ((1. + mc) / 0.001).sqrt();
-            assert_abs_diff_eq!(glide.true_air_speed, speed(expected_speed), epsilon = 1e-9);
+            assert_abs_diff_eq!(glide.true_air_speed, expected, epsilon = SPEED_TOLERANCE);
             assert_eq!(glide.ground_speed, glide.true_air_speed);
             let sink = polar.sink_rate(glide.true_air_speed);
             let expected_loss = distance.as_meters() * sink / glide.ground_speed;
@@ -136,7 +144,7 @@ mod tests {
                 let glide = polar.solve_glide(distance, Length::ZERO, mc, tailwind, Speed::ZERO);
                 let glide = assert_some!(glide);
                 let expected = polar.speed_to_fly(mc, Speed::ZERO, -tailwind);
-                assert_abs_diff_eq!(glide.true_air_speed, expected, epsilon = 1e-9);
+                assert_abs_diff_eq!(glide.true_air_speed, expected, epsilon = SPEED_TOLERANCE);
             }
         }
     }
@@ -150,10 +158,10 @@ mod tests {
         let distance = Length::from_kilometers(10.);
         let glide = polar.solve_glide(distance, altitude, Speed::ZERO, Speed::ZERO, Speed::ZERO);
         let glide = assert_some!(glide);
-        let expected_speed = polar.best_glide_speed() / isa_density_ratio(altitude).sqrt();
-        assert_abs_diff_eq!(glide.true_air_speed, expected_speed, epsilon = 1e-9);
-        let expected_loss = distance.as_meters() / polar.best_glide_ratio();
-        assert_abs_diff_eq!(glide.height_loss.as_meters(), expected_loss, epsilon = 1e-9);
+        let expected = polar.best_glide_speed() / isa_density_ratio(altitude).sqrt();
+        assert_abs_diff_eq!(glide.true_air_speed, expected, epsilon = SPEED_TOLERANCE);
+        let expected_loss = distance / polar.best_glide_ratio();
+        assert_abs_diff_eq!(glide.height_loss, expected_loss, epsilon = 0.001);
     }
 
     #[test]
@@ -174,14 +182,15 @@ mod tests {
             let glide = polar.solve_glide(distance, Length::ZERO, Speed::ZERO, tailwind, crosswind);
             assert_none!(glide);
         }
-        let glide =
-            assert_some!(polar.solve_glide(distance, Length::ZERO, Speed::ZERO, speed(10.), limit));
+        let tailwind = speed(10.);
+        let glide = polar.solve_glide(distance, Length::ZERO, Speed::ZERO, tailwind, limit);
+        let glide = assert_some!(glide);
         assert_eq!(glide.true_air_speed, limit);
         assert_eq!(glide.ground_speed, speed(10.));
     }
 
     #[test]
-    fn crosswind_solution_beats_a_speed_grid_in_both_directions() {
+    fn crosswind_solution_matches_a_speed_grid_in_both_directions() {
         let polar = polar();
         let distance = Length::from_kilometers(10.);
         let limit = Speed::from_kilometers_per_hour(400.).as_meters_per_second();
@@ -193,14 +202,10 @@ mod tests {
             (1000., 10.),
         ] {
             for mc in [0., 1., 10.] {
+                let mac_cready = speed(mc);
+                let wind = speed(tailwind);
                 let solve = |crosswind| {
-                    polar.solve_glide(
-                        distance,
-                        Length::ZERO,
-                        speed(mc),
-                        speed(tailwind),
-                        speed(crosswind),
-                    )
+                    polar.solve_glide(distance, Length::ZERO, mac_cready, wind, speed(crosswind))
                 };
                 let glide = assert_some!(solve(crosswind));
                 assert_eq!(assert_some!(solve(-crosswind)), glide);
@@ -221,7 +226,7 @@ mod tests {
                         continue;
                     }
                     let sink = polar.sink_rate(speed(candidate)).as_meters_per_second();
-                    assert_le!(objective, (sink + mc) / ground + 1e-10);
+                    assert_le!(objective, (sink + mc) / ground * (1. + 1e-6));
                 }
             }
         }
@@ -235,40 +240,27 @@ mod tests {
                 let mut values = [1000., 0., 0., 0., 0.];
                 values[field] = invalid;
                 let [distance, altitude, mc, tailwind, crosswind] = values;
-                let glide = polar.solve_glide(
-                    Length::from_meters(distance),
-                    Length::from_meters(altitude),
-                    speed(mc),
-                    speed(tailwind),
-                    speed(crosswind),
-                );
+                let distance = Length::from_meters(distance);
+                let altitude = Length::from_meters(altitude);
+                let [mc, tailwind, crosswind] = [mc, tailwind, crosswind].map(speed);
+                let glide = polar.solve_glide(distance, altitude, mc, tailwind, crosswind);
                 assert_none!(glide);
             }
         }
         for (distance, altitude, mc) in [(-1., 0., 0.), (1000., 0., -1.), (1000., 50_000., 0.)] {
-            assert_none!(polar.solve_glide(
-                Length::from_meters(distance),
-                Length::from_meters(altitude),
-                speed(mc),
-                Speed::ZERO,
-                Speed::ZERO
-            ));
+            let distance = Length::from_meters(distance);
+            let altitude = Length::from_meters(altitude);
+            let glide = polar.solve_glide(distance, altitude, speed(mc), Speed::ZERO, Speed::ZERO);
+            assert_none!(glide);
         }
         let heavy = polar.with_total_mass(Mass::from_kilograms(1_000_000.));
-        assert_none!(heavy.solve_glide(
-            Length::from_meters(1000.),
-            Length::ZERO,
-            Speed::ZERO,
-            Speed::ZERO,
-            Speed::ZERO
-        ));
-        let zero = assert_some!(polar.solve_glide(
-            Length::ZERO,
-            Length::ZERO,
-            Speed::ZERO,
-            Speed::ZERO,
-            Speed::ZERO
-        ));
+        let distance = Length::from_meters(1000.);
+        let altitude = Length::ZERO;
+        let glide = heavy.solve_glide(distance, altitude, Speed::ZERO, Speed::ZERO, Speed::ZERO);
+        assert_none!(glide);
+        let distance = Length::ZERO;
+        let zero = polar.solve_glide(distance, altitude, Speed::ZERO, Speed::ZERO, Speed::ZERO);
+        let zero = assert_some!(zero);
         assert_eq!(zero.height_loss, Length::ZERO);
     }
 }

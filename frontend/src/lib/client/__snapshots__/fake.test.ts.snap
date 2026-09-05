@@ -54,6 +54,7 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
   {
     "topic": "glidePerformance",
     "value": {
+      "ballast": 0,
       "bugs": 0,
       "macCready": 0,
     },

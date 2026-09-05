@@ -299,15 +299,21 @@ test('keeps MC during navigation and resets it on restart', async ({ page }) => 
   await expect(mc).toHaveValue('0.0');
 });
 
-test('keeps bugs during navigation and resets them on restart', async ({ page }) => {
+test('keeps bugs and ballast during navigation and resets them on restart', async ({ page }) => {
   await page.goto('/settings/flight-controls?testMode=1');
   let bugs = page.getByRole('spinbutton', { name: 'Bugs (%)', exact: true });
   await expect(bugs).toHaveValue('0');
   await bugs.fill('10.5');
   await page.getByRole('heading').click();
+  let ballast = page.getByRole('spinbutton', { name: 'Ballast (L)', exact: true });
+  await expect(ballast).toHaveValue('0');
+  await ballast.fill('100.5');
+  await page.getByRole('heading').click();
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(bugs).toHaveValue('10.5');
+  await expect(ballast).toHaveValue('100.5');
   await page.goto('/settings/flight-controls?testMode=1');
   await expect(bugs).toHaveValue('0');
+  await expect(ballast).toHaveValue('0');
 });

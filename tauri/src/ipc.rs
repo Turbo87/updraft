@@ -250,6 +250,17 @@ pub async fn set_bugs(
 }
 
 #[tauri::command]
+pub async fn set_ballast(
+    ballast: updraft_core::Ballast,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetBallast { ballast })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_mac_cready(
     mac_cready: updraft_core::MacCready,
     handle: tauri::State<'_, DriverHandle>,
@@ -418,6 +429,7 @@ mod tests {
                 get_polars,
                 set_mac_cready,
                 set_bugs,
+                set_ballast,
                 set_arrival_reserve,
                 set_polar,
                 add_external_device,
@@ -577,6 +589,22 @@ mod tests {
         }
         for bugs in [json!(-1), json!(100), json!(null), json!("10")] {
             let input = request("set_bugs", json!({ "bugs": bugs }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn ballast_command_validates_litres() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for ballast in [0.0, 100.5] {
+            let input = request("set_ballast", json!({ "ballast": ballast }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for ballast in [json!(-1), json!(null), json!("100")] {
+            let input = request("set_ballast", json!({ "ballast": ballast }));
             claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
         }
     }

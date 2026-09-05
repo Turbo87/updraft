@@ -157,6 +157,11 @@ pub struct SetBugs {
     pub bugs: crate::Bugs,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SetBallast {
+    pub ballast: crate::Ballast,
+}
+
 /// Replaces all application-wide display-unit selections.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetUnits {
@@ -253,6 +258,7 @@ impl private::Sealed for SetPolar {}
 impl private::Sealed for SetArrivalReserve {}
 impl private::Sealed for SetMacCready {}
 impl private::Sealed for SetBugs {}
+impl private::Sealed for SetBallast {}
 impl private::Sealed for AddExternalDevice {}
 impl private::Sealed for DeleteExternalDevice {}
 impl private::Sealed for ReorderExternalDevices {}

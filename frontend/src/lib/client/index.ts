@@ -45,6 +45,7 @@ export interface UpdraftClient {
   setArrivalReserve(reserve: number): Promise<void>;
   setMacCready(macCready: number): Promise<void>;
   setBugs(bugs: number): Promise<void>;
+  setBallast(ballast: number): Promise<void>;
   /** Replaces all display-unit selections. */
   setUnits(units: UnitSettings): Promise<void>;
   importWaypoints(): Promise<ImportWaypointsResult>;

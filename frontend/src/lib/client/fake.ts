@@ -41,7 +41,7 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
-  #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0 };
+  #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
   #listeners = new Set<TopicListener>();
   #externalDevices: PublishedExternalDevice[];
@@ -208,6 +208,15 @@ export class FakeClient implements UpdraftClient {
     }
     if (this.#glidePerformance.bugs === bugs) return;
     this.#glidePerformance = { ...this.#glidePerformance, bugs };
+    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
+  }
+
+  async setBallast(ballast: number): Promise<void> {
+    if (!Number.isFinite(ballast) || ballast < 0) {
+      throw new Error('Ballast must be finite and nonnegative');
+    }
+    if (this.#glidePerformance.ballast === ballast) return;
+    this.#glidePerformance = { ...this.#glidePerformance, ballast };
     this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
   }
 

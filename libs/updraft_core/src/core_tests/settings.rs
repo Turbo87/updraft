@@ -9,7 +9,8 @@ use crate::settings::{
 };
 use crate::topic::Instruments;
 use crate::{
-    ArrivalReserve, Bugs, GlidePerformance, MacCready, SetArrivalReserve, SetBugs, SetMacCready,
+    ArrivalReserve, Ballast, Bugs, GlidePerformance, MacCready, SetArrivalReserve, SetBallast,
+    SetBugs, SetMacCready,
 };
 use claims::assert_some_eq;
 
@@ -31,12 +32,26 @@ fn maccready_is_published_but_not_persisted_and_resets_on_restart() {
     assert_eq!(repeated.effects, vec![]);
 
     let bugs = claims::assert_ok!(Bugs::try_from(10.0));
-    let performance = GlidePerformance { mac_cready, bugs };
+    let performance = GlidePerformance {
+        mac_cready,
+        bugs,
+        ..GlidePerformance::default()
+    };
     let topic = Topic::GlidePerformance(performance);
     let effects = core.apply(SetBugs { bugs }, at(1)).effects;
     assert_eq!(effects, vec![Effect::emit(topic)]);
     let repeated = core.apply(SetBugs { bugs }, at(1));
     assert_eq!(repeated.effects, vec![]);
+
+    let ballast = claims::assert_ok!(Ballast::try_from(100.5));
+    let performance = GlidePerformance {
+        ballast,
+        ..performance
+    };
+    let topic = Topic::GlidePerformance(performance);
+    let effects = core.apply(SetBallast { ballast }, at(1)).effects;
+    assert_eq!(effects, vec![Effect::emit(topic)]);
+    assert_eq!(core.apply(SetBallast { ballast }, at(1)).effects, vec![]);
 
     let effects = core.apply(SetLocale::new(Locale::De), at(2)).effects;
     let Effect::PersistSettings(snapshot) = &effects[1] else {
@@ -288,8 +303,15 @@ fn loaded_and_changed_polars_drive_netto() {
     assert_some_eq!(effects.last(), &instruments);
 
     let polar = crate::PolarId::default();
+    let ballast = assert_ok!(Ballast::try_from(100.5));
+    let dry = changed.instruments();
+    let effects = changed.apply(SetBallast { ballast }, at(1_000)).effects;
+    assert_ne!(changed.instruments(), dry);
+    let instruments = Effect::emit(changed.instruments().as_topic());
+    assert_some_eq!(effects.last(), &instruments);
     changed.apply(SetPolar { polar }, at(1_000));
     loaded.apply(SetPolar { polar }, at(1_000));
     loaded.apply(SetBugs { bugs }, at(1_000));
+    loaded.apply(SetBallast { ballast }, at(1_000));
     assert_eq!(changed.instruments(), loaded.instruments());
 }

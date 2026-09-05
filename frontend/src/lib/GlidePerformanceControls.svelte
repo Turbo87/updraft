@@ -11,18 +11,24 @@
     setMacCready,
     bugs,
     setBugs,
+    ballast,
+    setBallast,
   }: {
     macCready: number;
     unit: VerticalSpeedUnit;
     setMacCready: (value: number) => Promise<void>;
     bugs: number;
     setBugs: (value: number) => Promise<void>;
+    ballast: number;
+    setBallast: (value: number) => Promise<void>;
   } = $props();
 
   let saving = $state(false);
   let error = $state<'invalid' | 'failed' | null>(null);
   let bugsSaving = $state(false);
   let bugsError = $state<'invalid' | 'failed' | null>(null);
+  let ballastSaving = $state(false);
+  let ballastError = $state<'invalid' | 'failed' | null>(null);
   let displayedMC = $derived(
     convertVerticalSpeed(macCready, unit).toFixed(unit === 'ft/min' ? 0 : 1),
   );
@@ -64,6 +70,25 @@
       bugsSaving = false;
     }
   }
+
+  async function changeBallast(event: Event & { currentTarget: HTMLInputElement }) {
+    let input = event.currentTarget;
+    let value = input.valueAsNumber;
+    if (!Number.isFinite(value) || value < 0) {
+      ballastError = 'invalid';
+      return;
+    }
+    ballastSaving = true;
+    ballastError = null;
+    try {
+      await setBallast(value);
+    } catch {
+      ballastError = 'failed';
+    } finally {
+      input.value = String(ballast);
+      ballastSaving = false;
+    }
+  }
 </script>
 
 <ScreenScaffold
@@ -103,10 +128,29 @@
       {bugsError === 'invalid' ? m.bugs_invalid() : m.bugs_save_failed()}
     </p>
   {/if}
+  <label class="ballast">
+    <span>{m.ballast_label()} (L)</span>
+    <input
+      type="number"
+      min="0"
+      step="any"
+      value={ballast}
+      readonly={ballastSaving}
+      aria-invalid={ballastError ? 'true' : undefined}
+      onchange={changeBallast}
+    />
+  </label>
+  <p>{m.ballast_hint()}</p>
+  {#if ballastError}
+    <p role="alert">
+      {ballastError === 'invalid' ? m.ballast_invalid() : m.ballast_save_failed()}
+    </p>
+  {/if}
 </ScreenScaffold>
 
 <style>
-  .bugs {
+  .bugs,
+  .ballast {
     margin-block-start: var(--space-6);
   }
   p {

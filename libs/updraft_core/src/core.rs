@@ -6,7 +6,7 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
-    ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetBugs,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetBallast, SetBugs,
     SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
@@ -737,6 +737,27 @@ impl Input for SetBugs {
         }
         let before = core.instruments();
         core.glide_performance.bugs = self.bugs;
+        let polar = core.glide_performance.glide_polar(core.settings.polar);
+        core.sensor_fusion.set_polar(polar);
+        let topic = Topic::GlidePerformance(core.glide_performance);
+        let mut effects = vec![Effect::emit(topic)];
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
+        Update::effects(effects)
+    }
+}
+
+impl Input for SetBallast {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.glide_performance.ballast == self.ballast {
+            return Update::empty();
+        }
+        let before = core.instruments();
+        core.glide_performance.ballast = self.ballast;
         let polar = core.glide_performance.glide_polar(core.settings.polar);
         core.sensor_fusion.set_polar(polar);
         let topic = Topic::GlidePerformance(core.glide_performance);

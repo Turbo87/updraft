@@ -84,6 +84,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_bugs', { bugs });
   }
 
+  setBallast(ballast: number): Promise<void> {
+    return invoke('set_ballast', { ballast });
+  }
+
   subscribe(onTopic: TopicListener): () => void {
     let channel = new Channel<Topic>();
     channel.onmessage = onTopic;

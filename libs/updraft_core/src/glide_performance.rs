@@ -35,6 +35,12 @@ pub struct InvalidBallast;
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct MacCready(f64);
 
+impl MacCready {
+    pub fn meters_per_second(self) -> f64 {
+        self.0
+    }
+}
+
 impl<'de> Deserialize<'de> for MacCready {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         f64::deserialize(deserializer)?

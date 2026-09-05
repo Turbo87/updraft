@@ -12,10 +12,12 @@
 
 mod atmosphere;
 mod coefficients;
+mod glide;
 mod glide_polar;
 mod store;
 
 pub use atmosphere::isa_density_ratio;
 pub use coefficients::PolarCoefficients;
+pub use glide::GlideSolution;
 pub use glide_polar::GlidePolar;
 pub use store::{POLAR_STORE, PolarStoreEntry};

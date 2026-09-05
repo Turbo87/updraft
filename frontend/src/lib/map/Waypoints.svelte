@@ -13,17 +13,30 @@
   import { COLOR_SLATE_700, COLOR_VIOLET_700 } from './colors.generated';
 
   let { data }: { data: GeoJSONSourceSpecification['data'] } = $props();
+  const WAYPOINT_KIND = {
+    UNKNOWN: 0,
+    AIRFIELD_GRASS: 2,
+    OUTLANDING: 3,
+    GLIDING_AIRFIELD: 4,
+    AIRFIELD_SOLID: 5,
+  } as const;
+  const LANDABLE_KINDS = [
+    WAYPOINT_KIND.AIRFIELD_GRASS,
+    WAYPOINT_KIND.OUTLANDING,
+    WAYPOINT_KIND.GLIDING_AIRFIELD,
+    WAYPOINT_KIND.AIRFIELD_SOLID,
+  ];
   const iconImage: ExpressionSpecification = [
     'match',
     ['get', 'kind'],
-    0,
+    WAYPOINT_KIND.UNKNOWN,
     'updraft-sdf:unknown',
     ...waypointSymbols.slice(1).flatMap(({ sprite }, kind) => [kind + 1, `updraft-sdf:${sprite}`]),
     'updraft-sdf:unknown',
   ];
   const visible: FilterSpecification = [
     'any',
-    ['in', ['get', 'kind'], ['literal', [2, 3, 4, 5]]],
+    ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
     ['>=', ['zoom'], 6],
   ];
   const layout: NonNullable<SymbolLayerSpecification['layout']> = {
@@ -38,11 +51,11 @@
       ['linear'],
       ['zoom'],
       6,
-      ['match', ['get', 'kind'], [2, 3, 4, 5], 1, 0.25],
+      ['match', ['get', 'kind'], LANDABLE_KINDS, 1, 0.25],
       8,
       1,
     ],
-    'icon-color': ['match', ['get', 'kind'], [2, 3, 4, 5], COLOR_VIOLET_700, COLOR_SLATE_700],
+    'icon-color': ['match', ['get', 'kind'], LANDABLE_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
     'icon-halo-color': '#ffffff',
     'icon-halo-width': 1.5,
   };
@@ -58,7 +71,11 @@
   <SymbolLayer
     id="waypoint-runways"
     beforeId="traffic-fixed"
-    filter={['all', ['in', ['get', 'kind'], ['literal', [2, 3, 4, 5]]], ['has', 'runwayDirection']]}
+    filter={[
+      'all',
+      ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
+      ['has', 'runwayDirection'],
+    ]}
     layout={{
       'icon-image': 'updraft-sdf:runway',
       'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.152, 8, 0.304],
@@ -80,7 +97,7 @@
       'text-padding': 8,
       'text-variable-anchor': ['top', 'bottom'],
       'text-radial-offset': 0.96,
-      'symbol-sort-key': ['match', ['get', 'kind'], [2, 3, 4, 5], 0, 1],
+      'symbol-sort-key': ['match', ['get', 'kind'], LANDABLE_KINDS, 0, 1],
     }}
     paint={{ 'text-color': COLOR_SLATE_700, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }}
   />

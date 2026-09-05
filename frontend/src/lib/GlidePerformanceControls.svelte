@@ -2,6 +2,7 @@
   import type { VerticalSpeedUnit } from './units';
 
   import { m } from './paraglide/messages.js';
+  import ScreenScaffold from './ScreenScaffold.svelte';
   import { convertVerticalSpeed } from './units';
 
   let {
@@ -40,8 +41,11 @@
   }
 </script>
 
-<section>
-  <h2>{m.flight_controls_heading()}</h2>
+<ScreenScaffold
+  backHref="/settings"
+  backLabel={m.back_to_settings()}
+  title={m.flight_controls_heading()}
+>
   <p>{m.flight_controls_reset_hint()}</p>
   <label>
     <span>MC ({unit})</span>
@@ -56,16 +60,9 @@
     />
   </label>
   {#if error}<p role="alert">{error === 'invalid' ? m.mc_invalid() : m.mc_save_failed()}</p>{/if}
-</section>
+</ScreenScaffold>
 
 <style>
-  section {
-    margin-block-end: var(--space-6);
-  }
-  h2 {
-    font: var(--text-row-label);
-    margin: 0;
-  }
   p {
     font: var(--text-caption);
     color: var(--color-text-muted);

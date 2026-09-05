@@ -286,13 +286,15 @@ test('keeps the arrival reserve when revisiting settings', async ({ page }) => {
 
 test('keeps MC during navigation and resets it on restart', async ({ page }) => {
   await page.goto('/settings?testMode=1');
+  await expect(page.getByRole('spinbutton')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   let mc = page.getByRole('spinbutton', { name: 'MC (m/s)' });
   await expect(mc).toHaveValue('0.0');
   await mc.fill('1.5');
-  await page.getByRole('heading', { name: 'Settings', exact: true }).click();
-  await page.getByRole('link', { name: 'Glide', exact: true }).click();
+  await page.getByRole('heading', { name: 'Flight controls', exact: true }).click();
   await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(mc).toHaveValue('1.5');
-  await page.goto('/settings?testMode=1');
+  await page.goto('/settings/flight-controls?testMode=1');
   await expect(mc).toHaveValue('0.0');
 });

@@ -13,6 +13,7 @@ current settings topic and sends typed commands for changes.
 - `/settings/language`
 - `/settings/units`
 - `/settings/glide`
+- `/settings/flight-controls`
 - `/settings/airspace`
 - `/settings/devices`
 - `/settings/about`
@@ -26,7 +27,7 @@ platform session, and closes the application.
 The root layout keeps the Flight View and map mounted while a Settings route is
 open. A return to the Flight View therefore keeps temporary map state.
 
-The Settings index also contains a Flight controls panel. Its MacCready control
+The Flight controls page contains the session controls. Its MacCready control
 uses the selected vertical-speed unit. MC defaults to 0.0 m/s and accepts finite,
 nonnegative values. It remains active during navigation and resets when Updraft
 restarts. The core publishes it through the separate `GlidePerformance` topic.

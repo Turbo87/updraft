@@ -1,13 +1,12 @@
 <script lang="ts">
   import { getAppContext } from '$lib/app-context';
   import ConfirmDialog from '$lib/ConfirmDialog.svelte';
-  import GlidePerformanceControls from '$lib/GlidePerformanceControls.svelte';
   import { languageOptions } from '$lib/language-options';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import SettingsIndexScreen from '$lib/SettingsIndexScreen.svelte';
 
-  const { client, settings, glidePerformance } = getAppContext();
+  const { client, settings } = getAppContext();
 
   let quitDialogOpen = $state(false);
 
@@ -26,15 +25,7 @@
   }
 </script>
 
-<SettingsIndexScreen {language} {buildDate} onQuit={() => (quitDialogOpen = true)}>
-  {#snippet flightControls()}
-    <GlidePerformanceControls
-      macCready={glidePerformance.current.macCready}
-      unit={settings.current.units.verticalSpeed}
-      setMacCready={(value) => client.setMacCready(value)}
-    />
-  {/snippet}
-</SettingsIndexScreen>
+<SettingsIndexScreen {language} {buildDate} onQuit={() => (quitDialogOpen = true)} />
 
 <ConfirmDialog
   bind:open={quitDialogOpen}

@@ -23,6 +23,10 @@ describe('SettingsIndexScreen.svelte', () => {
       .element(page.getByRole('link', { name: 'Units' }))
       .toHaveAttribute('href', '/settings/units');
     await expect
+      .element(page.getByRole('link', { name: 'Flight controls' }))
+      .toHaveAttribute('href', '/settings/flight-controls');
+    await expect.element(page.getByRole('spinbutton')).not.toBeInTheDocument();
+    await expect
       .element(page.getByRole('link', { name: 'Airspace' }))
       .toHaveAttribute('href', '/settings/airspace');
     await expect

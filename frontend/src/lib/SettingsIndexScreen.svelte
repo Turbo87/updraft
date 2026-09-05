@@ -1,6 +1,4 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
-
   import Button from './Button.svelte';
   import ListRow from './ListRow.svelte';
   import { m } from './paraglide/messages.js';
@@ -10,15 +8,19 @@
     language?: string;
     buildDate?: string;
     onQuit?: () => void;
-    flightControls?: Snippet;
   };
 
-  let { language, buildDate, onQuit, flightControls }: Props = $props();
+  let { language, buildDate, onQuit }: Props = $props();
 </script>
 
 <ScreenScaffold backHref="/" backLabel={m.back_to_flight_view()} title={m.settings_heading()}>
-  {@render flightControls?.()}
   <nav aria-label={m.settings_heading()}>
+    <ListRow
+      href="/settings/flight-controls"
+      icon="i-mdi-tune"
+      label={m.flight_controls_heading()}
+      size="large"
+    />
     <ListRow
       href="/settings/language"
       icon="i-mdi-translate"

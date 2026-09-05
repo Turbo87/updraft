@@ -69,7 +69,7 @@
   <CircleLayer
     id="waypoint-hit"
     beforeId="traffic-fixed"
-    paint={{ 'circle-radius': 12, 'circle-opacity': showHitAreas ? 0.2 : 0 }}
+    paint={{ 'circle-radius': 24, 'circle-opacity': showHitAreas ? 0.2 : 0 }}
   />
   <SymbolLayer id="waypoint-symbols" filter={visible} beforeId="traffic-fixed" {layout} {paint} />
   <SymbolLayer

@@ -1,4 +1,5 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { mockConvertFileSrc } from '@tauri-apps/api/mocks';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { TauriClient } from './tauri';
 
@@ -6,9 +7,9 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   channels: [] as { onmessage: (value: unknown) => void }[],
 }));
-vi.mock('@tauri-apps/api/core', () => ({
+vi.mock('@tauri-apps/api/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tauri-apps/api/core')>()),
   invoke: mocks.invoke,
-  convertFileSrc: (path: string) => `updraft://localhost/${path}`,
   Channel: class {
     onmessage: (value: unknown) => void = () => {};
     constructor() {
@@ -18,11 +19,17 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 beforeEach(() => {
+  vi.stubGlobal('window', {});
+  mockConvertFileSrc('macos');
   mocks.invoke.mockReset();
   mocks.channels.length = 0;
 });
 
-it('buffers early notifications and uses the returned subscription ID', async () => {
+afterEach(() => vi.unstubAllGlobals());
+
+it.each(['macos', 'windows'] as const)('builds arrival URLs on %s', async (os) => {
+  mockConvertFileSrc(os);
+  let origin = os === 'windows' ? 'http://updraft.localhost' : 'updraft://localhost';
   let start = Promise.withResolvers<string>();
   mocks.invoke.mockReturnValueOnce(start.promise).mockResolvedValue(undefined);
   let update = vi.fn();
@@ -40,7 +47,7 @@ it('buffers early notifications and uses the returned subscription ID', async ()
   await subscription.updateViewport([1, 1, 2, 2]);
   expect(update).toHaveBeenCalledExactlyOnceWith({
     generation: 7,
-    url: 'updraft://localhost/arrivals/12.geojson?v=2',
+    url: `${origin}/arrivals/12.geojson?v=2`,
   });
   expect(mocks.invoke).toHaveBeenLastCalledWith('update_arrival_viewport', {
     id: '12',
@@ -49,7 +56,7 @@ it('buffers early notifications and uses the returned subscription ID', async ()
   mocks.channels[0].onmessage({ type: 'ready', generation: 8, revision: 3 });
   expect(update).toHaveBeenLastCalledWith({
     generation: 8,
-    url: 'updraft://localhost/arrivals/12.geojson?v=3',
+    url: `${origin}/arrivals/12.geojson?v=3`,
   });
   mocks.channels[0].onmessage({ type: 'failed' });
   expect(error).toHaveBeenCalledExactlyOnceWith(new Error('Arrival worker stopped'));

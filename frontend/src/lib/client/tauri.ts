@@ -40,7 +40,7 @@ export class TauriClient implements UpdraftClient {
       } else if (id === undefined) {
         pending = notification;
       } else {
-        let url = convertFileSrc(`arrivals/${id}.geojson`, 'updraft');
+        let url = `${convertFileSrc('arrivals', 'updraft')}/${id}.geojson`;
         onUpdate({ generation: notification.generation, url: `${url}?v=${notification.revision}` });
       }
     }

@@ -1,6 +1,7 @@
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
+import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
@@ -39,6 +40,8 @@ export interface UpdraftClient {
    */
   subscribe(onTopic: TopicListener): () => void;
   setLocale(locale: Locale): Promise<void>;
+  getPolars(): Promise<PolarId[]>;
+  setPolar(polar: PolarId): Promise<void>;
   /** Replaces all display-unit selections. */
   setUnits(units: UnitSettings): Promise<void>;
   importWaypoints(): Promise<ImportWaypointsResult>;

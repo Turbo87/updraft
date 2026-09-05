@@ -54,6 +54,7 @@ describe('AirspaceStore', () => {
       topic: 'settings',
       value: {
         locale: 'de',
+        polar: 'LS 8',
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });

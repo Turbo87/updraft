@@ -1,6 +1,7 @@
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
+import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
@@ -46,6 +47,7 @@ export class FakeClient implements UpdraftClient {
   #bondedBluetoothDevices: BondedBluetoothDevices;
   #settings: Settings = {
     locale: null,
+    polar: 'LS 8',
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 
@@ -164,6 +166,17 @@ export class FakeClient implements UpdraftClient {
     }
 
     this.#settings = { ...this.#settings, units: { ...units } };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async getPolars(): Promise<PolarId[]> {
+    return ['LS 8', 'LS 8-18'];
+  }
+
+  async setPolar(polar: PolarId): Promise<void> {
+    if (!(await this.getPolars()).includes(polar)) throw new Error('Unknown polar');
+    if (this.#settings.polar === polar) return;
+    this.#settings = { ...this.#settings, polar };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

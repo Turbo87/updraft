@@ -117,7 +117,6 @@ impl Estimator {
         }
     }
 
-    #[cfg(test)]
     pub fn set_polar(&mut self, polar: GlidePolar) {
         self.polar = Some(polar);
     }

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Topic;
 use crate::external_device::ExternalDeviceConfig;
+use crate::{PolarId, Topic};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -77,6 +77,8 @@ pub struct UnitSettings {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub locale: Option<Locale>,
+    #[serde(default)]
+    pub polar: PolarId,
     #[serde(default)]
     pub units: UnitSettings,
 }

@@ -260,3 +260,15 @@ test('propagates airspace status and invokes import through the fake client', as
   await expect(page.getByText('rheinland.txt')).toBeVisible();
   await expect(page.getByText('42', { exact: true })).toBeVisible();
 });
+
+test('selects a glide polar and keeps it when revisiting settings', async ({ page }) => {
+  await page.goto('/settings?testMode=1');
+  await page.getByRole('link', { name: 'Glide', exact: true }).click();
+  let polar = page.getByRole('combobox', { name: 'Polar', exact: true });
+  await expect(polar).toHaveValue('LS 8');
+  await polar.selectOption('LS 8-18');
+  await expect(polar).toHaveValue('LS 8-18');
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Glide', exact: true }).click();
+  await expect(polar).toHaveValue('LS 8-18');
+});

@@ -1,6 +1,7 @@
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
+import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
@@ -61,6 +62,14 @@ export class TauriClient implements UpdraftClient {
 
   setUnits(units: UnitSettings): Promise<void> {
     return invoke('set_units', { units });
+  }
+
+  getPolars(): Promise<PolarId[]> {
+    return invoke('get_polars');
+  }
+
+  setPolar(polar: PolarId): Promise<void> {
+    return invoke('set_polar', { polar });
   }
 
   subscribe(onTopic: TopicListener): () => void {

@@ -4,6 +4,7 @@ expression: contents
 ---
 {
   "locale": "de",
+  "polar": "LS 8-18",
   "units": {
     "altitude": "ft",
     "distance": "nm",

@@ -3,6 +3,7 @@ import type { Topic } from '$lib/protocol/generated/Topic';
 
 const EMPTY: Settings = {
   locale: null,
+  polar: 'LS 8',
   units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
 };
 

@@ -14,6 +14,7 @@ mod external_device;
 mod fix;
 mod input;
 mod ownship;
+mod polar;
 mod sensor_fusion;
 mod settings;
 mod signal_state;
@@ -37,8 +38,10 @@ pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetWaypointCatalog,
     GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices, ReplaceWaypointCatalog,
-    SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits, Start, Tick, Update,
+    SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Start, Tick,
+    Update,
 };
+pub use polar::{PolarId, UnknownPolar};
 pub use settings::{
     AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
     VerticalSpeedUnit,

@@ -5,8 +5,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
-    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
-    Start, Tick, Update,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetPolar,
+    SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -220,6 +220,8 @@ impl Core {
             settings,
             external_devices,
         } = snapshot;
+        let mut sensor_fusion = SensorFusion::default();
+        sensor_fusion.set_polar(settings.polar.glide_polar());
         Self {
             settings,
             external_devices: ExternalDevices::from_device_configs(external_devices),
@@ -230,7 +232,7 @@ impl Core {
             gps: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
             true_airspeed: DomainState::Unavailable,
-            sensor_fusion: SensorFusion::default(),
+            sensor_fusion,
             traffic: TrafficState::default(),
         }
     }
@@ -666,6 +668,28 @@ impl Input for SetLocale {
                 Effect::persist_settings(core.settings_snapshot()),
             ]
         };
+        Update::effects(effects)
+    }
+}
+
+impl Input for SetPolar {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.polar == self.polar {
+            return Update::empty();
+        }
+        let before = core.instruments();
+        core.settings.polar = self.polar;
+        core.sensor_fusion.set_polar(self.polar.glide_polar());
+        let mut effects = vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ];
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
         Update::effects(effects)
     }
 }

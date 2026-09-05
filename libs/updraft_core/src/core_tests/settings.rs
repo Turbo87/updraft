@@ -115,6 +115,7 @@ fn setting_units_updates_the_topic_and_requests_persistence() {
     let settings = Settings {
         locale: Some(Locale::De),
         units,
+        ..Settings::default()
     };
     let snapshot = SettingsSnapshot {
         settings,
@@ -160,4 +161,58 @@ fn setting_the_active_unit_selections_is_a_no_op() {
 
     let input = SetUnits::new(units);
     assert_eq!(core.apply(input, at(0)).effects, vec![]);
+}
+
+#[test]
+fn setting_polar_updates_settings_and_requests_persistence() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let polar = claims::assert_ok!(crate::PolarId::try_from("LS 8-18".to_owned()));
+    let settings = Settings {
+        polar,
+        ..Settings::default()
+    };
+    let snapshot = SettingsSnapshot {
+        settings,
+        external_devices: Vec::new(),
+    };
+
+    assert_eq!(
+        core.apply(SetPolar { polar }, at(0)).effects,
+        vec![
+            Effect::emit(Topic::Settings(settings)),
+            Effect::persist_settings(snapshot),
+        ]
+    );
+    assert_eq!(core.apply(SetPolar { polar }, at(1)).effects, vec![]);
+}
+
+#[test]
+fn loaded_and_changed_polars_drive_netto() {
+    use claims::{assert_ok, assert_some, assert_some_eq};
+    let polar = assert_ok!(crate::PolarId::try_from("LS 8-18".to_owned()));
+    let snapshot = SettingsSnapshot {
+        settings: Settings {
+            polar,
+            ..Settings::default()
+        },
+        ..SettingsSnapshot::default()
+    };
+    let mut loaded = Core::new(snapshot);
+    let mut changed = Core::new(SettingsSnapshot::default());
+    let input = b"$LXWP0,Y,108,1000,1,1,1,1,1,1,239,174,10\r\n$PGRMZ,1000,m,2\r\n";
+    for core in [&mut loaded, &mut changed] {
+        let connection = ConnectionSpec::tcp("127.0.0.1", 4353);
+        let add_device = AddExternalDevice::new(connection);
+        let device = core.apply(add_device, at(0)).response;
+        core.apply(Bytes::new(device, input), at(0));
+        core.apply(Bytes::new(device, input), at(1_000));
+    }
+    let expected = assert_some!(loaded.instruments().derived);
+    let before = assert_some!(changed.instruments().derived);
+    assert_ne!(assert_some!(before.netto), assert_some!(expected.netto));
+
+    let effects = changed.apply(SetPolar { polar }, at(1_000)).effects;
+    assert_some_eq!(changed.instruments().derived, expected);
+    let instruments = Effect::emit(changed.instruments().as_topic());
+    assert_some_eq!(effects.last(), &instruments);
 }

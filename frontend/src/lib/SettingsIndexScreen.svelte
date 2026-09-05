@@ -29,6 +29,7 @@
       size="large"
     />
     <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
+    <ListRow href="/settings/glide" icon="i-mdi-airplane" label={m.glide_heading()} size="large" />
     <ListRow
       href="/settings/airspace"
       icon="i-mdi-vector-square"

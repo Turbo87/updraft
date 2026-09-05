@@ -44,6 +44,27 @@ function instruments(trackDegrees: number): Topic {
 }
 
 describe('FakeClient', () => {
+  it('validates polar changes and publishes only changed settings', async () => {
+    let client = new FakeClient();
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+
+    await expect(client.getPolars()).resolves.toEqual(['LS 8', 'LS 8-18']);
+    await expect(client.setPolar('Unknown glider')).rejects.toThrow('Unknown polar');
+    await client.setPolar('LS 8');
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setPolar('LS 8-18');
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'settings',
+      value: {
+        locale: null,
+        polar: 'LS 8-18',
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
+    });
+  });
+
   it('cancels native airspace import in browser mode', async () => {
     let client = new FakeClient();
 
@@ -93,6 +114,7 @@ describe('FakeClient', () => {
       topic: 'settings',
       value: {
         locale: 'de',
+        polar: 'LS 8',
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -128,6 +150,7 @@ describe('FakeClient', () => {
       topic: 'settings',
       value: {
         locale: 'de',
+        polar: 'LS 8',
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
       },
     });

@@ -136,6 +136,12 @@ impl SetLocale {
     }
 }
 
+/// Selects the persisted glide polar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetPolar {
+    pub polar: crate::PolarId,
+}
+
 /// Replaces all application-wide display-unit selections.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetUnits {
@@ -228,6 +234,7 @@ impl private::Sealed for ConnectionChanged {}
 impl private::Sealed for InternalGps {}
 impl private::Sealed for SetLocale {}
 impl private::Sealed for SetUnits {}
+impl private::Sealed for SetPolar {}
 impl private::Sealed for AddExternalDevice {}
 impl private::Sealed for DeleteExternalDevice {}
 impl private::Sealed for ReorderExternalDevices {}

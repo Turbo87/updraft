@@ -12,6 +12,7 @@ current settings topic and sends typed commands for changes.
 
 - `/settings/language`
 - `/settings/units`
+- `/settings/glide`
 - `/settings/airspace`
 - `/settings/devices`
 - `/settings/about`
@@ -27,8 +28,8 @@ open. A return to the Flight View therefore keeps temporary map state.
 
 ## Ownership and updates
 
-The core owns the active locale, display units, and external-device
-configuration. The `Settings` topic contains the active locale and units. The
+The core owns the active locale, display units, glide polar, and external-device
+configuration. The `Settings` topic contains the active locale, units, and polar. The
 `ExternalDevices` topic publishes the separate device projection.
 
 The frontend can show an optimistic control value while a command is pending.
@@ -41,7 +42,7 @@ topic and requests persistence of the complete snapshot.
 ## Persistence
 
 The Tauri shell stores `settings.json` in the application configuration
-directory. The file contains the locale, unit selections, and external-device
+directory. The file contains the locale, unit selections, glide polar, and external-device
 configuration.
 
 A missing file loads defaults and remains absent until a setting changes. A
@@ -76,6 +77,16 @@ Unit settings are independent selections for:
 
 The core and protocol retain canonical SI values. Frontend presentation code
 converts and formats values with the active unit settings.
+
+## Glide polar
+
+The Glide page selects a polar from the built-in catalog. The default is the
+15 m LS8, listed as `LS 8`. The selected catalog name is saved across restarts.
+A settings file without a polar uses the default. An unknown polar name makes
+the settings snapshot invalid.
+
+Sensor fusion uses the selected polar to calculate netto vario. A polar change
+updates the derived instruments immediately when the required inputs are available.
 
 ## Airspace source
 

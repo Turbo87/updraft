@@ -10,8 +10,8 @@ use updraft_airspace::AirspaceImportError;
 use updraft_core::{
     ActivateAirspaceDataset, AddExternalDevice, ClearAirspaceDataset, ConnectionSpec,
     DeleteExternalDevice, EditExternalDevice, ExternalDeviceId, InvalidExternalDeviceOrder,
-    ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Topic, UnitSettings,
-    UnknownExternalDevice,
+    ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Topic,
+    UnitSettings, UnknownExternalDevice,
 };
 
 pub struct AirspaceCommandState {
@@ -234,6 +234,22 @@ pub async fn set_locale(
 }
 
 #[tauri::command]
+pub fn get_polars() -> Vec<updraft_core::PolarId> {
+    updraft_core::PolarId::all().collect()
+}
+
+#[tauri::command]
+pub async fn set_polar(
+    polar: updraft_core::PolarId,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(SetPolar { polar })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_units(
     units: UnitSettings,
     handle: tauri::State<'_, DriverHandle>,
@@ -366,6 +382,8 @@ mod tests {
                 bonded_bluetooth_devices,
                 set_locale,
                 set_units,
+                get_polars,
+                set_polar,
                 add_external_device,
                 delete_external_device,
                 reorder_external_devices,
@@ -477,6 +495,25 @@ mod tests {
             .expect("the bonded-device result should deserialize");
 
         assert_eq!(response, json!({ "status": "unsupported" }));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn polar_commands_validate_catalog_names() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        let catalog = tauri::test::get_ipc_response(&webview, request("get_polars", json!({})))
+            .expect("polar catalog should be available")
+            .deserialize::<Vec<String>>()
+            .unwrap();
+        assert!(catalog.contains(&"LS 8".to_owned()));
+        assert!(catalog.contains(&"LS 8-18".to_owned()));
+        let valid = request("set_polar", json!({ "polar": "LS 8-18" }));
+        claims::assert_ok!(tauri::test::get_ipc_response(&webview, valid));
+        let invalid = request("set_polar", json!({ "polar": "Unknown glider" }));
+        let error = claims::assert_err!(tauri::test::get_ipc_response(&webview, invalid));
+        assert!(error.as_str().unwrap().contains("Unknown polar"));
     }
 
     #[tokio::test(flavor = "multi_thread")]

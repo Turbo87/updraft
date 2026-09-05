@@ -90,6 +90,8 @@ pub fn run() {
             ipc::remove_airspace,
             ipc::set_locale,
             ipc::set_units,
+            ipc::get_polars,
+            ipc::set_polar,
             ipc::add_external_device,
             ipc::delete_external_device,
             ipc::reorder_external_devices,

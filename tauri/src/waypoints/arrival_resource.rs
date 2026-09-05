@@ -23,7 +23,7 @@ impl ArrivalResource {
                 "{}:{}:{}",
                 arrivals.generation, entry.source_index, entry.waypoint_index
             );
-            let mut properties = json!({"id": id, "name": point.name, "kind": point.kind as u8});
+            let mut properties = json!({"name": point.name, "kind": point.kind as u8});
             if let Some(direction) = point.runway_direction {
                 properties["runwayDirection"] = json!(direction);
             }
@@ -118,7 +118,8 @@ mod tests {
         let unavailable = assert_ok!(ArrivalResource::calculate(&snapshot, bounds));
         let unavailable: Value = assert_ok!(serde_json::from_slice(&unavailable.body));
         let properties = &unavailable["features"][0]["properties"];
-        assert_eq!(properties["id"], "7:1:0");
+        assert_eq!(unavailable["features"][0]["id"], "7:1:0");
+        assert_none!(properties.get("id"));
         assert_none!(properties.get("arrivalMarginMeters"));
         assert_none!(properties.get("arrivalStatus"));
         assert_none!(properties.get("arrivalStale"));

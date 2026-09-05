@@ -1,14 +1,15 @@
+use super::arrival_resource::ArrivalResource;
 use crate::driver::DriverHandle;
 use std::{future::pending, time::Duration};
 use tokio::{sync::watch, task::JoinHandle, time::Instant};
-use updraft_core::{GetGlideSnapshot, Topic, WaypointArrivals};
+use updraft_core::{GetGlideSnapshot, Topic};
 use updraft_geo::BoundingBox;
 
 /// One viewport's arrival worker. Drop the viewport sender to stop it.
 /// The owner must observe `task` for driver or calculation failures.
 pub struct ArrivalCalculator {
     pub viewport: watch::Sender<BoundingBox>,
-    pub results: watch::Receiver<Option<WaypointArrivals>>,
+    pub results: watch::Receiver<Option<ArrivalResource>>,
     pub task: JoinHandle<anyhow::Result<()>>,
 }
 
@@ -57,8 +58,8 @@ impl ArrivalCalculator {
                         inputs.borrow_and_update();
                         last_run = Instant::now();
                         let snapshot = driver.send(GetGlideSnapshot).await?;
-                        let calculate = move || snapshot.arrivals_in(bounds);
-                        let arrivals = tokio::task::spawn_blocking(calculate).await?;
+                        let calculate = move || ArrivalResource::calculate(&snapshot, bounds);
+                        let arrivals = tokio::task::spawn_blocking(calculate).await??;
                         if result_sender.send(Some(arrivals)).is_err() { return Ok(()) }
                     }
                 }
@@ -84,6 +85,13 @@ mod tests {
     use updraft_units::Angle;
     use updraft_waypoint::WaypointDataset;
 
+    fn feature_count(results: &watch::Receiver<Option<ArrivalResource>>) -> usize {
+        let resource = results.borrow();
+        let resource = assert_some!(resource.as_ref());
+        let geojson: serde_json::Value = assert_ok!(serde_json::from_slice(&resource.body));
+        assert_some!(geojson["features"].as_array()).len()
+    }
+
     #[tokio::test(start_paused = true)]
     async fn worker_throttles_updates_and_retains_the_last_result() {
         let driver = spawn(
@@ -105,7 +113,7 @@ mod tests {
             task,
         } = ArrivalCalculator::spawn(driver.handle.clone(), bounds);
         assert_ok!(results.changed().await);
-        assert_eq!(assert_some!(results.borrow().as_ref()).entries.len(), 1);
+        assert_eq!(feature_count(&results), 1);
         let first = Instant::now();
         viewport.send_replace(bounds);
         viewport.send_replace(bounds);
@@ -126,7 +134,7 @@ mod tests {
         viewport.send_replace(BoundingBox::new(elsewhere, elsewhere, elsewhere, elsewhere));
         assert_ok!(results.changed().await);
         assert_eq!(Instant::now() - third, Duration::from_millis(100));
-        assert_eq!(assert_some!(results.borrow().as_ref()).entries.len(), 0);
+        assert_eq!(feature_count(&results), 0);
         tokio::time::advance(Duration::from_secs(5)).await;
         tokio::task::yield_now().await;
         assert!(!assert_ok!(results.has_changed()));

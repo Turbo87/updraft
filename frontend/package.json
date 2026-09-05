@@ -42,7 +42,7 @@
     "@vitest/browser-playwright": "4.1.11",
     "colorjs.io": "0.7.1",
     "lightningcss": "1.33.0",
-    "maplibre-gl": "6.6.0",
+    "maplibre-gl": "6.7.0",
     "normalize.css": "8.0.1",
     "playwright": "1.62.1",
     "storybook": "10.5.10",

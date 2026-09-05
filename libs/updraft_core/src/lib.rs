@@ -3,6 +3,7 @@
 //! The core owns shared application state and the decisions based on it.
 //! It performs no I/O, spawns no threads, and reads no clocks.
 
+mod airspace;
 mod arrival_reserve;
 #[cfg(feature = "ts")]
 pub mod bindings;
@@ -26,6 +27,7 @@ mod topic;
 mod traffic;
 mod waypoints;
 
+pub use airspace::{AirspaceCatalog, AirspaceSourceStatus};
 pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,

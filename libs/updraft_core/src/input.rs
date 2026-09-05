@@ -279,3 +279,7 @@ impl private::Sealed for GetWaypointCatalog {}
 #[derive(Clone, Copy, Debug)]
 pub struct GetWaypointSnapshot;
 impl private::Sealed for GetWaypointSnapshot {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GetGlideSnapshot;
+impl private::Sealed for GetGlideSnapshot {}

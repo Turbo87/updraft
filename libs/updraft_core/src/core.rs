@@ -952,6 +952,23 @@ impl Input for crate::GetWaypointSnapshot {
     }
 }
 
+impl Input for crate::GetGlideSnapshot {
+    type Response = crate::GlideSnapshot;
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(crate::GlideSnapshot {
+            waypoints: crate::WaypointSnapshot {
+                generation: core.waypoint_generation,
+                catalog: core.waypoints.clone(),
+            },
+            instruments: core.instruments(),
+            polar: core.glide_performance.glide_polar(core.settings.polar),
+            mac_cready: core.glide_performance.mac_cready,
+            arrival_reserve: core.settings.arrival_reserve,
+        })
+    }
+}
+
 #[cfg(test)]
 #[path = "core_tests/mod.rs"]
 mod tests;

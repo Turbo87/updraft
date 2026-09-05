@@ -89,10 +89,10 @@ documents for accepted behavior.
 ## Glide computer
 
 - [x] **polar** — glide polar model (quadratic coefficients, ballast/bugs degradation), a starter polar library, speed-to-fly and MacCready ring math. _(needs: units)_
-- [ ] **glide-settings** — MacCready, ballast, bugs, safety heights / safety MC: commands, state, and a settings dialog. _(needs: polar, core-app, frontend-protocol)_
+- [x] **glide-settings** — persisted polar selection and arrival reserve, with session-only MacCready, bugs, and ballast controls. Safety MC remains outside the current version. See [Settings](product/settings.md). _(needs: polar, core-app, frontend-protocol)_
 - [ ] **wind-circling** — wind estimation from circling drift; wind vector in state, manual override command, wind display. _(needs: flight-modes)_
 - [ ] **wind-zigzag** — airspeed-based zigzag/EKF wind estimation, layered wind statistics, source blending. _(needs: wind-circling, lx-nmea)_
-- [ ] **final-glide** — wind-corrected arrival altitude for an arbitrary target (Mc and Mc-0), safety-height aware. _(needs: glide-settings, wind-circling)_
+- [ ] **final-glide** — selected-MC direct-glide calculations for landables are implemented, including wind, density, and arrival reserve. Arbitrary navigation targets and separate MC-0 results remain planned. _(needs: glide-settings, wind-circling)_
 - [ ] **speed-to-fly** — STF / speed command values, dolphin speed, auto MacCready modes. _(needs: glide-settings, vario-values)_
 - [ ] **infobox-values** — add tap panels and searchable quick replacement for the fixed flight-data fields. Replacement preserves the slot. _(needs: flight-data-fields)_
 - [ ] **thermal-assistant** — climb sampling around the circle, centering aid view, thermal profile (climb vs altitude band). _(needs: vario-values)_
@@ -117,7 +117,7 @@ documents for accepted behavior.
 - [ ] **pinned-navigation-targets** — optional, unlimited target pins rendered in a content-sized area below the Situation Bar, ordered with the navigation sequence and sharing its target-list action. Focused targets appear only once. _(needs: navigation-targets)_
 - [x] **waypoint-details** — nearby map results and details with source, elevation, runway, frequency, and notes. _(needs: waypoints-on-map)_
 - [ ] **map-inspector-waypoints** — a point-first inspector that opens on every normal map tap, always shows distance and point actions beginning with **Navigate here**, and lists nearby waypoints and landables even for one result. Add fullscreen categorized result lists on phones and waypoint details such as elevation, runway, frequency, and notes. This establishes the extensible inspector result model. _(needs: waypoints-on-map, navigation-targets)_
-- [ ] **arrival-heights** — reachability of landables via final glide; arrival-height labels and reachability colouring. _(needs: final-glide, waypoints-on-map)_
+- [x] **arrival-heights** — direct-glide arrival margins and reachability colours for viewport landables. Native desktop delivery is confirmed. Final layout acceptance, Android validation, and performance measurements remain open. See [Waypoints](product/waypoints.md#arrival-margins). _(needs: polar, glide-settings, waypoints-on-map)_
 - [ ] **emergency-navigation** — Emergency target mode with up to three ranked reachable landables, including a suitable airfield when available. Preserve the selected candidate, update the other two, draw and label every route, and allow direct map selection. _(needs: arrival-heights, pinned-navigation-targets)_
 - [ ] **nearest-lists** — sortable nearest waypoint/landable/airfield list pages. _(needs: arrival-heights)_
 - [ ] **ga-routes** — GA flight-route editor (leg-based, distinct from scored tasks). _(needs: waypoint-db, frontend-map)_

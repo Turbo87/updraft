@@ -39,6 +39,12 @@ at least zero and less than 100%. Bugs resets to zero on restart. It adjusts
 the active polar and updates netto immediately. Changing the selected polar
 retains the current bugs value.
 
+Ballast specifies litres of water added to the selected polar's reference mass,
+at 1 kg per litre. It accepts finite, nonnegative values and resets to zero on
+restart. It adjusts the active polar and netto. Changing the selected polar
+retains the current ballast value. MC, bugs, and ballast changes also request
+new waypoint arrival calculations.
+
 ## Ownership and updates
 
 The core owns the active locale, display units, glide polar, arrival reserve,
@@ -99,7 +105,8 @@ The Glide page selects a polar from the built-in catalog. The default is the
 A settings file without a polar uses the default. An unknown polar name makes
 the settings snapshot invalid.
 
-Sensor fusion uses the selected polar to calculate netto vario. A polar change
+Sensor fusion uses the selected polar to calculate netto vario. Direct-glide
+arrival calculations use the same polar with current bugs and ballast. A polar change
 updates the derived instruments immediately when the required inputs are available.
 
 The arrival reserve defaults to 200 m and is saved across restarts. The control
@@ -107,6 +114,7 @@ uses the selected altitude unit. It displays whole units and accepts fractional
 values. Opening the page does not change the stored precision. The core stores
 metres and accepts only finite, nonnegative values. A settings file without a
 reserve uses the default.
+Polar and reserve changes request new waypoint arrival calculations.
 
 ## Airspace source
 

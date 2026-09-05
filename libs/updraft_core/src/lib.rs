@@ -38,7 +38,7 @@ pub use external_device::{
     UnknownExternalDevice,
 };
 pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
-pub use glide::{GlideSnapshot, WaypointArrival};
+pub use glide::{GlideSnapshot, WaypointArrival, WaypointArrivalEntry, WaypointArrivals};
 pub use glide_performance::{
     Ballast, Bugs, GlidePerformance, InvalidBallast, InvalidBugs, InvalidMacCready, MacCready,
 };

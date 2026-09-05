@@ -1,8 +1,8 @@
 use crate::{ArrivalReserve, MacCready, WaypointSnapshot, topic::Instruments};
-use updraft_geo::LatLon;
+use updraft_geo::{BoundingBox, LatLon};
 use updraft_polar::GlidePolar;
-use updraft_units::{Length, Speed};
-use updraft_waypoint::Waypoint;
+use updraft_units::{Angle, Length, Speed};
+use updraft_waypoint::{Waypoint, WaypointKind};
 
 /// Waypoints and glide inputs captured by one core query.
 /// Later sensor, catalog, and settings changes do not alter this snapshot.
@@ -22,7 +22,53 @@ pub struct WaypointArrival {
     pub stale: bool,
 }
 
+/// Results for selected landables, identified within one catalog generation.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WaypointArrivals {
+    pub generation: u64,
+    pub entries: Vec<WaypointArrivalEntry>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WaypointArrivalEntry {
+    pub source_index: usize,
+    pub waypoint_index: usize,
+    pub arrival: Option<WaypointArrival>,
+}
+
 impl GlideSnapshot {
+    /// Calculates all landables within the viewport plus 10% on each side.
+    /// Padding uses latitude and longitude spans. The viewport must follow `BoundingBox`'s contract.
+    /// Indices refer to the full catalog, including unavailable sources and non-landables.
+    /// Selected waypoints without a solution remain in the batch with `arrival: None`.
+    pub fn arrivals_in(&self, viewport: BoundingBox) -> WaypointArrivals {
+        let bounds = buffered_viewport(viewport);
+        let mut entries = Vec::new();
+        for (source_index, source) in self.waypoints.catalog.sources.values().enumerate() {
+            let Ok(dataset) = source else { continue };
+            for (waypoint_index, waypoint) in dataset.waypoints().iter().enumerate() {
+                let landable = matches!(
+                    waypoint.kind,
+                    WaypointKind::GrassAirfield
+                        | WaypointKind::SolidAirfield
+                        | WaypointKind::GlidingAirfield
+                        | WaypointKind::Outlanding
+                );
+                if landable && bounds.contains(waypoint.position) {
+                    entries.push(WaypointArrivalEntry {
+                        source_index,
+                        waypoint_index,
+                        arrival: self.arrival_at(waypoint),
+                    });
+                }
+            }
+        }
+        WaypointArrivals {
+            generation: self.waypoints.generation,
+            entries,
+        }
+    }
+
     /// Calculates a direct arrival using fused altitude and the available wind, or calm air.
     /// Stale position or altitude marks the result stale. Stale wind remains usable.
     /// Returns `None` for missing position or fused altitude, or an unsolvable glide.
@@ -56,6 +102,28 @@ impl GlideSnapshot {
             stale: gps.stale || altitude.stale,
         })
     }
+}
+
+fn buffered_viewport(viewport: BoundingBox) -> BoundingBox {
+    let latitude_margin = viewport.latitude_span().as_degrees() * 0.1;
+    let south = (viewport.south().as_degrees() - latitude_margin).max(-90.);
+    let north = (viewport.north().as_degrees() + latitude_margin).min(90.);
+    let longitude_span = viewport.longitude_span();
+    let (west, east) = if longitude_span.as_degrees() * 1.2 >= 360. {
+        (Angle::from_degrees(-180.), Angle::from_degrees(180.))
+    } else {
+        let margin = longitude_span * 0.1;
+        (
+            (viewport.west() - margin).normalized_signed(),
+            (viewport.east() + margin).normalized_signed(),
+        )
+    };
+    BoundingBox::new(
+        Angle::from_degrees(south),
+        Angle::from_degrees(north),
+        west,
+        east,
+    )
 }
 
 #[cfg(test)]
@@ -193,5 +261,108 @@ mod tests {
             stale: false,
         });
         assert_none!(impossible.arrival_at(&waypoint));
+    }
+
+    #[test]
+    fn viewport_batch_keeps_catalog_identity_and_only_selects_landables() {
+        use crate::{WaypointCatalog, WaypointLoadError};
+        use std::{collections::BTreeMap, sync::Arc};
+
+        let mut cup = String::from("name,code,country,lat,lon,elev,style\n");
+        for kind in 0..=21 {
+            cup.push_str(&format!("Field,,,0000.000N,00006.000E,100m,{kind}\n"));
+        }
+        cup.push_str("Outside,,,1000.000N,01000.000E,100m,2\n");
+        let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(cup.as_bytes())));
+        let mut snapshot = snapshot();
+        snapshot.waypoints = WaypointSnapshot {
+            generation: 42,
+            catalog: Arc::new(WaypointCatalog {
+                sources: BTreeMap::from([
+                    ("a.cup".into(), Err(WaypointLoadError::ReadFailed)),
+                    ("b.cup".into(), Ok(dataset.clone())),
+                    ("c.cup".into(), Ok(dataset.clone())),
+                ]),
+            }),
+        };
+        let viewport = bounds(-1., 1., -1., 1.);
+        let batch = snapshot.arrivals_in(viewport);
+        assert_eq!(batch.generation, 42);
+        let identities: Vec<_> = batch
+            .entries
+            .iter()
+            .map(|entry| (entry.source_index, entry.waypoint_index))
+            .collect();
+        let expected_ids = [
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (1, 5),
+            (2, 2),
+            (2, 3),
+            (2, 4),
+            (2, 5),
+        ];
+        assert_eq!(identities, expected_ids);
+        let expected = assert_some!(snapshot.arrival_at(&dataset.waypoints()[2]));
+        for entry in batch.entries {
+            assert_eq!(assert_some!(entry.arrival), expected);
+        }
+        snapshot.instruments.gps = None;
+        let unavailable = snapshot.arrivals_in(viewport);
+        assert_eq!(unavailable.entries.len(), 8);
+        for entry in unavailable.entries {
+            assert_none!(entry.arrival);
+        }
+        let empty = snapshot.arrivals_in(bounds(20., 21., 20., 21.));
+        assert_eq!(empty.entries.len(), 0);
+    }
+
+    fn bounds(south: f64, north: f64, west: f64, east: f64) -> BoundingBox {
+        BoundingBox::new(
+            Angle::from_degrees(south),
+            Angle::from_degrees(north),
+            Angle::from_degrees(west),
+            Angle::from_degrees(east),
+        )
+    }
+
+    #[test]
+    fn viewport_buffer_expands_each_side_and_handles_global_edges() {
+        for (viewport, expected) in [
+            (bounds(0., 10., 0., 10.), bounds(-1., 11., -1., 11.)),
+            (
+                bounds(-10., 10., 170., -170.),
+                bounds(-12., 12., 168., -168.),
+            ),
+            (
+                bounds(-89., 89., -170., 170.),
+                bounds(-90., 90., -180., 180.),
+            ),
+            (bounds(1., 1., 2., 2.), bounds(1., 1., 2., 2.)),
+        ] {
+            let buffered = buffered_viewport(viewport);
+            for (actual, expected) in [
+                (buffered.south(), expected.south()),
+                (buffered.north(), expected.north()),
+                (buffered.west(), expected.west()),
+                (buffered.east(), expected.east()),
+            ] {
+                assert_abs_diff_eq!(actual.as_degrees(), expected.as_degrees(), epsilon = 1e-12);
+            }
+        }
+        let mut snapshot = snapshot();
+        let waypoint = waypoint();
+        use std::{collections::BTreeMap, sync::Arc};
+        let cup = b"name,code,country,lat,lon,elev,style\nField,,,0000.000N,00006.000E,100m,2\n";
+        let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(cup)));
+        snapshot.waypoints.catalog = Arc::new(crate::WaypointCatalog {
+            sources: BTreeMap::from([("field.cup".into(), Ok(dataset))]),
+        });
+        let viewport = bounds(-1., 1., -1., 0.);
+        assert!(!viewport.contains(waypoint.position));
+        assert_eq!(snapshot.arrivals_in(viewport).entries.len(), 1);
+        let outside_buffer = snapshot.arrivals_in(bounds(-1., 1., -1., -0.01));
+        assert_eq!(outside_buffer.entries.len(), 0);
     }
 }

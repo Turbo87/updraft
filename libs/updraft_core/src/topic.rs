@@ -291,6 +291,7 @@ mod tests {
           "value": {
             "locale": "de",
             "polar": "LS 8",
+            "arrivalReserve": 200.0,
             "units": {
               "altitude": "m",
               "distance": "km",

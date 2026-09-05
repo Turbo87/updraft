@@ -8,6 +8,9 @@
     component: GlideSettings,
     args: {
       polar: 'LS 8',
+      arrivalReserve: 200,
+      altitudeUnit: 'm',
+      setArrivalReserve: async () => {},
       getPolars: async () => ['LS 8', 'LS 8-18'],
       setPolar: async () => {},
     },
@@ -15,6 +18,7 @@
 </script>
 
 <Story name="Default" />
+<Story name="Feet" args={{ altitudeUnit: 'ft' }} />
 <Story name="Selected polar" args={{ polar: 'LS 8-18' }} />
 <Story
   name="Catalog unavailable"

@@ -44,6 +44,28 @@ function instruments(trackDegrees: number): Topic {
 }
 
 describe('FakeClient', () => {
+  it('validates reserve changes and publishes only changed settings', async () => {
+    let client = new FakeClient();
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+    for (let reserve of [-1, NaN, Infinity]) {
+      await expect(client.setArrivalReserve(reserve)).rejects.toThrow('Arrival reserve');
+    }
+    await client.setArrivalReserve(200);
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setArrivalReserve(304.8);
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'settings',
+      value: {
+        locale: null,
+        polar: 'LS 8',
+        arrivalReserve: 304.8,
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
+    });
+  });
+
   it('validates polar changes and publishes only changed settings', async () => {
     let client = new FakeClient();
     let onTopic = vi.fn();
@@ -60,6 +82,7 @@ describe('FakeClient', () => {
       value: {
         locale: null,
         polar: 'LS 8-18',
+        arrivalReserve: 200,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -115,6 +138,7 @@ describe('FakeClient', () => {
       value: {
         locale: 'de',
         polar: 'LS 8',
+        arrivalReserve: 200,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -152,6 +176,7 @@ describe('FakeClient', () => {
         locale: 'de',
         polar: 'LS 8',
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
+        arrivalReserve: 200,
       },
     });
   });

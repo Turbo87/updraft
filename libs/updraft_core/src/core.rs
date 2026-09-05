@@ -5,8 +5,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
-    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetPolar,
-    SetUnits, Start, Tick, Update,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetExternalDeviceEnabled,
+    SetLocale, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -691,6 +691,21 @@ impl Input for SetPolar {
             effects.push(Effect::emit(after.as_topic()));
         }
         Update::effects(effects)
+    }
+}
+
+impl Input for SetArrivalReserve {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.arrival_reserve == self.reserve {
+            return Update::empty();
+        }
+        core.settings.arrival_reserve = self.reserve;
+        Update::effects(vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ])
     }
 }
 

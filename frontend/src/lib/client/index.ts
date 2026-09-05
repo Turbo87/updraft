@@ -42,6 +42,7 @@ export interface UpdraftClient {
   setLocale(locale: Locale): Promise<void>;
   getPolars(): Promise<PolarId[]>;
   setPolar(polar: PolarId): Promise<void>;
+  setArrivalReserve(reserve: number): Promise<void>;
   /** Replaces all display-unit selections. */
   setUnits(units: UnitSettings): Promise<void>;
   importWaypoints(): Promise<ImportWaypointsResult>;

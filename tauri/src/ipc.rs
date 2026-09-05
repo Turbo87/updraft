@@ -239,6 +239,17 @@ pub fn get_polars() -> Vec<updraft_core::PolarId> {
 }
 
 #[tauri::command]
+pub async fn set_arrival_reserve(
+    reserve: updraft_core::ArrivalReserve,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetArrivalReserve { reserve })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_polar(
     polar: updraft_core::PolarId,
     handle: tauri::State<'_, DriverHandle>,
@@ -383,6 +394,7 @@ mod tests {
                 set_locale,
                 set_units,
                 get_polars,
+                set_arrival_reserve,
                 set_polar,
                 add_external_device,
                 delete_external_device,
@@ -495,6 +507,22 @@ mod tests {
             .expect("the bonded-device result should deserialize");
 
         assert_eq!(response, json!({ "status": "unsupported" }));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn arrival_reserve_command_accepts_nonnegative_meters() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for reserve in [0.0, 200.0, 304.8] {
+            let input = request("set_arrival_reserve", json!({ "reserve": reserve }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for reserve in [json!(-1), json!(null), json!("200")] {
+            let input = request("set_arrival_reserve", json!({ "reserve": reserve }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]

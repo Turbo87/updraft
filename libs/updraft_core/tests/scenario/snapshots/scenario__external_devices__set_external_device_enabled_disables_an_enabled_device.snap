@@ -4,4 +4,4 @@ expression: mutation_effects(&effects)
 ---
 close ExternalDeviceId([ID])
 external devices [PublishedExternalDevice { device_id: ExternalDeviceId([ID]), config: ExternalDeviceConfig { enabled: false, spec: Tcp { host: "127.0.0.1", port: 4353 } } }]
-persist settings SettingsSnapshot { settings: Settings { locale: None, polar: PolarId("LS 8"), units: UnitSettings { altitude: Meters, distance: Kilometers, speed: KilometersPerHour, vertical_speed: MetersPerSecond } }, external_devices: [ExternalDeviceConfig { enabled: false, spec: Tcp { host: "127.0.0.1", port: 4353 } }] }
+persist settings SettingsSnapshot { settings: Settings { locale: None, polar: PolarId("LS 8"), arrival_reserve: ArrivalReserve(200.0), units: UnitSettings { altitude: Meters, distance: Kilometers, speed: KilometersPerHour, vertical_speed: MetersPerSecond } }, external_devices: [ExternalDeviceConfig { enabled: false, spec: Tcp { host: "127.0.0.1", port: 4353 } }] }

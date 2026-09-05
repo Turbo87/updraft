@@ -3,6 +3,7 @@
 //! The core owns shared application state and the decisions based on it.
 //! It performs no I/O, spawns no threads, and reads no clocks.
 
+mod arrival_reserve;
 #[cfg(feature = "ts")]
 pub mod bindings;
 mod connection;
@@ -23,6 +24,7 @@ mod topic;
 mod traffic;
 mod waypoints;
 
+pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };
@@ -38,8 +40,8 @@ pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetWaypointCatalog,
     GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices, ReplaceWaypointCatalog,
-    SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Start, Tick,
-    Update,
+    SetAirspaceUnavailable, SetArrivalReserve, SetExternalDeviceEnabled, SetLocale, SetPolar,
+    SetUnits, Start, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

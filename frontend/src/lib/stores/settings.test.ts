@@ -11,6 +11,7 @@ describe('SettingsStore', () => {
       value: {
         locale: 'de',
         polar: 'LS 8-18',
+        arrivalReserve: 200,
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
       },
     });
@@ -18,6 +19,7 @@ describe('SettingsStore', () => {
     expect(store.current).toEqual({
       locale: 'de',
       polar: 'LS 8-18',
+      arrivalReserve: 200,
       units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
     });
   });
@@ -38,6 +40,7 @@ describe('SettingsStore', () => {
     expect(store.current).toEqual({
       locale: null,
       polar: 'LS 8',
+      arrivalReserve: 200,
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     });
   });

@@ -59,6 +59,7 @@ describe('ExternalDevicesStore', () => {
       value: {
         locale: null,
         polar: 'LS 8',
+        arrivalReserve: 200,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     };

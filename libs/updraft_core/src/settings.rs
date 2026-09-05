@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::external_device::ExternalDeviceConfig;
-use crate::{PolarId, Topic};
+use crate::{ArrivalReserve, PolarId, Topic};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -79,6 +79,8 @@ pub struct Settings {
     pub locale: Option<Locale>,
     #[serde(default)]
     pub polar: PolarId,
+    #[serde(default)]
+    pub arrival_reserve: ArrivalReserve,
     #[serde(default)]
     pub units: UnitSettings,
 }

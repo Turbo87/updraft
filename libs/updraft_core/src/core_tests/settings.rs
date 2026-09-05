@@ -8,6 +8,7 @@ use crate::settings::{
     VerticalSpeedUnit,
 };
 use crate::topic::Instruments;
+use crate::{ArrivalReserve, SetArrivalReserve};
 
 #[test]
 fn topics_include_settings_and_external_devices() {
@@ -184,6 +185,30 @@ fn setting_polar_updates_settings_and_requests_persistence() {
         ]
     );
     assert_eq!(core.apply(SetPolar { polar }, at(1)).effects, vec![]);
+}
+
+#[test]
+fn arrival_reserve_publishes_and_persists_only_changes() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let reserve = claims::assert_ok!(ArrivalReserve::try_from(304.8));
+    let settings = Settings {
+        arrival_reserve: reserve,
+        ..Settings::default()
+    };
+    let snapshot = SettingsSnapshot {
+        settings,
+        ..SettingsSnapshot::default()
+    };
+    let effects = core.apply(SetArrivalReserve { reserve }, at(0)).effects;
+    assert_eq!(
+        effects,
+        vec![
+            Effect::emit(settings.as_topic()),
+            Effect::persist_settings(snapshot),
+        ]
+    );
+    let repeated = core.apply(SetArrivalReserve { reserve }, at(1));
+    assert_eq!(repeated.effects, vec![]);
 }
 
 #[test]

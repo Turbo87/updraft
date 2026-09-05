@@ -109,6 +109,7 @@ describe('TrafficStore', () => {
       value: {
         locale: 'de',
         polar: 'LS 8',
+        arrivalReserve: 200,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });

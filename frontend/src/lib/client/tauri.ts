@@ -72,6 +72,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_polar', { polar });
   }
 
+  setArrivalReserve(reserve: number): Promise<void> {
+    return invoke('set_arrival_reserve', { reserve });
+  }
+
   subscribe(onTopic: TopicListener): () => void {
     let channel = new Channel<Topic>();
     channel.onmessage = onTopic;

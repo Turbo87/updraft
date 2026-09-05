@@ -48,6 +48,7 @@ export class FakeClient implements UpdraftClient {
   #settings: Settings = {
     locale: null,
     polar: 'LS 8',
+    arrivalReserve: 200,
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 
@@ -177,6 +178,15 @@ export class FakeClient implements UpdraftClient {
     if (!(await this.getPolars()).includes(polar)) throw new Error('Unknown polar');
     if (this.#settings.polar === polar) return;
     this.#settings = { ...this.#settings, polar };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setArrivalReserve(reserve: number): Promise<void> {
+    if (!Number.isFinite(reserve) || reserve < 0) {
+      throw new Error('Arrival reserve must be finite and nonnegative');
+    }
+    if (this.#settings.arrivalReserve === reserve) return;
+    this.#settings = { ...this.#settings, arrivalReserve: reserve };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

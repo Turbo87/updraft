@@ -5,6 +5,7 @@ expression: contents
 {
   "locale": "de",
   "polar": "LS 8-18",
+  "arrivalReserve": 304.8,
   "units": {
     "altitude": "ft",
     "distance": "nm",

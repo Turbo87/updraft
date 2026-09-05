@@ -91,6 +91,7 @@ pub fn run() {
             ipc::set_locale,
             ipc::set_units,
             ipc::get_polars,
+            ipc::set_arrival_reserve,
             ipc::set_polar,
             ipc::add_external_device,
             ipc::delete_external_device,

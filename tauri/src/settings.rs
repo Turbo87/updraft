@@ -253,6 +253,7 @@ mod tests {
             settings: Settings {
                 locale: Some(Locale::De),
                 polar: assert_ok!(updraft_core::PolarId::try_from("LS 8-18".to_owned())),
+                arrival_reserve: assert_ok!(updraft_core::ArrivalReserve::try_from(304.8)),
                 units: UnitSettings {
                     altitude: AltitudeUnit::Feet,
                     distance: DistanceUnit::NauticalMiles,

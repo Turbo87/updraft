@@ -272,3 +272,14 @@ test('selects a glide polar and keeps it when revisiting settings', async ({ pag
   await page.getByRole('link', { name: 'Glide', exact: true }).click();
   await expect(polar).toHaveValue('LS 8-18');
 });
+
+test('keeps the arrival reserve when revisiting settings', async ({ page }) => {
+  await page.goto('/settings/glide?testMode=1');
+  let reserve = page.getByRole('spinbutton', { name: 'Arrival reserve (m)' });
+  await expect(reserve).toHaveValue('200');
+  await reserve.fill('350');
+  await page.getByRole('heading').click();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Glide', exact: true }).click();
+  await expect(reserve).toHaveValue('350');
+});

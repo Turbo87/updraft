@@ -30,11 +30,11 @@
       <dt>{m.waypoint_runway_direction()}</dt>
       <dd>{String(properties.runwayDirection).padStart(3, '0')}°</dd>
     {/if}
-    {#if properties.runwayLengthMeters !== undefined}
+    {#if properties.runwayLengthMeters}
       <dt>{m.waypoint_runway_length()}</dt>
       <dd>{properties.runwayLengthMeters.toFixed(0)} m</dd>
     {/if}
-    {#if properties.runwayWidthMeters !== undefined}
+    {#if properties.runwayWidthMeters}
       <dt>{m.waypoint_runway_width()}</dt>
       <dd>{properties.runwayWidthMeters.toFixed(0)} m</dd>
     {/if}

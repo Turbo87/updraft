@@ -14,6 +14,7 @@ const properties = {
   elevationMeters: 304.8,
   runwayDirection: 90,
   runwayLengthMeters: 800,
+  runwayWidthMeters: 30,
   frequency: '123.500',
   notes: 'First line\nSecond line',
 };
@@ -29,6 +30,7 @@ it('shows source data and converts elevation to the selected unit', async () => 
   await expect.element(page.getByText('1000 ft MSL')).toBeVisible();
   await expect.element(page.getByText('090°')).toBeVisible();
   await expect.element(page.getByText('800 m')).toBeVisible();
+  await expect.element(page.getByText('30 m')).toBeVisible();
   await expect.element(page.getByText('123.500')).toBeVisible();
   await expect.element(page.getByText('local.cup')).toBeVisible();
   await expect.element(page.getByText('First line Second line')).toBeVisible();
@@ -56,4 +58,24 @@ it('omits runway, radio, and notes when the source does not supply them', async 
   await expect.element(page.getByText('100 m MSL')).toBeVisible();
   await expect.element(page.getByText('Runway direction')).not.toBeInTheDocument();
   await expect.element(page.getByText('Frequency')).not.toBeInTheDocument();
+});
+
+it.each([undefined, 0])('omits unset runway dimensions (%s)', async (dimension) => {
+  await render(WaypointDetails, {
+    waypoint: {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [6, 50] },
+      properties: {
+        ...properties,
+        runwayDirection: 0,
+        runwayLengthMeters: dimension,
+        runwayWidthMeters: dimension,
+      },
+    },
+    altitudeUnit: 'm',
+    onBack: () => {},
+  });
+  await expect.element(page.getByText('Runway length')).not.toBeInTheDocument();
+  await expect.element(page.getByText('Runway width')).not.toBeInTheDocument();
+  await expect.element(page.getByText('000°', { exact: true })).toBeVisible();
 });

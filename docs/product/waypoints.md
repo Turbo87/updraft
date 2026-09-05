@@ -36,7 +36,9 @@ padding, and give priority to landables. A landable with a runway direction
 shows an oriented runway.
 
 A map tap opens the Nearby page. Waypoint results include symbols within a
-12-pixel hit radius. Each row links to details and identifies its source.
+12-pixel hit radius. Each row shows elevation, frequency, and notes, in that order, and links to details.
+The waypoint kind appears when notes are empty.
+Details omit runway length and width when they are absent or zero.
 Details use the selected altitude unit for elevation. Runway dimensions remain
 in metres. Frequency and notes appear as source text.
 

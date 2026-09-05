@@ -2,19 +2,26 @@
   import type { MapGeoJSONFeature, Map as MapLibreMap } from 'maplibre-gl';
   import type { MapState } from '$lib/map-state.svelte';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
+  import type { AltitudeUnit } from '$lib/units';
 
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
 
   import { m } from '$lib/paraglide/messages.js';
+  import { convertAltitude } from '$lib/units';
   import WaypointSymbol from '$lib/WaypointSymbol.svelte';
 
   let {
     map,
     position,
     sourceStatus,
-  }: { map: MapLibreMap; position: LatLon; sourceStatus: MapState['waypointSourceStatus'] } =
-    $props();
+    altitudeUnit,
+  }: {
+    map: MapLibreMap;
+    position: LatLon;
+    sourceStatus: MapState['waypointSourceStatus'];
+    altitudeUnit: AltitudeUnit;
+  } = $props();
   let features = $state.raw<MapGeoJSONFeature[] | null>(null);
 
   function query() {
@@ -54,10 +61,16 @@
           />
           <span class="text">
             <span class="name">{feature.properties.name}</span>
-            <span class="detail"
-              >{m.waypoint_type_value({ kind: feature.properties.kind })} · {feature.properties
-                .sourceName}</span
-            >
+            <span class="detail">
+              {[
+                `${convertAltitude(feature.properties.elevationMeters, altitudeUnit).toFixed(0)} ${altitudeUnit}`,
+                feature.properties.frequency,
+                feature.properties.notes ||
+                  m.waypoint_type_value({ kind: feature.properties.kind }),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           </span>
         </a>
       </li>

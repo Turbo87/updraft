@@ -78,6 +78,7 @@
     {:else}
       {#key `${waypoints.current.generation}/${selectedPosition.latitudeDegrees}/${selectedPosition.longitudeDegrees}`}
         <NearbyWaypoints
+          altitudeUnit={settings.current.units.altitude}
           map={mapState.map}
           position={selectedPosition}
           sourceStatus={mapState.waypointSourceStatus}

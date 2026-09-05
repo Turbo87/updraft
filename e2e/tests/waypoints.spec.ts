@@ -11,55 +11,70 @@ type TestWindow = Window & {
   __updraftTestWaypointData?: typeof waypointsFixture;
 };
 
-test('opens map waypoints and invalidates details after removal', async ({ page }) => {
-  await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestWaypointData = data;
-  }, waypointsFixture);
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emit({
-      topic: 'waypoints',
-      value: {
-        generation: 1,
-        sources: [
-          {
-            type: 'active',
-            sourceName: 'local.cup',
-            waypointCount: 3,
-            warnings: [],
-          },
-        ],
+for (let notes of ['Notes', '']) {
+  test(`opens map waypoints and invalidates details after removal (notes: ${notes})`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (data) => {
+        (window as TestWindow).__updraftTestWaypointData = data;
       },
+      {
+        ...waypointsFixture,
+        features: waypointsFixture.features.map((feature) => ({
+          ...feature,
+          properties: { ...feature.properties, notes },
+        })),
+      },
+    );
+    await page.goto('/?testMode=1');
+    await page.waitForFunction(() => '__updraftFake' in window);
+    await page.evaluate(() => {
+      (window as TestWindow).__updraftFake!.emit({
+        topic: 'waypoints',
+        value: {
+          generation: 1,
+          sources: [
+            {
+              type: 'active',
+              sourceName: 'local.cup',
+              waypointCount: 3,
+              warnings: [],
+            },
+          ],
+        },
+      });
     });
+    await page.waitForFunction(() => {
+      let map = (window as TestWindow).__updraftApp!.mapState.map;
+      return map?.getLayer('waypoint-hit') && map.isSourceLoaded('waypoints');
+    });
+    let point = await page.evaluate(() => {
+      let map = (window as TestWindow).__updraftApp!.mapState.map!;
+      let point = map.project([6.186, 50.823]);
+      let bounds = map.getCanvas().getBoundingClientRect();
+      return { x: bounds.x + point.x, y: bounds.y + point.y };
+    });
+    await page.mouse.click(point.x, point.y);
+    let waypoint = page
+      .getByRole('region', { name: 'Waypoints', exact: true })
+      .getByRole('link', { name: /Point 0/ });
+    await expect(waypoint).toContainText(`100 m · 123.500 · ${notes || 'Grass airfield'}`);
+    await expect(waypoint).not.toContainText('local.cup');
+    await expect(waypoint.locator('.waypoint-symbol')).toBeVisible();
+    await expect(waypoint.locator('.runway')).toBeVisible();
+    await waypoint.click();
+    await expect(page.getByRole('heading', { name: 'Point 0' })).toBeVisible();
+    await expect(page.getByText('123.500')).toBeVisible();
+    await expect(page.getByText('090°')).toBeVisible();
+    await page.evaluate(async () => {
+      await (window as TestWindow).__updraftFake!.removeWaypoints('local.cup');
+    });
+    await expect(page.getByText('This waypoint is no longer available.')).toBeVisible();
+    await page.goBack();
+    await expect(page.getByText('No nearby waypoints.')).toBeVisible();
   });
-  await page.waitForFunction(() => {
-    let map = (window as TestWindow).__updraftApp!.mapState.map;
-    return map?.getLayer('waypoint-hit') && map.isSourceLoaded('waypoints');
-  });
-  let point = await page.evaluate(() => {
-    let map = (window as TestWindow).__updraftApp!.mapState.map!;
-    let point = map.project([6.186, 50.823]);
-    let bounds = map.getCanvas().getBoundingClientRect();
-    return { x: bounds.x + point.x, y: bounds.y + point.y };
-  });
-  await page.mouse.click(point.x, point.y);
-  let waypoint = page
-    .getByRole('region', { name: 'Waypoints', exact: true })
-    .getByRole('link', { name: /Point 0/ });
-  await expect(waypoint.locator('.waypoint-symbol')).toBeVisible();
-  await expect(waypoint.locator('.runway')).toBeVisible();
-  await waypoint.click();
-  await expect(page.getByRole('heading', { name: 'Point 0' })).toBeVisible();
-  await expect(page.getByText('123.500')).toBeVisible();
-  await expect(page.getByText('090°')).toBeVisible();
-  await page.evaluate(async () => {
-    await (window as TestWindow).__updraftFake!.removeWaypoints('local.cup');
-  });
-  await expect(page.getByText('This waypoint is no longer available.')).toBeVisible();
-  await page.goBack();
-  await expect(page.getByText('No nearby waypoints.')).toBeVisible();
-});
+}
 
 test('retries a failed waypoint resource with a new request', async ({ page }) => {
   let available = false;

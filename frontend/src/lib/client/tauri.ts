@@ -76,6 +76,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_arrival_reserve', { reserve });
   }
 
+  setMacCready(macCready: number): Promise<void> {
+    return invoke('set_mac_cready', { macCready });
+  }
+
   subscribe(onTopic: TopicListener): () => void {
     let channel = new Channel<Topic>();
     channel.onmessage = onTopic;

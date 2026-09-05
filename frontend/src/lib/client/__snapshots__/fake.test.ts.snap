@@ -52,6 +52,12 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
     },
   },
   {
+    "topic": "glidePerformance",
+    "value": {
+      "macCready": 0,
+    },
+  },
+  {
     "topic": "externalDevices",
     "value": [],
   },

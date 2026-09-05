@@ -2,6 +2,7 @@ import type { UpdraftClient } from '$lib/client';
 import type { MapState } from '$lib/map-state.svelte';
 import type { AirspaceStore } from '$lib/stores/airspace.svelte';
 import type { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
+import type { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
 import type { InstrumentsStore } from '$lib/stores/instruments.svelte';
 import type { SettingsStore } from '$lib/stores/settings.svelte';
 import type { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -17,6 +18,7 @@ export type AppContext = {
   instruments: InstrumentsStore;
   mapState: MapState;
   settings: SettingsStore;
+  glidePerformance: GlidePerformanceStore;
   traffic: TrafficStore;
 };
 

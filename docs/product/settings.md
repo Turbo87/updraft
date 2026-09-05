@@ -26,6 +26,12 @@ platform session, and closes the application.
 The root layout keeps the Flight View and map mounted while a Settings route is
 open. A return to the Flight View therefore keeps temporary map state.
 
+The Settings index also contains a Flight controls panel. Its MacCready control
+uses the selected vertical-speed unit. MC defaults to 0.0 m/s and accepts finite,
+nonnegative values. It remains active during navigation and resets when Updraft
+restarts. The core publishes it through the separate `GlidePerformance` topic.
+Settings writes exclude these session controls.
+
 ## Ownership and updates
 
 The core owns the active locale, display units, glide polar, arrival reserve,

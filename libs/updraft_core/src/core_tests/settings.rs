@@ -8,7 +8,30 @@ use crate::settings::{
     VerticalSpeedUnit,
 };
 use crate::topic::Instruments;
-use crate::{ArrivalReserve, SetArrivalReserve};
+use crate::{ArrivalReserve, GlidePerformance, MacCready, SetArrivalReserve, SetMacCready};
+use claims::assert_some_eq;
+
+#[test]
+fn maccready_is_published_but_not_persisted_and_resets_on_restart() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let initial = Topic::GlidePerformance(GlidePerformance::default());
+    assert_some_eq!(core.topics().last(), &initial);
+    let mac_cready = claims::assert_ok!(MacCready::try_from(1.5));
+    let topic = Topic::GlidePerformance(GlidePerformance { mac_cready });
+    let effects = core.apply(SetMacCready { mac_cready }, at(0)).effects;
+    assert_eq!(effects, vec![Effect::emit(topic.clone())]);
+    assert_some_eq!(core.topics().last(), &topic);
+    let repeated = core.apply(SetMacCready { mac_cready }, at(1));
+    assert_eq!(repeated.effects, vec![]);
+
+    let effects = core.apply(SetLocale::new(Locale::De), at(2)).effects;
+    let Effect::PersistSettings(snapshot) = &effects[1] else {
+        panic!("settings must be saved")
+    };
+    insta::assert_json_snapshot!(snapshot);
+    let restarted = Core::new(snapshot.clone());
+    assert_some_eq!(restarted.topics().last(), &initial);
+}
 
 #[test]
 fn topics_include_settings_and_external_devices() {
@@ -33,7 +56,7 @@ fn topics_include_settings_and_external_devices() {
     });
 
     let topics = core.topics();
-    assert_eq!(topics.len(), 6);
+    assert_eq!(topics.len(), 7);
     assert_eq!(topics[0], Topic::Instruments(Instruments::default()));
     assert_eq!(topics[1], Topic::Settings(settings));
     let Topic::ExternalDevices(devices) = &topics[2] else {
@@ -80,6 +103,7 @@ fn setting_locale_updates_the_topic_and_requests_persistence() {
             Topic::Airspace(AirspaceStatus::None),
             Topic::Waypoints(crate::WaypointStatus::default()),
             Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
+            Topic::GlidePerformance(GlidePerformance::default()),
         ]
     );
 }
@@ -140,6 +164,7 @@ fn setting_units_updates_the_topic_and_requests_persistence() {
             Topic::Airspace(AirspaceStatus::None),
             Topic::Waypoints(crate::WaypointStatus::default()),
             Topic::Traffic(TrafficUpdate::Snapshot(Vec::new())),
+            Topic::GlidePerformance(GlidePerformance::default()),
         ]
     );
 }

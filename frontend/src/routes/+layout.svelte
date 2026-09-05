@@ -17,6 +17,7 @@
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { AirspaceStore } from '$lib/stores/airspace.svelte';
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
+  import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
   import { SettingsStore } from '$lib/stores/settings.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -35,6 +36,7 @@
   const waypoints = new WaypointsStore();
   const mapState = new MapState();
   const settings = new SettingsStore();
+  const glidePerformance = new GlidePerformanceStore();
   const traffic = new TrafficStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
@@ -47,6 +49,7 @@
     instruments,
     mapState,
     settings,
+    glidePerformance,
     traffic,
   } satisfies AppContext;
 
@@ -66,6 +69,7 @@
       airspace.apply(topic);
       waypoints.apply(topic);
       settings.apply(topic);
+      glidePerformance.apply(topic);
       traffic.apply(topic);
       if (topic.topic === 'settings') {
         applyLocaleSetting(topic.value.locale);

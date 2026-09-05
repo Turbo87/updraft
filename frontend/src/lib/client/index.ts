@@ -43,6 +43,7 @@ export interface UpdraftClient {
   getPolars(): Promise<PolarId[]>;
   setPolar(polar: PolarId): Promise<void>;
   setArrivalReserve(reserve: number): Promise<void>;
+  setMacCready(macCready: number): Promise<void>;
   /** Replaces all display-unit selections. */
   setUnits(units: UnitSettings): Promise<void>;
   importWaypoints(): Promise<ImportWaypointsResult>;

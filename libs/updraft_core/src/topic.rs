@@ -166,6 +166,7 @@ pub enum Topic {
     Airspace(AirspaceStatus),
     Waypoints(crate::WaypointStatus),
     Traffic(TrafficUpdate),
+    GlidePerformance(crate::GlidePerformance),
 }
 
 #[cfg(test)]

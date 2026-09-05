@@ -239,6 +239,17 @@ pub fn get_polars() -> Vec<updraft_core::PolarId> {
 }
 
 #[tauri::command]
+pub async fn set_mac_cready(
+    mac_cready: updraft_core::MacCready,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetMacCready { mac_cready })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_arrival_reserve(
     reserve: updraft_core::ArrivalReserve,
     handle: tauri::State<'_, DriverHandle>,
@@ -394,6 +405,7 @@ mod tests {
                 set_locale,
                 set_units,
                 get_polars,
+                set_mac_cready,
                 set_arrival_reserve,
                 set_polar,
                 add_external_device,
@@ -521,6 +533,22 @@ mod tests {
         }
         for reserve in [json!(-1), json!(null), json!("200")] {
             let input = request("set_arrival_reserve", json!({ "reserve": reserve }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn maccready_command_validates_meters_per_second() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for mac_cready in [0.0, 1.5] {
+            let input = request("set_mac_cready", json!({ "macCready": mac_cready }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for mac_cready in [json!(-1), json!(null), json!("1.5")] {
+            let input = request("set_mac_cready", json!({ "macCready": mac_cready }));
             claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
         }
     }

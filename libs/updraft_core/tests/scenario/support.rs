@@ -37,6 +37,9 @@ pub fn describe(effect: &Effect) -> String {
             )
         }
         Effect::Emit(Topic::Settings(settings)) => format!("settings {settings:?}"),
+        Effect::Emit(Topic::GlidePerformance(performance)) => {
+            format!("glide performance {performance:?}")
+        }
         Effect::Emit(Topic::ExternalDevices(devices)) => {
             format!("external devices {devices:?}")
         }

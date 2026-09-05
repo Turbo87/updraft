@@ -1,3 +1,4 @@
+use crate::GlidePerformance;
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
@@ -6,7 +7,7 @@ use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
     ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetExternalDeviceEnabled,
-    SetLocale, SetPolar, SetUnits, Start, Tick, Update,
+    SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -197,6 +198,7 @@ impl AirspaceState {
 #[derive(Debug)]
 pub struct Core {
     settings: Settings,
+    glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
     airspace: AirspaceState,
     waypoints: Arc<crate::WaypointCatalog>,
@@ -224,6 +226,7 @@ impl Core {
         sensor_fusion.set_polar(settings.polar.glide_polar());
         Self {
             settings,
+            glide_performance: GlidePerformance::default(),
             external_devices: ExternalDevices::from_device_configs(external_devices),
             airspace,
             waypoints: Arc::default(),
@@ -255,6 +258,7 @@ impl Core {
             Topic::Airspace(self.airspace.status()),
             Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
             Topic::Traffic(TrafficUpdate::Snapshot(self.traffic.published_targets())),
+            Topic::GlidePerformance(self.glide_performance),
         ]
     }
 
@@ -706,6 +710,19 @@ impl Input for SetArrivalReserve {
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
         ])
+    }
+}
+
+impl Input for SetMacCready {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.glide_performance.mac_cready == self.mac_cready {
+            return Update::empty();
+        }
+        core.glide_performance.mac_cready = self.mac_cready;
+        let topic = Topic::GlidePerformance(core.glide_performance);
+        Update::effects(vec![Effect::emit(topic)])
     }
 }
 

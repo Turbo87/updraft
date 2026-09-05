@@ -13,6 +13,7 @@ mod decoder;
 mod effect;
 mod external_device;
 mod fix;
+mod glide_performance;
 mod input;
 mod ownship;
 mod polar;
@@ -36,12 +37,13 @@ pub use external_device::{
     UnknownExternalDevice,
 };
 pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
+pub use glide_performance::{GlidePerformance, InvalidMacCready, MacCready};
 pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetWaypointCatalog,
     GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices, ReplaceWaypointCatalog,
-    SetAirspaceUnavailable, SetArrivalReserve, SetExternalDeviceEnabled, SetLocale, SetPolar,
-    SetUnits, Start, Tick, Update,
+    SetAirspaceUnavailable, SetArrivalReserve, SetExternalDeviceEnabled, SetLocale, SetMacCready,
+    SetPolar, SetUnits, Start, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

@@ -1,5 +1,6 @@
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
+import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
@@ -40,6 +41,7 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #glidePerformance: GlidePerformance = { macCready: 0 };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
   #listeners = new Set<TopicListener>();
   #externalDevices: PublishedExternalDevice[];
@@ -87,6 +89,7 @@ export class FakeClient implements UpdraftClient {
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'settings', value: this.#settings });
+    onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });
     onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
     onTopic({ topic: 'airspace', value: { type: 'none' } });
@@ -188,6 +191,15 @@ export class FakeClient implements UpdraftClient {
     if (this.#settings.arrivalReserve === reserve) return;
     this.#settings = { ...this.#settings, arrivalReserve: reserve };
     this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setMacCready(macCready: number): Promise<void> {
+    if (!Number.isFinite(macCready) || macCready < 0) {
+      throw new Error('MacCready must be finite and nonnegative');
+    }
+    if (this.#glidePerformance.macCready === macCready) return;
+    this.#glidePerformance = { ...this.#glidePerformance, macCready };
+    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
   }
 
   /** Publishes a topic as though the core had emitted it. */

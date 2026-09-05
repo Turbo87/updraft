@@ -21,6 +21,13 @@ pub fn handle_updraft_uri<R: tauri::Runtime>(
     };
 
     match request.uri().path() {
+        path if path.starts_with("/arrivals/") && path.ends_with(".geojson") => {
+            let id = path["/arrivals/".len()..path.len() - ".geojson".len()].to_owned();
+            spawn_response(
+                crate::waypoints::arrival_stream::arrival_resource_response(app, id),
+                respond,
+            );
+        }
         "/waypoints.geojson" => spawn_response(
             crate::waypoints::resource::waypoint_resource_response(app),
             respond,

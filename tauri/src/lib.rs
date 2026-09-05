@@ -87,6 +87,9 @@ pub fn run() {
             ipc::import_airspace,
             waypoints::commands::import_waypoints,
             waypoints::commands::remove_waypoints,
+            waypoints::arrival_stream::start_arrivals,
+            waypoints::arrival_stream::update_arrival_viewport,
+            waypoints::arrival_stream::stop_arrivals,
             ipc::remove_airspace,
             ipc::set_locale,
             ipc::set_units,
@@ -164,6 +167,7 @@ pub fn run() {
                 waypoint_storage,
             ));
             app.manage(handle);
+            app.manage(waypoints::arrival_stream::ArrivalStreams::default());
             app.manage(file_picker);
             app.manage(ipc::AirspaceCommandState::new(airspace_storage));
 

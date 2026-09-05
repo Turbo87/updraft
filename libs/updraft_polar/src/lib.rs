@@ -10,10 +10,12 @@
 //! cross-country speed. A built-in library of 200+ glider polars ships
 //! as [`POLAR_STORE`].
 
+mod atmosphere;
 mod coefficients;
 mod glide_polar;
 mod store;
 
+pub use atmosphere::isa_density_ratio;
 pub use coefficients::PolarCoefficients;
 pub use glide_polar::GlidePolar;
 pub use store::{POLAR_STORE, PolarStoreEntry};

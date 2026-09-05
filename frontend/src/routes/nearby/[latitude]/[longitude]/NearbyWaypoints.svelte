@@ -7,6 +7,7 @@
   import { resolve } from '$app/paths';
 
   import { m } from '$lib/paraglide/messages.js';
+  import WaypointSymbol from '$lib/WaypointSymbol.svelte';
 
   let {
     map,
@@ -47,11 +48,17 @@
     {#each features as feature (feature.properties.id)}
       <li>
         <a href={resolve('/waypoints/[id]', { id: String(feature.properties.id) })}>
-          <span class="name">{feature.properties.name}</span>
-          <span class="detail"
-            >{m.waypoint_type_value({ kind: feature.properties.kind })} · {feature.properties
-              .sourceName}</span
-          >
+          <WaypointSymbol
+            kind={feature.properties.kind}
+            runwayDirection={feature.properties.runwayDirection}
+          />
+          <span class="text">
+            <span class="name">{feature.properties.name}</span>
+            <span class="detail"
+              >{m.waypoint_type_value({ kind: feature.properties.kind })} · {feature.properties
+                .sourceName}</span
+            >
+          </span>
         </a>
       </li>
     {/each}
@@ -73,12 +80,18 @@
   }
   a {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    align-items: center;
+    gap: var(--space-3);
+    --waypoint-symbol-size: 1.4rem;
     min-height: var(--target-flight);
     padding: var(--space-2) var(--space-4);
     color: var(--color-text);
     text-decoration: none;
+  }
+  .text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
   a:active {
     background: var(--color-control-surface-pressed);

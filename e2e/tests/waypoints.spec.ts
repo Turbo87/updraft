@@ -44,10 +44,12 @@ test('opens map waypoints and invalidates details after removal', async ({ page 
     return { x: bounds.x + point.x, y: bounds.y + point.y };
   });
   await page.mouse.click(point.x, point.y);
-  await page
+  let waypoint = page
     .getByRole('region', { name: 'Waypoints', exact: true })
-    .getByRole('link', { name: /Point 0/ })
-    .click();
+    .getByRole('link', { name: /Point 0/ });
+  await expect(waypoint.locator('.waypoint-symbol')).toBeVisible();
+  await expect(waypoint.locator('.runway')).toBeVisible();
+  await waypoint.click();
   await expect(page.getByRole('heading', { name: 'Point 0' })).toBeVisible();
   await expect(page.getByText('123.500')).toBeVisible();
   await expect(page.getByText('090°')).toBeVisible();

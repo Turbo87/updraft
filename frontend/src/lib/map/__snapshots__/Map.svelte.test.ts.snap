@@ -1,12 +1,55 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`adds the airspace source and both layers for the active state 1`] = `
+exports[`adds the airspace source and styled layers for the active state 1`] = `
 {
   "layers": [
     {
-      "id": "airspace-fill",
-      "paint": {
-        "fill-color": [
+      "filter": [
+        "any",
+        [
+          "in",
+          [
+            "get",
+            "type",
+          ],
+          [
+            "literal",
+            [
+              4,
+              21,
+              6,
+              13,
+              23,
+              24,
+              25,
+              1,
+              2,
+              3,
+              29,
+              19,
+            ],
+          ],
+        ],
+        [
+          "in",
+          [
+            "get",
+            "icaoClass",
+          ],
+          [
+            "literal",
+            [
+              0,
+              1,
+              2,
+              3,
+            ],
+          ],
+        ],
+      ],
+      "id": "airspace-inner-band",
+      "layout": {
+        "line-sort-key": [
           "match",
           [
             "get",
@@ -16,106 +59,176 @@ exports[`adds the airspace source and both layers for the active state 1`] = `
             1,
             2,
             3,
-            19,
             29,
+            19,
           ],
-          "#e7000b",
-          [
-            5,
-            6,
-            22,
-          ],
-          "#7f22fe",
-          [
-            21,
-            28,
-          ],
-          "#00a63e",
+          2,
           [
             4,
-            7,
+            21,
+            6,
             13,
-            15,
-            26,
-            27,
-            36,
+            23,
+            24,
+            25,
+          ],
+          0,
+          1,
+        ],
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          4,
+          "#e7000b",
+          21,
+          "#fdc700",
+          [
+            6,
+            13,
+            23,
+            24,
           ],
           "#155dfc",
           [
             "match",
             [
               "get",
-              "icaoClass",
+              "type",
             ],
             [
-              0,
               1,
               2,
               3,
-              4,
+              29,
             ],
-            "#155dfc",
-            "#62748e",
+            "#c10007",
+            5,
+            "#314158",
+            21,
+            "#d08700",
+            25,
+            "#45556c",
+            [
+              19,
+              10,
+              11,
+              33,
+            ],
+            "#008236",
+            "#1447e6",
           ],
         ],
-        "fill-opacity": [
+        "line-offset": [
+          "interpolate",
+          [
+            "linear",
+          ],
+          [
+            "zoom",
+          ],
+          6,
+          0,
+          8,
+          [
+            "match",
+            [
+              "get",
+              "type",
+            ],
+            21,
+            5,
+            3.5,
+          ],
+        ],
+        "line-opacity": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          21,
+          0.25,
+          0.2,
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear",
+          ],
+          [
+            "zoom",
+          ],
+          6,
+          0,
+          8,
+          [
+            "match",
+            [
+              "get",
+              "type",
+            ],
+            21,
+            10,
+            7,
+          ],
+        ],
+      },
+      "source": "airspace",
+      "type": "line",
+    },
+    {
+      "filter": undefined,
+      "id": "airspace-outline",
+      "layout": {
+        "line-cap": [
           "match",
           [
             "get",
             "type",
           ],
           [
+            33,
+            25,
+          ],
+          "round",
+          "butt",
+        ],
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          [
+            33,
+            25,
+          ],
+          4,
+          5,
+          3,
+          [
+            6,
+            13,
+            23,
+            24,
+          ],
+          2,
+          [
             1,
             2,
             3,
-            19,
             29,
-          ],
-          0.18,
-          [
-            5,
-            6,
-            22,
-          ],
-          0.14,
-          [
-            21,
-            28,
-          ],
-          0.12,
-          [
             4,
-            7,
-            13,
-            15,
-            26,
-            27,
-            36,
           ],
-          0.12,
-          [
-            "match",
-            [
-              "get",
-              "icaoClass",
-            ],
-            [
-              0,
-              1,
-              2,
-              3,
-              4,
-            ],
-            0.12,
-            0.08,
-          ],
+          1,
+          0,
         ],
       },
-      "source": "airspace",
-      "type": "fill",
-    },
-    {
-      "id": "airspace-outline",
       "paint": {
         "line-color": [
           "match",
@@ -127,47 +240,95 @@ exports[`adds the airspace source and both layers for the active state 1`] = `
             1,
             2,
             3,
-            19,
             29,
           ],
           "#c10007",
+          5,
+          "#314158",
+          21,
+          "#d08700",
+          25,
+          "#45556c",
           [
-            5,
-            6,
-            22,
-          ],
-          "#7008e7",
-          [
-            21,
-            28,
+            19,
+            10,
+            11,
+            33,
           ],
           "#008236",
-          [
-            4,
-            7,
-            13,
-            15,
-            26,
-            27,
-            36,
-          ],
           "#1447e6",
+        ],
+        "line-dasharray": [
+          "match",
           [
-            "match",
-            [
-              "get",
-              "icaoClass",
-            ],
+            "get",
+            "type",
+          ],
+          [
+            33,
+            25,
+          ],
+          [
+            "literal",
             [
               0,
-              1,
-              2,
               3,
-              4,
             ],
-            "#1447e6",
-            "#45556c",
           ],
+          5,
+          [
+            "literal",
+            [
+              4,
+              3,
+              1,
+              3,
+            ],
+          ],
+          [
+            6,
+            13,
+            23,
+            24,
+          ],
+          [
+            "literal",
+            [
+              3,
+              3,
+            ],
+          ],
+          [
+            1,
+            2,
+            3,
+            29,
+            4,
+          ],
+          [
+            "literal",
+            [
+              4,
+              3,
+            ],
+          ],
+          [
+            "literal",
+            [
+              1,
+              0,
+            ],
+          ],
+        ],
+        "line-opacity": [
+          "match",
+          [
+            "get",
+            "type",
+          ],
+          21,
+          0.8,
+          1,
         ],
         "line-width": [
           "match",
@@ -176,50 +337,12 @@ exports[`adds the airspace source and both layers for the active state 1`] = `
             "type",
           ],
           [
-            1,
-            2,
-            3,
-            19,
-            29,
+            10,
+            11,
+            33,
           ],
+          1.5,
           2,
-          [
-            5,
-            6,
-            22,
-          ],
-          1.5,
-          [
-            21,
-            28,
-          ],
-          1.5,
-          [
-            4,
-            7,
-            13,
-            15,
-            26,
-            27,
-            36,
-          ],
-          1.5,
-          [
-            "match",
-            [
-              "get",
-              "icaoClass",
-            ],
-            [
-              0,
-              1,
-              2,
-              3,
-              4,
-            ],
-            1.5,
-            1,
-          ],
         ],
       },
       "source": "airspace",

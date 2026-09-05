@@ -93,8 +93,18 @@ does not include OpenAIP service, audit, or ownership fields.
 
 ## Map and details
 
-MapLibre renders one invisible hit layer, one fill layer, and one outline layer.
-Type has styling priority. ICAO class supplies the controlled-airspace fallback.
+MapLibre renders three layers: an independent invisible hit layer, one inner-band
+layer, and one boundary layer. Each airspace receives at most one inner band.
+Airspace type selects the boundary color, dash pattern, and band color.
+Control zones, gliding sectors, radio mandatory zones,
+airport traffic zones, and traffic information zones and areas receive bands.
+Classes A through D and restricted and protected areas also receive bands.
+The bands grow linearly from zero width at zoom 6 to full width at zoom 8.
+Gliding-sector bands use ten pixels and 25% opacity. Other bands use seven pixels
+and 20% opacity.
+FIS sectors use green dotted boundaries. Military training areas use slate
+dotted boundaries and translucent inner bands.
+Airspace interiors remain transparent.
 The source generation changes the resource URL after a dataset replacement.
 
 A normal map tap can select rendered airspace features. The nearby page keeps

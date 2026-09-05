@@ -1,7 +1,6 @@
 <script lang="ts">
   import type {
     ExpressionSpecification,
-    FillLayerSpecification,
     GeoJSONSourceSpecification,
     LineLayerSpecification,
   } from 'maplibre-gl';
@@ -11,22 +10,22 @@
   import {
     COLOR_BLUE_600,
     COLOR_BLUE_700,
-    COLOR_GREEN_600,
     COLOR_GREEN_700,
     COLOR_RED_600,
     COLOR_RED_700,
-    COLOR_SLATE_500,
     COLOR_SLATE_600,
-    COLOR_VIOLET_600,
-    COLOR_VIOLET_700,
-  } from '$lib/map/colors.generated';
+    COLOR_SLATE_700,
+    COLOR_YELLOW_400,
+    COLOR_YELLOW_600,
+  } from './colors.generated';
 
-  type FillPaint = NonNullable<FillLayerSpecification['paint']>;
-  type LinePaint = NonNullable<LineLayerSpecification['paint']>;
-  type Props = {
+  let {
+    data,
+    beforeId,
+  }: {
     data: GeoJSONSourceSpecification['data'];
     beforeId: string;
-  };
+  } = $props();
 
   const AIRSPACE_TYPE = {
     RESTRICTED: 1,
@@ -35,100 +34,145 @@
     CONTROLLED_TOWER_REGION: 4,
     TRANSPONDER_MANDATORY_ZONE: 5,
     RADIO_MANDATORY_ZONE: 6,
-    TERMINAL_MANEUVERING_AREA: 7,
+    FLIGHT_INFORMATION_REGION: 10,
+    UPPER_FLIGHT_INFORMATION_REGION: 11,
     AIRPORT_TRAFFIC_ZONE: 13,
-    AIRWAY: 15,
     PROTECTED_AREA: 19,
     GLIDING_SECTOR: 21,
-    TRANSPONDER_SETTING: 22,
-    CONTROL_AREA: 26,
-    ACC_SECTOR: 27,
-    AERIAL_SPORTING_OR_RECREATIONAL_ACTIVITY: 28,
+    TRAFFIC_INFORMATION_ZONE: 23,
+    TRAFFIC_INFORMATION_AREA: 24,
+    MILITARY_TRAINING_AREA: 25,
     LOW_ALTITUDE_OVERFLIGHT_RESTRICTION: 29,
-    MILITARY_CONTROLLED_TOWER_REGION: 36,
+    FIS_SECTOR: 33,
   } as const;
 
-  const AIRSPACE_CLASS = {
-    A: 0,
-    B: 1,
-    C: 2,
-    D: 3,
-    E: 4,
-  } as const;
-
-  function airspaceStyleValue(
-    controlled: string | number,
-    prohibitedRestrictedDanger: string | number,
-    mandatoryZone: string | number,
-    glidingWave: string | number,
-    other: string | number,
-  ): ExpressionSpecification {
-    return [
+  const restrictedTypes = [
+    AIRSPACE_TYPE.RESTRICTED,
+    AIRSPACE_TYPE.DANGER,
+    AIRSPACE_TYPE.PROHIBITED,
+    AIRSPACE_TYPE.LOW_ALTITUDE_OVERFLIGHT_RESTRICTION,
+  ];
+  const informationTypes = [
+    AIRSPACE_TYPE.FLIGHT_INFORMATION_REGION,
+    AIRSPACE_TYPE.UPPER_FLIGHT_INFORMATION_REGION,
+    AIRSPACE_TYPE.FIS_SECTOR,
+  ];
+  const blueZoneTypes = [
+    AIRSPACE_TYPE.RADIO_MANDATORY_ZONE,
+    AIRSPACE_TYPE.AIRPORT_TRAFFIC_ZONE,
+    AIRSPACE_TYPE.TRAFFIC_INFORMATION_ZONE,
+    AIRSPACE_TYPE.TRAFFIC_INFORMATION_AREA,
+  ];
+  const zoneBandTypes = [
+    AIRSPACE_TYPE.CONTROLLED_TOWER_REGION,
+    AIRSPACE_TYPE.GLIDING_SECTOR,
+    ...blueZoneTypes,
+    AIRSPACE_TYPE.MILITARY_TRAINING_AREA,
+  ];
+  const restrictedBandTypes = [...restrictedTypes, AIRSPACE_TYPE.PROTECTED_AREA];
+  const dottedTypes = [AIRSPACE_TYPE.FIS_SECTOR, AIRSPACE_TYPE.MILITARY_TRAINING_AREA];
+  const longDashTypes = [...restrictedTypes, AIRSPACE_TYPE.CONTROLLED_TOWER_REGION];
+  const outlineColor: ExpressionSpecification = [
+    'match',
+    ['get', 'type'],
+    restrictedTypes,
+    COLOR_RED_700,
+    AIRSPACE_TYPE.TRANSPONDER_MANDATORY_ZONE,
+    COLOR_SLATE_700,
+    AIRSPACE_TYPE.GLIDING_SECTOR,
+    COLOR_YELLOW_600,
+    AIRSPACE_TYPE.MILITARY_TRAINING_AREA,
+    COLOR_SLATE_600,
+    [AIRSPACE_TYPE.PROTECTED_AREA, ...informationTypes],
+    COLOR_GREEN_700,
+    COLOR_BLUE_700,
+  ];
+  const outlinePaint: NonNullable<LineLayerSpecification['paint']> = {
+    'line-color': outlineColor,
+    'line-width': ['match', ['get', 'type'], informationTypes, 1.5, 2],
+    'line-opacity': ['match', ['get', 'type'], AIRSPACE_TYPE.GLIDING_SECTOR, 0.8, 1],
+    'line-dasharray': [
       'match',
       ['get', 'type'],
-      [
-        AIRSPACE_TYPE.RESTRICTED,
-        AIRSPACE_TYPE.DANGER,
-        AIRSPACE_TYPE.PROHIBITED,
-        AIRSPACE_TYPE.PROTECTED_AREA,
-        AIRSPACE_TYPE.LOW_ALTITUDE_OVERFLIGHT_RESTRICTION,
-      ],
-      prohibitedRestrictedDanger,
-      [
-        AIRSPACE_TYPE.TRANSPONDER_MANDATORY_ZONE,
-        AIRSPACE_TYPE.RADIO_MANDATORY_ZONE,
-        AIRSPACE_TYPE.TRANSPONDER_SETTING,
-      ],
-      mandatoryZone,
-      [AIRSPACE_TYPE.GLIDING_SECTOR, AIRSPACE_TYPE.AERIAL_SPORTING_OR_RECREATIONAL_ACTIVITY],
-      glidingWave,
-      [
-        AIRSPACE_TYPE.CONTROLLED_TOWER_REGION,
-        AIRSPACE_TYPE.TERMINAL_MANEUVERING_AREA,
-        AIRSPACE_TYPE.AIRPORT_TRAFFIC_ZONE,
-        AIRSPACE_TYPE.AIRWAY,
-        AIRSPACE_TYPE.CONTROL_AREA,
-        AIRSPACE_TYPE.ACC_SECTOR,
-        AIRSPACE_TYPE.MILITARY_CONTROLLED_TOWER_REGION,
-      ],
-      controlled,
-      [
-        'match',
-        ['get', 'icaoClass'],
-        [AIRSPACE_CLASS.A, AIRSPACE_CLASS.B, AIRSPACE_CLASS.C, AIRSPACE_CLASS.D, AIRSPACE_CLASS.E],
-        controlled,
-        other,
-      ],
-    ];
-  }
-
-  const AIRSPACE_FILL_PAINT: FillPaint = {
-    'fill-color': airspaceStyleValue(
-      COLOR_BLUE_600,
+      dottedTypes,
+      ['literal', [0, 3]],
+      AIRSPACE_TYPE.TRANSPONDER_MANDATORY_ZONE,
+      ['literal', [4, 3, 1, 3]],
+      blueZoneTypes,
+      ['literal', [3, 3]],
+      longDashTypes,
+      ['literal', [4, 3]],
+      ['literal', [1, 0]],
+    ],
+  };
+  const bandPaint: NonNullable<LineLayerSpecification['paint']> = {
+    'line-color': [
+      'match',
+      ['get', 'type'],
+      AIRSPACE_TYPE.CONTROLLED_TOWER_REGION,
       COLOR_RED_600,
-      COLOR_VIOLET_600,
-      COLOR_GREEN_600,
-      COLOR_SLATE_500,
-    ),
-    'fill-opacity': airspaceStyleValue(0.12, 0.18, 0.14, 0.12, 0.08),
+      AIRSPACE_TYPE.GLIDING_SECTOR,
+      COLOR_YELLOW_400,
+      blueZoneTypes,
+      COLOR_BLUE_600,
+      outlineColor,
+    ],
+    'line-opacity': ['match', ['get', 'type'], AIRSPACE_TYPE.GLIDING_SECTOR, 0.25, 0.2],
+    'line-width': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      6,
+      0,
+      8,
+      ['match', ['get', 'type'], AIRSPACE_TYPE.GLIDING_SECTOR, 10, 7],
+    ],
+    'line-offset': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      6,
+      0,
+      8,
+      ['match', ['get', 'type'], AIRSPACE_TYPE.GLIDING_SECTOR, 5, 3.5],
+    ],
   };
-
-  const AIRSPACE_OUTLINE_PAINT: LinePaint = {
-    'line-color': airspaceStyleValue(
-      COLOR_BLUE_700,
-      COLOR_RED_700,
-      COLOR_VIOLET_700,
-      COLOR_GREEN_700,
-      COLOR_SLATE_600,
-    ),
-    'line-width': airspaceStyleValue(1.5, 2, 1.5, 1.5, 1),
-  };
-
-  let { data, beforeId }: Props = $props();
 </script>
 
 <GeoJSONSource id="airspace" maxzoom={24} {data}>
   <FillLayer id="airspace-hit" {beforeId} paint={{ 'fill-opacity': 0 }} />
-  <FillLayer id="airspace-fill" {beforeId} paint={AIRSPACE_FILL_PAINT} />
-  <LineLayer id="airspace-outline" {beforeId} paint={AIRSPACE_OUTLINE_PAINT} />
+  <LineLayer
+    id="airspace-inner-band"
+    {beforeId}
+    filter={[
+      'any',
+      ['in', ['get', 'type'], ['literal', [...zoneBandTypes, ...restrictedBandTypes]]],
+      ['in', ['get', 'icaoClass'], ['literal', [0, 1, 2, 3]]],
+    ]}
+    layout={{
+      'line-sort-key': ['match', ['get', 'type'], restrictedBandTypes, 2, zoneBandTypes, 0, 1],
+    }}
+    paint={bandPaint}
+  />
+  <LineLayer
+    id="airspace-outline"
+    {beforeId}
+    layout={{
+      'line-cap': ['match', ['get', 'type'], dottedTypes, 'round', 'butt'],
+      'line-sort-key': [
+        'match',
+        ['get', 'type'],
+        dottedTypes,
+        4,
+        AIRSPACE_TYPE.TRANSPONDER_MANDATORY_ZONE,
+        3,
+        blueZoneTypes,
+        2,
+        longDashTypes,
+        1,
+        0,
+      ],
+    }}
+    paint={outlinePaint}
+  />
 </GeoJSONSource>

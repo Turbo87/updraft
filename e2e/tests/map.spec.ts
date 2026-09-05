@@ -163,17 +163,17 @@ test('renders active airspace below traffic and ownship', async ({ page }) => {
   });
 
   await expect
-    .poll(() => readAirspaceMapState(page), { message: 'map to render both airspace layers' })
+    .poll(() => readAirspaceMapState(page), { message: 'map to render the airspace layers' })
     .toEqual({
       featureCount: 2,
       layerOrder: [
-        'airspace-fill',
+        'airspace-inner-band',
         'airspace-outline',
         'traffic-fixed',
         'traffic-directional',
         'ownship-symbol',
       ],
-      renderedLayerIds: ['airspace-fill', 'airspace-outline'],
+      renderedLayerIds: ['airspace-inner-band', 'airspace-outline'],
     });
 });
 
@@ -825,7 +825,7 @@ async function readAirspaceMapState(page: Page): Promise<AirspaceMapState | null
     let data = await source.getData();
     if (data.type !== 'FeatureCollection') return null;
 
-    let airspaceLayerIds = ['airspace-fill', 'airspace-outline'];
+    let airspaceLayerIds = ['airspace-inner-band', 'airspace-outline'];
     if (airspaceLayerIds.some((id) => !map.getLayer(id))) return null;
 
     let relevantLayerIds = new Set([

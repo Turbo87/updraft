@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { page, userEvent } from 'vitest/browser';
 
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -33,6 +34,19 @@ it('renders waypoint types and removes the source when all files are removed', a
     expect(mapState.map?.isSourceLoaded('waypoints')).toBe(true);
   });
   let map = mapState.map!;
+  expect(map.getPaintProperty('waypoint-hit', 'circle-opacity')).toBe(0);
+  await userEvent.keyboard('d');
+  let checkbox = page.getByRole('checkbox', { name: 'Traffic and waypoint hit areas' });
+  await checkbox.click();
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0.2);
+    expect(map.getPaintProperty('waypoint-hit', 'circle-opacity')).toBe(0.2);
+  });
+  await checkbox.click();
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0);
+    expect(map.getPaintProperty('waypoint-hit', 'circle-opacity')).toBe(0);
+  });
   expect(
     new Set(map.querySourceFeatures('waypoints').map((feature) => feature.properties.kind)),
   ).toEqual(new Set([2, 3, 7]));

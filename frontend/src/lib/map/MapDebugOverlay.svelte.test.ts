@@ -62,19 +62,19 @@ describe('MapDebugOverlay.svelte', () => {
     await expect.element(checkbox).toBeChecked();
   });
 
-  it('offers an independent traffic-hit-area checkbox once visible', async () => {
+  it('offers an independent hit-area checkbox once visible', async () => {
     render(MapDebugOverlay, { map: undefined, instruments: emptyInstruments, units: metricUnits });
 
     await userEvent.keyboard('d');
 
-    let trafficHitAreas = page.getByRole('checkbox', { name: 'Traffic hit areas' });
+    let hitAreas = page.getByRole('checkbox', { name: 'Traffic and waypoint hit areas' });
     let tileBoundaries = page.getByRole('checkbox', { name: 'Tile boundaries' });
-    await expect.element(trafficHitAreas).not.toBeChecked();
+    await expect.element(hitAreas).not.toBeChecked();
     await expect.element(tileBoundaries).not.toBeChecked();
 
-    await trafficHitAreas.click();
+    await hitAreas.click();
 
-    await expect.element(trafficHitAreas).toBeChecked();
+    await expect.element(hitAreas).toBeChecked();
     await expect.element(tileBoundaries).not.toBeChecked();
   });
 

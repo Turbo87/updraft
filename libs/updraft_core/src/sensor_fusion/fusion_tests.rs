@@ -128,6 +128,8 @@ fn stale_airspeed_does_not_stale_wind() {
 #[test]
 fn airspeed_source_change_after_outage_resets_wind() {
     let mut fusion = fusion_with_converged_wind();
+    let mut expected = assert_some!(assert_some!(fusion.instruments()).wind);
+    expected.stale = true;
     fusion.update(FusionInputs {
         gps: DomainState::Current(selected(59_000, gps(59))),
         true_airspeed: DomainState::Unavailable,
@@ -143,7 +145,26 @@ fn airspeed_source_change_after_outage_resets_wind() {
     });
 
     let wind = assert_some!(assert_some!(fusion.instruments()).wind);
-    assert!(wind.stale);
+    assert_eq!(wind, expected);
+}
+
+#[test]
+fn gps_discontinuities_retain_the_last_wind() {
+    let source = SourceId::External(ExternalDeviceId(1));
+    let replacement = selected_from(source, 60_000, gps(60));
+    for gps in [DomainState::Unavailable, DomainState::Current(replacement)] {
+        let mut fusion = fusion_with_converged_wind();
+        let mut expected = assert_some!(assert_some!(fusion.instruments()).wind);
+        expected.stale = true;
+        fusion.update(FusionInputs {
+            gps,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Unavailable,
+        });
+
+        let wind = assert_some!(assert_some!(fusion.instruments()).wind);
+        assert_eq!(wind, expected);
+    }
 }
 
 #[test]

@@ -121,10 +121,17 @@ impl SensorFusion {
         if pressure_current {
             self.update_pressure_altitude(inputs.pressure_altitude);
         }
+        if !matches!(self.derived_air_speed, SignalState::Current(_)) {
+            self.vario.mark_stale();
+            self.netto.mark_stale();
+        }
     }
 
     fn update_true_airspeed(&mut self, state: DomainState<Speed>) {
         let DomainState::Current(selected) = state else {
+            if self.air_speed.is_none() {
+                return;
+            }
             self.estimator.clear_air_speed();
             self.vario.mark_stale();
             self.netto.mark_stale();

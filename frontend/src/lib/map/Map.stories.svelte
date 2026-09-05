@@ -160,7 +160,7 @@
       let featureCount = data && 'features' in data ? data.features.length : 0;
 
       expect(featureCount).toBe(6);
-      expect(map?.getLayer('airspace-fill')).toBeDefined();
+      expect(map?.getLayer('airspace-inner-band')).toBeDefined();
       expect(map?.getLayer('airspace-outline')).toBeDefined();
     });
   }}

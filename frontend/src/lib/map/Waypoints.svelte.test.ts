@@ -36,6 +36,11 @@ it('renders waypoint types and removes the source when all files are removed', a
   expect(
     new Set(map.querySourceFeatures('waypoints').map((feature) => feature.properties.kind)),
   ).toEqual(new Set([2, 3, 7]));
+  let icons = map.getLayoutProperty('waypoint-symbols', 'icon-image') as unknown[];
+  for (let kind of [2, 4, 5]) {
+    expect(icons[icons.indexOf(kind) + 1]).toBe('updraft-sdf:waypoint-airfield');
+  }
+  expect(map.hasImage('updraft-sdf:waypoint-airfield')).toBe(true);
   expect(map.getLayer('waypoint-runways')).toBeDefined();
   await vi.waitFor(() => {
     let kinds = map

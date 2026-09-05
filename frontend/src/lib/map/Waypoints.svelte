@@ -15,10 +15,10 @@
   const sprites = [
     'unknown',
     'waypoint-point',
-    'waypoint-grass-airfield',
+    'waypoint-airfield',
     'outlanding-bg',
-    'waypoint-gliding-airfield',
-    'waypoint-solid-airfield',
+    'waypoint-airfield',
+    'waypoint-airfield',
     'waypoint-mountain-pass',
     'waypoint-mountain-top',
     'waypoint-mast',

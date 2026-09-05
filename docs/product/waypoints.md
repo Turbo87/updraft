@@ -27,7 +27,8 @@ sources remain usable.
 
 ## Map and details
 
-Each CUP type has a map symbol. Landable symbols remain visible at wide zoom
+Grass, solid, and gliding airfields share a plain circle symbol. Other CUP
+types have distinct symbols. Landable symbols remain visible at wide zoom
 levels. Other symbols appear from zoom 10. Labels appear from zoom 8 for
 landables and zoom 10 for other points. Labels avoid overlap and give priority
 to landables. A landable with a runway direction shows an oriented runway.

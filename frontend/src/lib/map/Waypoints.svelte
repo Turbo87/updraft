@@ -37,11 +37,21 @@
   const visible: FilterSpecification = [
     'any',
     ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
-    ['>=', ['zoom'], 8],
+    ['>=', ['zoom'], 7],
   ];
   const layout: NonNullable<SymbolLayerSpecification['layout']> = {
     'icon-image': iconImage,
-    'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.28, 8, 0.56],
+    'icon-size': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      6,
+      ['match', ['get', 'kind'], LANDABLE_KINDS, 0.28, 0.16],
+      7,
+      ['match', ['get', 'kind'], LANDABLE_KINDS, 0.42, 0.16],
+      8,
+      0.56,
+    ],
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
   };
@@ -62,7 +72,7 @@
     id="waypoint-dots"
     beforeId="traffic-fixed"
     minzoom={6}
-    maxzoom={8}
+    maxzoom={7}
     filter={['!', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]]]}
     paint={{
       'circle-radius': 2,

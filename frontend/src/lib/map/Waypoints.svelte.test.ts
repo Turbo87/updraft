@@ -50,7 +50,7 @@ it('renders waypoint types and removes the source when all files are removed', a
   });
   expect(map.getLayoutProperty('waypoint-runways', 'icon-rotation-alignment')).toBe('map');
   expect(map.getLayer('waypoint-labels')).toBeDefined();
-  map.jumpTo({ zoom: 7 });
+  map.jumpTo({ zoom: 6.99 });
   await vi.waitFor(() => {
     let kinds = map
       .queryRenderedFeatures({ layers: ['waypoint-symbols'] })
@@ -65,7 +65,7 @@ it('renders waypoint types and removes the source when all files are removed', a
     ).toEqual(new Set([7]));
     expect(map.queryRenderedFeatures({ layers: ['waypoint-labels'] })).toEqual([]);
   });
-  map.jumpTo({ zoom: 8 });
+  map.jumpTo({ zoom: 7 });
   await vi.waitFor(() => {
     expect(map.queryRenderedFeatures({ layers: ['waypoint-dots'] })).toEqual([]);
     expect(

@@ -7,7 +7,7 @@ use super::vario::Vario;
 use super::wind::{Wind, WindFilter};
 use std::time::Duration;
 use updraft_geo::LatLon;
-use updraft_polar::GlidePolar;
+use updraft_polar::{GlidePolar, isa_density_ratio};
 use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
 
 const GRAVITY: f64 = 9.80665;
@@ -50,6 +50,8 @@ pub struct Estimate {
     pub altitude: Option<MslAltitude>,
     pub bank_angle: Option<Angle>,
     pub netto: Option<Speed>,
+    /// Netto minus density-corrected straight-flight minimum sink. Positive means climbing.
+    pub relative_vario: Option<Speed>,
 }
 
 /// Derives flight values from timestamped physical measurements.
@@ -431,6 +433,15 @@ impl Estimator {
             .measured_air_speed
             .map(|sample| sample.speed)
             .or_else(|| self.inferred_air_speed.current_raw_at(self.ground?.time));
+        let netto = self.isa_altitude_sample.and_then(|(time, altitude)| {
+            let air_speed = self.air_speed_at(time)?;
+            Some(vario? + self.sink_rate(altitude, air_speed)?)
+        });
+        let relative_vario = netto.and_then(|netto| {
+            let (_, altitude) = self.isa_altitude_sample?;
+            let minimum_sink = self.polar?.min_sink_rate() / isa_density_ratio(altitude).sqrt();
+            Some(netto - minimum_sink)
+        });
         Estimate {
             raw_vertical_speed,
             vertical_speed,
@@ -440,12 +451,8 @@ impl Estimator {
             heading: self.heading(),
             altitude: self.altitude_msl(),
             bank_angle: air_speed.and_then(|speed| self.bank_angle(speed)),
-            netto: self.isa_altitude_sample.and_then(|(time, altitude)| {
-                let vertical_speed = vario?;
-                let air_speed = self.air_speed_at(time)?;
-                let sink_rate = self.sink_rate(altitude, air_speed)?;
-                Some(vertical_speed + sink_rate)
-            }),
+            netto,
+            relative_vario,
         }
     }
 }
@@ -1338,6 +1345,48 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn relative_vario_subtracts_density_corrected_minimum_sink() {
+        let configured = polar()
+            .with_total_mass(Mass::from_kilograms(600.))
+            .with_bugs(0.1);
+        for polar in [polar(), configured] {
+            for altitude in [0., 3000.] {
+                for turn_rate in [0., 0.3] {
+                    let mut estimator = estimator_with_polar(polar);
+                    for second in 0..60 {
+                        let time = Duration::from_secs(second);
+                        add_air_speed(&mut estimator, time, LEVEL_SPEED);
+                        estimator.turn_rate = Some(turn_rate);
+                        assert_eq!(
+                            estimator.pressure_altitude(time, meters(altitude)),
+                            Accepted
+                        );
+                    }
+                    let state = estimator.estimate();
+                    let minimum_sink = polar.min_sink_rate()
+                        / isa_density_ratio(Length::from_meters(altitude)).sqrt();
+                    assert_eq!(
+                        assert_some!(state.relative_vario),
+                        assert_some!(state.netto) - minimum_sink,
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn relative_vario_requires_netto_inputs() {
+        let mut estimator = estimator_with_polar(polar());
+        assert_none!(estimator.estimate().relative_vario);
+        fly_level(&mut estimator, None);
+        assert_none!(estimator.estimate().relative_vario);
+
+        let mut estimator = Estimator::new();
+        fly_level(&mut estimator, Some(LEVEL_SPEED));
+        assert_none!(estimator.estimate().relative_vario);
     }
 
     #[test]

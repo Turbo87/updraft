@@ -30,7 +30,7 @@ must state whether its behavior is current or planned.
 - [Airspace](product/airspace.md) defines import, canonical data, storage,
   resources, and current map presentation.
 - [Waypoints](product/waypoints.md) defines CUP import, independent sources,
-  map symbols, and waypoint details.
+  map symbols, arrival margins, and waypoint details.
 - [Basemap](product/basemap.md) defines offline Enroute files, tile lookup,
   zoom limits, and attribution.
 - [Terrain](product/terrain.md) defines offline elevation tiles, hillshade,

@@ -4,4 +4,4 @@ expression: mutation_effects(&effects)
 ---
 close ExternalDeviceId([ID])
 external devices []
-persist settings SettingsSnapshot { settings: Settings { locale: None, units: UnitSettings { altitude: Meters, distance: Kilometers, speed: KilometersPerHour, vertical_speed: MetersPerSecond } }, external_devices: [] }
+persist settings SettingsSnapshot { settings: Settings { locale: None, polar: PolarId("LS 8"), arrival_reserve: ArrivalReserve(200.0), units: UnitSettings { altitude: Meters, distance: Kilometers, speed: KilometersPerHour, vertical_speed: MetersPerSecond } }, external_devices: [] }

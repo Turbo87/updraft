@@ -8,6 +8,18 @@ import { FakeClient } from './fake';
 
 type ExternalDevicesTopic = Extract<Topic, { topic: 'externalDevices' }>;
 
+it('delivers prepared arrival resources until the subscription closes', async () => {
+  let client = new FakeClient();
+  let listener = vi.fn();
+  let subscription = client.subscribeArrivals([0, 0, 1, 1], listener);
+  let update = { generation: 1, url: '/arrivals.geojson' };
+  client.emitArrivals(update);
+  expect(listener).toHaveBeenCalledExactlyOnceWith(update);
+  await subscription.close();
+  client.emitArrivals(update);
+  expect(listener).toHaveBeenCalledTimes(1);
+});
+
 function externalDeviceTopics(topics: Topic[]): ExternalDevicesTopic[] {
   return topics.filter((topic): topic is ExternalDevicesTopic => topic.topic === 'externalDevices');
 }
@@ -44,6 +56,103 @@ function instruments(trackDegrees: number): Topic {
 }
 
 describe('FakeClient', () => {
+  it('validates ballast and retains the other flight controls', async () => {
+    let client = new FakeClient();
+    await client.setMacCready(1.5);
+    await client.setBugs(10);
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+    for (let value of [-1, NaN, Infinity]) {
+      await expect(client.setBallast(value)).rejects.toThrow('Ballast');
+    }
+    await client.setBallast(0);
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setBallast(100.5);
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'glidePerformance',
+      value: { macCready: 1.5, bugs: 10, ballast: 100.5 },
+    });
+  });
+  it('validates bugs and retains MC when publishing a change', async () => {
+    let client = new FakeClient();
+    await client.setMacCready(1.5);
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+    for (let value of [-1, 100, NaN, Infinity]) {
+      await expect(client.setBugs(value)).rejects.toThrow('Bugs');
+    }
+    await client.setBugs(0);
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setBugs(10.5);
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'glidePerformance',
+      value: { macCready: 1.5, bugs: 10.5, ballast: 0 },
+    });
+  });
+
+  it('validates MC and publishes only changed flight controls', async () => {
+    let client = new FakeClient();
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+    for (let value of [-1, NaN, Infinity]) {
+      await expect(client.setMacCready(value)).rejects.toThrow('MacCready');
+    }
+    await client.setMacCready(0);
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setMacCready(1.5);
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'glidePerformance',
+      value: { macCready: 1.5, bugs: 0, ballast: 0 },
+    });
+  });
+
+  it('validates reserve changes and publishes only changed settings', async () => {
+    let client = new FakeClient();
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+    for (let reserve of [-1, NaN, Infinity]) {
+      await expect(client.setArrivalReserve(reserve)).rejects.toThrow('Arrival reserve');
+    }
+    await client.setArrivalReserve(200);
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setArrivalReserve(304.8);
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'settings',
+      value: {
+        locale: null,
+        polar: 'LS 8',
+        arrivalReserve: 304.8,
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
+    });
+  });
+
+  it('validates polar changes and publishes only changed settings', async () => {
+    let client = new FakeClient();
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+
+    await expect(client.getPolars()).resolves.toEqual(['LS 8', 'LS 8-18']);
+    await expect(client.setPolar('Unknown glider')).rejects.toThrow('Unknown polar');
+    await client.setPolar('LS 8');
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setPolar('LS 8-18');
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'settings',
+      value: {
+        locale: null,
+        polar: 'LS 8-18',
+        arrivalReserve: 200,
+        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+      },
+    });
+  });
+
   it('cancels native airspace import in browser mode', async () => {
     let client = new FakeClient();
 
@@ -93,6 +202,8 @@ describe('FakeClient', () => {
       topic: 'settings',
       value: {
         locale: 'de',
+        polar: 'LS 8',
+        arrivalReserve: 200,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -128,7 +239,9 @@ describe('FakeClient', () => {
       topic: 'settings',
       value: {
         locale: 'de',
+        polar: 'LS 8',
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
+        arrivalReserve: 200,
       },
     });
   });

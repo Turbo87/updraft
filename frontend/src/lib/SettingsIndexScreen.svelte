@@ -16,6 +16,12 @@
 <ScreenScaffold backHref="/" backLabel={m.back_to_flight_view()} title={m.settings_heading()}>
   <nav aria-label={m.settings_heading()}>
     <ListRow
+      href="/settings/flight-controls"
+      icon="i-mdi-tune"
+      label={m.flight_controls_heading()}
+      size="large"
+    />
+    <ListRow
       href="/settings/language"
       icon="i-mdi-translate"
       label={m.language_label()}
@@ -29,6 +35,7 @@
       size="large"
     />
     <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
+    <ListRow href="/settings/glide" icon="i-mdi-airplane" label={m.glide_heading()} size="large" />
     <ListRow
       href="/settings/airspace"
       icon="i-mdi-vector-square"

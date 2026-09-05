@@ -10,8 +10,8 @@ use updraft_airspace::AirspaceImportError;
 use updraft_core::{
     ActivateAirspaceDataset, AddExternalDevice, ClearAirspaceDataset, ConnectionSpec,
     DeleteExternalDevice, EditExternalDevice, ExternalDeviceId, InvalidExternalDeviceOrder,
-    ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetUnits, Topic, UnitSettings,
-    UnknownExternalDevice,
+    ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Topic,
+    UnitSettings, UnknownExternalDevice,
 };
 
 pub struct AirspaceCommandState {
@@ -234,6 +234,66 @@ pub async fn set_locale(
 }
 
 #[tauri::command]
+pub fn get_polars() -> Vec<updraft_core::PolarId> {
+    updraft_core::PolarId::all().collect()
+}
+
+#[tauri::command]
+pub async fn set_bugs(
+    bugs: updraft_core::Bugs,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetBugs { bugs })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
+pub async fn set_ballast(
+    ballast: updraft_core::Ballast,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetBallast { ballast })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
+pub async fn set_mac_cready(
+    mac_cready: updraft_core::MacCready,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetMacCready { mac_cready })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
+pub async fn set_arrival_reserve(
+    reserve: updraft_core::ArrivalReserve,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetArrivalReserve { reserve })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
+pub async fn set_polar(
+    polar: updraft_core::PolarId,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(SetPolar { polar })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_units(
     units: UnitSettings,
     handle: tauri::State<'_, DriverHandle>,
@@ -366,6 +426,12 @@ mod tests {
                 bonded_bluetooth_devices,
                 set_locale,
                 set_units,
+                get_polars,
+                set_mac_cready,
+                set_bugs,
+                set_ballast,
+                set_arrival_reserve,
+                set_polar,
                 add_external_device,
                 delete_external_device,
                 reorder_external_devices,
@@ -477,6 +543,89 @@ mod tests {
             .expect("the bonded-device result should deserialize");
 
         assert_eq!(response, json!({ "status": "unsupported" }));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn arrival_reserve_command_accepts_nonnegative_meters() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for reserve in [0.0, 200.0, 304.8] {
+            let input = request("set_arrival_reserve", json!({ "reserve": reserve }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for reserve in [json!(-1), json!(null), json!("200")] {
+            let input = request("set_arrival_reserve", json!({ "reserve": reserve }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn maccready_command_validates_meters_per_second() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for mac_cready in [0.0, 1.5] {
+            let input = request("set_mac_cready", json!({ "macCready": mac_cready }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for mac_cready in [json!(-1), json!(null), json!("1.5")] {
+            let input = request("set_mac_cready", json!({ "macCready": mac_cready }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn bugs_command_validates_performance_loss_percent() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for bugs in [0.0, 10.5, 99.9] {
+            let input = request("set_bugs", json!({ "bugs": bugs }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for bugs in [json!(-1), json!(100), json!(null), json!("10")] {
+            let input = request("set_bugs", json!({ "bugs": bugs }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn ballast_command_validates_litres() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for ballast in [0.0, 100.5] {
+            let input = request("set_ballast", json!({ "ballast": ballast }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for ballast in [json!(-1), json!(null), json!("100")] {
+            let input = request("set_ballast", json!({ "ballast": ballast }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn polar_commands_validate_catalog_names() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        let catalog = tauri::test::get_ipc_response(&webview, request("get_polars", json!({})))
+            .expect("polar catalog should be available")
+            .deserialize::<Vec<String>>()
+            .unwrap();
+        assert!(catalog.contains(&"LS 8".to_owned()));
+        assert!(catalog.contains(&"LS 8-18".to_owned()));
+        let valid = request("set_polar", json!({ "polar": "LS 8-18" }));
+        claims::assert_ok!(tauri::test::get_ipc_response(&webview, valid));
+        let invalid = request("set_polar", json!({ "polar": "Unknown glider" }));
+        let error = claims::assert_err!(tauri::test::get_ipc_response(&webview, invalid));
+        assert!(error.as_str().unwrap().contains("Unknown polar"));
     }
 
     #[tokio::test(flavor = "multi_thread")]

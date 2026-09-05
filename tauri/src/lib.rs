@@ -87,9 +87,18 @@ pub fn run() {
             ipc::import_airspace,
             waypoints::commands::import_waypoints,
             waypoints::commands::remove_waypoints,
+            waypoints::arrival_stream::start_arrivals,
+            waypoints::arrival_stream::update_arrival_viewport,
+            waypoints::arrival_stream::stop_arrivals,
             ipc::remove_airspace,
             ipc::set_locale,
             ipc::set_units,
+            ipc::get_polars,
+            ipc::set_mac_cready,
+            ipc::set_bugs,
+            ipc::set_ballast,
+            ipc::set_arrival_reserve,
+            ipc::set_polar,
             ipc::add_external_device,
             ipc::delete_external_device,
             ipc::reorder_external_devices,
@@ -158,6 +167,7 @@ pub fn run() {
                 waypoint_storage,
             ));
             app.manage(handle);
+            app.manage(waypoints::arrival_stream::ArrivalStreams::default());
             app.manage(file_picker);
             app.manage(ipc::AirspaceCommandState::new(airspace_storage));
 

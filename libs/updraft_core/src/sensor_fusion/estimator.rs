@@ -117,7 +117,6 @@ impl Estimator {
         }
     }
 
-    #[cfg(test)]
     pub fn set_polar(&mut self, polar: GlidePolar) {
         self.polar = Some(polar);
     }
@@ -337,13 +336,9 @@ impl Estimator {
 
     fn sink_rate(&self, altitude: Length, air_speed: Speed) -> Option<Speed> {
         let polar = self.polar.as_ref()?;
-        let density = isa_density_ratio(altitude);
-        let root_density = density.sqrt();
         let bank_angle = self.bank_angle(air_speed).unwrap_or(Angle::ZERO);
         let load = 1. / bank_angle.cos();
-        let root_load = load.sqrt();
-        let equivalent = air_speed * root_density / root_load;
-        Some(polar.sink_rate(equivalent) * load * root_load / root_density)
+        Some(polar.sink_rate_at_altitude(altitude, air_speed, load))
     }
 
     fn heading(&self) -> Option<Angle> {
@@ -455,14 +450,6 @@ impl Estimator {
     }
 }
 
-fn isa_density_ratio(altitude: Length) -> f64 {
-    const LAPSE_RATE: f64 = 2.255_77e-5;
-    const EXPONENT: f64 = 4.255_88;
-
-    let temperature_ratio = (1. - LAPSE_RATE * altitude.as_meters()).max(0.);
-    temperature_ratio.powf(EXPONENT)
-}
-
 #[cfg(test)]
 mod tests {
     use super::FixAcceptance::{
@@ -474,6 +461,7 @@ mod tests {
     use crate::sensor_fusion::circling::FULL_CIRCLE_VARIANCE;
     use approx::assert_abs_diff_eq;
     use claims::{assert_lt, assert_none, assert_some};
+    use updraft_polar::isa_density_ratio;
     use updraft_units::{Length, Mass};
 
     const GLIDER_TYPE: &str = "JS-3-18m";
@@ -1324,6 +1312,35 @@ mod tests {
     }
 
     #[test]
+    fn density_and_turn_load_scale_both_polar_axes() {
+        let configured = polar()
+            .with_total_mass(Mass::from_kilograms(600.))
+            .with_bugs(0.1);
+        for polar in [polar(), configured] {
+            for altitude in [-500., 0., 3000., 5000.] {
+                let altitude = Length::from_meters(altitude);
+                let root_density = isa_density_ratio(altitude).sqrt();
+                for load in [1_f64, 2.] {
+                    let root_load = load.sqrt();
+                    for speed in [90., 150., 250.] {
+                        let equivalent = Speed::from_kilometers_per_hour(speed);
+                        let true_speed = equivalent * root_load / root_density;
+                        let mut estimator = estimator_with_polar(polar);
+                        let tangent = (load * load - 1.).sqrt();
+                        let turn_rate = tangent * GRAVITY / true_speed.as_meters_per_second();
+                        estimator.turn_rate = Some(turn_rate);
+
+                        let sink = assert_some!(estimator.sink_rate(altitude, true_speed));
+                        let reference_sink = polar.sink_rate(equivalent);
+                        let expected = reference_sink * load * root_load / root_density;
+                        assert_abs_diff_eq!(sink, expected, epsilon = 1e-12);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn netto_requires_a_polar_and_airspeed() {
         let mut without_polar = Estimator::new();
         let mut without_airspeed = estimator_with_polar(polar());
@@ -1478,18 +1495,6 @@ mod tests {
         // The GNSS altitude is already on the far side of the datum
         // offset, so expiry must not apply that offset a second time.
         assert_eq!(after, before);
-    }
-
-    #[test]
-    fn the_isa_model_matches_the_published_density_ratios() {
-        let at_1000m = isa_density_ratio(Length::from_meters(1000.));
-        let at_3000m = isa_density_ratio(Length::from_meters(3000.));
-        let at_5000m = isa_density_ratio(Length::from_meters(5000.));
-
-        assert_abs_diff_eq!(isa_density_ratio(Length::ZERO), 1., epsilon = 1e-9);
-        assert_abs_diff_eq!(at_1000m, 0.9075, epsilon = 0.0005);
-        assert_abs_diff_eq!(at_3000m, 0.7423, epsilon = 0.0005);
-        assert_abs_diff_eq!(at_5000m, 0.6012, epsilon = 0.0005);
     }
 
     #[test]

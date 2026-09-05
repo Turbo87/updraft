@@ -1,5 +1,5 @@
-use crate::PolarCoefficients;
-use updraft_units::{Mass, Speed};
+use crate::{PolarCoefficients, isa_density_ratio};
+use updraft_units::{Length, Mass, Speed};
 
 /// A glider's polar, adjusted for the current wing loading and bug
 /// contamination.
@@ -109,6 +109,24 @@ impl GlidePolar {
         self.adjusted.sink_rate(air_speed)
     }
 
+    /// The positive sink rate at true airspeed, corrected for ISA density and turn load.
+    ///
+    /// The polar's airspeed is equivalent airspeed at sea-level density.
+    /// Use pressure altitude for the density estimate when it is available.
+    /// Inputs must be finite, with positive ISA density and a load factor of
+    /// at least 1. Straight flight uses a load factor of 1.
+    pub fn sink_rate_at_altitude(
+        &self,
+        altitude: Length,
+        true_air_speed: Speed,
+        load_factor: f64,
+    ) -> Speed {
+        let root_density = isa_density_ratio(altitude).sqrt();
+        let root_load = load_factor.sqrt();
+        let equivalent = true_air_speed * root_density / root_load;
+        self.sink_rate(equivalent) * load_factor * root_load / root_density
+    }
+
     /// The glide ratio at the given airspeed in still air.
     pub fn glide_ratio(&self, air_speed: Speed) -> f64 {
         air_speed / self.sink_rate(air_speed)
@@ -216,6 +234,18 @@ mod tests {
         assert_eq!(polar.coefficients(), polar.ideal_coefficients());
         assert_abs_diff_eq!(polar.best_glide_ratio(), 43.6, epsilon = 0.1);
         assert_abs_diff_eq!(polar.best_glide_speed(), kmh(111.6), epsilon = 0.1);
+    }
+
+    #[test]
+    fn sea_level_straight_flight_uses_the_configured_polar() {
+        let polar = ls8()
+            .with_total_mass(Mass::from_kilograms(450.))
+            .with_bugs(0.1);
+        for speed in [90., 150., 250.] {
+            let speed = kmh(speed);
+            let sink = polar.sink_rate_at_altitude(Length::ZERO, speed, 1.);
+            assert_eq!(sink, polar.sink_rate(speed));
+        }
     }
 
     #[test]

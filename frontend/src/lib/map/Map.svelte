@@ -3,6 +3,7 @@
   import 'svelte-maplibre-gl/vite';
 
   import type { GeoJSONSourceSpecification, MapEventType, MapMouseEvent } from 'maplibre-gl';
+  import type { UpdraftClient } from '$lib/client';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
@@ -15,6 +16,7 @@
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import Airspace from './Airspace.svelte';
+  import Arrivals from './Arrivals.svelte';
   import { BASEMAP_MIN_ZOOM, getBasemapStyle } from './basemap-style';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
@@ -31,6 +33,7 @@
 
   const FOLLOW_DURATION_MS = 300;
   let {
+    client,
     airspace,
     instruments,
     mapState,
@@ -42,6 +45,7 @@
     waypoints = { generation: 0, sources: [] },
     onInspect,
   }: {
+    client?: UpdraftClient;
     airspace: AirspaceStatus;
     waypoints?: WaypointStatus;
     testWaypointData?: GeoJSONSourceSpecification['data'];
@@ -56,6 +60,7 @@
 
   let spritesLoaded = $state(false);
   let showHitAreas = $state(false);
+  let arrivalsReady = $state(false);
   const map = $derived(mapState.map);
   const gps = $derived(instruments.gps);
   const position = $derived(gps?.position ?? null);
@@ -91,9 +96,16 @@
     }
   }
 
+  function setArrivalsReady(ready: boolean) {
+    arrivalsReady = ready;
+  }
+
   function handleSourceError(event: MapEventType['error']) {
     if ('sourceId' in event && event.sourceId === 'waypoints') {
       mapState.waypointSourceStatus = 'failed';
+    }
+    if ('sourceId' in event && event.sourceId === 'arrivals') {
+      console.error('Failed to load arrival resource', event.error);
     }
   }
 
@@ -113,13 +125,6 @@
   function resumeFollowing() {
     map?.stop();
     mapState.followMode = true;
-  }
-
-  function loadSprites() {
-    if (!map) return;
-
-    map.addSprite('updraft-sdf', `${window.location.origin}/sprites/updraft-sdf`);
-    spritesLoaded = true;
   }
 
   function inspectMapPosition(event: MapMouseEvent) {
@@ -147,7 +152,9 @@
     onerror={handleSourceError}
     onclick={inspectMapPosition}
     ondragstart={enterManualMode}
-    onload={loadSprites}
+    onload={() => {
+      spritesLoaded = true;
+    }}
   >
     {#if !testMode}
       <Terrain />
@@ -161,7 +168,16 @@
         <Airspace data={airspaceData} beforeId="traffic-fixed" />
       {/if}
       {#if waypointData}
-        <Waypoints data={waypointData} {showHitAreas} />
+        <Waypoints data={waypointData} {showHitAreas} showLandables={!arrivalsReady} />
+        {#if client && map}
+          <Arrivals
+            {client}
+            {map}
+            generation={waypoints.generation}
+            altitudeUnit={units.altitude}
+            onReady={setArrivalsReady}
+          />
+        {/if}
       {/if}
     {/if}
   </MapLibre>

@@ -1,0 +1,170 @@
+<script lang="ts">
+  import type { ExpressionSpecification, SymbolLayerSpecification } from 'maplibre-gl';
+  import type { AltitudeUnit } from '$lib/units';
+
+  import { SymbolLayer } from 'svelte-maplibre-gl';
+
+  import { convertAltitude } from '$lib/units';
+  import { waypointSymbols } from '$lib/waypoint-symbols';
+  import { FONT_REGULAR } from './basemap-style';
+  import {
+    COLOR_AMBER_500,
+    COLOR_GREEN_700,
+    COLOR_RED_700,
+    COLOR_SLATE_700,
+    COLOR_VIOLET_700,
+  } from './colors.generated';
+
+  let {
+    id = 'waypoint',
+    filter = true,
+    showLandables = true,
+    arrivalUnit,
+  }: {
+    id?: string;
+    filter?: ExpressionSpecification | boolean;
+    showLandables?: boolean;
+    arrivalUnit?: AltitudeUnit;
+  } = $props();
+
+  const LABEL_SIZE = 12;
+  const LABEL_PADDING = 8;
+  const WAYPOINT_KIND = {
+    UNKNOWN: 0,
+    AIRFIELD_GRASS: 2,
+    OUTLANDING: 3,
+    GLIDING_AIRFIELD: 4,
+    AIRFIELD_SOLID: 5,
+  } as const;
+  const LANDABLE_KINDS = [
+    WAYPOINT_KIND.AIRFIELD_GRASS,
+    WAYPOINT_KIND.OUTLANDING,
+    WAYPOINT_KIND.GLIDING_AIRFIELD,
+    WAYPOINT_KIND.AIRFIELD_SOLID,
+  ];
+  const iconImage: ExpressionSpecification = [
+    'match',
+    ['get', 'kind'],
+    WAYPOINT_KIND.UNKNOWN,
+    'updraft-sdf:unknown',
+    ...waypointSymbols.slice(1).flatMap(({ sprite }, kind) => [kind + 1, `updraft-sdf:${sprite}`]),
+    'updraft-sdf:unknown',
+  ];
+  const selected: ExpressionSpecification = $derived([
+    'all',
+    filter,
+    showLandables ? true : ['!', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]]],
+  ]);
+  const visible: ExpressionSpecification = $derived([
+    'all',
+    selected,
+    ['any', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]], ['>=', ['zoom'], 6]],
+  ]);
+  const layout: NonNullable<SymbolLayerSpecification['layout']> = {
+    'icon-image': iconImage,
+    'icon-size': scaledWaypointSize(0.5),
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+  };
+  const color: ExpressionSpecification = $derived(
+    arrivalUnit
+      ? [
+          'match',
+          ['get', 'arrivalStatus'],
+          'reachable',
+          COLOR_GREEN_700,
+          'belowReserve',
+          COLOR_AMBER_500,
+          'unreachable',
+          COLOR_RED_700,
+          COLOR_VIOLET_700,
+        ]
+      : ['match', ['get', 'kind'], LANDABLE_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
+  );
+  const label: ExpressionSpecification = $derived(
+    arrivalUnit
+      ? [
+          'case',
+          ['has', 'arrivalMarginMeters'],
+          [
+            'let',
+            'height',
+            ['round', ['*', ['get', 'arrivalMarginMeters'], convertAltitude(1, arrivalUnit)]],
+            [
+              'concat',
+              ['get', 'name'],
+              '\n',
+              ['case', ['boolean', ['get', 'arrivalStale'], false], '(', ''],
+              ['case', ['>=', ['var', 'height'], 0], '+', ''],
+              ['to-string', ['var', 'height']],
+              arrivalUnit,
+              ['case', ['boolean', ['get', 'arrivalStale'], false], ')', ''],
+            ],
+          ],
+          ['get', 'name'],
+        ]
+      : ['get', 'name'],
+  );
+  const paint: NonNullable<SymbolLayerSpecification['paint']> = $derived({
+    'icon-color': color,
+    'icon-halo-color': '#ffffff',
+    'icon-halo-width': scaledWaypointSize(1.5),
+  });
+
+  function scaledWaypointSize(size: number): ExpressionSpecification {
+    return [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      6,
+      ['match', ['get', 'kind'], LANDABLE_KINDS, size * 0.5, size * 0.3],
+      8,
+      ['match', ['get', 'kind'], LANDABLE_KINDS, size, size * 0.8],
+    ];
+  }
+</script>
+
+<SymbolLayer id={`${id}-symbols`} filter={visible} beforeId="traffic-fixed" {layout} {paint} />
+<SymbolLayer
+  id={`${id}-runways`}
+  beforeId="traffic-fixed"
+  filter={[
+    'all',
+    selected,
+    ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
+    ['has', 'runwayDirection'],
+  ]}
+  layout={{
+    'icon-image': 'updraft-sdf:runway',
+    'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.152, 8, 0.304],
+    'icon-rotate': ['get', 'runwayDirection'],
+    'icon-rotation-alignment': 'map',
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+  }}
+  paint={{
+    'icon-color': '#ffffff',
+    'icon-halo-color': color,
+    'icon-halo-width': ['interpolate', ['linear'], ['zoom'], 6, 0.25, 8, 0.5],
+  }}
+/>
+<SymbolLayer
+  id={`${id}-labels`}
+  filter={selected}
+  beforeId="traffic-fixed"
+  minzoom={8}
+  layout={{
+    'text-field': label,
+    'text-font': FONT_REGULAR,
+    'text-size': LABEL_SIZE,
+    'text-padding': LABEL_PADDING,
+    // Changing text must render before collision placement runs.
+    ...(arrivalUnit
+      ? { 'text-allow-overlap': true, 'text-anchor': 'top' }
+      : { 'text-variable-anchor': ['top', 'bottom'] }),
+    // Fixed anchors do not include collision padding in the label position.
+    'text-radial-offset': 0.5 + (arrivalUnit ? LABEL_PADDING / LABEL_SIZE : 0),
+    'symbol-sort-key': ['match', ['get', 'kind'], LANDABLE_KINDS, 0, 1],
+  }}
+  paint={{ 'text-color': COLOR_SLATE_700, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }}
+/>

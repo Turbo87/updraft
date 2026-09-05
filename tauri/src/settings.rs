@@ -118,6 +118,7 @@ mod tests {
                 settings: Settings {
                     locale: Some(Locale::De),
                     units: UnitSettings::default(),
+                    ..Settings::default()
                 },
                 external_devices: vec![ExternalDeviceConfig {
                     enabled: true,
@@ -145,6 +146,7 @@ mod tests {
                         altitude: AltitudeUnit::Feet,
                         ..UnitSettings::default()
                     },
+                    ..Settings::default()
                 },
                 external_devices: Vec::new(),
             }
@@ -250,6 +252,8 @@ mod tests {
         let snapshot = SettingsSnapshot {
             settings: Settings {
                 locale: Some(Locale::De),
+                polar: assert_ok!(updraft_core::PolarId::try_from("LS 8-18".to_owned())),
+                arrival_reserve: assert_ok!(updraft_core::ArrivalReserve::try_from(304.8)),
                 units: UnitSettings {
                     altitude: AltitudeUnit::Feet,
                     distance: DistanceUnit::NauticalMiles,

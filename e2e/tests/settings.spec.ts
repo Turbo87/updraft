@@ -260,3 +260,60 @@ test('propagates airspace status and invokes import through the fake client', as
   await expect(page.getByText('rheinland.txt')).toBeVisible();
   await expect(page.getByText('42', { exact: true })).toBeVisible();
 });
+
+test('selects a glide polar and keeps it when revisiting settings', async ({ page }) => {
+  await page.goto('/settings?testMode=1');
+  await page.getByRole('link', { name: 'Glide', exact: true }).click();
+  let polar = page.getByRole('combobox', { name: 'Polar', exact: true });
+  await expect(polar).toHaveValue('LS 8');
+  await polar.selectOption('LS 8-18');
+  await expect(polar).toHaveValue('LS 8-18');
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Glide', exact: true }).click();
+  await expect(polar).toHaveValue('LS 8-18');
+});
+
+test('keeps the arrival reserve when revisiting settings', async ({ page }) => {
+  await page.goto('/settings/glide?testMode=1');
+  let reserve = page.getByRole('spinbutton', { name: 'Arrival reserve (m)' });
+  await expect(reserve).toHaveValue('200');
+  await reserve.fill('350');
+  await page.getByRole('heading').click();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Glide', exact: true }).click();
+  await expect(reserve).toHaveValue('350');
+});
+
+test('keeps MC during navigation and resets it on restart', async ({ page }) => {
+  await page.goto('/settings?testMode=1');
+  await expect(page.getByRole('spinbutton')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
+  let mc = page.getByRole('spinbutton', { name: 'MC (m/s)' });
+  await expect(mc).toHaveValue('0.0');
+  await mc.fill('1.5');
+  await page.getByRole('heading', { name: 'Flight controls', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
+  await expect(mc).toHaveValue('1.5');
+  await page.goto('/settings/flight-controls?testMode=1');
+  await expect(mc).toHaveValue('0.0');
+});
+
+test('keeps bugs and ballast during navigation and resets them on restart', async ({ page }) => {
+  await page.goto('/settings/flight-controls?testMode=1');
+  let bugs = page.getByRole('spinbutton', { name: 'Bugs (%)', exact: true });
+  await expect(bugs).toHaveValue('0');
+  await bugs.fill('10.5');
+  await page.getByRole('heading').click();
+  let ballast = page.getByRole('spinbutton', { name: 'Ballast (L)', exact: true });
+  await expect(ballast).toHaveValue('0');
+  await ballast.fill('100.5');
+  await page.getByRole('heading').click();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
+  await expect(bugs).toHaveValue('10.5');
+  await expect(ballast).toHaveValue('100.5');
+  await page.goto('/settings/flight-controls?testMode=1');
+  await expect(bugs).toHaveValue('0');
+  await expect(ballast).toHaveValue('0');
+});

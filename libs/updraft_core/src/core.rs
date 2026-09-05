@@ -1,3 +1,4 @@
+use crate::GlidePerformance;
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
@@ -5,8 +6,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
-    ReorderExternalDevices, SetAirspaceUnavailable, SetExternalDeviceEnabled, SetLocale, SetUnits,
-    Start, Tick, Update,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetBallast, SetBugs,
+    SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -197,6 +198,7 @@ impl AirspaceState {
 #[derive(Debug)]
 pub struct Core {
     settings: Settings,
+    glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
     airspace: AirspaceState,
     waypoints: Arc<crate::WaypointCatalog>,
@@ -220,8 +222,12 @@ impl Core {
             settings,
             external_devices,
         } = snapshot;
+        let glide_performance = GlidePerformance::default();
+        let mut sensor_fusion = SensorFusion::default();
+        sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
             settings,
+            glide_performance,
             external_devices: ExternalDevices::from_device_configs(external_devices),
             airspace,
             waypoints: Arc::default(),
@@ -230,7 +236,7 @@ impl Core {
             gps: DomainState::Unavailable,
             pressure_altitude: DomainState::Unavailable,
             true_airspeed: DomainState::Unavailable,
-            sensor_fusion: SensorFusion::default(),
+            sensor_fusion,
             traffic: TrafficState::default(),
         }
     }
@@ -253,6 +259,7 @@ impl Core {
             Topic::Airspace(self.airspace.status()),
             Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
             Topic::Traffic(TrafficUpdate::Snapshot(self.traffic.published_targets())),
+            Topic::GlidePerformance(self.glide_performance),
         ]
     }
 
@@ -670,6 +677,99 @@ impl Input for SetLocale {
     }
 }
 
+impl Input for SetPolar {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.polar == self.polar {
+            return Update::empty();
+        }
+        let before = core.instruments();
+        core.settings.polar = self.polar;
+        let polar = core.glide_performance.glide_polar(self.polar);
+        core.sensor_fusion.set_polar(polar);
+        let mut effects = vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ];
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
+        Update::effects(effects)
+    }
+}
+
+impl Input for SetArrivalReserve {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.arrival_reserve == self.reserve {
+            return Update::empty();
+        }
+        core.settings.arrival_reserve = self.reserve;
+        Update::effects(vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ])
+    }
+}
+
+impl Input for SetMacCready {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.glide_performance.mac_cready == self.mac_cready {
+            return Update::empty();
+        }
+        core.glide_performance.mac_cready = self.mac_cready;
+        let topic = Topic::GlidePerformance(core.glide_performance);
+        Update::effects(vec![Effect::emit(topic)])
+    }
+}
+
+impl Input for SetBugs {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.glide_performance.bugs == self.bugs {
+            return Update::empty();
+        }
+        let before = core.instruments();
+        core.glide_performance.bugs = self.bugs;
+        let polar = core.glide_performance.glide_polar(core.settings.polar);
+        core.sensor_fusion.set_polar(polar);
+        let topic = Topic::GlidePerformance(core.glide_performance);
+        let mut effects = vec![Effect::emit(topic)];
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
+        Update::effects(effects)
+    }
+}
+
+impl Input for SetBallast {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.glide_performance.ballast == self.ballast {
+            return Update::empty();
+        }
+        let before = core.instruments();
+        core.glide_performance.ballast = self.ballast;
+        let polar = core.glide_performance.glide_polar(core.settings.polar);
+        core.sensor_fusion.set_polar(polar);
+        let topic = Topic::GlidePerformance(core.glide_performance);
+        let mut effects = vec![Effect::emit(topic)];
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
+        Update::effects(effects)
+    }
+}
+
 impl Input for SetUnits {
     type Response = ();
 
@@ -848,6 +948,23 @@ impl Input for crate::GetWaypointSnapshot {
         Update::empty().with_response(crate::WaypointSnapshot {
             generation: core.waypoint_generation,
             catalog: core.waypoints.clone(),
+        })
+    }
+}
+
+impl Input for crate::GetGlideSnapshot {
+    type Response = crate::GlideSnapshot;
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(crate::GlideSnapshot {
+            waypoints: crate::WaypointSnapshot {
+                generation: core.waypoint_generation,
+                catalog: core.waypoints.clone(),
+            },
+            instruments: core.instruments(),
+            polar: core.glide_performance.glide_polar(core.settings.polar),
+            mac_cready: core.glide_performance.mac_cready,
+            arrival_reserve: core.settings.arrival_reserve,
         })
     }
 }

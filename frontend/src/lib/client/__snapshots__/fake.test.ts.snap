@@ -40,13 +40,23 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
   {
     "topic": "settings",
     "value": {
+      "arrivalReserve": 200,
       "locale": null,
+      "polar": "LS 8",
       "units": {
         "altitude": "m",
         "distance": "km",
         "speed": "km/h",
         "verticalSpeed": "m/s",
       },
+    },
+  },
+  {
+    "topic": "glidePerformance",
+    "value": {
+      "ballast": 0,
+      "bugs": 0,
+      "macCready": 0,
     },
   },
   {

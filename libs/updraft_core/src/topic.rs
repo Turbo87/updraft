@@ -166,6 +166,7 @@ pub enum Topic {
     Airspace(AirspaceStatus),
     Waypoints(crate::WaypointStatus),
     Traffic(TrafficUpdate),
+    GlidePerformance(crate::GlidePerformance),
 }
 
 #[cfg(test)]
@@ -290,6 +291,8 @@ mod tests {
           "topic": "settings",
           "value": {
             "locale": "de",
+            "polar": "LS 8",
+            "arrivalReserve": 200.0,
             "units": {
               "altitude": "m",
               "distance": "km",

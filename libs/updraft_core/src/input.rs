@@ -136,6 +136,32 @@ impl SetLocale {
     }
 }
 
+/// Selects the persisted glide polar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetPolar {
+    pub polar: crate::PolarId,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetArrivalReserve {
+    pub reserve: crate::ArrivalReserve,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SetMacCready {
+    pub mac_cready: crate::MacCready,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SetBugs {
+    pub bugs: crate::Bugs,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SetBallast {
+    pub ballast: crate::Ballast,
+}
+
 /// Replaces all application-wide display-unit selections.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetUnits {
@@ -228,6 +254,11 @@ impl private::Sealed for ConnectionChanged {}
 impl private::Sealed for InternalGps {}
 impl private::Sealed for SetLocale {}
 impl private::Sealed for SetUnits {}
+impl private::Sealed for SetPolar {}
+impl private::Sealed for SetArrivalReserve {}
+impl private::Sealed for SetMacCready {}
+impl private::Sealed for SetBugs {}
+impl private::Sealed for SetBallast {}
 impl private::Sealed for AddExternalDevice {}
 impl private::Sealed for DeleteExternalDevice {}
 impl private::Sealed for ReorderExternalDevices {}
@@ -248,3 +279,7 @@ impl private::Sealed for GetWaypointCatalog {}
 #[derive(Clone, Copy, Debug)]
 pub struct GetWaypointSnapshot;
 impl private::Sealed for GetWaypointSnapshot {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GetGlideSnapshot;
+impl private::Sealed for GetGlideSnapshot {}

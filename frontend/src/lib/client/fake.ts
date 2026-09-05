@@ -1,6 +1,8 @@
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
+import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
 import type { Locale } from '$lib/protocol/generated/Locale';
+import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
@@ -8,6 +10,9 @@ import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
+  ArrivalSubscription,
+  ArrivalUpdate,
+  ArrivalViewport,
   ImportAirspaceResult,
   ImportWaypointsResult,
   TopicListener,
@@ -39,6 +44,8 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
+  #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
   #listeners = new Set<TopicListener>();
   #externalDevices: PublishedExternalDevice[];
@@ -46,6 +53,8 @@ export class FakeClient implements UpdraftClient {
   #bondedBluetoothDevices: BondedBluetoothDevices;
   #settings: Settings = {
     locale: null,
+    polar: 'LS 8',
+    arrivalReserve: 200,
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 
@@ -56,6 +65,24 @@ export class FakeClient implements UpdraftClient {
       1,
     );
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
+  }
+
+  subscribeArrivals(
+    _bounds: ArrivalViewport,
+    onUpdate: (update: ArrivalUpdate) => void,
+  ): ArrivalSubscription {
+    this.#arrivalListeners.add(onUpdate);
+    return {
+      async updateViewport() {},
+      close: async () => {
+        this.#arrivalListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  /** Supplies a prepared arrival resource for browser development and tests. */
+  emitArrivals(update: ArrivalUpdate): void {
+    for (let listener of this.#arrivalListeners) listener(update);
   }
 
   async importWaypoints(): Promise<ImportWaypointsResult> {
@@ -84,6 +111,7 @@ export class FakeClient implements UpdraftClient {
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'settings', value: this.#settings });
+    onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });
     onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
     onTopic({ topic: 'airspace', value: { type: 'none' } });
@@ -165,6 +193,53 @@ export class FakeClient implements UpdraftClient {
 
     this.#settings = { ...this.#settings, units: { ...units } };
     this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async getPolars(): Promise<PolarId[]> {
+    return ['LS 8', 'LS 8-18'];
+  }
+
+  async setPolar(polar: PolarId): Promise<void> {
+    if (!(await this.getPolars()).includes(polar)) throw new Error('Unknown polar');
+    if (this.#settings.polar === polar) return;
+    this.#settings = { ...this.#settings, polar };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setArrivalReserve(reserve: number): Promise<void> {
+    if (!Number.isFinite(reserve) || reserve < 0) {
+      throw new Error('Arrival reserve must be finite and nonnegative');
+    }
+    if (this.#settings.arrivalReserve === reserve) return;
+    this.#settings = { ...this.#settings, arrivalReserve: reserve };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setMacCready(macCready: number): Promise<void> {
+    if (!Number.isFinite(macCready) || macCready < 0) {
+      throw new Error('MacCready must be finite and nonnegative');
+    }
+    if (this.#glidePerformance.macCready === macCready) return;
+    this.#glidePerformance = { ...this.#glidePerformance, macCready };
+    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
+  }
+
+  async setBugs(bugs: number): Promise<void> {
+    if (!Number.isFinite(bugs) || bugs < 0 || bugs >= 100) {
+      throw new Error('Bugs must be between 0% and less than 100%');
+    }
+    if (this.#glidePerformance.bugs === bugs) return;
+    this.#glidePerformance = { ...this.#glidePerformance, bugs };
+    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
+  }
+
+  async setBallast(ballast: number): Promise<void> {
+    if (!Number.isFinite(ballast) || ballast < 0) {
+      throw new Error('Ballast must be finite and nonnegative');
+    }
+    if (this.#glidePerformance.ballast === ballast) return;
+    this.#glidePerformance = { ...this.#glidePerformance, ballast };
+    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
   }
 
   /** Publishes a topic as though the core had emitted it. */

@@ -115,6 +115,8 @@ it('renders waypoint types and removes the source when all files are removed', a
     }
   });
   let paddedLabelCount = map.queryRenderedFeatures({ layers: ['waypoint-labels'] }).length;
+  expect(map.hasImage('updraft-sdf:waypoint-airfield')).toBe(true);
+  expect(map.hasImage('updraft-sdf:runway')).toBe(true);
   map.setLayoutProperty('waypoint-labels', 'text-padding', 2);
   await vi.waitFor(() => {
     expect(map.queryRenderedFeatures({ layers: ['waypoint-labels'] }).length).toBeGreaterThan(

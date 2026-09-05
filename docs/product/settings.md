@@ -12,6 +12,8 @@ current settings topic and sends typed commands for changes.
 
 - `/settings/language`
 - `/settings/units`
+- `/settings/glide`
+- `/settings/flight-controls`
 - `/settings/airspace`
 - `/settings/devices`
 - `/settings/about`
@@ -25,11 +27,30 @@ platform session, and closes the application.
 The root layout keeps the Flight View and map mounted while a Settings route is
 open. A return to the Flight View therefore keeps temporary map state.
 
+The Flight controls page contains the session controls. Its MacCready control
+uses the selected vertical-speed unit. MC defaults to 0.0 m/s and accepts finite,
+nonnegative values. It remains active during navigation and resets when Updraft
+restarts. The core publishes it through the separate `GlidePerformance` topic.
+Settings writes exclude these session controls.
+
+Bugs specifies the percentage of clean performance lost. Zero means clean,
+and 10% means a 10% loss. Fractional percentages are accepted. Values must be
+at least zero and less than 100%. Bugs resets to zero on restart. It adjusts
+the active polar and updates netto immediately. Changing the selected polar
+retains the current bugs value.
+
+Ballast specifies litres of water added to the selected polar's reference mass,
+at 1 kg per litre. It accepts finite, nonnegative values and resets to zero on
+restart. It adjusts the active polar and netto. Changing the selected polar
+retains the current ballast value. MC, bugs, and ballast changes also request
+new waypoint arrival calculations.
+
 ## Ownership and updates
 
-The core owns the active locale, display units, and external-device
-configuration. The `Settings` topic contains the active locale and units. The
-`ExternalDevices` topic publishes the separate device projection.
+The core owns the active locale, display units, glide polar, arrival reserve,
+and external-device configuration. The `Settings` topic contains the active
+locale, units, polar, and arrival reserve. The `ExternalDevices` topic publishes
+the separate device projection.
 
 The frontend can show an optimistic control value while a command is pending.
 The next topic remains authoritative. A rejected command clears the optimistic
@@ -41,8 +62,8 @@ topic and requests persistence of the complete snapshot.
 ## Persistence
 
 The Tauri shell stores `settings.json` in the application configuration
-directory. The file contains the locale, unit selections, and external-device
-configuration.
+directory. The file contains the locale, unit selections, glide polar, arrival
+reserve, and external-device configuration.
 
 A missing file loads defaults and remains absent until a setting changes. A
 malformed or unreadable file produces a warning and loads defaults. Updraft
@@ -76,6 +97,24 @@ Unit settings are independent selections for:
 
 The core and protocol retain canonical SI values. Frontend presentation code
 converts and formats values with the active unit settings.
+
+## Glide settings
+
+The Glide page selects a polar from the built-in catalog. The default is the
+15 m LS8, listed as `LS 8`. The selected catalog name is saved across restarts.
+A settings file without a polar uses the default. An unknown polar name makes
+the settings snapshot invalid.
+
+Sensor fusion uses the selected polar to calculate netto vario. Direct-glide
+arrival calculations use the same polar with current bugs and ballast. A polar change
+updates the derived instruments immediately when the required inputs are available.
+
+The arrival reserve defaults to 200 m and is saved across restarts. The control
+uses the selected altitude unit. It displays whole units and accepts fractional
+values. Opening the page does not change the stored precision. The core stores
+metres and accepts only finite, nonnegative values. A settings file without a
+reserve uses the default.
+Polar and reserve changes request new waypoint arrival calculations.
 
 ## Airspace source
 

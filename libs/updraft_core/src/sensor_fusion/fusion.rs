@@ -7,7 +7,6 @@ use crate::topic::{
     DerivedAltitudeInstruments, DerivedBankInstruments, DerivedHeadingInstruments,
     DerivedInstruments, DerivedWindInstruments, SpeedInstrument,
 };
-#[cfg(test)]
 use updraft_polar::GlidePolar;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
 
@@ -49,7 +48,6 @@ pub struct SensorFusion {
 }
 
 impl SensorFusion {
-    #[cfg(test)]
     pub fn set_polar(&mut self, polar: GlidePolar) {
         self.estimator.set_polar(polar);
         self.update_netto();

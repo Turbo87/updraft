@@ -41,7 +41,13 @@ const TEST_STYLE: StyleSpecification = {
 
 /** Returns a blank test style or Positron with local Enroute tiles and bundled assets. */
 export function getBasemapStyle(testMode: boolean, origin: string): StyleSpecification {
-  if (testMode) return { ...TEST_STYLE, glyphs: `${origin}/basemap/fonts/{fontstack}/{range}.pbf` };
+  let overlaySprite = { id: 'updraft-sdf', url: `${origin}/sprites/updraft-sdf` };
+  if (testMode)
+    return {
+      ...TEST_STYLE,
+      glyphs: `${origin}/basemap/fonts/{fontstack}/{range}.pbf`,
+      sprite: [overlaySprite],
+    };
 
   let style = structuredClone(POSITRON_STYLE);
   let basemapUrl = convertFileSrc('basemap', 'updraft');
@@ -56,7 +62,7 @@ export function getBasemapStyle(testMode: boolean, origin: string): StyleSpecifi
       '<a href="https://www.akaflieg-freiburg.de/">Akaflieg Freiburg</a>',
   };
   style.glyphs = `${origin}/basemap/fonts/{fontstack}/{range}.pbf`;
-  style.sprite = `${origin}/basemap/sprites/ofm`;
+  style.sprite = [{ id: 'default', url: `${origin}/basemap/sprites/ofm` }, overlaySprite];
 
   for (let layer of style.layers) {
     if ('layout' in layer && layer.layout && 'text-font' in layer.layout) {

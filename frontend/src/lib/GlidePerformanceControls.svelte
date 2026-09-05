@@ -79,7 +79,7 @@
       min="0"
       step="any"
       value={displayedMC}
-      disabled={saving}
+      readonly={saving}
       aria-invalid={error ? 'true' : undefined}
       onchange={changeMC}
     />
@@ -92,7 +92,7 @@
       min="0"
       step="any"
       value={bugs}
-      disabled={bugsSaving}
+      readonly={bugsSaving}
       aria-invalid={bugsError ? 'true' : undefined}
       onchange={changeBugs}
     />

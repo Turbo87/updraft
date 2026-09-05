@@ -1,8 +1,37 @@
 import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 
 import GlidePerformanceControls from './GlidePerformanceControls.svelte';
+
+it.each(['MC (m/s)', 'Bugs (%)'])('keeps %s focused across an arrow-key save', async (name) => {
+  let pending = Promise.withResolvers<void>();
+  let save = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(undefined);
+  let view = await render(GlidePerformanceControls, {
+    macCready: 0,
+    unit: 'm/s',
+    bugs: 0,
+    setMacCready: save,
+    setBugs: save,
+  });
+  let input = page.getByRole('spinbutton', { name, exact: true });
+  await input.click();
+  await userEvent.keyboard('{ArrowUp}');
+  expect(save).toHaveBeenCalledExactlyOnceWith(1);
+  await expect.element(input).toHaveFocus();
+  await view.rerender(name.startsWith('MC') ? { macCready: 1 } : { bugs: 1 });
+  pending.resolve();
+  await expect.element(input).not.toHaveAttribute('readonly');
+  await userEvent.keyboard('{ArrowUp}');
+  expect(save).toHaveBeenLastCalledWith(2);
+  expect(save).toHaveBeenCalledTimes(2);
+  await expect.element(input).toHaveFocus();
+  await view.rerender(name.startsWith('MC') ? { macCready: 2 } : { bugs: 2 });
+  await userEvent.keyboard('{ArrowDown}');
+  expect(save).toHaveBeenLastCalledWith(1);
+  expect(save).toHaveBeenCalledTimes(3);
+  await expect.element(input).toHaveFocus();
+});
 
 it('rejects invalid bugs and restores the current value after a failed command', async () => {
   let setBugs = vi.fn().mockRejectedValue(new Error('driver stopped'));

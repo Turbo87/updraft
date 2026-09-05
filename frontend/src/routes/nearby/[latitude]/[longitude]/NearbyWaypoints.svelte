@@ -64,7 +64,7 @@
             <span class="detail">
               {[
                 `${convertAltitude(feature.properties.elevationMeters, altitudeUnit).toFixed(0)} ${altitudeUnit}`,
-                feature.properties.frequency,
+                feature.properties.frequency && `${feature.properties.frequency} MHz`,
                 feature.properties.notes ||
                   m.waypoint_type_value({ kind: feature.properties.kind }),
               ]

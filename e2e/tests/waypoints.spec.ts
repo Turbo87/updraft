@@ -59,13 +59,13 @@ for (let notes of ['Notes', '']) {
     let waypoint = page
       .getByRole('region', { name: 'Waypoints', exact: true })
       .getByRole('link', { name: /Point 0/ });
-    await expect(waypoint).toContainText(`100 m · 123.500 · ${notes || 'Grass airfield'}`);
+    await expect(waypoint).toContainText(`100 m · 123.500 MHz · ${notes || 'Grass airfield'}`);
     await expect(waypoint).not.toContainText('local.cup');
     await expect(waypoint.locator('.waypoint-symbol')).toBeVisible();
     await expect(waypoint.locator('.runway')).toBeVisible();
     await waypoint.click();
     await expect(page.getByRole('heading', { name: 'Point 0' })).toBeVisible();
-    await expect(page.getByText('123.500')).toBeVisible();
+    await expect(page.getByText('123.500 MHz')).toBeVisible();
     await expect(page.getByText('090°')).toBeVisible();
     await page.evaluate(async () => {
       await (window as TestWindow).__updraftFake!.removeWaypoints('local.cup');

@@ -31,8 +31,9 @@ it('shows source data and converts elevation to the selected unit', async () => 
   await expect.element(page.getByText('090°')).toBeVisible();
   await expect.element(page.getByText('800 m')).toBeVisible();
   await expect.element(page.getByText('30 m')).toBeVisible();
-  await expect.element(page.getByText('123.500')).toBeVisible();
+  await expect.element(page.getByText('123.500 MHz')).toBeVisible();
   await expect.element(page.getByText('local.cup')).toBeVisible();
+  expect(document.querySelector('dl')?.lastElementChild?.textContent).toBe('local.cup');
   await expect.element(page.getByText('First line Second line')).toBeVisible();
 });
 

@@ -40,14 +40,14 @@
     {/if}
     {#if properties.frequency}
       <dt>{m.frequency_label()}</dt>
-      <dd>{properties.frequency}</dd>
+      <dd>{properties.frequency} MHz</dd>
     {/if}
-    <dt>{m.waypoint_source()}</dt>
-    <dd>{properties.sourceName}</dd>
     {#if properties.notes}
       <dt>{m.waypoint_notes()}</dt>
       <dd class="notes">{properties.notes}</dd>
     {/if}
+    <dt>{m.waypoint_source()}</dt>
+    <dd>{properties.sourceName}</dd>
   </dl>
 </ScreenScaffold>
 

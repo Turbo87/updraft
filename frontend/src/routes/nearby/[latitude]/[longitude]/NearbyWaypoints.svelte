@@ -47,9 +47,9 @@
 {#if sourceStatus === 'failed'}
   <p role="alert">{m.waypoint_load_failed()}</p>
 {:else if sourceStatus === 'loading' || features === null}
-  <p>{m.waypoint_loading()}</p>
+  <p class="empty-results">{m.waypoint_loading()}</p>
 {:else if features.length === 0}
-  <p>{m.waypoint_none_nearby()}</p>
+  <p class="empty-results">{m.waypoint_none_nearby()}</p>
 {:else}
   <ul>
     {#each features as feature (feature.properties.id)}
@@ -79,6 +79,16 @@
 {/if}
 
 <style>
+  .empty-results {
+    margin: 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-card-surface);
+    color: var(--color-text-muted);
+    font: var(--text-body);
+  }
+
   ul {
     margin: 0;
     padding: 0;

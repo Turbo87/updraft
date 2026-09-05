@@ -272,6 +272,24 @@ test('shows empty states without rendered features', async ({ page }) => {
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
   let traffic = page.getByRole('region', { name: 'Traffic' });
   await expect(traffic.getByText('No traffic at this position.')).toBeVisible();
+  let waypointEmpty = page.getByText('No nearby waypoints.');
+  await expect(waypointEmpty).toBeVisible();
+  for (let property of [
+    'padding',
+    'border',
+    'border-radius',
+    'background-color',
+    'color',
+    'font',
+  ]) {
+    let expected = await traffic
+      .getByText('No traffic at this position.')
+      .evaluate(
+        (element, property) => getComputedStyle(element).getPropertyValue(property),
+        property,
+      );
+    await expect(waypointEmpty).toHaveCSS(property, expected);
+  }
 
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');

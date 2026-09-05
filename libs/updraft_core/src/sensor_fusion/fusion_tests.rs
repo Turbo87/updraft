@@ -213,6 +213,52 @@ fn inferred_airspeed_produces_vario_through_sensor_fusion() {
 }
 
 #[test]
+fn inferred_airspeed_stays_current_between_gps_samples() {
+    let mut fusion = SensorFusion::default();
+    let polar = updraft_polar::POLAR_STORE
+        .iter()
+        .find(|entry| entry.name == "JS-3-18m")
+        .expect("the built-in store has this glider type")
+        .glide_polar();
+    fusion.set_polar(polar);
+
+    for second in 0..=70 {
+        let millis = second * 1_000;
+        let altitude = PressureAltitude::new(Length::from_meters(1_000. + second as f64));
+        fusion.update(FusionInputs {
+            gps: DomainState::Current(selected(millis, circling_gps(second))),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Current(selected(millis, altitude)),
+        });
+    }
+
+    let current = assert_some!(fusion.instruments());
+    assert!(!assert_some!(current.airspeed).stale);
+    assert!(!assert_some!(current.vario).stale);
+    assert!(!assert_some!(current.netto).stale);
+
+    let mut inputs = FusionInputs {
+        gps: DomainState::Current(selected(70_000, circling_gps(70))),
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::Current(selected(
+            70_000,
+            PressureAltitude::new(Length::from_meters(1_070.)),
+        )),
+    };
+    for _ in 0..10 {
+        fusion.update(inputs);
+        assert_eq!(assert_some!(fusion.instruments()), current);
+    }
+
+    inputs.gps = DomainState::LastKnown(selected(70_000, circling_gps(70)));
+    fusion.update(inputs);
+    let stale = assert_some!(fusion.instruments());
+    assert!(assert_some!(stale.airspeed).stale);
+    assert!(assert_some!(stale.vario).stale);
+    assert!(assert_some!(stale.netto).stale);
+}
+
+#[test]
 fn gnss_fix_uses_its_inferred_airspeed_for_vario() {
     let mut fusion = SensorFusion::default();
     for second in 0..=20 {

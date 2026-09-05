@@ -161,6 +161,7 @@ mod tests {
             heading: None,
             bank: None,
             netto: None,
+            relative_vario: None,
         }));
         snapshot
     }

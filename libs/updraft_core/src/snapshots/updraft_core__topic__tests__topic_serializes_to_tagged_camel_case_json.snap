@@ -64,6 +64,10 @@ expression: topic
       "netto": {
         "metersPerSecond": 2.1,
         "stale": false
+      },
+      "relativeVario": {
+        "metersPerSecond": 1.4,
+        "stale": false
       }
     }
   }

@@ -84,7 +84,7 @@ documents for accepted behavior.
 - [ ] **replay** — add in-app replay at variable speed for simulator mode and demos. It sends typed simulator inputs and does not act as a device. _(needs: igc-read, core-time)_
 - [ ] **input-recording** — optionally record the exact core input sequence in `captures/`. Save worker results in a compressed companion file. Replay can start from an empty core or a saved resume snapshot. _(needs: replay, compute-workers)_
 - [ ] **flight-modes** — detect takeoff, landing, cruise, and circling. Publish the flight timer and current mode. _(needs: source-selection)_
-- [ ] **vario-values** — TE/netto/relative vario, integrator and thermal averagers computed in core from GPS + baro inputs. _(needs: nmea, flight-modes)_
+- [ ] **vario-values** — core calculates TE vario, netto, and relative vario from altitude, airspeed, and the active polar. Relative vario subtracts density-corrected minimum sink from netto. The instruments topic and debug overlay expose these values. Integrator and thermal averagers remain planned. _(needs: nmea, flight-modes, polar)_
 
 ## Glide computer
 

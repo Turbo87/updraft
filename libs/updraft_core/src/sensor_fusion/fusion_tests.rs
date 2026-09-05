@@ -396,6 +396,8 @@ fn stale_airspeed_stales_netto_independently() {
 
     let current = assert_some!(assert_some!(fusion.instruments()).netto);
     assert!(!current.stale);
+    let relative = assert_some!(assert_some!(fusion.instruments()).relative_vario);
+    assert!(!relative.stale);
 
     fusion.update(FusionInputs {
         gps: DomainState::Unavailable,
@@ -406,6 +408,9 @@ fn stale_airspeed_stales_netto_independently() {
     let retained = assert_some!(assert_some!(fusion.instruments()).netto);
     assert_eq!(retained.meters_per_second, current.meters_per_second);
     assert!(retained.stale);
+    let retained = assert_some!(assert_some!(fusion.instruments()).relative_vario);
+    assert_eq!(retained.meters_per_second, relative.meters_per_second);
+    assert!(retained.stale);
 }
 
 #[test]
@@ -414,6 +419,8 @@ fn stale_pressure_altitude_stales_netto_independently() {
 
     let current = assert_some!(assert_some!(fusion.instruments()).netto);
     assert!(!current.stale);
+    let relative = assert_some!(assert_some!(fusion.instruments()).relative_vario);
+    assert!(!relative.stale);
 
     fusion.update(FusionInputs {
         gps: DomainState::Unavailable,
@@ -423,5 +430,8 @@ fn stale_pressure_altitude_stales_netto_independently() {
 
     let retained = assert_some!(assert_some!(fusion.instruments()).netto);
     assert_eq!(retained.meters_per_second, current.meters_per_second);
+    assert!(retained.stale);
+    let retained = assert_some!(assert_some!(fusion.instruments()).relative_vario);
+    assert_eq!(retained.meters_per_second, relative.meters_per_second);
     assert!(retained.stale);
 }

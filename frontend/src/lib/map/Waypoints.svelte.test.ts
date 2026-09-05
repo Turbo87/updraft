@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { page, userEvent } from 'vitest/browser';
 
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -33,6 +34,34 @@ it('renders waypoint types and removes the source when all files are removed', a
     expect(mapState.map?.isSourceLoaded('waypoints')).toBe(true);
   });
   let map = mapState.map!;
+  let targetPoint = map.project([6.186, 50.823]);
+  await vi.waitFor(() => {
+    let inside = map.queryRenderedFeatures([targetPoint.x, targetPoint.y + 23], {
+      layers: ['waypoint-hit'],
+    });
+    expect(inside.map(({ properties }) => properties.id)).toEqual(['1:0:0']);
+  });
+  expect(
+    map.queryRenderedFeatures([targetPoint.x, targetPoint.y + 25], {
+      layers: ['waypoint-hit'],
+    }),
+  ).toEqual([]);
+  expect(map.getPaintProperty('waypoint-hit', 'circle-radius')).toBe(
+    map.getPaintProperty('traffic-hit', 'circle-radius'),
+  );
+  expect(map.getPaintProperty('waypoint-hit', 'circle-opacity')).toBe(0);
+  await userEvent.keyboard('d');
+  let checkbox = page.getByRole('checkbox', { name: 'Traffic and waypoint hit areas' });
+  await checkbox.click();
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0.2);
+    expect(map.getPaintProperty('waypoint-hit', 'circle-opacity')).toBe(0.2);
+  });
+  await checkbox.click();
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0);
+    expect(map.getPaintProperty('waypoint-hit', 'circle-opacity')).toBe(0);
+  });
   expect(
     new Set(map.querySourceFeatures('waypoints').map((feature) => feature.properties.kind)),
   ).toEqual(new Set([2, 3, 7]));

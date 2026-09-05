@@ -184,7 +184,7 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
   expect(outside).toEqual([]);
 
   await userEvent.keyboard('d');
-  let checkbox = page.getByRole('checkbox', { name: 'Traffic hit areas' });
+  let checkbox = page.getByRole('checkbox', { name: 'Traffic and waypoint hit areas' });
   await checkbox.click();
   await vi.waitFor(() => {
     expect(map.getPaintProperty('traffic-hit', 'circle-opacity')).toBe(0.2);

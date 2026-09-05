@@ -88,8 +88,8 @@
   let {
     traffic,
     altitudeUnit,
-    showTrafficHitAreas,
-  }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit; showTrafficHitAreas: boolean } = $props();
+    showHitAreas,
+  }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit; showHitAreas: boolean } = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
@@ -125,7 +125,7 @@
 >
   <CircleLayer
     id="traffic-hit"
-    paint={{ 'circle-radius': 24, 'circle-opacity': showTrafficHitAreas ? 0.2 : 0 }}
+    paint={{ 'circle-radius': 24, 'circle-opacity': showHitAreas ? 0.2 : 0 }}
   />
   <SymbolLayer
     id="traffic-fixed"

@@ -62,6 +62,36 @@ it('renders waypoint types and removes the source when all files are removed', a
   await vi.waitFor(() =>
     expect(map.queryRenderedFeatures({ layers: ['waypoint-labels'] }).length).toBeGreaterThan(0),
   );
+  map.setLayoutProperty('waypoint-labels', 'text-variable-anchor', ['top']);
+  let canvas = map.getCanvas();
+  let denseWaypoints = {
+    ...waypointsFixture,
+    features: Array.from({ length: 10 }, (_, index) => ({
+      ...waypointsFixture.features[0],
+      id: `dense-${index}`,
+      geometry: {
+        type: 'Point' as const,
+        coordinates: map
+          .unproject([canvas.clientWidth / 2 + (index - 5) * 20, canvas.clientHeight / 2])
+          .toArray(),
+      },
+      properties: { ...waypointsFixture.features[0].properties, name: String(index) },
+    })),
+  };
+  await component.rerender({ testWaypointData: denseWaypoints });
+  await vi.waitFor(() => {
+    expect(map.queryRenderedFeatures({ layers: ['waypoint-labels'] }).length).toBeGreaterThan(0);
+    for (let label of map.queryRenderedFeatures({ layers: ['waypoint-labels'] })) {
+      expect(label.properties.name).toMatch(/^\d$/);
+    }
+  });
+  let paddedLabelCount = map.queryRenderedFeatures({ layers: ['waypoint-labels'] }).length;
+  map.setLayoutProperty('waypoint-labels', 'text-padding', 2);
+  await vi.waitFor(() => {
+    expect(map.queryRenderedFeatures({ layers: ['waypoint-labels'] }).length).toBeGreaterThan(
+      paddedLabelCount,
+    );
+  });
   await component.rerender({
     testWaypointData: {
       ...waypointsFixture,

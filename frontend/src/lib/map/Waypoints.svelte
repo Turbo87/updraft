@@ -56,6 +56,15 @@
     'icon-ignore-placement': true,
   };
   const paint: NonNullable<SymbolLayerSpecification['paint']> = {
+    'icon-opacity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      6,
+      ['match', ['get', 'kind'], [2, 3, 4, 5], 1, 0.25],
+      8,
+      1,
+    ],
     'icon-color': ['match', ['get', 'kind'], [2, 3, 4, 5], COLOR_VIOLET_700, COLOR_SLATE_700],
     'icon-halo-color': '#ffffff',
     'icon-halo-width': 1.5,
@@ -91,8 +100,9 @@
       'text-field': ['get', 'name'],
       'text-font': FONT_REGULAR,
       'text-size': 13,
+      'text-padding': 8,
       'text-variable-anchor': ['top', 'bottom'],
-      'text-radial-offset': 1.2,
+      'text-radial-offset': 0.96,
       'symbol-sort-key': ['match', ['get', 'kind'], [2, 3, 4, 5], 0, 1],
     }}
     paint={{ 'text-color': COLOR_SLATE_700, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }}

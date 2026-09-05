@@ -30,8 +30,10 @@ sources remain usable.
 Grass, solid, and gliding airfields share a plain circle symbol. Other CUP
 types have distinct symbols. Landable symbols remain visible at wide zoom
 levels. Other symbols appear from zoom 6. Symbols grow smoothly between zoom
-6 and 8. Labels appear from zoom 8, avoid overlap, and give priority to
-landables. A landable with a runway direction shows an oriented runway.
+6 and 8. Non-landable symbols fade from 25% opacity at zoom 6 to full
+opacity at zoom 8. Labels appear from zoom 8, reserve 8 pixels of collision
+padding, and give priority to landables. A landable with a runway direction
+shows an oriented runway.
 
 A map tap opens the Nearby page. Waypoint results include symbols within a
 12-pixel hit radius. Each row links to details and identifies its source.

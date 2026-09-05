@@ -3,6 +3,7 @@
   import 'svelte-maplibre-gl/vite';
 
   import type { GeoJSONSourceSpecification, MapEventType, MapMouseEvent } from 'maplibre-gl';
+  import type { UpdraftClient } from '$lib/client';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
@@ -15,6 +16,7 @@
   import { MapLibre } from 'svelte-maplibre-gl';
 
   import Airspace from './Airspace.svelte';
+  import Arrivals from './Arrivals.svelte';
   import { BASEMAP_MIN_ZOOM, getBasemapStyle } from './basemap-style';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
@@ -31,6 +33,7 @@
 
   const FOLLOW_DURATION_MS = 300;
   let {
+    client,
     airspace,
     instruments,
     mapState,
@@ -42,6 +45,7 @@
     waypoints = { generation: 0, sources: [] },
     onInspect,
   }: {
+    client?: UpdraftClient;
     airspace: AirspaceStatus;
     waypoints?: WaypointStatus;
     testWaypointData?: GeoJSONSourceSpecification['data'];
@@ -94,6 +98,9 @@
   function handleSourceError(event: MapEventType['error']) {
     if ('sourceId' in event && event.sourceId === 'waypoints') {
       mapState.waypointSourceStatus = 'failed';
+    }
+    if ('sourceId' in event && event.sourceId === 'arrivals') {
+      console.error('Failed to load arrival resource', event.error);
     }
   }
 
@@ -162,6 +169,9 @@
       {/if}
       {#if waypointData}
         <Waypoints data={waypointData} {showHitAreas} />
+        {#if client && map}
+          <Arrivals {client} {map} generation={waypoints.generation} />
+        {/if}
       {/if}
     {/if}
   </MapLibre>

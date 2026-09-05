@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { UpdraftClient } from '$lib/client';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
@@ -15,6 +16,7 @@
   import { m } from '$lib/paraglide/messages.js';
 
   let {
+    client,
     airspace,
     waypoints,
     instruments,
@@ -23,6 +25,7 @@
     units,
     testMode = false,
   }: {
+    client?: UpdraftClient;
     airspace: AirspaceStatus;
     waypoints?: WaypointStatus;
     instruments: Instruments;
@@ -43,6 +46,7 @@
 
 <section class="flight-view" aria-label={m.flight_view()}>
   <Map
+    {client}
     {airspace}
     {waypoints}
     {instruments}

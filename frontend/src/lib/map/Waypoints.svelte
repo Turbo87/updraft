@@ -47,11 +47,11 @@
   const visible: FilterSpecification = [
     'any',
     ['in', ['get', 'kind'], ['literal', [2, 3, 4, 5]]],
-    ['>=', ['zoom'], 10],
+    ['>=', ['zoom'], 6],
   ];
   const layout: NonNullable<SymbolLayerSpecification['layout']> = {
     'icon-image': iconImage,
-    'icon-size': 0.7,
+    'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.28, 8, 0.56],
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
   };
@@ -75,7 +75,7 @@
     filter={['all', ['in', ['get', 'kind'], ['literal', [2, 3, 4, 5]]], ['has', 'runwayDirection']]}
     layout={{
       'icon-image': 'updraft-sdf:runway',
-      'icon-size': 0.38,
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.152, 8, 0.304],
       'icon-rotate': ['get', 'runwayDirection'],
       'icon-rotation-alignment': 'map',
       'icon-allow-overlap': true,
@@ -87,7 +87,6 @@
     id="waypoint-labels"
     beforeId="traffic-fixed"
     minzoom={8}
-    filter={visible}
     layout={{
       'text-field': ['get', 'name'],
       'text-font': FONT_REGULAR,

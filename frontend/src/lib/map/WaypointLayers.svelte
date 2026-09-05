@@ -156,7 +156,10 @@
     'text-font': FONT_REGULAR,
     'text-size': 12,
     'text-padding': 8,
-    'text-variable-anchor': ['top', 'bottom'],
+    // Changing text must render before collision placement runs.
+    ...(arrivalUnit
+      ? { 'text-allow-overlap': true, 'text-anchor': 'top' }
+      : { 'text-variable-anchor': ['top', 'bottom'] }),
     'text-radial-offset': 0.5,
     'symbol-sort-key': ['match', ['get', 'kind'], LANDABLE_KINDS, 0, 1],
   }}

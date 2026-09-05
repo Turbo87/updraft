@@ -52,6 +52,11 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
   await map.once('idle');
   expect(map.hasImage('updraft-sdf:waypoint-airfield')).toBe(true);
   expect(map.queryRenderedFeatures({ layers: ['waypoint-symbols'] })).toHaveLength(6);
+  expect(map.getLayoutProperty('waypoint-labels', 'text-allow-overlap')).toBeUndefined();
+  expect(map.getLayoutProperty('waypoint-labels', 'text-variable-anchor')).toEqual([
+    'top',
+    'bottom',
+  ]);
   let foreign = {
     ...arrivalFixture.features[0],
     id: '2:0:0',
@@ -135,6 +140,52 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
         arrivalMarginMeters: -0.1,
       }),
     ).toBe('Just below\n+0ft');
+    await map.once('idle');
+    map._fadeDuration = 300;
+    // Placement opacity and anchor availability control visibility before the shader fade.
+    let textOpacities = new Set<number>();
+    let missingAnchors = 0;
+    function recordOpacity() {
+      let placement = map.style.placement;
+      for (let [id, { text }] of Object.entries(placement.opacities)) {
+        if (!text.placed) continue;
+        textOpacities.add(text.opacity);
+        if (
+          map.getLayoutProperty('arrival-labels', 'text-variable-anchor') &&
+          !placement.variableOffsets[Number(id)]
+        ) {
+          missingAnchors++;
+        }
+      }
+    }
+    map.on('render', recordOpacity);
+    try {
+      for (let arrivalMarginMeters of [249, 248, 247]) {
+        let updated = {
+          ...arrivalFixture,
+          features: arrivalFixture.features.map((feature) => ({
+            ...feature,
+            properties: { ...feature.properties, arrivalMarginMeters },
+          })),
+        };
+        let updateUrl = URL.createObjectURL(new Blob([JSON.stringify(updated)]));
+        try {
+          client.emitArrivals({ generation: 1, url: updateUrl });
+          await map.once('idle');
+          expect(
+            map
+              .queryRenderedFeatures({ layers: ['arrival-labels'] })
+              .map(({ properties }) => properties.arrivalMarginMeters),
+          ).toContain(arrivalMarginMeters);
+        } finally {
+          URL.revokeObjectURL(updateUrl);
+        }
+      }
+    } finally {
+      map.off('render', recordOpacity);
+    }
+    expect(textOpacities).toEqual(new Set([1]));
+    expect(missingAnchors).toBe(0);
     let error = new Error('Arrival worker stopped');
     let log = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {

@@ -6,8 +6,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
-    ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetExternalDeviceEnabled,
-    SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetBugs,
+    SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -222,11 +222,12 @@ impl Core {
             settings,
             external_devices,
         } = snapshot;
+        let glide_performance = GlidePerformance::default();
         let mut sensor_fusion = SensorFusion::default();
-        sensor_fusion.set_polar(settings.polar.glide_polar());
+        sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
             settings,
-            glide_performance: GlidePerformance::default(),
+            glide_performance,
             external_devices: ExternalDevices::from_device_configs(external_devices),
             airspace,
             waypoints: Arc::default(),
@@ -685,7 +686,8 @@ impl Input for SetPolar {
         }
         let before = core.instruments();
         core.settings.polar = self.polar;
-        core.sensor_fusion.set_polar(self.polar.glide_polar());
+        let polar = core.glide_performance.glide_polar(self.polar);
+        core.sensor_fusion.set_polar(polar);
         let mut effects = vec![
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
@@ -723,6 +725,27 @@ impl Input for SetMacCready {
         core.glide_performance.mac_cready = self.mac_cready;
         let topic = Topic::GlidePerformance(core.glide_performance);
         Update::effects(vec![Effect::emit(topic)])
+    }
+}
+
+impl Input for SetBugs {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.glide_performance.bugs == self.bugs {
+            return Update::empty();
+        }
+        let before = core.instruments();
+        core.glide_performance.bugs = self.bugs;
+        let polar = core.glide_performance.glide_polar(core.settings.polar);
+        core.sensor_fusion.set_polar(polar);
+        let topic = Topic::GlidePerformance(core.glide_performance);
+        let mut effects = vec![Effect::emit(topic)];
+        let after = core.instruments();
+        if after != before {
+            effects.push(Effect::emit(after.as_topic()));
+        }
+        Update::effects(effects)
     }
 }
 

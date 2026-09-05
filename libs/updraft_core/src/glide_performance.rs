@@ -29,18 +29,80 @@ impl TryFrom<f64> for MacCready {
 #[error("MacCready must be finite and nonnegative")]
 pub struct InvalidMacCready;
 
+/// The percentage of clean performance lost, from zero to below 100.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct Bugs(f64);
+
+impl<'de> Deserialize<'de> for Bugs {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        f64::deserialize(deserializer)?
+            .try_into()
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+impl TryFrom<f64> for Bugs {
+    type Error = InvalidBugs;
+
+    fn try_from(percent: f64) -> Result<Self, Self::Error> {
+        if (0.0..100.0).contains(&percent) {
+            Ok(Self(percent))
+        } else {
+            Err(InvalidBugs)
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("Bugs must be between 0% and less than 100%")]
+pub struct InvalidBugs;
+
 /// Session controls that reset when the core starts.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct GlidePerformance {
     pub mac_cready: MacCready,
+    pub bugs: Bugs,
+}
+
+impl GlidePerformance {
+    pub fn glide_polar(self, polar: crate::PolarId) -> updraft_polar::GlidePolar {
+        polar.glide_polar().with_bugs(self.bugs.0 / 100.0)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use claims::{assert_err, assert_ok};
+
+    #[test]
+    fn bugs_reduce_the_selected_polars_performance() {
+        let id = crate::PolarId::default();
+        let clean = GlidePerformance::default().glide_polar(id);
+        assert_eq!(clean.bugs(), 0.0);
+        let performance = GlidePerformance {
+            bugs: assert_ok!(Bugs::try_from(10.0)),
+            ..GlidePerformance::default()
+        };
+        let dirty = performance.glide_polar(id);
+        approx::assert_abs_diff_eq!(
+            dirty.best_glide_ratio(),
+            clean.best_glide_ratio() * 0.9,
+            epsilon = 1e-12
+        );
+    }
+
+    #[test]
+    fn bugs_reject_invalid_percentages() {
+        for percent in [-1.0, 100.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_err!(Bugs::try_from(percent));
+        }
+        assert_ok!(Bugs::try_from(0.0));
+        assert_ok!(Bugs::try_from(99.9));
+    }
 
     #[test]
     fn maccready_accepts_only_finite_nonnegative_values() {

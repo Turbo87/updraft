@@ -37,13 +37,13 @@ pub use external_device::{
     UnknownExternalDevice,
 };
 pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
-pub use glide_performance::{GlidePerformance, InvalidMacCready, MacCready};
+pub use glide_performance::{Bugs, GlidePerformance, InvalidBugs, InvalidMacCready, MacCready};
 pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetWaypointCatalog,
     GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices, ReplaceWaypointCatalog,
-    SetAirspaceUnavailable, SetArrivalReserve, SetExternalDeviceEnabled, SetLocale, SetMacCready,
-    SetPolar, SetUnits, Start, Tick, Update,
+    SetAirspaceUnavailable, SetArrivalReserve, SetBugs, SetExternalDeviceEnabled, SetLocale,
+    SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

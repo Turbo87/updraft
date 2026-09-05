@@ -44,6 +44,24 @@ function instruments(trackDegrees: number): Topic {
 }
 
 describe('FakeClient', () => {
+  it('validates bugs and retains MC when publishing a change', async () => {
+    let client = new FakeClient();
+    await client.setMacCready(1.5);
+    let onTopic = vi.fn();
+    client.subscribe(onTopic);
+    onTopic.mockClear();
+    for (let value of [-1, 100, NaN, Infinity]) {
+      await expect(client.setBugs(value)).rejects.toThrow('Bugs');
+    }
+    await client.setBugs(0);
+    expect(onTopic).not.toHaveBeenCalled();
+    await client.setBugs(10.5);
+    expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+      topic: 'glidePerformance',
+      value: { macCready: 1.5, bugs: 10.5 },
+    });
+  });
+
   it('validates MC and publishes only changed flight controls', async () => {
     let client = new FakeClient();
     let onTopic = vi.fn();
@@ -57,7 +75,7 @@ describe('FakeClient', () => {
     await client.setMacCready(1.5);
     expect(onTopic).toHaveBeenCalledExactlyOnceWith({
       topic: 'glidePerformance',
-      value: { macCready: 1.5 },
+      value: { macCready: 1.5, bugs: 0 },
     });
   });
 

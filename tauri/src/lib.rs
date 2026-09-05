@@ -92,6 +92,7 @@ pub fn run() {
             ipc::set_units,
             ipc::get_polars,
             ipc::set_mac_cready,
+            ipc::set_bugs,
             ipc::set_arrival_reserve,
             ipc::set_polar,
             ipc::add_external_device,

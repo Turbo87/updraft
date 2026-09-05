@@ -239,6 +239,17 @@ pub fn get_polars() -> Vec<updraft_core::PolarId> {
 }
 
 #[tauri::command]
+pub async fn set_bugs(
+    bugs: updraft_core::Bugs,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetBugs { bugs })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_mac_cready(
     mac_cready: updraft_core::MacCready,
     handle: tauri::State<'_, DriverHandle>,
@@ -406,6 +417,7 @@ mod tests {
                 set_units,
                 get_polars,
                 set_mac_cready,
+                set_bugs,
                 set_arrival_reserve,
                 set_polar,
                 add_external_device,
@@ -549,6 +561,22 @@ mod tests {
         }
         for mac_cready in [json!(-1), json!(null), json!("1.5")] {
             let input = request("set_mac_cready", json!({ "macCready": mac_cready }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn bugs_command_validates_performance_loss_percent() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for bugs in [0.0, 10.5, 99.9] {
+            let input = request("set_bugs", json!({ "bugs": bugs }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for bugs in [json!(-1), json!(100), json!(null), json!("10")] {
+            let input = request("set_bugs", json!({ "bugs": bugs }));
             claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
         }
     }

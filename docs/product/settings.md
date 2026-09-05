@@ -33,6 +33,12 @@ nonnegative values. It remains active during navigation and resets when Updraft
 restarts. The core publishes it through the separate `GlidePerformance` topic.
 Settings writes exclude these session controls.
 
+Bugs specifies the percentage of clean performance lost. Zero means clean,
+and 10% means a 10% loss. Fractional percentages are accepted. Values must be
+at least zero and less than 100%. Bugs resets to zero on restart. It adjusts
+the active polar and updates netto immediately. Changing the selected polar
+retains the current bugs value.
+
 ## Ownership and updates
 
 The core owns the active locale, display units, glide polar, arrival reserve,

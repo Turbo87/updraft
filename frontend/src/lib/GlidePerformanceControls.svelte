@@ -9,14 +9,20 @@
     macCready,
     unit,
     setMacCready,
+    bugs,
+    setBugs,
   }: {
     macCready: number;
     unit: VerticalSpeedUnit;
     setMacCready: (value: number) => Promise<void>;
+    bugs: number;
+    setBugs: (value: number) => Promise<void>;
   } = $props();
 
   let saving = $state(false);
   let error = $state<'invalid' | 'failed' | null>(null);
+  let bugsSaving = $state(false);
+  let bugsError = $state<'invalid' | 'failed' | null>(null);
   let displayedMC = $derived(
     convertVerticalSpeed(macCready, unit).toFixed(unit === 'ft/min' ? 0 : 1),
   );
@@ -37,6 +43,25 @@
     } finally {
       input.value = displayedMC;
       saving = false;
+    }
+  }
+
+  async function changeBugs(event: Event & { currentTarget: HTMLInputElement }) {
+    let input = event.currentTarget;
+    let value = input.valueAsNumber;
+    if (!Number.isFinite(value) || value < 0 || value >= 100) {
+      bugsError = 'invalid';
+      return;
+    }
+    bugsSaving = true;
+    bugsError = null;
+    try {
+      await setBugs(value);
+    } catch {
+      bugsError = 'failed';
+    } finally {
+      input.value = String(bugs);
+      bugsSaving = false;
     }
   }
 </script>
@@ -60,9 +85,30 @@
     />
   </label>
   {#if error}<p role="alert">{error === 'invalid' ? m.mc_invalid() : m.mc_save_failed()}</p>{/if}
+  <label class="bugs">
+    <span>{m.bugs_label()} (%)</span>
+    <input
+      type="number"
+      min="0"
+      step="any"
+      value={bugs}
+      disabled={bugsSaving}
+      aria-invalid={bugsError ? 'true' : undefined}
+      onchange={changeBugs}
+    />
+  </label>
+  <p>{m.bugs_hint()}</p>
+  {#if bugsError}
+    <p role="alert">
+      {bugsError === 'invalid' ? m.bugs_invalid() : m.bugs_save_failed()}
+    </p>
+  {/if}
 </ScreenScaffold>
 
 <style>
+  .bugs {
+    margin-block-start: var(--space-6);
+  }
   p {
     font: var(--text-caption);
     color: var(--color-text-muted);

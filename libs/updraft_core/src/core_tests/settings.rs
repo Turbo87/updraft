@@ -8,7 +8,9 @@ use crate::settings::{
     VerticalSpeedUnit,
 };
 use crate::topic::Instruments;
-use crate::{ArrivalReserve, GlidePerformance, MacCready, SetArrivalReserve, SetMacCready};
+use crate::{
+    ArrivalReserve, Bugs, GlidePerformance, MacCready, SetArrivalReserve, SetBugs, SetMacCready,
+};
 use claims::assert_some_eq;
 
 #[test]
@@ -17,11 +19,23 @@ fn maccready_is_published_but_not_persisted_and_resets_on_restart() {
     let initial = Topic::GlidePerformance(GlidePerformance::default());
     assert_some_eq!(core.topics().last(), &initial);
     let mac_cready = claims::assert_ok!(MacCready::try_from(1.5));
-    let topic = Topic::GlidePerformance(GlidePerformance { mac_cready });
+    let performance = GlidePerformance {
+        mac_cready,
+        ..GlidePerformance::default()
+    };
+    let topic = Topic::GlidePerformance(performance);
     let effects = core.apply(SetMacCready { mac_cready }, at(0)).effects;
     assert_eq!(effects, vec![Effect::emit(topic.clone())]);
     assert_some_eq!(core.topics().last(), &topic);
     let repeated = core.apply(SetMacCready { mac_cready }, at(1));
+    assert_eq!(repeated.effects, vec![]);
+
+    let bugs = claims::assert_ok!(Bugs::try_from(10.0));
+    let performance = GlidePerformance { mac_cready, bugs };
+    let topic = Topic::GlidePerformance(performance);
+    let effects = core.apply(SetBugs { bugs }, at(1)).effects;
+    assert_eq!(effects, vec![Effect::emit(topic)]);
+    let repeated = core.apply(SetBugs { bugs }, at(1));
     assert_eq!(repeated.effects, vec![]);
 
     let effects = core.apply(SetLocale::new(Locale::De), at(2)).effects;
@@ -265,4 +279,17 @@ fn loaded_and_changed_polars_drive_netto() {
     assert_some_eq!(changed.instruments().derived, expected);
     let instruments = Effect::emit(changed.instruments().as_topic());
     assert_some_eq!(effects.last(), &instruments);
+
+    let bugs = assert_ok!(Bugs::try_from(10.0));
+    let clean = changed.instruments();
+    let effects = changed.apply(SetBugs { bugs }, at(1_000)).effects;
+    assert_ne!(changed.instruments(), clean);
+    let instruments = Effect::emit(changed.instruments().as_topic());
+    assert_some_eq!(effects.last(), &instruments);
+
+    let polar = crate::PolarId::default();
+    changed.apply(SetPolar { polar }, at(1_000));
+    loaded.apply(SetPolar { polar }, at(1_000));
+    loaded.apply(SetBugs { bugs }, at(1_000));
+    assert_eq!(changed.instruments(), loaded.instruments());
 }

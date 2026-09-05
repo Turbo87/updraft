@@ -152,6 +152,11 @@ pub struct SetMacCready {
     pub mac_cready: crate::MacCready,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SetBugs {
+    pub bugs: crate::Bugs,
+}
+
 /// Replaces all application-wide display-unit selections.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetUnits {
@@ -247,6 +252,7 @@ impl private::Sealed for SetUnits {}
 impl private::Sealed for SetPolar {}
 impl private::Sealed for SetArrivalReserve {}
 impl private::Sealed for SetMacCready {}
+impl private::Sealed for SetBugs {}
 impl private::Sealed for AddExternalDevice {}
 impl private::Sealed for DeleteExternalDevice {}
 impl private::Sealed for ReorderExternalDevices {}

@@ -80,6 +80,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_mac_cready', { macCready });
   }
 
+  setBugs(bugs: number): Promise<void> {
+    return invoke('set_bugs', { bugs });
+  }
+
   subscribe(onTopic: TopicListener): () => void {
     let channel = new Channel<Topic>();
     channel.onmessage = onTopic;

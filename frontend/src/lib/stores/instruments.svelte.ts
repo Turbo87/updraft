@@ -13,6 +13,7 @@ export const EMPTY_DERIVED_INSTRUMENTS: DerivedInstruments = {
   altitude: null,
   bank: null,
   netto: null,
+  relativeVario: null,
 };
 
 /**

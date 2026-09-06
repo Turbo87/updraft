@@ -45,6 +45,7 @@ pub struct SensorFusion {
     altitude: SignalState<MslAltitude>,
     bank: SignalState<Angle>,
     netto: SignalState<Speed>,
+    relative_vario: SignalState<Speed>,
 }
 
 impl SensorFusion {
@@ -122,6 +123,7 @@ impl SensorFusion {
         if !matches!(self.derived_air_speed, SignalState::Current(_)) {
             self.vario.mark_stale();
             self.netto.mark_stale();
+            self.relative_vario.mark_stale();
         }
     }
 
@@ -133,6 +135,7 @@ impl SensorFusion {
             self.estimator.clear_air_speed();
             self.vario.mark_stale();
             self.netto.mark_stale();
+            self.relative_vario.mark_stale();
             self.air_speed_current = false;
             self.derived_air_speed.mark_stale();
             self.air_speed = None;
@@ -269,6 +272,7 @@ impl SensorFusion {
         self.vertical_speed.mark_stale();
         self.vario.mark_stale();
         self.netto.mark_stale();
+        self.relative_vario.mark_stale();
         self.altitude.mark_stale();
     }
 
@@ -323,12 +327,20 @@ impl SensorFusion {
             || !matches!(self.derived_air_speed, SignalState::Current(_))
         {
             self.netto.mark_stale();
+            self.relative_vario.mark_stale();
             return;
         }
-        if let Some(netto) = self.estimator.estimate().netto {
+        let estimate = self.estimator.estimate();
+        if let Some(netto) = estimate.netto {
             self.netto.update(netto);
         } else {
             self.netto.mark_stale();
+            self.relative_vario.mark_stale();
+        }
+        if let Some(relative_vario) = estimate.relative_vario {
+            self.relative_vario.update(relative_vario);
+        } else {
+            self.relative_vario.mark_stale();
         }
     }
 
@@ -398,6 +410,14 @@ impl SensorFusion {
                 stale,
             });
 
+        let relative_vario = self
+            .relative_vario
+            .value_with_stale()
+            .map(|(speed, stale)| SpeedInstrument {
+                meters_per_second: speed.as_meters_per_second(),
+                stale,
+            });
+
         let available = raw_vertical_speed.is_some()
             || vertical_speed.is_some()
             || vario.is_some()
@@ -406,7 +426,8 @@ impl SensorFusion {
             || heading.is_some()
             || altitude.is_some()
             || bank.is_some()
-            || netto.is_some();
+            || netto.is_some()
+            || relative_vario.is_some();
         available.then_some(DerivedInstruments {
             raw_vertical_speed,
             vertical_speed,
@@ -417,6 +438,7 @@ impl SensorFusion {
             altitude,
             bank,
             netto,
+            relative_vario,
         })
     }
 }

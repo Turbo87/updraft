@@ -138,6 +138,10 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "–",
         },
         {
+          "label": "Relative vario",
+          "value": "–",
+        },
+        {
           "label": "Air speed",
           "value": "–",
         },
@@ -234,6 +238,10 @@ describe('MapDebugOverlay.svelte', () => {
           "value": "–",
         },
         {
+          "label": "Relative vario",
+          "value": "–",
+        },
+        {
           "label": "Air speed",
           "value": "–",
         },
@@ -267,6 +275,7 @@ describe('MapDebugOverlay.svelte', () => {
         verticalSpeed: { metersPerSecond: 1.6, stale: false },
         vario: { metersPerSecond: 1.8, stale: false },
         netto: { metersPerSecond: 2.4, stale: true },
+        relativeVario: { metersPerSecond: 1.3, stale: true },
         bank: { angleDegrees: -38, stale: false },
         wind: {
           directionDegrees: 240,
@@ -286,6 +295,7 @@ describe('MapDebugOverlay.svelte', () => {
     await expect.element(page.getByText('265°', { exact: true })).toBeInTheDocument();
     let staleNetto = page.getByText('2.40 m/s', { exact: true });
     await expect.element(staleNetto).toHaveClass('stale');
+    await expect.element(page.getByText('1.30 m/s', { exact: true })).toHaveClass('stale');
     await expect.element(page.getByText('-38°', { exact: true })).toBeInTheDocument();
     await expect.element(page.getByText('240° / 18.7 km/h', { exact: true })).toBeInTheDocument();
   });
@@ -434,6 +444,10 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Netto",
+          "value": "–",
+        },
+        {
+          "label": "Relative vario",
           "value": "–",
         },
         {

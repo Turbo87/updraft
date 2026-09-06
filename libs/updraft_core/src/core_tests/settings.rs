@@ -289,6 +289,10 @@ fn loaded_and_changed_polars_drive_netto() {
     let expected = assert_some!(loaded.instruments().derived);
     let before = assert_some!(changed.instruments().derived);
     assert_ne!(assert_some!(before.netto), assert_some!(expected.netto));
+    assert_ne!(
+        assert_some!(before.relative_vario),
+        assert_some!(expected.relative_vario),
+    );
 
     let effects = changed.apply(SetPolar { polar }, at(1_000)).effects;
     assert_some_eq!(changed.instruments().derived, expected);

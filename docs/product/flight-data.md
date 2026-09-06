@@ -92,6 +92,24 @@ The instruments topic retains each previous vertical-speed value with
 sample. The debug overlay displays all three values with the configured
 vertical-speed unit. There is no pilot-facing vario display yet.
 
+## Netto and relative vario
+
+The core calculates netto from energy-compensated vario and the active polar's
+sink rate. The sink rate includes ballast, bugs, ISA density, and turn load.
+
+Relative vario (super netto) subtracts the active polar's minimum sink rate
+from netto. This minimum sink rate includes ballast, bugs, and the same ISA
+density estimate as netto. It uses straight flight, independent of the current
+bank angle. The value estimates potential climb at minimum sink, not actual
+climb while circling. Positive values mean climbing.
+
+Both values require valid netto inputs. Before the inputs produce a value,
+the fields remain absent. Stale inputs retain the previous values with
+`stale: true`. A polar change updates both current values immediately.
+
+The instruments topic publishes both values. The debug overlay displays them
+with the configured vertical-speed unit. There is no pilot-facing display yet.
+
 ## True airspeed
 
 The current core accepts true airspeed from `$LXWP0`. It does not calculate TAS
@@ -105,7 +123,8 @@ configured horizontal-speed unit. There is no pilot-facing TAS infobox yet.
 
 The `Instruments` topic contains optional GPS, pressure-altitude, true-airspeed,
 and derived objects. The derived object contains optional raw, smoothed, and
-energy-compensated vertical speeds. The topic does not publish source identity.
+energy-compensated vertical speeds, netto, and relative vario. The topic does
+not publish source identity.
 
 Canonical values cross the protocol in decimal degrees, metres, metres per
 second, and milliseconds. Frontend code applies display units and locale
@@ -118,4 +137,4 @@ core emits it only when that projection changes.
 
 The current contract does not include manual per-domain source selection,
 source identity in the frontend, GPS quality presentation, IAS, additional
-internal sensors, netto, or a generic source-selector framework.
+internal sensors or a generic source-selector framework.

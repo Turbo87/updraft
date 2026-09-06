@@ -12,6 +12,7 @@ mod driver;
 mod file_picker;
 mod ipc;
 mod settings;
+mod source_files;
 mod terrain;
 // A session only exists on Android. `test` keeps the adapter, and the tests
 // that pin the wire contract it implements, compiling on the host.

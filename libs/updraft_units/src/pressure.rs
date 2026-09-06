@@ -79,6 +79,7 @@ impl<'de> serde::Deserialize<'de> for Pressure {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use claims::assert_lt;
 
     #[test]
     fn conversions() {
@@ -101,7 +102,7 @@ mod tests {
             Pressure::from_pascals(-3.).abs(),
             Pressure::from_pascals(3.)
         );
-        assert!(b < a);
+        assert_lt!(b, a);
     }
 
     #[test]

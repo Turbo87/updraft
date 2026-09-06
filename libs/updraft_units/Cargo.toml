@@ -17,4 +17,5 @@ serde = { version = "=1.0.229", features = ["derive"], optional = true }
 
 [dev-dependencies]
 approx = { version = "=0.6.0-rc2", features = ["derive"] }
+claims = "=0.8.0"
 serde_json = "=1.0.151"

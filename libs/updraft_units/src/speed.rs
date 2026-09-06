@@ -69,6 +69,7 @@ impl_debug_with_unit!(Speed, " m/s");
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+    use claims::assert_lt;
 
     #[test]
     fn conversions() {
@@ -103,7 +104,7 @@ mod tests {
         assert_eq!(-b, Speed::from_meters_per_second(-12.));
         assert_eq!(a / b, 2.5);
         assert_eq!(Speed::from_meters_per_second(-3.).abs(), b / 4.);
-        assert!(b < a);
+        assert_lt!(b, a);
     }
 
     #[test]

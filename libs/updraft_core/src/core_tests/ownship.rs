@@ -3,7 +3,7 @@ use super::support::*;
 use crate::connection::ConnectionState;
 use crate::{FixTime, UtcInstant, UtcTime};
 use approx::assert_abs_diff_eq;
-use claims::{assert_some, assert_some_eq};
+use claims::{assert_none, assert_some, assert_some_eq};
 use std::assert_matches;
 use updraft_units::{EllipsoidAltitude, Length, MslAltitude};
 
@@ -103,7 +103,7 @@ fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
     let DomainState::Current(selected) = core.gps else {
         panic!("GPS should remain current");
     };
-    assert!(selected.value.fix_time.is_none());
+    assert_none!(selected.value.fix_time);
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 }
 
@@ -145,7 +145,7 @@ fn gps_becomes_last_known_at_the_exact_freshness_boundary() {
     let DomainState::LastKnown(selected) = core.gps else {
         panic!("GPS should be last known");
     };
-    assert!(selected.value.fix_time.is_some());
+    assert_some!(selected.value.fix_time);
     assert!(gps_instruments(&core).stale);
 }
 
@@ -208,9 +208,9 @@ fn optional_gps_fields_expire_without_values_from_another_source() {
 
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
     let gps = gps_instruments(&core);
-    assert!(gps.altitude_meters.is_none());
-    assert!(gps.track_degrees.is_none());
-    assert!(gps.ground_speed_meters_per_second.is_none());
+    assert_none!(gps.altitude_meters);
+    assert_none!(gps.track_degrees);
+    assert_none!(gps.ground_speed_meters_per_second);
     let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
 }

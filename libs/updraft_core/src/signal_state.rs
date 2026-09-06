@@ -35,7 +35,7 @@ impl<T> SignalState<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::assert_some_eq;
+    use claims::{assert_none, assert_some_eq};
 
     #[derive(Debug, PartialEq)]
     struct NonCopy(u8);
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn value_with_stale_projects_availability_and_freshness() {
-        assert_eq!(SignalState::<u8>::Unavailable.value_with_stale(), None);
+        assert_none!(SignalState::<u8>::Unavailable.value_with_stale());
         assert_some_eq!(SignalState::Current(42).value_with_stale(), (42, false));
         assert_some_eq!(SignalState::LastKnown(42).value_with_stale(), (42, true));
     }

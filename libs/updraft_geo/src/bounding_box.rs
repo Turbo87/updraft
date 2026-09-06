@@ -51,10 +51,29 @@ impl BoundingBox {
     /// The smallest box containing all `points`, or `None` for an empty
     /// iterator or when any coordinate is non-finite.
     ///
+    /// Latitudes must be within `[-90°, 90°]`. Longitudes are normalized
+    /// to `[-180°, 180°]`.
+    ///
     /// The longitude interval is chosen by excluding the largest
     /// longitudinal gap between the points, so point sets straddling the
     /// antimeridian produce a crossing box instead of one spanning the
     /// whole globe.
+    ///
+    /// # Panics
+    ///
+    /// Panics in debug builds if the resulting latitude bounds are outside
+    /// `[-90°, 90°]`. Release builds do not validate latitude bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use updraft_geo::{BoundingBox, LatLon};
+    ///
+    /// let points = [LatLon::from_degrees(50., 170.), LatLon::from_degrees(51., 185.)];
+    /// let bounds = BoundingBox::from_points(points).unwrap();
+    /// assert!(bounds.crosses_antimeridian());
+    /// assert!(bounds.contains(LatLon::from_degrees(50.5, 180.)));
+    /// ```
     pub fn from_points<I: IntoIterator<Item = LatLon>>(points: I) -> Option<Self> {
         let mut points = points.into_iter();
         let first = points.next().filter(|point| is_finite(*point))?;

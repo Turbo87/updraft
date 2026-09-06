@@ -12,10 +12,10 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use updraft_airspace::AirspaceDataset;
 use updraft_core::{
-    ActivateAirspaceDataset, AddExternalDevice, AirspaceLoadError, AirspaceState, AirspaceStatus,
-    Bytes, ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
-    ExternalDeviceId, LatLon, PublishedExternalDevice, SetExternalDeviceEnabled, SetLocale,
-    SettingsSnapshot, Topic, TrafficUpdate,
+    AddExternalDevice, AirspaceLoadError, AirspaceState, AirspaceStatus, Bytes, ConnectionSpec,
+    DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig, ExternalDeviceId, LatLon,
+    PublishedExternalDevice, SetExternalDeviceEnabled, SetLocale, SettingsSnapshot, Topic,
+    TrafficUpdate,
 };
 
 const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -175,7 +175,11 @@ async fn new_subscriber_receives_current_airspace_status() {
     );
     let dataset = Arc::new(AirspaceDataset::default());
     handle
-        .send(ActivateAirspaceDataset::new(dataset, None))
+        .send(updraft_core::ReplaceAirspaceCatalog(Arc::new(
+            updraft_core::AirspaceCatalog {
+                sources: std::collections::BTreeMap::from([("airspace.txt".into(), Ok(dataset))]),
+            },
+        )))
         .await
         .expect("driver remains active");
     let mut topics = topic_stream(&handle);
@@ -197,8 +201,9 @@ async fn new_subscriber_receives_current_airspace_status() {
 #[tokio::test]
 async fn driver_starts_with_active_airspace_at_generation_zero() {
     let dataset = Arc::new(AirspaceDataset::default());
-    let initial_airspace =
-        AirspaceState::active_at_startup(dataset, Some("Stored airspace.txt".into()));
+    let initial_airspace = AirspaceState::at_startup(updraft_core::AirspaceCatalog {
+        sources: std::collections::BTreeMap::from([("Stored airspace.txt".into(), Ok(dataset))]),
+    });
     let handle = Driver::spawn(
         snapshot(),
         initial_airspace,
@@ -222,10 +227,12 @@ async fn driver_starts_with_active_airspace_at_generation_zero() {
 
 #[tokio::test]
 async fn driver_starts_with_unavailable_airspace() {
-    let initial_airspace = AirspaceState::unavailable_at_startup(
-        Some("Broken airspace.txt".into()),
-        AirspaceLoadError::ParseFailed,
-    );
+    let initial_airspace = AirspaceState::at_startup(updraft_core::AirspaceCatalog {
+        sources: std::collections::BTreeMap::from([(
+            "Broken airspace.txt".into(),
+            Err(AirspaceLoadError::ParseFailed),
+        )]),
+    });
     let handle = Driver::spawn(
         snapshot(),
         initial_airspace,

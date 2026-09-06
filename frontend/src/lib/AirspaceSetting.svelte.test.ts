@@ -53,7 +53,7 @@ describe('AirspaceSetting.svelte', () => {
     await expect.element(page.getByText('Active', { exact: true })).toBeVisible();
 
     await expect
-      .element(page.getByText('Import an OpenAir file to replace the stored source.'))
+      .element(page.getByText('Importing a file replaces only the source with the same filename.'))
       .toBeVisible();
 
     let replace = page.getByRole('button', { name: 'Import' });
@@ -165,6 +165,7 @@ describe('AirspaceSetting.svelte', () => {
   });
 
   it.each([
+    { error: { kind: 'missingName' }, message: 'The selected file has no filename.' },
     {
       error: { kind: 'pickerFailed' },
       message: 'Could not open the file picker.',

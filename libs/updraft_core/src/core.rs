@@ -4,10 +4,10 @@ use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
 use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
-    ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
-    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps,
-    ReorderExternalDevices, SetAirspaceUnavailable, SetArrivalReserve, SetBallast, SetBugs,
-    SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
+    GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
+    SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick,
+    Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -389,33 +389,6 @@ impl Core {
             true_airspeed: self.true_airspeed.published(),
             derived: self.sensor_fusion.instruments().map(Box::new),
         }
-    }
-}
-
-impl Input for ActivateAirspaceDataset {
-    type Response = ();
-
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        let status = core.airspace.activate(self.dataset, self.source_name);
-        Update::effects(vec![Effect::emit(Topic::Airspace(status))])
-    }
-}
-
-impl Input for ClearAirspaceDataset {
-    type Response = ();
-
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        let status = core.airspace.clear();
-        Update::effects(vec![Effect::emit(Topic::Airspace(status))])
-    }
-}
-
-impl Input for SetAirspaceUnavailable {
-    type Response = ();
-
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        let status = core.airspace.mark_unavailable(self.source_name, self.error);
-        Update::effects(vec![Effect::emit(Topic::Airspace(status))])
     }
 }
 

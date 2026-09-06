@@ -119,7 +119,7 @@ pub fn run() {
             let snapshot = settings_file.load();
             let airspace_storage =
                 airspace_storage::AirspaceStorage::new(app.path().app_data_dir()?);
-            let airspace = airspace_storage.load();
+            let airspace = updraft_core::AirspaceState::at_startup(airspace_storage.load()?);
             let waypoint_storage =
                 waypoints::storage::WaypointStorage::new(app.path().app_data_dir()?);
             let waypoint_catalog = Arc::new(waypoint_storage.load()?);

@@ -17,6 +17,7 @@
 
   type MutationState = { type: 'idle' } | { type: 'pending' } | { type: 'failed'; message: string };
   type AirspaceCommandErrorKind =
+    | 'missingName'
     | 'pickerFailed'
     | 'readFailed'
     | 'parseFailed'
@@ -50,6 +51,7 @@
     if (typeof error !== 'object' || error === null || !('kind' in error)) return null;
 
     switch (error.kind) {
+      case 'missingName':
       case 'pickerFailed':
       case 'readFailed':
       case 'parseFailed':
@@ -65,6 +67,8 @@
 
   function commandErrorMessage(error: unknown): string {
     switch (commandErrorKind(error)) {
+      case 'missingName':
+        return m.airspace_command_missing_name();
       case 'pickerFailed':
         return m.airspace_command_picker_failed();
       case 'readFailed':
@@ -269,6 +273,8 @@
   }
 
   dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
     margin: 0;
     font: var(--text-row-detail);
     font-weight: 600;

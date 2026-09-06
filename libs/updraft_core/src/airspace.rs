@@ -98,24 +98,6 @@ impl AirspaceState {
         }
     }
 
-    pub fn active_at_startup(dataset: Arc<AirspaceDataset>, source_name: Option<String>) -> Self {
-        Self::at_startup(AirspaceCatalog {
-            sources: BTreeMap::from([(
-                source_name.unwrap_or_else(|| "airspace.txt".into()),
-                Ok(dataset),
-            )]),
-        })
-    }
-
-    pub fn unavailable_at_startup(source_name: Option<String>, error: AirspaceLoadError) -> Self {
-        Self::at_startup(AirspaceCatalog {
-            sources: BTreeMap::from([(
-                source_name.unwrap_or_else(|| "airspace.txt".into()),
-                Err(error),
-            )]),
-        })
-    }
-
     pub fn status(&self) -> AirspaceStatus {
         self.catalog.status(self.generation)
     }
@@ -124,26 +106,6 @@ impl AirspaceState {
         self.catalog = catalog;
         self.generation += 1;
         self.status()
-    }
-
-    pub fn activate(
-        &mut self,
-        dataset: Arc<AirspaceDataset>,
-        source_name: Option<String>,
-    ) -> AirspaceStatus {
-        self.replace(Self::active_at_startup(dataset, source_name).catalog)
-    }
-
-    pub fn clear(&mut self) -> AirspaceStatus {
-        self.replace(Arc::default())
-    }
-
-    pub fn mark_unavailable(
-        &mut self,
-        source_name: Option<String>,
-        error: AirspaceLoadError,
-    ) -> AirspaceStatus {
-        self.replace(Self::unavailable_at_startup(source_name, error).catalog)
     }
 
     pub fn snapshot(&self) -> AirspaceSnapshot {

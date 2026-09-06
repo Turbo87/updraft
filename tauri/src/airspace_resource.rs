@@ -57,7 +57,7 @@ mod tests {
     use tauri::test::mock_app;
     use tracing_test::traced_test;
     use updraft_airspace::AirspaceDataset;
-    use updraft_core::{ActivateAirspaceDataset, AirspaceState, SettingsSnapshot};
+    use updraft_core::{AirspaceState, SettingsSnapshot};
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
     fn driver(airspace: AirspaceState) -> DriverHandle {
@@ -74,7 +74,12 @@ mod tests {
     fn wraps_airspaces_in_a_feature_collection() {
         let dataset = AirspaceDataset::from_openair(POLYGON).expect("a valid OpenAir fixture");
 
-        let state = AirspaceState::active_at_startup(Arc::new(dataset.clone()), None);
+        let state = AirspaceState::at_startup(updraft_core::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([(
+                "airspace.txt".into(),
+                Ok(Arc::new(dataset.clone())),
+            )]),
+        });
         let geojson = airspace_geojson(&state.snapshot());
         let mut feature = dataset.airspaces()[0].to_geojson();
         feature["id"] = json!("0:0:0");
@@ -143,14 +148,23 @@ mod tests {
         let initial = Arc::new(
             AirspaceDataset::from_openair(POLYGON).expect("a valid initial OpenAir fixture"),
         );
-        let handle = driver(AirspaceState::active_at_startup(initial, None));
+        let handle = driver(AirspaceState::at_startup(updraft_core::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("airspace.txt".into(), Ok(initial))]),
+        }));
         let app = mock_app();
         app.manage(handle.clone());
         let initial_response = airspace_resource_response(app.handle().clone()).await;
 
         let replacement = Arc::new(AirspaceDataset::default());
         handle
-            .send(ActivateAirspaceDataset::new(replacement, None))
+            .send(updraft_core::ReplaceAirspaceCatalog(Arc::new(
+                updraft_core::AirspaceCatalog {
+                    sources: std::collections::BTreeMap::from([(
+                        "airspace.txt".into(),
+                        Ok(replacement),
+                    )]),
+                },
+            )))
             .await
             .expect("the active driver should accept the replacement");
         let replacement_response = airspace_resource_response(app.handle().clone()).await;

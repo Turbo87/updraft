@@ -48,12 +48,11 @@ pub use glide_performance::{
     Ballast, Bugs, GlidePerformance, InvalidBallast, InvalidBugs, InvalidMacCready, MacCready,
 };
 pub use input::{
-    ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
-    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetGlideSnapshot,
-    GetWaypointCatalog, GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices,
-    ReplaceAirspaceCatalog, ReplaceWaypointCatalog, SetAirspaceUnavailable, SetArrivalReserve,
-    SetBallast, SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits,
-    Start, Tick, Update,
+    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
+    GetAirspaceSnapshot, GetGlideSnapshot, GetWaypointCatalog, GetWaypointSnapshot, Input,
+    InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceWaypointCatalog,
+    SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready,
+    SetPolar, SetUnits, Start, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

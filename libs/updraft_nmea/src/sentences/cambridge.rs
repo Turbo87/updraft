@@ -1,4 +1,4 @@
-use crate::field::{FieldsIter, text};
+use crate::field::{FieldsIter, finite_f64, text};
 use updraft_units::{Angle, Length, Pressure, Speed};
 
 /// Cambridge `!g` setting commands.
@@ -47,11 +47,6 @@ fn parse_setting(field: &[u8]) -> CaiSetting {
         b'q' => CaiSetting::Qnh(Pressure::from_hectopascals(value)),
         _ => CaiSetting::Other(text(field)),
     }
-}
-
-fn finite_f64(field: &[u8]) -> Option<f64> {
-    let value: f64 = fast_float2::parse(field).ok()?;
-    value.is_finite().then_some(value)
 }
 
 /// Cambridge `$PCAID` logger data.

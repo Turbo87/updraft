@@ -42,11 +42,6 @@ pub enum WaypointImportError {
 
 impl WaypointDataset {
     /// Imports the waypoints and warnings from a CUP file.
-    ///
-    /// # Panics
-    ///
-    /// `seeyou-cup` 0.3.1 panics when longitude degrees exceed 255, such as
-    /// `99900.000E`. Such records cannot use partial-import recovery.
     pub fn from_cup(bytes: &[u8]) -> Result<Self, WaypointImportError> {
         let (cup, warnings) = CupFile::from_reader(bytes)?;
         if cup.waypoints.is_empty() {

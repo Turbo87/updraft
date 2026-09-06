@@ -97,11 +97,3 @@ These values describe a straight glide through uniform wind and still vertical
 air. They do not check terrain, obstacles, airspace, or landing-site suitability.
 Native desktop delivery has been confirmed. Final layout acceptance, Android
 validation, and performance measurements remain open.
-
-## Known limitation
-
-`seeyou-cup` 0.3.1 can panic when a longitude degree field overflows its internal
-integer. For example, `99900.000E` triggers this panic. An expected-panic test
-records this dependency limitation. Updraft does not repair or suppress it.
-The import worker reports a failed operation. The same panic during startup
-can prevent the application from loading. Do not use affected CUP files.

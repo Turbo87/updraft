@@ -390,3 +390,24 @@ it('cancels native waypoint import and removes only the selected fake source', a
     },
   });
 });
+
+it('removes only the named airspace source and advances its generation', async () => {
+  let client = new FakeClient();
+  let topics: Topic[] = [];
+  client.subscribe((topic) => topics.push(topic));
+  client.emit({
+    topic: 'airspace',
+    value: {
+      generation: 2,
+      sources: [
+        { type: 'active', sourceName: 'a.txt', airspaceCount: 1 },
+        { type: 'active', sourceName: 'b.txt', airspaceCount: 2 },
+      ],
+    },
+  });
+  await client.removeAirspace('a.txt');
+  expect(topics.at(-1)).toEqual({
+    topic: 'airspace',
+    value: { generation: 3, sources: [{ type: 'active', sourceName: 'b.txt', airspaceCount: 2 }] },
+  });
+});

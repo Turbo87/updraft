@@ -1,3 +1,4 @@
+import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
@@ -46,6 +47,7 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 export class FakeClient implements UpdraftClient {
   #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
   #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
+  #airspace: AirspaceStatus = { generation: 0, sources: [] };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
   #listeners = new Set<TopicListener>();
   #externalDevices: PublishedExternalDevice[];
@@ -103,7 +105,15 @@ export class FakeClient implements UpdraftClient {
     return { type: 'cancelled' };
   }
 
-  async removeAirspace(_sourceName: string): Promise<void> {}
+  async removeAirspace(sourceName: string): Promise<void> {
+    this.emit({
+      topic: 'airspace',
+      value: {
+        generation: this.#airspace.generation + 1,
+        sources: this.#airspace.sources.filter((source) => source.sourceName !== sourceName),
+      },
+    });
+  }
 
   /** Browser development has no session and no process to end. */
   async quit(): Promise<void> {}
@@ -114,7 +124,7 @@ export class FakeClient implements UpdraftClient {
     onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });
     onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
-    onTopic({ topic: 'airspace', value: { generation: 0, sources: [] } });
+    onTopic({ topic: 'airspace', value: this.#airspace });
     onTopic({ topic: 'waypoints', value: this.#waypoints });
 
     return () => {
@@ -244,6 +254,7 @@ export class FakeClient implements UpdraftClient {
 
   /** Publishes a topic as though the core had emitted it. */
   emit(topic: Topic): void {
+    if (topic.topic === 'airspace') this.#airspace = topic.value;
     if (topic.topic === 'waypoints') this.#waypoints = topic.value;
     for (let listener of this.#listeners) {
       listener(topic);

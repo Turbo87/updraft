@@ -163,19 +163,7 @@ mod tests {
             b"S,123.45,P,1018.35,Q,23.3,R,1025.17,T,23.52,V,11.99,E,2.15,H,58.42",
         ));
 
-        assert_eq!(
-            pov,
-            Pov::Data(vec![
-                PovDatum::TrueAirspeed(Speed::from_kilometers_per_hour(123.45)),
-                PovDatum::StaticPressure(Pressure::from_hectopascals(1018.35)),
-                PovDatum::DynamicPressure(Pressure::from_pascals(23.3)),
-                PovDatum::TotalPressure(Pressure::from_hectopascals(1025.17)),
-                PovDatum::Temperature(23.52),
-                PovDatum::Voltage(11.99),
-                PovDatum::TotalEnergyVario(Speed::from_meters_per_second(2.15)),
-                PovDatum::RelativeHumidity(58.42),
-            ])
-        );
+        insta::assert_debug_snapshot!(pov);
     }
 
     #[test]
@@ -184,21 +172,7 @@ mod tests {
             b"A,-1.5099,-0.0292,13.7134,G,4.165,-8.709,-10.479",
         ));
 
-        assert_eq!(
-            pov,
-            Pov::Data(vec![
-                PovDatum::Acceleration {
-                    x: -1.5099,
-                    y: -0.0292,
-                    z: 13.7134,
-                },
-                PovDatum::AngularRate {
-                    x: 4.165,
-                    y: -8.709,
-                    z: -10.479,
-                },
-            ])
-        );
+        insta::assert_debug_snapshot!(pov);
     }
 
     #[test]

@@ -24,7 +24,7 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
     mapState,
     waypoints,
     traffic: new TrafficStore(),
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     testMode: true,

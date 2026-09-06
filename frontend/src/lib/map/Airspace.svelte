@@ -139,7 +139,7 @@
   };
 </script>
 
-<GeoJSONSource id="airspace" maxzoom={24} {data}>
+<GeoJSONSource id="airspace" maxzoom={24} promoteId="id" {data}>
   <FillLayer id="airspace-hit" {beforeId} paint={{ 'fill-opacity': 0 }} />
   <LineLayer
     id="airspace-inner-band"

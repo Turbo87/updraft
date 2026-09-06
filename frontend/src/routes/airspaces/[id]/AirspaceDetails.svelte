@@ -37,7 +37,7 @@
   }: {
     altitudeUnit: AltitudeUnit;
     backLabel: string;
-    id: number;
+    id: string;
     locale: Locale;
     map: Map;
     onBack: (event: MouseEvent) => void;

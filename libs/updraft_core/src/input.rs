@@ -1,9 +1,9 @@
 use crate::connection::{ConnectionSpec, ConnectionState, ExternalDeviceId};
-use crate::core::{AirspaceLoadError, Core};
 use crate::effect::Effect;
 use crate::fix::Fix;
 use crate::settings::{Locale, UnitSettings};
 use crate::time::Timestamp;
+use crate::{AirspaceLoadError, Core};
 use std::sync::Arc;
 use updraft_airspace::AirspaceDataset;
 
@@ -283,3 +283,8 @@ impl private::Sealed for GetWaypointSnapshot {}
 #[derive(Clone, Copy, Debug)]
 pub struct GetGlideSnapshot;
 impl private::Sealed for GetGlideSnapshot {}
+
+/// Replaces the source catalog after a durable file change.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ReplaceAirspaceCatalog(pub Arc<crate::AirspaceCatalog>);
+impl private::Sealed for ReplaceAirspaceCatalog {}

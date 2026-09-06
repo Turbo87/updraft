@@ -253,7 +253,7 @@ fn remove_optional(path: &Path) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_ok, assert_some};
+    use claims::assert_ok;
     use tempfile::tempdir;
     use tracing_test::traced_test;
     use updraft_core::{AirspaceLoadError, AirspaceStatus};
@@ -269,8 +269,8 @@ mod tests {
 
         let state = AirspaceStorage::new(directory.path()).load();
 
-        assert_eq!(state.status(), AirspaceStatus::None);
-        assert_none!(state.snapshot());
+        assert_eq!(state.status(), AirspaceStatus::default());
+        assert_eq!(state.snapshot().catalog.sources.len(), 0);
     }
 
     #[test]
@@ -289,13 +289,28 @@ mod tests {
 
         assert_eq!(
             state.status(),
-            AirspaceStatus::Active {
-                source_name: Some("Local airspace.txt".into()),
-                airspace_count: 1,
+            AirspaceStatus {
                 generation: 0,
+                sources: vec![updraft_core::AirspaceSourceStatus::Active {
+                    source_name: "Local airspace.txt".into(),
+                    airspace_count: 1
+                }]
             }
         );
-        assert_eq!(assert_some!(state.snapshot()).airspaces().len(), 1);
+        assert_eq!(
+            state
+                .snapshot()
+                .catalog
+                .sources
+                .values()
+                .next()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .airspaces()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -310,10 +325,12 @@ mod tests {
 
         assert_eq!(
             state.status(),
-            AirspaceStatus::Active {
-                source_name: None,
-                airspace_count: 1,
+            AirspaceStatus {
                 generation: 0,
+                sources: vec![updraft_core::AirspaceSourceStatus::Active {
+                    source_name: "airspace.txt".into(),
+                    airspace_count: 1
+                }]
             }
         );
     }
@@ -335,10 +352,12 @@ mod tests {
 
         assert_eq!(
             state.status(),
-            AirspaceStatus::Active {
-                source_name: None,
-                airspace_count: 1,
+            AirspaceStatus {
                 generation: 0,
+                sources: vec![updraft_core::AirspaceSourceStatus::Active {
+                    source_name: "airspace.txt".into(),
+                    airspace_count: 1
+                }]
             }
         );
         assert!(logs_contain("Could not load airspace metadata"));
@@ -359,9 +378,12 @@ mod tests {
 
         assert_eq!(
             state.status(),
-            AirspaceStatus::Unavailable {
-                source_name: Some("Unreadable airspace.txt".into()),
-                error: AirspaceLoadError::ReadFailed,
+            AirspaceStatus {
+                generation: 0,
+                sources: vec![updraft_core::AirspaceSourceStatus::Unavailable {
+                    source_name: "Unreadable airspace.txt".into(),
+                    error: AirspaceLoadError::ReadFailed
+                }]
             }
         );
         assert!(logs_contain("Could not read stored airspace"));
@@ -382,9 +404,12 @@ mod tests {
 
         assert_eq!(
             state.status(),
-            AirspaceStatus::Unavailable {
-                source_name: None,
-                error: AirspaceLoadError::ParseFailed,
+            AirspaceStatus {
+                generation: 0,
+                sources: vec![updraft_core::AirspaceSourceStatus::Unavailable {
+                    source_name: "airspace.txt".into(),
+                    error: AirspaceLoadError::ParseFailed
+                }]
             }
         );
         assert!(logs_contain("Could not parse stored airspace"));
@@ -407,9 +432,12 @@ mod tests {
 
         assert_eq!(
             state.status(),
-            AirspaceStatus::Unavailable {
-                source_name: None,
-                error: AirspaceLoadError::GeometryFailed,
+            AirspaceStatus {
+                generation: 0,
+                sources: vec![updraft_core::AirspaceSourceStatus::Unavailable {
+                    source_name: "airspace.txt".into(),
+                    error: AirspaceLoadError::GeometryFailed
+                }]
             }
         );
         assert!(logs_contain("Could not normalize stored airspace"));
@@ -429,7 +457,7 @@ mod tests {
 
         let state = AirspaceStorage::new(directory.path()).load();
 
-        assert_eq!(state.status(), AirspaceStatus::None);
+        assert_eq!(state.status(), AirspaceStatus::default());
         assert!(directory.path().join("airspace.json").exists());
     }
 

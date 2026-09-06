@@ -23,7 +23,7 @@
   function queryAirspaces() {
     if (queryState.type === 'ready') return;
 
-    if (airspace.current.type !== 'active') {
+    if (!airspace.current.sources.some((source) => source.type === 'active')) {
       queryState = { type: 'ready', features: [] };
       return;
     }
@@ -40,8 +40,16 @@
     let point = map.project([position.longitudeDegrees, position.latitudeDegrees]);
     queryState = {
       type: 'ready',
-      features: map.queryRenderedFeatures(point, { layers: ['airspace-hit'] }),
+      features: map
+        .queryRenderedFeatures(point, { layers: ['airspace-hit'] })
+        .filter((feature) => String(feature.id).startsWith(`${airspace.current.generation}:`)),
     };
+  }
+
+  function handleSourceData(event: MapEventType['sourcedata']) {
+    if (event.sourceId !== 'airspace') return;
+    queryState = { type: 'loading' };
+    queryAirspaces();
   }
 
   function handleMapError(event: MapEventType['error']) {
@@ -52,13 +60,13 @@
 
   onMount(() => {
     map.on('styledata', queryAirspaces);
-    map.on('sourcedata', queryAirspaces);
+    map.on('sourcedata', handleSourceData);
     map.on('error', handleMapError);
     queryAirspaces();
 
     return () => {
       map.off('styledata', queryAirspaces);
-      map.off('sourcedata', queryAirspaces);
+      map.off('sourcedata', handleSourceData);
       map.off('error', handleMapError);
     };
   });

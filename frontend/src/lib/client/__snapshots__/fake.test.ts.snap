@@ -73,7 +73,8 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
   {
     "topic": "airspace",
     "value": {
-      "type": "none",
+      "generation": 0,
+      "sources": [],
     },
   },
   {

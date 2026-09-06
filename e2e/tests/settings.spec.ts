@@ -248,10 +248,8 @@ test('propagates airspace status and invokes import through the fake client', as
     (window as TestWindow).__updraftFake?.emit({
       topic: 'airspace',
       value: {
-        type: 'active',
-        sourceName: 'rheinland.txt',
-        airspaceCount: 42,
         generation: 1,
+        sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 }],
       },
     });
   });

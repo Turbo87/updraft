@@ -184,10 +184,12 @@ async fn new_subscriber_receives_current_airspace_status() {
 
     assert_eq!(
         status,
-        AirspaceStatus::Active {
-            source_name: None,
-            airspace_count: 0,
+        AirspaceStatus {
             generation: 1,
+            sources: vec![updraft_core::AirspaceSourceStatus::Active {
+                source_name: "airspace.txt".into(),
+                airspace_count: 0
+            }]
         }
     );
 }
@@ -208,10 +210,12 @@ async fn driver_starts_with_active_airspace_at_generation_zero() {
 
     assert_eq!(
         next_airspace_status(&mut topics).await,
-        AirspaceStatus::Active {
-            source_name: Some("Stored airspace.txt".into()),
-            airspace_count: 0,
+        AirspaceStatus {
             generation: 0,
+            sources: vec![updraft_core::AirspaceSourceStatus::Active {
+                source_name: "Stored airspace.txt".into(),
+                airspace_count: 0
+            }]
         }
     );
 }
@@ -233,9 +237,12 @@ async fn driver_starts_with_unavailable_airspace() {
 
     assert_eq!(
         next_airspace_status(&mut topics).await,
-        AirspaceStatus::Unavailable {
-            source_name: Some("Broken airspace.txt".into()),
-            error: AirspaceLoadError::ParseFailed,
+        AirspaceStatus {
+            generation: 0,
+            sources: vec![updraft_core::AirspaceSourceStatus::Unavailable {
+                source_name: "Broken airspace.txt".into(),
+                error: AirspaceLoadError::ParseFailed
+            }]
         }
     );
 }

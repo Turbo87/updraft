@@ -9,9 +9,9 @@ use tokio::sync::Mutex;
 use updraft_airspace::AirspaceImportError;
 use updraft_core::{
     ActivateAirspaceDataset, AddExternalDevice, ClearAirspaceDataset, ConnectionSpec,
-    DeleteExternalDevice, EditExternalDevice, ExternalDeviceId, InvalidExternalDeviceOrder,
-    ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Topic,
-    UnitSettings, UnknownExternalDevice,
+    DeleteExternalDevice, EditExternalDevice, ExternalDeviceId, GetAirspaceSnapshot,
+    InvalidExternalDeviceOrder, ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale,
+    SetPolar, SetUnits, Topic, UnitSettings, UnknownExternalDevice,
 };
 
 pub struct AirspaceCommandState {
@@ -114,6 +114,7 @@ pub async fn import_airspace(
 
 #[tauri::command]
 pub async fn remove_airspace(
+    source_name: String,
     state: tauri::State<'_, AirspaceCommandState>,
     handle: tauri::State<'_, DriverHandle>,
 ) -> Result<(), AirspaceCommandError> {
@@ -121,6 +122,14 @@ pub async fn remove_airspace(
         .mutation
         .try_lock()
         .map_err(|_| AirspaceCommandError::Busy)?;
+    let snapshot = handle.send(GetAirspaceSnapshot).await.map_err(|_| {
+        AirspaceCommandError::DriverStopped {
+            source_name: Some(source_name.clone()),
+        }
+    })?;
+    if !snapshot.catalog.sources.contains_key(&source_name) {
+        return Ok(());
+    }
     state.storage.remove_airspace().map_err(|error| {
         tracing::warn!(%error, "Could not remove stored airspace");
         AirspaceCommandError::StorageFailed { source_name: None }
@@ -400,7 +409,6 @@ mod tests {
     use crate::airspace_storage::AirspaceStorage;
     use crate::driver::Driver;
     use crate::file_picker::{FileBytesPicker, FileBytesPickerFuture, PickedFileBytes};
-    use claims::{assert_none, assert_some};
     use serde_json::{Value, json};
     use std::time::Duration;
     use tempfile::tempdir;
@@ -515,7 +523,11 @@ mod tests {
         let webview = tauri::WebviewWindowBuilder::new(app, "main", Default::default())
             .build()
             .expect("the airspace IPC test webview should build");
-        tauri::test::get_ipc_response(&webview, request(command, json!({}))).map(|response| {
+        tauri::test::get_ipc_response(
+            &webview,
+            request(command, json!({"sourceName": "Local airspace.txt"})),
+        )
+        .map(|response| {
             response
                 .deserialize::<Value>()
                 .expect("the airspace command response should deserialize")
@@ -744,7 +756,9 @@ mod tests {
             .send(GetAirspaceSnapshot)
             .await
             .expect("active driver");
-        let dataset = assert_some!(snapshot);
+        let dataset = snapshot.catalog.sources["Local airspace.txt"]
+            .as_ref()
+            .unwrap();
         assert_eq!(dataset.airspaces().len(), 1);
     }
 
@@ -918,11 +932,15 @@ mod tests {
             .expect("the stored airspace should be removed");
 
         assert_eq!(response, Value::Null);
-        assert_none!(
+        assert_eq!(
             handle
                 .send(GetAirspaceSnapshot)
                 .await
                 .expect("active driver")
+                .catalog
+                .sources
+                .len(),
+            0
         );
         assert!(!directory.path().join("airspace.txt").exists());
         assert!(!directory.path().join("airspace.json").exists());

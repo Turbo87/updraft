@@ -12,7 +12,7 @@ it('renders waypoint types and removes the source when all files are removed', a
   let component = await render(MapComponent, {
     mapState,
     traffic: new TrafficStore(),
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     waypoints: {

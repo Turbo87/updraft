@@ -124,7 +124,7 @@
 <Story
   name="No position"
   args={{
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     instruments: {
       gps: null,
       pressureAltitude: null,
@@ -139,17 +139,21 @@
 />
 <Story
   name="Position"
-  args={{ airspace: { type: 'none' }, instruments, mapState: new MapState(), traffic, units }}
+  args={{
+    airspace: { generation: 0, sources: [] },
+    instruments,
+    mapState: new MapState(),
+    traffic,
+    units,
+  }}
   {template}
 />
 <Story
   name="Test mode"
   args={{
     airspace: {
-      type: 'active',
-      sourceName: 'browser-fixture.txt',
-      airspaceCount: 2,
       generation: 1,
+      sources: [{ type: 'active', sourceName: 'browser-fixture.txt', airspaceCount: 2 }],
     },
     instruments,
     mapState: testMapState,
@@ -178,7 +182,7 @@
     client: arrivalClient,
     mapState: arrivalMap,
     traffic: new TrafficStore(),
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
     units,
     testMode: true,

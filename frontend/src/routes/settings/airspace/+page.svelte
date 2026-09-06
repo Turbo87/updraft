@@ -10,8 +10,8 @@
     return client.importAirspace();
   }
 
-  function removeAirspace(): Promise<void> {
-    return client.removeAirspace();
+  function removeAirspace(sourceName: string): Promise<void> {
+    return client.removeAirspace(sourceName);
   }
 </script>
 

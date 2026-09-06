@@ -16,23 +16,21 @@
       docs: {
         description: {
           component:
-            'Use the airspace setting to manage one imported airspace file. The empty state offers an import action in the fixed action bar. The active state shows the source name and airspace count. An unavailable source stays visible with its load error so it can be replaced or removed. Replacement stays in the fixed action bar. Removal sits in a separate destructive section in the scrolling content and requires confirmation. Mutations disable every action until they finish. Command failures appear as an alert. The component remains controlled through `status`, `onImport`, and `onRemove`.',
+            'Each imported source has its own status and remove action. Import replaces the file with the same filename. Removal requires confirmation.',
         },
       },
     },
   });
 </script>
 
-<Story name="None" args={{ status: { type: 'none' } }} />
+<Story name="None" args={{ status: { generation: 0, sources: [] } }} />
 
 <Story
   name="Active"
   args={{
     status: {
-      type: 'active',
-      sourceName: 'rheinland.txt',
-      airspaceCount: 42,
       generation: 1,
+      sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 }],
     },
   }}
 />
@@ -41,9 +39,22 @@
   name="Unavailable"
   args={{
     status: {
-      type: 'unavailable',
-      sourceName: 'broken.txt',
-      error: 'parseFailed',
+      generation: 0,
+      sources: [{ type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' }],
+    },
+  }}
+/>
+
+<Story
+  name="Multiple sources"
+  args={{
+    status: {
+      generation: 3,
+      sources: [
+        { type: 'active', sourceName: 'germany.txt', airspaceCount: 1200 },
+        { type: 'active', sourceName: 'france.txt', airspaceCount: 950 },
+        { type: 'unavailable', sourceName: 'local.txt', error: 'parseFailed' },
+      ],
     },
   }}
 />

@@ -32,7 +32,7 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
     mapState,
     units,
     traffic: new TrafficStore(),
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
     waypoints: {
       generation: 1,

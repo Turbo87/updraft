@@ -103,7 +103,7 @@ export class FakeClient implements UpdraftClient {
     return { type: 'cancelled' };
   }
 
-  async removeAirspace(): Promise<void> {}
+  async removeAirspace(_sourceName: string): Promise<void> {}
 
   /** Browser development has no session and no process to end. */
   async quit(): Promise<void> {}
@@ -114,7 +114,7 @@ export class FakeClient implements UpdraftClient {
     onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });
     onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
-    onTopic({ topic: 'airspace', value: { type: 'none' } });
+    onTopic({ topic: 'airspace', value: { generation: 0, sources: [] } });
     onTopic({ topic: 'waypoints', value: this.#waypoints });
 
     return () => {

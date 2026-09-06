@@ -27,12 +27,15 @@ mod topic;
 mod traffic;
 mod waypoints;
 
-pub use airspace::{AirspaceCatalog, AirspaceSourceStatus};
+pub use airspace::{
+    AirspaceCatalog, AirspaceLoadError, AirspaceSnapshot, AirspaceSourceStatus, AirspaceState,
+    AirspaceStatus,
+};
 pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };
-pub use core::{AirspaceLoadError, AirspaceState, AirspaceStatus, Core};
+pub use core::Core;
 pub use decoder::Decoder;
 pub use effect::Effect;
 pub use external_device::{
@@ -48,8 +51,9 @@ pub use input::{
     ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
     DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetGlideSnapshot,
     GetWaypointCatalog, GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices,
-    ReplaceWaypointCatalog, SetAirspaceUnavailable, SetArrivalReserve, SetBallast, SetBugs,
-    SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    ReplaceAirspaceCatalog, ReplaceWaypointCatalog, SetAirspaceUnavailable, SetArrivalReserve,
+    SetBallast, SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits,
+    Start, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

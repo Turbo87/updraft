@@ -4,7 +4,7 @@ import { WaypointsStore } from './waypoints.svelte';
 
 it('replaces waypoint status and ignores unrelated topics', () => {
   let store = new WaypointsStore();
-  store.apply({ topic: 'airspace', value: { type: 'none' } });
+  store.apply({ topic: 'airspace', value: { generation: 0, sources: [] } });
   expect(store.initialized).toBe(false);
   let value = {
     generation: 2,

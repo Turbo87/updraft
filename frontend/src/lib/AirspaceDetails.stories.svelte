@@ -36,7 +36,7 @@
     args: {
       altitudeUnit: 'm',
       backLabel: 'Back',
-      id: 0,
+      id: '1:0:0',
       locale: 'en',
       map: loadedMap,
       onBack: fn(),
@@ -61,7 +61,7 @@
 
 <Story name="Complete airspace" {template} />
 
-<Story name="Minimal airspace" args={{ id: 1 }} {template} />
+<Story name="Minimal airspace" args={{ id: '1:0:1' }} {template} />
 
 <Story name="Loading" args={{ map: createMap({}) }} {template} />
 
@@ -71,7 +71,7 @@
   {template}
 />
 
-<Story name="Not found" args={{ id: 999 }} {template} />
+<Story name="Not found" args={{ id: '1:0:999' }} {template} />
 
 <style>
   .airspace-details-story {

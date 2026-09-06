@@ -69,7 +69,7 @@
     testMode ? (testAirspaceData ?? (window as TestWindow).__updraftTestAirspaceData) : undefined,
   );
   const airspaceData = $derived(
-    airspace.type === 'active'
+    airspace.sources.some((source) => source.type === 'active')
       ? (inlineAirspaceData ??
           (testMode
             ? null

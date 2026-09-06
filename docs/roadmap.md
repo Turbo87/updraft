@@ -26,11 +26,11 @@ documents for accepted behavior.
 - [x] **core-and-shell** — TCP bytes flow through the NMEA decoder and deterministic core to Tauri topics and the ownship map.
 - [x] **android-platform** — the foreground service, partial wake lock, internal GNSS, process survival, webview rebuild, and screen wake behavior work on Android.
 - [x] **devices-and-traffic** — persisted TCP and Android Bluetooth SPP devices feed the core. Basic FLARM targets appear on the map.
-- [x] **airspace-milestone** — the app imports one local OpenAir file, keeps canonical airspace in the core, and serves GeoJSON through `updraft://`.
+- [x] **airspace-milestone** — the app imports local OpenAir files, keeps independent source datasets in the core, and serves GeoJSON through `updraft://`.
 - [x] **locale-selection** — persist one locale selection and apply it to the frontend.
 - [x] **unit-selection** — persist display units and apply them to current flight and traffic values.
 - [x] **external-device-management** — persist TCP and Bluetooth SPP devices. Add, edit, enable, disable, and delete them in Settings.
-- [x] **airspace-source-management** — import, replace, and remove one local OpenAir source in Settings.
+- [x] **airspace-source-management** — import, replace by filename, and remove independent local OpenAir sources in Settings.
 - [x] **map-inspection** — open a nearby route from a map point and show current
   airspace and traffic results with detail routes.
 - [ ] **map-orientation-setting** — persist map orientation and add its Settings control. _(needs: map-orientation, settings-persistence)_
@@ -136,7 +136,7 @@ documents for accepted behavior.
 
 - [ ] **geo-shapes** — cylinders, sectors, lines, arcs, polygons; point-inside tests and boundary-crossing detection. Shared by observation zones and airspace. _(needs: geo)_
 - [x] **openair** — `libs/updraft_airspace` uses the `openair` crate to parse one source. It normalizes supported circles, arcs, and polygons into canonical polygon geometry. _(needs: geo)_
-- [x] **airspace-dataset** — the core owns one canonical dataset and publishes its status and generation. The Tauri shell imports, persists, replaces, and removes the source. _(needs: openair, core-app)_
+- [x] **airspace-dataset** — the core owns independent source datasets and publishes their status with one catalog generation. The Tauri shell imports, persists, replaces, and removes individual sources. _(needs: openair, core-app)_
 - [x] **airspace-on-map** — `updraft://localhost/airspace.geojson` projects the canonical dataset. MapLibre renders fills and outlines with class-based styles. _(needs: airspace-dataset, resource-scheme, frontend-map)_
 - [ ] **airspace-filtering** — add altitude and class filters. Add per-zone enable and disable controls. _(needs: airspace-dataset, airspace-on-map)_
 - [ ] **openaip-airspace** — OpenAIP airspace parser. _(needs: airspace-dataset)_

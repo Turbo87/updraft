@@ -89,8 +89,11 @@ function airspaceStyle(map: MapLibreMap) {
 }
 
 it.each([
-  { type: 'none' } as const,
-  { type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' } as const,
+  { generation: 0, sources: [] } satisfies AirspaceStatus,
+  {
+    generation: 0,
+    sources: [{ type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' }],
+  } satisfies AirspaceStatus,
 ])('does not add airspace map data for the $type state', async (airspace) => {
   let map = await renderMap(airspace);
 
@@ -103,10 +106,8 @@ it.each([
 it('adds the airspace source and styled layers for the active state', async () => {
   let consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
   let map = await renderMap({
-    type: 'active',
-    sourceName: 'rheinland.txt',
-    airspaceCount: 2,
     generation: 3,
+    sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 2 }],
   });
 
   await vi.waitFor(() => {
@@ -127,10 +128,8 @@ it('adds the airspace source and styled layers for the active state', async () =
 
 it('queries airspace through the transparent hit layer', async () => {
   let map = await renderMap({
-    type: 'active',
-    sourceName: 'rheinland.txt',
-    airspaceCount: 2,
     generation: 3,
+    sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 2 }],
   });
 
   await vi.waitFor(() => {
@@ -144,8 +143,8 @@ it('queries airspace through the transparent hit layer', async () => {
       layers: ['airspace-hit'],
     });
 
-    expect(features.map(({ id }) => id)).toEqual([0]);
-    expect(overlappingFeatures.map(({ id }) => id)).toEqual([1, 0]);
+    expect(features.map(({ id }) => id)).toEqual(['1:0:0']);
+    expect(overlappingFeatures.map(({ id }) => id)).toEqual(['1:0:1', '1:0:0']);
   });
   expect(map.getPaintProperty('airspace-hit', 'fill-opacity')).toBe(0);
 });
@@ -154,12 +153,15 @@ it.each([5, 6, 6.5, 7, 7.5, 8, 9])(
   'scales inner airspace bands at zoom %s without filling interiors',
   async (zoom) => {
     let map = await renderMap(
-      { type: 'active', sourceName: 'rheinland.txt', airspaceCount: 2, generation: 3 },
+      {
+        generation: 3,
+        sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 2 }],
+      },
       new TrafficStore(),
       {
         ...AIRSPACE_BROWSER_FIXTURE,
         features: AIRSPACE_BROWSER_FIXTURE.features.map((feature) =>
-          feature.id === 1
+          feature.id === '1:0:1'
             ? { ...feature, properties: { ...feature.properties, type: 21 } }
             : feature,
         ),
@@ -173,12 +175,12 @@ it.each([5, 6, 6.5, 7, 7.5, 8, 9])(
         .filter(({ layer }) => layer.id === 'airspace-inner-band');
       expect(bands).toHaveLength(2);
       for (let { id, layer } of bands) {
-        let fullWidth = id === 1 ? 10 : 7;
+        let fullWidth = id === '1:0:1' ? 10 : 7;
         let width = Math.max(0, Math.min(fullWidth, ((zoom - 6) / 2) * fullWidth));
         if (layer.type !== 'line') throw new Error('Airspace band is not a line');
         expect(layer.paint?.['line-width']).toBe(width);
         expect(layer.paint?.['line-offset']).toBe(width / 2);
-        expect(layer.paint?.['line-opacity']).toBe(id === 1 ? 0.25 : 0.2);
+        expect(layer.paint?.['line-opacity']).toBe(id === '1:0:1' ? 0.25 : 0.2);
       }
       expect(
         map
@@ -190,7 +192,7 @@ it.each([5, 6, 6.5, 7, 7.5, 8, 9])(
         map
           .queryRenderedFeatures(map.project([6.182, 50.82]), { layers: ['airspace-hit'] })
           .map(({ id }) => id),
-      ).toEqual([1, 0]);
+      ).toEqual(['1:0:1', '1:0:0']);
     });
   },
 );
@@ -246,7 +248,7 @@ it.each([
   let { type, icaoClass, color, bands } = scenario;
   let fixture = AIRSPACE_BROWSER_FIXTURE.features[0];
   let map = await renderMap(
-    { type: 'active', sourceName: 'airspace.txt', airspaceCount: 1, generation: 1 },
+    { generation: 1, sources: [{ type: 'active', sourceName: 'airspace.txt', airspaceCount: 1 }] },
     new TrafficStore(),
     {
       type: 'FeatureCollection',
@@ -284,7 +286,7 @@ it.each([
       map
         .queryRenderedFeatures(map.project([6.175, 50.82]), { layers: ['airspace-hit'] })
         .map(({ id }) => id),
-    ).toEqual([0]);
+    ).toEqual(['1:0:0']);
   });
 });
 
@@ -308,7 +310,7 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
       ],
     },
   });
-  let map = await renderMap({ type: 'none' }, traffic);
+  let map = await renderMap({ generation: 0, sources: [] }, traffic);
 
   await vi.waitFor(() => {
     expect(map.getLayer('traffic-hit')).toBeDefined();
@@ -352,7 +354,7 @@ it('publishes the map and camera values through the shared map state', async () 
     instruments,
     traffic: new TrafficStore(),
     units,
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     mapState,
     testMode: true,
   });
@@ -372,7 +374,7 @@ it('publishes the map and camera values through the shared map state', async () 
 });
 
 it('does not show the built-in attribution control', async () => {
-  await renderMap({ type: 'none' });
+  await renderMap({ generation: 0, sources: [] });
 
   expect(document.querySelector('.maplibregl-ctrl-attrib')).toBeNull();
 });
@@ -385,7 +387,7 @@ it('returns to follow mode without a position and follows the next position', as
     mapState,
     traffic,
     units,
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     testMode: true,
   });
   await vi.waitFor(() => {
@@ -416,7 +418,7 @@ it('returns to follow mode without a position and follows the next position', as
     mapState,
     traffic,
     units,
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     testMode: true,
   });
   await vi.waitFor(() => {
@@ -434,7 +436,7 @@ it('returns to follow mode without a position and follows the next position', as
     mapState,
     traffic,
     units,
-    airspace: { type: 'none' },
+    airspace: { generation: 0, sources: [] },
     testMode: true,
   });
   await vi.waitFor(() => {

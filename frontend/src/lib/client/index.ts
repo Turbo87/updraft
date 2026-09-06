@@ -64,7 +64,7 @@ export interface UpdraftClient {
   importWaypoints(): Promise<ImportWaypointsResult>;
   removeWaypoints(sourceName: string): Promise<void>;
   importAirspace(): Promise<ImportAirspaceResult>;
-  removeAirspace(): Promise<void>;
+  removeAirspace(sourceName: string): Promise<void>;
   /**
    * Stops the platform session and ends the app.
    *

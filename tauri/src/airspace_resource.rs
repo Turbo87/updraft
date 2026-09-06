@@ -2,13 +2,12 @@ use crate::driver::DriverHandle;
 use serde_json::{Value, json};
 use tauri::http::{Response, StatusCode, header};
 use tauri::{AppHandle, Manager};
-use updraft_airspace::{Airspace, AirspaceDataset};
-use updraft_core::GetAirspaceSnapshot;
+use updraft_core::{AirspaceSnapshot, GetAirspaceSnapshot};
 
 /// Builds a `GeoJSON` response from the active airspace dataset.
 pub async fn airspace_resource_response<R: tauri::Runtime>(app: AppHandle<R>) -> Response<Vec<u8>> {
     let handle = app.state::<DriverHandle>().inner().clone();
-    let dataset = match handle.send(GetAirspaceSnapshot).await {
+    let snapshot = match handle.send(GetAirspaceSnapshot).await {
         Ok(dataset) => dataset,
         Err(error) => {
             tracing::warn!(%error, "Could not serve airspace GeoJSON because the driver stopped");
@@ -18,7 +17,7 @@ pub async fn airspace_resource_response<R: tauri::Runtime>(app: AppHandle<R>) ->
                 .expect("the fixed unavailable response should be valid");
         }
     };
-    let body = serde_json::to_vec(&airspace_geojson(dataset.as_deref()))
+    let body = serde_json::to_vec(&airspace_geojson(&snapshot))
         .expect("canonical airspace should serialize as GeoJSON");
     Response::builder()
         .header(header::CONTENT_TYPE, "application/geo+json")
@@ -27,17 +26,24 @@ pub async fn airspace_resource_response<R: tauri::Runtime>(app: AppHandle<R>) ->
         .expect("the fixed GeoJSON response should be valid")
 }
 
-fn airspace_geojson(dataset: Option<&AirspaceDataset>) -> Value {
-    let features = dataset
-        .into_iter()
-        .flat_map(AirspaceDataset::airspaces)
-        .map(Airspace::to_geojson)
-        .collect::<Vec<_>>();
-
-    json!({
-        "type": "FeatureCollection",
-        "features": features,
-    })
+fn airspace_geojson(snapshot: &AirspaceSnapshot) -> Value {
+    let mut features = Vec::new();
+    for (source_index, (name, dataset)) in snapshot.catalog.sources.iter().enumerate() {
+        let Ok(dataset) = dataset else {
+            continue;
+        };
+        for airspace in dataset.airspaces() {
+            let mut feature = airspace.to_geojson();
+            feature["id"] = json!(format!(
+                "{}:{source_index}:{}",
+                snapshot.generation, airspace.id.0
+            ));
+            feature["properties"]["id"] = feature["id"].clone();
+            feature["properties"]["sourceName"] = json!(name);
+            features.push(feature);
+        }
+    }
+    json!({ "type": "FeatureCollection", "features": features })
 }
 
 #[cfg(test)]
@@ -50,7 +56,8 @@ mod tests {
     use tauri::http::{StatusCode, header};
     use tauri::test::mock_app;
     use tracing_test::traced_test;
-    use updraft_core::{ActivateAirspaceDataset, AirspaceState, SettingsSnapshot};
+    use updraft_airspace::AirspaceDataset;
+    use updraft_core::{AirspaceState, SettingsSnapshot};
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
     fn driver(airspace: AirspaceState) -> DriverHandle {
@@ -67,15 +74,49 @@ mod tests {
     fn wraps_airspaces_in_a_feature_collection() {
         let dataset = AirspaceDataset::from_openair(POLYGON).expect("a valid OpenAir fixture");
 
-        let geojson = airspace_geojson(Some(&dataset));
+        let state = AirspaceState::at_startup(updraft_core::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([(
+                "airspace.txt".into(),
+                Ok(Arc::new(dataset.clone())),
+            )]),
+        });
+        let geojson = airspace_geojson(&state.snapshot());
+        let mut feature = dataset.airspaces()[0].to_geojson();
+        feature["id"] = json!("0:0:0");
+        feature["properties"]["id"] = json!("0:0:0");
+        feature["properties"]["sourceName"] = json!("airspace.txt");
 
         assert_eq!(
             geojson,
             json!({
                 "type": "FeatureCollection",
-                "features": [dataset.airspaces()[0].to_geojson()],
+                "features": [feature],
             })
         );
+    }
+
+    #[test]
+    fn duplicate_records_have_distinct_ids_and_keep_source_identity() {
+        use std::collections::BTreeMap;
+        use updraft_core::{AirspaceCatalog, AirspaceLoadError};
+        let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).unwrap());
+        let mut snapshot = AirspaceSnapshot {
+            generation: 7,
+            catalog: Arc::new(AirspaceCatalog {
+                sources: BTreeMap::from([
+                    ("a.txt".into(), Ok(dataset.clone())),
+                    ("b.txt".into(), Err(AirspaceLoadError::ReadFailed)),
+                    ("c.txt".into(), Ok(dataset)),
+                ]),
+            }),
+        };
+        let value = airspace_geojson(&snapshot);
+        assert_eq!(value["features"].as_array().unwrap().len(), 2);
+        assert_eq!(value["features"][0]["id"], "7:0:0");
+        assert_eq!(value["features"][1]["id"], "7:2:0");
+        assert_eq!(value["features"][1]["properties"]["sourceName"], "c.txt");
+        snapshot.generation = 8;
+        assert_eq!(airspace_geojson(&snapshot)["features"][0]["id"], "8:0:0");
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -107,14 +148,23 @@ mod tests {
         let initial = Arc::new(
             AirspaceDataset::from_openair(POLYGON).expect("a valid initial OpenAir fixture"),
         );
-        let handle = driver(AirspaceState::active_at_startup(initial, None));
+        let handle = driver(AirspaceState::at_startup(updraft_core::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("airspace.txt".into(), Ok(initial))]),
+        }));
         let app = mock_app();
         app.manage(handle.clone());
         let initial_response = airspace_resource_response(app.handle().clone()).await;
 
         let replacement = Arc::new(AirspaceDataset::default());
         handle
-            .send(ActivateAirspaceDataset::new(replacement, None))
+            .send(updraft_core::ReplaceAirspaceCatalog(Arc::new(
+                updraft_core::AirspaceCatalog {
+                    sources: std::collections::BTreeMap::from([(
+                        "airspace.txt".into(),
+                        Ok(replacement),
+                    )]),
+                },
+            )))
             .await
             .expect("the active driver should accept the replacement");
         let replacement_response = airspace_resource_response(app.handle().clone()).await;

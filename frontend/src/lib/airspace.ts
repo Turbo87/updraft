@@ -27,6 +27,8 @@ export type AirspaceOperatingPeriod = {
 };
 
 export type AirspaceProperties = {
+  id: string;
+  sourceName: string;
   type: number;
   icaoClass: number;
   lowerLimit: AirspaceLimit;

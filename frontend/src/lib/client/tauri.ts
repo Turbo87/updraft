@@ -105,8 +105,8 @@ export class TauriClient implements UpdraftClient {
     return invoke('import_airspace');
   }
 
-  removeAirspace(): Promise<void> {
-    return invoke('remove_airspace');
+  removeAirspace(sourceName: string): Promise<void> {
+    return invoke('remove_airspace', { sourceName });
   }
 
   quit(): Promise<void> {

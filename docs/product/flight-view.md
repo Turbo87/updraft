@@ -47,8 +47,9 @@ Airspace and traffic results come from MapLibre hit layers at the selected
 coordinate. The query waits for the required style, source, and layer. It does
 not move an off-screen position into view.
 
-The airspace result is one rendered-feature query. A source error produces an
-empty result. The traffic result keeps its initial target membership for the
+Airspace results refresh when the catalog or map source changes. A source
+error produces an empty result. Catalog changes invalidate old airspace detail
+links. The traffic result keeps its initial target membership for the
 lifetime of the mounted nearby page. Traffic updates refresh the retained
 targets and mark removed targets unavailable.
 

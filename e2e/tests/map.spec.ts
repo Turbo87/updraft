@@ -154,10 +154,8 @@ test('renders active airspace below traffic and ownship', async ({ page }) => {
     (window as TestWindow).__updraftFake?.emit({
       topic: 'airspace',
       value: {
-        type: 'active',
-        sourceName: 'browser-fixture.txt',
-        airspaceCount: 2,
         generation: 1,
+        sources: [{ type: 'active', sourceName: 'browser-fixture.txt', airspaceCount: 2 }],
       },
     });
   });
@@ -298,7 +296,7 @@ test('shows empty states without rendered features', async ({ page }) => {
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
 });
 
-test('keeps the first nearby airspace result', async ({ page }) => {
+test('invalidates nearby airspaces when the catalog changes', async ({ page }) => {
   await page.addInitScript((data) => {
     (window as TestWindow).__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
@@ -314,13 +312,11 @@ test('keeps the first nearby airspace result', async ({ page }) => {
   );
   await expect(airspaces.getByRole('link', { name: 'Köln RMZ' })).toHaveAttribute(
     'href',
-    '/airspaces/1',
+    '/airspaces/1:0:1',
   );
 
   await emitAirspace(page, { type: 'unavailable' });
-  await expect(airspaces.getByRole('listitem')).toHaveText(
-    /Köln RMZ\s+Radio mandatory zone · Class E/,
-  );
+  await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
 });
 
 test('keeps nearby traffic membership while targets update', async ({ page }) => {
@@ -402,7 +398,7 @@ test('shows complete airspace details on direct visits and reloads', async ({ pa
   await page.addInitScript((data) => {
     (window as TestWindow).__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/airspaces/0?testMode=1');
+  await page.goto('/airspaces/1:0:0?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await emitAirspace(page, { type: 'active', generation: 1 });
 
@@ -479,19 +475,19 @@ test('shows complete airspace details on direct visits and reloads', async ({ pa
   await page.reload();
   await page.waitForFunction(() => '__updraftFake' in window);
   await emitAirspace(page, { type: 'active', generation: 2 });
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
+  await expect(page.getByText('Airspace not found.')).toBeVisible();
 });
 
 test('shows airspace not found for unavailable data and missing IDs', async ({ page }) => {
   await page.addInitScript((data) => {
     (window as TestWindow).__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/airspaces/0?testMode=1');
+  await page.goto('/airspaces/1:0:0?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await emitAirspace(page, { type: 'unavailable' });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 
-  await page.goto('/airspaces/999?testMode=1');
+  await page.goto('/airspaces/1:0:999?testMode=1');
   await emitAirspace(page, { type: 'active', generation: 1 });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 });
@@ -505,7 +501,7 @@ test('omits an unclassified airspace class', async ({ page }) => {
   await page.addInitScript((data) => {
     (window as TestWindow).__updraftTestAirspaceData = data;
   }, fixture);
-  await page.goto('/airspaces/0?testMode=1');
+  await page.goto('/airspaces/1:0:0?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await emitAirspace(page, { type: 'active', generation: 1 });
 
@@ -518,7 +514,7 @@ test('retries an airspace source read failure', async ({ page }) => {
   await page.addInitScript(() => {
     (window as TestWindow).__updraftTestAirspaceData = '/missing-airspace.geojson';
   });
-  await page.goto('/airspaces/0?testMode=1');
+  await page.goto('/airspaces/1:0:0?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await emitAirspace(page, { type: 'active', generation: 1 });
 
@@ -687,21 +683,21 @@ async function emitAirspace(
 ) {
   await page.evaluate(
     ({ airspace, airspaceCount }) => {
-      let value =
-        airspace.type === 'active'
-          ? {
-              type: 'active' as const,
-              sourceName: 'browser-fixture.txt',
-              airspaceCount,
-              generation: airspace.generation,
-            }
-          : airspace.type === 'unavailable'
-            ? {
-                type: 'unavailable' as const,
-                sourceName: 'broken.txt',
-                error: 'readFailed' as const,
-              }
-            : { type: 'none' as const };
+      let value = {
+        generation: airspace.type === 'active' ? airspace.generation : 0,
+        sources:
+          airspace.type === 'active'
+            ? [{ type: 'active' as const, sourceName: 'browser-fixture.txt', airspaceCount }]
+            : airspace.type === 'unavailable'
+              ? [
+                  {
+                    type: 'unavailable' as const,
+                    sourceName: 'broken.txt',
+                    error: 'readFailed' as const,
+                  },
+                ]
+              : [],
+      };
 
       (window as TestWindow).__updraftFake?.emit({ topic: 'airspace', value });
     },

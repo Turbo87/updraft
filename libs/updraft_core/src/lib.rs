@@ -3,6 +3,7 @@
 //! The core owns shared application state and the decisions based on it.
 //! It performs no I/O, spawns no threads, and reads no clocks.
 
+mod airspace;
 mod arrival_reserve;
 #[cfg(feature = "ts")]
 pub mod bindings;
@@ -26,11 +27,15 @@ mod topic;
 mod traffic;
 mod waypoints;
 
+pub use airspace::{
+    AirspaceCatalog, AirspaceLoadError, AirspaceSnapshot, AirspaceSourceStatus, AirspaceState,
+    AirspaceStatus,
+};
 pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };
-pub use core::{AirspaceLoadError, AirspaceState, AirspaceStatus, Core};
+pub use core::Core;
 pub use decoder::Decoder;
 pub use effect::Effect;
 pub use external_device::{
@@ -43,11 +48,11 @@ pub use glide_performance::{
     Ballast, Bugs, GlidePerformance, InvalidBallast, InvalidBugs, InvalidMacCready, MacCready,
 };
 pub use input::{
-    ActivateAirspaceDataset, AddExternalDevice, Bytes, ClearAirspaceDataset, ConnectionChanged,
-    DeleteExternalDevice, EditExternalDevice, GetAirspaceSnapshot, GetGlideSnapshot,
-    GetWaypointCatalog, GetWaypointSnapshot, Input, InternalGps, ReorderExternalDevices,
-    ReplaceWaypointCatalog, SetAirspaceUnavailable, SetArrivalReserve, SetBallast, SetBugs,
-    SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
+    GetAirspaceSnapshot, GetGlideSnapshot, GetWaypointCatalog, GetWaypointSnapshot, Input,
+    InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceWaypointCatalog,
+    SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready,
+    SetPolar, SetUnits, Start, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

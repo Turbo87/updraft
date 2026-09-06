@@ -7,7 +7,7 @@ describe('AirspaceStore', () => {
     let store = new AirspaceStore();
 
     expect(store.initialized).toBe(false);
-    expect(store.current).toEqual({ type: 'none' });
+    expect(store.current).toEqual({ generation: 0, sources: [] });
   });
 
   it('replaces its value with each airspace topic', () => {
@@ -16,34 +16,28 @@ describe('AirspaceStore', () => {
     store.apply({
       topic: 'airspace',
       value: {
-        type: 'active',
-        sourceName: 'openair.txt',
-        airspaceCount: 42,
         generation: 1,
+        sources: [{ type: 'active', sourceName: 'openair.txt', airspaceCount: 42 }],
       },
     });
 
     expect(store.initialized).toBe(true);
     expect(store.current).toEqual({
-      type: 'active',
-      sourceName: 'openair.txt',
-      airspaceCount: 42,
       generation: 1,
+      sources: [{ type: 'active', sourceName: 'openair.txt', airspaceCount: 42 }],
     });
 
     store.apply({
       topic: 'airspace',
       value: {
-        type: 'unavailable',
-        sourceName: 'openair.txt',
-        error: 'parseFailed',
+        generation: 0,
+        sources: [{ type: 'unavailable', sourceName: 'openair.txt', error: 'parseFailed' }],
       },
     });
 
     expect(store.current).toEqual({
-      type: 'unavailable',
-      sourceName: 'openair.txt',
-      error: 'parseFailed',
+      generation: 0,
+      sources: [{ type: 'unavailable', sourceName: 'openair.txt', error: 'parseFailed' }],
     });
   });
 
@@ -61,6 +55,6 @@ describe('AirspaceStore', () => {
     });
 
     expect(store.initialized).toBe(false);
-    expect(store.current).toEqual({ type: 'none' });
+    expect(store.current).toEqual({ generation: 0, sources: [] });
   });
 });

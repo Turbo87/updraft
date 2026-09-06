@@ -1,7 +1,6 @@
 use super::super::*;
 use super::support::at;
 use crate::{AirspaceLoadError, AirspaceStatus};
-use claims::assert_some;
 use std::sync::Arc;
 use updraft_airspace::AirspaceDataset;
 
@@ -23,7 +22,7 @@ fn airspace_status(core: &Core) -> AirspaceStatus {
 fn new_core_has_no_airspace() {
     let core = Core::new(SettingsSnapshot::default());
 
-    assert_eq!(airspace_status(&core), AirspaceStatus::None);
+    assert_eq!(airspace_status(&core), AirspaceStatus::default());
 }
 
 #[test]
@@ -32,14 +31,18 @@ fn activating_airspace_dataset_publishes_and_onboards_active_status() {
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
 
     let update = core.apply(
-        ActivateAirspaceDataset::new(dataset, Some("Local airspace.txt".into())),
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("Local airspace.txt".into(), Ok(dataset))]),
+        })),
         at(0),
     );
 
-    let status = AirspaceStatus::Active {
-        source_name: Some("Local airspace.txt".into()),
-        airspace_count: 1,
+    let status = AirspaceStatus {
         generation: 1,
+        sources: vec![crate::AirspaceSourceStatus::Active {
+            source_name: "Local airspace.txt".into(),
+            airspace_count: 1,
+        }],
     };
     assert_eq!(
         update.effects,
@@ -49,40 +52,50 @@ fn activating_airspace_dataset_publishes_and_onboards_active_status() {
 }
 
 #[test]
-fn airspace_generation_changes_only_for_a_different_dataset() {
+fn airspace_generation_changes_for_each_replacement() {
     let mut core = Core::new(SettingsSnapshot::default());
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
     core.apply(
-        ActivateAirspaceDataset::new(dataset.clone(), Some("First name".into())),
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("First name".into(), Ok(dataset.clone()))]),
+        })),
         at(0),
     );
 
     core.apply(
-        ActivateAirspaceDataset::new(dataset, Some("Updated name".into())),
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("Updated name".into(), Ok(dataset))]),
+        })),
         at(1),
     );
 
     assert_eq!(
         airspace_status(&core),
-        AirspaceStatus::Active {
-            source_name: Some("Updated name".into()),
-            airspace_count: 1,
-            generation: 1,
+        AirspaceStatus {
+            generation: 2,
+            sources: vec![crate::AirspaceSourceStatus::Active {
+                source_name: "Updated name".into(),
+                airspace_count: 1
+            }]
         }
     );
 
     let replacement = Arc::new(AirspaceDataset::default());
     core.apply(
-        ActivateAirspaceDataset::new(replacement, Some("Empty source".into())),
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("Empty source".into(), Ok(replacement))]),
+        })),
         at(2),
     );
 
     assert_eq!(
         airspace_status(&core),
-        AirspaceStatus::Active {
-            source_name: Some("Empty source".into()),
-            airspace_count: 0,
-            generation: 2,
+        AirspaceStatus {
+            generation: 3,
+            sources: vec![crate::AirspaceSourceStatus::Active {
+                source_name: "Empty source".into(),
+                airspace_count: 0
+            }]
         }
     );
 }
@@ -91,17 +104,32 @@ fn airspace_generation_changes_only_for_a_different_dataset() {
 fn airspace_generation_advances_across_removal() {
     let mut core = Core::new(SettingsSnapshot::default());
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
-    core.apply(ActivateAirspaceDataset::new(dataset.clone(), None), at(0));
-    core.apply(ClearAirspaceDataset, at(1));
+    core.apply(
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([(
+                "airspace.txt".into(),
+                Ok(dataset.clone()),
+            )]),
+        })),
+        at(0),
+    );
+    core.apply(crate::ReplaceAirspaceCatalog(Arc::default()), at(1));
 
-    core.apply(ActivateAirspaceDataset::new(dataset, None), at(2));
+    core.apply(
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("airspace.txt".into(), Ok(dataset))]),
+        })),
+        at(2),
+    );
 
     assert_eq!(
         airspace_status(&core),
-        AirspaceStatus::Active {
-            source_name: None,
-            airspace_count: 1,
+        AirspaceStatus {
             generation: 3,
+            sources: vec![crate::AirspaceSourceStatus::Active {
+                source_name: "airspace.txt".into(),
+                airspace_count: 1
+            }]
         }
     );
 }
@@ -111,17 +139,28 @@ fn clearing_airspace_dataset_publishes_none_status() {
     let mut core = Core::new(SettingsSnapshot::default());
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
     core.apply(
-        ActivateAirspaceDataset::new(dataset, Some("Local airspace.txt".into())),
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([("Local airspace.txt".into(), Ok(dataset))]),
+        })),
         at(0),
     );
 
-    let update = core.apply(ClearAirspaceDataset, at(1));
+    let update = core.apply(crate::ReplaceAirspaceCatalog(Arc::default()), at(1));
 
     assert_eq!(
         update.effects,
-        vec![Effect::emit(Topic::Airspace(AirspaceStatus::None))]
+        vec![Effect::emit(Topic::Airspace(AirspaceStatus {
+            generation: 2,
+            sources: vec![]
+        }))]
     );
-    assert_eq!(airspace_status(&core), AirspaceStatus::None);
+    assert_eq!(
+        airspace_status(&core),
+        AirspaceStatus {
+            generation: 2,
+            sources: vec![]
+        }
+    );
 }
 
 #[test]
@@ -129,16 +168,21 @@ fn setting_airspace_unavailable_publishes_safe_load_error() {
     let mut core = Core::new(SettingsSnapshot::default());
 
     let update = core.apply(
-        SetAirspaceUnavailable::new(
-            Some("Broken airspace.txt".into()),
-            AirspaceLoadError::ParseFailed,
-        ),
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([(
+                "Broken airspace.txt".into(),
+                Err(AirspaceLoadError::ParseFailed),
+            )]),
+        })),
         at(0),
     );
 
-    let status = AirspaceStatus::Unavailable {
-        source_name: Some("Broken airspace.txt".into()),
-        error: AirspaceLoadError::ParseFailed,
+    let status = AirspaceStatus {
+        generation: 1,
+        sources: vec![crate::AirspaceSourceStatus::Unavailable {
+            source_name: "Broken airspace.txt".into(),
+            error: AirspaceLoadError::ParseFailed,
+        }],
     };
     assert_eq!(
         update.effects,
@@ -151,9 +195,18 @@ fn setting_airspace_unavailable_publishes_safe_load_error() {
 fn airspace_snapshot_shares_the_immutable_dataset() {
     let mut core = Core::new(SettingsSnapshot::default());
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
-    core.apply(ActivateAirspaceDataset::new(dataset.clone(), None), at(0));
+    core.apply(
+        crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
+            sources: std::collections::BTreeMap::from([(
+                "airspace.txt".into(),
+                Ok(dataset.clone()),
+            )]),
+        })),
+        at(0),
+    );
 
-    let snapshot = assert_some!(core.apply(GetAirspaceSnapshot, at(1)).response);
+    let snapshot = core.apply(GetAirspaceSnapshot, at(1)).response;
+    let snapshot = snapshot.catalog.sources["airspace.txt"].as_ref().unwrap();
 
-    assert!(Arc::ptr_eq(&snapshot, &dataset));
+    assert!(Arc::ptr_eq(snapshot, &dataset));
 }

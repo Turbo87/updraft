@@ -12,11 +12,12 @@
   type Props = {
     status: AirspaceStatus;
     onImport: () => Promise<ImportAirspaceResult>;
-    onRemove: () => Promise<void>;
+    onRemove: (sourceName: string) => Promise<void>;
   };
 
   type MutationState = { type: 'idle' } | { type: 'pending' } | { type: 'failed'; message: string };
   type AirspaceCommandErrorKind =
+    | 'missingName'
     | 'pickerFailed'
     | 'readFailed'
     | 'parseFailed'
@@ -28,6 +29,7 @@
   let { status, onImport, onRemove }: Props = $props();
   let mutation = $state.raw<MutationState>({ type: 'idle' });
   let removeDialogOpen = $state(false);
+  let removeName = $state('');
   const pending = $derived(mutation.type === 'pending');
 
   async function mutate(action: () => Promise<unknown>): Promise<void> {
@@ -42,13 +44,14 @@
 
   function confirmRemoval(): void {
     removeDialogOpen = false;
-    void mutate(onRemove);
+    void mutate(() => onRemove(removeName));
   }
 
   function commandErrorKind(error: unknown): AirspaceCommandErrorKind | null {
     if (typeof error !== 'object' || error === null || !('kind' in error)) return null;
 
     switch (error.kind) {
+      case 'missingName':
       case 'pickerFailed':
       case 'readFailed':
       case 'parseFailed':
@@ -64,6 +67,8 @@
 
   function commandErrorMessage(error: unknown): string {
     switch (commandErrorKind(error)) {
+      case 'missingName':
+        return m.airspace_command_missing_name();
       case 'pickerFailed':
         return m.airspace_command_picker_failed();
       case 'readFailed':
@@ -98,7 +103,7 @@
 {#snippet actions()}
   <Button disabled={pending} size="large" style="width: 100%" onclick={() => void mutate(onImport)}>
     <span aria-hidden="true" class="i-mdi-file-import-outline action-icon replace-icon"></span>
-    {status.type === 'none' ? m.airspace_import() : m.airspace_replace()}
+    {m.airspace_import()}
   </Button>
 {/snippet}
 
@@ -110,30 +115,32 @@
 >
   <fieldset>
     <legend class="sr-only">{m.airspace_label()}</legend>
-    {#if status.type === 'none'}
+    {#if status.sources.length === 0}
       <div class="empty-state">
         <span aria-hidden="true" class="i-mdi-vector-square"></span>
         <p class="empty-title">{m.airspace_none()}</p>
         <p class="empty-description">{m.airspace_none_description()}</p>
       </div>
-    {:else}
-      <section class="source-summary" aria-labelledby="current-source-heading">
-        <h2 id="current-source-heading">{m.airspace_current_source()}</h2>
+    {/if}
+    <p class="source-help">{m.airspace_replace_description()}</p>
+    {#each status.sources as source (source.sourceName)}
+      <section class="source-summary" aria-label={source.sourceName}>
+        <h2>{m.airspace_current_source()}</h2>
         <dl>
           <div class="source-row">
             <dt>{m.airspace_file_label()}</dt>
-            <dd>{status.sourceName ?? m.airspace_source_fallback()}</dd>
+            <dd>{source.sourceName}</dd>
           </div>
-          {#if status.type === 'active'}
+          {#if source.type === 'active'}
             <div class="source-row">
               <dt>{m.airspaces_heading()}</dt>
-              <dd class="numeric">{status.airspaceCount}</dd>
+              <dd class="numeric">{source.airspaceCount}</dd>
             </div>
           {/if}
           <div class="source-row">
             <dt>{m.state_label()}</dt>
             <dd>
-              {#if status.type === 'active'}
+              {#if source.type === 'active'}
                 <StatusPill label={m.airspace_active()} tone="success" />
               {:else}
                 <StatusPill
@@ -145,39 +152,38 @@
             </dd>
           </div>
         </dl>
-        {#if status.type === 'unavailable'}
+        {#if source.type === 'unavailable'}
           <p class="source-error">
             <span aria-hidden="true" class="i-mdi-alert-circle-outline"></span>
-            <span>{loadErrorMessage(status.error)}</span>
+            <span>{loadErrorMessage(source.error)}</span>
           </p>
         {/if}
-      </section>
-      <p class="source-help">{m.airspace_replace_description()}</p>
-      <section class="remove-source" aria-labelledby="remove-source-heading">
-        <h2 id="remove-source-heading">{m.airspace_remove_heading()}</h2>
-        <p>{m.airspace_remove_description()}</p>
+
         <Button
           disabled={pending}
           style="width: 100%"
           variant="destructive-outline"
-          onclick={() => (removeDialogOpen = true)}
+          onclick={() => {
+            removeName = source.sourceName;
+            removeDialogOpen = true;
+          }}
         >
           <span aria-hidden="true" class="i-mdi-delete-outline action-icon"></span>
           {m.airspace_remove()}
         </Button>
       </section>
-    {/if}
+    {/each}
     {#if mutation.type === 'failed'}
       <p role="alert">{mutation.message}</p>
     {/if}
   </fieldset>
 </ScreenScaffold>
 
-{#if status.type !== 'none'}
+{#if removeDialogOpen}
   <ConfirmDialog
     bind:open={removeDialogOpen}
     title={m.airspace_remove_confirm_title({
-      sourceName: status.sourceName ?? m.airspace_source_fallback(),
+      sourceName: removeName,
     })}
     description={m.airspace_remove_confirm_description()}
     cancelLabel={m.cancel()}
@@ -230,7 +236,7 @@
   }
 
   .source-summary {
-    margin-block-end: var(--space-3);
+    margin-block-end: var(--space-6);
   }
 
   h2 {
@@ -267,6 +273,8 @@
   }
 
   dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
     margin: 0;
     font: var(--text-row-detail);
     font-weight: 600;
@@ -297,27 +305,14 @@
     line-height: 1;
   }
 
-  .source-help,
-  .remove-source p {
-    color: var(--color-text-muted);
-    font: 400 1rem / 1.5 var(--font-ui);
-  }
-
   .source-help {
     margin: 0 var(--space-1) var(--space-6);
+    color: var(--color-text-muted);
+    font: var(--text-body);
   }
 
-  .remove-source {
-    padding-block-start: var(--space-6);
-    border-block-start: 1px solid var(--color-separator);
-  }
-
-  .remove-source h2 {
-    color: var(--color-danger-subtle-text);
-  }
-
-  .remove-source p {
-    margin: 0 var(--space-1) var(--space-3);
+  .source-summary > :global(button) {
+    margin-block-start: var(--space-3);
   }
 
   .action-icon {

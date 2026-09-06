@@ -1,4 +1,4 @@
-use crate::core::AirspaceStatus;
+use crate::AirspaceStatus;
 use crate::external_device::PublishedExternalDevice;
 use crate::fix::FixTime as CoreFixTime;
 use crate::settings::Settings;
@@ -172,12 +172,12 @@ pub enum Topic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{AirspaceLoadError, AirspaceStatus};
     use crate::settings::Locale;
     use crate::traffic::{
         PublishedTrafficTarget, TrafficAlarmLevel, TrafficDelta, TrafficTarget, TrafficTargetId,
         TrafficTargetIdType, TrafficType, TrafficUpdate,
     };
+    use crate::{AirspaceLoadError, AirspaceStatus};
     use updraft_geo::LatLon as GeoLatLon;
     use updraft_units::{Angle, Length, MslAltitude};
 
@@ -306,13 +306,14 @@ mod tests {
 
     #[test]
     fn airspace_none_status_serializes_to_json() {
-        let topic = Topic::Airspace(AirspaceStatus::None);
+        let topic = Topic::Airspace(AirspaceStatus::default());
 
         insta::assert_json_snapshot!(topic, @r#"
         {
           "topic": "airspace",
           "value": {
-            "type": "none"
+            "generation": 0,
+            "sources": []
           }
         }
         "#);
@@ -320,20 +321,26 @@ mod tests {
 
     #[test]
     fn airspace_active_status_serializes_to_json() {
-        let topic = Topic::Airspace(AirspaceStatus::Active {
-            source_name: Some("Local airspace.txt".into()),
-            airspace_count: 42,
+        let topic = Topic::Airspace(AirspaceStatus {
             generation: 7,
+            sources: vec![crate::AirspaceSourceStatus::Active {
+                source_name: "Local airspace.txt".into(),
+                airspace_count: 42,
+            }],
         });
 
         insta::assert_json_snapshot!(topic, @r#"
         {
           "topic": "airspace",
           "value": {
-            "type": "active",
-            "sourceName": "Local airspace.txt",
-            "airspaceCount": 42,
-            "generation": 7
+            "generation": 7,
+            "sources": [
+              {
+                "type": "active",
+                "sourceName": "Local airspace.txt",
+                "airspaceCount": 42
+              }
+            ]
           }
         }
         "#);
@@ -341,18 +348,26 @@ mod tests {
 
     #[test]
     fn airspace_unavailable_status_serializes_to_json() {
-        let topic = Topic::Airspace(AirspaceStatus::Unavailable {
-            source_name: None,
-            error: AirspaceLoadError::GeometryFailed,
+        let topic = Topic::Airspace(AirspaceStatus {
+            generation: 0,
+            sources: vec![crate::AirspaceSourceStatus::Unavailable {
+                source_name: "airspace.txt".into(),
+                error: AirspaceLoadError::GeometryFailed,
+            }],
         });
 
         insta::assert_json_snapshot!(topic, @r#"
         {
           "topic": "airspace",
           "value": {
-            "type": "unavailable",
-            "sourceName": null,
-            "error": "geometryFailed"
+            "generation": 0,
+            "sources": [
+              {
+                "type": "unavailable",
+                "sourceName": "airspace.txt",
+                "error": "geometryFailed"
+              }
+            ]
           }
         }
         "#);

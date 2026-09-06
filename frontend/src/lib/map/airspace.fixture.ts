@@ -7,8 +7,10 @@ export const AIRSPACE_BROWSER_FIXTURE = {
   features: [
     {
       type: 'Feature',
-      id: 0,
+      id: '1:0:0',
       properties: {
+        id: '1:0:0',
+        sourceName: 'browser-fixture.txt',
         activeFrom: '2026-04-12T08:30:00Z',
         activeUntil: '2026-04-12T17:45:00Z',
         activity: 5,
@@ -70,8 +72,10 @@ export const AIRSPACE_BROWSER_FIXTURE = {
     },
     {
       type: 'Feature',
-      id: 1,
+      id: '1:0:1',
       properties: {
+        id: '1:0:1',
+        sourceName: 'browser-fixture.txt',
         icaoClass: 4,
         lowerLimit: { referenceDatum: 0, unit: 0, value: 0 },
         name: 'Köln RMZ',

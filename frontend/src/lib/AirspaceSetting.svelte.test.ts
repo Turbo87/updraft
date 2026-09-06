@@ -9,7 +9,7 @@ import AirspaceSetting from './AirspaceSetting.svelte';
 describe('AirspaceSetting.svelte', () => {
   it('shows an import action when no source is selected', async () => {
     render(AirspaceSetting, {
-      status: { type: 'none' },
+      status: { generation: 0, sources: [] },
       onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
       onRemove: vi.fn(async () => {}),
     });
@@ -37,10 +37,8 @@ describe('AirspaceSetting.svelte', () => {
     let onImport = vi.fn(async () => ({ type: 'cancelled' as const }));
     render(AirspaceSetting, {
       status: {
-        type: 'active',
-        sourceName: 'rheinland.txt',
-        airspaceCount: 42,
         generation: 1,
+        sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 }],
       },
       onImport,
       onRemove: vi.fn(async () => {}),
@@ -55,13 +53,10 @@ describe('AirspaceSetting.svelte', () => {
     await expect.element(page.getByText('Active', { exact: true })).toBeVisible();
 
     await expect
-      .element(page.getByText('Importing a file replaces the current source.'))
-      .toBeVisible();
-    await expect
-      .element(page.getByText('Airspace disappears from the map until you import a file again.'))
+      .element(page.getByText('Importing a file replaces only the source with the same filename.'))
       .toBeVisible();
 
-    let replace = page.getByRole('button', { name: 'Replace file' });
+    let replace = page.getByRole('button', { name: 'Import' });
     expect(replace.element().closest('footer')).not.toBeNull();
     expect(
       page.getByRole('button', { name: 'Remove airspace source' }).element().closest('main'),
@@ -75,10 +70,8 @@ describe('AirspaceSetting.svelte', () => {
     let onRemove = vi.fn(async () => {});
     render(AirspaceSetting, {
       status: {
-        type: 'active',
-        sourceName: 'rheinland.txt',
-        airspaceCount: 42,
         generation: 1,
+        sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 }],
       },
       onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
       onRemove,
@@ -92,7 +85,7 @@ describe('AirspaceSetting.svelte', () => {
     await expect
       .element(dialog)
       .toHaveAccessibleDescription(
-        'The file is deleted from this device and airspace disappears from the map. You can import it again later.',
+        'The file is deleted from this device. Its airspaces disappear from the map. Other files remain active.',
       );
     expect(onRemove).not.toHaveBeenCalled();
 
@@ -105,19 +98,17 @@ describe('AirspaceSetting.svelte', () => {
     expect(onRemove).toHaveBeenCalledOnce();
   });
 
-  it('uses a fallback when the active source has no display name', async () => {
+  it('shows the stored filename', async () => {
     render(AirspaceSetting, {
       status: {
-        type: 'active',
-        sourceName: null,
-        airspaceCount: 1,
         generation: 0,
+        sources: [{ type: 'active', sourceName: 'airspace.txt', airspaceCount: 1 }],
       },
       onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
       onRemove: vi.fn(async () => {}),
     });
 
-    await expect.element(page.getByText('Imported airspace file')).toBeVisible();
+    await expect.element(page.getByText('airspace.txt')).toBeVisible();
     await expect.element(page.getByText('1', { exact: true })).toBeVisible();
   });
 
@@ -128,9 +119,8 @@ describe('AirspaceSetting.svelte', () => {
   ] as const)('shows the %s unavailable state', async (error, message) => {
     render(AirspaceSetting, {
       status: {
-        type: 'unavailable',
-        sourceName: 'broken.txt',
-        error,
+        generation: 0,
+        sources: [{ type: 'unavailable', sourceName: 'broken.txt', error }],
       },
       onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
       onRemove: vi.fn(async () => {}),
@@ -142,7 +132,7 @@ describe('AirspaceSetting.svelte', () => {
     await expect.element(page.getByText('State', { exact: true })).toBeVisible();
     await expect.element(page.getByText('Unavailable', { exact: true })).toBeVisible();
     await expect.element(page.getByText(message)).toBeVisible();
-    await expect.element(page.getByRole('button', { name: 'Replace file' })).toBeEnabled();
+    await expect.element(page.getByRole('button', { name: 'Import' })).toBeEnabled();
     await expect
       .element(page.getByRole('button', { name: 'Remove airspace source' }))
       .toBeEnabled();
@@ -155,16 +145,14 @@ describe('AirspaceSetting.svelte', () => {
     });
     render(AirspaceSetting, {
       status: {
-        type: 'active',
-        sourceName: 'rheinland.txt',
-        airspaceCount: 42,
         generation: 1,
+        sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 }],
       },
       onImport: vi.fn(() => pendingImport),
       onRemove: vi.fn(async () => {}),
     });
 
-    let replace = page.getByRole('button', { name: 'Replace file' });
+    let replace = page.getByRole('button', { name: 'Import' });
     let remove = page.getByRole('button', { name: 'Remove airspace source' });
     await replace.click();
 
@@ -177,6 +165,7 @@ describe('AirspaceSetting.svelte', () => {
   });
 
   it.each([
+    { error: { kind: 'missingName' }, message: 'The selected file has no filename.' },
     {
       error: { kind: 'pickerFailed' },
       message: 'Could not open the file picker.',
@@ -207,7 +196,7 @@ describe('AirspaceSetting.svelte', () => {
     },
   ] as const)('shows the localized $error.kind command error', async ({ error, message }) => {
     render(AirspaceSetting, {
-      status: { type: 'none' },
+      status: { generation: 0, sources: [] },
       onImport: vi.fn(async () => {
         throw error;
       }),
@@ -223,7 +212,7 @@ describe('AirspaceSetting.svelte', () => {
 
   it('does not expose an unexpected backend error', async () => {
     render(AirspaceSetting, {
-      status: { type: 'none' },
+      status: { generation: 0, sources: [] },
       onImport: vi.fn(async () => {
         throw new Error('/private/path/airspace.txt');
       }),
@@ -235,4 +224,25 @@ describe('AirspaceSetting.svelte', () => {
     await expect.element(page.getByRole('alert')).toHaveTextContent('Could not update airspace.');
     await expect.element(page.getByText('/private/path/airspace.txt')).not.toBeInTheDocument();
   });
+});
+
+it('lists independent sources and removes only the confirmed filename', async () => {
+  let onRemove = vi.fn<(name: string) => Promise<void>>(async () => {});
+  render(AirspaceSetting, {
+    status: {
+      generation: 3,
+      sources: [
+        { type: 'active', sourceName: 'a.txt', airspaceCount: 1 },
+        { type: 'active', sourceName: 'b.txt', airspaceCount: 2 },
+      ],
+    },
+    onImport: vi.fn(async () => ({ type: 'cancelled' as const })),
+    onRemove,
+  });
+  await expect.element(page.getByText('a.txt', { exact: true })).toBeVisible();
+  await expect.element(page.getByText('b.txt', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove airspace source' }).nth(1).click();
+  await expect.element(page.getByRole('alertdialog', { name: 'Remove b.txt?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  expect(onRemove).toHaveBeenCalledExactlyOnceWith('b.txt');
 });

@@ -1,4 +1,4 @@
-use crate::airspace_storage::{AirspaceStorage, AirspaceStorageError};
+use crate::airspace_storage::{AirspaceSourceChange, AirspaceStorage, AirspaceStorageError};
 use crate::driver::DriverHandle;
 use crate::file_picker::{FileBytesPickerError, FileBytesPickerState};
 use serde::Serialize;
@@ -8,9 +8,9 @@ use tauri_plugin_updraft::{BondedBluetoothDevices, UpdraftMobileExt};
 use tokio::sync::Mutex;
 use updraft_airspace::AirspaceImportError;
 use updraft_core::{
-    ActivateAirspaceDataset, AddExternalDevice, ClearAirspaceDataset, ConnectionSpec,
-    DeleteExternalDevice, EditExternalDevice, ExternalDeviceId, InvalidExternalDeviceOrder,
-    ReorderExternalDevices, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Topic,
+    AddExternalDevice, AirspaceCatalog, ConnectionSpec, DeleteExternalDevice, EditExternalDevice,
+    ExternalDeviceId, GetAirspaceSnapshot, InvalidExternalDeviceOrder, ReorderExternalDevices,
+    ReplaceAirspaceCatalog, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Topic,
     UnitSettings, UnknownExternalDevice,
 };
 
@@ -69,6 +69,10 @@ pub enum AirspaceCommandError {
         #[serde(skip_serializing_if = "Option::is_none")]
         source_name: Option<String>,
     },
+    #[error("selected airspace file has no display name")]
+    MissingName,
+    #[error("airspace worker failed")]
+    WorkerFailed,
     #[error("another airspace mutation is active")]
     Busy,
 }
@@ -90,30 +94,35 @@ pub async fn import_airspace(
     let Some(selected) = selected else {
         return Ok(ImportAirspaceResult::Cancelled);
     };
-    let source_name = selected.display_name;
-    let stored = state
-        .storage
-        .import_airspace(&selected.bytes, source_name.clone())
-        .map_err(|error| map_airspace_storage_error(error, source_name.clone()))?;
-
-    handle
-        .send(ActivateAirspaceDataset::new(
-            stored.dataset,
-            stored.source_name.clone(),
-        ))
-        .await
-        .map_err(|error| {
-            tracing::warn!(%error, "Could not activate imported airspace");
-            AirspaceCommandError::DriverStopped {
-                source_name: stored.source_name,
-            }
-        })?;
+    let source_name = selected
+        .display_name
+        .filter(|name| !name.is_empty())
+        .ok_or(AirspaceCommandError::MissingName)?;
+    let snapshot = handle.send(GetAirspaceSnapshot).await.map_err(|_| {
+        AirspaceCommandError::DriverStopped {
+            source_name: Some(source_name.clone()),
+        }
+    })?;
+    let storage = state.storage.clone();
+    let name = source_name.clone();
+    let (dataset, change) =
+        tokio::task::spawn_blocking(move || storage.import_airspace(&selected.bytes, &name))
+            .await
+            .map_err(|error| {
+                tracing::warn!(%error, "Airspace import worker failed");
+                AirspaceCommandError::WorkerFailed
+            })?
+            .map_err(|error| map_airspace_storage_error(error, Some(source_name.clone())))?;
+    let mut catalog = (*snapshot.catalog).clone();
+    catalog.sources.insert(source_name.clone(), Ok(dataset));
+    activate_airspace_catalog(&handle, catalog, change, source_name).await?;
 
     Ok(ImportAirspaceResult::Imported)
 }
 
 #[tauri::command]
 pub async fn remove_airspace(
+    source_name: String,
     state: tauri::State<'_, AirspaceCommandState>,
     handle: tauri::State<'_, DriverHandle>,
 ) -> Result<(), AirspaceCommandError> {
@@ -121,14 +130,52 @@ pub async fn remove_airspace(
         .mutation
         .try_lock()
         .map_err(|_| AirspaceCommandError::Busy)?;
-    state.storage.remove_airspace().map_err(|error| {
-        tracing::warn!(%error, "Could not remove stored airspace");
-        AirspaceCommandError::StorageFailed { source_name: None }
+    let snapshot = handle.send(GetAirspaceSnapshot).await.map_err(|_| {
+        AirspaceCommandError::DriverStopped {
+            source_name: Some(source_name.clone()),
+        }
     })?;
-    handle.send(ClearAirspaceDataset).await.map_err(|error| {
-        tracing::warn!(%error, "Could not clear removed airspace");
-        AirspaceCommandError::DriverStopped { source_name: None }
-    })
+    let mut catalog = (*snapshot.catalog).clone();
+    if catalog.sources.remove(&source_name).is_none() {
+        return Ok(());
+    }
+    let storage = state.storage.clone();
+    let name = source_name.clone();
+    let change = tokio::task::spawn_blocking(move || storage.remove(&name))
+        .await
+        .map_err(|error| {
+            tracing::warn!(%error, "Airspace removal worker failed");
+            AirspaceCommandError::WorkerFailed
+        })?
+        .map_err(|error| {
+            tracing::warn!(%error, "Could not remove stored airspace source");
+            AirspaceCommandError::StorageFailed {
+                source_name: Some(source_name.clone()),
+            }
+        })?;
+    activate_airspace_catalog(&handle, catalog, change, source_name).await
+}
+
+async fn activate_airspace_catalog(
+    handle: &DriverHandle,
+    catalog: AirspaceCatalog,
+    change: AirspaceSourceChange,
+    source_name: String,
+) -> Result<(), AirspaceCommandError> {
+    if let Err(error) = handle.send(ReplaceAirspaceCatalog(Arc::new(catalog))).await {
+        tracing::warn!(%error, "Could not activate airspace catalog");
+        tokio::task::spawn_blocking(move || change.rollback()).await.map_err(|error| {
+            tracing::error!(%error, "Airspace rollback worker failed");
+            AirspaceCommandError::WorkerFailed
+        })?.map_err(|error| {
+            tracing::error!(%error, "Could not restore airspace source after activation failed");
+            AirspaceCommandError::StorageFailed { source_name: Some(source_name.clone()) }
+        })?;
+        return Err(AirspaceCommandError::DriverStopped {
+            source_name: Some(source_name),
+        });
+    }
+    Ok(())
 }
 
 fn map_file_picker_error(error: FileBytesPickerError) -> AirspaceCommandError {
@@ -161,9 +208,7 @@ fn map_airspace_storage_error(
         AirspaceStorageError::Import(AirspaceImportError::Geometry { .. }) => {
             AirspaceCommandError::GeometryFailed { source_name }
         }
-        AirspaceStorageError::Io { .. } | AirspaceStorageError::Metadata(_) => {
-            AirspaceCommandError::StorageFailed { source_name }
-        }
+        AirspaceStorageError::Io(_) => AirspaceCommandError::StorageFailed { source_name },
     }
 }
 
@@ -400,7 +445,6 @@ mod tests {
     use crate::airspace_storage::AirspaceStorage;
     use crate::driver::Driver;
     use crate::file_picker::{FileBytesPicker, FileBytesPickerFuture, PickedFileBytes};
-    use claims::{assert_none, assert_some};
     use serde_json::{Value, json};
     use std::time::Duration;
     use tempfile::tempdir;
@@ -515,7 +559,11 @@ mod tests {
         let webview = tauri::WebviewWindowBuilder::new(app, "main", Default::default())
             .build()
             .expect("the airspace IPC test webview should build");
-        tauri::test::get_ipc_response(&webview, request(command, json!({}))).map(|response| {
+        tauri::test::get_ipc_response(
+            &webview,
+            request(command, json!({"sourceName": "Local airspace.txt"})),
+        )
+        .map(|response| {
             response
                 .deserialize::<Value>()
                 .expect("the airspace command response should deserialize")
@@ -744,7 +792,9 @@ mod tests {
             .send(GetAirspaceSnapshot)
             .await
             .expect("active driver");
-        let dataset = assert_some!(snapshot);
+        let dataset = snapshot.catalog.sources["Local airspace.txt"]
+            .as_ref()
+            .unwrap();
         assert_eq!(dataset.airspaces().len(), 1);
     }
 
@@ -857,7 +907,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn committed_import_reports_a_stopped_driver_without_rollback() {
+    async fn stopped_driver_does_not_change_storage() {
         let directory = tempdir().expect("a temporary airspace directory");
         let state = command_state(AirspaceStorage::new(directory.path()));
         let app = airspace_app(
@@ -876,9 +926,12 @@ mod tests {
         }
         "#);
         assert_eq!(
-            std::fs::read(directory.path().join("airspace.txt"))
-                .expect("the committed source should remain"),
-            POLYGON
+            AirspaceStorage::new(directory.path())
+                .load()
+                .unwrap()
+                .sources
+                .len(),
+            0
         );
     }
 
@@ -907,9 +960,9 @@ mod tests {
         let directory = tempdir().expect("a temporary airspace directory");
         let storage = AirspaceStorage::new(directory.path());
         storage
-            .import_airspace(POLYGON, Some("Local airspace.txt".into()))
+            .import_airspace(POLYGON, "Local airspace.txt")
             .expect("the test source should import");
-        let initial_airspace = storage.load();
+        let initial_airspace = AirspaceState::at_startup(storage.load().unwrap());
         let state = command_state(storage);
         let handle = driver(initial_airspace);
         let app = airspace_app(state, handle.clone(), Ok(None));
@@ -918,13 +971,143 @@ mod tests {
             .expect("the stored airspace should be removed");
 
         assert_eq!(response, Value::Null);
-        assert_none!(
+        assert_eq!(
             handle
                 .send(GetAirspaceSnapshot)
                 .await
                 .expect("active driver")
+                .catalog
+                .sources
+                .len(),
+            0
         );
         assert!(!directory.path().join("airspace.txt").exists());
-        assert!(!directory.path().join("airspace.json").exists());
+        assert_eq!(
+            AirspaceStorage::new(directory.path())
+                .load()
+                .unwrap()
+                .sources
+                .len(),
+            0
+        );
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn airspace_import_replacement_and_removal_keep_other_sources() {
+        use claims::assert_ok;
+        let directory = assert_ok!(tempdir());
+        let storage = AirspaceStorage::new(directory.path());
+        let handle = driver(AirspaceState::default());
+        let circle = include_bytes!("../../testdata/airspace/circle.txt");
+        for (name, bytes) in [
+            ("Local airspace.txt", POLYGON),
+            ("Other.txt", POLYGON),
+            ("Local airspace.txt", circle.as_slice()),
+        ] {
+            let app = airspace_app(
+                command_state(storage.clone()),
+                handle.clone(),
+                Ok(selected_file(name, bytes)),
+            );
+            assert_ok!(invoke_airspace(&app, "import_airspace"));
+        }
+        let before = assert_ok!(handle.send(GetAirspaceSnapshot).await);
+        assert_eq!(before.generation, 3);
+        assert_eq!(before.catalog.sources.len(), 2);
+        assert_eq!(assert_ok!(storage.load()), *before.catalog);
+        assert_ne!(
+            before.catalog.sources["Local airspace.txt"],
+            before.catalog.sources["Other.txt"]
+        );
+        let app = airspace_app(command_state(storage.clone()), handle.clone(), Ok(None));
+        assert_ok!(invoke_airspace(&app, "remove_airspace"));
+        let after = assert_ok!(handle.send(GetAirspaceSnapshot).await);
+        assert_eq!(after.generation, 4);
+        assert_eq!(
+            after.catalog.sources.keys().collect::<Vec<_>>(),
+            vec!["Other.txt"]
+        );
+        assert_eq!(assert_ok!(storage.load()), *after.catalog);
+        assert_eq!(before.catalog.sources.len(), 2);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn failed_airspace_replacement_keeps_core_and_storage() {
+        use claims::{assert_err, assert_ok};
+        let directory = assert_ok!(tempdir());
+        let storage = AirspaceStorage::new(directory.path());
+        assert_ok!(storage.import_airspace(POLYGON, "Local airspace.txt"));
+        assert_ok!(storage.import_airspace(POLYGON, "Other.txt"));
+        let original = assert_ok!(storage.load());
+        let handle = driver(AirspaceState::at_startup(original.clone()));
+        let app = airspace_app(
+            command_state(storage.clone()),
+            handle.clone(),
+            Ok(selected_file("Local airspace.txt", PARSER_ERROR)),
+        );
+        assert_eq!(
+            assert_err!(invoke_airspace(&app, "import_airspace")),
+            json!({"kind":"parseFailed", "sourceName":"Local airspace.txt"})
+        );
+        let snapshot = assert_ok!(handle.send(GetAirspaceSnapshot).await);
+        assert_eq!(snapshot.generation, 0);
+        assert_eq!(*snapshot.catalog, original);
+        assert_eq!(assert_ok!(storage.load()), original);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn airspace_import_requires_a_display_filename() {
+        use claims::{assert_err, assert_ok};
+        let directory = assert_ok!(tempdir());
+        let storage = AirspaceStorage::new(directory.path());
+        for display_name in [None, Some(String::new())] {
+            let app = airspace_app(
+                command_state(storage.clone()),
+                driver(AirspaceState::default()),
+                Ok(Some(PickedFileBytes {
+                    display_name,
+                    bytes: POLYGON.to_vec(),
+                })),
+            );
+            assert_eq!(
+                assert_err!(invoke_airspace(&app, "import_airspace")),
+                json!({"kind":"missingName"})
+            );
+        }
+        assert_eq!(assert_ok!(storage.load()).sources.len(), 0);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    #[tracing_test::traced_test]
+    async fn failed_catalog_activation_restores_each_durable_mutation() {
+        use claims::{assert_err, assert_ok};
+        let directory = assert_ok!(tempdir());
+        let storage = AirspaceStorage::new(directory.path());
+        assert_ok!(storage.import_airspace(POLYGON, "local.txt"));
+        assert_ok!(storage.import_airspace(POLYGON, "other.txt"));
+        let original = assert_ok!(storage.load());
+        let circle = include_bytes!("../../testdata/airspace/circle.txt");
+        for (name, remove) in [
+            ("local.txt", false),
+            ("new.txt", false),
+            ("local.txt", true),
+        ] {
+            let change = if remove {
+                assert_ok!(storage.remove(name))
+            } else {
+                assert_ok!(storage.import_airspace(circle, name)).1
+            };
+            let replacement = assert_ok!(storage.load());
+            let error = assert_err!(
+                activate_airspace_catalog(
+                    &DriverHandle::stopped(),
+                    replacement,
+                    change,
+                    name.into()
+                )
+                .await
+            );
+            std::assert_matches!(error, AirspaceCommandError::DriverStopped { .. });
+            assert_eq!(assert_ok!(storage.load()), original);
+        }
+        assert!(logs_contain("Could not activate airspace catalog"));
     }
 }

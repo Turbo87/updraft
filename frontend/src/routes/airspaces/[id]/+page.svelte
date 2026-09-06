@@ -8,32 +8,36 @@
   import AirspaceDetails from './AirspaceDetails.svelte';
 
   const { airspace, mapState, settings } = getAppContext();
-  const airspaceId = $derived(parseAirspaceId(page.params.id));
+  const airspaceId = $derived(
+    page.params.id && /^\d+:\d+:\d+$/.test(page.params.id) ? page.params.id : null,
+  );
+  const currentId = $derived(
+    airspaceId !== null &&
+      airspaceId.startsWith(`${airspace.current.generation}:`) &&
+      airspace.current.sources.some((source) => source.type === 'active'),
+  );
   const locale = $derived(settings.current.locale ?? getLocale());
-
-  function parseAirspaceId(value: string | undefined): number | null {
-    let id = Number(value);
-    return Number.isSafeInteger(id) && id >= 0 ? id : null;
-  }
 
   function goBack() {
     history.back();
   }
 </script>
 
-{#if airspaceId !== null && airspace.initialized && airspace.current.type === 'active' && mapState.map}
-  <AirspaceDetails
-    altitudeUnit={settings.current.units.altitude}
-    backLabel={m.airspace_back()}
-    id={airspaceId}
-    {locale}
-    map={mapState.map}
-    onBack={goBack}
-  />
+{#if airspaceId !== null && airspace.initialized && currentId && mapState.map}
+  {#key airspaceId}
+    <AirspaceDetails
+      altitudeUnit={settings.current.units.altitude}
+      backLabel={m.airspace_back()}
+      id={airspaceId}
+      {locale}
+      map={mapState.map}
+      onBack={goBack}
+    />
+  {/key}
 {:else}
   <ScreenScaffold backLabel={m.airspace_back()} onBack={goBack} title={m.airspace_label()}>
     <p class="empty-state">
-      {airspaceId === null || (airspace.initialized && airspace.current.type !== 'active')
+      {airspaceId === null || (airspace.initialized && !currentId)
         ? m.airspace_not_found()
         : m.airspace_details_loading()}
     </p>

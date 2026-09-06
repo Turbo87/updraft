@@ -1,4 +1,6 @@
-use claims::{assert_err, assert_ok, assert_some_eq};
+use claims::{assert_err, assert_none, assert_ok, assert_some_eq};
+use updraft_geo::LatLon;
+use updraft_units::Length;
 use updraft_waypoint::{WaypointDataset, WaypointKind};
 
 const HEADER: &str = "name,code,country,lat,lon,elev,style,rwdir,rwlen,freq,desc\n";
@@ -10,12 +12,10 @@ fn imports_valid_rows_and_retains_skipped_row_diagnostics() {
     let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
     assert_eq!(dataset.waypoints().len(), 2);
     assert_some_eq!(dataset.warnings()[0].line, 3);
-    assert_eq!(dataset.waypoints()[0].name, "Field");
-    assert_eq!(dataset.waypoints()[0].kind, WaypointKind::GrassAirfield);
-    assert_eq!(
-        dataset.waypoints()[0].position,
-        updraft_geo::LatLon::from_degrees(50.0, 6.0)
-    );
+    let point = &dataset.waypoints()[0];
+    assert_eq!(point.name, "Field");
+    assert_eq!(point.kind, WaypointKind::GrassAirfield);
+    assert_eq!(point.position, LatLon::from_degrees(50.0, 6.0));
 }
 
 #[test]
@@ -45,10 +45,8 @@ fn retains_waypoints_with_invalid_optional_fields() {
 fn maps_elevation_to_mean_sea_level_meters() {
     let source = format!("{HEADER}{}", FIELD.replace("100m", "1000ft"));
     let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
-    assert_eq!(
-        dataset.waypoints()[0].elevation.into_inner().as_meters(),
-        304.8
-    );
+    let elevation = dataset.waypoints()[0].elevation.into_inner();
+    assert_eq!(elevation.as_meters(), 304.8);
 }
 
 #[test]
@@ -56,19 +54,15 @@ fn maps_runway_dimensions_and_direction() {
     let source = format!("{HEADER}{FIELD}");
     let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
     let point = &dataset.waypoints()[0];
-    claims::assert_some_eq!(point.runway_direction, 90);
-    claims::assert_some_eq!(
-        point.runway_length,
-        updraft_units::Length::from_meters(800.0)
-    );
-    claims::assert_none!(point.runway_width);
+    assert_some_eq!(point.runway_direction, 90);
+    assert_some_eq!(point.runway_length, Length::from_meters(800.0));
+    assert_none!(point.runway_width);
 }
 
 #[test]
 fn retains_radio_frequency_text() {
-    let dataset = assert_ok!(WaypointDataset::from_cup(
-        format!("{HEADER}{FIELD}").as_bytes()
-    ));
+    let source = format!("{HEADER}{FIELD}");
+    let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
     assert_eq!(dataset.waypoints()[0].frequency, "123.500");
 }
 

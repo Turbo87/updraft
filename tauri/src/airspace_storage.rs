@@ -17,73 +17,30 @@ impl AirspaceStorage {
     }
 
     pub fn load(&self) -> io::Result<AirspaceCatalog> {
-        let entries = match std::fs::read_dir(&self.files.directory) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                return Ok(AirspaceCatalog::default());
-            }
-            Err(error) => return Err(error),
-        };
+        let sources = self.files.entries(|path, error| {
+            tracing::warn!(%error, path = %path.display(), "Could not read stored airspace directory");
+            Ok(())
+        })?;
         let mut catalog = AirspaceCatalog::default();
-        let mut directories = vec![(entries, String::new())];
-        while let Some((entries, prefix)) = directories.pop() {
-            for entry in entries {
-                let entry = entry?;
-                let path = entry.path();
-                if entry.file_type()?.is_dir() {
-                    let component = entry.file_name().to_string_lossy().into_owned();
-                    if component.len() == 250
-                        && component.bytes().all(|byte| byte.is_ascii_hexdigit())
-                    {
-                        match std::fs::read_dir(&path) {
-                            Ok(entries) => {
-                                directories.push((entries, format!("{prefix}{component}")))
-                            }
-                            Err(error) => {
-                                tracing::warn!(%error, path = %path.display(), "Could not read stored airspace directory")
+        for (name, path) in sources {
+            let dataset = match std::fs::read(&path) {
+                Ok(bytes) => AirspaceDataset::from_openair(&bytes)
+                    .map(Arc::new)
+                    .map_err(|error| {
+                        tracing::warn!(%error, "Could not parse stored airspace source");
+                        match error {
+                            AirspaceImportError::Parse { .. } => AirspaceLoadError::ParseFailed,
+                            AirspaceImportError::Geometry { .. } => {
+                                AirspaceLoadError::GeometryFailed
                             }
                         }
-                    }
-                    continue;
+                    }),
+                Err(error) => {
+                    tracing::warn!(%error, "Could not read stored airspace source");
+                    Err(AirspaceLoadError::ReadFailed)
                 }
-                if path.extension().and_then(|s| s.to_str()) != Some("txt") {
-                    continue;
-                }
-                let stem = path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or_default();
-                let name = hex::decode(format!("{prefix}{stem}"))
-                    .ok()
-                    .and_then(|name| String::from_utf8(name).ok())
-                    .ok_or_else(|| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Invalid stored airspace filename",
-                        )
-                    })?;
-                let dataset =
-                    match std::fs::read(&path) {
-                        Ok(bytes) => AirspaceDataset::from_openair(&bytes).map(Arc::new).map_err(
-                            |error| {
-                                tracing::warn!(%error, "Could not parse stored airspace source");
-                                match error {
-                                    AirspaceImportError::Parse { .. } => {
-                                        AirspaceLoadError::ParseFailed
-                                    }
-                                    AirspaceImportError::Geometry { .. } => {
-                                        AirspaceLoadError::GeometryFailed
-                                    }
-                                }
-                            },
-                        ),
-                        Err(error) => {
-                            tracing::warn!(%error, "Could not read stored airspace source");
-                            Err(AirspaceLoadError::ReadFailed)
-                        }
-                    };
-                catalog.sources.insert(name, dataset);
-            }
+            };
+            catalog.sources.insert(name, dataset);
         }
         Ok(catalog)
     }

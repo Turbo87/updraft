@@ -7,7 +7,7 @@ use tempfile::{NamedTempFile, TempPath};
 /// Original source bytes stored under encoded names.
 #[derive(Clone, Debug)]
 pub struct SourceFiles {
-    pub directory: PathBuf,
+    directory: PathBuf,
     extension: &'static str,
 }
 
@@ -43,6 +43,58 @@ impl SourceFiles {
         }
         path.set_extension(self.extension);
         path
+    }
+
+    /// Lists decoded source names and paths without parsing their contents.
+    ///
+    /// The caller decides whether an unreadable subtree can be skipped.
+    pub fn entries(
+        &self,
+        mut directory_error: impl FnMut(&Path, io::Error) -> io::Result<()>,
+    ) -> io::Result<Vec<(String, PathBuf)>> {
+        let entries = match std::fs::read_dir(&self.directory) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(error) => return Err(error),
+        };
+        let mut sources = Vec::new();
+        let mut directories = vec![(entries, String::new())];
+        while let Some((entries, prefix)) = directories.pop() {
+            for entry in entries {
+                let entry = entry?;
+                let path = entry.path();
+                if entry.file_type()?.is_dir() {
+                    let component = entry.file_name().to_string_lossy().into_owned();
+                    if component.len() == 250
+                        && component.bytes().all(|byte| byte.is_ascii_hexdigit())
+                    {
+                        match std::fs::read_dir(&path) {
+                            Ok(entries) => {
+                                directories.push((entries, format!("{prefix}{component}")))
+                            }
+                            Err(error) => directory_error(&path, error)?,
+                        }
+                    }
+                    continue;
+                }
+                let extension = path.extension().and_then(|extension| extension.to_str());
+                if extension != Some(self.extension) {
+                    continue;
+                }
+                let stem = path
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .unwrap_or_default();
+                let name = hex::decode(format!("{prefix}{stem}"))
+                    .ok()
+                    .and_then(|name| String::from_utf8(name).ok())
+                    .ok_or_else(|| {
+                        io::Error::new(io::ErrorKind::InvalidData, "Invalid stored source filename")
+                    })?;
+                sources.push((name, path));
+            }
+        }
+        Ok(sources)
     }
 
     pub fn replace(&self, name: &str, bytes: &[u8]) -> io::Result<SourceChange> {

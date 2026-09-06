@@ -17,59 +17,21 @@ impl WaypointStorage {
     }
 
     pub fn load(&self) -> io::Result<WaypointCatalog> {
-        let entries = match std::fs::read_dir(&self.files.directory) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                return Ok(WaypointCatalog::default());
-            }
-            Err(error) => return Err(error),
-        };
         let mut catalog = WaypointCatalog::default();
-        let mut directories = vec![(entries, String::new())];
-        while let Some((entries, prefix)) = directories.pop() {
-            for entry in entries {
-                let entry = entry?;
-                let path = entry.path();
-                if entry.file_type()?.is_dir() {
-                    let component = entry.file_name().to_string_lossy().into_owned();
-                    if component.len() == 250
-                        && component.bytes().all(|byte| byte.is_ascii_hexdigit())
-                    {
-                        directories
-                            .push((std::fs::read_dir(path)?, format!("{prefix}{component}")));
-                    }
-                    continue;
+        for (name, path) in self.files.entries(|_, error| Err(error))? {
+            let dataset = match std::fs::read(&path) {
+                Ok(bytes) => WaypointDataset::from_cup(&bytes)
+                    .map(Arc::new)
+                    .map_err(|error| {
+                        tracing::warn!(%error, "Could not parse stored waypoint source");
+                        WaypointLoadError::ParseFailed
+                    }),
+                Err(error) => {
+                    tracing::warn!(%error, "Could not read stored waypoint source");
+                    Err(WaypointLoadError::ReadFailed)
                 }
-                if path.extension().and_then(|s| s.to_str()) != Some("cup") {
-                    continue;
-                }
-                let stem = path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or_default();
-                let name = hex::decode(format!("{prefix}{stem}"))
-                    .ok()
-                    .and_then(|name| String::from_utf8(name).ok())
-                    .ok_or_else(|| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Invalid stored waypoint filename",
-                        )
-                    })?;
-                let dataset = match std::fs::read(&path) {
-                    Ok(bytes) => WaypointDataset::from_cup(&bytes)
-                        .map(Arc::new)
-                        .map_err(|error| {
-                            tracing::warn!(%error, "Could not parse stored waypoint source");
-                            WaypointLoadError::ParseFailed
-                        }),
-                    Err(error) => {
-                        tracing::warn!(%error, "Could not read stored waypoint source");
-                        Err(WaypointLoadError::ReadFailed)
-                    }
-                };
-                catalog.sources.insert(name, dataset);
-            }
+            };
+            catalog.sources.insert(name, dataset);
         }
         Ok(catalog)
     }

@@ -385,4 +385,18 @@ mod tests {
         assert!(logs_contain("Could not read stored airspace directory"));
         assert_eq!(assert_ok!(storage.load()).sources.len(), 2);
     }
+    #[test]
+    fn malformed_stored_filenames_fail_catalog_loading() {
+        let directory = assert_ok!(tempdir());
+        let storage = AirspaceStorage::new(directory.path());
+        assert_ok!(storage.import_airspace(POLYGON, "valid.txt"));
+        assert_ok!(std::fs::write(
+            directory.path().join("airspaces/zz.txt"),
+            POLYGON
+        ));
+        assert_eq!(
+            assert_err!(storage.load()).kind(),
+            io::ErrorKind::InvalidData
+        );
+    }
 }

@@ -265,4 +265,41 @@ mod tests {
         );
         assert_eq!(assert_ok!(storage.load()).sources.len(), 1);
     }
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_source_subtree_fails_catalog_loading() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = assert_ok!(tempfile::tempdir());
+        let storage = WaypointStorage::new(directory.path().to_owned());
+        let name = format!("{}.cup", "a".repeat(150));
+        assert_ok!(storage.import(&name, CUP));
+        let path = storage.source_path(&name);
+        let parent = path.parent().unwrap();
+        assert_ok!(std::fs::set_permissions(
+            parent,
+            std::fs::Permissions::from_mode(0o000)
+        ));
+        let loaded = storage.load();
+        assert_ok!(std::fs::set_permissions(
+            parent,
+            std::fs::Permissions::from_mode(0o700)
+        ));
+        assert_eq!(assert_err!(loaded).kind(), io::ErrorKind::PermissionDenied);
+        assert_eq!(assert_ok!(storage.load()).sources.len(), 1);
+    }
+
+    #[test]
+    fn malformed_stored_filenames_fail_catalog_loading() {
+        let directory = assert_ok!(tempfile::tempdir());
+        let storage = WaypointStorage::new(directory.path().to_owned());
+        assert_ok!(storage.import("valid.cup", CUP));
+        assert_ok!(std::fs::write(
+            directory.path().join("waypoints/zz.cup"),
+            CUP
+        ));
+        assert_eq!(
+            assert_err!(storage.load()).kind(),
+            io::ErrorKind::InvalidData
+        );
+    }
 }

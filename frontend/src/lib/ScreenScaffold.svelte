@@ -34,7 +34,7 @@
 
   <!-- The scrolling region must be keyboard-focusable. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <main tabindex="0">
+  <main class={{ 'without-actions': !actions }} tabindex="0">
     <div class="content">{@render children()}</div>
   </main>
 
@@ -117,6 +117,10 @@
     margin-inline: auto;
     padding: var(--space-4) calc(var(--space-5) + var(--safe-area-right)) var(--space-6)
       calc(var(--space-5) + var(--safe-area-left));
+  }
+
+  .without-actions .content {
+    padding-block-end: calc(var(--space-6) + var(--safe-area-bottom));
   }
 
   footer {

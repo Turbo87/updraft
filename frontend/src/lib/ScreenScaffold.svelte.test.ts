@@ -11,6 +11,43 @@ const children = createRawSnippet(() => ({ render: () => '<p>Screen content</p>'
 const actions = createRawSnippet(() => ({ render: () => '<button>Save changes</button>' }));
 
 describe('ScreenScaffold.svelte', () => {
+  it.each([
+    { bottomInset: 0, hasActions: false },
+    { bottomInset: 48, hasActions: false },
+    { bottomInset: 0, hasActions: true },
+    { bottomInset: 48, hasActions: true },
+  ])(
+    'reserves bottom safe area with $bottomInset px and actions=$hasActions',
+    ({ bottomInset, hasActions }) => {
+      render(ScreenScaffold, {
+        ...(hasActions && { actions }),
+        backHref: '/settings',
+        backLabel: 'Back to settings',
+        children: createRawSnippet(() => ({
+          render: () => '<div style="height: 600px">Scrollable content</div>',
+        })),
+        title: 'Settings',
+      });
+
+      let main = page.getByRole('main').element();
+      let scaffold = main.parentElement!;
+      scaffold.style.height = '300px';
+      scaffold.style.setProperty('--safe-area-bottom', `${bottomInset}px`);
+      main.scrollTop = main.scrollHeight;
+
+      let content = page.getByText('Scrollable content').element();
+      expect(main.scrollTop).toBeGreaterThan(0);
+      expect(main.getBoundingClientRect().bottom - content.getBoundingClientRect().bottom).toBe(
+        24 + (hasActions ? 0 : bottomInset),
+      );
+      if (hasActions) {
+        expect(getComputedStyle(page.getByRole('contentinfo').element()).paddingBottom).toBe(
+          `${12 + bottomInset}px`,
+        );
+      }
+    },
+  );
+
   it('renders a link return control and a scrolling content region', async () => {
     render(ScreenScaffold, {
       backHref: '/settings',

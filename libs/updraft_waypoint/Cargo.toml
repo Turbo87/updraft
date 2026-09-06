@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 workspace = true
 
 [dependencies]
-seeyou-cup = "=0.3.1"
+seeyou-cup = "=0.3.2"
 thiserror = "=2.0.20"
 updraft_geo = { path = "../updraft_geo" }
 updraft_units = { path = "../updraft_units" }

@@ -74,8 +74,11 @@ fn retains_multiline_notes() {
 }
 
 #[test]
-#[should_panic(expected = "PosOverflow")]
-fn cup_dependency_panics_when_longitude_degrees_exceed_u8() {
+fn skips_waypoints_with_overflowing_longitude_degrees() {
     let source = format!("{HEADER}{FIELD}Bad,,,5000.000N,99900.000E,0m,1\n");
-    let _ = WaypointDataset::from_cup(source.as_bytes());
+    let dataset = assert_ok!(WaypointDataset::from_cup(source.as_bytes()));
+    assert_eq!(dataset.waypoints().len(), 1);
+    assert_eq!(dataset.waypoints()[0].name, "Field");
+    assert_eq!(dataset.warnings().len(), 1);
+    assert_some_eq!(dataset.warnings()[0].line, 3);
 }

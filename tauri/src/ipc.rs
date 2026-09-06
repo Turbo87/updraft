@@ -1,6 +1,7 @@
-use crate::airspace_storage::{AirspaceSourceChange, AirspaceStorage, AirspaceStorageError};
+use crate::airspace_storage::{AirspaceStorage, AirspaceStorageError};
 use crate::driver::DriverHandle;
 use crate::file_picker::{FileBytesPickerError, FileBytesPickerState};
+use crate::source_files::SourceChange;
 use serde::Serialize;
 use std::sync::Arc;
 use tauri::ipc::Channel;
@@ -159,7 +160,7 @@ pub async fn remove_airspace(
 async fn activate_airspace_catalog(
     handle: &DriverHandle,
     catalog: AirspaceCatalog,
-    change: AirspaceSourceChange,
+    change: SourceChange,
     source_name: String,
 ) -> Result<(), AirspaceCommandError> {
     if let Err(error) = handle.send(ReplaceAirspaceCatalog(Arc::new(catalog))).await {

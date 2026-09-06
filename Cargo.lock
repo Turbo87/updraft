@@ -3922,9 +3922,9 @@ dependencies = [
 
 [[package]]
 name = "seeyou-cup"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f17dbdfd0f8f716ca13245216cb6679ed45f50ef2a3dbd33f466abb61aaed74e"
+checksum = "82119f21888f4638c80797647520606f0cc34693ad8c8609008991a728e9b1df"
 dependencies = [
  "csv",
  "encoding_rs",

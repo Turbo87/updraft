@@ -1,7 +1,7 @@
 use super::super::attempt::{AttemptResult, run_attempt};
 use super::super::supervisor::{maintain, maintain_on_channel};
 use super::support::*;
-use claims::assert_some;
+use claims::{assert_none, assert_some};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::ipc::{Channel, InvokeResponseBody};
@@ -109,7 +109,7 @@ async fn malformed_event_cancels_and_waits_for_the_terminal_event() {
             delivered_bytes: false
         }
     );
-    assert!(current_instruments(&handle).await.gps.is_none());
+    assert_none!(current_instruments(&handle).await.gps);
     logs_assert(|lines| warning_context(lines, "Malformed SPP event", "malformed channel data"));
     assert!(!logs_contain("do-not-log"));
     assert!(!logs_contain("Connected"));
@@ -147,7 +147,7 @@ async fn invalid_base64_cancels_and_waits_for_the_terminal_event() {
             delivered_bytes: false
         }
     );
-    assert!(current_instruments(&handle).await.gps.is_none());
+    assert_none!(current_instruments(&handle).await.gps);
     logs_assert(|lines| warning_context(lines, "Invalid Base64 SPP bytes", "invalid Base64 data"));
     assert!(!logs_contain("do-not-log"));
 }

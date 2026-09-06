@@ -130,7 +130,7 @@ async fn pump(
 mod tests {
     use super::*;
     use crate::driver::Driver;
-    use claims::assert_some;
+    use claims::{assert_none, assert_some};
     use tokio::io::AsyncWriteExt as _;
     use tokio::net::TcpListener;
     use tokio::sync::mpsc;
@@ -447,7 +447,7 @@ mod tests {
             let Topic::Instruments(instruments) = assert_some!(received) else {
                 continue;
             };
-            assert!(instruments.gps.is_none());
+            assert_none!(instruments.gps);
             break;
         }
     }

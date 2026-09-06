@@ -150,3 +150,17 @@ fn vario(fields: &mut FieldsIter<'_>) -> Option<Speed> {
         .f64()
         .map(|value| Speed::from_knots((value - 200.0) / 10.0))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn malformed_settings_remain_verbatim() {
+        let settings = CaiG::parse(FieldsIter::new(b"mnan,binf,u-inf,qnope,m,"));
+        let expected = ["mnan", "binf", "u-inf", "qnope", "m", ""]
+            .map(|field| CaiSetting::Other(field.into()));
+
+        assert_eq!(settings.settings, expected);
+    }
+}

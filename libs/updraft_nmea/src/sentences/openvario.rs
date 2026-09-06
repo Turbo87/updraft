@@ -212,18 +212,24 @@ mod tests {
     }
 
     #[test]
-    fn preserves_a_non_finite_data_tail() {
-        let pov = Pov::parse(FieldsIter::new(b"T,nan,E,2"));
-
-        assert_eq!(
-            pov,
-            Pov::Data(vec![PovDatum::RawTail(vec![
-                "T".into(),
-                "nan".into(),
-                "E".into(),
-                "2".into(),
-            ])])
-        );
+    fn preserves_invalid_or_incomplete_data_tails() {
+        for input in [
+            "T,nan,E,2",
+            "T,inf,E,2",
+            "T,-inf,E,2",
+            "T,nope,E,2",
+            "T,,E,2",
+            "T",
+            "A,nan,2,3,E,2",
+            "A,1,inf,3,E,2",
+            "A,1,2,-inf,E,2",
+            "A,1,,3,E,2",
+            "A,1,2",
+        ] {
+            let pov = Pov::parse(FieldsIter::new(input.as_bytes()));
+            let tail = input.split(',').map(Box::from).collect();
+            assert_eq!(pov, Pov::Data(vec![PovDatum::RawTail(tail)]));
+        }
     }
 
     #[test]

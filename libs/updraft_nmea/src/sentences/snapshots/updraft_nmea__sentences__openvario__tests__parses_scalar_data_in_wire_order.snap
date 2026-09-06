@@ -1,0 +1,32 @@
+---
+source: libs/updraft_nmea/src/sentences/openvario.rs
+expression: pov
+---
+Data(
+    [
+        TrueAirspeed(
+            34.29166666666667 m/s,
+        ),
+        StaticPressure(
+            1018.35 hPa,
+        ),
+        DynamicPressure(
+            0.233 hPa,
+        ),
+        TotalPressure(
+            1025.17 hPa,
+        ),
+        Temperature(
+            23.52,
+        ),
+        Voltage(
+            11.99,
+        ),
+        TotalEnergyVario(
+            2.15 m/s,
+        ),
+        RelativeHumidity(
+            58.42,
+        ),
+    ],
+)

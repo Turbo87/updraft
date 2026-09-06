@@ -1,0 +1,18 @@
+---
+source: libs/updraft_nmea/src/sentences/openvario.rs
+expression: pov
+---
+Data(
+    [
+        Acceleration {
+            x: -1.5099,
+            y: -0.0292,
+            z: 13.7134,
+        },
+        AngularRate {
+            x: 4.165,
+            y: -8.709,
+            z: -10.479,
+        },
+    ],
+)

@@ -94,7 +94,7 @@ impl PolarCoefficients {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::assert_none;
+    use claims::{assert_gt, assert_lt, assert_none};
 
     fn kmh(value: f64) -> Speed {
         Speed::from_kilometers_per_hour(value)
@@ -194,13 +194,14 @@ mod tests {
 
         // The minimum of the parabola is indeed at min sink speed.
         let delta = mps(0.1);
-        assert!(polar.sink_rate(min_sink_speed) < polar.sink_rate(min_sink_speed - delta));
-        assert!(polar.sink_rate(min_sink_speed) < polar.sink_rate(min_sink_speed + delta));
+        let sink = polar.sink_rate(min_sink_speed);
+        assert_lt!(sink, polar.sink_rate(min_sink_speed - delta));
+        assert_lt!(sink, polar.sink_rate(min_sink_speed + delta));
 
         // Best glide speed maximizes the glide ratio.
         let ratio = |v: Speed| v / polar.sink_rate(v);
-        assert!(ratio(best_glide_speed) > ratio(best_glide_speed - delta));
-        assert!(ratio(best_glide_speed) > ratio(best_glide_speed + delta));
+        assert_gt!(ratio(best_glide_speed), ratio(best_glide_speed - delta));
+        assert_gt!(ratio(best_glide_speed), ratio(best_glide_speed + delta));
         assert_abs_diff_eq!(ratio(best_glide_speed), 43.6, epsilon = 0.1);
     }
 }

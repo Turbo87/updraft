@@ -205,7 +205,7 @@ impl GlidePolar {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::assert_none;
+    use claims::{assert_lt, assert_none};
 
     fn kmh(value: f64) -> Speed {
         Speed::from_kilometers_per_hour(value)
@@ -276,7 +276,7 @@ mod tests {
         );
 
         // At a fixed (high) speed the heavier glider sinks *less*.
-        assert!(ballasted.sink_rate(kmh(180.)) < dry.sink_rate(kmh(180.)));
+        assert_lt!(ballasted.sink_rate(kmh(180.)), dry.sink_rate(kmh(180.)));
 
         // Invalid masses are ignored.
         assert_eq!(ballasted.with_total_mass(Mass::ZERO), ballasted);

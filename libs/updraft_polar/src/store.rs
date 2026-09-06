@@ -296,11 +296,12 @@ pub const POLAR_STORE: &[PolarStoreEntry] = &[
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+    use claims::{assert_gt, assert_lt};
 
     #[test]
     fn sorted_by_name() {
         for pair in POLAR_STORE.windows(2) {
-            assert!(pair[0].name < pair[1].name, "{:?}", pair[1].name);
+            assert_lt!(pair[0].name, pair[1].name);
         }
     }
 
@@ -338,7 +339,7 @@ mod tests {
                 "{}: best glide ratio {best_glide_ratio}",
                 entry.name
             );
-            assert!(best_glide_speed > min_sink_speed, "{}", entry.name);
+            assert_gt!(best_glide_speed, min_sink_speed, "{}", entry.name);
 
             let wing_area = entry.wing_area.as_square_meters();
             assert!(

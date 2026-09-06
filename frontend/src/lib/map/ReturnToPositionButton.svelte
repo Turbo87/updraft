@@ -2,7 +2,9 @@
   import MapOverlayControl from '$lib/MapOverlayControl.svelte';
   import { m } from '$lib/paraglide/messages.js';
 
-  let { onClick }: { onClick: () => void } = $props();
+  type Props = { onClick: () => void };
+
+  let { onClick }: Props = $props();
 </script>
 
 <div class="return-to-position">

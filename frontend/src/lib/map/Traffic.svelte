@@ -85,11 +85,9 @@
     'icon-halo-width': ['interpolate', ['linear'], ['zoom'], 4, 0, 8, ['case', IF_STALE, 0.5, 1.5]],
   };
 
-  let {
-    traffic,
-    altitudeUnit,
-    showHitAreas,
-  }: { traffic: TrafficStore; altitudeUnit: AltitudeUnit; showHitAreas: boolean } = $props();
+  type Props = { traffic: TrafficStore; altitudeUnit: AltitudeUnit; showHitAreas: boolean };
+
+  let { traffic, altitudeUnit, showHitAreas }: Props = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();

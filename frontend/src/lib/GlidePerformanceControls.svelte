@@ -5,15 +5,7 @@
   import ScreenScaffold from './ScreenScaffold.svelte';
   import { convertVerticalSpeed } from './units';
 
-  let {
-    macCready,
-    unit,
-    setMacCready,
-    bugs,
-    setBugs,
-    ballast,
-    setBallast,
-  }: {
+  type Props = {
     macCready: number;
     unit: VerticalSpeedUnit;
     setMacCready: (value: number) => Promise<void>;
@@ -21,7 +13,9 @@
     setBugs: (value: number) => Promise<void>;
     ballast: number;
     setBallast: (value: number) => Promise<void>;
-  } = $props();
+  };
+
+  let { macCready, unit, setMacCready, bugs, setBugs, ballast, setBallast }: Props = $props();
 
   let saving = $state(false);
   let error = $state<'invalid' | 'failed' | null>(null);

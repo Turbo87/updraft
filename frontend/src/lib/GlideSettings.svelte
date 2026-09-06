@@ -9,21 +9,17 @@
   import ScreenScaffold from './ScreenScaffold.svelte';
   import { convertAltitude } from './units';
 
-  let {
-    polar,
-    getPolars,
-    setPolar,
-    arrivalReserve,
-    altitudeUnit,
-    setArrivalReserve,
-  }: {
+  type Props = {
     polar: PolarId;
     getPolars: () => Promise<PolarId[]>;
     setPolar: (polar: PolarId) => Promise<void>;
     arrivalReserve: number;
     altitudeUnit: AltitudeUnit;
     setArrivalReserve: (reserve: number) => Promise<void>;
-  } = $props();
+  };
+
+  let { polar, getPolars, setPolar, arrivalReserve, altitudeUnit, setArrivalReserve }: Props =
+    $props();
 
   let catalog = $state.raw<PolarId[] | null>(null);
   let loadingFailed = $state(false);

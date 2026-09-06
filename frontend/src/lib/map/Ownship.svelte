@@ -6,7 +6,9 @@
   import { COLOR_EMERALD_300, COLOR_SLATE_900 } from './colors.generated';
   import { ownshipFeature } from './ownship';
 
-  let { position, trackDegrees }: { position: LatLon; trackDegrees: number | null } = $props();
+  type Props = { position: LatLon; trackDegrees: number | null };
+
+  let { position, trackDegrees }: Props = $props();
 </script>
 
 <GeoJSONSource id="ownship" maxzoom={24} data={ownshipFeature(position, trackDegrees)}>

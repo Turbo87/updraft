@@ -6,11 +6,9 @@
   import ScreenScaffold from './ScreenScaffold.svelte';
   import { convertAltitude } from './units';
 
-  let {
-    waypoint,
-    altitudeUnit,
-    onBack,
-  }: { waypoint: WaypointFeature; altitudeUnit: AltitudeUnit; onBack: () => void } = $props();
+  type Props = { waypoint: WaypointFeature; altitudeUnit: AltitudeUnit; onBack: () => void };
+
+  let { waypoint, altitudeUnit, onBack }: Props = $props();
   const properties = $derived(waypoint.properties);
 </script>
 

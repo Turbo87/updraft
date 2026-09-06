@@ -6,17 +6,14 @@
 
   import { convertAltitude, convertSpeed, convertVerticalSpeed } from '$lib/units';
 
-  let {
-    map,
-    instruments,
-    units,
-    showHitAreas = $bindable(false),
-  }: {
+  type Props = {
     map: Map | undefined;
     instruments: Instruments;
     units: UnitSettings;
     showHitAreas?: boolean;
-  } = $props();
+  };
+
+  let { map, instruments, units, showHitAreas = $bindable(false) }: Props = $props();
   const gps = $derived(instruments.gps);
   const altitudeMeters = $derived(gps?.altitudeMeters ?? null);
   const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);

@@ -10,21 +10,16 @@
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import WaypointDetails from '$lib/WaypointDetails.svelte';
 
-  let {
-    map,
-    id,
-    generation,
-    altitudeUnit,
-    sourceStatus,
-    onBack,
-  }: {
+  type Props = {
     map: Map;
     id: string;
     generation: number;
     altitudeUnit: AltitudeUnit;
     sourceStatus: MapState['waypointSourceStatus'];
     onBack: () => void;
-  } = $props();
+  };
+
+  let { map, id, generation, altitudeUnit, sourceStatus, onBack }: Props = $props();
   type State =
     { type: 'loading' | 'failed' | 'notFound' } | { type: 'ready'; waypoint: WaypointFeature };
   let queryState = $state.raw<State>({ type: 'loading' });

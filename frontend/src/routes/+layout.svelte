@@ -2,6 +2,7 @@
   import '../app.css';
   import 'virtual:uno.css';
 
+  import type { Snippet } from 'svelte';
   import type { AppContext } from '$lib/app-context';
 
   import { onMount } from 'svelte';
@@ -28,7 +29,11 @@
     __updraftFake?: FakeClient;
   };
 
-  let { children } = $props();
+  type Props = {
+    children: Snippet;
+  };
+
+  let { children }: Props = $props();
 
   const externalDevices = new ExternalDevicesStore();
   const instruments = new InstrumentsStore();

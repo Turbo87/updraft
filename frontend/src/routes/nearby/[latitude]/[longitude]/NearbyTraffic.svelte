@@ -25,21 +25,16 @@
 
   type QueryState = { type: 'loading' } | { type: 'ready'; traffic: RetainedTraffic[] };
 
-  let {
-    locale,
-    map,
-    ownship,
-    position,
-    traffic,
-    units,
-  }: {
+  type Props = {
     locale: Locale;
     map: Map;
     ownship: GpsInstruments | null;
     position: LatLon;
     traffic: TrafficStore;
     units: UnitSettings;
-  } = $props();
+  };
+
+  let { locale, map, ownship, position, traffic, units }: Props = $props();
   let queryState = $state.raw<QueryState>({ type: 'loading' });
 
   function queryTraffic() {

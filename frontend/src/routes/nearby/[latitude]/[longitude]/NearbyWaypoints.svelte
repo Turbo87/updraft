@@ -11,17 +11,14 @@
   import { convertAltitude } from '$lib/units';
   import WaypointSymbol from '$lib/WaypointSymbol.svelte';
 
-  let {
-    map,
-    position,
-    sourceStatus,
-    altitudeUnit,
-  }: {
+  type Props = {
     map: MapLibreMap;
     position: LatLon;
     sourceStatus: MapState['waypointSourceStatus'];
     altitudeUnit: AltitudeUnit;
-  } = $props();
+  };
+
+  let { map, position, sourceStatus, altitudeUnit }: Props = $props();
   let features = $state.raw<MapGeoJSONFeature[] | null>(null);
 
   function query() {

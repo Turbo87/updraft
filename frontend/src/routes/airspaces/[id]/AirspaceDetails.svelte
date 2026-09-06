@@ -27,21 +27,16 @@
     | { type: 'notFound' }
     | { type: 'ready'; properties: AirspaceProperties };
 
-  let {
-    altitudeUnit,
-    backLabel,
-    id,
-    locale,
-    map,
-    onBack,
-  }: {
+  type Props = {
     altitudeUnit: AltitudeUnit;
     backLabel: string;
     id: string;
     locale: Locale;
     map: Map;
     onBack: (event: MouseEvent) => void;
-  } = $props();
+  };
+
+  let { altitudeUnit, backLabel, id, locale, map, onBack }: Props = $props();
   let queryState = $state.raw<QueryState>({ type: 'loading' });
   let activeRequest = 0;
   let querying = false;

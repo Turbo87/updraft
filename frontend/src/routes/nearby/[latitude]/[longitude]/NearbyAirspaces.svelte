@@ -12,12 +12,9 @@
 
   type QueryState = { type: 'loading' } | { type: 'ready'; features: MapGeoJSONFeature[] };
 
-  let {
-    airspace,
-    locale,
-    map,
-    position,
-  }: { airspace: AirspaceStore; locale: Locale; map: Map; position: LatLon } = $props();
+  type Props = { airspace: AirspaceStore; locale: Locale; map: Map; position: LatLon };
+
+  let { airspace, locale, map, position }: Props = $props();
   let queryState = $state.raw<QueryState>({ type: 'loading' });
 
   function queryAirspaces() {

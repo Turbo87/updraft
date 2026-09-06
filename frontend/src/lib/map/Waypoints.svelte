@@ -5,15 +5,13 @@
 
   import WaypointLayers from './WaypointLayers.svelte';
 
-  let {
-    data,
-    showHitAreas,
-    showLandables = true,
-  }: {
+  type Props = {
     data: GeoJSONSourceSpecification['data'];
     showHitAreas: boolean;
     showLandables?: boolean;
-  } = $props();
+  };
+
+  let { data, showHitAreas, showLandables = true }: Props = $props();
 </script>
 
 <GeoJSONSource id="waypoints" {data}>

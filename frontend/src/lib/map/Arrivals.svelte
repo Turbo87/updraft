@@ -7,19 +7,15 @@
 
   import WaypointLayers from './WaypointLayers.svelte';
 
-  let {
-    client,
-    map,
-    generation,
-    altitudeUnit,
-    onReady,
-  }: {
+  type Props = {
     client: UpdraftClient;
     map: Map;
     generation: number;
     altitudeUnit: AltitudeUnit;
     onReady: (ready: boolean) => void;
-  } = $props();
+  };
+
+  let { client, map, generation, altitudeUnit, onReady }: Props = $props();
   let data = $state<string | null>(null);
   const subscriptionClient = $derived(client);
   const subscriptionMap = $derived(map);

@@ -24,15 +24,7 @@
   type RetainedTarget = { target: PublishedTrafficTarget; available: boolean } | null;
   type StatusTone = 'normal' | 'caution' | 'success' | 'warning' | 'danger';
 
-  let {
-    backLabel,
-    id,
-    instruments,
-    locale,
-    onBack,
-    traffic,
-    units,
-  }: {
+  type Props = {
     backLabel: string;
     id: string;
     instruments: InstrumentsStore;
@@ -40,7 +32,9 @@
     onBack: (event: MouseEvent) => void;
     traffic: TrafficStore;
     units: UnitSettings;
-  } = $props();
+  };
+
+  let { backLabel, id, instruments, locale, onBack, traffic, units }: Props = $props();
 
   let retainedTarget = $state.raw<RetainedTarget>();
   let ownshipRelation = $derived(

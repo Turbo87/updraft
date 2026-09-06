@@ -29,6 +29,10 @@ Implement the smallest solution that meets the current requirement. Do not add g
 
 Introduce one new concept at a time. Keep each commit independently understandable and reviewable.
 
+## Svelte
+
+Declare component props in an explicit named type or interface. Do not use inline object types in `$props()` declarations.
+
 ## Tests
 
 Test behavior at the layer that owns it. Do not repeat lower-layer parser or protocol tests in higher layers. Add integration tests only for behavior that crosses a boundary. Do not add another test when an existing end-to-end test proves the same behavior.

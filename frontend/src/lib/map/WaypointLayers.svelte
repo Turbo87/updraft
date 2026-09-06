@@ -15,17 +15,14 @@
     COLOR_VIOLET_700,
   } from './colors.generated';
 
-  let {
-    id = 'waypoint',
-    filter = true,
-    showLandables = true,
-    arrivalUnit,
-  }: {
+  type Props = {
     id?: string;
     filter?: ExpressionSpecification | boolean;
     showLandables?: boolean;
     arrivalUnit?: AltitudeUnit;
-  } = $props();
+  };
+
+  let { id = 'waypoint', filter = true, showLandables = true, arrivalUnit }: Props = $props();
 
   const LABEL_SIZE = 12;
   const LABEL_PADDING = 8;

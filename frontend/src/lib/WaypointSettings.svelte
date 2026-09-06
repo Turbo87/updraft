@@ -7,15 +7,13 @@
   import { m } from './paraglide/messages.js';
   import ScreenScaffold from './ScreenScaffold.svelte';
 
-  let {
-    status,
-    onImport,
-    onRemove,
-  }: {
+  type Props = {
     status: WaypointStatus;
     onImport: () => Promise<ImportWaypointsResult>;
     onRemove: (name: string) => Promise<void>;
-  } = $props();
+  };
+
+  let { status, onImport, onRemove }: Props = $props();
   let pending = $state(false);
   let error = $state('');
   let removeName = $state('');

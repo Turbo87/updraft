@@ -2,7 +2,9 @@
   import runway from '../../../libs/updraft_sprites/sprites/runway.svg?url';
   import { waypointSymbols } from './waypoint-symbols';
 
-  let { kind, runwayDirection }: { kind: number; runwayDirection?: number } = $props();
+  type Props = { kind: number; runwayDirection?: number };
+
+  let { kind, runwayDirection }: Props = $props();
   let symbol = $derived(waypointSymbols[kind] ?? waypointSymbols[0]);
   let landable = $derived([2, 3, 4, 5].includes(kind));
 </script>

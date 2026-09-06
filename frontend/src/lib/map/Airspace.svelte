@@ -19,13 +19,12 @@
     COLOR_YELLOW_600,
   } from './colors.generated';
 
-  let {
-    data,
-    beforeId,
-  }: {
+  type Props = {
     data: GeoJSONSourceSpecification['data'];
     beforeId: string;
-  } = $props();
+  };
+
+  let { data, beforeId }: Props = $props();
 
   const AIRSPACE_TYPE = {
     RESTRICTED: 1,

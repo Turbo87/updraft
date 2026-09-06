@@ -2,7 +2,9 @@
   import { m } from '$lib/paraglide/messages.js';
   import { parseMapAttributions } from './map-attribution';
 
-  let { attributions }: { attributions: string[] } = $props();
+  type Props = { attributions: string[] };
+
+  let { attributions }: Props = $props();
 
   const parsedAttributions = $derived(parseMapAttributions(attributions));
 </script>

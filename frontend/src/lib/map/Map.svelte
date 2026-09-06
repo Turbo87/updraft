@@ -32,6 +32,20 @@
   };
 
   const FOLLOW_DURATION_MS = 300;
+  type Props = {
+    client?: UpdraftClient;
+    airspace: AirspaceStatus;
+    waypoints?: WaypointStatus;
+    testWaypointData?: GeoJSONSourceSpecification['data'];
+    instruments: Instruments;
+    mapState: MapState;
+    traffic: TrafficStore;
+    units: UnitSettings;
+    testMode?: boolean;
+    testAirspaceData?: GeoJSONSourceSpecification['data'];
+    onInspect?: (position: LatLon) => void;
+  };
+
   let {
     client,
     airspace,
@@ -44,19 +58,7 @@
     testWaypointData,
     waypoints = { generation: 0, sources: [] },
     onInspect,
-  }: {
-    client?: UpdraftClient;
-    airspace: AirspaceStatus;
-    waypoints?: WaypointStatus;
-    testWaypointData?: GeoJSONSourceSpecification['data'];
-    instruments: Instruments;
-    mapState: MapState;
-    traffic: TrafficStore;
-    units: UnitSettings;
-    testMode?: boolean;
-    testAirspaceData?: GeoJSONSourceSpecification['data'];
-    onInspect?: (position: LatLon) => void;
-  } = $props();
+  }: Props = $props();
 
   let spritesLoaded = $state(false);
   let showHitAreas = $state(false);

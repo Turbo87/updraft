@@ -15,6 +15,17 @@
   import MapOverlayControl from '$lib/MapOverlayControl.svelte';
   import { m } from '$lib/paraglide/messages.js';
 
+  type Props = {
+    client?: UpdraftClient;
+    airspace: AirspaceStatus;
+    waypoints?: WaypointStatus;
+    instruments: Instruments;
+    mapState: MapState;
+    traffic: TrafficStore;
+    units: UnitSettings;
+    testMode?: boolean;
+  };
+
   let {
     client,
     airspace,
@@ -24,16 +35,7 @@
     traffic,
     units,
     testMode = false,
-  }: {
-    client?: UpdraftClient;
-    airspace: AirspaceStatus;
-    waypoints?: WaypointStatus;
-    instruments: Instruments;
-    mapState: MapState;
-    traffic: TrafficStore;
-    units: UnitSettings;
-    testMode?: boolean;
-  } = $props();
+  }: Props = $props();
 
   function openNearbyRoute(position: LatLon) {
     let path = resolve('/nearby/[latitude]/[longitude]', {

@@ -48,8 +48,7 @@ impl<'a> FieldsIter<'a> {
     /// as `f64` but are treated as absent so a non-finite value never
     /// reaches downstream calculations.
     pub fn f64(&mut self) -> Option<f64> {
-        let f = fast_float2::parse(self.bytes()?).ok();
-        f.filter(|value: &f64| value.is_finite())
+        finite_f64(self.bytes()?)
     }
 
     /// A latitude/longitude pair from the next four fields (`ddmm.mmmm`,
@@ -90,13 +89,18 @@ pub fn text(bytes: &[u8]) -> Box<str> {
     String::from_utf8_lossy(bytes).into_owned().into_boxed_str()
 }
 
+pub fn finite_f64(field: &[u8]) -> Option<f64> {
+    let value: f64 = fast_float2::parse(field).ok()?;
+    value.is_finite().then_some(value)
+}
+
 /// Converts an NMEA `[d]ddmm.mmmm` magnitude plus a hemisphere letter into
 /// signed decimal degrees.
 fn coordinate(value: &[u8], hemisphere: &[u8]) -> Option<f64> {
-    let value: f64 = fast_float2::parse(value).ok()?;
+    let value = finite_f64(value)?;
     // A `ddmm.mmmm` magnitude is non-negative and the hemisphere carries the
     // sign. A negative or non-finite value is corrupt, not a real position.
-    if !value.is_finite() || value < 0.0 {
+    if value < 0.0 {
         return None;
     }
     let degrees = (value / 100.0).trunc();

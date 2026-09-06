@@ -1,4 +1,4 @@
-use crate::field::{FieldsIter, text};
+use crate::field::{FieldsIter, finite_f64, text};
 use updraft_units::{Pressure, Speed};
 
 /// `OpenVario` `$POV` sensor data or control traffic.
@@ -125,20 +125,16 @@ impl Pov {
 
 fn scalar<'a>(kind: &'a [u8], fields: &mut FieldsIter<'a>) -> Result<f64, Vec<Box<str>>> {
     let raw = fields.next();
-    finite_f64(raw).ok_or_else(|| raw_tail(kind, &[raw], fields.clone()))
+    raw.and_then(finite_f64)
+        .ok_or_else(|| raw_tail(kind, &[raw], fields.clone()))
 }
 
 fn vector<'a>(kind: &'a [u8], fields: &mut FieldsIter<'a>) -> Result<[f64; 3], Vec<Box<str>>> {
     let raw = [fields.next(), fields.next(), fields.next()];
-    match (finite_f64(raw[0]), finite_f64(raw[1]), finite_f64(raw[2])) {
-        (Some(x), Some(y), Some(z)) => Ok([x, y, z]),
+    match raw.map(|field| field.and_then(finite_f64)) {
+        [Some(x), Some(y), Some(z)] => Ok([x, y, z]),
         _ => Err(raw_tail(kind, &raw, fields.clone())),
     }
-}
-
-fn finite_f64(raw: Option<&[u8]>) -> Option<f64> {
-    let value: f64 = fast_float2::parse(raw?).ok()?;
-    value.is_finite().then_some(value)
 }
 
 fn raw_tail<'a>(
@@ -212,18 +208,24 @@ mod tests {
     }
 
     #[test]
-    fn preserves_a_non_finite_data_tail() {
-        let pov = Pov::parse(FieldsIter::new(b"T,nan,E,2"));
-
-        assert_eq!(
-            pov,
-            Pov::Data(vec![PovDatum::RawTail(vec![
-                "T".into(),
-                "nan".into(),
-                "E".into(),
-                "2".into(),
-            ])])
-        );
+    fn preserves_invalid_or_incomplete_data_tails() {
+        for input in [
+            "T,nan,E,2",
+            "T,inf,E,2",
+            "T,-inf,E,2",
+            "T,nope,E,2",
+            "T,,E,2",
+            "T",
+            "A,nan,2,3,E,2",
+            "A,1,inf,3,E,2",
+            "A,1,2,-inf,E,2",
+            "A,1,,3,E,2",
+            "A,1,2",
+        ] {
+            let pov = Pov::parse(FieldsIter::new(input.as_bytes()));
+            let tail = input.split(',').map(Box::from).collect();
+            assert_eq!(pov, Pov::Data(vec![PovDatum::RawTail(tail)]));
+        }
     }
 
     #[test]

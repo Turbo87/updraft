@@ -21,20 +21,7 @@ pub fn normalize_geometry(geometry: Geometry) -> Result<Polygon, AirspaceGeometr
         Geometry::Polygon { segments } => normalize_polygon_segments(segments)?,
     };
 
-    let mut distinct = Vec::with_capacity(3);
-    for vertex in &vertices {
-        if !distinct.contains(vertex) {
-            distinct.push(*vertex);
-            if distinct.len() == 3 {
-                break;
-            }
-        }
-    }
-    if distinct.len() < 3 {
-        return Err(AirspaceGeometryError::InvalidRing);
-    }
-
-    Ok(Polygon::from_vertices(vertices))
+    Polygon::from_vertices(vertices).ok_or(AirspaceGeometryError::InvalidRing)
 }
 
 /// Converts one parsed circle to polygon vertices within the curve-error limit.

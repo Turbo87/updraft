@@ -35,6 +35,7 @@ impl_debug_with_unit!(Area, " m²");
 #[cfg(test)]
 mod tests {
     use super::*;
+    use claims::assert_lt;
 
     #[test]
     fn conversions() {
@@ -56,7 +57,7 @@ mod tests {
             Area::from_square_meters(-3.).abs(),
             Area::from_square_meters(3.)
         );
-        assert!(b < a);
+        assert_lt!(b, a);
     }
 
     #[test]

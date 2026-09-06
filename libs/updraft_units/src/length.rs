@@ -63,6 +63,7 @@ impl_debug_with_unit!(Length, " m");
 #[cfg(test)]
 mod tests {
     use super::*;
+    use claims::assert_lt;
 
     #[test]
     fn conversions() {
@@ -84,7 +85,7 @@ mod tests {
         assert_eq!(2. * a, Length::from_meters(200.));
         assert_eq!(a / 2., Length::from_meters(50.));
         assert_eq!(a / b, 2.);
-        assert!(b < a);
+        assert_lt!(b, a);
         assert_eq!(Length::from_meters(-3.).abs(), Length::from_meters(3.));
 
         let mut c = a;

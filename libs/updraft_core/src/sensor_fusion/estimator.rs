@@ -467,7 +467,7 @@ mod tests {
     use super::*;
     use crate::sensor_fusion::circling::FULL_CIRCLE_VARIANCE;
     use approx::assert_abs_diff_eq;
-    use claims::{assert_lt, assert_none, assert_some};
+    use claims::{assert_gt, assert_lt, assert_none, assert_some};
     use updraft_polar::isa_density_ratio;
     use updraft_units::{Length, Mass};
 
@@ -960,7 +960,7 @@ mod tests {
             worst = worst.max(vertical_speed.as_meters_per_second().abs());
         }
 
-        assert!(worst < 0.01, "reading reached {worst} m/s");
+        assert_lt!(worst, 0.01, "reading reached {worst} m/s");
     }
 
     #[test]
@@ -1242,7 +1242,7 @@ mod tests {
     fn reset_wind_restarts_the_turn_rate() {
         let mut estimator = circling(20., Speed::from_meters_per_second(30.));
         let bank = assert_some!(estimator.estimate().bank_angle);
-        assert!(bank.as_degrees().abs() > 1.);
+        assert_gt!(bank.as_degrees().abs(), 1.);
 
         estimator.reset_wind();
         assert_eq!(

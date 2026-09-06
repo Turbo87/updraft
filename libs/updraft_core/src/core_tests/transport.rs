@@ -4,6 +4,7 @@ use crate::connection::{ConnectionSpec, ConnectionState};
 use crate::external_device::ExternalDeviceConfig;
 use crate::settings::{Locale, SettingsSnapshot};
 use approx::assert_abs_diff_eq;
+use claims::assert_some;
 use tracing_test::traced_test;
 
 #[test]
@@ -173,7 +174,7 @@ fn removed_connection_produces_no_further_diagnostics() {
     core.apply(input, at(0));
 
     core.apply(Bytes::new(device_id, b"abc"), at(1));
-    assert!(core.external_devices.remove(device_id).is_some());
+    assert_some!(core.external_devices.remove(device_id));
 
     let input = ConnectionChanged::new(device_id, ConnectionState::Connecting);
     core.apply(input, at(2));

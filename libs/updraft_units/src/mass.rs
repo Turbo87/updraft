@@ -34,6 +34,7 @@ impl_debug_with_unit!(Mass, " kg");
 #[cfg(test)]
 mod tests {
     use super::*;
+    use claims::assert_lt;
 
     #[test]
     fn conversions() {
@@ -52,7 +53,7 @@ mod tests {
         assert_eq!(a * 2., Mass::from_kilograms(600.));
         assert_eq!(a / b, 6.);
         assert_eq!(Mass::from_kilograms(-3.).abs(), Mass::from_kilograms(3.));
-        assert!(b < a);
+        assert_lt!(b, a);
     }
 
     #[test]

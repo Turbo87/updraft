@@ -97,6 +97,7 @@ impl<'de> serde::Deserialize<'de> for Angle {
 mod tests {
     use super::*;
     use approx::{assert_abs_diff_eq, assert_abs_diff_ne, assert_relative_eq, assert_relative_ne};
+    use claims::{assert_ge, assert_lt};
     use std::f64::consts::FRAC_PI_2;
 
     #[test]
@@ -158,8 +159,8 @@ mod tests {
         // `normalized` must keep the result inside `[0, 2π)`.
         for radians in [-1e-18, -1e-30, -f64::MIN_POSITIVE] {
             let normalized = Angle::from_radians(radians).normalized().as_radians();
-            assert!(normalized < TAU, "{radians:e} normalized to {normalized}");
-            assert!(normalized >= 0.);
+            assert_lt!(normalized, TAU, "{radians:e} normalized to {normalized}");
+            assert_ge!(normalized, 0.);
         }
     }
 

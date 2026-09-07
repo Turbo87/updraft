@@ -69,9 +69,11 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serde() {
+        use claims::{assert_ok, assert_ok_eq};
+
         let area = Area::from_square_meters(10.5);
-        let json = serde_json::to_string(&area).unwrap();
+        let json = assert_ok!(serde_json::to_string(&area));
         assert_eq!(json, "10.5");
-        assert_eq!(serde_json::from_str::<Area>(&json).unwrap(), area);
+        assert_ok_eq!(serde_json::from_str::<Area>(&json), area);
     }
 }

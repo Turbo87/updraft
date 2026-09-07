@@ -182,15 +182,17 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serde() {
+        use claims::{assert_ok, assert_ok_eq};
+
         // Angles serialize as degrees, not the internal radians.
         let angle = Angle::from_degrees(90.);
-        let json = serde_json::to_string(&angle).unwrap();
+        let json = assert_ok!(serde_json::to_string(&angle));
         assert_eq!(json, "90.0");
-        assert_eq!(serde_json::from_str::<Angle>(&json).unwrap(), angle);
+        assert_ok_eq!(serde_json::from_str::<Angle>(&json), angle);
 
         // A value authored as degrees deserializes to the right angle.
-        assert_eq!(
-            serde_json::from_str::<Angle>("180").unwrap(),
+        assert_ok_eq!(
+            serde_json::from_str::<Angle>("180"),
             Angle::from_degrees(180.)
         );
     }

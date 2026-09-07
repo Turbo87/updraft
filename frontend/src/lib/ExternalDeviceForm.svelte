@@ -295,6 +295,12 @@
     gap: 1rem;
   }
 
+  @media (max-width: 34rem) {
+    form {
+      max-width: none;
+    }
+  }
+
   label {
     display: grid;
     gap: 0.25rem;

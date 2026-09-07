@@ -32,6 +32,7 @@
   --color-danger-text: var(--color-white);
   --color-danger-subtle-surface: light-dark(var(--color-red-100), var(--color-red-950));
   --color-danger-subtle-text: light-dark(var(--color-red-700), var(--color-red-300));
+  --color-error-text: light-dark(var(--color-red-700), var(--color-red-400));
   --color-success-surface: light-dark(var(--color-emerald-100), var(--color-emerald-950));
   --color-success-text: light-dark(var(--color-emerald-700), var(--color-emerald-300));
   --color-disabled-surface: light-dark(var(--color-slate-200), var(--color-slate-800));

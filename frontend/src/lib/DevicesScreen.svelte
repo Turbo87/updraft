@@ -330,7 +330,7 @@
 
   .error {
     padding: 0 var(--space-5) var(--space-2);
-    color: var(--color-danger-subtle-text);
+    color: var(--color-error-text);
     font: var(--text-caption);
   }
 

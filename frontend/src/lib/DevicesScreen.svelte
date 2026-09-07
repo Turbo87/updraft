@@ -6,6 +6,7 @@
   import { resolve } from '$app/paths';
 
   import { m } from '$lib/paraglide/messages.js';
+  import ResponsiveCard from './ResponsiveCard.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';
 
@@ -83,8 +84,16 @@
         {m.loading_external_devices()}
       </p>
       <div aria-hidden="true" class="skeletons">
-        <div class="skeleton-card"><span></span><span class="skeleton-endpoint"></span></div>
-        <div class="skeleton-card"><span></span><span class="skeleton-endpoint"></span></div>
+        <div class="skeleton-card">
+          <ResponsiveCard>
+            <div class="skeleton-content"><span></span><span class="skeleton-endpoint"></span></div>
+          </ResponsiveCard>
+        </div>
+        <div class="skeleton-card">
+          <ResponsiveCard>
+            <div class="skeleton-content"><span></span><span class="skeleton-endpoint"></span></div>
+          </ResponsiveCard>
+        </div>
       </div>
     </div>
   {:else if devices.length === 0}
@@ -98,67 +107,69 @@
       {#each devices as device (device.deviceId)}
         {let bondedName = bondedBluetoothName(device)}
         <li>
-          <div class="summary">
-            <div class="type-row">
-              <span
-                aria-hidden="true"
-                class={device.type === 'tcp' ? 'i-mdi-lan-connect' : 'i-mdi-bluetooth'}
-              ></span>
-              <h2>
-                {device.type === 'tcp' ? m.tcp_device_type() : m.bluetooth_spp_device_type()}
-              </h2>
-              <div class="connection-status">
-                {#if device.enabled}
-                  <span class="sr-only">{m.device_connection_status_unknown()}</span>
-                  <StatusPill label="—" />
-                {:else}
-                  <StatusPill label={m.device_disabled()} />
-                {/if}
+          <ResponsiveCard>
+            <div class="summary">
+              <div class="type-row">
+                <span
+                  aria-hidden="true"
+                  class={device.type === 'tcp' ? 'i-mdi-lan-connect' : 'i-mdi-bluetooth'}
+                ></span>
+                <h2>
+                  {device.type === 'tcp' ? m.tcp_device_type() : m.bluetooth_spp_device_type()}
+                </h2>
+                <div class="connection-status">
+                  {#if device.enabled}
+                    <span class="sr-only">{m.device_connection_status_unknown()}</span>
+                    <StatusPill label="—" />
+                  {:else}
+                    <StatusPill label={m.device_disabled()} />
+                  {/if}
+                </div>
               </div>
+              {#if device.type === 'tcp'}
+                <p class="endpoint">{device.host}:{device.port}</p>
+              {:else}
+                <p class="endpoint bluetooth">{bondedName ?? device.address}</p>
+                {#if bondedName}
+                  <p class="address">{device.address}</p>
+                {/if}
+                {#if device.serviceUuid}
+                  <p class="service-uuid">
+                    <span>{m.custom_service_uuid()}</span>
+                    <code>{device.serviceUuid}</code>
+                  </p>
+                {/if}
+              {/if}
             </div>
-            {#if device.type === 'tcp'}
-              <p class="endpoint">{device.host}:{device.port}</p>
-            {:else}
-              <p class="endpoint bluetooth">{bondedName ?? device.address}</p>
-              {#if bondedName}
-                <p class="address">{device.address}</p>
-              {/if}
-              {#if device.serviceUuid}
-                <p class="service-uuid">
-                  <span>{m.custom_service_uuid()}</span>
-                  <code>{device.serviceUuid}</code>
-                </p>
-              {/if}
-            {/if}
-          </div>
-          <label class={['enabled-row', { pending: pendingDeviceIds.includes(device.deviceId) }]}>
-            <span>{m.device_enabled()}</span>
-            <span class="checkbox-control">
-              <input
-                type="checkbox"
-                role="switch"
-                checked={device.enabled}
-                disabled={pendingDeviceIds.includes(device.deviceId)}
-                onchange={(event) => void requestEnabledChange(event, device)}
-              />
-              <span aria-hidden="true" class="checkbox-visual">
-                <span class="i-mdi-check-bold"></span>
+            <label class={['enabled-row', { pending: pendingDeviceIds.includes(device.deviceId) }]}>
+              <span>{m.device_enabled()}</span>
+              <span class="checkbox-control">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={device.enabled}
+                  disabled={pendingDeviceIds.includes(device.deviceId)}
+                  onchange={(event) => void requestEnabledChange(event, device)}
+                />
+                <span aria-hidden="true" class="checkbox-visual">
+                  <span class="i-mdi-check-bold"></span>
+                </span>
               </span>
-            </span>
-          </label>
-          {#if failedDeviceIds.includes(device.deviceId)}
-            <p class="error" role="alert">{m.update_device_error()}</p>
-          {/if}
-          <a
-            class="edit-link"
-            aria-label={m.edit_external_device({ endpoint: deviceEndpoint(device) })}
-            href={resolve('/settings/devices/[deviceId]', {
-              deviceId: String(device.deviceId),
-            })}
-          >
-            <span>{m.edit_connection()}</span>
-            <span aria-hidden="true" class="i-mdi-chevron-right"></span>
-          </a>
+            </label>
+            {#if failedDeviceIds.includes(device.deviceId)}
+              <p class="error" role="alert">{m.update_device_error()}</p>
+            {/if}
+            <a
+              class="edit-link"
+              aria-label={m.edit_external_device({ endpoint: deviceEndpoint(device) })}
+              href={resolve('/settings/devices/[deviceId]', {
+                deviceId: String(device.deviceId),
+              })}
+            >
+              <span>{m.edit_connection()}</span>
+              <span aria-hidden="true" class="i-mdi-chevron-right"></span>
+            </a>
+          </ResponsiveCard>
         </li>
       {/each}
     </ul>
@@ -184,15 +195,10 @@
     list-style: none;
   }
 
-  .devices li {
-    overflow: hidden;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
-  }
-
   .summary {
-    padding: 0.875rem var(--space-5) var(--space-3);
+    padding-block: 0.875rem var(--space-3);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
   }
 
   .type-row {
@@ -257,7 +263,9 @@
     justify-content: space-between;
     gap: var(--space-2);
     min-height: var(--target-min);
-    padding: var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     border-block-start: 1px solid var(--color-separator);
     color: var(--color-text);
     font: var(--text-row-label);
@@ -329,7 +337,9 @@
   }
 
   .error {
-    padding: 0 var(--space-5) var(--space-2);
+    padding-block: 0 var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     color: var(--color-error-text);
     font: var(--text-caption);
   }
@@ -338,7 +348,9 @@
     display: flex;
     align-items: center;
     min-height: var(--target-flight);
-    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-4) + var(--card-safe-area-end));
     border-block-start: 1px solid var(--color-separator);
     color: var(--color-text);
     font: var(--text-row-detail);
@@ -412,11 +424,13 @@
   }
 
   .skeleton-card {
-    padding: var(--space-4);
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
     animation: devices-loading-pulse 1.4s ease-in-out infinite;
+  }
+
+  .skeleton-content {
+    padding-block: var(--space-4);
+    padding-inline: calc(var(--space-4) + var(--card-safe-area-start))
+      calc(var(--space-4) + var(--card-safe-area-end));
   }
 
   .skeleton-card span {
@@ -470,6 +484,14 @@
   @keyframes devices-loading-pulse {
     50% {
       opacity: 0.45;
+    }
+  }
+
+  @media (max-width: 34rem) {
+    .devices,
+    .skeletons,
+    .loading-label {
+      width: 100%;
     }
   }
 

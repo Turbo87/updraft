@@ -7,6 +7,74 @@ import '../app.css';
 import DevicesScreen from './DevicesScreen.svelte';
 
 describe('DevicesScreen.svelte', () => {
+  it.each([
+    [413, false],
+    [413, true],
+    [544, true],
+    [915, false],
+    [915, true],
+  ] as const)(
+    'lays out responsive device cards at width %s when initialized is %s',
+    async (width, initialized) => {
+      let oldWidth = window.innerWidth;
+      let oldHeight = window.innerHeight;
+      let root = document.documentElement;
+      let previousStyle = root.getAttribute('style');
+      try {
+        await page.viewport(width, 600);
+        root.style.setProperty('--safe-area-left', '24px');
+        root.style.setProperty('--safe-area-right', '12px');
+        render(DevicesScreen, {
+          devices: [
+            { deviceId: 1, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
+            { deviceId: 2, enabled: false, type: 'tcp', host: '192.0.2.2', port: 4353 },
+          ],
+          initialized,
+          bondedBluetoothDevices: { status: 'unsupported' },
+          onEnabledChange: async () => {},
+        });
+        let cards = initialized
+          ? page
+              .getByRole('listitem')
+              .all()
+              .map((item) => item.element().firstElementChild!)
+          : [...document.querySelectorAll('.skeleton-card')].map((item) => item.firstElementChild!);
+        expect(cards).toHaveLength(2);
+        let cardWidth = width <= 544 ? width : 416;
+        for (let card of cards) {
+          let bounds = card.getBoundingClientRect();
+          expect([bounds.left, bounds.width]).toEqual([
+            width <= 544 ? 0 : (width - cardWidth) / 2 + 6,
+            cardWidth,
+          ]);
+          if (initialized) {
+            let link = card.querySelector('a')!;
+            expect(getComputedStyle(link).borderTopWidth).toBe('1px');
+            expect([
+              getComputedStyle(link).paddingLeft,
+              getComputedStyle(link).paddingRight,
+            ]).toEqual(width <= 544 ? ['44px', '28px'] : ['20px', '16px']);
+            expect(link.getBoundingClientRect().height).toBe(56);
+            link.focus();
+            expect(getComputedStyle(link).outlineOffset).toBe('-3px');
+          } else {
+            expect(bounds.height).toBe(80);
+            expect(getComputedStyle(card.parentElement!).animationName).toContain(
+              'devices-loading-pulse',
+            );
+          }
+        }
+        expect(cards[1].getBoundingClientRect().top - cards[0].getBoundingClientRect().bottom).toBe(
+          12,
+        );
+      } finally {
+        if (previousStyle === null) root.removeAttribute('style');
+        else root.setAttribute('style', previousStyle);
+        await page.viewport(oldWidth, oldHeight);
+      }
+    },
+  );
+
   it('waits for the first external-device topic before showing the list state', async () => {
     render(DevicesScreen, {
       devices: [],

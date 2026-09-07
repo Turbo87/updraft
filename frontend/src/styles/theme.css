@@ -22,7 +22,7 @@
   --color-border-strong: light-dark(var(--color-slate-400), var(--color-slate-700));
   --color-separator: light-dark(var(--color-slate-200), var(--color-slate-700));
 
-  --color-normal-surface: light-dark(var(--color-slate-100), var(--color-slate-800));
+  --color-normal-surface: light-dark(var(--color-slate-100), var(--color-slate-700));
   --color-normal-text: light-dark(var(--color-slate-600), var(--color-slate-300));
   --color-caution-surface: light-dark(var(--color-amber-100), var(--color-amber-950));
   --color-caution-text: light-dark(var(--color-amber-700), var(--color-amber-300));

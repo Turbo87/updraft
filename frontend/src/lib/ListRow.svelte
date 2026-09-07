@@ -72,9 +72,7 @@
     width: 100%;
     min-height: var(--list-row-min-height);
     padding: var(--space-2) var(--space-5);
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
+    border-radius: inherit;
     color: var(--color-text);
   }
 
@@ -97,7 +95,7 @@
 
   a:focus-visible {
     outline: 2px solid var(--color-focus-ring);
-    outline-offset: 2px;
+    outline-offset: -2px;
   }
 
   .disabled {

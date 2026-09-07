@@ -10,6 +10,15 @@ import ListRow from './ListRow.svelte';
 const connected = createRawSnippet(() => ({ render: () => '<span>Connected</span>' }));
 
 describe('ListRow.svelte', () => {
+  it('keeps the keyboard focus outline inside the row', () => {
+    render(ListRow, { href: '/settings/about', label: 'About', size: 'large' });
+    let link = page.getByRole('link', { name: 'About' }).element() as HTMLAnchorElement;
+    link.focus();
+    expect(link.matches(':focus-visible')).toBe(true);
+    expect(getComputedStyle(link).outlineStyle).toBe('solid');
+    expect(getComputedStyle(link).outlineOffset).toBe('-2px');
+  });
+
   it('renders the full navigating row as a 56-pixel link', async () => {
     render(ListRow, {
       href: '/settings/airspace',

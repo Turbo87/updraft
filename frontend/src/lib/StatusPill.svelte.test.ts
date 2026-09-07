@@ -7,6 +7,27 @@ import '../app.css';
 import StatusPill from './StatusPill.svelte';
 
 describe('StatusPill.svelte', () => {
+  it.each(['light', 'dark'] as const)('keeps normal pills visible on cards in %s mode', (theme) => {
+    let root = document.documentElement;
+    let previousTheme = root.dataset.theme;
+    root.dataset.theme = theme;
+    let reference = document.createElement('div');
+    document.body.append(reference);
+
+    try {
+      render(StatusPill, { label: 'Disabled' });
+      let background = getComputedStyle(page.getByText('Disabled').element()).backgroundColor;
+      reference.style.background = 'var(--color-card-surface)';
+      expect(background).not.toBe(getComputedStyle(reference).backgroundColor);
+      reference.style.background = `var(--color-slate-${theme === 'light' ? '100' : '700'})`;
+      expect(background).toBe(getComputedStyle(reference).backgroundColor);
+    } finally {
+      reference.remove();
+      if (previousTheme === undefined) delete root.dataset.theme;
+      else root.dataset.theme = previousTheme;
+    }
+  });
+
   it('renders a read-only status without an indicator by default', () => {
     render(StatusPill, { label: 'Connected', tone: 'success' });
 

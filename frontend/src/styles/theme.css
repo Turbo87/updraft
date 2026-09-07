@@ -6,6 +6,11 @@
   --color-card-surface: light-dark(var(--color-white), var(--color-slate-800));
   --color-control-surface: light-dark(var(--color-slate-100), var(--color-slate-800));
   --color-control-surface-pressed: light-dark(var(--color-slate-200), var(--color-slate-700));
+  --color-control-surface-raised: light-dark(var(--color-slate-100), var(--color-slate-700));
+  --color-control-surface-raised-pressed: light-dark(
+    var(--color-slate-200),
+    var(--color-slate-600)
+  );
   --color-map-overlay-surface: light-dark(var(--color-white), var(--color-slate-900));
   --color-map-overlay-text: light-dark(var(--color-slate-950), var(--color-slate-50));
   --color-map-overlay-scrim: light-dark(rgb(255 255 255 / 35%), rgb(2 6 23 / 35%));

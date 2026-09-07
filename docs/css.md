@@ -170,3 +170,13 @@ A CSS change is ready when:
 
 - How and when should full application compatibility, especially MapLibre on
   older WebKit versions, be tested?
+
+## Icon buttons
+
+`IconButton` provides a round 48px target with a required icon and accessible
+label. It forwards native button attributes and defaults to `type="button"`.
+Use it inside list rows, where the button needs a distinct fill.
+
+The component uses `--color-control-surface-raised` and
+`--color-control-surface-raised-pressed`. In light mode, these are slate-100
+and slate-200. In dark mode, they are slate-700 and slate-600.

@@ -10,6 +10,15 @@ import ListRow from './ListRow.svelte';
 const connected = createRawSnippet(() => ({ render: () => '<span>Connected</span>' }));
 
 describe('ListRow.svelte', () => {
+  it('keeps the keyboard focus outline inside the row', () => {
+    render(ListRow, { href: '/settings/about', label: 'About', size: 'large' });
+    let link = page.getByRole('link', { name: 'About' }).element() as HTMLAnchorElement;
+    link.focus();
+    expect(link.matches(':focus-visible')).toBe(true);
+    expect(getComputedStyle(link).outlineStyle).toBe('solid');
+    expect(getComputedStyle(link).outlineOffset).toBe('-2px');
+  });
+
   it('renders the full navigating row as a 56-pixel link', async () => {
     render(ListRow, {
       href: '/settings/airspace',
@@ -75,7 +84,7 @@ describe('ListRow.svelte', () => {
     let rowStyle = getComputedStyle(row!);
     expect(rowStyle.paddingLeft).toBe('20px');
     expect(rowStyle.paddingRight).toBe('20px');
-    expect(rowBounds.right - chevron!.getBoundingClientRect().right).toBe(21);
+    expect(rowBounds.right - chevron!.getBoundingClientRect().right).toBe(20);
   });
 
   it('uses the same horizontal padding for a read-only value', () => {
@@ -90,6 +99,6 @@ describe('ListRow.svelte', () => {
     let rowStyle = getComputedStyle(row!);
     expect(rowStyle.paddingLeft).toBe('20px');
     expect(rowStyle.paddingRight).toBe('20px');
-    expect(rowBounds.right - value.getBoundingClientRect().right).toBe(21);
+    expect(rowBounds.right - value.getBoundingClientRect().right).toBe(20);
   });
 });

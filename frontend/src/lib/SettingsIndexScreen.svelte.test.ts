@@ -7,6 +7,35 @@ import '../app.css';
 import SettingsIndexScreen from './SettingsIndexScreen.svelte';
 
 describe('SettingsIndexScreen.svelte', () => {
+  it.each([413, 915])('keeps separate inset navigation cards at width %s', async (width) => {
+    let oldWidth = window.innerWidth;
+    let oldHeight = window.innerHeight;
+    try {
+      await page.viewport(width, 600);
+      render(SettingsIndexScreen, {});
+      let nav = page.getByRole('navigation', { name: 'Settings' }).element();
+      let navBounds = nav.getBoundingClientRect();
+      let links = [...nav.querySelectorAll('a')];
+      expect(links).toHaveLength(8);
+      expect(navBounds.left).toBe((width - Math.min(width, 544)) / 2 + 20);
+      expect(navBounds.right).toBe(width - navBounds.left);
+      for (let [index, link] of links.entries()) {
+        let bounds = link.getBoundingClientRect();
+        expect([bounds.left, bounds.right, bounds.height]).toEqual([
+          navBounds.left,
+          navBounds.right,
+          56,
+        ]);
+        expect(getComputedStyle(link).borderRadius).toBe('12px');
+        if (index > 0) {
+          expect(bounds.top - links[index - 1].getBoundingClientRect().bottom).toBe(8);
+        }
+      }
+    } finally {
+      await page.viewport(oldWidth, oldHeight);
+    }
+  });
+
   it('links to every settings section and back to the Flight View', async () => {
     render(SettingsIndexScreen, {
       buildDate: '15 Aug 2026',

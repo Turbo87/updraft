@@ -1,4 +1,6 @@
 <script lang="ts" generics="Value extends string">
+  import ResponsiveCard from './ResponsiveCard.svelte';
+
   type Props = {
     name: string;
     legend: string;
@@ -18,7 +20,7 @@
 
 <fieldset aria-describedby={error ? errorId : undefined}>
   <legend class:sr-only={hideLegend}>{legend}</legend>
-  <div class:error-state={Boolean(error)} class="options">
+  <ResponsiveCard error={Boolean(error)}>
     {#each options as option (option.value)}
       <label>
         <input
@@ -40,7 +42,7 @@
         </span>
       </label>
     {/each}
-  </div>
+  </ResponsiveCard>
   {#if error}
     <p id={errorId} class="error" role="alert">
       <span aria-hidden="true" class="error-icon">
@@ -68,25 +70,15 @@
     text-transform: uppercase;
   }
 
-  .options {
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
-  }
-
-  .options.error-state {
-    border-color: var(--color-action-destructive-surface);
-    box-shadow: inset 0 0 0 1px var(--color-action-destructive-surface);
-  }
-
   label {
     box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: var(--space-3);
     min-height: var(--target-min);
-    padding: var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     color: var(--color-text);
     font: var(--text-row-label);
     font-weight: 500;

@@ -1,8 +1,48 @@
 <script module lang="ts">
+  import type { Map as MapLibreMap } from 'maplibre-gl';
+  import type { AirspaceStore } from './stores/airspace.svelte';
+
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import ListRow from './ListRow.svelte';
+  import NearbyAirspaces from '../routes/nearby/[latitude]/[longitude]/NearbyAirspaces.svelte';
+  import NearbyTraffic from '../routes/nearby/[latitude]/[longitude]/NearbyTraffic.svelte';
+  import NearbyWaypoints from '../routes/nearby/[latitude]/[longitude]/NearbyWaypoints.svelte';
   import NearbyResultsScreen from './NearbyResultsScreen.svelte';
+  import { TrafficStore } from './stores/traffic.svelte';
+
+  const position = { latitudeDegrees: 50.82341, longitudeDegrees: 6.18604 };
+  const airspace = { current: { generation: 1, sources: [{ type: 'active' }] } } as AirspaceStore;
+  const trafficStore = new TrafficStore();
+  trafficStore.apply({
+    topic: 'traffic',
+    value: {
+      type: 'snapshot',
+      value: [
+        {
+          id: 'flarm:ABC123',
+          position,
+          altitudeMslMeters: 1200,
+          trafficType: 'glider',
+          trackDegrees: 241,
+          alarmLevel: 'none',
+          stale: false,
+        },
+      ],
+    },
+  });
+
+  function previewMap(features: unknown[]): MapLibreMap {
+    return {
+      on() {},
+      off() {},
+      isStyleLoaded: () => true,
+      isSourceLoaded: () => true,
+      getSource: () => ({}),
+      getLayer: () => ({}),
+      project: () => ({ x: 0, y: 0 }),
+      queryRenderedFeatures: () => features,
+    } as unknown as MapLibreMap;
+  }
 
   const availableOwnshipRelation = {
     distance: { value: '4.2', unit: 'km' },
@@ -23,7 +63,7 @@
       docs: {
         description: {
           component:
-            'Use this screen after a map tap. The coordinate identifies the selected point without competing with the flight values. Distance and bearing lead the summary. Arrival height, required glide ratio, and terrain elevation remain visible as unknown values until the backend can calculate them. A missing ownship position keeps every dependent value in place and adds a short explanation. Airspace and traffic content use snippets because their asynchronous states and navigating row designs are owned separately. Geometry previews are deferred.',
+            'Use this screen after a map tap. The coordinate identifies the selected point without competing with the flight values. Distance and bearing lead the summary. Arrival height, required glide ratio, and terrain elevation remain visible as unknown values until the backend can calculate them. A missing ownship position keeps every dependent value in place and adds a short explanation. Airspace and traffic content use snippets because their asynchronous states and navigating row designs are owned separately. Result lists span the screen at widths up to 34rem and become inset cards above it. The summary remains inset.',
         },
       },
     },
@@ -31,49 +71,71 @@
 </script>
 
 {#snippet populatedAirspaces()}
-  <ul class="result-list">
-    <li>
-      <ListRow
-        href="/airspaces/42"
-        label="Köln Bonn CTR"
-        size="large"
-        value="Control zone · Class D"
-      />
-    </li>
-    <li>
-      <ListRow
-        href="/airspaces/84"
-        label="EDKB Segelfluggebiet"
-        size="large"
-        value="Gliding sector"
-      />
-    </li>
-  </ul>
+  <NearbyAirspaces
+    {airspace}
+    locale="en"
+    {position}
+    map={previewMap([
+      { id: '1:0', properties: { name: 'Köln Bonn CTR', type: 4, icaoClass: 3 } },
+      { id: '1:1', properties: { name: 'EDKB Segelfluggebiet', type: 21, icaoClass: 8 } },
+    ])}
+  />
+{/snippet}
+
+{#snippet populatedWaypoints()}
+  <NearbyWaypoints
+    altitudeUnit="m"
+    sourceStatus="ready"
+    {position}
+    map={previewMap([
+      {
+        properties: {
+          id: 'club:0',
+          name: 'Bonn Hangelar',
+          kind: 2,
+          elevationMeters: 60,
+          frequency: '118.200',
+        },
+      },
+    ])}
+  />
 {/snippet}
 
 {#snippet populatedTraffic()}
-  <ul class="result-list">
-    <li>
-      <ListRow href="/traffic/DDX7A2" label="Glider · DDX7A2" size="large" value="3.9 km" />
-    </li>
-    <li>
-      <ListRow href="/traffic/ICA3F19" label="Tow plane · ICA3F19" size="large" value="stale" />
-    </li>
-  </ul>
+  <NearbyTraffic
+    locale="en"
+    {position}
+    traffic={trafficStore}
+    ownship={null}
+    units={{ altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' }}
+    map={previewMap([{ id: 'flarm:ABC123' }])}
+  />
 {/snippet}
 
 {#snippet emptyAirspaces()}
-  <p class="empty-results">No airspace at this position.</p>
+  <NearbyAirspaces {airspace} locale="en" {position} map={previewMap([])} />
+{/snippet}
+
+{#snippet emptyWaypoints()}
+  <NearbyWaypoints altitudeUnit="m" sourceStatus="ready" {position} map={previewMap([])} />
 {/snippet}
 
 {#snippet emptyTraffic()}
-  <p class="empty-results">No traffic at this position.</p>
+  <NearbyTraffic
+    locale="en"
+    {position}
+    traffic={trafficStore}
+    ownship={null}
+    units={{ altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' }}
+    map={previewMap([])}
+  />
 {/snippet}
 
 <Story name="Available position" asChild>
   <div class="nearby-results-story">
     <NearbyResultsScreen
       airspaces={populatedAirspaces}
+      waypoints={populatedWaypoints}
       backLabel="Back to map"
       ownshipRelation={availableOwnshipRelation}
       position={{ latitudeDegrees: 50.82341, longitudeDegrees: 6.18604 }}
@@ -88,6 +150,7 @@
   <div class="nearby-results-story">
     <NearbyResultsScreen
       airspaces={emptyAirspaces}
+      waypoints={emptyWaypoints}
       backLabel="Back to map"
       ownshipRelation={null}
       position={{ latitudeDegrees: 50.79118, longitudeDegrees: 6.44052 }}
@@ -101,23 +164,5 @@
 <style>
   .nearby-results-story {
     height: 100vh;
-  }
-
-  .result-list {
-    display: grid;
-    margin: 0;
-    padding: 0;
-    gap: var(--space-2);
-    list-style: none;
-  }
-
-  .empty-results {
-    margin: 0;
-    padding: var(--space-5);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
-    color: var(--color-text-muted);
-    font: var(--text-body);
   }
 </style>

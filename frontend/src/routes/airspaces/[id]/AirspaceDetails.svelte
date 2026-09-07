@@ -8,7 +8,9 @@
   import { onMount } from 'svelte';
 
   import Button from '$lib/Button.svelte';
+  import Card from '$lib/Card.svelte';
   import { m } from '$lib/paraglide/messages.js';
+  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import ValueTile from '$lib/ValueTile.svelte';
   import {
@@ -112,14 +114,20 @@
     : m.airspace_label()}
 >
   {#if queryState.type === 'loading'}
-    <p class="empty-state">{m.airspace_details_loading()}</p>
+    <Card>
+      <p class="empty-state">{m.airspace_details_loading()}</p>
+    </Card>
   {:else if queryState.type === 'failed'}
-    <div class="empty-state">
-      <p>{m.airspace_details_failed()}</p>
-      <Button variant="secondary" onclick={retry}>{m.retry()}</Button>
-    </div>
+    <Card>
+      <div class="empty-state">
+        <p>{m.airspace_details_failed()}</p>
+        <Button variant="secondary" onclick={retry}>{m.retry()}</Button>
+      </div>
+    </Card>
   {:else if queryState.type === 'notFound'}
-    <p class="empty-state">{m.airspace_not_found()}</p>
+    <Card>
+      <p class="empty-state">{m.airspace_not_found()}</p>
+    </Card>
   {:else}
     {let properties = queryState.properties}
     {let countries = Array.isArray(properties.country)
@@ -130,237 +138,255 @@
     {let upperLimit = formatAirspaceLimit(properties.upperLimit, altitudeUnit)}
     {let lowerLimit = formatAirspaceLimit(properties.lowerLimit, altitudeUnit)}
 
-    <div class:without-class={properties.icaoClass === 8} class="summary">
-      <ValueTile
-        {...limitSummary(properties.upperLimit)}
-        --value-tile-value-font="var(--text-value-sm)"
-        class="summary-value"
-        label={m.airspace_upper_summary_label()}
-      />
-      <ValueTile
-        {...limitSummary(properties.lowerLimit)}
-        --value-tile-value-font="var(--text-value-sm)"
-        class="summary-value"
-        label={m.airspace_lower_summary_label()}
-      />
-      {#if properties.icaoClass !== 8}
+    <Card>
+      <div class:without-class={properties.icaoClass === 8} class="summary">
         <ValueTile
+          {...limitSummary(properties.upperLimit)}
           --value-tile-value-font="var(--text-value-sm)"
           class="summary-value"
-          label={m.airspace_class_summary_label()}
-          value={'ABCDEFG'[properties.icaoClass] ??
-            formatAirspaceClass(properties.icaoClass, locale)}
+          label={m.airspace_upper_summary_label()}
         />
-      {/if}
-    </div>
+        <ValueTile
+          {...limitSummary(properties.lowerLimit)}
+          --value-tile-value-font="var(--text-value-sm)"
+          class="summary-value"
+          label={m.airspace_lower_summary_label()}
+        />
+        {#if properties.icaoClass !== 8}
+          <ValueTile
+            --value-tile-value-font="var(--text-value-sm)"
+            class="summary-value"
+            label={m.airspace_class_summary_label()}
+            value={'ABCDEFG'[properties.icaoClass] ??
+              formatAirspaceClass(properties.icaoClass, locale)}
+          />
+        {/if}
+      </div>
+    </Card>
 
     <section>
       <h2>{m.classification_heading()}</h2>
-      <dl class="detail-card">
-        <div>
-          <dt>{m.airspace_type_label()}</dt>
-          <dd>{formatAirspaceType(properties.type, locale)}</dd>
-        </div>
-        {#if properties.icaoClass !== 8}
+      <ResponsiveCard>
+        <dl class="detail-card">
           <div>
-            <dt>{m.icao_class_label()}</dt>
-            <dd>{formatAirspaceClass(properties.icaoClass, locale)}</dd>
+            <dt>{m.airspace_type_label()}</dt>
+            <dd>{formatAirspaceType(properties.type, locale)}</dd>
           </div>
-        {/if}
-        {#if properties.activity !== undefined}
-          <div>
-            <dt>{m.activity_label()}</dt>
-            <dd>{formatAirspaceActivity(properties.activity, locale)}</dd>
-          </div>
-        {/if}
-      </dl>
+          {#if properties.icaoClass !== 8}
+            <div>
+              <dt>{m.icao_class_label()}</dt>
+              <dd>{formatAirspaceClass(properties.icaoClass, locale)}</dd>
+            </div>
+          {/if}
+          {#if properties.activity !== undefined}
+            <div>
+              <dt>{m.activity_label()}</dt>
+              <dd>{formatAirspaceActivity(properties.activity, locale)}</dd>
+            </div>
+          {/if}
+        </dl>
+      </ResponsiveCard>
     </section>
 
     {#if properties.upperLimitMax || properties.lowerLimitMin}
       <section>
         <h2>{m.vertical_limits_heading()}</h2>
-        <dl class="detail-card">
-          <div>
-            <dt>{m.upper_limit_label()}</dt>
-            <dd class="numeric">
-              {properties.upperLimitMax
-                ? m.airspace_limit_maximum({
-                    limit: upperLimit,
-                    maximum: formatAirspaceLimit(properties.upperLimitMax, altitudeUnit),
-                  })
-                : upperLimit}
-            </dd>
-          </div>
-          <div>
-            <dt>{m.lower_limit_label()}</dt>
-            <dd class="numeric">
-              {properties.lowerLimitMin
-                ? m.airspace_limit_minimum({
-                    limit: lowerLimit,
-                    minimum: formatAirspaceLimit(properties.lowerLimitMin, altitudeUnit),
-                  })
-                : lowerLimit}
-            </dd>
-          </div>
-        </dl>
+        <ResponsiveCard>
+          <dl class="detail-card">
+            <div>
+              <dt>{m.upper_limit_label()}</dt>
+              <dd class="numeric">
+                {properties.upperLimitMax
+                  ? m.airspace_limit_maximum({
+                      limit: upperLimit,
+                      maximum: formatAirspaceLimit(properties.upperLimitMax, altitudeUnit),
+                    })
+                  : upperLimit}
+              </dd>
+            </div>
+            <div>
+              <dt>{m.lower_limit_label()}</dt>
+              <dd class="numeric">
+                {properties.lowerLimitMin
+                  ? m.airspace_limit_minimum({
+                      limit: lowerLimit,
+                      minimum: formatAirspaceLimit(properties.lowerLimitMin, altitudeUnit),
+                    })
+                  : lowerLimit}
+              </dd>
+            </div>
+          </dl>
+        </ResponsiveCard>
       </section>
     {/if}
 
     {#if countries.length > 0}
       <section>
         <h2>{m.countries_heading()}</h2>
-        <ul class="country-card">
-          {#each countries as country (country)}
-            <li>{country}</li>
-          {/each}
-        </ul>
+        <ResponsiveCard>
+          <ul class="country-card">
+            {#each countries as country (country)}
+              <li>{country}</li>
+            {/each}
+          </ul>
+        </ResponsiveCard>
       </section>
     {/if}
 
     {#if properties.frequencies?.length || properties.transponderSettings?.length}
       <section>
         <h2>{m.communications_heading()}</h2>
-        <dl class="detail-card">
-          {#each properties.frequencies ?? [] as frequency (frequency)}
-            <div>
-              <dt>{frequency.name ?? m.frequency_label()}</dt>
-              <dd class="numeric">{frequency.value} MHz</dd>
-            </div>
-            {#if frequency.primary !== undefined}
+        <ResponsiveCard>
+          <dl class="detail-card">
+            {#each properties.frequencies ?? [] as frequency (frequency)}
+              <div>
+                <dt>{frequency.name ?? m.frequency_label()}</dt>
+                <dd class="numeric">{frequency.value} MHz</dd>
+              </div>
+              {#if frequency.primary !== undefined}
+                <div>
+                  <dt>{m.primary_label()}</dt>
+                  <dd>{booleanValue(frequency.primary)}</dd>
+                </div>
+              {/if}
+              {#if frequency.remarks}
+                <div>
+                  <dt>{m.remarks_label()}</dt>
+                  <dd>{frequency.remarks}</dd>
+                </div>
+              {/if}
+            {/each}
+            {#each properties.transponderSettings ?? [] as setting (setting)}
+              <div>
+                <dt>{m.transponder_code_label()}</dt>
+                <dd class="numeric">{setting.code}</dd>
+              </div>
               <div>
                 <dt>{m.primary_label()}</dt>
-                <dd>{booleanValue(frequency.primary)}</dd>
+                <dd>{booleanValue(setting.primary)}</dd>
               </div>
-            {/if}
-            {#if frequency.remarks}
-              <div>
-                <dt>{m.remarks_label()}</dt>
-                <dd>{frequency.remarks}</dd>
-              </div>
-            {/if}
-          {/each}
-          {#each properties.transponderSettings ?? [] as setting (setting)}
-            <div>
-              <dt>{m.transponder_code_label()}</dt>
-              <dd class="numeric">{setting.code}</dd>
-            </div>
-            <div>
-              <dt>{m.primary_label()}</dt>
-              <dd>{booleanValue(setting.primary)}</dd>
-            </div>
-            {#if setting.remarks}
-              <div>
-                <dt>{m.remarks_label()}</dt>
-                <dd>{setting.remarks}</dd>
-              </div>
-            {/if}
-          {/each}
-        </dl>
+              {#if setting.remarks}
+                <div>
+                  <dt>{m.remarks_label()}</dt>
+                  <dd>{setting.remarks}</dd>
+                </div>
+              {/if}
+            {/each}
+          </dl>
+        </ResponsiveCard>
       </section>
     {/if}
 
     {#if properties.onDemand !== undefined || properties.onRequest !== undefined || properties.byNotam !== undefined || properties.specialAgreement !== undefined || properties.requestCompliance !== undefined || properties.activeFrom || properties.activeUntil || properties.hoursOfOperation}
       <section>
         <h2>{m.activation_heading()}</h2>
-        <dl class="detail-card">
-          {#if properties.onDemand !== undefined}
-            <div>
-              <dt>{m.on_demand_label()}</dt>
-              <dd>{booleanValue(properties.onDemand)}</dd>
-            </div>
-          {/if}
-          {#if properties.onRequest !== undefined}
-            <div>
-              <dt>{m.on_request_label()}</dt>
-              <dd>{booleanValue(properties.onRequest)}</dd>
-            </div>
-          {/if}
-          {#if properties.byNotam !== undefined}
-            <div>
-              <dt>{m.by_notam_label()}</dt>
-              <dd>{booleanValue(properties.byNotam)}</dd>
-            </div>
-          {/if}
-          {#if properties.specialAgreement !== undefined}
-            <div>
-              <dt>{m.special_agreement_label()}</dt>
-              <dd>{booleanValue(properties.specialAgreement)}</dd>
-            </div>
-          {/if}
-          {#if properties.requestCompliance !== undefined}
-            <div>
-              <dt>{m.request_compliance_label()}</dt>
-              <dd>{booleanValue(properties.requestCompliance)}</dd>
-            </div>
-          {/if}
-          {#if properties.activeFrom}
-            <div>
-              <dt>{m.active_from_label()}</dt>
-              <dd class="numeric">{formatAirspaceDateTime(properties.activeFrom, locale)}</dd>
-            </div>
-          {/if}
-          {#if properties.activeUntil}
-            <div>
-              <dt>{m.active_until_label()}</dt>
-              <dd class="numeric">{formatAirspaceDateTime(properties.activeUntil, locale)}</dd>
-            </div>
-          {/if}
-        </dl>
+        <ResponsiveCard>
+          <dl class="detail-card">
+            {#if properties.onDemand !== undefined}
+              <div>
+                <dt>{m.on_demand_label()}</dt>
+                <dd>{booleanValue(properties.onDemand)}</dd>
+              </div>
+            {/if}
+            {#if properties.onRequest !== undefined}
+              <div>
+                <dt>{m.on_request_label()}</dt>
+                <dd>{booleanValue(properties.onRequest)}</dd>
+              </div>
+            {/if}
+            {#if properties.byNotam !== undefined}
+              <div>
+                <dt>{m.by_notam_label()}</dt>
+                <dd>{booleanValue(properties.byNotam)}</dd>
+              </div>
+            {/if}
+            {#if properties.specialAgreement !== undefined}
+              <div>
+                <dt>{m.special_agreement_label()}</dt>
+                <dd>{booleanValue(properties.specialAgreement)}</dd>
+              </div>
+            {/if}
+            {#if properties.requestCompliance !== undefined}
+              <div>
+                <dt>{m.request_compliance_label()}</dt>
+                <dd>{booleanValue(properties.requestCompliance)}</dd>
+              </div>
+            {/if}
+            {#if properties.activeFrom}
+              <div>
+                <dt>{m.active_from_label()}</dt>
+                <dd class="numeric">{formatAirspaceDateTime(properties.activeFrom, locale)}</dd>
+              </div>
+            {/if}
+            {#if properties.activeUntil}
+              <div>
+                <dt>{m.active_until_label()}</dt>
+                <dd class="numeric">{formatAirspaceDateTime(properties.activeUntil, locale)}</dd>
+              </div>
+            {/if}
+          </dl>
+        </ResponsiveCard>
 
         {#if properties.hoursOfOperation}
           <h3>{m.operating_hours_heading()}</h3>
           {#each properties.hoursOfOperation.operatingHours as period (period)}
             <div class="operating-period">
               <h4>{formatAirspaceDay(period.dayOfWeek, locale)}</h4>
-              <dl class="detail-card">
-                <div>
-                  <dt>{m.start_time_label()}</dt>
-                  <dd class="numeric">
-                    {#if period.sunrise}
-                      {m.sunrise_value()}
-                    {:else if period.startTime}
-                      {formatAirspaceTime(period.startTime)}
-                    {:else}
-                      {m.unspecified_time_value()}
-                    {/if}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{m.end_time_label()}</dt>
-                  <dd class="numeric">
-                    {#if period.sunset}
-                      {m.sunset_value()}
-                    {:else if period.endTime}
-                      {formatAirspaceTime(period.endTime)}
-                    {:else}
-                      {m.unspecified_time_value()}
-                    {/if}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{m.by_notam_label()}</dt>
-                  <dd>{booleanValue(period.byNotam)}</dd>
-                </div>
-                <div>
-                  <dt>{m.public_holidays_excluded_label()}</dt>
-                  <dd>{booleanValue(period.publicHolidaysExcluded)}</dd>
-                </div>
-                {#if period.remarks}
+              <ResponsiveCard>
+                <dl class="detail-card">
                   <div>
-                    <dt>{m.remarks_label()}</dt>
-                    <dd>{period.remarks}</dd>
+                    <dt>{m.start_time_label()}</dt>
+                    <dd class="numeric">
+                      {#if period.sunrise}
+                        {m.sunrise_value()}
+                      {:else if period.startTime}
+                        {formatAirspaceTime(period.startTime)}
+                      {:else}
+                        {m.unspecified_time_value()}
+                      {/if}
+                    </dd>
                   </div>
-                {/if}
-              </dl>
+                  <div>
+                    <dt>{m.end_time_label()}</dt>
+                    <dd class="numeric">
+                      {#if period.sunset}
+                        {m.sunset_value()}
+                      {:else if period.endTime}
+                        {formatAirspaceTime(period.endTime)}
+                      {:else}
+                        {m.unspecified_time_value()}
+                      {/if}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{m.by_notam_label()}</dt>
+                    <dd>{booleanValue(period.byNotam)}</dd>
+                  </div>
+                  <div>
+                    <dt>{m.public_holidays_excluded_label()}</dt>
+                    <dd>{booleanValue(period.publicHolidaysExcluded)}</dd>
+                  </div>
+                  {#if period.remarks}
+                    <div>
+                      <dt>{m.remarks_label()}</dt>
+                      <dd>{period.remarks}</dd>
+                    </div>
+                  {/if}
+                </dl>
+              </ResponsiveCard>
             </div>
           {/each}
           {#if properties.hoursOfOperation.remarks}
-            <dl class="detail-card operating-remarks">
-              <div>
-                <dt>{m.remarks_label()}</dt>
-                <dd>{properties.hoursOfOperation.remarks}</dd>
-              </div>
-            </dl>
+            <div class="operating-remarks">
+              <ResponsiveCard>
+                <dl class="detail-card">
+                  <div>
+                    <dt>{m.remarks_label()}</dt>
+                    <dd>{properties.hoursOfOperation.remarks}</dd>
+                  </div>
+                </dl>
+              </ResponsiveCard>
+            </div>
           {/if}
         {/if}
       </section>
@@ -369,7 +395,9 @@
     {#if properties.remarks}
       <section>
         <h2>{m.remarks_heading()}</h2>
-        <p class="remarks-card">{properties.remarks}</p>
+        <Card>
+          <p class="remarks-card">{properties.remarks}</p>
+        </Card>
       </section>
     {/if}
   {/if}
@@ -379,9 +407,6 @@
   .empty-state {
     margin: 0;
     padding: var(--space-5);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
     color: var(--color-text-muted);
     font: var(--text-body);
   }
@@ -401,10 +426,6 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
-    margin-block-end: var(--space-6);
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
     background: var(--color-separator);
   }
 
@@ -417,7 +438,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  section + section {
+  section {
     margin-block-start: var(--space-6);
   }
 
@@ -444,10 +465,6 @@
   .country-card,
   .remarks-card {
     margin: 0;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
   }
 
   .detail-card > div {
@@ -457,7 +474,9 @@
     justify-content: space-between;
     gap: var(--space-4);
     min-height: var(--target-min);
-    padding: var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
   }
 
   .detail-card > div + div {
@@ -488,7 +507,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-    padding: var(--space-3) var(--space-5);
+    padding-block: var(--space-3);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     list-style: none;
   }
 

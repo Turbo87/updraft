@@ -2,6 +2,7 @@
   import { page } from '$app/state';
 
   import { getAppContext } from '$lib/app-context';
+  import Card from '$lib/Card.svelte';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
@@ -36,11 +37,13 @@
   {/key}
 {:else}
   <ScreenScaffold backLabel={m.airspace_back()} onBack={goBack} title={m.airspace_label()}>
-    <p class="empty-state">
-      {airspaceId === null || (airspace.initialized && !currentId)
-        ? m.airspace_not_found()
-        : m.airspace_details_loading()}
-    </p>
+    <Card>
+      <p class="empty-state">
+        {airspaceId === null || (airspace.initialized && !currentId)
+          ? m.airspace_not_found()
+          : m.airspace_details_loading()}
+      </p>
+    </Card>
   </ScreenScaffold>
 {/if}
 
@@ -48,9 +51,6 @@
   .empty-state {
     margin: 0;
     padding: var(--space-5);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
     color: var(--color-text-muted);
     font: var(--text-body);
   }

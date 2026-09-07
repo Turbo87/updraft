@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../app.css';
+
 import ExternalDeviceForm from './ExternalDeviceForm.svelte';
 
 type ExternalDeviceFormProps = ComponentProps<typeof ExternalDeviceForm>;
@@ -18,6 +20,51 @@ function renderExternalDeviceForm({
 }
 
 describe('ExternalDeviceForm.svelte', () => {
+  it.each([
+    [413, 24, 12],
+    [544, 0, 0],
+    [915, 24, 12],
+  ])(
+    'lays out bonded-device rows at width %s with safe areas %s/%s',
+    async (width, left, right) => {
+      let oldWidth = window.innerWidth;
+      let oldHeight = window.innerHeight;
+      let root = document.documentElement;
+      let previousStyle = root.getAttribute('style');
+      try {
+        await page.viewport(width, 600);
+        root.style.setProperty('--safe-area-left', `${left}px`);
+        root.style.setProperty('--safe-area-right', `${right}px`);
+        renderExternalDeviceForm({
+          getBondedBluetoothDevices: async () => ({
+            status: 'available',
+            devices: [{ address: '00:11:22:33:44:55', name: 'Flight recorder' }],
+          }),
+          onSave: async () => {},
+        });
+        await page.getByLabelText('Connection type').selectOptions('bluetooth');
+        let radio = page.getByRole('radio', { name: 'Flight recorder 00:11:22:33:44:55' });
+        await expect.element(radio).toBeVisible();
+        let row = radio.element().closest('label')!;
+        let card = row.parentElement!;
+        let group = radio.element().closest('fieldset')!;
+        let bounds = card.getBoundingClientRect();
+        let groupBounds = group.getBoundingClientRect();
+        expect([bounds.left, bounds.right]).toEqual(
+          width <= 544 ? [0, width] : [groupBounds.left, groupBounds.right],
+        );
+        expect(getComputedStyle(card).borderRadius).toBe(width <= 544 ? '0px' : '12px');
+        expect([getComputedStyle(row).paddingLeft, getComputedStyle(row).paddingRight]).toEqual(
+          width <= 544 ? [`${20 + left}px`, `${20 + right}px`] : ['20px', '20px'],
+        );
+      } finally {
+        if (previousStyle === null) root.removeAttribute('style');
+        else root.setAttribute('style', previousStyle);
+        await page.viewport(oldWidth, oldHeight);
+      }
+    },
+  );
+
   it('owns the add-device screen navigation', async () => {
     renderExternalDeviceForm({ onSave: async () => {} });
 

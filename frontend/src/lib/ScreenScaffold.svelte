@@ -113,10 +113,12 @@
   }
 
   .content {
+    --content-inset-start: calc(var(--space-5) + var(--safe-area-left));
+    --content-inset-end: calc(var(--space-5) + var(--safe-area-right));
     width: min(100%, 34rem);
     margin-inline: auto;
-    padding: var(--space-4) calc(var(--space-5) + var(--safe-area-right)) var(--space-6)
-      calc(var(--space-5) + var(--safe-area-left));
+    padding-block: var(--space-4) var(--space-6);
+    padding-inline: var(--content-inset-start) var(--content-inset-end);
   }
 
   .without-actions .content {

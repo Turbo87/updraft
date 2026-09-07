@@ -8,6 +8,7 @@
   import { resolve } from '$app/paths';
 
   import { m } from '$lib/paraglide/messages.js';
+  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
   import { convertAltitude } from '$lib/units';
   import WaypointSymbol from '$lib/WaypointSymbol.svelte';
 
@@ -44,44 +45,49 @@
 {#if sourceStatus === 'failed'}
   <p role="alert">{m.waypoint_load_failed()}</p>
 {:else if sourceStatus === 'loading' || features === null}
-  <p class="empty-results">{m.waypoint_loading()}</p>
+  <ResponsiveCard>
+    <p class="empty-results">{m.waypoint_loading()}</p>
+  </ResponsiveCard>
 {:else if features.length === 0}
-  <p class="empty-results">{m.waypoint_none_nearby()}</p>
+  <ResponsiveCard>
+    <p class="empty-results">{m.waypoint_none_nearby()}</p>
+  </ResponsiveCard>
 {:else}
-  <ul>
-    {#each features as feature (feature.properties.id)}
-      <li>
-        <a href={resolve('/waypoints/[id]', { id: String(feature.properties.id) })}>
-          <WaypointSymbol
-            kind={feature.properties.kind}
-            runwayDirection={feature.properties.runwayDirection}
-          />
-          <span class="text">
-            <span class="name">{feature.properties.name}</span>
-            <span class="detail">
-              {[
-                `${convertAltitude(feature.properties.elevationMeters, altitudeUnit).toFixed(0)} ${altitudeUnit}`,
-                feature.properties.frequency && `${feature.properties.frequency} MHz`,
-                feature.properties.notes ||
-                  m.waypoint_type_value({ kind: feature.properties.kind }),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+  <ResponsiveCard>
+    <ul>
+      {#each features as feature (feature.properties.id)}
+        <li>
+          <a href={resolve('/waypoints/[id]', { id: String(feature.properties.id) })}>
+            <WaypointSymbol
+              kind={feature.properties.kind}
+              runwayDirection={feature.properties.runwayDirection}
+            />
+            <span class="text">
+              <span class="name">{feature.properties.name}</span>
+              <span class="detail">
+                {[
+                  `${convertAltitude(feature.properties.elevationMeters, altitudeUnit).toFixed(0)} ${altitudeUnit}`,
+                  feature.properties.frequency && `${feature.properties.frequency} MHz`,
+                  feature.properties.notes ||
+                    m.waypoint_type_value({ kind: feature.properties.kind }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
             </span>
-          </span>
-        </a>
-      </li>
-    {/each}
-  </ul>
+          </a>
+        </li>
+      {/each}
+    </ul>
+  </ResponsiveCard>
 {/if}
 
 <style>
   .empty-results {
     margin: 0;
-    padding: var(--space-5);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
+    padding-block: var(--space-5);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     color: var(--color-text-muted);
     font: var(--text-body);
   }
@@ -90,10 +96,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
-    overflow: hidden;
   }
   li + li {
     border-block-start: 1px solid var(--color-separator);
@@ -104,9 +106,14 @@
     gap: var(--space-3);
     --waypoint-symbol-size: 1.4rem;
     min-height: var(--target-flight);
-    padding: var(--space-2) var(--space-4);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-4) + var(--card-safe-area-start))
+      calc(var(--space-4) + var(--card-safe-area-end));
     color: var(--color-text);
     text-decoration: none;
+  }
+  a:focus-visible {
+    outline-offset: -2px;
   }
   .text {
     display: flex;

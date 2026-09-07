@@ -4,6 +4,7 @@
   import { createRawSnippet } from 'svelte';
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
+  import Card from './Card.svelte';
   import ListRow from './ListRow.svelte';
 
   const connected = createRawSnippet(() => ({
@@ -18,7 +19,7 @@
       docs: {
         description: {
           component:
-            'Use a list row for one label with a value, status, or navigation target. The standard size is at least 48 pixels high. The large size is at least 64 pixels high and is required for navigation. A navigating row uses a chevron as its only navigation affordance. The full row is the target. Use an icon only when it has a consistent meaning across the application. Use the numeric style for measured values. Use trailing content for a read-only status component. A disabled navigating row keeps its large shape but removes the link target and chevron.',
+            'Use a list row for one label with a value, status, or navigation target. The containing Card owns the surface. The standard size is at least 48 pixels high. The large size is at least 56 pixels high and is required for navigation. A navigating row uses a chevron as its only navigation affordance. The full row is the target. Use an icon only when it has a consistent meaning across the application. Use the numeric style for measured values. Use trailing content for a read-only status component. A disabled navigating row keeps its large shape but removes the link target and chevron.',
         },
       },
     },
@@ -29,7 +30,9 @@
 
 {#snippet template(args: Args)}
   <div class="list-row-story">
-    <ListRow {...args} />
+    <Card>
+      <ListRow {...args} />
+    </Card>
   </div>
 {/snippet}
 

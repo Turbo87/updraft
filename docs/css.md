@@ -192,3 +192,13 @@ Use `--shadow-card` for a group of rows, summary tiles, or a standalone card.
 Do not add an outer border. Keep separators between rows. The token draws a
 `0 1px 2px` shadow at 8% opacity in light mode. Its color is transparent in dark
 mode, where the card background separates the group from the content surface.
+
+`Card` implements this surface without content padding or separators. Its `error`
+prop adds an outer outline without changing layout. `ResponsiveCard` is shorthand
+for `Card responsive`. At widths up to 34rem it uses negative margins from the scaffold's
+`--content-inset-start` and `--content-inset-end` values and uses square corners.
+Above that breakpoint it remains inset and rounded.
+
+Rows inside responsive cards add `--card-safe-area-start` and
+`--card-safe-area-end` to their inline padding. These values are zero for inset
+cards and preserve safe areas when a responsive card reaches the screen edges.

@@ -1,0 +1,19 @@
+---
+source: libs/updraft_replay/src/replay.rs
+expression: "first_lxwp1(&replay.events()[0])"
+---
+Lxwp1 {
+    product: Some(
+        "LX9070PF",
+    ),
+    serial: Some(
+        "123",
+    ),
+    software_version: Some(
+        "9.54",
+    ),
+    hardware_version: Some(
+        "38",
+    ),
+    license: None,
+}

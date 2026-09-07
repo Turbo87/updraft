@@ -961,24 +961,14 @@ mod tests {
              B1347495200000N00700000EA0304801000\n"
         ));
 
-        let identification = first_lxwp1(&replay.events()[0]);
-        assert_some_eq!(identification.product, "LX9070PF".into());
-        assert_some_eq!(identification.serial, "123".into());
-        assert_some_eq!(identification.software_version, "9.54".into());
-        assert_some_eq!(identification.hardware_version, "38".into());
-        assert_none!(identification.license);
+        insta::assert_debug_snapshot!(first_lxwp1(&replay.events()[0]));
     }
 
     #[test]
     fn emits_lxwp1_with_empty_recorder_identification() {
         let replay = assert_ok!(Replay::from_igc("B1347495200000N00700000EA0304801000\n"));
 
-        let identification = first_lxwp1(&replay.events()[0]);
-        assert_none!(identification.product);
-        assert_none!(identification.serial);
-        assert_none!(identification.software_version);
-        assert_none!(identification.hardware_version);
-        assert_none!(identification.license);
+        insta::assert_debug_snapshot!(first_lxwp1(&replay.events()[0]));
     }
 
     #[test]

@@ -4,6 +4,7 @@
   import { m } from '$lib/paraglide/messages.js';
   import ExternalLink from './ExternalLink.svelte';
   import { parseMapAttributions } from './map-attribution';
+  import ResponsiveCard from './ResponsiveCard.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
 
   type AttributionLink = AttributionPart & { href: string };
@@ -52,7 +53,7 @@
 
   <section>
     <h2>{m.about_build_heading()}</h2>
-    <div class="card">
+    <ResponsiveCard>
       <dl>
         <div class="row">
           <dt>{m.about_build_commit()}</dt>
@@ -76,29 +77,33 @@
         <span>{m.about_repository_link()}</span>
         <span aria-hidden="true" class="i-mdi-open-in-new external-icon"></span>
       </ExternalLink>
-    </div>
+    </ResponsiveCard>
   </section>
 
   {#if parsedAttributions.length > 0}
     <section>
       <h2>{m.about_data_credits_heading()}</h2>
-      <div class="card credits">
-        {#each parsedAttributions as attribution (attribution.source)}
-          <p>{attributionText(attribution.parts)}</p>
-          {#each attributionLinks(attribution.parts) as link (link.href)}
-            <ExternalLink class="external-link link-row" href={link.href}>
-              <span>{link.text}</span>
-              <span aria-hidden="true" class="i-mdi-open-in-new external-icon"></span>
-            </ExternalLink>
+      <ResponsiveCard>
+        <div class="credits">
+          {#each parsedAttributions as attribution (attribution.source)}
+            <p>{attributionText(attribution.parts)}</p>
+            {#each attributionLinks(attribution.parts) as link (link.href)}
+              <ExternalLink class="external-link link-row" href={link.href}>
+                <span>{link.text}</span>
+                <span aria-hidden="true" class="i-mdi-open-in-new external-icon"></span>
+              </ExternalLink>
+            {/each}
           {/each}
-        {/each}
-      </div>
+        </div>
+      </ResponsiveCard>
     </section>
   {/if}
 
   <section>
     <h2>{m.about_licences_heading()}</h2>
-    <p class="card licence">{m.about_licence_description()}</p>
+    <ResponsiveCard>
+      <p class="licence">{m.about_licence_description()}</p>
+    </ResponsiveCard>
   </section>
 </ScreenScaffold>
 
@@ -142,14 +147,6 @@
     text-transform: uppercase;
   }
 
-  .card {
-    overflow: hidden;
-    margin: 0;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
-  }
-
   dl {
     margin: 0;
   }
@@ -160,11 +157,13 @@
     justify-content: space-between;
     gap: var(--space-4);
     min-height: var(--target-min);
-    padding: var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
   }
 
   .row + .row,
-  .card :global(.link-row),
+  section :global(.link-row),
   .credits > :not(:first-child) {
     border-block-start: 1px solid var(--color-separator);
   }
@@ -187,19 +186,25 @@
     color: var(--color-text-muted);
   }
 
-  .card :global(.external-link) {
+  section :global(.external-link) {
     color: var(--color-link);
   }
 
-  .card :global(.link-row) {
+  section :global(.link-row) {
     box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: var(--space-3);
     min-height: var(--target-min);
-    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-4) + var(--card-safe-area-end));
     font: 600 1.0625rem / 1.3 var(--font-ui);
     text-decoration: none;
+  }
+
+  section :global(.link-row:focus-visible) {
+    outline-offset: -2px;
   }
 
   .leading-icon {
@@ -215,12 +220,15 @@
 
   .credits p,
   .licence {
-    padding: var(--space-3) var(--space-5);
+    padding-block: var(--space-3);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     color: var(--color-text);
     font: var(--text-body);
   }
 
-  .credits p {
+  .credits p,
+  .licence {
     margin: 0;
   }
 </style>

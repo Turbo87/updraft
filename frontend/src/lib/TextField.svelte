@@ -100,7 +100,7 @@
     display: flex;
     align-items: flex-start;
     gap: 0.375rem;
-    color: var(--color-danger-subtle-text);
+    color: var(--color-error-text);
     font-weight: 500;
   }
 

@@ -131,7 +131,7 @@
     align-items: flex-start;
     gap: 0.375rem;
     margin: var(--space-2) var(--space-1) 0;
-    color: var(--color-danger-subtle-text);
+    color: var(--color-error-text);
     font: var(--text-caption);
     font-weight: 500;
   }

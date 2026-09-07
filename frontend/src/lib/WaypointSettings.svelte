@@ -137,6 +137,6 @@
     margin-block: var(--space-2);
   }
   [role='alert'] {
-    color: var(--color-danger-subtle-text);
+    color: var(--color-error-text);
   }
 </style>

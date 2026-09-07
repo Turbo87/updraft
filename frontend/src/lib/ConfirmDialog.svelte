@@ -127,7 +127,7 @@
 
   .error {
     margin: var(--space-4) 0 0;
-    color: var(--color-danger-subtle-text);
+    color: var(--color-error-text);
     font: var(--text-body);
     font-weight: 500;
   }

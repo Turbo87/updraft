@@ -138,6 +138,11 @@ can select palette values for both themes:
   light-dark(var(--color-amber-100), var(--color-amber-950));
 ```
 
+Use `--color-error-text` for error text and icons on neutral surfaces. Use
+`--color-danger-subtle-text` on `--color-danger-subtle-surface`. The tinted red
+surface needs a lighter foreground in dark mode. Use `--color-danger-text`
+on the solid `--color-danger-surface`.
+
 A direct palette variable is acceptable for isolated, theme-independent
 styling. Theme-aware styling normally uses a semantic token. A local
 `light-dark()` expression is acceptable for a genuine one-off choice when it

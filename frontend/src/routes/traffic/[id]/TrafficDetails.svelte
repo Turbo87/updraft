@@ -9,8 +9,10 @@
 
   import { onMount } from 'svelte';
 
+  import Card from '$lib/Card.svelte';
   import { calculateDistanceAndBearing } from '$lib/geographic-position';
   import { m } from '$lib/paraglide/messages.js';
+  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import StatusPill from '$lib/StatusPill.svelte';
   import { convertAltitude, convertDistance } from '$lib/units';
@@ -126,84 +128,94 @@
 
 <ScreenScaffold {backLabel} {onBack} title={formatTrafficId(id)}>
   {#if !traffic.initialized || retainedTarget === undefined}
-    <p class="empty-state">{m.traffic_details_loading()}</p>
+    <Card>
+      <p class="empty-state">{m.traffic_details_loading()}</p>
+    </Card>
   {:else if retainedTarget === null}
-    <p class="empty-state">{m.traffic_not_found()}</p>
+    <Card>
+      <p class="empty-state">{m.traffic_not_found()}</p>
+    </Card>
   {:else}
     {@const target = retainedTarget.target}
     {@const relativeAltitude = formatRelativeAltitude(target)}
-    <div class="summary">
-      <ValueTile
-        label={m.distance_label()}
-        stale={valueStale || !ownshipRelation}
-        unit={ownshipRelation ? units.distance : undefined}
-        value={ownshipRelation
-          ? convertDistance(ownshipRelation.distanceMeters, units.distance).toFixed(1)
-          : '—'}
-      />
-      <ValueTile
-        label={m.bearing_label()}
-        stale={valueStale || !ownshipRelation}
-        unit={ownshipRelation ? '°' : undefined}
-        value={ownshipRelation ? ownshipRelation.bearingDegrees.toFixed(0).padStart(3, '0') : '—'}
-      />
-      <div class="alarm-summary">
-        <span>{m.alarm_level_label()}</span>
-        <StatusPill
-          icon={target.alarmLevel === 'none' ? undefined : 'i-mdi-alert'}
-          label={formatTrafficAlarmLevel(target.alarmLevel, locale)}
-          tone={alarmTone(target.alarmLevel)}
+    <Card>
+      <div class="summary">
+        <ValueTile
+          label={m.distance_label()}
+          stale={valueStale || !ownshipRelation}
+          unit={ownshipRelation ? units.distance : undefined}
+          value={ownshipRelation
+            ? convertDistance(ownshipRelation.distanceMeters, units.distance).toFixed(1)
+            : '—'}
         />
+        <ValueTile
+          label={m.bearing_label()}
+          stale={valueStale || !ownshipRelation}
+          unit={ownshipRelation ? '°' : undefined}
+          value={ownshipRelation ? ownshipRelation.bearingDegrees.toFixed(0).padStart(3, '0') : '—'}
+        />
+        <div class="alarm-summary">
+          <span>{m.alarm_level_label()}</span>
+          <StatusPill
+            icon={target.alarmLevel === 'none' ? undefined : 'i-mdi-alert'}
+            label={formatTrafficAlarmLevel(target.alarmLevel, locale)}
+            tone={alarmTone(target.alarmLevel)}
+          />
+        </div>
       </div>
-    </div>
+    </Card>
 
     <section>
       <h2>{m.traffic_target_heading()}</h2>
-      <dl>
-        <div>
-          <dt>{m.traffic_id_label()}</dt>
-          <dd>{target.id}</dd>
-        </div>
-        <div>
-          <dt>{m.traffic_type_label()}</dt>
-          <dd>{formatTrafficType(target.trafficType, locale)}</dd>
-        </div>
-        <div>
-          <dt>{m.state_label()}</dt>
-          <dd>
-            <StatusPill label={stateLabel(retainedTarget)} tone={stateTone(retainedTarget)} />
-          </dd>
-        </div>
-      </dl>
+      <ResponsiveCard>
+        <dl>
+          <div>
+            <dt>{m.traffic_id_label()}</dt>
+            <dd>{target.id}</dd>
+          </div>
+          <div>
+            <dt>{m.traffic_type_label()}</dt>
+            <dd>{formatTrafficType(target.trafficType, locale)}</dd>
+          </div>
+          <div>
+            <dt>{m.state_label()}</dt>
+            <dd>
+              <StatusPill label={stateLabel(retainedTarget)} tone={stateTone(retainedTarget)} />
+            </dd>
+          </div>
+        </dl>
+      </ResponsiveCard>
     </section>
 
     <section>
       <h2>{m.position_label()}</h2>
-      <dl>
-        <div>
-          <dt>{m.position_label()}</dt>
-          <dd class="numeric">{formatPosition(target)}</dd>
-        </div>
-        <div>
-          <dt>{m.altitude_label()}</dt>
-          <dd class="altitude numeric">
-            <span>
-              {target.altitudeMslMeters === null
-                ? '—'
-                : `${formatAltitude(target.altitudeMslMeters)} MSL`}
-            </span>
-            <span class:stale={valueStale || relativeAltitude === '—'} class="relative-altitude">
-              {relativeAltitude}
-            </span>
-          </dd>
-        </div>
-        <div>
-          <dt>{m.track_label()}</dt>
-          <dd class="numeric">
-            {target.trackDegrees === null ? '—' : `${target.trackDegrees.toFixed(0)}° true`}
-          </dd>
-        </div>
-      </dl>
+      <ResponsiveCard>
+        <dl>
+          <div>
+            <dt>{m.position_label()}</dt>
+            <dd class="numeric">{formatPosition(target)}</dd>
+          </div>
+          <div>
+            <dt>{m.altitude_label()}</dt>
+            <dd class="altitude numeric">
+              <span>
+                {target.altitudeMslMeters === null
+                  ? '—'
+                  : `${formatAltitude(target.altitudeMslMeters)} MSL`}
+              </span>
+              <span class:stale={valueStale || relativeAltitude === '—'} class="relative-altitude">
+                {relativeAltitude}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>{m.track_label()}</dt>
+            <dd class="numeric">
+              {target.trackDegrees === null ? '—' : `${target.trackDegrees.toFixed(0)}° true`}
+            </dd>
+          </div>
+        </dl>
+      </ResponsiveCard>
     </section>
   {/if}
 </ScreenScaffold>
@@ -212,9 +224,6 @@
   .empty-state {
     margin: 0;
     padding: var(--space-5);
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
     color: var(--color-text-muted);
     font: var(--text-body);
   }
@@ -223,10 +232,6 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1px;
-    margin-block-end: var(--space-6);
-    overflow: hidden;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
     background: var(--color-separator);
   }
 
@@ -247,7 +252,7 @@
     text-transform: uppercase;
   }
 
-  section + section {
+  section {
     margin-block-start: var(--space-6);
   }
 
@@ -261,10 +266,6 @@
 
   dl {
     margin: 0;
-    overflow: hidden;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
   }
 
   dl > div {
@@ -274,7 +275,9 @@
     justify-content: space-between;
     gap: var(--space-4);
     min-height: var(--target-min);
-    padding: var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
   }
 
   dl > div + div {

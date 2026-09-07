@@ -126,9 +126,11 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serde() {
+        use claims::{assert_ok, assert_ok_eq};
+
         let speed = Speed::from_meters_per_second(34.5);
-        let json = serde_json::to_string(&speed).unwrap();
+        let json = assert_ok!(serde_json::to_string(&speed));
         assert_eq!(json, "34.5");
-        assert_eq!(serde_json::from_str::<Speed>(&json).unwrap(), speed);
+        assert_ok_eq!(serde_json::from_str::<Speed>(&json), speed);
     }
 }

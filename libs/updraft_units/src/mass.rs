@@ -65,9 +65,11 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serde() {
+        use claims::{assert_ok, assert_ok_eq};
+
         let mass = Mass::from_kilograms(361.5);
-        let json = serde_json::to_string(&mass).unwrap();
+        let json = assert_ok!(serde_json::to_string(&mass));
         assert_eq!(json, "361.5");
-        assert_eq!(serde_json::from_str::<Mass>(&json).unwrap(), mass);
+        assert_ok_eq!(serde_json::from_str::<Mass>(&json), mass);
     }
 }

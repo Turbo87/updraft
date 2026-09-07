@@ -103,9 +103,11 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serde() {
+        use claims::{assert_ok, assert_ok_eq};
+
         let length = Length::from_meters(1234.5);
-        let json = serde_json::to_string(&length).unwrap();
+        let json = assert_ok!(serde_json::to_string(&length));
         assert_eq!(json, "1234.5");
-        assert_eq!(serde_json::from_str::<Length>(&json).unwrap(), length);
+        assert_ok_eq!(serde_json::from_str::<Length>(&json), length);
     }
 }

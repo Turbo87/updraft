@@ -116,9 +116,11 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serde() {
+        use claims::{assert_ok, assert_ok_eq};
+
         let pressure = Pressure::from_hectopascals(1013.25);
-        let json = serde_json::to_string(&pressure).unwrap();
+        let json = assert_ok!(serde_json::to_string(&pressure));
         assert_eq!(json, "1013.25");
-        assert_eq!(serde_json::from_str::<Pressure>(&json).unwrap(), pressure);
+        assert_ok_eq!(serde_json::from_str::<Pressure>(&json), pressure);
     }
 }

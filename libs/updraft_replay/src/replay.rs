@@ -173,27 +173,24 @@ impl IgcEventBuilder {
             ),
         };
 
+        let speed_over_ground =
+            extension_value::<f64>(fix, extensions, "GSP", line_number, warnings)
+                .map(|value| Speed::from_kilometers_per_hour(value / 100.0));
+        let rmc = Rmc {
+            talker: Talker::Gps,
+            utc_time: Some(time),
+            status: rmc_status,
+            position: Some(position),
+            speed_over_ground,
+            course_over_ground: extension_value(fix, extensions, "TRT", line_number, warnings)
+                .map(Angle::from_degrees),
+            date,
+            magnetic_variation: None,
+            mode: None,
+        };
         append_igc_sentence(
             &mut self.payload,
-            Vec::<u8>::try_from(&Rmc {
-                talker: Talker::Gps,
-                utc_time: Some(time),
-                status: rmc_status,
-                position: Some(position),
-                speed_over_ground: extension_value::<f64>(
-                    fix,
-                    extensions,
-                    "GSP",
-                    line_number,
-                    warnings,
-                )
-                .map(|value| Speed::from_kilometers_per_hour(value / 100.0)),
-                course_over_ground: extension_value(fix, extensions, "TRT", line_number, warnings)
-                    .map(Angle::from_degrees),
-                date,
-                magnetic_variation: None,
-                mode: None,
-            }),
+            Vec::<u8>::try_from(&rmc),
             "RMC",
             line_number,
             warnings,
@@ -209,20 +206,21 @@ impl IgcEventBuilder {
                 Some(updraft_egm96::undulation(position)),
             )
         };
+        let gga = Gga {
+            talker: Talker::Gps,
+            utc_time: Some(time),
+            position: Some(position),
+            fix_quality,
+            satellites_used: extension_value(fix, extensions, "SIU", line_number, warnings),
+            hdop: None,
+            altitude,
+            geoid_separation,
+            dgps_age: None,
+            dgps_station: None,
+        };
         append_igc_sentence(
             &mut self.payload,
-            Vec::<u8>::try_from(&Gga {
-                talker: Talker::Gps,
-                utc_time: Some(time),
-                position: Some(position),
-                fix_quality,
-                satellites_used: extension_value(fix, extensions, "SIU", line_number, warnings),
-                hdop: None,
-                altitude,
-                geoid_separation,
-                dgps_age: None,
-                dgps_station: None,
-            }),
+            Vec::<u8>::try_from(&gga),
             "GGA",
             line_number,
             warnings,

@@ -14,6 +14,7 @@
 
   import { calculateDistanceAndBearing } from '$lib/geographic-position';
   import { m } from '$lib/paraglide/messages.js';
+  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
   import TrafficSymbol from '$lib/TrafficSymbol.svelte';
   import { convertAltitude, convertDistance } from '$lib/units';
   import {
@@ -118,30 +119,36 @@
 </script>
 
 {#if queryState.type === 'loading'}
-  <p class="empty-results">{m.loading_nearby_traffic()}</p>
+  <ResponsiveCard>
+    <p class="empty-results">{m.loading_nearby_traffic()}</p>
+  </ResponsiveCard>
 {:else if queryState.traffic.length === 0}
-  <p class="empty-results">{m.no_nearby_traffic()}</p>
+  <ResponsiveCard>
+    <p class="empty-results">{m.no_nearby_traffic()}</p>
+  </ResponsiveCard>
 {:else}
-  <ul class="result-list">
-    {#each queryState.traffic as retained (retained)}
-      <li>
-        <a href={resolve('/traffic/[id]', { id: retained.id })}>
-          <TrafficSymbol
-            --traffic-symbol-size="2rem"
-            alarmLevel={retained.target?.alarmLevel}
-            stale={!retained.available || retained.target?.stale}
-            trackDegrees={retained.target?.trackDegrees}
-            trafficType={retained.target?.trafficType ?? 'unknown'}
-          />
-          <span class:stale={!retained.available || retained.target?.stale} class="text">
-            <span class="name">{trafficLabel(retained)}</span>
-            <span class="detail">{trafficDetail(retained)}</span>
-          </span>
-          <span aria-hidden="true" class="i-mdi-chevron-right chevron"></span>
-        </a>
-      </li>
-    {/each}
-  </ul>
+  <ResponsiveCard>
+    <ul class="result-list">
+      {#each queryState.traffic as retained (retained)}
+        <li>
+          <a href={resolve('/traffic/[id]', { id: retained.id })}>
+            <TrafficSymbol
+              --traffic-symbol-size="2rem"
+              alarmLevel={retained.target?.alarmLevel}
+              stale={!retained.available || retained.target?.stale}
+              trackDegrees={retained.target?.trackDegrees}
+              trafficType={retained.target?.trafficType ?? 'unknown'}
+            />
+            <span class:stale={!retained.available || retained.target?.stale} class="text">
+              <span class="name">{trafficLabel(retained)}</span>
+              <span class="detail">{trafficDetail(retained)}</span>
+            </span>
+            <span aria-hidden="true" class="i-mdi-chevron-right chevron"></span>
+          </a>
+        </li>
+      {/each}
+    </ul>
+  </ResponsiveCard>
 {/if}
 
 <style>
@@ -151,10 +158,6 @@
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
     list-style: none;
   }
 
@@ -174,7 +177,9 @@
     width: 100%;
     min-width: 0;
     min-height: var(--target-flight);
-    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-4) + var(--card-safe-area-end));
     border: 0;
     border-radius: 0;
     color: var(--color-text);
@@ -234,10 +239,9 @@
 
   .empty-results {
     margin: 0;
-    padding: var(--space-5);
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
+    padding-block: var(--space-5);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     color: var(--color-text-muted);
     font: var(--text-body);
   }

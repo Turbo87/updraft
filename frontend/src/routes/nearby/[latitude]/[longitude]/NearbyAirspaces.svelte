@@ -9,6 +9,7 @@
   import { resolve } from '$app/paths';
 
   import { m } from '$lib/paraglide/messages.js';
+  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
 
   type QueryState = { type: 'loading' } | { type: 'ready'; features: MapGeoJSONFeature[] };
 
@@ -83,23 +84,29 @@
 </script>
 
 {#if queryState.type === 'loading'}
-  <p class="empty-results">{m.loading_nearby_airspaces()}</p>
+  <ResponsiveCard>
+    <p class="empty-results">{m.loading_nearby_airspaces()}</p>
+  </ResponsiveCard>
 {:else if queryState.features.length === 0}
-  <p class="empty-results">{m.no_nearby_airspaces()}</p>
+  <ResponsiveCard>
+    <p class="empty-results">{m.no_nearby_airspaces()}</p>
+  </ResponsiveCard>
 {:else}
-  <ul class="result-list">
-    {#each queryState.features as feature (feature)}
-      <li>
-        <a href={resolve('/airspaces/[id]', { id: String(feature.id) })}>
-          <span class="text">
-            <span class="name">{airspaceName(feature)}</span>
-            <span class="detail">{airspaceDetail(feature)}</span>
-          </span>
-          <span aria-hidden="true" class="i-mdi-chevron-right chevron"></span>
-        </a>
-      </li>
-    {/each}
-  </ul>
+  <ResponsiveCard>
+    <ul class="result-list">
+      {#each queryState.features as feature (feature)}
+        <li>
+          <a href={resolve('/airspaces/[id]', { id: String(feature.id) })}>
+            <span class="text">
+              <span class="name">{airspaceName(feature)}</span>
+              <span class="detail">{airspaceDetail(feature)}</span>
+            </span>
+            <span aria-hidden="true" class="i-mdi-chevron-right chevron"></span>
+          </a>
+        </li>
+      {/each}
+    </ul>
+  </ResponsiveCard>
 {/if}
 
 <style>
@@ -109,10 +116,6 @@
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
     list-style: none;
   }
 
@@ -132,7 +135,9 @@
     width: 100%;
     min-width: 0;
     min-height: var(--target-flight);
-    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-4) + var(--card-safe-area-end));
     border: 0;
     border-radius: 0;
     color: var(--color-text);
@@ -182,10 +187,9 @@
 
   .empty-results {
     margin: 0;
-    padding: var(--space-5);
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
+    padding-block: var(--space-5);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     color: var(--color-text-muted);
     font: var(--text-body);
   }

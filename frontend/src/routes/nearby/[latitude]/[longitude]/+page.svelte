@@ -6,6 +6,7 @@
   import NearbyResultsScreen from '$lib/NearbyResultsScreen.svelte';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
+  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import { convertDistance } from '$lib/units';
   import NearbyAirspaces from './NearbyAirspaces.svelte';
@@ -51,7 +52,9 @@
         {/key}
       {/key}
     {:else}
-      <p>{m.loading_nearby_airspaces()}</p>
+      <ResponsiveCard>
+        <p class="empty-results">{m.loading_nearby_airspaces()}</p>
+      </ResponsiveCard>
     {/if}
   {/snippet}
 
@@ -68,15 +71,21 @@
         />
       {/key}
     {:else}
-      <p>{m.loading_nearby_traffic()}</p>
+      <ResponsiveCard>
+        <p class="empty-results">{m.loading_nearby_traffic()}</p>
+      </ResponsiveCard>
     {/if}
   {/snippet}
 
   {#snippet waypointResults()}
     {#if !waypoints.initialized || !mapState.map}
-      <p class="empty-results">{m.waypoint_loading()}</p>
+      <ResponsiveCard>
+        <p class="empty-results">{m.waypoint_loading()}</p>
+      </ResponsiveCard>
     {:else if !waypoints.current.sources.some((source) => source.type === 'active')}
-      <p class="empty-results">{m.waypoint_none_nearby()}</p>
+      <ResponsiveCard>
+        <p class="empty-results">{m.waypoint_none_nearby()}</p>
+      </ResponsiveCard>
     {:else}
       {#key `${waypoints.current.generation}/${selectedPosition.latitudeDegrees}/${selectedPosition.longitudeDegrees}`}
         <NearbyWaypoints
@@ -108,10 +117,9 @@
 <style>
   .empty-results {
     margin: 0;
-    padding: var(--space-5);
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
+    padding-block: var(--space-5);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
     color: var(--color-text-muted);
     font: var(--text-body);
   }

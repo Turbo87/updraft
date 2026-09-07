@@ -3,6 +3,7 @@
   import type { LatLon } from '$lib/protocol/generated/LatLon';
 
   import { m } from '$lib/paraglide/messages.js';
+  import Card from './Card.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import ValueTile from './ValueTile.svelte';
 
@@ -60,62 +61,64 @@
   </p>
 
   <div class="summary">
-    <div class="summary-card">
-      <div class="primary-values">
-        {#if ownshipRelation}
+    <Card>
+      <div class="summary-card">
+        <div class="primary-values">
+          {#if ownshipRelation}
+            <ValueTile
+              {...ownshipRelation.distance}
+              --value-tile-value-font="var(--text-value-md)"
+              class="summary-value"
+              label={m.distance_label()}
+            />
+            <ValueTile
+              {...ownshipRelation.bearing}
+              --value-tile-value-font="var(--text-value-md)"
+              class="summary-value"
+              label={m.bearing_label()}
+            />
+          {:else}
+            <ValueTile
+              --value-tile-value-font="var(--text-value-md)"
+              class="summary-value"
+              label={m.distance_label()}
+              stale
+              value="—"
+            />
+            <ValueTile
+              --value-tile-value-font="var(--text-value-md)"
+              class="summary-value"
+              label={m.bearing_label()}
+              stale
+              value="—"
+            />
+          {/if}
+        </div>
+        <div class="secondary-values">
           <ValueTile
-            {...ownshipRelation.distance}
-            --value-tile-value-font="var(--text-value-md)"
+            {...summary.arrivalHeight}
+            --value-tile-unit-size="0.875rem"
+            --value-tile-value-font="var(--text-value-sm)"
             class="summary-value"
-            label={m.distance_label()}
+            label={m.arrival_height_label()}
           />
           <ValueTile
-            {...ownshipRelation.bearing}
-            --value-tile-value-font="var(--text-value-md)"
+            {...summary.requiredGlideRatio}
+            --value-tile-unit-size="0.875rem"
+            --value-tile-value-font="var(--text-value-sm)"
             class="summary-value"
-            label={m.bearing_label()}
-          />
-        {:else}
-          <ValueTile
-            --value-tile-value-font="var(--text-value-md)"
-            class="summary-value"
-            label={m.distance_label()}
-            stale
-            value="—"
+            label={m.required_glide_ratio_label()}
           />
           <ValueTile
-            --value-tile-value-font="var(--text-value-md)"
+            {...summary.terrainElevation}
+            --value-tile-unit-size="0.875rem"
+            --value-tile-value-font="var(--text-value-sm)"
             class="summary-value"
-            label={m.bearing_label()}
-            stale
-            value="—"
+            label={m.terrain_elevation_label()}
           />
-        {/if}
+        </div>
       </div>
-      <div class="secondary-values">
-        <ValueTile
-          {...summary.arrivalHeight}
-          --value-tile-unit-size="0.875rem"
-          --value-tile-value-font="var(--text-value-sm)"
-          class="summary-value"
-          label={m.arrival_height_label()}
-        />
-        <ValueTile
-          {...summary.requiredGlideRatio}
-          --value-tile-unit-size="0.875rem"
-          --value-tile-value-font="var(--text-value-sm)"
-          class="summary-value"
-          label={m.required_glide_ratio_label()}
-        />
-        <ValueTile
-          {...summary.terrainElevation}
-          --value-tile-unit-size="0.875rem"
-          --value-tile-value-font="var(--text-value-sm)"
-          class="summary-value"
-          label={m.terrain_elevation_label()}
-        />
-      </div>
-    </div>
+    </Card>
     {#if !ownshipRelation}
       <p class="position-notice">{m.nearby_position_unavailable()}</p>
     {/if}
@@ -163,10 +166,7 @@
 
   .summary-card {
     display: grid;
-    overflow: hidden;
     gap: 1px;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
     background: var(--color-separator);
   }
 

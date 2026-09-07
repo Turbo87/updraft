@@ -7,6 +7,61 @@ import '../app.css';
 import AirspaceSetting from './AirspaceSetting.svelte';
 
 describe('AirspaceSetting.svelte', () => {
+  it.each([413, 544, 915])('lays out source cards at viewport width %s', async (width) => {
+    let oldWidth = window.innerWidth;
+    let oldHeight = window.innerHeight;
+    let root = document.documentElement;
+    let previousStyle = root.getAttribute('style');
+    try {
+      await page.viewport(width, 600);
+      root.style.setProperty('--safe-area-left', '24px');
+      root.style.setProperty('--safe-area-right', '12px');
+      render(AirspaceSetting, {
+        status: {
+          generation: 1,
+          sources: [
+            { type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 },
+            { type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' },
+          ],
+        },
+        onImport: async () => ({ type: 'cancelled' as const }),
+        onRemove: async () => {},
+      });
+      for (let name of ['rheinland.txt', 'broken.txt']) {
+        let section = page.getByRole('region', { name }).element();
+        let list = section.querySelector('dl')!;
+        let bounds = list.getBoundingClientRect();
+        let sectionBounds = section.getBoundingClientRect();
+        expect([bounds.left, bounds.right]).toEqual(
+          width <= 544 ? [0, width] : [sectionBounds.left, sectionBounds.right],
+        );
+        let row = list.children[1];
+        let rowBounds = row.getBoundingClientRect();
+        expect([rowBounds.left, rowBounds.right]).toEqual([bounds.left, bounds.right]);
+        expect(getComputedStyle(row).borderTopWidth).toBe('1px');
+        expect([getComputedStyle(row).paddingLeft, getComputedStyle(row).paddingRight]).toEqual(
+          width <= 544 ? ['44px', '32px'] : ['20px', '20px'],
+        );
+        let buttonBounds = section.querySelector('button')!.getBoundingClientRect();
+        expect([buttonBounds.left, buttonBounds.right]).toEqual([
+          sectionBounds.left,
+          sectionBounds.right,
+        ]);
+      }
+      let section = page.getByRole('region', { name: 'broken.txt' }).element();
+      let errorBounds = section.querySelector('.source-error')!.getBoundingClientRect();
+      let sectionBounds = section.getBoundingClientRect();
+      expect([errorBounds.left, errorBounds.right]).toEqual([
+        sectionBounds.left,
+        sectionBounds.right,
+      ]);
+    } finally {
+      if (previousStyle === null) root.removeAttribute('style');
+      else root.setAttribute('style', previousStyle);
+      await page.viewport(oldWidth, oldHeight);
+    }
+  });
+
   it('shows an import action when no source is selected', async () => {
     render(AirspaceSetting, {
       status: { generation: 0, sources: [] },

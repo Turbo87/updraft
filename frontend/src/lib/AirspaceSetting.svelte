@@ -6,6 +6,7 @@
   import { m } from '$lib/paraglide/messages.js';
   import Button from './Button.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
+  import ResponsiveCard from './ResponsiveCard.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';
 
@@ -126,32 +127,34 @@
     {#each status.sources as source (source.sourceName)}
       <section class="source-summary" aria-label={source.sourceName}>
         <h2>{m.airspace_current_source()}</h2>
-        <dl>
-          <div class="source-row">
-            <dt>{m.airspace_file_label()}</dt>
-            <dd>{source.sourceName}</dd>
-          </div>
-          {#if source.type === 'active'}
+        <ResponsiveCard>
+          <dl>
             <div class="source-row">
-              <dt>{m.airspaces_heading()}</dt>
-              <dd class="numeric">{source.airspaceCount}</dd>
+              <dt>{m.airspace_file_label()}</dt>
+              <dd>{source.sourceName}</dd>
             </div>
-          {/if}
-          <div class="source-row">
-            <dt>{m.state_label()}</dt>
-            <dd>
-              {#if source.type === 'active'}
-                <StatusPill label={m.airspace_active()} tone="success" />
-              {:else}
-                <StatusPill
-                  icon="i-mdi-alert-circle"
-                  label={m.unavailable_value()}
-                  tone="danger-subtle"
-                />
-              {/if}
-            </dd>
-          </div>
-        </dl>
+            {#if source.type === 'active'}
+              <div class="source-row">
+                <dt>{m.airspaces_heading()}</dt>
+                <dd class="numeric">{source.airspaceCount}</dd>
+              </div>
+            {/if}
+            <div class="source-row">
+              <dt>{m.state_label()}</dt>
+              <dd>
+                {#if source.type === 'active'}
+                  <StatusPill label={m.airspace_active()} tone="success" />
+                {:else}
+                  <StatusPill
+                    icon="i-mdi-alert-circle"
+                    label={m.unavailable_value()}
+                    tone="danger-subtle"
+                  />
+                {/if}
+              </dd>
+            </div>
+          </dl>
+        </ResponsiveCard>
         {#if source.type === 'unavailable'}
           <p class="source-error">
             <span aria-hidden="true" class="i-mdi-alert-circle-outline"></span>
@@ -249,10 +252,6 @@
 
   dl {
     margin: 0;
-    overflow: hidden;
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-card);
-    background: var(--color-card-surface);
   }
 
   .source-row {
@@ -261,7 +260,9 @@
     justify-content: space-between;
     gap: var(--space-4);
     min-height: var(--target-min);
-    padding: var(--space-2) var(--space-5);
+    padding-block: var(--space-2);
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
   }
 
   .source-row + .source-row {

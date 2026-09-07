@@ -185,3 +185,10 @@ Use it inside list rows, where the button needs a distinct fill.
 The component uses `--color-control-surface-raised` and
 `--color-control-surface-raised-pressed`. In light mode, these are slate-100
 and slate-200. In dark mode, they are slate-700 and slate-600.
+
+## Card groups
+
+Use `--shadow-card` for a group of rows, summary tiles, or a standalone card.
+Do not add an outer border. Keep separators between rows. The token draws a
+`0 1px 2px` shadow at 8% opacity in light mode. Its color is transparent in dark
+mode, where the card background separates the group from the content surface.

@@ -75,7 +75,7 @@ describe('ListRow.svelte', () => {
     let rowStyle = getComputedStyle(row!);
     expect(rowStyle.paddingLeft).toBe('20px');
     expect(rowStyle.paddingRight).toBe('20px');
-    expect(rowBounds.right - chevron!.getBoundingClientRect().right).toBe(21);
+    expect(rowBounds.right - chevron!.getBoundingClientRect().right).toBe(20);
   });
 
   it('uses the same horizontal padding for a read-only value', () => {
@@ -90,6 +90,6 @@ describe('ListRow.svelte', () => {
     let rowStyle = getComputedStyle(row!);
     expect(rowStyle.paddingLeft).toBe('20px');
     expect(rowStyle.paddingRight).toBe('20px');
-    expect(rowBounds.right - value.getBoundingClientRect().right).toBe(21);
+    expect(rowBounds.right - value.getBoundingClientRect().right).toBe(20);
   });
 });

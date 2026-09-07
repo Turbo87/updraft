@@ -23,6 +23,32 @@ const deviceOptions = [
 ] as const;
 
 describe('RadioList.svelte', () => {
+  it.each([undefined, 'Select a distance unit.'])(
+    'keeps separators flush with the card for error %s',
+    (error) => {
+      render(RadioList, {
+        name: 'distance',
+        legend: 'Distance',
+        options: distanceOptions,
+        value: 'km',
+        error,
+        onChange: () => {},
+      });
+      let radio = page.getByRole('radio', { name: 'Miles · mi' }).element();
+      let row = radio.closest('label')!;
+      let card = row.parentElement!;
+      let rowBounds = row.getBoundingClientRect();
+      let cardBounds = card.getBoundingClientRect();
+      expect([rowBounds.left, rowBounds.right]).toEqual([cardBounds.left, cardBounds.right]);
+      expect(getComputedStyle(card).borderLeftWidth).toBe('0px');
+      expect(getComputedStyle(row).borderTopWidth).toBe('1px');
+      if (error) {
+        expect(getComputedStyle(card).outlineWidth).toBe('2px');
+        expect(getComputedStyle(card).outlineStyle).toBe('solid');
+      }
+    },
+  );
+
   it('renders one card of native radio targets without changing selected text weight', async () => {
     render(RadioList, {
       name: 'distance',

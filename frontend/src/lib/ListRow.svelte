@@ -72,7 +72,7 @@
     width: 100%;
     min-height: var(--list-row-min-height);
     padding: var(--space-2) var(--space-5);
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
     color: var(--color-text);

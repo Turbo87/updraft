@@ -201,20 +201,20 @@ instead of a radius token.
 
 ## Elevation
 
-Updraft uses three elevation levels. Opaque screens use a border without a shadow. Floating map
-overlays use `--shadow-overlay`. Modal dialogs use `--shadow-modal`. Components do not introduce
-additional shadow levels.
+Card groups use `--shadow-card` without an outer border. The shadow is subtle in light mode
+and transparent in dark mode. Internal row separators remain visible. Floating map overlays use
+`--shadow-overlay`. Modal dialogs use `--shadow-modal`.
 
 <div style={{ display: 'grid', gap: '1.5rem', maxWidth: '34rem' }}>
   <div
     style={{
       padding: '1rem',
-      border: '1px solid var(--color-border)',
+      boxShadow: 'var(--shadow-card)',
       borderRadius: 'var(--radius-card)',
       background: 'var(--color-card-surface)',
     }}
   >
-    {'Level 0 · opaque screen surface · border only'}
+    {'Card group · subtle shadow in light'}
   </div>
   <div
     style={{

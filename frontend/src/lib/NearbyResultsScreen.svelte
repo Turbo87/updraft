@@ -165,7 +165,7 @@
     display: grid;
     overflow: hidden;
     gap: 1px;
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-separator);
   }

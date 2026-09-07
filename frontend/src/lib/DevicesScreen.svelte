@@ -186,7 +186,7 @@
 
   .devices li {
     overflow: hidden;
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
   }
@@ -413,7 +413,7 @@
 
   .skeleton-card {
     padding: var(--space-4);
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
     animation: devices-loading-pulse 1.4s ease-in-out infinite;

@@ -145,7 +145,7 @@
   .card {
     overflow: hidden;
     margin: 0;
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
   }

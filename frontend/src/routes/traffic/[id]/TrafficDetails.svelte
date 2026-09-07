@@ -212,7 +212,7 @@
   .empty-state {
     margin: 0;
     padding: var(--space-5);
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
     color: var(--color-text-muted);
@@ -225,7 +225,7 @@
     gap: 1px;
     margin-block-end: var(--space-6);
     overflow: hidden;
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-separator);
   }
@@ -262,7 +262,7 @@
   dl {
     margin: 0;
     overflow: hidden;
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
   }

@@ -70,14 +70,13 @@
 
   .options {
     overflow: hidden;
-    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);
   }
 
   .options.error-state {
-    border-color: var(--color-action-destructive-surface);
-    box-shadow: inset 0 0 0 1px var(--color-action-destructive-surface);
+    outline: 2px solid var(--color-action-destructive-surface);
   }
 
   label {

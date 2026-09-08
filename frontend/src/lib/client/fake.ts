@@ -14,6 +14,8 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
+  BasemapStatus,
+  BasemapSubscription,
   SelectedDataFile,
   TopicListener,
   UpdraftClient,
@@ -44,6 +46,9 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #basemaps: BasemapStatus = { generation: 0, sources: [] };
+  #basemapListeners = new Set<(status: BasemapStatus) => void>();
+
   #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
   #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
   #airspace: AirspaceStatus = { generation: 0, sources: [] };
@@ -68,6 +73,21 @@ export class FakeClient implements UpdraftClient {
       1,
     );
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
+  }
+
+  subscribeBasemaps(onUpdate: (status: BasemapStatus) => void): BasemapSubscription {
+    onUpdate(this.#basemaps);
+    this.#basemapListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#basemapListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitBasemaps(status: BasemapStatus): void {
+    this.#basemaps = status;
+    for (let listener of this.#basemapListeners) listener(status);
   }
 
   subscribeArrivals(

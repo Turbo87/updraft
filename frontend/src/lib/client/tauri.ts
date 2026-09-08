@@ -9,6 +9,8 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
+  BasemapStatus,
+  BasemapSubscription,
   SelectedDataFile,
   TopicListener,
   UpdraftClient,
@@ -21,6 +23,35 @@ type ArrivalNotification =
 
 /** Invokes the concrete Tauri commands that form the frontend shell boundary. */
 export class TauriClient implements UpdraftClient {
+  subscribeBasemaps(
+    onUpdate: (status: BasemapStatus) => void,
+    onError: (error: unknown) => void,
+  ): BasemapSubscription {
+    let channel = new Channel<BasemapStatus>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_basemaps', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_basemaps', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
   subscribeArrivals(
     bounds: ArrivalViewport,
     onUpdate: (update: ArrivalUpdate) => void,

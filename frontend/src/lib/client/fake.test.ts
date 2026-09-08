@@ -487,3 +487,25 @@ it.each(['airspace', 'waypoints'] as const)(
     });
   },
 );
+
+it('delivers current basemap status and updates until each subscription closes', async () => {
+  let client = new FakeClient();
+  let first = vi.fn();
+  let second = vi.fn();
+  let subscription = client.subscribeBasemaps(first);
+  expect(first).toHaveBeenCalledExactlyOnceWith({ generation: 0, sources: [] });
+  let status = {
+    generation: 1,
+    sources: [{ sourceName: 'local.mbtiles', type: 'disabled' as const }],
+  };
+  client.emitBasemaps(status);
+  expect(first).toHaveBeenLastCalledWith(status);
+  let other = client.subscribeBasemaps(second);
+  expect(second).toHaveBeenCalledExactlyOnceWith(status);
+  await subscription.close();
+  await subscription.close();
+  client.emitBasemaps({ generation: 2, sources: [] });
+  expect(first).toHaveBeenCalledTimes(2);
+  expect(second).toHaveBeenLastCalledWith({ generation: 2, sources: [] });
+  await other.close();
+});

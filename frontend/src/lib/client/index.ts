@@ -14,6 +14,11 @@ export type ArrivalSubscription = {
   updateViewport(bounds: ArrivalViewport): Promise<void>;
   close(): Promise<void>;
 };
+export type BasemapStatus = {
+  generation: number;
+  sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
+};
+export type BasemapSubscription = { close(): Promise<void> };
 export type SelectedDataFile = {
   selectionId: string;
   sourceName: string;
@@ -25,10 +30,15 @@ export type SelectedDataFile = {
  *
  * Components never import an implementation of this. The layout receives
  * one, so tests and browser-only development can substitute the fake.
- * Mutation promises report command completion. Only topics replace shared
- * frontend state.
+ * Mutation promises report command completion. Subscription updates replace
+ * shared frontend state.
  */
 export interface UpdraftClient {
+  /** Delivers the initial inventory and later changes. Reports registration failures through onError. */
+  subscribeBasemaps(
+    onUpdate: (status: BasemapStatus) => void,
+    onError: (error: unknown) => void,
+  ): BasemapSubscription;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */
   subscribeArrivals(
     bounds: ArrivalViewport,

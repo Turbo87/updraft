@@ -6,7 +6,7 @@
   import { getLocale } from '$lib/paraglide/runtime.js';
   import SettingsIndexScreen from '$lib/SettingsIndexScreen.svelte';
 
-  const { client, settings } = getAppContext();
+  const { client, settings, enrouteCatalog } = getAppContext();
 
   let quitDialogOpen = $state(false);
 
@@ -25,7 +25,12 @@
   }
 </script>
 
-<SettingsIndexScreen {language} {buildDate} onQuit={() => (quitDialogOpen = true)} />
+<SettingsIndexScreen
+  {language}
+  {buildDate}
+  updateCount={enrouteCatalog.basemapUpdates?.length ?? 0}
+  onQuit={() => (quitDialogOpen = true)}
+/>
 
 <ConfirmDialog
   bind:open={quitDialogOpen}

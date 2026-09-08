@@ -7,12 +7,12 @@ import '../app.css';
 import SettingsIndexScreen from './SettingsIndexScreen.svelte';
 
 describe('SettingsIndexScreen.svelte', () => {
-  it.each([413, 915])('keeps separate inset navigation cards at width %s', async (width) => {
+  it.each([320, 413, 915])('keeps separate inset navigation cards at width %s', async (width) => {
     let oldWidth = window.innerWidth;
     let oldHeight = window.innerHeight;
     try {
       await page.viewport(width, 600);
-      render(SettingsIndexScreen, {});
+      render(SettingsIndexScreen, { updateCount: 2 });
       let nav = page.getByRole('navigation', { name: 'Settings' }).element();
       let navBounds = nav.getBoundingClientRect();
       let links = [...nav.querySelectorAll('a')];
@@ -79,4 +79,17 @@ describe('SettingsIndexScreen.svelte', () => {
       '—',
     ]);
   });
+});
+
+it('shows the update count and removes it when no updates remain', async () => {
+  let screen = await render(SettingsIndexScreen, { updateCount: 2 });
+  await expect
+    .element(page.getByRole('link', { name: 'Data 2 updates', exact: true }))
+    .toHaveAttribute('href', '/settings/data');
+  await screen.rerender({ updateCount: 1 });
+  await expect
+    .element(page.getByRole('link', { name: 'Data 1 update', exact: true }))
+    .toBeVisible();
+  await screen.rerender({ updateCount: 0 });
+  await expect.element(page.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
 });

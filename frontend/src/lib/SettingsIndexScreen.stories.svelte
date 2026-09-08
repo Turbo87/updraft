@@ -28,6 +28,11 @@
     <SettingsIndexScreen />
   </div>
 </Story>
+<Story name="Updates available" asChild>
+  <div class="settings-index-story">
+    <SettingsIndexScreen buildDate="15 Aug 2026" language="English" updateCount={2} />
+  </div>
+</Story>
 
 <style>
   .settings-index-story {

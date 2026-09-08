@@ -363,6 +363,8 @@
   "data_queued": "In Warteschlange",
   "data_update_available": "Aktualisierung verfügbar",
   "data_updates_heading": "Aktualisierungen",
+  "data_update_count_one": "1 Aktualisierung",
+  "data_update_count": "{count} Aktualisierungen",
   "data_update_one": "1 Aktualisierung verfügbar",
   "data_updates_available": "{count} Aktualisierungen verfügbar",
   "data_update_all": "Alle aktualisieren · {size}",

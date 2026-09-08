@@ -21,13 +21,17 @@ share one elevation source.
 ## Files and lookup
 
 Place `.terrain` files in the application data directory's `enroute` folder.
-Updraft opens them read-only at startup, in filename order. Restart the
-application after changing files. Files must remain intact while it runs.
+Updraft loads the inventory at startup, in filename order. Files are enabled
+unless a sibling marker exists, such as `France.terrain.disabled` for
+`France.terrain`. Disabled files are not opened or validated. Enabled files
+are opened read-only. Restart the application after changing files or markers.
+Files must remain intact while it runs.
 
 The reader requires MBTiles with WebP format metadata, Terrarium encoding,
-and a compatible `tiles` table or view. It skips unsupported or invalid files
-and logs a warning. A missing directory gives empty coverage. Other directory
-scan failures also produce a warning.
+and a compatible `tiles` table or view. It retains unsupported or invalid files
+as unavailable and logs a warning. These files contribute no tiles or metadata.
+A missing directory gives empty coverage. Other directory or marker scan
+failures also produce a warning.
 
 Each request returns the first matching tile. Lookup converts XYZ coordinates
 to TMS rows and does not filter by metadata bounds. The shell returns the
@@ -36,11 +40,13 @@ original WebP bytes. SQLite reads run on blocking workers outside the core.
 ## Rendering and metadata
 
 The shell serves tiles at `updraft://localhost/terrain/{z}/{x}/{y}.webp`.
-The `imagesize` parser reads the dimensions from each file's first WebP tile.
-SQL reads the zoom limits from its `tiles` table. Files must use the same
-square tile size. The source combines their zoom ranges. Empty files do not
-contribute dimensions or zoom limits. MapLibre reuses the highest available level when
-the camera zooms further in.
+At startup, the `imagesize` parser reads dimensions from each enabled file's
+first WebP tile. SQL reads the zoom limits from its `tiles` table. Tiles must
+be square. The first valid enabled file with tiles establishes the tile size.
+Files with a different size remain enabled but unavailable. The source combines
+the compatible files' zoom ranges and retains their validated metadata until
+restart. Empty files do not establish a tile size or contribute zoom limits.
+MapLibre reuses the highest available level when the camera zooms further in.
 
 Missing tiles return HTTP 404 so MapLibre leaves those areas without terrain.
 An empty image response would instead decode as an elevation sample. Read
@@ -53,10 +59,10 @@ extension fields.
 The frontend overrides the tile URL with Tauri's converted
 URL for the current platform.
 
-The endpoint combines the installed files' attribution entries. It removes
+The endpoint combines the active files' attribution entries. It removes
 duplicates, empty entries, and Enroute's `None yet` placeholder. The About
 screen shows the resulting credits. Tauri converts both resource URLs for
 each platform.
 
 This version does not provide numeric elevation queries, AGL calculations,
-file import controls, downloads, or online fallback.
+terrain library controls, file import controls, downloads, or online fallback.

@@ -114,6 +114,11 @@ Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under
 `updraft://localhost/terrain/`. MapLibre decodes the tiles for hillshade and
 elevation colours.
+The terrain inventory retains disabled and unavailable files. Only active files
+contribute tiles and metadata. Startup validation establishes one tile size from
+the first valid enabled file with tiles and excludes incompatible files.
+Validated metadata remains in memory until restart. Disabled markers prevent
+files from being opened or validated.
 
 ## State ownership
 

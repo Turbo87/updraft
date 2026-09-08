@@ -1,7 +1,12 @@
 use anyhow::{Context, Result, ensure};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
-use std::{fs, io::ErrorKind, path::Path};
+use std::{
+    fs,
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
 use tauri::http::{Response, StatusCode, header};
 use tauri::{AppHandle, Manager};
 
@@ -15,7 +20,21 @@ const TILE_METADATA_QUERY: &str = "
 
 #[derive(Default)]
 pub struct Terrain {
-    files: Vec<Connection>,
+    files: BTreeMap<PathBuf, TerrainSource>,
+}
+
+#[derive(Debug)]
+enum TerrainSource {
+    Active(TerrainFile),
+    Disabled,
+    Unavailable(anyhow::Error),
+}
+
+#[derive(Debug)]
+struct TerrainFile {
+    connection: Connection,
+    coverage: Option<(usize, u32, u32)>,
+    attributions: Vec<String>,
 }
 
 impl Terrain {
@@ -36,14 +55,26 @@ impl Terrain {
             }
         }
         paths.sort();
-        let mut files = Vec::new();
+        let mut files = BTreeMap::new();
+        let mut tile_size = None;
         for path in paths {
-            match open_terrain(&path) {
-                Ok(connection) => files.push(connection),
-                Err(error) => {
-                    tracing::warn!(%error, path = %path.display(), "Could not open offline terrain");
+            let source = if path.with_extension("terrain.disabled").try_exists()? {
+                TerrainSource::Disabled
+            } else {
+                match open_terrain(&path, tile_size) {
+                    Ok(file) => {
+                        if let Some((size, _, _)) = file.coverage {
+                            tile_size = Some(size);
+                        }
+                        TerrainSource::Active(file)
+                    }
+                    Err(error) => TerrainSource::Unavailable(error),
                 }
+            };
+            if let TerrainSource::Unavailable(error) = &source {
+                tracing::warn!(%error, path = %path.display(), "Could not open offline terrain");
             }
+            files.insert(path, source);
         }
         Ok(Self { files })
     }
@@ -78,34 +109,22 @@ impl Terrain {
     fn metadata(&self) -> Result<Vec<u8>> {
         let mut attributions = Vec::new();
         let mut coverage: Option<(usize, u32, u32)> = None;
-        for connection in &self.files {
-            let tile_metadata: Option<(Vec<u8>, u32, u32)> = connection
-                .prepare_cached(TILE_METADATA_QUERY)?
-                .query_row([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
-                .optional()?;
-            if let Some((data, minzoom, maxzoom)) = tile_metadata {
-                ensure!(
-                    imagesize::image_type(&data)? == imagesize::ImageType::Webp,
-                    "Terrain tiles must use WebP"
-                );
-                let imagesize::ImageSize { width, height } = imagesize::blob_size(&data)?;
-                ensure!(width == height, "Terrain tiles must be square");
-                ensure!(maxzoom < 32, "Terrain zoom levels must be below 32");
+        for source in self.files.values() {
+            let TerrainSource::Active(file) = source else {
+                continue;
+            };
+            if let Some((size, minzoom, maxzoom)) = file.coverage {
                 match &mut coverage {
-                    Some((size, min, max)) => {
-                        ensure!(*size == width, "Terrain files must use the same tile size");
+                    Some((_, min, max)) => {
                         *min = (*min).min(minzoom);
                         *max = (*max).max(maxzoom);
                     }
-                    None => coverage = Some((width, minzoom, maxzoom)),
+                    None => coverage = Some((size, minzoom, maxzoom)),
                 }
             }
-            let query = "SELECT value FROM metadata WHERE name = 'attribution' ORDER BY rowid";
-            let mut statement = connection.prepare_cached(query)?;
-            for value in statement.query_map([], |row| row.get::<_, String>(0))? {
-                let value = value?.trim().to_owned();
-                if !value.is_empty() && value != "None yet" && !attributions.contains(&value) {
-                    attributions.push(value);
+            for value in &file.attributions {
+                if !attributions.contains(value) {
+                    attributions.push(value.clone());
                 }
             }
         }
@@ -125,7 +144,11 @@ impl Terrain {
 
     fn tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Vec<u8>>> {
         let tms_y = (1_u32 << z) - 1 - y;
-        for connection in &self.files {
+        for source in self.files.values() {
+            let TerrainSource::Active(file) = source else {
+                continue;
+            };
+            let connection = &file.connection;
             let data = connection
                 .prepare_cached(TILE_QUERY)?
                 .query_row((z, x, tms_y), |row| row.get(0))
@@ -163,7 +186,7 @@ pub async fn terrain_resource_response<R: tauri::Runtime>(
     })
 }
 
-fn open_terrain(path: &Path) -> Result<Connection> {
+fn open_terrain(path: &Path, tile_size: Option<usize>) -> Result<TerrainFile> {
     let connection = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     for (name, expected) in [("format", "webp"), ("encoding", "terrarium")] {
         let query = "SELECT value FROM metadata WHERE name = ?1";
@@ -171,7 +194,41 @@ fn open_terrain(path: &Path) -> Result<Connection> {
         ensure!(value == expected, "Terrain {name} must be {expected}");
     }
     connection.prepare(TILE_QUERY)?;
-    Ok(connection)
+    let tile_metadata: Option<(Vec<u8>, u32, u32)> = connection
+        .prepare_cached(TILE_METADATA_QUERY)?
+        .query_row([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .optional()?;
+    let coverage = if let Some((data, minzoom, maxzoom)) = tile_metadata {
+        ensure!(
+            imagesize::image_type(&data)? == imagesize::ImageType::Webp,
+            "Terrain tiles must use WebP"
+        );
+        let imagesize::ImageSize { width, height } = imagesize::blob_size(&data)?;
+        ensure!(width == height, "Terrain tiles must be square");
+        ensure!(maxzoom < 32, "Terrain zoom levels must be below 32");
+        ensure!(
+            tile_size.is_none_or(|size| size == width),
+            "Terrain files must use the same tile size"
+        );
+        Some((width, minzoom, maxzoom))
+    } else {
+        None
+    };
+    let mut attributions = Vec::new();
+    let query = "SELECT value FROM metadata WHERE name = 'attribution' ORDER BY rowid";
+    let mut statement = connection.prepare_cached(query)?;
+    for value in statement.query_map([], |row| row.get::<_, String>(0))? {
+        let value = value?.trim().to_owned();
+        if !value.is_empty() && value != "None yet" && !attributions.contains(&value) {
+            attributions.push(value);
+        }
+    }
+    drop(statement);
+    Ok(TerrainFile {
+        connection,
+        coverage,
+        attributions,
+    })
 }
 
 fn terrain_coordinates(path: &str) -> Option<[u32; 3]> {

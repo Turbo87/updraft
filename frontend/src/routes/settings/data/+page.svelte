@@ -32,6 +32,7 @@
   updates={enrouteCatalog.basemapUpdates}
   onRetryCatalog={() => client.refreshEnrouteCatalog()}
   onCheckBasemapUpdates={() => client.getEnrouteBasemapUpdates()}
+  onCheckTerrainUpdates={() => client.getEnrouteTerrainUpdates()}
   onReadBasemapDetails={(name) => client.getBasemapFileDetails(name)}
   basemaps={basemaps.current}
   basemapError={basemaps.error}

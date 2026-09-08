@@ -29,7 +29,7 @@ export type TerrainStatus = {
   sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
 };
 export type TerrainSubscription = { close(): Promise<void> };
-export type EnrouteBasemapEntry = {
+export type EnrouteCatalogEntry = {
   path: string;
   countryCode: string;
   continent: 'africa' | 'asia' | 'oceania' | 'europe' | 'northAmerica' | 'southAmerica';
@@ -39,7 +39,7 @@ export type EnrouteBasemapEntry = {
 };
 export type EnrouteCatalogStatus = {
   cached: {
-    entries: EnrouteBasemapEntry[];
+    entries: EnrouteCatalogEntry[];
     /** Unix timestamp in milliseconds. */
     checkedAt: number;
   } | null;

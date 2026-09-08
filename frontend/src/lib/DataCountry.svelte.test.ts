@@ -22,8 +22,10 @@ function props(): ComponentProps<typeof DataCountry> {
       publicationDate: '2026-09-08',
     })),
     basemaps: { generation: 0, sources: [] },
+    terrain: { generation: 0, sources: [] },
     downloads: [],
     client: {
+      getEnrouteTerrainUpdates: vi.fn().mockResolvedValue([]),
       getEnrouteBasemapUpdates: vi.fn().mockResolvedValue([]),
       downloadEnrouteBasemaps: vi.fn().mockResolvedValue(undefined),
       cancelEnrouteDownload: vi.fn().mockResolvedValue(undefined),
@@ -218,3 +220,48 @@ it.each([false, true])(
     expect(options.client.downloadEnrouteBasemaps).toHaveBeenCalledExactlyOnceWith([north]);
   },
 );
+
+it('selects basemap and terrain independently and submits both paths', async () => {
+  let options = props();
+  options.entries = ['Europe/France.mbtiles', 'Europe/France.terrain'].map((path) => ({
+    ...options.entries[0],
+    path,
+  }));
+  await render(DataCountry, { ...options, terrain: { generation: 0, sources: [] } });
+  let basemap = page.getByRole('region', { name: 'Basemap', exact: true });
+  let terrain = page.getByRole('region', { name: 'Terrain', exact: true });
+  for (let group of [basemap, terrain]) {
+    let checkbox = group.getByRole('checkbox', { name: 'France', exact: true });
+    await expect.element(checkbox).not.toBeChecked();
+    await checkbox.click();
+  }
+  await page.getByRole('button', { name: 'Download · 2 MB', exact: true }).click();
+  expect(options.client.downloadEnrouteBasemaps).toHaveBeenCalledExactlyOnceWith(
+    options.entries.map((entry) => entry.path),
+  );
+});
+
+it('checks disabled terrain for updates and keeps selection during progress', async () => {
+  let options = props();
+  let path = 'Europe/France.terrain';
+  options.entries = [{ ...options.entries[0], path }];
+  let check = vi.fn().mockResolvedValue([path]);
+  let screen = await render(DataCountry, {
+    ...options,
+    terrain: { generation: 1, sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }] },
+    client: { ...options.client, getEnrouteTerrainUpdates: check },
+  });
+  let checkbox = page.getByRole('checkbox', { name: 'France', exact: true });
+  await expect.element(page.getByText('Update available', { exact: true })).toBeVisible();
+  await checkbox.click();
+  await screen.rerender({
+    downloads: [{ path: north, type: 'downloading', downloaded: 1, total: 100 }],
+  });
+  await expect.element(checkbox).toBeChecked();
+  expect(check).toHaveBeenCalledTimes(1);
+  expect(options.client.getEnrouteBasemapUpdates).not.toHaveBeenCalled();
+  await screen.rerender({ downloads: [{ path, type: 'queued' }] });
+  await expect.element(checkbox).not.toBeInTheDocument();
+  await page.getByRole('button', { name: 'Cancel download: France', exact: true }).click();
+  expect(options.client.cancelEnrouteDownload).toHaveBeenCalledExactlyOnceWith(path);
+});

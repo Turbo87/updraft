@@ -43,6 +43,7 @@
     onCancelDownload: (path: string) => Promise<void>;
     onRetryCatalog: () => Promise<void>;
     onCheckBasemapUpdates: () => Promise<string[]>;
+    onCheckTerrainUpdates: () => Promise<string[]>;
     onReadBasemapDetails: (name: string) => Promise<BasemapFileDetails>;
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
@@ -71,6 +72,7 @@
     onCancelDownload,
     onRetryCatalog,
     onCheckBasemapUpdates,
+    onCheckTerrainUpdates,
     onReadBasemapDetails,
     importer,
     airspace,
@@ -104,6 +106,7 @@
   let requestedDownloads: string[] = [];
   const downloadClient = {
     getEnrouteBasemapUpdates: () => onCheckBasemapUpdates(),
+    getEnrouteTerrainUpdates: () => onCheckTerrainUpdates(),
     downloadEnrouteBasemaps: (paths: string[]) => {
       requestedDownloads = paths;
       return onDownload(paths);
@@ -407,9 +410,13 @@
   <DataCountry
     country={catalogCountry}
     entries={countryEntries}
+    {terrain}
     {basemaps}
     {downloads}
-    stateError={basemapError || downloadError || catalogError}
+    stateError={downloadError ||
+      catalogError ||
+      (basemapError && countryEntries.some((entry) => entry.path.endsWith('.mbtiles'))) ||
+      (terrainError && countryEntries.some((entry) => entry.path.endsWith('.terrain')))}
     awaitingLibrary={acceptedDownloads !== null}
     client={downloadClient}
     onBack={handleBack}

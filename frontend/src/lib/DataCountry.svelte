@@ -1,8 +1,9 @@
 <script lang="ts">
   import type {
     BasemapStatus,
-    EnrouteBasemapEntry,
+    EnrouteCatalogEntry,
     EnrouteDownloadStatus,
+    TerrainStatus,
     UpdraftClient,
   } from './client';
 
@@ -17,14 +18,18 @@
 
   type Props = {
     country: string;
-    entries: EnrouteBasemapEntry[];
+    entries: EnrouteCatalogEntry[];
     basemaps: BasemapStatus | null;
+    terrain: TerrainStatus | null;
     downloads: EnrouteDownloadStatus[] | null;
     stateError?: boolean;
     awaitingLibrary?: boolean;
     client: Pick<
       UpdraftClient,
-      'getEnrouteBasemapUpdates' | 'downloadEnrouteBasemaps' | 'cancelEnrouteDownload'
+      | 'getEnrouteBasemapUpdates'
+      | 'getEnrouteTerrainUpdates'
+      | 'downloadEnrouteBasemaps'
+      | 'cancelEnrouteDownload'
     >;
     onBack: () => void;
     onDownloaded: () => void;
@@ -33,6 +38,7 @@
     country,
     entries,
     basemaps,
+    terrain,
     downloads,
     stateError = false,
     awaitingLibrary = false,
@@ -53,31 +59,52 @@
     disposed = true;
   });
   let countryName = $derived(new Intl.DisplayNames(getLocale(), { type: 'region' }).of(country)!);
-  let ready = $derived(basemaps !== null && downloads !== null && !stateError);
+  let groups = $derived(
+    [
+      {
+        type: 'basemap',
+        label: m.data_basemap(),
+        inventory: basemaps,
+        entries: entries.filter((entry) => entry.path.endsWith('.mbtiles')),
+      },
+      {
+        type: 'terrain',
+        label: m.data_terrain(),
+        inventory: terrain,
+        entries: entries.filter((entry) => entry.path.endsWith('.terrain')),
+      },
+    ].filter((group) => group.entries.length > 0),
+  );
+  let ready = $derived(
+    groups.every((group) => group.inventory !== null) && downloads !== null && !stateError,
+  );
   let rows = $derived(
-    entries.map((entry) => {
-      let installed = basemaps?.sources.some(
-        (source) => source.sourceName === `enroute/${entry.path}`,
-      );
-      let transfer = downloads?.find((download) => download.path === entry.path);
-      let busy = transfer?.type === 'queued' || transfer?.type === 'downloading';
-      let update = updates?.includes(entry.path);
-      return {
-        entry,
-        installed,
-        transfer,
-        busy,
-        update,
-        selectable: !busy && (!installed || update),
-        name:
-          entries.length === 1
-            ? countryName
-            : entry.path
-                .split('/')
-                .at(-1)!
-                .replace(/\.mbtiles$/, ''),
-      };
-    }),
+    groups.flatMap((group) =>
+      group.entries.map((entry) => {
+        let installed = group.inventory?.sources.some(
+          (source) => source.sourceName === `enroute/${entry.path}`,
+        );
+        let transfer = downloads?.find((download) => download.path === entry.path);
+        let busy = transfer?.type === 'queued' || transfer?.type === 'downloading';
+        let update = updates?.includes(entry.path);
+        return {
+          type: group.type,
+          entry,
+          installed,
+          transfer,
+          busy,
+          update,
+          selectable: !busy && (!installed || update),
+          name:
+            group.entries.length === 1
+              ? countryName
+              : entry.path
+                  .split('/')
+                  .at(-1)!
+                  .replace(/\.(mbtiles|terrain)$/, ''),
+        };
+      }),
+    ),
   );
   let selected = $derived(
     rows.filter((row) => row.selectable && selection.includes(row.entry.path)),
@@ -105,31 +132,34 @@
     }
   });
   // Unrelated prop updates must not restart the installed-file query.
-  let updateInventory = $derived(basemaps);
+  let updateBasemaps = $derived(basemaps);
+  let updateTerrain = $derived(terrain);
   let updateEntries = $derived(entries);
   let updateClient = $derived(client);
   $effect(() => {
     void retry;
-    let inventory = updateInventory;
+    let inventories = [updateBasemaps, updateTerrain];
     let catalog = updateEntries;
+    let client = updateClient;
     let active = true;
     updates = null;
     checkError = false;
-    if (
+    let checks = inventories.flatMap((inventory, index) =>
       inventory &&
       catalog.some((entry) =>
         inventory.sources.some((source) => source.sourceName === `enroute/${entry.path}`),
       )
-    ) {
-      updateClient.getEnrouteBasemapUpdates().then(
-        (paths) => {
-          if (active) updates = paths;
-        },
-        () => {
-          if (active) checkError = true;
-        },
-      );
-    }
+        ? [index === 0 ? client.getEnrouteBasemapUpdates() : client.getEnrouteTerrainUpdates()]
+        : [],
+    );
+    Promise.all(checks).then(
+      (paths) => {
+        if (active) updates = paths.flat();
+      },
+      () => {
+        if (active) checkError = true;
+      },
+    );
     return () => {
       active = false;
     };
@@ -186,69 +216,71 @@
   {#if entries.length === 0}
     <p role="status">{m.data_catalog_unavailable()}</p>
   {:else}
-    <section aria-labelledby={`${componentId}-basemaps`}>
-      <h2 id={`${componentId}-basemaps`}>{m.data_basemap()}</h2>
-      <ResponsiveCard>
-        {#each rows as row (row.entry.path)}
-          {#snippet description()}
-            <span class="description">
-              <strong>{row.name}</strong>
-              <span
-                >{new Intl.DateTimeFormat(getLocale(), {
-                  dateStyle: 'medium',
-                  timeZone: 'UTC',
-                }).format(new Date(row.entry.publicationDate))} · {size(row.entry.size)}</span
-              >
-              {#if row.transfer?.type === 'downloading'}
+    {#each groups as group (group.type)}
+      <section aria-labelledby={`${componentId}-${group.type}`}>
+        <h2 id={`${componentId}-${group.type}`}>{group.label}</h2>
+        <ResponsiveCard>
+          {#each rows.filter((row) => row.type === group.type) as row (row.entry.path)}
+            {#snippet description()}
+              <span class="description">
+                <strong>{row.name}</strong>
                 <span
-                  >{m.data_downloading()} · {m.data_download_progress({
-                    done: size(row.transfer.downloaded),
-                    total: size(row.transfer.total),
-                  })}</span
+                  >{new Intl.DateTimeFormat(getLocale(), {
+                    dateStyle: 'medium',
+                    timeZone: 'UTC',
+                  }).format(new Date(row.entry.publicationDate))} · {size(row.entry.size)}</span
                 >
-                <progress
-                  value={row.transfer.downloaded}
-                  max={row.transfer.total}
-                  aria-label={row.name}
-                ></progress>
-              {:else if row.busy}<span>{m.data_queued()}</span>
-              {:else if row.update}<span>{m.data_update_available()}</span>
-              {:else if row.installed}<span
-                  >{updates === null && !checkError
-                    ? m.data_checking_updates()
-                    : m.data_installed()}</span
-                >{/if}
-            </span>
-          {/snippet}
-          {#if row.selectable}
-            <label class="dataset">
-              {@render description()}
-              <span class="control">
-                <input
-                  type="checkbox"
-                  aria-label={row.name}
-                  value={row.entry.path}
-                  bind:group={selection}
-                  disabled={!ready || pending || awaitingLibrary}
-                />
-                <span class="check i-mdi-check-bold" aria-hidden="true"></span>
+                {#if row.transfer?.type === 'downloading'}
+                  <span
+                    >{m.data_downloading()} · {m.data_download_progress({
+                      done: size(row.transfer.downloaded),
+                      total: size(row.transfer.total),
+                    })}</span
+                  >
+                  <progress
+                    value={row.transfer.downloaded}
+                    max={row.transfer.total}
+                    aria-label={row.name}
+                  ></progress>
+                {:else if row.busy}<span>{m.data_queued()}</span>
+                {:else if row.update}<span>{m.data_update_available()}</span>
+                {:else if row.installed}<span
+                    >{updates === null && !checkError
+                      ? m.data_checking_updates()
+                      : m.data_installed()}</span
+                  >{/if}
               </span>
-            </label>
-          {:else}
-            <div class="dataset">
-              {@render description()}
-              {#if row.busy}
-                <IconButton
-                  icon="i-mdi-close"
-                  label={m.data_cancel_download({ name: row.name })}
-                  onclick={() => cancel(row.entry.path)}
-                />
-              {/if}
-            </div>
-          {/if}
-        {/each}
-      </ResponsiveCard>
-    </section>
+            {/snippet}
+            {#if row.selectable}
+              <label class="dataset">
+                {@render description()}
+                <span class="control">
+                  <input
+                    type="checkbox"
+                    aria-label={row.name}
+                    value={row.entry.path}
+                    bind:group={selection}
+                    disabled={!ready || pending || awaitingLibrary}
+                  />
+                  <span class="check i-mdi-check-bold" aria-hidden="true"></span>
+                </span>
+              </label>
+            {:else}
+              <div class="dataset">
+                {@render description()}
+                {#if row.busy}
+                  <IconButton
+                    icon="i-mdi-close"
+                    label={m.data_cancel_download({ name: row.name })}
+                    onclick={() => cancel(row.entry.path)}
+                  />
+                {/if}
+              </div>
+            {/if}
+          {/each}
+        </ResponsiveCard>
+      </section>
+    {/each}
   {/if}
 </ScreenScaffold>
 

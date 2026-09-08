@@ -20,8 +20,10 @@
         publicationDate: '2026-09-08',
       })),
       basemaps: { generation: 0, sources: [] },
+      terrain: { generation: 0, sources: [] },
       downloads: [],
       client: {
+        getEnrouteTerrainUpdates: fn(async () => []),
         getEnrouteBasemapUpdates: fn(async () => [paths[1]]),
         downloadEnrouteBasemaps: fn(async () => {}),
         cancelEnrouteDownload: fn(async () => {}),
@@ -59,3 +61,17 @@
   }}
 />
 <Story name="Unavailable state" {template} args={{ downloads: null, stateError: true }} />
+
+<Story
+  name="Basemap and terrain"
+  {template}
+  args={{
+    entries: ['Europe/France.mbtiles', 'Europe/France.terrain'].map((path) => ({
+      path,
+      countryCode: 'FR',
+      continent: 'europe',
+      size: 40_000_000,
+      publicationDate: '2026-09-08',
+    })),
+  }}
+/>

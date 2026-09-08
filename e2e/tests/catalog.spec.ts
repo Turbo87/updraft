@@ -172,3 +172,72 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
     .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))
     .toEqual([]);
 });
+
+test('queues France while Germany continues downloading', async ({ page }) => {
+  await page.goto('/settings/data?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.evaluate(() => {
+    let fake = (window as TestWindow).__updraftFake!;
+    let client = (window as TestWindow).__updraftApp!.client;
+    fake.emitEnrouteCatalog({
+      cached: {
+        checkedAt: 0,
+        entries: ['Germany', 'France'].map((name) => ({
+          path: `Europe/${name}.mbtiles`,
+          countryCode: name === 'Germany' ? 'DE' : 'FR',
+          continent: 'europe',
+          size: 100_000_000,
+          publicationDate: '2026-09-08',
+        })),
+      },
+      refreshing: false,
+      error: false,
+    });
+    client.downloadEnrouteBasemaps = async (paths) => {
+      if (
+        paths.length !== 1 ||
+        !['Europe/Germany.mbtiles', 'Europe/France.mbtiles'].includes(paths[0])
+      )
+        throw new Error('Unexpected download selection');
+      fake.emitEnrouteDownloads([
+        {
+          path: 'Europe/Germany.mbtiles',
+          type: 'downloading',
+          downloaded: 2_000_000,
+          total: 100_000_000,
+        },
+        ...(paths[0] === 'Europe/France.mbtiles'
+          ? [{ path: paths[0], type: 'queued' as const }]
+          : []),
+      ]);
+    };
+  });
+  await page.getByRole('button', { name: 'Add data', exact: true }).click();
+  await page.getByRole('button', { name: 'Germany', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Germany', exact: true }).check();
+  await page.getByRole('button', { name: /^Download/ }).click();
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Add data', exact: true }).click();
+  await page.getByRole('button', { name: 'France', exact: true }).click();
+  let checkbox = page.getByRole('checkbox', { name: 'France', exact: true });
+  await checkbox.check();
+  await page.evaluate(() =>
+    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+      {
+        path: 'Europe/Germany.mbtiles',
+        type: 'downloading',
+        downloaded: 2_000_000,
+        total: 100_000_000,
+      },
+    ]),
+  );
+  await expect(checkbox).toBeChecked();
+  await page.getByRole('button', { name: /^Download/ }).click();
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Cancel download: France.mbtiles', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Cancel download: Germany.mbtiles', exact: true }),
+  ).toBeVisible();
+});

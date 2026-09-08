@@ -189,3 +189,32 @@ it('shows unavailable downloads when the country leaves the catalog', async () =
     .not.toBeInTheDocument();
   await expect.element(page.getByRole('button', { name: 'Download', exact: true })).toBeDisabled();
 });
+
+it.each([false, true])(
+  'keeps another country selected during progress with installed=%s',
+  async (installed) => {
+    let options = props();
+    let path = 'Europe/Germany.mbtiles';
+    if (installed) {
+      options.basemaps = {
+        generation: 1,
+        sources: [{ sourceName: `enroute/${north}`, type: 'disabled' }],
+      };
+      vi.mocked(options.client.getEnrouteBasemapUpdates).mockResolvedValue([north]);
+    }
+    let screen = await render(DataCountry, {
+      ...options,
+      downloads: [{ path, type: 'downloading', downloaded: 1_000_000, total: 100_000_000 }],
+    });
+    let checkbox = page.getByRole('checkbox', { name: 'North', exact: true });
+    await checkbox.click();
+    await expect.element(checkbox).toBeChecked();
+    await screen.rerender({
+      downloads: [{ path, type: 'downloading', downloaded: 2_000_000, total: 100_000_000 }],
+    });
+    await expect.element(checkbox).toBeChecked();
+    expect(options.client.getEnrouteBasemapUpdates).toHaveBeenCalledTimes(installed ? 1 : 0);
+    await page.getByRole('button', { name: /^Download/ }).click();
+    expect(options.client.downloadEnrouteBasemaps).toHaveBeenCalledExactlyOnceWith([north]);
+  },
+);

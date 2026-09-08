@@ -42,6 +42,7 @@
   }: Props = $props();
   const componentId = $props.id();
   let selection = $state<string[]>([]);
+  let selectionCountry: string | undefined;
   let pending = $state(false);
   let error = $state('');
   let updates = $state.raw<string[] | null>(null);
@@ -89,9 +90,11 @@
     }).format(bytes / 1_000_000);
   }
   $effect(() => {
-    void country;
-    selection = [];
-    error = '';
+    if (selectionCountry !== country) {
+      selectionCountry = country;
+      selection = [];
+      error = '';
+    }
   });
   $effect(() => {
     let allowed = rows.filter((row) => row.selectable).map((row) => row.entry.path);
@@ -99,10 +102,14 @@
       selection = selection.filter((path) => allowed.includes(path));
     }
   });
+  // Unrelated prop updates must not restart the installed-file query.
+  let updateInventory = $derived(basemaps);
+  let updateEntries = $derived(entries);
+  let updateClient = $derived(client);
   $effect(() => {
     void retry;
-    let inventory = basemaps;
-    let catalog = entries;
+    let inventory = updateInventory;
+    let catalog = updateEntries;
     let active = true;
     updates = null;
     checkError = false;
@@ -112,7 +119,7 @@
         inventory.sources.some((source) => source.sourceName === `enroute/${entry.path}`),
       )
     ) {
-      client.getEnrouteBasemapUpdates().then(
+      updateClient.getEnrouteBasemapUpdates().then(
         (paths) => {
           if (active) updates = paths;
         },

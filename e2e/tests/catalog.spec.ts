@@ -111,7 +111,7 @@ test('selects a country update, handles failure, and returns to the library', as
   await page.getByRole('button', { name: /^Download/ }).click();
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }),
+    page.getByRole('button', { name: 'Cancel download: Malta', exact: true }),
   ).toBeVisible();
   await expect(page.getByText('Disabled', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -146,7 +146,7 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
     ]);
   await expect(page.getByText('Downloading · 12 MB of 100 MB', { exact: true })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Cancel download: Germany.mbtiles', exact: true }),
+    page.getByRole('button', { name: 'Cancel download: Germany', exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
   await page.evaluate(() => {
@@ -165,7 +165,7 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
     .toEqual({ current: [{ path: 'Europe/Malta.mbtiles', type: 'failed' }], error: false });
   await expect(page.getByText('Download failed', { exact: true })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Retry download: Malta.mbtiles', exact: true }),
+    page.getByRole('button', { name: 'Retry download: Malta', exact: true }),
   ).toBeVisible();
   await page.evaluate(() => (window as TestWindow).__updraftFake!.emitEnrouteDownloads([]));
   await expect
@@ -235,10 +235,10 @@ test('queues France while Germany continues downloading', async ({ page }) => {
   await page.getByRole('button', { name: /^Download/ }).click();
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Cancel download: France.mbtiles', exact: true }),
+    page.getByRole('button', { name: 'Cancel download: France', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Cancel download: Germany.mbtiles', exact: true }),
+    page.getByRole('button', { name: 'Cancel download: Germany', exact: true }),
   ).toBeVisible();
 });
 
@@ -279,7 +279,7 @@ test('carries startup update results through file replacement and settings navig
   });
   await page.getByRole('link', { name: 'Data 1 update', exact: true }).click();
   await page.getByRole('button', { name: '1 update available', exact: true }).click();
-  await page.getByRole('button', { name: /^France.mbtiles/ }).click();
+  await page.getByRole('button', { name: /^France\b/ }).click();
   let dialog = page.getByRole('dialog');
   await expect(dialog.getByText('1 MB', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();

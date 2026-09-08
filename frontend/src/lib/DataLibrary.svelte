@@ -29,6 +29,7 @@
   import { DataImport } from './stores/data-import.svelte';
 
   const componentId = $props.id();
+  let countryNames = $derived(new Intl.DisplayNames(getLocale(), { type: 'region' }));
 
   type DatasetType = 'airspace' | 'waypoints' | 'basemap' | 'terrain';
   type Props = {
@@ -245,29 +246,27 @@
       (download) => selected?.type === 'basemap' && selected.name === `enroute/${download.path}`,
     ),
   );
-  let fileDetails = $state.raw<BasemapFileDetails | null>(null);
-  let fileDetailsError = $state(false);
+  let installedDetails = $state.raw<Record<string, BasemapFileDetails | null>>({});
+  let fileDetails = $derived(selected ? installedDetails[selected.name] : undefined);
+  let fileDetailsError = $derived(fileDetails === null);
   let fileDetailsRetry = $state(0);
-  let detailsName = $derived(
-    detailsOpen && selected?.type === 'basemap' ? selected.name : undefined,
-  );
+  let basemapSources = $derived(basemaps?.sources);
   let detailsGeneration = $derived(basemaps?.generation);
   let readDetails = $derived(onReadBasemapDetails);
   $effect(() => {
-    let name = detailsName;
+    let sources = basemapSources ?? [];
     let read = readDetails;
     void detailsGeneration;
     void fileDetailsRetry;
     let active = true;
-    fileDetails = null;
-    fileDetailsError = false;
-    if (name)
+    installedDetails = {};
+    for (let { sourceName: name } of sources)
       untrack(() => read(name)).then(
         (details) => {
-          if (active) fileDetails = details;
+          if (active) installedDetails = { ...installedDetails, [name]: details };
         },
         () => {
-          if (active) fileDetailsError = true;
+          if (active) installedDetails = { ...installedDetails, [name]: null };
         },
       );
     return () => {
@@ -300,7 +299,16 @@
 
   function displayName(source: Pick<Source, 'sourceName'>, type: DatasetType): string {
     let name = source.sourceName;
-    return type === 'basemap' || type === 'terrain' ? name.slice(name.lastIndexOf('/') + 1) : name;
+    if (type !== 'basemap')
+      return type === 'terrain' ? name.slice(name.lastIndexOf('/') + 1) : name;
+    let region = name.slice(name.lastIndexOf('/') + 1).replace(/\.mbtiles$/, '');
+    let entries = catalog?.cached?.entries ?? [];
+    let entry = entries.find((entry) => `enroute/${entry.path}` === name);
+    if (!entry) return region;
+    let country = countryNames.of(entry.countryCode)!;
+    return entries.filter((candidate) => candidate.countryCode === entry.countryCode).length === 1
+      ? country
+      : `${country} · ${region}`;
   }
 
   type FileRow = { sourceName: string; source?: Source; download?: EnrouteDownloadStatus };
@@ -365,7 +373,7 @@
   ): string {
     if (type === 'basemap' || type === 'terrain')
       return enabled && source.type === 'unavailable' ? m.data_load_failed() : m.data_on_device();
-    if (!enabled || source.type === 'disabled') return m.data_imported();
+    if (!enabled || source.type === 'disabled') return '';
     if (source.type === 'unavailable' && 'error' in source) {
       switch (source.error) {
         case 'readFailed':
@@ -390,8 +398,8 @@
       if (source.warnings.length) {
         count += ` · ${source.warnings.length === 1 ? m.data_warning_one() : m.data_warnings({ count: source.warnings.length })}`;
       }
-    } else return m.data_imported();
-    return `${m.data_imported()} · ${count}`;
+    } else return '';
+    return count;
   }
 </script>
 
@@ -542,8 +550,32 @@
                       <span class="filename">{displayName(row, group.type)}</span>
                       {#if source && !enabled}<StatusPill label={m.data_disabled()} />{/if}
                     </span>
-                    {#if source}<span class="metadata">{metadata(source, group.type, enabled)}</span
-                      >{/if}
+                    {#if source && group.type === 'basemap'}
+                      {let details = $derived(installedDetails[source.sourceName])}
+                      <span class="metadata installed-metadata" class:error={details === null}>
+                        {#if details}
+                          {let date = $derived(
+                            new Intl.DateTimeFormat(getLocale(), {
+                              dateStyle: 'medium',
+                            }).format(details.modifiedAt),
+                          )}
+                          <time
+                            datetime={new Date(details.modifiedAt).toISOString()}
+                            title={m.data_downloaded_at()}
+                            aria-label={`${m.data_downloaded_at()}: ${date}`}>{date}</time
+                          >
+                          · {size(details.size)}
+                        {:else if details === null}
+                          {m.data_file_details_failed()}
+                        {:else}{m.data_file_details_loading()}{/if}
+                      </span>
+                      {#if enabled && source.type === 'unavailable'}
+                        <span class="download-status error">{m.data_load_failed()}</span>
+                      {/if}
+                    {:else if source}
+                      {let summary = $derived(metadata(source, group.type, enabled))}
+                      {#if summary}<span class="metadata">{summary}</span>{/if}
+                    {/if}
                     {#if row.download}
                       <span
                         class="download-status"
@@ -909,7 +941,7 @@
     color: var(--color-text-faint);
   }
   .unavailable .type-icon,
-  .unavailable .metadata {
+  .unavailable .metadata:not(.installed-metadata) {
     color: var(--color-error-text);
   }
   .empty {

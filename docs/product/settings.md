@@ -120,9 +120,10 @@ Polar and reserve changes request new waypoint arrival calculations.
 
 The Data page lists imported files in Airspace and Waypoints groups and installed
 basemap and terrain files in Basemap and Terrain groups. The group order is
-Airspace, Waypoints, Basemap, then Terrain. Empty groups are hidden. Filenames are sorted
-alphabetically within each group. Active imported files show feature counts
-and waypoint warning counts. Disabled files show their disabled state.
+Airspace, Waypoints, Basemap, then Terrain. Empty groups are hidden. Display names
+are sorted alphabetically within each group. Basemaps use country/region names
+and show download date and installed size. Rows omit source prefixes.
+Active imported files show feature counts and waypoint warning counts. Disabled files show their disabled state.
 Unavailable imported files show a read, parse, or geometry error.
 The page updates when source status changes. Source catalogs and their status
 are separate from the settings snapshot.

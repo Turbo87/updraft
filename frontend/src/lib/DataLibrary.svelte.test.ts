@@ -6,6 +6,7 @@ import '../app.css';
 
 import { FakeClient } from './client/fake';
 import DataLibrary from './DataLibrary.svelte';
+import { applyLocaleSetting } from './i18n.svelte';
 import { AirspaceStore } from './stores/airspace.svelte';
 import { BasemapsStore } from './stores/basemaps.svelte';
 import { DataActivation } from './stores/data-activation.svelte';
@@ -27,13 +28,56 @@ function activation() {
   );
 }
 
+it('localizes managed countries and distinguishes regions without changing file identities', async () => {
+  let paths = [
+    'Europe/Germany.mbtiles',
+    'Europe/Spain/Mainland.mbtiles',
+    'Europe/Spain/Canary Islands.mbtiles',
+  ];
+  applyLocaleSetting('de');
+  try {
+    let screen = await render(DataLibrary, {
+      ...downloadProps(),
+      catalog: {
+        cached: {
+          checkedAt: 0,
+          entries: paths.map((path, index) => ({
+            path,
+            countryCode: index === 0 ? 'DE' : 'ES',
+            continent: 'europe' as const,
+            publicationDate: '2026-09-08',
+            size: 1_000_000,
+          })),
+        },
+        refreshing: false,
+        error: false,
+      },
+      basemaps: {
+        generation: 1,
+        sources: paths.map((path) => ({
+          sourceName: `enroute/${path}`,
+          type: 'disabled' as const,
+        })),
+      },
+    });
+    for (let name of ['Deutschland', 'Spanien · Mainland', 'Spanien · Canary Islands'])
+      await expect.element(page.getByText(name, { exact: true })).toBeVisible();
+    await screen.rerender({ catalog: null });
+    await expect.element(page.getByText('Germany', { exact: true })).toBeVisible();
+    await expect.element(page.getByText('Mainland', { exact: true })).toBeVisible();
+  } finally {
+    applyLocaleSetting('en');
+  }
+});
+
 it.each([
   ['basemap', 'mbtiles', 'basemaps'],
   ['terrain', 'terrain', 'terrain'],
 ] as const)(
-  'shows managed %s filenames and removes the selected full identity',
+  'shows managed %s names and removes the selected full identity',
   async (type, extension, prop) => {
     let filename = `Germany.${extension}`;
+    let label = type === 'basemap' ? 'Germany' : filename;
     let sourceName = `enroute/Europe/${filename}`;
     let onRemove = vi.fn().mockResolvedValue(undefined);
     await render(DataLibrary, {
@@ -50,8 +94,8 @@ it.each([
       waypoints: { generation: 0, sources: [] },
       [prop]: { generation: 0, sources: [{ sourceName, type: 'active' }] },
     });
-    await page.getByRole('button', { name: new RegExp(`^Germany\\.${extension}`) }).click();
-    await expect.element(page.getByRole('heading', { name: filename, exact: true })).toBeVisible();
+    await page.getByRole('button', { name: new RegExp(`^${label} `) }).click();
+    await expect.element(page.getByRole('heading', { name: label, exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Remove from device', exact: true }).click();
     await page
       .getByRole('alertdialog')
@@ -108,7 +152,7 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
       activation: changes,
       onRemove: vi.fn(),
     });
-    await page.getByRole('button', { name: /^broken\./ }).click();
+    await page.getByRole('button', { name: /^broken\b/ }).click();
     let toggle = page.getByRole('switch', { name: 'Enabled', exact: true });
     await expect.element(toggle).toBeChecked();
     await expect.element(page.getByRole('button', { name: 'Close', exact: true })).toHaveFocus();
@@ -124,8 +168,7 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
     await toggle.click();
     await expect.element(toggle).not.toBeChecked();
     await expect.element(toggle).toBeEnabled();
-    let loadError =
-      type === 'airspace' ? 'Imported · could not be parsed' : 'Could not load the file.';
+    let loadError = type === 'airspace' ? 'Could not be parsed' : 'Could not load the file.';
     await expect.element(page.getByText(loadError)).not.toBeInTheDocument();
     await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
     result.reject(new Error('storage failed'));
@@ -181,7 +224,7 @@ it('opens live file details and confirms removal separately', async () => {
       sources: [{ type: 'unavailable', sourceName: 'local.txt', error: 'parseFailed' }],
     },
   });
-  await expect.element(dialog.getByText('Imported · could not be parsed')).toBeVisible();
+  await expect.element(dialog.getByText('Could not be parsed')).toBeVisible();
   await expect.element(dialog.getByText('Line 4: Skipped waypoint')).not.toBeInTheDocument();
   await view.rerender({ waypoints });
   await userEvent.keyboard('{Escape}');
@@ -256,14 +299,10 @@ it('groups and sorts sources without changing the input order', async () => {
     'Zulu.txt',
   ]);
   expect(airspace.sources.map((source) => source.sourceName)).toEqual(['Zulu.txt', 'Alpha.txt']);
-  await expect.element(page.getByText('Imported · 1 airspace', { exact: true })).toBeVisible();
-  await expect
-    .element(page.getByText('Imported · 2 waypoints · 1 warning', { exact: true }))
-    .toBeVisible();
+  await expect.element(page.getByText('1 airspace', { exact: true })).toBeVisible();
+  await expect.element(page.getByText('2 waypoints · 1 warning', { exact: true })).toBeVisible();
   await expect.element(page.getByText('Disabled', { exact: true })).toBeVisible();
-  await expect
-    .element(page.getByText('Imported · could not be parsed', { exact: true }))
-    .toBeVisible();
+  await expect.element(page.getByText('Could not be parsed', { exact: true })).toBeVisible();
   await component.rerender({
     airspace: { generation: 2, sources: [] },
     waypoints: { generation: 3, sources: [] },
@@ -514,7 +553,7 @@ it.each([
       await view.rerender({ [dataType]: updated });
     }
     let row = page.getByRole('button', {
-      name: `${sourceName} Imported · could not be parsed`,
+      name: `${sourceName} Could not be parsed`,
       exact: true,
     });
     if (fails) {
@@ -547,6 +586,7 @@ it.each(['basemap', 'terrain'] as const)(
   'shows %s activation and confirms removal',
   async (type) => {
     let extension = type === 'basemap' ? 'mbtiles' : 'terrain';
+    let suffix = type === 'basemap' ? '' : '.terrain';
     let onRemove = vi
       .fn()
       .mockRejectedValueOnce(new Error('storage failed'))
@@ -583,26 +623,26 @@ it.each(['basemap', 'terrain'] as const)(
       .toBeVisible();
     expect(
       [...document.querySelectorAll('.filename')].map((element) => element.textContent),
-    ).toEqual([`a.${extension}`, `broken.${extension}`, `z.${extension}`]);
-    await page.getByRole('button', { name: new RegExp(`^a\\.${extension}`) }).click();
+    ).toEqual([`a${suffix}`, `broken${suffix}`, `z${suffix}`]);
+    await page.getByRole('button', { name: new RegExp(`^a${suffix} `) }).click();
     await expect.element(page.getByRole('switch')).toBeChecked();
     await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeVisible();
     await expect
       .element(page.getByRole('dialog').getByText('Enabled', { exact: true }))
       .toBeVisible();
     await userEvent.keyboard('{Escape}');
-    await page.getByRole('button', { name: new RegExp(`^broken\\.${extension}`) }).click();
+    await page.getByRole('button', { name: new RegExp(`^broken${suffix} `) }).click();
     await expect
       .element(page.getByRole('dialog').getByText('Could not load the file.'))
       .toBeVisible();
     await userEvent.keyboard('{Escape}');
-    await page.getByRole('button', { name: new RegExp(`^z\\.${extension}`) }).click();
+    await page.getByRole('button', { name: new RegExp(`^z${suffix} `) }).click();
     await expect.element(page.getByRole('switch')).not.toBeChecked();
     await page.getByRole('button', { name: 'Remove from device' }).click();
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     expect(onRemove).not.toHaveBeenCalled();
     await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
-    await page.getByRole('button', { name: new RegExp(`^z\\.${extension}`) }).click();
+    await page.getByRole('button', { name: new RegExp(`^z${suffix} `) }).click();
     await page.getByRole('button', { name: 'Remove from device' }).click();
     await page.getByRole('button', { name: 'Remove', exact: true }).click();
     await expect.element(page.getByRole('alert')).toHaveTextContent('Could not remove the file.');
@@ -724,7 +764,7 @@ it('shows terrain activation details and keeps them current', async () => {
     [...document.querySelectorAll('section h2')].map((element) => element.textContent),
   ).toEqual(['Basemap', 'Terrain']);
   expect([...document.querySelectorAll('.filename')].map((element) => element.textContent)).toEqual(
-    ['local.mbtiles', 'a.terrain', 'broken.terrain', 'z.terrain'],
+    ['local', 'a.terrain', 'broken.terrain', 'z.terrain'],
   );
   await page.getByRole('button', { name: /^a.terrain/ }).click();
   let dialog = page.getByRole('dialog');
@@ -782,10 +822,10 @@ it('shows live download rows without opening details for uninstalled files', asy
   await expect.element(page.getByRole('progressbar')).toHaveAttribute('value', '1000000');
   await expect.element(page.getByRole('button', { name: /^Malta/ })).not.toBeInTheDocument();
   await expect.element(page.getByText('On device', { exact: true })).not.toBeInTheDocument();
-  await page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel download: Malta', exact: true }).click();
   expect(options.onCancelDownload).toHaveBeenCalledExactlyOnceWith(path);
   await screen.rerender({ downloads: [] });
-  await expect.element(page.getByText('Malta.mbtiles', { exact: true })).not.toBeInTheDocument();
+  await expect.element(page.getByText('Malta', { exact: true })).not.toBeInTheDocument();
 });
 
 it('combines an installed disabled file with its download and keeps details available', async () => {
@@ -795,16 +835,16 @@ it('combines an installed disabled file with its download and keeps details avai
     basemaps: { generation: 1, sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }] },
     downloads: [{ path, type: 'queued' }],
   });
-  expect(page.getByText('Malta.mbtiles', { exact: true }).elements()).toHaveLength(1);
-  await expect.element(page.getByText('On device', { exact: true })).toBeVisible();
+  expect(page.getByText('Malta', { exact: true }).elements()).toHaveLength(1);
+  await expect.element(page.getByRole('button', { name: /^Malta / })).toHaveTextContent('0 MB');
   await expect.element(page.getByText('Disabled', { exact: true })).toBeVisible();
   await expect.element(page.getByText('Queued', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /^Malta.mbtiles/ }).click();
+  await page.getByRole('button', { name: /^Malta\b/ }).click();
   await expect.element(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await screen.rerender({ downloads: [] });
   await expect.element(page.getByText('Queued', { exact: true })).not.toBeInTheDocument();
-  await expect.element(page.getByText('Malta.mbtiles', { exact: true })).toBeVisible();
+  await expect.element(page.getByText('Malta', { exact: true })).toBeVisible();
 });
 
 it('keeps failed rows, reports command errors, and retries the exact path', async () => {
@@ -812,7 +852,7 @@ it('keeps failed rows, reports command errors, and retries the exact path', asyn
   let path = 'Europe/Malta.mbtiles';
   let screen = await render(DataLibrary, { ...options, downloads: [{ path, type: 'failed' }] });
   vi.mocked(options.onDownload).mockRejectedValueOnce(new Error('IPC failed'));
-  let retry = page.getByRole('button', { name: 'Retry download: Malta.mbtiles', exact: true });
+  let retry = page.getByRole('button', { name: 'Retry download: Malta', exact: true });
   await retry.click();
   await expect
     .element(page.getByRole('alert'))
@@ -824,7 +864,7 @@ it('keeps failed rows, reports command errors, and retries the exact path', asyn
   await expect.element(page.getByText('Download failed', { exact: true })).toBeVisible();
   await screen.rerender({ downloads: [{ path, type: 'queued' }] });
   vi.mocked(options.onCancelDownload).mockRejectedValueOnce(new Error('IPC failed'));
-  await page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel download: Malta', exact: true }).click();
   await expect
     .element(page.getByRole('alert'))
     .toHaveTextContent('Could not cancel the download. Try again.');
@@ -874,7 +914,7 @@ it.each([false, true])(
     }
     await expect.element(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
     await expect
-      .element(page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }))
+      .element(page.getByRole('button', { name: 'Cancel download: Malta', exact: true }))
       .toBeVisible();
     await expect.element(page.getByRole('main')).toHaveFocus();
     await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
@@ -920,9 +960,13 @@ it('opens updates, queues only idle updates, and retains disabled file details',
     catalog: {
       cached: {
         checkedAt: 1000,
-        entries: ['Germany', 'France', 'Spain'].map((name) => ({
+        entries: [
+          ['Germany', 'DE'],
+          ['France', 'FR'],
+          ['Spain', 'ES'],
+        ].map(([name, countryCode]) => ({
           path: `Europe/${name}.mbtiles`,
-          countryCode: 'DE',
+          countryCode,
           continent: 'europe' as const,
           publicationDate: '2026-09-08',
           size: 1_000_000,
@@ -953,10 +997,8 @@ it('opens updates, queues only idle updates, and retains disabled file details',
   });
   await page.getByRole('button', { name: '2 updates available', exact: true }).click();
   await expect.element(page.getByRole('heading', { name: 'Updates', exact: true })).toBeVisible();
-  await expect
-    .element(page.getByRole('button', { name: /^Spain.mbtiles/ }))
-    .not.toBeInTheDocument();
-  await page.getByRole('button', { name: /^Germany.mbtiles/ }).click();
+  await expect.element(page.getByRole('button', { name: /^Spain\b/ })).not.toBeInTheDocument();
+  await page.getByRole('button', { name: /^Germany\b/ }).click();
   await expect
     .element(page.getByRole('switch', { name: 'Enabled', exact: true }))
     .not.toBeChecked();
@@ -976,7 +1018,7 @@ it('opens updates, queues only idle updates, and retains disabled file details',
     .not.toBeChecked();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   onDownload.mockRejectedValueOnce(new Error('queue unavailable'));
-  await page.getByRole('button', { name: 'Update: Germany.mbtiles', exact: true }).click();
+  await page.getByRole('button', { name: 'Update: Germany', exact: true }).click();
   await expect.element(page.getByRole('alert')).toHaveTextContent('Could not start the downloads');
   await page.getByRole('button', { name: /Update all/ }).click();
   expect(onDownload).toHaveBeenCalledWith(['Europe/Germany.mbtiles']);
@@ -987,7 +1029,7 @@ it('opens updates, queues only idle updates, and retains disabled file details',
     ],
   });
   await expect.element(page.getByRole('button', { name: /Update all/ })).toBeDisabled();
-  await page.getByRole('button', { name: /^Germany.mbtiles/ }).click();
+  await page.getByRole('button', { name: /^Germany\b/ }).click();
   await expect
     .element(page.getByRole('dialog').getByRole('button', { name: 'Update', exact: true }))
     .toBeDisabled();
@@ -996,7 +1038,7 @@ it('opens updates, queues only idle updates, and retains disabled file details',
   await expect
     .element(page.getByRole('button', { name: '2 updates available', exact: true }))
     .toHaveFocus();
-  await expect.element(page.getByRole('button', { name: /^Spain.mbtiles/ })).toBeVisible();
+  await expect.element(page.getByRole('button', { name: /^Spain\b/ })).toBeVisible();
   await page.getByRole('button', { name: '2 updates available', exact: true }).click();
   await screen.rerender({ updates: null });
   await expect.element(page.getByText('Checking for updates…', { exact: true })).toBeVisible();
@@ -1047,7 +1089,14 @@ it.each(['unavailable', 'active', 'disabled'] as const)(
       airspace: { generation: 0, sources: [] },
       waypoints: { generation: 0, sources: [] },
     });
-    await page.getByRole('button', { name: /^France.mbtiles/ }).click();
+    let row = page.getByRole('button', { name: /^France / });
+    await expect.element(row).not.toHaveTextContent('Enroute');
+    await expect.element(row).toHaveTextContent('61 MB');
+    await expect.element(row).not.toHaveTextContent('On device');
+    await expect
+      .element(row.getByTitle('Downloaded'))
+      .toHaveAttribute('datetime', '1970-01-01T00:00:00.000Z');
+    await row.click();
     await expect
       .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))
       .toBeVisible();
@@ -1066,7 +1115,9 @@ it.each(['unavailable', 'active', 'disabled'] as const)(
     await screen.rerender({
       basemaps: { generation: 2, sources: [{ sourceName: `enroute/${path}`, type }] },
     });
-    await expect.element(page.getByText('Loading file details…', { exact: true })).toBeVisible();
+    await expect
+      .element(page.getByRole('dialog').getByText('Loading file details…', { exact: true }))
+      .toBeVisible();
     onReadBasemapDetails.mockRejectedValueOnce(new Error('read failed'));
     await screen.rerender({
       basemaps: { generation: 3, sources: [{ sourceName: `enroute/${path}`, type }] },
@@ -1074,6 +1125,7 @@ it.each(['unavailable', 'active', 'disabled'] as const)(
     await expect
       .element(page.getByRole('dialog').getByRole('alert'))
       .toHaveTextContent('Could not read file details.');
+    await expect.element(row).toHaveTextContent('Could not read file details.');
     await page.getByRole('dialog').getByRole('button', { name: 'Retry', exact: true }).click();
     await expect
       .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))

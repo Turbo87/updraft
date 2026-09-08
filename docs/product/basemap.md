@@ -37,11 +37,17 @@ basemap empty and produces a warning.
 
 ## Library
 
-Settings → Data lists installed basemap filenames and their disabled or
-unavailable states. Select a file to see its enabled state and any load error.
-Details also show Enroute as the source, installed file size, and modification
-time as Downloaded. Metadata reads do not open disabled files. Read failures
-offer Retry. The current catalog date does not identify the installed version.
+Settings → Data lists basemaps by localized country name. Multi-region countries
+include the region name. Without a matching catalog entry, the name falls back
+to the filename without its extension. Rows show the installed file's
+modification date and its actual size, including for disabled files. The date's
+tooltip and accessible label identify it as Downloaded.
+
+Select a file to see its enabled state and any load error. Details share the
+row's metadata and show the source and download time. Metadata refreshes when
+the inventory changes, not on download progress. Read failures remain visible and offer Retry
+in details. Metadata reads do not open disabled files. The current catalog date
+does not identify the installed version.
 Commands use the full managed identity. Equal filenames in different regions
 have independent activation and removal state.
 The Enabled control saves the choice and refreshes the map. Disabled files are

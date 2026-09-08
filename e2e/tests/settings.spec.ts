@@ -263,7 +263,7 @@ test('propagates airspace status and invokes data selection through the client',
   });
 
   await expect(page.getByText('rheinland.txt')).toBeVisible();
-  await expect(page.getByText('Imported · 42 airspaces')).toBeVisible();
+  await expect(page.getByText('42 airspaces')).toBeVisible();
 });
 
 test('selects a glide polar and keeps it when revisiting settings', async ({ page }) => {
@@ -388,7 +388,7 @@ test('the Data library handles live statuses, file details, and removal', async 
   await page.getByRole('button', { name: /^local\.txt/ }).click();
   await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
   await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
-  await expect(page.getByRole('dialog').getByText('Imported · could not be read')).toBeVisible();
+  await expect(page.getByRole('dialog').getByText('Could not be read')).toBeVisible();
   await page.getByRole('button', { name: 'Remove from device' }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByText('No data on this device')).toBeVisible();
@@ -418,12 +418,12 @@ test('the Data library imports through the client and shows published parsing er
   await page.getByRole('button', { name: 'Add data' }).click();
   await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
   let row = page.getByRole('button', { name: /broken.cup/ });
-  await expect(row).toContainText('Imported · could not be parsed');
+  await expect(row).toContainText('Could not be parsed');
   await expect(page).toHaveURL(/\/settings\/data\?testMode=1$/);
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await row.click();
   await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
-  await expect(page.getByRole('dialog').getByText('Imported · could not be parsed')).toBeVisible();
+  await expect(page.getByRole('dialog').getByText('Could not be parsed')).toBeVisible();
 });
 
 for (let [width, height, theme] of [
@@ -448,7 +448,7 @@ for (let [width, height, theme] of [
         sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
       });
     await page.getByRole('link', { name: 'Data', exact: true }).click();
-    await page.getByRole('button', { name: /^local.mbtiles/ }).click();
+    await page.getByRole('button', { name: /^local\b/ }).click();
     await expect(page.getByRole('switch', { name: 'Enabled' })).toBeChecked();
     await page.evaluate(() =>
       (window as TestWindow).__updraftFake!.emitBasemaps({
@@ -473,7 +473,7 @@ for (let [width, height, theme] of [
         sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
       });
     await page.getByRole('link', { name: 'Data', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^local.mbtiles/ })).toContainText(
+    await expect(page.getByRole('button', { name: /^local\b/ })).toContainText(
       'Could not load the file.',
     );
   });

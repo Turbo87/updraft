@@ -1,9 +1,11 @@
+use super::catalog::CatalogService;
 use super::queue::{DownloadOutcome, DownloadQueue, DownloadStatus};
 use super::{BasemapEntry, download::BasemapDownload};
 use crate::basemap::Basemaps;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
+use tauri::{AppHandle, Manager, Runtime};
 
 pub struct DownloadCommands {
     pub queue: Arc<Mutex<DownloadQueue>>,
@@ -62,6 +64,63 @@ impl DownloadCommands {
         subscribers.insert(channel.id(), channel);
         Ok(())
     }
+}
+
+#[tauri::command(async)]
+pub fn download_enroute_basemaps<R: Runtime>(
+    paths: Vec<String>,
+    app: AppHandle<R>,
+    state: tauri::State<'_, DownloadCommands>,
+    catalog: tauri::State<'_, Arc<CatalogService>>,
+) -> Result<(), &'static str> {
+    let cached = catalog
+        .status()
+        .cached
+        .ok_or("Basemap catalog is unavailable")?;
+    let entries = paths
+        .iter()
+        .map(|path| {
+            let entry = cached.entries.iter().find(|entry| entry.path == path);
+            entry.cloned().ok_or("Basemap is not in the catalog")
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let directory = app
+        .path()
+        .app_data_dir()
+        .map_err(|_| "Could not locate data directory")?;
+    let queue = state.queue.clone();
+    {
+        let mut queue = queue.lock().unwrap();
+        for entry in entries {
+            queue.enqueue(entry);
+        }
+        if queue.has_active() {
+            return Ok(());
+        }
+    }
+    tauri::async_runtime::spawn(async move {
+        while let Some((attempt, download)) = DownloadQueue::transfer_next(&queue, &directory).await
+        {
+            let installer = app.clone();
+            let active = attempt.clone();
+            let result = tauri::async_runtime::spawn_blocking(move || {
+                let basemaps = installer.state::<Arc<Mutex<Basemaps>>>();
+                let downloads = installer.state::<DownloadCommands>();
+                downloads.install_download(basemaps.inner(), &attempt, download);
+            })
+            .await;
+            if let Err(error) = result {
+                tracing::error!(%error, "Basemap installation worker failed");
+                match queue.lock() {
+                    Ok(mut queue) => {
+                        queue.finish(&active, DownloadOutcome::Failed);
+                    }
+                    Err(_) => break,
+                }
+            }
+        }
+    });
+    Ok(())
 }
 
 #[tauri::command(async)]

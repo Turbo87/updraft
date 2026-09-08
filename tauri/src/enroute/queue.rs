@@ -108,6 +108,10 @@ impl DownloadQueue {
         true
     }
 
+    pub fn has_active(&self) -> bool {
+        self.active.is_some()
+    }
+
     /// Returns an attempt only when no download is active.
     pub fn start_next(&mut self) -> Option<Arc<BasemapEntry>> {
         if self.active.is_some() {

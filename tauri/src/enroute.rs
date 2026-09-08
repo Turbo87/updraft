@@ -24,7 +24,7 @@ fn http_client() -> reqwest::ClientBuilder {
     reqwest::Client::builder().use_preconfigured_tls(tls)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct BasemapEntry {
     pub path: &'static str,
     pub country_code: &'static str,

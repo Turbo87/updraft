@@ -16,9 +16,15 @@ fn failed_initial_delivery_does_not_register_a_subscriber() {
 async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
     let state = DownloadCommands::default();
     let queue = state.queue.clone();
+    let directory = tempfile::tempdir().unwrap();
+    let cache = directory.path().join("catalog.json");
+    let catalog = br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"},{"path":"Europe/France.mbtiles","size":20,"time":"20260908"}]}"#;
+    assert_ok!(std::fs::write(&cache, catalog));
+    let catalog = Arc::new(super::super::catalog::CatalogService::load(cache));
     let (sender, mut messages) = tokio::sync::mpsc::unbounded_channel::<Value>();
     let app = tauri::test::mock_builder()
         .manage(state)
+        .manage(catalog)
         .channel_interceptor(move |_, _, _, body| {
             sender.send(body.clone().deserialize().unwrap()).unwrap();
             true
@@ -26,7 +32,8 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
         .invoke_handler(tauri::generate_handler![
             subscribe_enroute_downloads,
             unsubscribe_enroute_downloads,
-            cancel_enroute_download
+            cancel_enroute_download,
+            download_enroute_basemaps
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
@@ -78,6 +85,23 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
             Value::Null
         );
     }
+    let body = json!({"paths":["Europe/France.mbtiles", "../unknown.mbtiles"]});
+    assert_eq!(
+        invoke("download_enroute_basemaps", body),
+        Err(json!("Basemap is not in the catalog"))
+    );
+    assert_eq!(queue.lock().unwrap().subscribe().borrow().len(), 1);
+    for _ in 0..2 {
+        let body =
+            json!({"paths":[attempt.path, "Europe/France.mbtiles", "Europe/France.mbtiles"]});
+        assert_eq!(
+            assert_ok!(invoke("download_enroute_basemaps", body)),
+            Value::Null
+        );
+    }
+    let status = queue.lock().unwrap().subscribe();
+    assert_eq!(status.borrow().len(), 2);
+    assert_eq!(status.borrow()[1].path, "Europe/France.mbtiles");
     for _ in 0..2 {
         let body = json!({"path": attempt.path});
         assert_eq!(

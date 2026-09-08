@@ -75,7 +75,7 @@
 
   setAppContext(appContext);
 
-  onMount(() => enrouteCatalog.watchBasemapUpdates(client, basemaps));
+  onMount(() => enrouteCatalog.watchUpdates(client, basemaps, terrain));
 
   // Only test mode exposes application state and the fake client to browser automation.
   if (testMode) {

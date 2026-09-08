@@ -28,7 +28,7 @@
 <SettingsIndexScreen
   {language}
   {buildDate}
-  updateCount={enrouteCatalog.basemapUpdates?.length ?? 0}
+  updateCount={enrouteCatalog.updates?.length ?? 0}
   onQuit={() => (quitDialogOpen = true)}
 />
 

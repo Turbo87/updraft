@@ -28,8 +28,8 @@
   onCancelDownload={(path) => client.cancelEnrouteDownload(path)}
   catalog={enrouteCatalog.current}
   catalogError={enrouteCatalog.error}
-  updateCheckError={enrouteCatalog.basemapUpdateError}
-  updates={enrouteCatalog.basemapUpdates}
+  updateCheckError={enrouteCatalog.updateError}
+  updates={enrouteCatalog.updates}
   onRetryCatalog={() => client.refreshEnrouteCatalog()}
   onCheckBasemapUpdates={() => client.getEnrouteBasemapUpdates()}
   onCheckTerrainUpdates={() => client.getEnrouteTerrainUpdates()}

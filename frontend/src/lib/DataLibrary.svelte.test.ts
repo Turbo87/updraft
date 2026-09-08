@@ -942,6 +942,20 @@ it('opens updates, queues only idle updates, and retains disabled file details',
   await expect
     .element(page.getByRole('switch', { name: 'Enabled', exact: true }))
     .not.toBeChecked();
+  onDownload.mockRejectedValueOnce(new Error('queue unavailable'));
+  await page.getByRole('dialog').getByRole('button', { name: 'Update', exact: true }).click();
+  await expect
+    .element(page.getByRole('dialog').getByRole('alert'))
+    .toHaveTextContent('Could not start the downloads');
+  await screen.rerender({ updates: null });
+  await expect.element(page.getByRole('dialog').getByRole('alert')).toBeVisible();
+  await screen.rerender({ updates: ['Europe/Germany.mbtiles', 'Europe/France.mbtiles'] });
+  await page.getByRole('dialog').getByRole('button', { name: 'Update', exact: true }).click();
+  expect(onDownload).toHaveBeenCalledWith(['Europe/Germany.mbtiles']);
+  await expect.element(page.getByRole('dialog').getByRole('alert')).not.toBeInTheDocument();
+  await expect
+    .element(page.getByRole('switch', { name: 'Enabled', exact: true }))
+    .not.toBeChecked();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   onDownload.mockRejectedValueOnce(new Error('queue unavailable'));
   await page.getByRole('button', { name: 'Update: Germany.mbtiles', exact: true }).click();
@@ -955,6 +969,11 @@ it('opens updates, queues only idle updates, and retains disabled file details',
     ],
   });
   await expect.element(page.getByRole('button', { name: /Update all/ })).toBeDisabled();
+  await page.getByRole('button', { name: /^Germany.mbtiles/ }).click();
+  await expect
+    .element(page.getByRole('dialog').getByRole('button', { name: 'Update', exact: true }))
+    .toBeDisabled();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('button', { name: 'Back to data', exact: true }).click();
   await expect
     .element(page.getByRole('button', { name: '2 updates available', exact: true }))

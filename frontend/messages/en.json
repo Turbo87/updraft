@@ -363,6 +363,7 @@
   "data_queued": "Queued",
   "data_update_available": "Update available",
   "data_updates_heading": "Updates",
+  "data_update": "Update",
   "data_update_count_one": "1 update",
   "data_update_count": "{count} updates",
   "data_update_one": "1 update available",

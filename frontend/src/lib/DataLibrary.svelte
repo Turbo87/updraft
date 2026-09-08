@@ -229,6 +229,16 @@
   const selectedEnabled = $derived(
     selected && selectedSource && activation.isEnabled(selected.type, selectedSource),
   );
+  let selectedUpdate = $derived(
+    availableUpdates.find(
+      (entry) => selected?.type === 'basemap' && selected.name === `enroute/${entry.path}`,
+    ),
+  );
+  let selectedDownload = $derived(
+    downloads?.find(
+      (download) => selected?.type === 'basemap' && selected.name === `enroute/${download.path}`,
+    ),
+  );
 
   $effect(() => {
     if (!selectedSource) detailsOpen = false;
@@ -407,7 +417,9 @@
         </Button>
       {/if}
     {/snippet}
-    {#if downloadActionError}<p class="error" role="alert">{downloadActionError}</p>{/if}
+    {#if downloadActionError && !detailsOpen}<p class="error" role="alert">
+        {downloadActionError}
+      </p>{/if}
     {#if updateCheckError}
       <DataUpdateCheckFailure
         checkedAt={catalog?.cached?.checkedAt}
@@ -527,6 +539,7 @@
                     disabled={dataImport.pending}
                     onclick={(event) => {
                       selected = { type: group.type, name: row.sourceName };
+                      downloadActionError = '';
                       opener = event.currentTarget;
                       detailsOpen = true;
                     }}
@@ -644,6 +657,19 @@
               </li>
             {/each}
           </ul>
+        {/if}
+        {#if downloadActionError}<p class="error" role="alert">{downloadActionError}</p>{/if}
+        {#if selectedDownload}<p role="status">{downloadStatus(selectedDownload)}</p>{/if}
+        {#if selectedUpdate}
+          <Button
+            loading={updatePending}
+            disabled={downloads === null ||
+              downloadError ||
+              (selectedDownload && selectedDownload.type !== 'failed')}
+            size="large"
+            style="width: 100%; margin-block-end: var(--space-4)"
+            onclick={() => startUpdates([selectedUpdate.path])}>{m.data_update()}</Button
+          >
         {/if}
         <Button
           disabled={activation.pending}

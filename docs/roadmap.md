@@ -40,6 +40,7 @@ documents for accepted behavior.
 - [ ] **flight-data-fields** — add a fixed-slot Flight View dock for the first altitude, speed, direction, and time values. _(needs: route-shell, frontend-protocol, units-settings)_
 - [x] **basemap-assets** — bundle the basemap style, glyphs, and sprites. _(needs: frontend-map)_
 - [x] **offline-basemap-serving** — scan the application data directory's `enroute` folder for MBTiles basemaps and serve the first matching vector tile. The map uses offline tiles only, with fixed Enroute zoom limits. _(needs: basemap-assets, resource-scheme)_
+- [x] **basemap-inventory** — retain basemap files and load errors in the native inventory. Honor per-file disabled markers at startup without opening disabled files. _(needs: offline-basemap-serving)_
 - [ ] **basemap-downloads** — download, update, and delete repository-backed basemap regions on the Map data screen. _(needs: offline-basemap-serving)_
 
 ## Scaffolding

@@ -12,11 +12,17 @@ generate and host its own basemaps.
 ## Files and lookup
 
 Place Enroute `.mbtiles` files in the `enroute` subdirectory of the application
-data directory. Updraft scans this directory at startup and opens files
-read-only, in filename order. Restart the application after changing files.
+data directory. Updraft scans this directory at startup and opens enabled files
+read-only. Restart the application after changing files.
 Files must remain intact while the application runs.
 
-Each tile request returns the first file that contains the requested tile.
+Files are enabled by default. An empty `France.mbtiles.disabled` marker
+beside `France.mbtiles` disables that basemap. Disabled files remain in the native inventory,
+but Updraft does not open or validate them. Remove the marker to enable the file
+on the next startup. Terrain markers do not affect basemaps.
+
+Each tile request returns the first enabled file in filename order that contains
+the requested tile.
 Updraft does not merge overlapping tiles. It converts XYZ row coordinates to
 the TMS convention used by MBTiles and decompresses gzip PBF data in the shell.
 File access and decompression run outside the core driver.
@@ -25,9 +31,10 @@ Lookup does not use geographic bounds. Tiles on either side of the antimeridian
 use their global tile coordinates. Metadata bounds cannot exclude edge tiles.
 
 The reader requires PBF format metadata and a compatible `tiles` table or view.
-It skips files that cannot be opened or have an unsupported format or schema.
-The log records these failures. A directory scan failure leaves the basemap
-empty and produces a warning.
+Files that cannot be opened or have an unsupported format or schema remain in
+the native inventory with their errors. They contribute no tiles. The log records
+these failures. A directory scan or disabled-marker access failure leaves the
+basemap empty and produces a warning.
 
 ## Display
 

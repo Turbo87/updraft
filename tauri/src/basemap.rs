@@ -1,9 +1,11 @@
 use anyhow::{Context, Result, ensure};
 use flate2::read::GzDecoder;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use std::collections::BTreeMap;
+use std::fs;
 use std::io::{ErrorKind, Read};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::{fs, path::Path};
 use tauri::http::{Response, StatusCode, header};
 use tauri::{AppHandle, Manager};
 
@@ -12,7 +14,14 @@ const TILE_QUERY: &str =
 
 #[derive(Default)]
 pub struct Basemaps {
-    files: Vec<Connection>,
+    files: BTreeMap<PathBuf, BasemapSource>,
+}
+
+#[derive(Debug)]
+enum BasemapSource {
+    Active(Connection),
+    Disabled,
+    Unavailable(anyhow::Error),
 }
 
 impl Basemaps {
@@ -22,7 +31,7 @@ impl Basemaps {
             Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Self::default()),
             Err(error) => return Err(error.into()),
         };
-        let mut paths = entries
+        let paths = entries
             .map(|entry| entry.map(|entry| entry.path()))
             .filter(|path| match path {
                 Ok(path) => path
@@ -31,15 +40,20 @@ impl Basemaps {
                 Err(_) => true,
             })
             .collect::<std::io::Result<Vec<_>>>()?;
-        paths.sort();
-        let mut files = Vec::new();
+        let mut files = BTreeMap::new();
         for path in paths {
-            match open_basemap(&path) {
-                Ok(connection) => files.push(connection),
-                Err(error) => {
-                    tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
+            let source = if path.with_extension("mbtiles.disabled").try_exists()? {
+                BasemapSource::Disabled
+            } else {
+                match open_basemap(&path) {
+                    Ok(connection) => BasemapSource::Active(connection),
+                    Err(error) => BasemapSource::Unavailable(error),
                 }
+            };
+            if let BasemapSource::Unavailable(error) = &source {
+                tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
             }
+            files.insert(path, source);
         }
         Ok(Self { files })
     }
@@ -60,7 +74,10 @@ impl Basemaps {
 
     fn tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Vec<u8>>> {
         let tms_y = (1_u32 << z) - 1 - y;
-        for connection in &self.files {
+        for source in self.files.values() {
+            let BasemapSource::Active(connection) = source else {
+                continue;
+            };
             let data: Option<Vec<u8>> = connection
                 .prepare_cached(TILE_QUERY)?
                 .query_row((z, x, tms_y), |row| row.get(0))

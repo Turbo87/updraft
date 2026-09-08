@@ -95,6 +95,16 @@ Resource projection and serialization run outside the core driver task. The
 core can own an immutable canonical dataset when domain queries need it. The
 shell owns platform storage and the frontend-specific resource representation.
 
+The shell loads a saved Enroute basemap catalog before starting one asynchronous
+refresh at startup. The retry command shares its refresh lock. HTTP, parsing,
+and cache-write failures retain the previous catalog and last-success time.
+The cache file is replaced atomically. Its modification time records the last
+successful refresh. Native status distinguishes missing data, refresh progress,
+and failure. Catalog UI is not implemented yet.
+Catalog HTTP requests have a 30-second timeout and a 4 MiB response limit.
+Rustls uses bundled Mozilla trust roots, with certificate and hostname
+verification enabled. The client does not require Android JVM verifier setup.
+
 The shell also reads offline Enroute MBTiles files and serves vector tiles
 under `updraft://localhost/basemap/`. SQLite access and gzip decompression run
 on blocking workers. The frontend uses Tauri's platform-specific resource URLs.

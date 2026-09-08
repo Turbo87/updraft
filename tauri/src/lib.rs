@@ -87,6 +87,7 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("updraft", updraft_uri::handle_updraft_uri)
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
+            enroute::catalog::refresh_enroute_catalog,
             basemap::commands::subscribe_basemaps,
             basemap::commands::unsubscribe_basemaps,
             basemap::commands::set_basemap_enabled,
@@ -129,6 +130,10 @@ pub fn run() {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);
             }
+            let catalog_path = app.path().app_data_dir()?.join("enroute-catalog.json");
+            let catalog = Arc::new(enroute::catalog::CatalogService::load(catalog_path));
+            app.manage(catalog.clone());
+            tauri::async_runtime::spawn(async move { catalog.refresh().await });
             let settings_file = settings::SettingsFile::new(app.path().app_config_dir()?);
             let snapshot = settings_file.load();
             let airspace_storage =

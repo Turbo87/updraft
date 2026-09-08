@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU64;
 use time::{Date, macros::format_description};
 
+pub mod catalog;
 mod regions;
 
 #[derive(Debug)]

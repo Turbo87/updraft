@@ -326,3 +326,92 @@ it('moves Add data from the footer to the header above 544px', async () => {
     await page.viewport(previous.width, previous.height);
   }
 });
+
+it.each([
+  { position: 'new below', statusFirst: false },
+  { position: 'new below', statusFirst: true },
+  { position: 'replacement below', statusFirst: false },
+  { position: 'replacement above', statusFirst: true },
+  { position: 'visible', statusFirst: false },
+  { position: 'new below', statusFirst: true, dataType: 'airspace' as const },
+  { position: 'replacement below', statusFirst: true, fails: true },
+])(
+  'reveals $position after import with statusFirst=$statusFirst',
+  async ({ position, statusFirst, dataType = 'waypoints', fails = false }) => {
+    let extension = dataType === 'airspace' ? 'txt' : 'cup';
+    let sources = Array.from({ length: 30 }, (_, i) => ({
+      type: 'disabled' as const,
+      sourceName: `file${String(i).padStart(2, '0')}.${extension}`,
+    }));
+    let sourceName =
+      position === 'new below'
+        ? `file30.${extension}`
+        : position === 'replacement below'
+          ? `file29.${extension}`
+          : `file00.${extension}`;
+    let selection = { selectionId: '1', dataType, sourceName };
+    let completion = Promise.withResolvers<typeof selection>();
+    let importer = {
+      selectDataFile: vi.fn().mockResolvedValue(selection),
+      importDataFile: vi.fn().mockReturnValue(completion.promise),
+      discardDataFile: vi.fn(),
+    };
+    let view = await render(DataLibrary, {
+      importer,
+      activation: activation(),
+      onRemove: vi.fn(),
+      airspace: { generation: 0, sources: [] },
+      waypoints: { generation: 0, sources: [] },
+      [dataType]: { generation: 1, sources },
+    });
+    let main = page.getByRole('main').element();
+    main.parentElement!.style.height = '320px';
+    if (position === 'replacement above') main.scrollTop = main.scrollHeight;
+    let initialScroll = main.scrollTop;
+    await page.getByRole('button', { name: 'Add data' }).click();
+    if (position !== 'new below')
+      await page.getByRole('button', { name: 'Replace file', exact: true }).click();
+    await expect.poll(() => importer.importDataFile.mock.calls.length).toBe(1);
+    let updated = {
+      generation: 2,
+      sources: [
+        ...sources.filter((source) => source.sourceName !== sourceName),
+        { type: 'unavailable' as const, sourceName, error: 'parseFailed' as const },
+      ],
+    };
+    if (statusFirst) {
+      await view.rerender({ [dataType]: updated });
+      expect(main.scrollTop).toBe(initialScroll);
+      if (fails) completion.reject(new Error('publication failed'));
+      else completion.resolve(selection);
+    } else {
+      completion.resolve(selection);
+      await expect.element(page.getByRole('button', { name: 'Add data' })).toBeEnabled();
+      expect(main.scrollTop).toBe(initialScroll);
+      await view.rerender({ [dataType]: updated });
+    }
+    let row = page.getByRole('button', {
+      name: `${sourceName} Imported · could not be parsed`,
+      exact: true,
+    });
+    await expect.element(row).toBeVisible();
+    if (position === 'visible' || fails) expect(main.scrollTop).toBe(initialScroll);
+    else
+      await expect
+        .poll(() => {
+          let edge: 'top' | 'bottom' = position === 'replacement above' ? 'top' : 'bottom';
+          return Math.abs(
+            Math.round(
+              row.element().getBoundingClientRect()[edge] - main.getBoundingClientRect()[edge],
+            ),
+          );
+        })
+        .toBe(0);
+    let finalScroll = main.scrollTop;
+    main.scrollTop = 0;
+    await view.rerender({ [dataType]: { ...updated, generation: 3 } });
+    expect(main.scrollTop).toBe(0);
+    if (position.includes('below') && !fails) expect(finalScroll).toBeGreaterThan(initialScroll);
+    await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+  },
+);

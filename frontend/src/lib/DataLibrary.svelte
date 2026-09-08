@@ -44,6 +44,7 @@
   let importPending = $state(false);
   let importError = $state('');
   let importSelection = $state<SelectedDataFile>();
+  let scrollTarget = $state<SelectedDataFile & { generation: number }>();
   let disposed = false;
   let importOpener: HTMLButtonElement | undefined;
 
@@ -83,8 +84,10 @@
   async function importFile(selection: SelectedDataFile) {
     importSelection = undefined;
     importPending = true;
+    let generation = (selection.dataType === 'airspace' ? airspace : waypoints).generation;
     try {
-      await importer.importDataFile(selection.selectionId);
+      let imported = await importer.importDataFile(selection.selectionId);
+      scrollTarget = { ...imported, generation };
     } catch {
       importError = m.data_import_failed();
     } finally {
@@ -93,6 +96,7 @@
   }
 
   async function selectFile() {
+    scrollTarget = undefined;
     importPending = true;
     importError = '';
     try {
@@ -234,6 +238,18 @@
           {#each group.sources.toSorted(compareSources) as source (source.sourceName)}
             {let enabled = $derived(activation.isEnabled(group.type, source))}
             <li
+              {@attach (element) => {
+                if (
+                  source.type === 'disabled' ||
+                  scrollTarget?.dataType !== group.type ||
+                  scrollTarget.sourceName !== source.sourceName
+                )
+                  return;
+                let status = group.type === 'airspace' ? airspace : waypoints;
+                if (status.generation <= scrollTarget.generation) return;
+                element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                scrollTarget = undefined;
+              }}
               class:disabled={!enabled}
               class:unavailable={source.type === 'unavailable' && enabled}
             >

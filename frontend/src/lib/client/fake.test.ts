@@ -1,6 +1,7 @@
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
+import type { EnrouteCatalogStatus } from './index';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -531,4 +532,39 @@ it('keeps terrain and basemap subscriptions independent', async () => {
   ]);
   await basemapSubscription.close();
   await terrainSubscription.close();
+});
+
+it('delivers cached catalog and refresh states until each subscription closes', async () => {
+  let client = new FakeClient();
+  let first = vi.fn();
+  let second = vi.fn();
+  let subscription = client.subscribeEnrouteCatalog(first);
+  expect(first).toHaveBeenCalledExactlyOnceWith({ cached: null, refreshing: false, error: false });
+  let status: EnrouteCatalogStatus = {
+    cached: {
+      entries: [
+        {
+          path: 'Europe/Malta.mbtiles',
+          countryCode: 'MT',
+          continent: 'europe',
+          size: 458752,
+          publicationDate: '2026-09-08',
+        },
+      ],
+      checkedAt: 1788825600000,
+    },
+    refreshing: true,
+    error: false,
+  };
+  client.emitEnrouteCatalog(status);
+  expect(first).toHaveBeenLastCalledWith(status);
+  let other = client.subscribeEnrouteCatalog(second);
+  expect(second).toHaveBeenCalledExactlyOnceWith(status);
+  await subscription.close();
+  await subscription.close();
+  let failed = { ...status, refreshing: false, error: true };
+  client.emitEnrouteCatalog(failed);
+  expect(first).toHaveBeenCalledTimes(2);
+  expect(second).toHaveBeenLastCalledWith(failed);
+  await other.close();
 });

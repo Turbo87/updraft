@@ -16,6 +16,8 @@ import type {
   ArrivalViewport,
   BasemapStatus,
   BasemapSubscription,
+  EnrouteCatalogStatus,
+  EnrouteCatalogSubscription,
   SelectedDataFile,
   TerrainStatus,
   TerrainSubscription,
@@ -50,6 +52,9 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 export class FakeClient implements UpdraftClient {
   #basemaps: BasemapStatus = { generation: 0, sources: [] };
   #basemapListeners = new Set<(status: BasemapStatus) => void>();
+
+  #enrouteCatalog: EnrouteCatalogStatus = { cached: null, refreshing: false, error: false };
+  #enrouteCatalogListeners = new Set<(status: EnrouteCatalogStatus) => void>();
 
   #terrain: TerrainStatus = { generation: 0, sources: [] };
   #terrainListeners = new Set<(status: TerrainStatus) => void>();
@@ -94,6 +99,26 @@ export class FakeClient implements UpdraftClient {
     this.#basemaps = status;
     for (let listener of this.#basemapListeners) listener(status);
   }
+
+  subscribeEnrouteCatalog(
+    onUpdate: (status: EnrouteCatalogStatus) => void,
+  ): EnrouteCatalogSubscription {
+    onUpdate(this.#enrouteCatalog);
+    this.#enrouteCatalogListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#enrouteCatalogListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitEnrouteCatalog(status: EnrouteCatalogStatus): void {
+    this.#enrouteCatalog = status;
+    for (let listener of this.#enrouteCatalogListeners) listener(status);
+  }
+
+  /** Tests and stories supply refresh outcomes through emitEnrouteCatalog(). */
+  async refreshEnrouteCatalog(): Promise<void> {}
 
   subscribeTerrain(onUpdate: (status: TerrainStatus) => void): TerrainSubscription {
     onUpdate(this.#terrain);

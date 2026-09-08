@@ -11,6 +11,8 @@ import type {
   ArrivalViewport,
   BasemapStatus,
   BasemapSubscription,
+  EnrouteCatalogStatus,
+  EnrouteCatalogSubscription,
   SelectedDataFile,
   TerrainStatus,
   TerrainSubscription,
@@ -52,6 +54,39 @@ export class TauriClient implements UpdraftClient {
         return closing;
       },
     };
+  }
+
+  subscribeEnrouteCatalog(
+    onUpdate: (status: EnrouteCatalogStatus) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteCatalogSubscription {
+    let channel = new Channel<EnrouteCatalogStatus>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_enroute_catalog', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_enroute_catalog', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
+  refreshEnrouteCatalog(): Promise<void> {
+    return invoke('refresh_enroute_catalog');
   }
 
   subscribeTerrain(

@@ -154,22 +154,37 @@ it('forwards data selection, import, and discard commands', async () => {
 });
 
 describe.each([
-  ['subscribeBasemaps', 'subscribe_basemaps', 'unsubscribe_basemaps', 'local.mbtiles'],
-  ['subscribeTerrain', 'subscribe_terrain', 'unsubscribe_terrain', 'local.terrain'],
-] as const)('%s', (method, subscribe, unsubscribe, sourceName) => {
-  it('delivers inventory status and closes native registration after pending startup', async () => {
+  [
+    'subscribeBasemaps',
+    'subscribe_basemaps',
+    'unsubscribe_basemaps',
+    { generation: 0, sources: [{ sourceName: 'local.mbtiles', type: 'active' }] },
+  ],
+  [
+    'subscribeTerrain',
+    'subscribe_terrain',
+    'unsubscribe_terrain',
+    { generation: 0, sources: [{ sourceName: 'local.terrain', type: 'active' }] },
+  ],
+  [
+    'subscribeEnrouteCatalog',
+    'subscribe_enroute_catalog',
+    'unsubscribe_enroute_catalog',
+    { cached: null, refreshing: true, error: false },
+  ],
+] as const)('%s', (method, subscribe, unsubscribe, status) => {
+  it('delivers status and closes native registration after pending startup', async () => {
     let start = Promise.withResolvers<void>();
     mocks.invoke.mockReturnValueOnce(start.promise).mockResolvedValue(undefined);
     let update = vi.fn();
     let error = vi.fn();
     let subscription = new TauriClient()[method](update, error);
     let channel = mocks.channels[0];
-    let status = { generation: 0, sources: [{ sourceName, type: 'active' }] };
     channel.onmessage(status);
     expect(update).toHaveBeenCalledExactlyOnceWith(status);
     let closing = subscription.close();
     expect(subscription.close()).toBe(closing);
-    channel.onmessage({ generation: 1, sources: [] });
+    channel.onmessage(status);
     expect(update).toHaveBeenCalledTimes(1);
     expect(mocks.invoke).toHaveBeenCalledTimes(1);
     start.resolve();
@@ -181,7 +196,7 @@ describe.each([
     expect(error).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])('handles inventory startup failure with closed=%s', async (closed) => {
+  it.each([false, true])('handles startup failure with closed=%s', async (closed) => {
     let start = Promise.withResolvers<void>();
     mocks.invoke.mockReturnValueOnce(start.promise);
     let error = vi.fn();
@@ -191,14 +206,14 @@ describe.each([
     let failure = new Error('subscription failed');
     start.reject(failure);
     await start.promise.catch(() => {});
-    mocks.channels[0].onmessage({ generation: 0, sources: [] });
+    mocks.channels[0].onmessage(status);
     expect(update).not.toHaveBeenCalled();
     await (closing ?? subscription.close());
     expect(error.mock.calls).toEqual(closed ? [] : [[failure]]);
     expect(mocks.invoke).toHaveBeenCalledTimes(1);
   });
 
-  it('propagates native inventory unsubscribe failures', async () => {
+  it('propagates native unsubscribe failures', async () => {
     mocks.invoke
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('unsubscribe failed'));
@@ -215,5 +230,16 @@ it('forwards terrain removal and propagates failures', async () => {
   expect(mocks.invoke.mock.calls).toEqual([
     ['remove_terrain', { sourceName: 'local.terrain' }],
     ['remove_terrain', { sourceName: 'local.terrain' }],
+  ]);
+});
+
+it('forwards catalog refresh and propagates failures', async () => {
+  let client = new TauriClient();
+  mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('refresh failed'));
+  await client.refreshEnrouteCatalog();
+  await expect(client.refreshEnrouteCatalog()).rejects.toThrow('refresh failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['refresh_enroute_catalog'],
+    ['refresh_enroute_catalog'],
   ]);
 });

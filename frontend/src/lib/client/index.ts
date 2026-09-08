@@ -24,6 +24,24 @@ export type TerrainStatus = {
   sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
 };
 export type TerrainSubscription = { close(): Promise<void> };
+export type EnrouteBasemapEntry = {
+  path: string;
+  countryCode: string;
+  continent: 'africa' | 'asia' | 'oceania' | 'europe' | 'northAmerica' | 'southAmerica';
+  size: number;
+  /** Publication date in YYYY-MM-DD format. */
+  publicationDate: string;
+};
+export type EnrouteCatalogStatus = {
+  cached: {
+    entries: EnrouteBasemapEntry[];
+    /** Unix timestamp in milliseconds. */
+    checkedAt: number;
+  } | null;
+  refreshing: boolean;
+  error: boolean;
+};
+export type EnrouteCatalogSubscription = { close(): Promise<void> };
 export type SelectedDataFile = {
   selectionId: string;
   sourceName: string;
@@ -49,6 +67,12 @@ export interface UpdraftClient {
     onUpdate: (status: TerrainStatus) => void,
     onError: (error: unknown) => void,
   ): TerrainSubscription;
+  /** Delivers cached catalog and refresh status. Reports registration failures through onError. */
+  subscribeEnrouteCatalog(
+    onUpdate: (status: EnrouteCatalogStatus) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteCatalogSubscription;
+  refreshEnrouteCatalog(): Promise<void>;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */
   subscribeArrivals(
     bounds: ArrivalViewport,

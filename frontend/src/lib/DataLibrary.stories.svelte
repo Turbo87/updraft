@@ -15,6 +15,10 @@
       catalog: null,
       onRetryCatalog: fn(),
       onCheckBasemapUpdates: fn(async () => []),
+      onReadBasemapDetails: fn(async () => ({
+        size: 61_000_000,
+        modifiedAt: Date.UTC(2026, 8, 8, 12),
+      })),
       onDownload: fn(),
       onCancelDownload: fn(),
       onRemove: fn(),

@@ -14,6 +14,7 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
+  BasemapFileDetails,
   BasemapStatus,
   BasemapSubscription,
   EnrouteCatalogStatus,
@@ -147,6 +148,10 @@ export class FakeClient implements UpdraftClient {
 
   async getEnrouteBasemapUpdates(): Promise<string[]> {
     return [];
+  }
+
+  async getBasemapFileDetails(): Promise<BasemapFileDetails> {
+    throw new Error('Installed file metadata is unavailable in the preview');
   }
 
   /** Tests and stories supply refresh outcomes through emitEnrouteCatalog(). */

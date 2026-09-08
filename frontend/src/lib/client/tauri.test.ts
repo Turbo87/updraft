@@ -288,3 +288,15 @@ it('waits for download acceptance and forwards cancellation and command failures
   await expect(client.downloadEnrouteBasemaps(paths)).rejects.toThrow('command failed');
   await expect(client.cancelEnrouteDownload(paths[0])).rejects.toThrow('command failed');
 });
+
+it('reads installed basemap metadata and propagates read failures', async () => {
+  let client = new TauriClient();
+  let details = { size: 1234, modifiedAt: 1000 };
+  mocks.invoke.mockResolvedValueOnce(details).mockRejectedValueOnce(new Error('read failed'));
+  expect(await client.getBasemapFileDetails('enroute/Europe/France.mbtiles')).toEqual(details);
+  await expect(client.getBasemapFileDetails('missing')).rejects.toThrow('read failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['get_basemap_file_details', { sourceName: 'enroute/Europe/France.mbtiles' }],
+    ['get_basemap_file_details', { sourceName: 'missing' }],
+  ]);
+});

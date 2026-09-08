@@ -39,6 +39,7 @@ it.each([
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
@@ -95,6 +96,7 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
@@ -158,6 +160,7 @@ it('opens live file details and confirms removal separately', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -222,6 +225,7 @@ it('groups and sorts sources without changing the input order', async () => {
   let component = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -277,6 +281,7 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
@@ -319,6 +324,7 @@ it('confirms a same-name replacement and discards cancellation', async () => {
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -354,6 +360,7 @@ it('imports a new dataset without confusing filenames in another group', async (
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -392,6 +399,7 @@ it('discards a picker result when the library has been closed', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -413,6 +421,7 @@ it('moves Add data from the footer to the header above 544px', async () => {
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -467,6 +476,7 @@ it.each([
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
@@ -552,6 +562,7 @@ it.each(['basemap', 'terrain'] as const)(
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
@@ -618,6 +629,7 @@ it.each([
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
@@ -642,6 +654,7 @@ it('keeps accessible IDs unique across Data library instances', async () => {
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
@@ -688,6 +701,7 @@ it('shows terrain activation details and keeps them current', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -745,6 +759,7 @@ function downloadProps() {
   return {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn().mockResolvedValue(undefined),
     onCancelDownload: vi.fn().mockResolvedValue(undefined),
@@ -824,6 +839,7 @@ it.each([false, true])(
     let path = 'Europe/Malta.mbtiles';
     let screen = await render(DataLibrary, {
       ...options,
+      onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn().mockResolvedValue([]),
       catalog: {
         cached: {
@@ -871,6 +887,7 @@ it('shows failed update checks and removes the notice after recovery', async () 
     catalog: { cached: null, refreshing: false, error: true },
     updateCheckError: true,
     onRetryCatalog,
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
@@ -924,6 +941,7 @@ it('opens updates, queues only idle updates, and retains disabled file details',
       })),
     },
     onRetryCatalog: vi.fn(),
+    onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload,
     onCancelDownload: vi.fn(),
@@ -994,10 +1012,11 @@ it('opens updates, queues only idle updates, and retains disabled file details',
 });
 
 it.each(['unavailable', 'active', 'disabled'] as const)(
-  'offers Download again only for an unavailable basemap (%s)',
+  'shows installed metadata and recovery for %s basemaps',
   async (type) => {
     let path = 'Europe/France.mbtiles';
     let onDownload = vi.fn().mockResolvedValue(undefined);
+    let onReadBasemapDetails = vi.fn().mockResolvedValue({ size: 61_000_000, modifiedAt: 0 });
     let screen = await render(DataLibrary, {
       catalog: {
         cached: {
@@ -1015,6 +1034,7 @@ it.each(['unavailable', 'active', 'disabled'] as const)(
         refreshing: false,
         error: false,
       },
+      onReadBasemapDetails,
       updates: [],
       basemaps: { generation: 1, sources: [{ sourceName: `enroute/${path}`, type }] },
       onRetryCatalog: vi.fn(),
@@ -1028,6 +1048,12 @@ it.each(['unavailable', 'active', 'disabled'] as const)(
       waypoints: { generation: 0, sources: [] },
     });
     await page.getByRole('button', { name: /^France.mbtiles/ }).click();
+    await expect
+      .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))
+      .toBeVisible();
+    expect(onReadBasemapDetails).toHaveBeenCalledWith(`enroute/${path}`);
+    await screen.rerender({ downloads: [] });
+    expect(onReadBasemapDetails).toHaveBeenCalledTimes(1);
     let action = page
       .getByRole('dialog')
       .getByRole('button', { name: 'Download again', exact: true });
@@ -1035,6 +1061,28 @@ it.each(['unavailable', 'active', 'disabled'] as const)(
       await expect.element(action).not.toBeInTheDocument();
       return;
     }
+    let obsolete = Promise.withResolvers<{ size: number; modifiedAt: number }>();
+    onReadBasemapDetails.mockReturnValueOnce(obsolete.promise);
+    await screen.rerender({
+      basemaps: { generation: 2, sources: [{ sourceName: `enroute/${path}`, type }] },
+    });
+    await expect.element(page.getByText('Loading file details…', { exact: true })).toBeVisible();
+    onReadBasemapDetails.mockRejectedValueOnce(new Error('read failed'));
+    await screen.rerender({
+      basemaps: { generation: 3, sources: [{ sourceName: `enroute/${path}`, type }] },
+    });
+    await expect
+      .element(page.getByRole('dialog').getByRole('alert'))
+      .toHaveTextContent('Could not read file details.');
+    await page.getByRole('dialog').getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect
+      .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))
+      .toBeVisible();
+    obsolete.resolve({ size: 1, modifiedAt: 0 });
+    await obsolete.promise;
+    await expect
+      .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))
+      .toBeVisible();
     onDownload.mockRejectedValueOnce(new Error('offline'));
     await action.click();
     await expect.element(page.getByRole('dialog').getByRole('alert')).toBeVisible();

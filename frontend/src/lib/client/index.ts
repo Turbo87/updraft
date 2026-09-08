@@ -19,6 +19,11 @@ export type BasemapStatus = {
   sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
 };
 export type BasemapSubscription = { close(): Promise<void> };
+export type BasemapFileDetails = {
+  size: number;
+  /** File modification time in Unix milliseconds. */
+  modifiedAt: number;
+};
 export type TerrainStatus = {
   generation: number;
   sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
@@ -87,6 +92,7 @@ export interface UpdraftClient {
   cancelEnrouteDownload(path: string): Promise<void>;
   refreshEnrouteCatalog(): Promise<void>;
   getEnrouteBasemapUpdates(): Promise<string[]>;
+  getBasemapFileDetails(sourceName: string): Promise<BasemapFileDetails>;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */
   subscribeArrivals(
     bounds: ArrivalViewport,

@@ -9,6 +9,7 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
+  BasemapFileDetails,
   BasemapStatus,
   BasemapSubscription,
   EnrouteCatalogStatus,
@@ -126,6 +127,10 @@ export class TauriClient implements UpdraftClient {
 
   getEnrouteBasemapUpdates(): Promise<string[]> {
     return invoke('get_enroute_basemap_updates');
+  }
+
+  getBasemapFileDetails(sourceName: string): Promise<BasemapFileDetails> {
+    return invoke('get_basemap_file_details', { sourceName });
   }
 
   refreshEnrouteCatalog(): Promise<void> {

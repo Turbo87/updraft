@@ -1,5 +1,6 @@
 <script lang="ts">
   import type {
+    BasemapFileDetails,
     BasemapStatus,
     EnrouteCatalogStatus,
     EnrouteDownloadStatus,
@@ -10,7 +11,7 @@
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
   import type { DataActivation } from './stores/data-activation.svelte';
 
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
   import { Dialog } from 'bits-ui';
 
@@ -41,6 +42,7 @@
     onCancelDownload: (path: string) => Promise<void>;
     onRetryCatalog: () => Promise<void>;
     onCheckBasemapUpdates: () => Promise<string[]>;
+    onReadBasemapDetails: (name: string) => Promise<BasemapFileDetails>;
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
@@ -68,6 +70,7 @@
     onCancelDownload,
     onRetryCatalog,
     onCheckBasemapUpdates,
+    onReadBasemapDetails,
     importer,
     airspace,
     waypoints,
@@ -242,6 +245,35 @@
       (download) => selected?.type === 'basemap' && selected.name === `enroute/${download.path}`,
     ),
   );
+  let fileDetails = $state.raw<BasemapFileDetails | null>(null);
+  let fileDetailsError = $state(false);
+  let fileDetailsRetry = $state(0);
+  let detailsName = $derived(
+    detailsOpen && selected?.type === 'basemap' ? selected.name : undefined,
+  );
+  let detailsGeneration = $derived(basemaps?.generation);
+  let readDetails = $derived(onReadBasemapDetails);
+  $effect(() => {
+    let name = detailsName;
+    let read = readDetails;
+    void detailsGeneration;
+    void fileDetailsRetry;
+    let active = true;
+    fileDetails = null;
+    fileDetailsError = false;
+    if (name)
+      untrack(() => read(name)).then(
+        (details) => {
+          if (active) fileDetails = details;
+        },
+        () => {
+          if (active) fileDetailsError = true;
+        },
+      );
+    return () => {
+      active = false;
+    };
+  });
 
   $effect(() => {
     if (!selectedSource) detailsOpen = false;
@@ -630,7 +662,33 @@
         {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
           <p class="error" role="alert">{m.data_activation_failed()}</p>
         {/if}
-        {#if selectedGroup.type === 'airspace' || selectedGroup.type === 'waypoints'}
+        {#if selectedGroup.type === 'basemap'}
+          <dl>
+            <div>
+              <dt>{m.data_source()}</dt>
+              <dd>Enroute</dd>
+            </div>
+            {#if fileDetails}
+              <div>
+                <dt>{m.data_file_size()}</dt>
+                <dd>{size(fileDetails.size)}</dd>
+              </div>
+              <div>
+                <dt>{m.data_downloaded_at()}</dt>
+                <dd>
+                  {new Intl.DateTimeFormat(getLocale(), {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(fileDetails.modifiedAt)}
+                </dd>
+              </div>
+            {/if}
+          </dl>
+          {#if fileDetailsError}
+            <p class="error" role="alert">{m.data_file_details_failed()}</p>
+            <Button variant="secondary" onclick={() => fileDetailsRetry++}>{m.retry()}</Button>
+          {:else if !fileDetails}<p role="status">{m.data_file_details_loading()}</p>{/if}
+        {:else if selectedGroup.type === 'airspace' || selectedGroup.type === 'waypoints'}
           <dl>
             <div>
               <dt>{m.data_source()}</dt>

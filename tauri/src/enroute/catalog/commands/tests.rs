@@ -88,11 +88,9 @@ fn available_updates_use_cached_catalog_and_report_read_failures_through_ipc() {
     ] {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("catalog.json");
-        assert_ok!(fs::write(
-            &path,
-            br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#
-        ));
         let relative = format!("Europe/Germany.{extension}");
+        let catalog = json!({"maps":[{"path":relative,"size":10,"time":"20260908"}]});
+        assert_ok!(fs::write(&path, serde_json::to_vec(&catalog).unwrap()));
         let installed = directory.path().join("enroute").join(&relative);
         assert_ok!(fs::create_dir_all(installed.parent().unwrap()));
         assert_ok!(fs::write(&installed, b"disabled"));
@@ -105,15 +103,6 @@ fn available_updates_use_cached_catalog_and_report_read_failures_through_ipc() {
         let basemaps = assert_ok!(crate::basemap::Basemaps::load(directory.path()));
         let terrain = assert_ok!(crate::terrain::Terrain::load(directory.path()));
         let service = Arc::new(CatalogService::load(path));
-        if extension == "terrain" {
-            let cached = service.status().cached.unwrap();
-            let mut entries = cached.entries.clone();
-            entries[0].path = "Europe/Germany.terrain";
-            service.state.lock().unwrap().cached = Some(Arc::new(super::super::CachedCatalog {
-                entries,
-                checked_at: cached.checked_at,
-            }));
-        }
         let app = tauri::test::mock_builder()
             .manage(service.clone())
             .manage(Arc::new(Mutex::new(basemaps)))

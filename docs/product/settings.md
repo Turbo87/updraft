@@ -121,7 +121,7 @@ Polar and reserve changes request new waypoint arrival calculations.
 The Data page lists imported files in Airspace and Waypoints groups and installed
 basemap and terrain files in Basemap and Terrain groups. The group order is
 Airspace, Waypoints, Basemap, then Terrain. Empty groups are hidden. Display names
-are sorted alphabetically within each group. Basemaps use country/region names
+are sorted alphabetically within each group. Basemaps and terrain use country/region names
 and show download date and installed size. Rows omit source prefixes.
 Active imported files show feature counts and waypoint warning counts. Disabled files show their disabled state.
 Unavailable imported files show a read, parse, or geometry error.
@@ -132,10 +132,10 @@ Select a file to open its details. The dialog shows source type, activation
 status, feature count, and current errors or waypoint warnings. Close, Escape,
 Back, and a tap outside dismiss the dialog. Back keeps the library open.
 
-Basemap details show an Enabled control and a load error when an enabled file
+Basemap and terrain details show an Enabled control and a load error when an enabled file
 is unavailable. They also show source, installed size, and download time.
-Available updates add Update. Unavailable catalogued basemaps offer Download
-again. Terrain details use the same Enabled control and show any load error.
+Available updates add Update. Unavailable catalogued files offer Download
+again.
 The app maintains basemap and terrain status across navigation.
 Loading and subscription failure messages are distinct from an empty inventory.
 
@@ -154,7 +154,8 @@ Remove from device closes the details and opens a confirmation. Cancel returns
 to the library. A removal failure stays in the confirmation with an error and
 allows another attempt. Removal is unavailable while an activation change is pending.
 
-Add data opens the country download catalog. Import custom file opens a
+Add data opens the country download catalog. Country pages separate Basemap and
+Terrain selections. Both use one shared download queue. Import custom file opens a
 single-file picker for OpenAir (`.txt`) and CUP (`.cup`) files from that catalog.
 The action appears in the footer through 544px and in the header above it.
 The library confirms replacement of an existing filename in the same dataset
@@ -165,7 +166,7 @@ After import, the library scrolls only as far as needed to reveal the file.
 It stays open and does not open details automatically. A visible file does not
 change the scroll position. Read failures do not replace installed files.
 
-The Settings Data row shows the available update count. The library reports
+The Settings Data row shows the available basemap and terrain update count. The library reports
 failed checks with the last successful check time and Retry. Available updates
 have a notice that opens Updates. Both views share file rows and transfer
 controls. Update all skips active and queued files. See [Basemap](basemap.md)

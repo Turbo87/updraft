@@ -129,6 +129,8 @@ documents for accepted behavior.
 
 ## Terrain
 
+- [x] **terrain-downloads** — manage Enroute terrain through the country catalog and shared download queue, with installed metadata, manual updates, cancellation, and recovery. Physical Android background and screen-lock validation remains pending. _(needs: basemap-downloads, terrain-hillshade)_
+
 - [x] **terrain-hillshade** — display offline Enroute terrain with Igor hillshade and installed source attribution. _(needs: offline-basemap-serving)_
 - [x] **terrain-colours** — show elevation colours beneath land cover from the same offline terrain source. _(needs: terrain-hillshade)_
 - [ ] **dem** — `libs/updraft_dem`: DEM tile format, elevation lookup, download manifest format. _(needs: geo)_
@@ -228,7 +230,7 @@ documents for accepted behavior.
 Online services use async effect adapters. Bulk imagery and datasets use the resource path. They do not run as compute jobs.
 
 - [ ] **connectivity** — online/offline detection and state in core, offline-first hooks (status indicator, queue-and-retry for uploads). _(needs: core-app)_
-- [ ] **data-downloads** — extend the basemap download facility with waypoint, airspace, and DEM data. Add more repositories with the first feature that needs each one. _(needs: basemap-downloads, connectivity)_
+- [ ] **data-downloads** — extend managed downloads with waypoint and airspace data. Add more repositories with the first feature that needs each one. _(needs: basemap-downloads, connectivity)_
 - [ ] **metar-taf** — METAR/TAF fetch, decode, map flags, QNH extraction. _(needs: core-app, frontend-map)_
 - [ ] **weather-overlays** — rain radar and satellite imagery overlays with time slider; forecast overlays (SkySight/TopMeteo) behind the same interface. _(needs: frontend-map)_
 - [ ] **map-inspector-weather** — add weather features and their time/context information to map-inspector results. _(needs: weather-overlays, map-inspector-waypoints)_

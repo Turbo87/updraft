@@ -63,7 +63,8 @@ failure shows an error instead of an empty library.
 
 ## Downloads and updates
 
-Add data opens the Enroute country catalog. All dataset selections start
+Add data opens the Enroute country catalog with separate Basemap and Terrain
+groups. Both types share the queue and update count. All dataset selections start
 unchecked. Current installed files cannot be selected again. Available updates
 can be selected, including updates to disabled files. Download accepts the
 selection into one FIFO queue and returns to the library. More files can be

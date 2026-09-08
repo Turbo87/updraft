@@ -14,7 +14,7 @@ fn parses_supported_regions_in_path_order() {
         {"path":"Asia/Japan.mbtiles", "size":600, "time":"20260801"},
         {"path":"Australia Oceanica/Australia.mbtiles", "size":700, "time":"20260801"},
         {"path":"South America/Falkland Islands.mbtiles", "size":800, "time":"20260801"},
-        {"path":"Europe/France.terrain"},
+        {"path":"Europe/France.geojson"},
         {"path":"Europe/Future Country.mbtiles", "size":-1, "time":"invalid"}
     ], "minAppVersion":"999", "url":"https://example.invalid"});
     let files = assert_ok!(parse_catalog(&serde_json::to_vec(&catalog).unwrap()));
@@ -82,4 +82,27 @@ fn bundled_regions_have_unique_paths_and_consistent_country_groups() {
             assert_eq!(previous, continent, "Inconsistent continent for {country}");
         }
     }
+}
+
+#[test]
+fn parses_terrain_and_basemap_entries_for_the_same_region() {
+    let catalog = json!({"maps":[
+        {"path":"Europe/France.mbtiles","size":20,"time":"20260908"},
+        {"path":"Europe/France.terrain","size":10,"time":"20260909"}
+    ]});
+    let files = assert_ok!(parse_catalog(&serde_json::to_vec(&catalog).unwrap()));
+    assert_eq!(files.len(), 2);
+    assert_eq!(files[1].path, "Europe/France.terrain");
+    assert_eq!(files[1].country_code, "FR");
+    assert_eq!(files[1].continent, Continent::Europe);
+    assert_eq!(files[1].size.get(), 10);
+    assert_eq!(
+        files[1].publication_date,
+        time::macros::date!(2026 - 09 - 09)
+    );
+    let entry = &catalog["maps"][1];
+    let duplicate = json!({"maps":[entry,entry]});
+    assert_err!(parse_catalog(&serde_json::to_vec(&duplicate).unwrap()));
+    let invalid = br#"{"maps":[{"path":"Europe/France.terrain","size":0,"time":"20260909"}]}"#;
+    assert_err!(parse_catalog(invalid));
 }

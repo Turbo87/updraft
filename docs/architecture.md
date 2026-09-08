@@ -95,7 +95,7 @@ Resource projection and serialization run outside the core driver task. The
 core can own an immutable canonical dataset when domain queries need it. The
 shell owns platform storage and the frontend-specific resource representation.
 
-The shell loads a saved Enroute basemap catalog before starting one asynchronous
+The shell loads a saved Enroute basemap and terrain catalog before starting one asynchronous
 refresh at startup. The retry command shares its refresh lock. HTTP, parsing,
 and cache-write failures retain the previous catalog and last-success time.
 The cache file is replaced atomically. Its modification time records the last
@@ -126,7 +126,7 @@ to cancel pending requests and discard cached tiles.
 Removal closes the SQLite connection before deleting the file and marker.
 Failures retain the inventory entry for retry and publish the remaining tile state.
 
-Rust owns one FIFO download queue. Transfers write temporary files and install
+Rust owns one FIFO download queue for basemaps and terrain. Transfers write temporary files and install
 completed files atomically. Installation and removal coordinate under the queue
 lock so a cancelled replacement cannot reinstall a removed dataset. Transfer
 failure preserves installed bytes. Progress notifications have a 100 ms minimum
@@ -140,7 +140,8 @@ elevation colours.
 The terrain inventory retains disabled and unavailable files. Only active files
 contribute tiles and metadata. Startup validation establishes one tile size from
 the first valid enabled file with tiles and excludes incompatible files.
-Validated metadata remains in memory until activation changes or restart.
+Validated metadata remains in memory until activation, installation, removal,
+or restart.
 Disabled markers prevent files from being opened or validated.
 Terrain status subscriptions send the initial inventory under the same lock
 that registers the channel. The payload contains a generation number, managed

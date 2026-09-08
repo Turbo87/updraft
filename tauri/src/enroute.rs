@@ -1,4 +1,4 @@
-//! Enroute basemap catalog parsing and country assignments.
+//! Enroute basemap and terrain catalog parsing and country assignments.
 
 use anyhow::{Context, Result, ensure};
 use serde::Deserialize;
@@ -57,7 +57,7 @@ struct Entry {
     time: String,
 }
 
-/// Returns supported basemaps in catalog-path order. Unknown paths are omitted.
+/// Returns supported basemaps and terrain files in catalog-path order. Unknown paths are omitted.
 ///
 /// Malformed catalog structure, invalid supported entries, and duplicate
 /// supported paths return an error. Download locations come from the bundled

@@ -12,7 +12,7 @@ Basemaps use managed paths in application data, such as
 `enroute/Europe/Germany.mbtiles`. The provider and complete catalog-relative path
 identify a dataset. Updraft scans nested files at startup and opens enabled files
 read-only. Flat development files in `enroute` are ignored without migration.
-Symlinks are excluded. Download installation is not implemented yet.
+Symlinks are excluded. Files are installed through the managed download catalog.
 
 Files are enabled by default. An empty `France.mbtiles.disabled` marker
 beside `France.mbtiles` disables that basemap. Disabled files remain in the native inventory,
@@ -39,6 +39,9 @@ basemap empty and produces a warning.
 
 Settings → Data lists installed basemap filenames and their disabled or
 unavailable states. Select a file to see its enabled state and any load error.
+Details also show Enroute as the source, installed file size, and modification
+time as Downloaded. Metadata reads do not open disabled files. Read failures
+offer Retry. The current catalog date does not identify the installed version.
 Commands use the full managed identity. Equal filenames in different regions
 have independent activation and removal state.
 The Enabled control saves the choice and refreshes the map. Disabled files are
@@ -51,6 +54,40 @@ succeeds. Its deleted tiles no longer contribute to the map.
 
 The app maintains the native status subscription across navigation. A subscription
 failure shows an error instead of an empty library.
+
+## Downloads and updates
+
+Add data opens the Enroute country catalog. All dataset selections start
+unchecked. Current installed files cannot be selected again. Available updates
+can be selected, including updates to disabled files. Download accepts the
+selection into one FIFO queue and returns to the library. More files can be
+queued while a transfer runs.
+
+The app refreshes the cached catalog at startup. A failed check retains the
+cache and last successful check time and offers Retry. Nothing polls while the
+library is open. A catalog publication date after the installed modification
+time means an update is available. Size differences do not indicate updates.
+Updates are manual. The library notice opens Updates, where each row offers
+Update and Update all skips queued or active transfers. Settings shows the
+available count. No available updates produce no notice or count.
+
+Downloads stream to temporary files and install atomically. Byte-progress
+notifications are limited to one per 100 ms. Queue changes publish immediately.
+Cancel discards the partial file and advances the queue. Transfer or write
+failure preserves the installed file. Failed rows offer Retry and remain until
+success or app restart. Restart does not restore the queue or resume transfers.
+
+Installation does not validate the database first. New files start enabled.
+Updates and Download again retain activation. Enabled invalid files remain
+installed with a load error. Disabled files stay unopened. Unavailable basemap
+details offer Download again when the file remains in the catalog, without an
+update-date requirement. Removal cancels a queued or active replacement before
+deleting the installed file. Installation refreshes map resources and preserves
+the camera.
+
+Download-only Android background execution without a working location or
+connected-device session is unsupported. Background and screen-lock validation
+on a physical Android device remains pending.
 
 ## Display
 
@@ -72,9 +109,9 @@ cancel pending requests. It restores the layer order and preserves the camera.
 
 The About screen credits OpenStreetMap contributors, Enroute Flight Navigation,
 and Akaflieg Freiburg. Zoom limits and attribution are fixed in the style.
-The shell does not expose a basemap metadata endpoint.
+The shell exposes installed file size and modification time through a command.
 
 ## Excluded behavior
 
-This version does not include file import controls, downloads, file watching,
+This version does not include custom basemap import, file watching,
 online fallback, raster basemaps, or support for arbitrary vector tile schemas.

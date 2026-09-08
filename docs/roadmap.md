@@ -41,7 +41,7 @@ documents for accepted behavior.
 - [x] **basemap-assets** — bundle the basemap style, glyphs, and sprites. _(needs: frontend-map)_
 - [x] **offline-basemap-serving** — scan the application data directory's `enroute` folder for MBTiles basemaps and serve the first matching vector tile. The map uses offline tiles only, with fixed Enroute zoom limits. _(needs: basemap-assets, resource-scheme)_
 - [x] **basemap-inventory** — retain basemap files and load errors in the native inventory. Honor per-file disabled markers at startup without opening disabled files. _(needs: offline-basemap-serving)_
-- [ ] **basemap-downloads** — download, update, and delete repository-backed basemap regions on the Map data screen. _(needs: offline-basemap-serving)_
+- [x] **basemap-downloads** — manage Enroute basemaps in Settings → Data, with country selection, a download queue, manual updates, cancellation, recovery, and file details. Physical Android background and screen-lock validation remains pending. _(needs: offline-basemap-serving)_
 
 ## Scaffolding
 

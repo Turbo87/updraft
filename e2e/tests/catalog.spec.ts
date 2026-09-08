@@ -95,7 +95,7 @@ test('selects a country update, handles failure, and returns to the library', as
   await expect(page.getByRole('heading', { name: 'Add data', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Malta', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Malta', exact: true })).toBeVisible();
-  await expect(page.getByText('Sep 8, 2026', { exact: false })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Sep 8, 2026', { exact: false })).toBeVisible();
   await page.evaluate(() => history.back());
   await expect(page.getByRole('heading', { name: 'Add data', exact: true })).toBeVisible();
   await page.evaluate(() => history.back());
@@ -240,4 +240,70 @@ test('queues France while Germany continues downloading', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: 'Cancel download: Germany.mbtiles', exact: true }),
   ).toBeVisible();
+});
+
+test('carries startup update results through file replacement and settings navigation', async ({
+  page,
+}) => {
+  await page.goto('/settings?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.evaluate(() => {
+    let fake = (window as TestWindow).__updraftFake!;
+    let path = 'Europe/France.mbtiles';
+    fake.getEnrouteBasemapUpdates = async () => [path];
+    fake.getBasemapFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
+    (window as TestWindow).__updraftApp!.client.downloadEnrouteBasemaps = async (paths) => {
+      if (paths.length !== 1 || paths[0] !== path) throw new Error('Unexpected update selection');
+      fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
+    };
+    fake.emitBasemaps({
+      generation: 1,
+      sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
+    });
+    fake.emitEnrouteCatalog({
+      cached: {
+        checkedAt: 1000,
+        entries: [
+          {
+            path,
+            countryCode: 'FR',
+            continent: 'europe',
+            size: 2_000_000,
+            publicationDate: '2026-09-08',
+          },
+        ],
+      },
+      refreshing: false,
+      error: false,
+    });
+  });
+  await page.getByRole('link', { name: 'Data 1 update', exact: true }).click();
+  await page.getByRole('button', { name: '1 update available', exact: true }).click();
+  await page.getByRole('button', { name: /^France.mbtiles/ }).click();
+  let dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('1 MB', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
+  await dialog.getByRole('button', { name: 'Update', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Update', exact: true })).toBeDisabled();
+  await page.evaluate(() => {
+    let fake = (window as TestWindow).__updraftFake!;
+    fake.getEnrouteBasemapUpdates = async () => [];
+    fake.getBasemapFileDetails = async () => ({
+      size: 2_000_000,
+      modifiedAt: Date.UTC(2026, 8, 8),
+    });
+    fake.emitBasemaps({
+      generation: 2,
+      sources: [{ sourceName: 'enroute/Europe/France.mbtiles', type: 'disabled' }],
+    });
+    fake.emitEnrouteDownloads([]);
+  });
+  await expect(dialog.getByText('2 MB', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
+  await expect(dialog.getByRole('button', { name: 'Update', exact: true })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByText('No updates available', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to data', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
 });

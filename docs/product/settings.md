@@ -132,7 +132,9 @@ status, feature count, and current errors or waypoint warnings. Close, Escape,
 Back, and a tap outside dismiss the dialog. Back keeps the library open.
 
 Basemap details show an Enabled control and a load error when an enabled file
-is unavailable. Terrain details use the same control and show any load error.
+is unavailable. They also show source, installed size, and download time.
+Available updates add Update. Unavailable catalogued basemaps offer Download
+again. Terrain details use the same Enabled control and show any load error.
 The app maintains basemap and terrain status across navigation.
 Loading and subscription failure messages are distinct from an empty inventory.
 
@@ -151,7 +153,8 @@ Remove from device closes the details and opens a confirmation. Cancel returns
 to the library. A removal failure stays in the confirmation with an error and
 allows another attempt. Removal is unavailable while an activation change is pending.
 
-Add data opens a single-file picker for OpenAir (`.txt`) and CUP (`.cup`) files.
+Add data opens the country download catalog. Import custom file opens a
+single-file picker for OpenAir (`.txt`) and CUP (`.cup`) files from that catalog.
 The action appears in the footer through 544px and in the header above it.
 The library confirms replacement of an existing filename in the same dataset
 type. Cancel keeps the installed file. Import enables the selected file even
@@ -160,6 +163,12 @@ when parsing fails. The library shows parsing errors in the row and details.
 After import, the library scrolls only as far as needed to reveal the file.
 It stays open and does not open details automatically. A visible file does not
 change the scroll position. Read failures do not replace installed files.
+
+The Settings Data row shows the available update count. The library reports
+failed checks with the last successful check time and Retry. Available updates
+have a notice that opens Updates. Both views share file rows and transfer
+controls. Update all skips active and queued files. See [Basemap](basemap.md)
+for catalog, installation, cancellation, and update behavior.
 
 ## About
 

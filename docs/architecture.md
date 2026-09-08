@@ -100,7 +100,8 @@ refresh at startup. The retry command shares its refresh lock. HTTP, parsing,
 and cache-write failures retain the previous catalog and last-success time.
 The cache file is replaced atomically. Its modification time records the last
 successful refresh. Native status distinguishes missing data, refresh progress,
-and failure. Catalog UI is not implemented yet.
+and failure. The frontend shares catalog and download subscriptions across
+navigation. Country selection and the library submit paths to the native queue.
 Catalog HTTP requests have a 30-second timeout and a 4 MiB response limit.
 Rustls uses bundled Mozilla trust roots, with certificate and hostname
 verification enabled. The client does not require Android JVM verifier setup.
@@ -124,6 +125,13 @@ shell rejects stale generations, and the frontend replaces the basemap source
 to cancel pending requests and discard cached tiles.
 Removal closes the SQLite connection before deleting the file and marker.
 Failures retain the inventory entry for retry and publish the remaining tile state.
+
+Rust owns one FIFO download queue. Transfers write temporary files and install
+completed files atomically. Installation and removal coordinate under the queue
+lock so a cancelled replacement cannot reinstall a removed dataset. Transfer
+failure preserves installed bytes. Progress notifications have a 100 ms minimum
+interval. Queue transitions publish immediately. The frontend queries installed
+timestamps for update availability and filesystem metadata for file details.
 
 Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under

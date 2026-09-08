@@ -248,7 +248,9 @@ test('propagates airspace status and invokes data selection through the client',
 
   await expect(page.getByText('No data on this device')).toBeVisible();
   await page.getByRole('button', { name: 'Add data' }).click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as TestWindow).__dataSelectionCalls)).toBe(1);
+  await page.getByRole('button', { name: 'Back to data', exact: true }).click();
 
   await page.evaluate(() => {
     (window as TestWindow).__updraftFake?.emit({
@@ -414,6 +416,7 @@ test('the Data library imports through the client and shows published parsing er
     };
   });
   await page.getByRole('button', { name: 'Add data' }).click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
   let row = page.getByRole('button', { name: /broken.cup/ });
   await expect(row).toContainText('Imported · could not be parsed');
   await expect(page).toHaveURL(/\/settings\/data\?testMode=1$/);

@@ -67,7 +67,9 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
   let routes = [
     ['Language', '/settings/language'],
     ['Units', '/settings/units'],
+    ['Data', '/settings/data'],
     ['Airspace', '/settings/airspace'],
+    ['Waypoints', '/settings/waypoints'],
     ['External devices', '/settings/devices'],
     ['About', '/settings/about'],
   ] as const;
@@ -314,4 +316,30 @@ test('keeps bugs and ballast during navigation and resets them on restart', asyn
   await page.goto('/settings/flight-controls?testMode=1');
   await expect(bugs).toHaveValue('0');
   await expect(ballast).toHaveValue('0');
+});
+
+test('the Data library reads live source statuses on a direct visit', async ({ page }) => {
+  await page.goto('/settings/data?testMode=1');
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await page.reload();
+  await page.evaluate(() => {
+    let client = (window as TestWindow).__updraftFake!;
+    client.emit({
+      topic: 'airspace',
+      value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] },
+    });
+    client.emit({
+      topic: 'waypoints',
+      value: {
+        generation: 1,
+        sources: [{ type: 'active', sourceName: 'local.cup', waypointCount: 2, warnings: [] }],
+      },
+    });
+  });
+  await expect(page.getByRole('heading', { name: 'local.txt', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'local.cup', exact: true })).toBeVisible();
+  await expect(page.getByText('Disabled', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Data', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'local.cup', exact: true })).toBeVisible();
 });

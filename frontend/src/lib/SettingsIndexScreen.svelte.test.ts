@@ -16,7 +16,7 @@ describe('SettingsIndexScreen.svelte', () => {
       let nav = page.getByRole('navigation', { name: 'Settings' }).element();
       let navBounds = nav.getBoundingClientRect();
       let links = [...nav.querySelectorAll('a')];
-      expect(links).toHaveLength(8);
+      expect(links).toHaveLength(9);
       expect(navBounds.left).toBe((width - Math.min(width, 544)) / 2 + 20);
       expect(navBounds.right).toBe(width - navBounds.left);
       for (let [index, link] of links.entries()) {
@@ -54,6 +54,12 @@ describe('SettingsIndexScreen.svelte', () => {
     await expect
       .element(page.getByRole('link', { name: 'Flight controls' }))
       .toHaveAttribute('href', '/settings/flight-controls');
+    await expect
+      .element(page.getByRole('link', { name: 'Data', exact: true }))
+      .toHaveAttribute('href', '/settings/data');
+    await expect
+      .element(page.getByRole('link', { name: 'Waypoints', exact: true }))
+      .toHaveAttribute('href', '/settings/waypoints');
     await expect.element(page.getByRole('spinbutton')).not.toBeInTheDocument();
     await expect
       .element(page.getByRole('link', { name: 'Airspace' }))

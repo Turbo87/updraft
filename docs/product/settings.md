@@ -14,7 +14,9 @@ current settings topic and sends typed commands for changes.
 - `/settings/units`
 - `/settings/glide`
 - `/settings/flight-controls`
+- `/settings/data`
 - `/settings/airspace`
+- `/settings/waypoints`
 - `/settings/devices`
 - `/settings/about`
 
@@ -115,6 +117,18 @@ values. Opening the page does not change the stored precision. The core stores
 metres and accepts only finite, nonnegative values. A settings file without a
 reserve uses the default.
 Polar and reserve changes request new waypoint arrival calculations.
+
+## Installed data
+
+The Data page lists imported files in Airspace and Waypoints groups. Empty
+groups are hidden. Filenames are sorted alphabetically within each group.
+Active files show feature counts and waypoint warning counts. Disabled files
+show their disabled state. Unavailable files show a read, parse, or geometry error.
+The page updates when source status changes.
+
+The library is currently read-only. The Airspace and Waypoints pages provide
+import, replacement, and removal controls. An empty library explains where to
+import files.
 
 ## Airspace source
 

@@ -341,5 +341,19 @@
   "waypoint_loading": "Loading waypoints…",
   "waypoint_not_found": "This waypoint is no longer available.",
   "waypoint_load_failed": "Could not load waypoints.",
-  "waypoint_none_nearby": "No nearby waypoints."
+  "waypoint_none_nearby": "No nearby waypoints.",
+  "data_heading": "Data",
+  "data_imported": "Imported",
+  "data_disabled": "Disabled",
+  "data_empty": "No data on this device",
+  "data_empty_hint": "Import OpenAir or CUP files from the Airspace or Waypoints settings.",
+  "data_read_failed": "Imported · could not be read",
+  "data_parse_failed": "Imported · could not be parsed",
+  "data_geometry_failed": "Imported · invalid geometry",
+  "data_airspace_one": "1 airspace",
+  "data_airspaces": "{count} airspaces",
+  "data_waypoint_one": "1 waypoint",
+  "data_waypoints": "{count} waypoints",
+  "data_warning_one": "1 warning",
+  "data_warnings": "{count} warnings"
 }

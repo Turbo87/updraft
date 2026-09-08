@@ -341,5 +341,19 @@
   "waypoint_loading": "Wegpunkte werden geladen…",
   "waypoint_not_found": "Dieser Wegpunkt ist nicht mehr verfügbar.",
   "waypoint_load_failed": "Wegpunkte konnten nicht geladen werden.",
-  "waypoint_none_nearby": "Keine Wegpunkte in der Nähe."
+  "waypoint_none_nearby": "Keine Wegpunkte in der Nähe.",
+  "data_heading": "Daten",
+  "data_imported": "Importiert",
+  "data_disabled": "Deaktiviert",
+  "data_empty": "Keine Daten auf diesem Gerät",
+  "data_empty_hint": "OpenAir- oder CUP-Dateien können in den Luftraum- oder Wegpunkteinstellungen importiert werden.",
+  "data_read_failed": "Importiert · konnte nicht gelesen werden",
+  "data_parse_failed": "Importiert · konnte nicht verarbeitet werden",
+  "data_geometry_failed": "Importiert · ungültige Geometrie",
+  "data_airspace_one": "1 Luftraum",
+  "data_airspaces": "{count} Lufträume",
+  "data_waypoint_one": "1 Wegpunkt",
+  "data_waypoints": "{count} Wegpunkte",
+  "data_warning_one": "1 Warnung",
+  "data_warnings": "{count} Warnungen"
 }

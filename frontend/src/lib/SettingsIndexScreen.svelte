@@ -35,6 +35,14 @@
     </Card>
     <Card>
       <ListRow
+        href="/settings/data"
+        icon="i-mdi-database-outline"
+        label={m.data_heading()}
+        size="large"
+      />
+    </Card>
+    <Card>
+      <ListRow
         href="/settings/waypoints"
         icon="i-mdi-map-marker"
         label={m.waypoints_heading()}

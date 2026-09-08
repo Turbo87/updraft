@@ -19,6 +19,11 @@ export type BasemapStatus = {
   sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
 };
 export type BasemapSubscription = { close(): Promise<void> };
+export type TerrainStatus = {
+  generation: number;
+  sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
+};
+export type TerrainSubscription = { close(): Promise<void> };
 export type SelectedDataFile = {
   selectionId: string;
   sourceName: string;
@@ -39,6 +44,11 @@ export interface UpdraftClient {
     onUpdate: (status: BasemapStatus) => void,
     onError: (error: unknown) => void,
   ): BasemapSubscription;
+  /** Delivers terrain inventory snapshots. Reports registration failures through onError. */
+  subscribeTerrain(
+    onUpdate: (status: TerrainStatus) => void,
+    onError: (error: unknown) => void,
+  ): TerrainSubscription;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */
   subscribeArrivals(
     bounds: ArrivalViewport,

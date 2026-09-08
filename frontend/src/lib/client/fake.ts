@@ -17,6 +17,8 @@ import type {
   BasemapStatus,
   BasemapSubscription,
   SelectedDataFile,
+  TerrainStatus,
+  TerrainSubscription,
   TopicListener,
   UpdraftClient,
 } from './index';
@@ -48,6 +50,9 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 export class FakeClient implements UpdraftClient {
   #basemaps: BasemapStatus = { generation: 0, sources: [] };
   #basemapListeners = new Set<(status: BasemapStatus) => void>();
+
+  #terrain: TerrainStatus = { generation: 0, sources: [] };
+  #terrainListeners = new Set<(status: TerrainStatus) => void>();
 
   #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
   #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
@@ -88,6 +93,21 @@ export class FakeClient implements UpdraftClient {
   emitBasemaps(status: BasemapStatus): void {
     this.#basemaps = status;
     for (let listener of this.#basemapListeners) listener(status);
+  }
+
+  subscribeTerrain(onUpdate: (status: TerrainStatus) => void): TerrainSubscription {
+    onUpdate(this.#terrain);
+    this.#terrainListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#terrainListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitTerrain(status: TerrainStatus): void {
+    this.#terrain = status;
+    for (let listener of this.#terrainListeners) listener(status);
   }
 
   async setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void> {

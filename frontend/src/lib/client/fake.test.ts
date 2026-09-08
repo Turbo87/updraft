@@ -488,24 +488,47 @@ it.each(['airspace', 'waypoints'] as const)(
   },
 );
 
-it('delivers current basemap status and updates until each subscription closes', async () => {
+it.each([
+  ['subscribeBasemaps', 'emitBasemaps', 'local.mbtiles'],
+  ['subscribeTerrain', 'emitTerrain', 'local.terrain'],
+] as const)(
+  'delivers current status and updates until each %s closes',
+  async (subscribe, emit, sourceName) => {
+    let client = new FakeClient();
+    let first = vi.fn();
+    let second = vi.fn();
+    let subscription = client[subscribe](first);
+    expect(first).toHaveBeenCalledExactlyOnceWith({ generation: 0, sources: [] });
+    let status = {
+      generation: 1,
+      sources: [{ sourceName, type: 'disabled' as const }],
+    };
+    client[emit](status);
+    expect(first).toHaveBeenLastCalledWith(status);
+    let other = client[subscribe](second);
+    expect(second).toHaveBeenCalledExactlyOnceWith(status);
+    await subscription.close();
+    await subscription.close();
+    client[emit]({ generation: 2, sources: [] });
+    expect(first).toHaveBeenCalledTimes(2);
+    expect(second).toHaveBeenLastCalledWith({ generation: 2, sources: [] });
+    await other.close();
+  },
+);
+
+it('keeps terrain and basemap subscriptions independent', async () => {
   let client = new FakeClient();
-  let first = vi.fn();
-  let second = vi.fn();
-  let subscription = client.subscribeBasemaps(first);
-  expect(first).toHaveBeenCalledExactlyOnceWith({ generation: 0, sources: [] });
-  let status = {
-    generation: 1,
-    sources: [{ sourceName: 'local.mbtiles', type: 'disabled' as const }],
-  };
-  client.emitBasemaps(status);
-  expect(first).toHaveBeenLastCalledWith(status);
-  let other = client.subscribeBasemaps(second);
-  expect(second).toHaveBeenCalledExactlyOnceWith(status);
-  await subscription.close();
-  await subscription.close();
-  client.emitBasemaps({ generation: 2, sources: [] });
-  expect(first).toHaveBeenCalledTimes(2);
-  expect(second).toHaveBeenLastCalledWith({ generation: 2, sources: [] });
-  await other.close();
+  let basemaps = vi.fn();
+  let terrain = vi.fn();
+  let basemapSubscription = client.subscribeBasemaps(basemaps);
+  let terrainSubscription = client.subscribeTerrain(terrain);
+  client.emitTerrain({ generation: 2, sources: [] });
+  expect(basemaps).toHaveBeenCalledExactlyOnceWith({ generation: 0, sources: [] });
+  client.emitBasemaps({ generation: 1, sources: [] });
+  expect(terrain.mock.calls).toEqual([
+    [{ generation: 0, sources: [] }],
+    [{ generation: 2, sources: [] }],
+  ]);
+  await basemapSubscription.close();
+  await terrainSubscription.close();
 });

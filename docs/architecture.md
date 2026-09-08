@@ -123,6 +123,9 @@ Terrain status subscriptions send the initial inventory under the same lock
 that registers the channel. The payload contains a generation number, filenames,
 and active, disabled, or unavailable states. Paths and diagnostic errors stay
 in the shell. Unsubscribe removes only the requested channel and is idempotent.
+The frontend client exposes terrain status through this channel. Closing stops
+local delivery immediately and waits for registration before native unsubscribe.
+The fake client retains the latest terrain status for new subscribers.
 
 ## State ownership
 

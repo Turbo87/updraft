@@ -12,6 +12,8 @@ import type {
   BasemapStatus,
   BasemapSubscription,
   SelectedDataFile,
+  TerrainStatus,
+  TerrainSubscription,
   TopicListener,
   UpdraftClient,
 } from './index';
@@ -46,6 +48,35 @@ export class TauriClient implements UpdraftClient {
         channel.onmessage = () => {};
         closing = ready.then(async (registered) => {
           if (registered) await invoke('unsubscribe_basemaps', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
+  subscribeTerrain(
+    onUpdate: (status: TerrainStatus) => void,
+    onError: (error: unknown) => void,
+  ): TerrainSubscription {
+    let channel = new Channel<TerrainStatus>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_terrain', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_terrain', { channelId: channel.id });
         });
         return closing;
       },

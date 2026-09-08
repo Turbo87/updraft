@@ -34,6 +34,7 @@
     catalog: EnrouteCatalogStatus | null;
     catalogError?: boolean;
     updateCheckError?: boolean;
+    updates?: string[] | null;
     downloads?: EnrouteDownloadStatus[] | null;
     downloadError?: boolean;
     onDownload: (paths: string[]) => Promise<void>;
@@ -60,6 +61,7 @@
     catalog,
     catalogError = false,
     updateCheckError = false,
+    updates = null,
     downloads = [],
     downloadError = false,
     onDownload,
@@ -77,6 +79,22 @@
     activation,
   }: Props = $props();
   let catalogOpen = $state(false);
+  let updatesOpen = $state(false);
+  let updatePending = $state(false);
+  let libraryScroll = 0;
+  let availableUpdates = $derived(
+    catalog?.cached?.entries.filter(
+      (entry) =>
+        updates?.includes(entry.path) &&
+        basemaps?.sources.some((source) => source.sourceName === `enroute/${entry.path}`),
+    ) ?? [],
+  );
+  let idleUpdates = $derived(
+    availableUpdates.filter(
+      (entry) =>
+        !downloads?.some((download) => download.path === entry.path && download.type !== 'failed'),
+    ),
+  );
   let catalogCountry = $state<string>();
   let acceptedDownloads = $state<string[] | null>(null);
   let requestedDownloads: string[] = [];
@@ -132,6 +150,15 @@
           .find((button) => button.checkVisibility())
           ?.focus({ preventScroll: true });
       });
+    } else if (updatesOpen) {
+      updatesOpen = false;
+      void tick().then(() => {
+        let main = libraryContainer.querySelector('main')!;
+        main.scrollTop = libraryScroll;
+        (libraryContainer.querySelector<HTMLButtonElement>('.update-notice') ?? main).focus({
+          preventScroll: true,
+        });
+      });
     } else return false;
     return true;
   }
@@ -179,6 +206,23 @@
   );
 
   const selectedGroup = $derived(groups.find((group) => group.type === selected?.type));
+  let visibleGroups = $derived(
+    updatesOpen
+      ? groups.filter((group) => group.type === 'basemap' && availableUpdates.length > 0)
+      : groups,
+  );
+
+  async function startUpdates(paths: string[]) {
+    updatePending = true;
+    downloadActionError = '';
+    try {
+      await onDownload(paths);
+    } catch {
+      downloadActionError = m.data_download_start_failed();
+    } finally {
+      updatePending = false;
+    }
+  }
   const selectedSource = $derived<Source | undefined>(
     selectedGroup?.sources.find((source) => source.sourceName === selected?.name),
   );
@@ -227,6 +271,10 @@
       if (!sources.some((source) => source.sourceName === sourceName))
         rows.push({ sourceName, download });
     }
+    if (updatesOpen)
+      rows = rows.filter((row) =>
+        availableUpdates.some((entry) => row.sourceName === `enroute/${entry.path}`),
+      );
     return rows.toSorted((a, b) =>
       displayName(a, type).localeCompare(displayName(b, type), getLocale()),
     );
@@ -326,25 +374,38 @@
 {/if}
 <div hidden={catalogOpen} bind:this={libraryContainer} style="height: 100%">
   <ScreenScaffold
-    backHref="/settings"
-    backLabel={m.back_to_settings()}
-    title={m.data_heading()}
+    {...updatesOpen ? { onBack: handleBack } : { backHref: '/settings' as const }}
+    backLabel={updatesOpen ? m.back_to_data() : m.back_to_settings()}
+    title={updatesOpen ? m.data_updates_heading() : m.data_heading()}
     responsiveActions
   >
     {#snippet actions()}
-      <Button
-        class="add-data"
-        style="width: 100%"
-        size={wideScreen.current ? 'standard' : 'large'}
-        loading={dataImport.pending}
-        disabled={activation.pending}
-        onclick={() => {
-          catalogCountry = undefined;
-          catalogOpen = true;
-        }}
-      >
-        <span aria-hidden="true" class="i-mdi-plus"></span>{m.data_add()}
-      </Button>
+      {#if updatesOpen}
+        <Button
+          style="width: 100%"
+          size={wideScreen.current ? 'standard' : 'large'}
+          loading={updatePending}
+          disabled={!idleUpdates.length || downloads === null || downloadError}
+          onclick={() => startUpdates(idleUpdates.map((entry) => entry.path))}
+          >{m.data_update_all({
+            size: size(idleUpdates.reduce((total, entry) => total + entry.size, 0)),
+          })}</Button
+        >
+      {:else}
+        <Button
+          class="add-data"
+          style="width: 100%"
+          size={wideScreen.current ? 'standard' : 'large'}
+          loading={dataImport.pending}
+          disabled={activation.pending}
+          onclick={() => {
+            catalogCountry = undefined;
+            catalogOpen = true;
+          }}
+        >
+          <span aria-hidden="true" class="i-mdi-plus"></span>{m.data_add()}
+        </Button>
+      {/if}
     {/snippet}
     {#if downloadActionError}<p class="error" role="alert">{downloadActionError}</p>{/if}
     {#if updateCheckError}
@@ -354,26 +415,57 @@
         onRetry={onRetryCatalog}
       />
     {/if}
+    {#if !updatesOpen && availableUpdates.length}
+      <ResponsiveCard style="margin-block-end: var(--space-4)">
+        <button
+          class="file-row update-notice"
+          onclick={async () => {
+            libraryScroll = libraryContainer.querySelector('main')!.scrollTop;
+            updatesOpen = true;
+            await tick();
+            let main = libraryContainer.querySelector('main')!;
+            main.scrollTop = 0;
+            main.focus({ preventScroll: true });
+          }}
+        >
+          <span aria-hidden="true" class="i-mdi-download type-icon"></span>
+          <span class="description"
+            >{availableUpdates.length === 1
+              ? m.data_update_one()
+              : m.data_updates_available({ count: availableUpdates.length })}</span
+          >
+          <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
+        </button>
+      </ResponsiveCard>
+    {/if}
+    {#if updatesOpen && !availableUpdates.length && !updateCheckError && !basemapError}
+      <p role="status">{updates === null ? m.data_checking_updates() : m.data_no_updates()}</p>
+    {/if}
     {#if downloadError}<p class="error" role="alert">{m.data_download_state_failed()}</p>{/if}
     {#if dataImport.error}<p class="error" role="alert">{dataImport.error}</p>{/if}
     {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>
     {:else if basemaps === null}<p role="status">{m.data_basemap_loading()}</p>{/if}
     {#if terrainError}<p class="error" role="alert">{m.data_terrain_failed()}</p>
     {:else if terrain === null}<p role="status">{m.data_terrain_loading()}</p>{/if}
-    {#if !downloadError && downloads !== null && groups.length === 0 && basemaps !== null && !basemapError && terrain !== null && !terrainError}
+    {#if !updatesOpen && !downloadError && downloads !== null && groups.length === 0 && basemaps !== null && !basemapError && terrain !== null && !terrainError}
       <div class="empty">
         <span aria-hidden="true" class="i-mdi-database-outline"></span>
         <p class="empty-title">{m.data_empty()}</p>
         <p>{m.data_empty_hint()}</p>
       </div>
     {/if}
-    {#each groups as group (group.type)}
+    {#each visibleGroups as group (group.type)}
       <section aria-labelledby={`${componentId}-${group.type}`}>
         <h2 id={`${componentId}-${group.type}`}>{group.label}</h2>
         <ResponsiveCard>
           <ul class="files">
             {#each fileRows(group.type, group.sources) as row (row.sourceName)}
               {let source = $derived(row.source)}
+              {let update = $derived(
+                group.type === 'basemap'
+                  ? availableUpdates.find((entry) => row.sourceName === `enroute/${entry.path}`)
+                  : undefined,
+              )}
               {let enabled = $derived(source && activation.isEnabled(group.type, source))}
               <li
                 {@attach (element) => {
@@ -416,6 +508,13 @@
                           aria-label={displayName(row, group.type)}
                         ></progress>
                       {/if}
+                    {:else if update}
+                      <span class="download-status"
+                        >{m.data_update_available()} · {new Intl.DateTimeFormat(getLocale(), {
+                          dateStyle: 'medium',
+                          timeZone: 'UTC',
+                        }).format(new Date(update.publicationDate))} · {size(update.size)}</span
+                      >
                     {/if}
                     {#if source && activation.hasError(group.type, source.sourceName)}<span
                         class="error">{m.data_activation_failed()}</span
@@ -433,7 +532,7 @@
                     }}
                   >
                     {@render description()}
-                    {#if !row.download}<span
+                    {#if !row.download && !update}<span
                         aria-hidden="true"
                         class="i-mdi-chevron-right type-icon"
                       ></span>{/if}
@@ -449,6 +548,15 @@
                         ? m.data_retry_download({ name: displayName(row, group.type) })
                         : m.data_cancel_download({ name: displayName(row, group.type) })}
                       onclick={() => downloadAction(row.download!)}
+                    />
+                  </span>
+                {:else if update}
+                  <span class="download-action">
+                    <IconButton
+                      icon="i-mdi-download"
+                      label={m.data_update_file({ name: displayName(row, group.type) })}
+                      disabled={updatePending || downloads === null || downloadError}
+                      onclick={() => startUpdates([update.path])}
                     />
                   </span>
                 {/if}

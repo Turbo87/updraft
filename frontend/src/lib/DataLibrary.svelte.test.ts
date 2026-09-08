@@ -896,3 +896,80 @@ it('shows failed update checks and removes the notice after recovery', async () 
     .element(page.getByRole('button', { name: 'Retry', exact: true }))
     .not.toBeInTheDocument();
 });
+
+it('opens updates, queues only idle updates, and retains disabled file details', async () => {
+  let onDownload = vi.fn().mockResolvedValue(undefined);
+  let screen = await render(DataLibrary, {
+    catalog: {
+      cached: {
+        checkedAt: 1000,
+        entries: ['Germany', 'France', 'Spain'].map((name) => ({
+          path: `Europe/${name}.mbtiles`,
+          countryCode: 'DE',
+          continent: 'europe' as const,
+          publicationDate: '2026-09-08',
+          size: 1_000_000,
+        })),
+      },
+      refreshing: false,
+      error: false,
+    },
+    updates: ['Europe/Germany.mbtiles', 'Europe/France.mbtiles'],
+    downloads: [{ path: 'Europe/France.mbtiles', type: 'queued' }],
+    basemaps: {
+      generation: 1,
+      sources: ['Germany', 'France', 'Spain'].map((name) => ({
+        sourceName: `enroute/Europe/${name}.mbtiles`,
+        type: 'disabled' as const,
+      })),
+    },
+    onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
+    onDownload,
+    onCancelDownload: vi.fn(),
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+  });
+  await page.getByRole('button', { name: '2 updates available', exact: true }).click();
+  await expect.element(page.getByRole('heading', { name: 'Updates', exact: true })).toBeVisible();
+  await expect
+    .element(page.getByRole('button', { name: /^Spain.mbtiles/ }))
+    .not.toBeInTheDocument();
+  await page.getByRole('button', { name: /^Germany.mbtiles/ }).click();
+  await expect
+    .element(page.getByRole('switch', { name: 'Enabled', exact: true }))
+    .not.toBeChecked();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  onDownload.mockRejectedValueOnce(new Error('queue unavailable'));
+  await page.getByRole('button', { name: 'Update: Germany.mbtiles', exact: true }).click();
+  await expect.element(page.getByRole('alert')).toHaveTextContent('Could not start the downloads');
+  await page.getByRole('button', { name: /Update all/ }).click();
+  expect(onDownload).toHaveBeenCalledWith(['Europe/Germany.mbtiles']);
+  await screen.rerender({
+    downloads: [
+      { path: 'Europe/France.mbtiles', type: 'queued' },
+      { path: 'Europe/Germany.mbtiles', type: 'downloading', downloaded: 100, total: 1_000_000 },
+    ],
+  });
+  await expect.element(page.getByRole('button', { name: /Update all/ })).toBeDisabled();
+  await page.getByRole('button', { name: 'Back to data', exact: true }).click();
+  await expect
+    .element(page.getByRole('button', { name: '2 updates available', exact: true }))
+    .toHaveFocus();
+  await expect.element(page.getByRole('button', { name: /^Spain.mbtiles/ })).toBeVisible();
+  await page.getByRole('button', { name: '2 updates available', exact: true }).click();
+  await screen.rerender({ updates: null });
+  await expect.element(page.getByText('Checking for updates…', { exact: true })).toBeVisible();
+  await expect
+    .element(page.getByText('No updates available', { exact: true }))
+    .not.toBeInTheDocument();
+  await screen.rerender({ updates: [] });
+  await expect.element(page.getByText('No updates available', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to data', exact: true }).click();
+  await expect
+    .element(page.getByRole('button', { name: /updates available/ }))
+    .not.toBeInTheDocument();
+});

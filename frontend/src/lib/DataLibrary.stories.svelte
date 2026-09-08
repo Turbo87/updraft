@@ -169,6 +169,34 @@
   }}
 />
 
+<Story
+  name="Updates available"
+  {template}
+  args={{
+    updates: ['Europe/Germany.mbtiles'],
+    catalog: {
+      cached: {
+        checkedAt: Date.UTC(2026, 8, 8),
+        entries: [
+          {
+            path: 'Europe/Germany.mbtiles',
+            countryCode: 'DE',
+            continent: 'europe',
+            publicationDate: '2026-09-08',
+            size: 378_000_000,
+          },
+        ],
+      },
+      refreshing: false,
+      error: false,
+    },
+    basemaps: {
+      generation: 1,
+      sources: [{ sourceName: 'enroute/Europe/Germany.mbtiles', type: 'disabled' }],
+    },
+  }}
+/>
+
 <style>
   .screen {
     height: 100dvh;

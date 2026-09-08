@@ -9,6 +9,7 @@ use time::{Date, macros::format_description};
 
 pub mod catalog;
 pub mod download;
+pub mod queue;
 mod regions;
 pub mod storage;
 

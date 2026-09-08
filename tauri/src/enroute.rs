@@ -24,16 +24,19 @@ fn http_client() -> reqwest::ClientBuilder {
     reqwest::Client::builder().use_preconfigured_tls(tls)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BasemapEntry {
     pub path: &'static str,
     pub country_code: &'static str,
     pub continent: Continent,
     pub size: NonZeroU64,
+    #[serde(serialize_with = "serialize_publication_date")]
     pub publication_date: Date,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Continent {
     Africa,
     Asia,
@@ -93,6 +96,13 @@ pub fn parse_catalog(bytes: &[u8]) -> Result<Vec<BasemapEntry>> {
         );
     }
     Ok(files.into_values().collect())
+}
+
+fn serialize_publication_date<S: serde::Serializer>(
+    date: &Date,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.collect_str(date)
 }
 
 #[cfg(test)]

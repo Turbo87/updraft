@@ -1,0 +1,20 @@
+---
+source: tauri/src/enroute/catalog/commands/tests.rs
+expression: assert_ok!(messages.try_recv())
+---
+{
+  "cached": {
+    "checkedAt": 1234000.0,
+    "entries": [
+      {
+        "continent": "europe",
+        "countryCode": "DE",
+        "path": "Europe/Germany.mbtiles",
+        "publicationDate": "2026-09-08",
+        "size": 10
+      }
+    ]
+  },
+  "error": false,
+  "refreshing": false
+}

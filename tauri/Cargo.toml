@@ -24,7 +24,7 @@ reqwest = { version = "=0.13.4", default-features = false, features = ["rustls-n
 rustls = { version = "=0.23.43", default-features = false, features = ["ring", "std", "tls12"] }
 rusqlite = { version = "=0.40.2", features = ["bundled"] }
 serde_json = "=1.0.151"
-serde = { version = "=1.0.229", features = ["derive"] }
+serde = { version = "=1.0.229", features = ["derive", "rc"] }
 tauri = { version = "=2.11.5", features = [] }
 tauri-plugin-dialog = "=2.7.3"
 tauri-plugin-fs = "=2.5.2"

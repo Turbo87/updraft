@@ -88,6 +88,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
             enroute::catalog::refresh_enroute_catalog,
+            enroute::catalog::commands::subscribe_enroute_catalog,
+            enroute::catalog::commands::unsubscribe_enroute_catalog,
             enroute::commands::subscribe_enroute_downloads,
             enroute::commands::unsubscribe_enroute_downloads,
             enroute::commands::cancel_enroute_download,
@@ -136,6 +138,9 @@ pub fn run() {
             }
             let catalog_path = app.path().app_data_dir()?.join("enroute-catalog.json");
             let catalog = Arc::new(enroute::catalog::CatalogService::load(catalog_path));
+            app.manage(enroute::catalog::commands::CatalogSubscriptions::new(
+                &catalog,
+            ));
             app.manage(catalog.clone());
             tauri::async_runtime::spawn(async move { catalog.refresh().await });
             let settings_file = settings::SettingsFile::new(app.path().app_config_dir()?);

@@ -8,16 +8,20 @@ use std::time::{Duration, SystemTime};
 use tempfile::NamedTempFile;
 use tokio::sync::{MutexGuard, watch};
 
+pub mod commands;
+
 const MAX_CATALOG_BYTES: usize = 4 * 1024 * 1024;
 const CATALOG_URL: &str = "https://enroute-data.akaflieg-freiburg.de/enroute-GeoJSONv003/maps.json";
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CachedCatalog {
     pub entries: Vec<BasemapEntry>,
+    #[serde(serialize_with = "serialize_checked_at")]
     pub checked_at: SystemTime,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct CatalogStatus {
     pub cached: Option<Arc<CachedCatalog>>,
     pub refreshing: bool,
@@ -187,6 +191,17 @@ pub async fn refresh_enroute_catalog(
         .refresh()
         .await
         .map_err(|_| "Could not refresh Enroute catalog")
+}
+
+fn serialize_checked_at<S: serde::Serializer>(
+    time: &SystemTime,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let seconds = match time.duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs_f64(),
+        Err(error) => -error.duration().as_secs_f64(),
+    };
+    serializer.serialize_f64(seconds * 1000.)
 }
 
 #[cfg(test)]

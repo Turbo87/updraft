@@ -2,7 +2,7 @@ use super::*;
 use claims::{assert_none, assert_ok, assert_some};
 use time::macros::date;
 
-fn entry(path: &'static str) -> BasemapEntry {
+pub fn entry(path: &'static str) -> BasemapEntry {
     BasemapEntry {
         path,
         country_code: "DE",

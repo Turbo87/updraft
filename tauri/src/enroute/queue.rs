@@ -3,6 +3,8 @@ use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 use tokio::sync::watch;
 
+mod transfer;
+
 #[derive(Debug)]
 pub struct DownloadQueue {
     pending: VecDeque<Arc<BasemapEntry>>,
@@ -118,12 +120,16 @@ impl DownloadQueue {
         Some(attempt)
     }
 
+    /// Returns whether the attempt still owns the active queue slot.
+    pub fn is_active(&self, attempt: &Arc<BasemapEntry>) -> bool {
+        let active = self.active.as_ref();
+        active.is_some_and(|active| Arc::ptr_eq(&active.entry, attempt))
+    }
+
     /// Records installation or failure. Transfer completion alone is not installation.
     /// Only the current attempt from `start_next()` can finish the download.
     pub fn finish(&mut self, attempt: &Arc<BasemapEntry>, outcome: DownloadOutcome) -> bool {
-        let active = self.active.as_ref();
-        let current = active.is_some_and(|active| Arc::ptr_eq(&active.entry, attempt));
-        if !current {
+        if !self.is_active(attempt) {
             return false;
         }
         self.active = None;

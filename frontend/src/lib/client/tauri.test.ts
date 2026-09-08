@@ -254,17 +254,15 @@ it('forwards catalog refresh and propagates failures', async () => {
   ]);
 });
 
-it('reads available basemap updates and propagates check failures', async () => {
+it.each([
+  ['getEnrouteBasemapUpdates', 'get_enroute_basemap_updates', 'Europe/Malta.mbtiles'],
+  ['getEnrouteTerrainUpdates', 'get_enroute_terrain_updates', 'Europe/Malta.terrain'],
+] as const)('reads updates through %s and propagates failures', async (method, command, path) => {
   let client = new TauriClient();
-  mocks.invoke
-    .mockResolvedValueOnce(['Europe/Malta.mbtiles'])
-    .mockRejectedValueOnce(new Error('check failed'));
-  expect(await client.getEnrouteBasemapUpdates()).toEqual(['Europe/Malta.mbtiles']);
-  await expect(client.getEnrouteBasemapUpdates()).rejects.toThrow('check failed');
-  expect(mocks.invoke.mock.calls).toEqual([
-    ['get_enroute_basemap_updates'],
-    ['get_enroute_basemap_updates'],
-  ]);
+  mocks.invoke.mockResolvedValueOnce([path]).mockRejectedValueOnce(new Error('check failed'));
+  expect(await client[method]()).toEqual([path]);
+  await expect(client[method]()).rejects.toThrow('check failed');
+  expect(mocks.invoke.mock.calls).toEqual([[command], [command]]);
 });
 
 it('waits for download acceptance and forwards cancellation and command failures', async () => {

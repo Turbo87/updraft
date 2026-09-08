@@ -980,3 +980,44 @@ fn terrain_installation_finishes_the_queue_and_preserves_failed_updates() {
     assert!(logs_contain("Could not install downloaded Enroute file"));
     assert!(!logs_contain("Could not open offline terrain"));
 }
+
+#[test]
+fn available_updates_use_timestamps_for_active_and_disabled_terrain() {
+    use std::fs::{FileTimes, OpenOptions};
+    use std::time::Duration;
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("enroute/Europe");
+    assert_ok!(fs::create_dir_all(&root));
+    let france = root.join("France.terrain");
+    let germany = root.join("Germany.terrain");
+    write_terrain(&france, &[]);
+    assert_ok!(fs::write(&germany, b"disabled, not a database"));
+    assert_ok!(fs::write(germany.with_extension("terrain.disabled"), b""));
+    let entries = [
+        "Europe/France.terrain",
+        "Europe/Germany.terrain",
+        "Europe/Malta.terrain",
+    ]
+    .map(terrain_entry);
+    let publication: std::time::SystemTime = time::macros::datetime!(2026-09-08 0:00 UTC).into();
+    let terrain = assert_ok!(Terrain::load(directory.path()));
+    for offset in [-1i64, 0, 1] {
+        let modified = if offset < 0 {
+            publication - Duration::from_secs(1)
+        } else {
+            publication + Duration::from_secs(offset as u64)
+        };
+        for path in [&france, &germany] {
+            let file = assert_ok!(OpenOptions::new().write(true).open(path));
+            assert_ok!(file.set_times(FileTimes::new().set_modified(modified)));
+        }
+        let expected = if offset < 0 {
+            vec!["Europe/France.terrain", "Europe/Germany.terrain"]
+        } else {
+            vec![]
+        };
+        assert_eq!(assert_ok!(terrain.available_updates(&entries)), expected);
+    }
+    assert_ok!(fs::remove_file(france));
+    assert_err!(terrain.available_updates(&entries));
+}

@@ -129,6 +129,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('get_enroute_basemap_updates');
   }
 
+  getEnrouteTerrainUpdates(): Promise<string[]> {
+    return invoke('get_enroute_terrain_updates');
+  }
+
   getBasemapFileDetails(sourceName: string): Promise<BasemapFileDetails> {
     return invoke('get_basemap_file_details', { sourceName });
   }

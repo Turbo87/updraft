@@ -1,5 +1,5 @@
 use self::commands::TerrainStatus;
-use crate::enroute::download::DownloadFile;
+use crate::enroute::{CatalogEntry, download::DownloadFile};
 use anyhow::{Context, Result, ensure};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use std::collections::BTreeMap;
@@ -76,6 +76,23 @@ impl Terrain {
             directory: directory.to_owned(),
             ..Self::default()
         })
+    }
+
+    pub fn available_updates(&self, entries: &[CatalogEntry]) -> Result<Vec<&'static str>> {
+        let mut updates = Vec::new();
+        for entry in entries {
+            let name = format!("enroute/{}", entry.path);
+            if !self.files.contains_key(&name) {
+                continue;
+            }
+            let modified = fs::metadata(self.directory.join(&name))
+                .and_then(|metadata| metadata.modified())
+                .with_context(|| format!("Could not read terrain timestamp for {name}"))?;
+            if entry.update_available(modified) {
+                updates.push(entry.path);
+            }
+        }
+        Ok(updates)
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {

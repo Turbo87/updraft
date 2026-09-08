@@ -92,6 +92,7 @@ export interface UpdraftClient {
   cancelEnrouteDownload(path: string): Promise<void>;
   refreshEnrouteCatalog(): Promise<void>;
   getEnrouteBasemapUpdates(): Promise<string[]>;
+  getEnrouteTerrainUpdates(): Promise<string[]>;
   getBasemapFileDetails(sourceName: string): Promise<BasemapFileDetails>;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */
   subscribeArrivals(

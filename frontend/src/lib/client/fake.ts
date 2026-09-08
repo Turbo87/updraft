@@ -150,6 +150,10 @@ export class FakeClient implements UpdraftClient {
     return [];
   }
 
+  async getEnrouteTerrainUpdates(): Promise<string[]> {
+    return [];
+  }
+
   async getBasemapFileDetails(): Promise<BasemapFileDetails> {
     throw new Error('Installed file metadata is unavailable in the preview');
   }

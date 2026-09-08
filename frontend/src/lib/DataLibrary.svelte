@@ -669,18 +669,12 @@
           <Dialog.Close class="data-dialog-close" aria-label={m.data_close()}>×</Dialog.Close>
         </header>
         <label class="activation">
-          <span>
-            <strong>{m.data_enabled()}</strong>
-            <span id={`${componentId}-enabled-hint`} class="activation-hint"
-              >{m.data_enabled_hint()}</span
-            >
-          </span>
+          <strong>{m.data_enabled()}</strong>
           <span class="activation-control">
             <input
               type="checkbox"
               role="switch"
               aria-label={m.data_enabled()}
-              aria-describedby={`${componentId}-enabled-hint`}
               checked={selectedEnabled}
               onchange={(event) => {
                 let enabled = event.currentTarget.checked;
@@ -1045,10 +1039,6 @@
   }
   .activation strong {
     font: var(--text-row-label);
-  }
-  .activation-hint {
-    display: block;
-    color: var(--color-text-muted);
   }
   .activation-control {
     display: grid;

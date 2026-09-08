@@ -329,7 +329,6 @@
   "data_remove": "Vom Gerät entfernen",
   "data_remove_description": "Die Datei wird vom Gerät gelöscht.",
   "data_remove_failed": "Die Datei konnte nicht entfernt werden.",
-  "data_enabled_hint": "Bleibt auf dem Gerät, wird aber deaktiviert weder angezeigt noch für Berechnungen verwendet",
   "data_activation_failed": "Die Datei konnte nicht aktiviert oder deaktiviert werden.",
   "data_add": "Daten hinzufügen",
   "data_replace": "Diese Datei ersetzen?",

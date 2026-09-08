@@ -719,22 +719,6 @@ it('keeps accessible IDs unique across Data library instances', async () => {
     return heading.id;
   });
   expect(new Set(headingIds).size).toBe(8);
-
-  let hintIds = [];
-  for (let name of ['first.txt', 'second.txt']) {
-    await page.getByRole('button', { name: new RegExp(`^${name}`) }).click();
-    let dialog = page.getByRole('dialog');
-    let hint = dialog
-      .getByText('Kept on the device but not drawn or used in calculations when off')
-      .element();
-    let toggle = dialog.getByRole('switch').element();
-    expect(toggle.getAttribute('aria-describedby')).toBe(hint.id);
-    expect(document.getElementById(hint.id)).toBe(hint);
-    expect(getComputedStyle(hint).display).toBe('block');
-    hintIds.push(hint.id);
-    await userEvent.keyboard('{Escape}');
-  }
-  expect(new Set(hintIds).size).toBe(2);
 });
 
 it('shows terrain activation details and keeps them current', async () => {

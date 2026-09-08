@@ -1,5 +1,6 @@
 use super::{BasemapSource, Basemaps};
 use crate::enroute::commands::DownloadCommands;
+use anyhow::ensure;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -8,6 +9,45 @@ use tauri::ipc::Channel;
 pub struct BasemapStatus {
     generation: u64,
     sources: Vec<BasemapSourceStatus>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BasemapFileDetails {
+    size: u64,
+    /// File modification time in milliseconds since the Unix epoch.
+    modified_at: f64,
+}
+
+#[tauri::command]
+pub async fn get_basemap_file_details(
+    source_name: String,
+    state: tauri::State<'_, Arc<Mutex<Basemaps>>>,
+) -> Result<BasemapFileDetails, &'static str> {
+    let basemaps = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || -> anyhow::Result<_> {
+        let basemaps = basemaps.lock().unwrap();
+        ensure!(
+            basemaps.files.contains_key(&source_name),
+            "Unknown basemap file"
+        );
+        let metadata = std::fs::metadata(basemaps.directory.join(&source_name))?;
+        let modified = metadata.modified()?.duration_since(std::time::UNIX_EPOCH);
+        let seconds = match modified {
+            Ok(duration) => duration.as_secs_f64(),
+            Err(error) => -error.duration().as_secs_f64(),
+        };
+        Ok(BasemapFileDetails {
+            size: metadata.len(),
+            modified_at: seconds * 1000.,
+        })
+    })
+    .await
+    .unwrap_or_else(|error| Err(error.into()))
+    .map_err(|error| {
+        tracing::warn!(%error, "Could not read basemap file details");
+        "Could not read basemap file details"
+    })
 }
 
 #[derive(Clone, Serialize)]
@@ -139,5 +179,65 @@ mod tests {
         let channel = Channel::new(|_| Err(std::io::Error::other("closed channel").into()));
         assert_err!(basemaps.subscribe(channel));
         assert!(basemaps.subscribers.is_empty());
+    }
+
+    #[test]
+    #[tracing_test::traced_test]
+    fn file_details_read_disabled_files_and_reject_unknown_paths_through_ipc() {
+        use claims::assert_ok;
+        use serde_json::{Value, json};
+        use std::fs::{self, FileTimes, OpenOptions};
+        use std::time::{Duration, UNIX_EPOCH};
+
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("enroute/Europe/France.mbtiles");
+        assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+        assert_ok!(fs::write(&path, b"not a database"));
+        assert_ok!(fs::write(path.with_extension("mbtiles.disabled"), b""));
+        let file = assert_ok!(OpenOptions::new().write(true).open(&path));
+        let modified = UNIX_EPOCH + Duration::from_secs(1234);
+        assert_ok!(file.set_times(FileTimes::new().set_modified(modified)));
+        let basemaps = assert_ok!(Basemaps::load(directory.path()));
+        let app = tauri::test::mock_builder()
+            .manage(Arc::new(Mutex::new(basemaps)))
+            .invoke_handler(tauri::generate_handler![get_basemap_file_details])
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let invoke = |name: &str| {
+            let request = tauri::webview::InvokeRequest {
+                cmd: "get_basemap_file_details".into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: "tauri://localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(json!({"sourceName": name})),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.into(),
+            };
+            tauri::test::get_ipc_response(&window, request)
+                .map(|r| r.deserialize::<Value>().unwrap())
+        };
+        let name = "enroute/Europe/France.mbtiles";
+        insta::assert_json_snapshot!(assert_ok!(invoke(name)), @r#"
+        {
+          "modifiedAt": 1234000.0,
+          "size": 14
+        }
+        "#);
+        let modified = UNIX_EPOCH - Duration::from_secs(1);
+        assert_ok!(file.set_times(FileTimes::new().set_modified(modified)));
+        assert_eq!(assert_ok!(invoke(name))["modifiedAt"], json!(-1000.0));
+        let error = json!("Could not read basemap file details");
+        assert_eq!(assert_err!(invoke("../outside.mbtiles")), error);
+        assert_ok!(fs::remove_file(path));
+        assert_eq!(assert_err!(invoke(name)), error);
+        // Tauri dispatches IPC commands outside the test span.
+        assert!(tracing_test::internal::logs_with_scope_contain(
+            module_path!().trim_end_matches("::tests"),
+            "Could not read basemap file details"
+        ));
+        assert!(!logs_contain("Could not open offline basemap"));
     }
 }

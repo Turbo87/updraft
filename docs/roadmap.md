@@ -33,7 +33,7 @@ documents for accepted behavior.
 - [x] **airspace-source-management** — import, replace by filename, and remove independent local OpenAir sources in Settings.
 - [x] **airspace-source-activation** — persist per-file activation in the shell and exclude disabled sources from map resources. Settings activation controls remain part of the installed-data library.
 - [x] **waypoint-source-activation** — persist per-file activation and exclude disabled sources from map resources and arrival calculations. Settings activation controls remain part of the installed-data library.
-- [x] **installed-data-library-view**: show imported airspace and waypoint files in grouped lists with counts, disabled states, and errors. Import and removal remain on the existing source pages.
+- [x] **installed-data-library-view**: show imported airspace and waypoint files in grouped lists with counts, disabled states, and errors. File details show diagnostics and allow confirmed removal. Import remains on the existing source pages.
 - [x] **map-inspection** — open a nearby route from a map point and show current
   airspace and traffic results with detail routes.
 - [ ] **map-orientation-setting** — persist map orientation and add its Settings control. _(needs: map-orientation, settings-persistence)_

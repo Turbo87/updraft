@@ -318,7 +318,7 @@ test('keeps bugs and ballast during navigation and resets them on restart', asyn
   await expect(ballast).toHaveValue('0');
 });
 
-test('the Data library reads live source statuses on a direct visit', async ({ page }) => {
+test('the Data library handles live statuses, file details, and removal', async ({ page }) => {
   await page.goto('/settings/data?testMode=1');
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await page.reload();
@@ -336,10 +336,29 @@ test('the Data library reads live source statuses on a direct visit', async ({ p
       },
     });
   });
-  await expect(page.getByRole('heading', { name: 'local.txt', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'local.cup', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^local\.txt/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^local\.cup/ })).toBeVisible();
   await expect(page.getByText('Disabled', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Data', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'local.cup', exact: true })).toBeVisible();
+  let row = page.getByRole('button', { name: /^local\.cup/ });
+  await row.click();
+  let dialog = page.getByRole('dialog', { name: 'local.cup' });
+  await expect(dialog).toBeVisible();
+  await page.evaluate(() => history.back());
+  await expect(dialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/settings\/data$/);
+  await row.click();
+  await expect(dialog).toBeVisible();
+  await page.mouse.click(8, 100);
+  await expect(dialog).not.toBeVisible();
+  await row.click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(row).not.toBeVisible();
+  await expect(page.getByRole('button', { name: /^local\.txt/ })).toBeVisible();
+  await page.getByRole('button', { name: /^local\.txt/ }).click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(page.getByText('No data on this device')).toBeVisible();
 });

@@ -126,9 +126,14 @@ Active files show feature counts and waypoint warning counts. Disabled files
 show their disabled state. Unavailable files show a read, parse, or geometry error.
 The page updates when source status changes.
 
-The library is currently read-only. The Airspace and Waypoints pages provide
-import, replacement, and removal controls. An empty library explains where to
-import files.
+Select a file to open its details. The dialog shows source type, activation
+status, feature count, and current errors or waypoint warnings. Close, Escape,
+Back, and a tap outside dismiss the dialog. Back keeps the library open.
+
+Remove from device closes the details and opens a confirmation. Cancel returns
+to the library. A removal failure stays in the confirmation with an error and
+allows another attempt. The Airspace and Waypoints pages still provide import,
+replacement, and removal controls. An empty library explains where to import files.
 
 ## Airspace source
 

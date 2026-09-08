@@ -1,12 +1,17 @@
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
+  import { fn } from 'storybook/test';
 
   import DataLibrary from './DataLibrary.svelte';
 
   const { Story } = defineMeta({
     title: 'Screens/DataLibrary',
     component: DataLibrary,
-    args: { airspace: { generation: 0, sources: [] }, waypoints: { generation: 0, sources: [] } },
+    args: {
+      onRemove: fn(),
+      airspace: { generation: 0, sources: [] },
+      waypoints: { generation: 0, sources: [] },
+    },
     parameters: { layout: 'fullscreen' },
   });
 </script>

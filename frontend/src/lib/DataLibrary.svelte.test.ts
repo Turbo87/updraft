@@ -1,10 +1,75 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 
 import '../app.css';
 
 import DataLibrary from './DataLibrary.svelte';
+
+it('opens live file details and confirms removal separately', async () => {
+  let onRemove = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('storage failed'))
+    .mockResolvedValue(undefined);
+  let airspace = {
+    generation: 1,
+    sources: [{ type: 'disabled' as const, sourceName: 'local.txt' }],
+  };
+  let waypoints = {
+    generation: 1,
+    sources: [
+      {
+        type: 'active' as const,
+        sourceName: 'local.txt',
+        waypointCount: 2,
+        warnings: [{ line: 4, message: 'Skipped waypoint' }],
+      },
+    ],
+  };
+  let view = await render(DataLibrary, { airspace, waypoints, onRemove });
+  let row = page.getByRole('region', { name: 'Waypoints' }).getByRole('button');
+  await row.click();
+  let dialog = page.getByRole('dialog', { name: 'local.txt' });
+  await expect.element(dialog).toBeVisible();
+  await expect.element(dialog.getByText('Line 4: Skipped waypoint')).toBeVisible();
+  await view.rerender({
+    waypoints: {
+      generation: 2,
+      sources: [{ type: 'unavailable', sourceName: 'local.txt', error: 'parseFailed' }],
+    },
+  });
+  await expect.element(dialog.getByText('Imported · could not be parsed')).toBeVisible();
+  await expect.element(dialog.getByText('Line 4: Skipped waypoint')).not.toBeInTheDocument();
+  await view.rerender({ waypoints });
+  await userEvent.keyboard('{Escape}');
+  await expect.element(dialog).not.toBeInTheDocument();
+  await expect.element(row).toHaveFocus();
+  await row.click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect.element(dialog).not.toBeInTheDocument();
+  await row.click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await expect.element(dialog).not.toBeInTheDocument();
+  await expect.element(page.getByRole('alertdialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect.element(dialog).not.toBeInTheDocument();
+  expect(onRemove).not.toHaveBeenCalled();
+  await row.click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect.element(page.getByRole('alert')).toHaveTextContent('Could not remove the file.');
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  expect(onRemove.mock.calls).toEqual([
+    ['waypoints', 'local.txt'],
+    ['waypoints', 'local.txt'],
+  ]);
+  await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument();
+  await view.rerender({ airspace, waypoints: { generation: 2, sources: [] } });
+  await page.getByRole('region', { name: 'Airspace' }).getByRole('button').click();
+  await expect.element(dialog.getByText('Disabled', { exact: true })).toBeVisible();
+  await view.rerender({ airspace: { generation: 2, sources: [] } });
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+});
 
 it('groups and sorts sources without changing the input order', async () => {
   let airspace = {
@@ -15,6 +80,7 @@ it('groups and sorts sources without changing the input order', async () => {
     ],
   };
   let component = await render(DataLibrary, {
+    onRemove: vi.fn(),
     airspace,
     waypoints: {
       generation: 2,
@@ -34,7 +100,7 @@ it('groups and sorts sources without changing the input order', async () => {
     'Airspace',
     'Waypoints',
   ]);
-  expect([...groups[0].querySelectorAll('h3')].map((name) => name.textContent)).toEqual([
+  expect([...groups[0].querySelectorAll('.filename')].map((name) => name.textContent)).toEqual([
     'Alpha.txt',
     'Zulu.txt',
   ]);
@@ -62,6 +128,7 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
   try {
     await page.viewport(width, 600);
     await render(DataLibrary, {
+      onRemove: vi.fn(),
       airspace: { generation: 0, sources: [] },
       waypoints: {
         generation: 1,

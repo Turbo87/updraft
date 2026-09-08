@@ -1,4 +1,5 @@
 use super::{Terrain, TerrainSource};
+use crate::enroute::commands::DownloadCommands;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -81,11 +82,18 @@ pub async fn set_terrain_enabled(
 #[tauri::command]
 pub async fn remove_terrain(
     source_name: String,
+    downloads: tauri::State<'_, DownloadCommands>,
     state: tauri::State<'_, Arc<Mutex<Terrain>>>,
 ) -> Result<(), &'static str> {
     let terrain = state.inner().clone();
     let name = source_name.clone();
+    let queue = downloads.queue.clone();
     tauri::async_runtime::spawn_blocking(move || {
+        // Keep the queue locked through deletion to exclude installation.
+        let mut queue = queue.lock().unwrap();
+        if let Some(path) = name.strip_prefix("enroute/") {
+            queue.cancel(path);
+        }
         terrain
             .lock()
             .expect("Terrain access should not panic")

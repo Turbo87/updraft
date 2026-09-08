@@ -1,5 +1,8 @@
 use super::*;
-use claims::{assert_err, assert_ok};
+use crate::basemap::Basemaps;
+use crate::enroute::{CatalogEntry, Continent, commands::DownloadCommands, download::DownloadFile};
+use crate::enroute::{queue::DownloadState, storage::remove_partial_downloads};
+use claims::{assert_err, assert_ok, assert_some};
 use rusqlite::Connection;
 use tauri::http::header;
 
@@ -422,6 +425,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     let received = messages.clone();
     let app = tauri::test::mock_builder()
         .manage(terrain.clone())
+        .manage(DownloadCommands::default())
         .channel_interceptor(move |_, _, _, body| {
             let status = body.clone().deserialize().unwrap();
             received.lock().unwrap().push(status);
@@ -525,8 +529,20 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         Err(json!("Could not change terrain activation"))
     );
     assert_eq!(messages.lock().unwrap().len(), 3);
+    use tauri::Manager;
+    let downloads = app.state::<DownloadCommands>();
+    let attempt = {
+        let mut queue = downloads.queue.lock().unwrap();
+        queue.enqueue(terrain_entry("Europe/disabled.terrain"));
+        assert_some!(queue.start_next())
+    };
+    let download = assert_ok!(DownloadFile::new(directory.path(), &attempt));
     let body = json!({"sourceName":"enroute/Europe/disabled.terrain"});
     assert_eq!(assert_ok!(invoke("remove_terrain", body)), Value::Null);
+    let basemaps = Mutex::new(Basemaps::default());
+    downloads.install_download(&basemaps, &terrain, &attempt, download);
+    assert!(!disabled.exists());
+    assert!(!downloads.queue.lock().unwrap().has_active());
     let removed = messages.lock().unwrap();
     assert_eq!(removed.len(), 4);
     assert_eq!(removed[3]["generation"], 2);
@@ -795,4 +811,172 @@ fn managed_identities_keep_same_name_terrain_independent() {
     assert!(!root.join(first).exists());
     assert!(root.join(second).exists());
     assert!(legacy.exists());
+}
+
+fn terrain_entry(path: &'static str) -> CatalogEntry {
+    CatalogEntry {
+        path,
+        country_code: "FR",
+        continent: Continent::Europe,
+        size: 1.try_into().unwrap(),
+        publication_date: time::macros::date!(2026 - 09 - 08),
+    }
+}
+
+fn terrain_download(directory: &Path, bytes: &[u8]) -> DownloadFile {
+    use std::io::Write;
+    let entry = terrain_entry("Europe/France.terrain");
+    let mut download = assert_ok!(DownloadFile::new(directory, &entry));
+    assert_ok!(download.file_mut().write_all(bytes));
+    download
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn downloaded_terrain_preserves_activation_and_retains_invalid_replacements() {
+    let name = "enroute/Europe/France.terrain";
+    for (installed, disabled) in [(false, false), (false, true), (true, false), (true, true)] {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(name);
+        assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+        if installed {
+            write_terrain(&path, &[(7, 0, 0, &tagged_webp(b"old"))]);
+        }
+        if disabled {
+            assert_ok!(fs::write(path.with_extension("terrain.disabled"), b""));
+        }
+        let mut terrain = assert_ok!(Terrain::load(directory.path()));
+        let replacement = directory.path().join("replacement.terrain");
+        let tile = tagged_webp(b"new");
+        write_terrain(&replacement, &[(7, 0, 0, &tile)]);
+        let download = terrain_download(directory.path(), &assert_ok!(fs::read(replacement)));
+        assert_ok!(terrain.install_download(name, download));
+        let disabled = installed && disabled;
+        assert_eq!(terrain.generation, 1);
+        assert_eq!(
+            matches!(terrain.files[name], TerrainSource::Disabled),
+            disabled
+        );
+        assert_eq!(path.with_extension("terrain.disabled").exists(), disabled);
+        let response = terrain.resource_response("1/7/0/127.webp");
+        let expected = if disabled { &[][..] } else { tile.as_slice() };
+        assert_eq!(response.body(), expected);
+        let download = terrain_download(directory.path(), b"invalid");
+        assert_ok!(terrain.install_download(name, download));
+        assert_eq!(assert_ok!(fs::read(&path)), b"invalid");
+        assert_eq!(terrain.generation, 2);
+        assert_eq!(
+            matches!(terrain.files[name], TerrainSource::Unavailable(_)),
+            !disabled
+        );
+        let restarted = assert_ok!(Terrain::load(directory.path()));
+        assert_eq!(
+            matches!(restarted.files[name], TerrainSource::Disabled),
+            disabled
+        );
+    }
+    assert!(logs_contain("Could not open offline terrain"));
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn downloaded_terrain_rechecks_compatibility_and_refreshes_resources() {
+    let directory = tempfile::tempdir().unwrap();
+    let name = "enroute/Europe/France.terrain";
+    let path = directory.path().join(name);
+    assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+    write_terrain(&path, &[(7, 0, 0, &webp_header(256, 256))]);
+    let germany = directory.path().join("enroute/Europe/Germany.terrain");
+    write_terrain(&germany, &[(8, 0, 0, &webp_header(512, 512))]);
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    std::assert_matches!(
+        terrain.files["enroute/Europe/Germany.terrain"],
+        TerrainSource::Unavailable(_)
+    );
+    let replacement = directory.path().join("replacement.terrain");
+    write_terrain(&replacement, &[(7, 0, 0, &webp_header(512, 512))]);
+    let connection = Connection::open(&replacement).unwrap();
+    assert_ok!(connection.execute("INSERT INTO metadata VALUES ('attribution', 'new')", []));
+    drop(connection);
+    let download = terrain_download(directory.path(), &assert_ok!(fs::read(replacement)));
+    assert_ok!(terrain.install_download(name, download));
+    std::assert_matches!(
+        terrain.files["enroute/Europe/Germany.terrain"],
+        TerrainSource::Active(_)
+    );
+    let metadata: serde_json::Value =
+        serde_json::from_slice(&assert_ok!(terrain.metadata())).unwrap();
+    assert_eq!(metadata["tileSize"], 512);
+    assert_eq!(metadata["maxzoom"], 8);
+    assert_eq!(metadata["attribution"], "new");
+    assert_eq!(
+        terrain.resource_response("0/7/0/127.webp").status(),
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        terrain.resource_response("1/8/0/255.webp").body(),
+        &webp_header(512, 512)
+    );
+    assert!(logs_contain("Could not open offline terrain"));
+}
+
+#[test]
+fn failed_terrain_installation_preserves_the_installed_file() {
+    let directory = tempfile::tempdir().unwrap();
+    let name = "enroute/Europe/France.terrain";
+    let download = terrain_download(directory.path(), b"replacement");
+    let path = directory.path().join(name);
+    write_terrain(&path, &[(7, 0, 0, &tagged_webp(b"old"))]);
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    assert_err!(terrain.install_download("enroute/Europe/Germany.terrain", download));
+    assert_eq!(terrain.generation, 0);
+    let download = terrain_download(directory.path(), b"replacement");
+    assert_ok!(remove_partial_downloads(directory.path()));
+    assert_err!(terrain.install_download(name, download));
+    assert_eq!(terrain.generation, 1);
+    assert_eq!(
+        terrain.resource_response("1/7/0/127.webp").body(),
+        &tagged_webp(b"old")
+    );
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn terrain_installation_finishes_the_queue_and_preserves_failed_updates() {
+    for failed in [false, true] {
+        let directory = tempfile::tempdir().unwrap();
+        let name = "enroute/Europe/France.terrain";
+        let path = directory.path().join(name);
+        let download = terrain_download(directory.path(), b"disabled replacement");
+        assert_ok!(fs::write(&path, b"disabled original"));
+        assert_ok!(fs::write(path.with_extension("terrain.disabled"), b""));
+        let terrain = Mutex::new(assert_ok!(Terrain::load(directory.path())));
+        if failed {
+            assert_ok!(remove_partial_downloads(directory.path()));
+        }
+        let downloads = DownloadCommands::default();
+        let attempt = {
+            let mut queue = downloads.queue.lock().unwrap();
+            queue.enqueue(terrain_entry("Europe/France.terrain"));
+            assert_some!(queue.start_next())
+        };
+        let basemaps = Mutex::new(Basemaps::default());
+        downloads.install_download(&basemaps, &terrain, &attempt, download);
+        let status = downloads.queue.lock().unwrap().subscribe();
+        assert_eq!(status.borrow().len(), usize::from(failed));
+        if failed {
+            std::assert_matches!(status.borrow()[0].state, DownloadState::Failed);
+        }
+        let expected = if failed {
+            b"disabled original".as_slice()
+        } else {
+            b"disabled replacement"
+        };
+        assert_eq!(assert_ok!(fs::read(path)), expected);
+        let terrain = terrain.lock().unwrap();
+        assert_eq!(terrain.generation, 1);
+        std::assert_matches!(terrain.files[name], TerrainSource::Disabled);
+    }
+    assert!(logs_contain("Could not install downloaded Enroute file"));
+    assert!(!logs_contain("Could not open offline terrain"));
 }

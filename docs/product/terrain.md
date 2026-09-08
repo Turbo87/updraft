@@ -21,7 +21,7 @@ Terrain uses managed paths in application data, such as
 `enroute/Europe/Germany.terrain`. The provider and complete catalog-relative path
 identify a dataset. Updraft loads nested files at startup, in identity order.
 Flat development files are ignored without migration. Symlinks are excluded.
-Terrain download installation is not implemented yet. Files are enabled
+The catalog does not offer terrain downloads yet. Files are enabled
 unless a sibling marker exists, such as `France.terrain.disabled` for
 `France.terrain`. Disabled files are not opened or validated. Enabled files
 are opened read-only. The library displays leaf filenames. Activation and

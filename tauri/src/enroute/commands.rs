@@ -2,6 +2,7 @@ use super::catalog::CatalogService;
 use super::queue::{DownloadOutcome, DownloadQueue, DownloadStatus};
 use super::{CatalogEntry, download::DownloadFile};
 use crate::basemap::Basemaps;
+use crate::terrain::Terrain;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -37,6 +38,7 @@ impl DownloadCommands {
     pub fn install_download(
         &self,
         basemaps: &Mutex<Basemaps>,
+        terrain: &Mutex<Terrain>,
         attempt: &Arc<CatalogEntry>,
         download: DownloadFile,
     ) {
@@ -45,11 +47,15 @@ impl DownloadCommands {
             return;
         }
         let name = format!("enroute/{}", attempt.path);
-        let result = basemaps.lock().unwrap().install_download(&name, download);
+        let result = if attempt.path.ends_with(".terrain") {
+            terrain.lock().unwrap().install_download(&name, download)
+        } else {
+            basemaps.lock().unwrap().install_download(&name, download)
+        };
         let outcome = match result {
             Ok(()) => DownloadOutcome::Installed,
             Err(error) => {
-                tracing::warn!(%error, name, "Could not install downloaded basemap");
+                tracing::warn!(%error, name, "Could not install downloaded Enroute file");
                 DownloadOutcome::Failed
             }
         };
@@ -105,12 +111,13 @@ pub fn download_enroute_basemaps<R: Runtime>(
             let active = attempt.clone();
             let result = tauri::async_runtime::spawn_blocking(move || {
                 let basemaps = installer.state::<Arc<Mutex<Basemaps>>>();
+                let terrain = installer.state::<Arc<Mutex<Terrain>>>();
                 let downloads = installer.state::<DownloadCommands>();
-                downloads.install_download(basemaps.inner(), &attempt, download);
+                downloads.install_download(basemaps.inner(), terrain.inner(), &attempt, download);
             })
             .await;
             if let Err(error) = result {
-                tracing::error!(%error, "Basemap installation worker failed");
+                tracing::error!(%error, "Enroute installation worker failed");
                 match queue.lock() {
                     Ok(mut queue) => {
                         queue.finish(&active, DownloadOutcome::Failed);

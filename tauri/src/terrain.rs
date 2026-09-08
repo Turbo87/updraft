@@ -1,4 +1,5 @@
 use self::commands::TerrainStatus;
+use crate::enroute::download::DownloadFile;
 use anyhow::{Context, Result, ensure};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use std::collections::BTreeMap;
@@ -140,6 +141,39 @@ impl Terrain {
             }
         });
         Ok(())
+    }
+
+    pub fn install_download(&mut self, name: &str, download: DownloadFile) -> Result<()> {
+        let path = self.directory.join(name);
+        ensure!(
+            download.destination() == path,
+            "Terrain download destination does not match"
+        );
+        if !self.files.contains_key(name) {
+            let marker = path.with_extension("terrain.disabled");
+            match fs::remove_file(marker) {
+                Ok(()) => {}
+                Err(error) if error.kind() == ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        let previous = self.files.remove(name);
+        let installed = previous.is_some();
+        let enabled = !matches!(previous, Some(TerrainSource::Disabled));
+        // Close SQLite before replacement, including on Windows.
+        drop(previous);
+        let result = download.install();
+        if result.is_ok() || installed {
+            self.files.insert(name.to_owned(), TerrainSource::Disabled);
+            self.recheck(|id, source| {
+                if id == name {
+                    enabled
+                } else {
+                    !matches!(source, TerrainSource::Disabled)
+                }
+            });
+        }
+        result
     }
 
     fn remove(&mut self, name: &str) -> Result<()> {

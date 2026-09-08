@@ -523,8 +523,13 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     assert!(!queue.lock().unwrap().is_active(&attempt));
     use tauri::Manager;
     let basemaps = app.state::<Arc<Mutex<Basemaps>>>();
-    app.state::<DownloadCommands>()
-        .install_download(basemaps.inner(), &attempt, download);
+    let terrain = Mutex::new(crate::terrain::Terrain::default());
+    app.state::<DownloadCommands>().install_download(
+        basemaps.inner(),
+        &terrain,
+        &attempt,
+        download,
+    );
     assert!(!active.exists());
     let messages = publications.lock().unwrap();
     assert_eq!(messages.len(), 4);
@@ -654,7 +659,8 @@ fn installation_finishes_the_queue_and_respects_cancellation() {
             }
             attempt
         };
-        state.install_download(&basemaps, &attempt, download);
+        let terrain = Mutex::new(crate::terrain::Terrain::default());
+        state.install_download(&basemaps, &terrain, &attempt, download);
         let status = state.queue.lock().unwrap().subscribe();
         assert_eq!(status.borrow().len(), usize::from(failed));
         if failed {
@@ -666,7 +672,7 @@ fn installation_finishes_the_queue_and_respects_cancellation() {
         assert_eq!(basemaps.resource_response(&resource).body(), b"old");
         assert_eq!(assert_ok!(fs::read_dir(path.parent().unwrap())).count(), 1);
     }
-    assert!(logs_contain("Could not install downloaded basemap"));
+    assert!(logs_contain("Could not install downloaded Enroute file"));
 }
 
 #[test]

@@ -415,3 +415,66 @@ it.each([
     await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
   },
 );
+
+it('shows read-only basemap details and keeps them current', async () => {
+  let basemaps = {
+    generation: 0,
+    sources: [
+      { sourceName: 'z.mbtiles', type: 'disabled' as const },
+      { sourceName: 'a.mbtiles', type: 'active' as const },
+      { sourceName: 'broken.mbtiles', type: 'unavailable' as const },
+    ],
+  };
+  let view = await render(DataLibrary, {
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+    basemaps,
+  });
+  await expect.element(page.getByRole('heading', { name: 'Basemap', exact: true })).toBeVisible();
+  expect([...document.querySelectorAll('.filename')].map((element) => element.textContent)).toEqual(
+    ['a.mbtiles', 'broken.mbtiles', 'z.mbtiles'],
+  );
+  await page.getByRole('button', { name: /^a.mbtiles/ }).click();
+  await expect.element(page.getByRole('switch')).not.toBeInTheDocument();
+  await expect
+    .element(page.getByRole('button', { name: 'Remove from device' }))
+    .not.toBeInTheDocument();
+  await expect
+    .element(page.getByRole('dialog').getByText('Enabled', { exact: true }))
+    .toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await page.getByRole('button', { name: /^broken.mbtiles/ }).click();
+  await expect
+    .element(page.getByRole('dialog').getByText('Could not load the file.'))
+    .toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await page.getByRole('button', { name: /^z.mbtiles/ }).click();
+  await expect
+    .element(page.getByRole('dialog').getByText('Disabled', { exact: true }))
+    .toBeVisible();
+  await view.rerender({ basemaps: { generation: 1, sources: [] } });
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+  await expect.element(page.getByText('No data on this device')).toBeVisible();
+});
+
+it('distinguishes pending and failed basemap inventory from an empty library', async () => {
+  let view = await render(DataLibrary, {
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+    basemaps: null,
+  });
+  await expect.element(page.getByRole('status')).toHaveTextContent('Loading basemaps…');
+  await expect.element(page.getByText('No data on this device')).not.toBeInTheDocument();
+  await view.rerender({ basemapError: true });
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not load basemap inventory.');
+  await expect.element(page.getByRole('status')).not.toBeInTheDocument();
+  await expect.element(page.getByText('No data on this device')).not.toBeInTheDocument();
+});

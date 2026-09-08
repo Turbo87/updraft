@@ -333,5 +333,11 @@
   "data_import_failed": "Could not import the file. Select it again to retry.",
   "data_select_failed": "Could not select the file. Choose an OpenAir (.txt) or CUP (.cup) file.",
   "data_replace_confirm": "Replace file",
-  "data_cancel_failed": "Could not cancel the selection. Select a file again."
+  "data_cancel_failed": "Could not cancel the selection. Select a file again.",
+  "data_basemap": "Basemap",
+  "data_on_device": "On device",
+  "data_load_failed": "Could not load the file.",
+  "data_basemap_loading": "Loading basemaps…",
+  "data_basemap_failed": "Could not load basemap inventory.",
+  "data_status": "Status"
 }

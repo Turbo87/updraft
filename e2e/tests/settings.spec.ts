@@ -1,4 +1,5 @@
 import type { AppContext } from '$lib/app-context';
+import type { BasemapStatus } from '$lib/client';
 
 import { execFileSync } from 'node:child_process';
 
@@ -15,6 +16,7 @@ type TestWindow = Window & {
   __updraftApp?: AppContext;
   __updraftFake?: {
     emit: (topic: unknown) => void;
+    emitBasemaps: (status: BasemapStatus) => void;
     setWaypointsEnabled: (name: string, enabled: boolean) => Promise<void>;
     quit: () => Promise<void>;
   };
@@ -419,3 +421,36 @@ test('the Data library imports through the client and shows published parsing er
   await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
   await expect(page.getByRole('dialog').getByText('Imported · could not be parsed')).toBeVisible();
 });
+
+for (let [width, height, theme] of [
+  [413, 915, 'light'],
+  [915, 413, 'dark'],
+] as const) {
+  test(`shows live basemap inventory at ${width}x${height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.goto('/?testMode=1');
+    await page.getByRole('link', { name: 'Settings' }).click();
+    await page.evaluate(() => {
+      (window as TestWindow).__updraftFake!.emitBasemaps({
+        generation: 0,
+        sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
+      });
+    });
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await page.getByRole('button', { name: /^local.mbtiles/ }).click();
+    await expect(page.getByRole('dialog').getByText('Enabled', { exact: true })).toBeVisible();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitBasemaps({
+        generation: 1,
+        sources: [{ sourceName: 'local.mbtiles', type: 'disabled' }],
+      }),
+    );
+    await expect(page.getByRole('dialog').getByText('Disabled', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('basemap-details.png') });
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('link', { name: 'Back to Settings' }).click();
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^local.mbtiles/ })).toContainText('Disabled');
+  });
+}

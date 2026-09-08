@@ -36,6 +36,15 @@ the native inventory with their errors. They contribute no tiles. The log record
 these failures. A directory scan or disabled-marker access failure leaves the
 basemap empty and produces a warning.
 
+## Library
+
+Settings → Data lists installed basemap filenames and their disabled or
+unavailable states. Select a file to see its enabled state and any load error.
+Details are read-only. Activation and removal controls are not available yet.
+The library receives native status while it is open and closes the subscription
+when the user leaves. A subscription failure shows an error instead of an empty
+library.
+
 ## Display
 
 The style uses the Enroute zoom range of 6 through 10. The camera cannot zoom

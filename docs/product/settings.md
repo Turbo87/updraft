@@ -118,10 +118,11 @@ Polar and reserve changes request new waypoint arrival calculations.
 
 ## Installed data
 
-The Data page lists imported files in Airspace and Waypoints groups. Empty
-groups are hidden. Filenames are sorted alphabetically within each group.
-Active files show feature counts and waypoint warning counts. Disabled files
-show their disabled state. Unavailable files show a read, parse, or geometry error.
+The Data page lists imported files in Airspace and Waypoints groups and installed
+basemap files in a Basemap group. Empty groups are hidden. Filenames are sorted
+alphabetically within each group. Active imported files show feature counts
+and waypoint warning counts. Disabled files show their disabled state.
+Unavailable imported files show a read, parse, or geometry error.
 The page updates when source status changes. Source catalogs and their status
 are separate from the settings snapshot.
 
@@ -129,7 +130,13 @@ Select a file to open its details. The dialog shows source type, activation
 status, feature count, and current errors or waypoint warnings. Close, Escape,
 Back, and a tap outside dismiss the dialog. Back keeps the library open.
 
-The Enabled control changes immediately and stays interactive while saving.
+Basemap details are read-only. They show the enabled state and a load error
+when the file is unavailable. The page subscribes to basemap status while open.
+Loading and subscription failure messages are distinct from an empty inventory.
+Basemap activation and removal controls are not available yet.
+
+For imported files, the Enabled control changes immediately and stays
+interactive while saving.
 Activation changes run sequentially and continue after leaving Settings. The
 latest choice stays visible until the command and its source status arrive.
 A failed final change returns to the confirmed state and shows an error in

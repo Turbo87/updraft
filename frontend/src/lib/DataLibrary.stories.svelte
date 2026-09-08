@@ -88,6 +88,23 @@
   }}
 />
 
+<Story
+  name="Basemap files"
+  {template}
+  args={{
+    basemaps: {
+      generation: 0,
+      sources: [
+        { sourceName: 'France.mbtiles', type: 'active' },
+        { sourceName: 'Germany.mbtiles', type: 'disabled' },
+        { sourceName: 'Damaged regional basemap.mbtiles', type: 'unavailable' },
+      ],
+    },
+  }}
+/>
+<Story name="Loading basemaps" {template} args={{ basemaps: null }} />
+<Story name="Basemap inventory failure" {template} args={{ basemaps: null, basemapError: true }} />
+
 <style>
   .screen {
     height: 100dvh;

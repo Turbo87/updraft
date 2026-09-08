@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SelectedDataFile, UpdraftClient } from './client';
+  import type { BasemapStatus, SelectedDataFile, UpdraftClient } from './client';
   import type { AirspaceStatus } from './protocol/generated/AirspaceStatus';
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
   import type { DataActivation } from './stores/data-activation.svelte';
@@ -21,21 +21,28 @@
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
+    basemaps?: BasemapStatus | null;
+    basemapError?: boolean;
     detailsOpen?: boolean;
     onRemove: (type: DatasetType, name: string) => Promise<void>;
     activation: Pick<DataActivation, 'isEnabled' | 'hasError' | 'setEnabled' | 'pending'>;
   };
-  type Source = AirspaceStatus['sources'][number] | WaypointStatus['sources'][number];
+  type Source =
+    | AirspaceStatus['sources'][number]
+    | WaypointStatus['sources'][number]
+    | BasemapStatus['sources'][number];
 
   let {
     importer,
     airspace,
     waypoints,
+    basemaps = { generation: 0, sources: [] },
+    basemapError = false,
     detailsOpen = $bindable(false),
     onRemove,
     activation,
   }: Props = $props();
-  let selected = $state<{ type: DatasetType; name: string }>();
+  let selected = $state<{ type: DatasetType | 'basemap'; name: string }>();
   let opener: HTMLButtonElement | undefined;
   let removeOpen = $state(false);
   let pending = $state(false);
@@ -133,15 +140,21 @@
         icon: 'i-mdi-map-marker',
         sources: waypoints.sources,
       },
+      {
+        type: 'basemap' as const,
+        label: m.data_basemap(),
+        icon: 'i-mdi-map-outline',
+        sources: basemaps?.sources ?? [],
+      },
     ].filter((group) => group.sources.length > 0),
   );
 
   const selectedGroup = $derived(groups.find((group) => group.type === selected?.type));
-  const selectedSource = $derived(
+  const selectedSource = $derived<Source | undefined>(
     selectedGroup?.sources.find((source) => source.sourceName === selected?.name),
   );
   const selectedEnabled = $derived(
-    selected && selectedSource && activation.isEnabled(selected.type, selectedSource),
+    selected && selectedSource && isEnabled(selected.type, selectedSource),
   );
 
   $effect(() => {
@@ -154,7 +167,7 @@
   }
 
   async function removeFile() {
-    if (!selected || pending) return;
+    if (!selected || selected.type === 'basemap' || pending) return;
     pending = true;
     error = '';
     try {
@@ -171,9 +184,19 @@
     return a.sourceName.localeCompare(b.sourceName, getLocale());
   }
 
-  function metadata(source: Source, enabled = source.type !== 'disabled'): string {
+  function isEnabled(type: DatasetType | 'basemap', source: Source): boolean {
+    return type === 'basemap' ? source.type !== 'disabled' : activation.isEnabled(type, source);
+  }
+
+  function metadata(
+    source: Source,
+    type: DatasetType | 'basemap',
+    enabled = source.type !== 'disabled',
+  ): string {
+    if (type === 'basemap')
+      return source.type === 'unavailable' ? m.data_load_failed() : m.data_on_device();
     if (!enabled || source.type === 'disabled') return m.data_imported();
-    if (source.type === 'unavailable') {
+    if (source.type === 'unavailable' && 'error' in source) {
       switch (source.error) {
         case 'readFailed':
           return m.data_read_failed();
@@ -189,7 +212,7 @@
         source.airspaceCount === 1
           ? m.data_airspace_one()
           : m.data_airspaces({ count: source.airspaceCount });
-    } else {
+    } else if ('waypointCount' in source) {
       count =
         source.waypointCount === 1
           ? m.data_waypoint_one()
@@ -197,7 +220,7 @@
       if (source.warnings.length) {
         count += ` · ${source.warnings.length === 1 ? m.data_warning_one() : m.data_warnings({ count: source.warnings.length })}`;
       }
-    }
+    } else return m.data_imported();
     return `${m.data_imported()} · ${count}`;
   }
 </script>
@@ -223,7 +246,9 @@
     </Button>
   {/snippet}
   {#if importError}<p class="error" role="alert">{importError}</p>{/if}
-  {#if groups.length === 0}
+  {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>
+  {:else if basemaps === null}<p role="status">{m.data_basemap_loading()}</p>{/if}
+  {#if groups.length === 0 && basemaps !== null && !basemapError}
     <div class="empty">
       <span aria-hidden="true" class="i-mdi-database-outline"></span>
       <p class="empty-title">{m.data_empty()}</p>
@@ -236,7 +261,7 @@
       <ResponsiveCard>
         <ul class="files">
           {#each group.sources.toSorted(compareSources) as source (source.sourceName)}
-            {let enabled = $derived(activation.isEnabled(group.type, source))}
+            {let enabled = $derived(isEnabled(group.type, source))}
             <li
               {@attach (element) => {
                 if (
@@ -268,9 +293,9 @@
                     <span class="filename">{source.sourceName}</span>
                     {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
                   </span>
-                  <span class="metadata">{metadata(source, enabled)}</span>
-                  {#if activation.hasError(group.type, source.sourceName)}<span class="error"
-                      >{m.data_activation_failed()}</span
+                  <span class="metadata">{metadata(source, group.type, enabled)}</span>
+                  {#if group.type !== 'basemap' && activation.hasError(group.type, source.sourceName)}<span
+                      class="error">{m.data_activation_failed()}</span
                     >{/if}
                 </span>
                 <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
@@ -300,38 +325,45 @@
           </div>
           <Dialog.Close class="data-dialog-close" aria-label={m.data_close()}>×</Dialog.Close>
         </header>
-        <label class="activation">
-          <span>
-            <strong>{m.data_enabled()}</strong>
-            <span id="data-enabled-hint">{m.data_enabled_hint()}</span>
-          </span>
-          <span class="activation-control">
-            <input
-              type="checkbox"
-              role="switch"
-              aria-label={m.data_enabled()}
-              aria-describedby="data-enabled-hint"
-              checked={selectedEnabled}
-              onchange={(event) => {
-                let enabled = event.currentTarget.checked;
-                event.currentTarget.checked = !!selectedEnabled;
-                activation.setEnabled(selectedGroup.type, selectedSource.sourceName, enabled);
-              }}
-            />
-            <span class="activation-check" aria-hidden="true"
-              ><span class="i-mdi-check-bold"></span></span
-            >
-          </span>
-        </label>
-        {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
-          <p class="error" role="alert">{m.data_activation_failed()}</p>
+        {#if selectedGroup.type !== 'basemap'}
+          <label class="activation">
+            <span>
+              <strong>{m.data_enabled()}</strong>
+              <span id="data-enabled-hint">{m.data_enabled_hint()}</span>
+            </span>
+            <span class="activation-control">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={m.data_enabled()}
+                aria-describedby="data-enabled-hint"
+                checked={selectedEnabled}
+                onchange={(event) => {
+                  let enabled = event.currentTarget.checked;
+                  event.currentTarget.checked = !!selectedEnabled;
+                  activation.setEnabled(selectedGroup.type, selectedSource.sourceName, enabled);
+                }}
+              />
+              <span class="activation-check" aria-hidden="true"
+                ><span class="i-mdi-check-bold"></span></span
+              >
+            </span>
+          </label>
+          {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
+            <p class="error" role="alert">{m.data_activation_failed()}</p>
+          {/if}
         {/if}
         <dl>
           <div>
-            <dt>{m.data_source()}</dt>
-            <dd>{m.data_imported()}</dd>
+            {#if selectedGroup.type === 'basemap'}
+              <dt>{m.data_status()}</dt>
+              <dd>{selectedEnabled ? m.data_enabled() : m.data_disabled()}</dd>
+            {:else}
+              <dt>{m.data_source()}</dt>
+              <dd>{m.data_imported()}</dd>
+            {/if}
           </div>
-          {#if selectedEnabled && selectedSource.type === 'active'}
+          {#if selectedEnabled && selectedSource.type === 'active' && ('airspaceCount' in selectedSource || 'waypointCount' in selectedSource)}
             <div>
               <dt>{selectedGroup.label}</dt>
               <dd>
@@ -343,8 +375,8 @@
           {/if}
         </dl>
         {#if selectedEnabled && selectedSource.type === 'unavailable'}
-          <p class="error">{metadata(selectedSource)}</p>
-        {:else if selectedEnabled && selectedSource.type === 'active' && 'warnings' in selectedSource && selectedSource.warnings.length}
+          <p class="error">{metadata(selectedSource, selectedGroup.type)}</p>
+        {:else if selectedEnabled && selectedSource.type === 'active' && 'waypointCount' in selectedSource && selectedSource.warnings.length}
           <ul class="diagnostics">
             {#each selectedSource.warnings as warning (warning)}
               <li>
@@ -355,17 +387,19 @@
             {/each}
           </ul>
         {/if}
-        <Button
-          disabled={activation.pending}
-          variant="destructive-outline"
-          size="large"
-          style="width: 100%"
-          onclick={() => {
-            detailsOpen = false;
-            error = '';
-            removeOpen = true;
-          }}>{m.data_remove()}</Button
-        >
+        {#if selectedGroup.type !== 'basemap'}
+          <Button
+            disabled={activation.pending}
+            variant="destructive-outline"
+            size="large"
+            style="width: 100%"
+            onclick={() => {
+              detailsOpen = false;
+              error = '';
+              removeOpen = true;
+            }}>{m.data_remove()}</Button
+          >
+        {/if}
       {/if}
     </Dialog.Content>
   </Dialog.Portal>

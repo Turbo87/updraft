@@ -57,12 +57,18 @@ async fn failed_refresh_retains_cache_and_retry_replaces_it() {
     fs::write(&path, GERMANY).unwrap();
     let mut service = CatalogService::load(path.clone());
     let cached = service.status().cached.unwrap();
+    let mut updates = service.subscribe();
+    assert!(Arc::ptr_eq(
+        &cached,
+        updates.borrow().cached.as_ref().unwrap()
+    ));
     for (body, status) in [("unavailable", 503), ("invalid", 200), (FRANCE, 200)] {
         let (url, server) = server(body, status).await;
         service.url = url;
         let result = service.refresh().await;
         server.await.unwrap();
-        let state = service.status();
+        assert!(assert_ok!(updates.has_changed()));
+        let state = updates.borrow_and_update().clone();
         assert!(!state.refreshing);
         if body == FRANCE {
             assert_ok!(result);
@@ -114,6 +120,8 @@ async fn refresh_keeps_cache_readable_and_releases_the_lock_on_cancellation() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     service.url = format!("http://{}/maps.json", listener.local_addr().unwrap());
     let service = Arc::new(service);
+    let mut updates = service.subscribe();
+    assert!(!updates.borrow_and_update().refreshing);
     let worker = service.clone();
     let request = tokio::spawn(async move { worker.refresh().await });
     let (mut stream, _) = listener.accept().await.unwrap();
@@ -121,7 +129,8 @@ async fn refresh_keeps_cache_readable_and_releases_the_lock_on_cancellation() {
     while !headers.ends_with(b"\r\n\r\n") {
         headers.push(stream.read_u8().await.unwrap());
     }
-    let status = service.status();
+    assert!(assert_ok!(updates.has_changed()));
+    let status = updates.borrow_and_update().clone();
     assert!(status.refreshing);
     assert_eq!(status.cached.unwrap().entries[0].country_code, "DE");
     let error = assert_err!(service.refresh().await);
@@ -129,9 +138,12 @@ async fn refresh_keeps_cache_readable_and_releases_the_lock_on_cancellation() {
         error.to_string(),
         "Enroute catalog refresh is already running"
     );
+    assert!(!assert_ok!(updates.has_changed()));
     request.abort();
     assert!(assert_err!(request.await).is_cancelled());
-    assert!(!service.status().refreshing);
+    assert!(assert_ok!(updates.has_changed()));
+    assert!(!updates.borrow_and_update().refreshing);
+    assert!(!service.subscribe().borrow().refreshing);
     let mut remaining = Vec::new();
     let closed =
         tokio::time::timeout(Duration::from_secs(2), stream.read_to_end(&mut remaining)).await;

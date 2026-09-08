@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 use tempfile::NamedTempFile;
+use tokio::sync::{MutexGuard, watch};
 
 const MAX_CATALOG_BYTES: usize = 4 * 1024 * 1024;
 const CATALOG_URL: &str = "https://enroute-data.akaflieg-freiburg.de/enroute-GeoJSONv003/maps.json";
@@ -16,7 +17,7 @@ pub struct CachedCatalog {
     pub checked_at: SystemTime,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CatalogStatus {
     pub cached: Option<Arc<CachedCatalog>>,
     pub refreshing: bool,
@@ -35,6 +36,19 @@ pub struct CatalogService {
     url: String,
     state: Mutex<CacheState>,
     refresh: tokio::sync::Mutex<()>,
+    updates: watch::Sender<CatalogStatus>,
+}
+
+struct CatalogRefresh<'a> {
+    service: &'a CatalogService,
+    lock: Option<MutexGuard<'a, ()>>,
+}
+
+impl Drop for CatalogRefresh<'_> {
+    fn drop(&mut self) {
+        drop(self.lock.take());
+        self.service.publish();
+    }
 }
 
 impl CatalogService {
@@ -53,17 +67,23 @@ impl CatalogService {
                 }
             }
         };
+        let initial = CatalogStatus {
+            cached: state.cached.clone(),
+            refreshing: false,
+            error: state.error,
+        };
         Self {
             path,
             url: CATALOG_URL.into(),
             state: Mutex::new(state),
             refresh: tokio::sync::Mutex::new(()),
+            updates: watch::channel(initial).0,
         }
     }
 
     pub fn status(&self) -> CatalogStatus {
-        let refreshing = self.refresh.try_lock().is_err();
         let state = self.state.lock().expect("Catalog access should not panic");
+        let refreshing = self.refresh.try_lock().is_err();
         CatalogStatus {
             cached: state.cached.clone(),
             refreshing,
@@ -71,13 +91,28 @@ impl CatalogService {
         }
     }
 
+    /// Provides the current cached catalog and subsequent refresh status changes.
+    pub fn subscribe(&self) -> watch::Receiver<CatalogStatus> {
+        self.updates.subscribe()
+    }
+
+    fn publish(&self) {
+        // Read inside the update lock so an older snapshot cannot overwrite a newer one.
+        self.updates.send_modify(|status| *status = self.status());
+    }
+
     /// Refreshes and atomically caches the catalog. An overlapping call fails.
     /// Failures retain the previous catalog and its last-success timestamp.
     pub async fn refresh(&self) -> Result<()> {
-        let _guard = self
+        let lock = self
             .refresh
             .try_lock()
             .context("Enroute catalog refresh is already running")?;
+        let _refresh = CatalogRefresh {
+            service: self,
+            lock: Some(lock),
+        };
+        self.publish();
         let result = self.fetch().await;
         let mut state = self.state.lock().expect("Catalog access should not panic");
         match result {

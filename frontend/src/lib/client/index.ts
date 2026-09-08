@@ -91,6 +91,7 @@ export interface UpdraftClient {
   removeAirspace(sourceName: string): Promise<void>;
   setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void>;
   setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void>;
+  setTerrainEnabled(sourceName: string, enabled: boolean): Promise<void>;
   removeBasemap(sourceName: string): Promise<void>;
   /**
    * Stops the platform session and ends the app.

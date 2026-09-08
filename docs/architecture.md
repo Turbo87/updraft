@@ -117,8 +117,8 @@ elevation colours.
 The terrain inventory retains disabled and unavailable files. Only active files
 contribute tiles and metadata. Startup validation establishes one tile size from
 the first valid enabled file with tiles and excludes incompatible files.
-Validated metadata remains in memory until restart. Disabled markers prevent
-files from being opened or validated.
+Validated metadata remains in memory until activation changes or restart.
+Disabled markers prevent files from being opened or validated.
 Terrain status subscriptions send the initial inventory under the same lock
 that registers the channel. The payload contains a generation number, filenames,
 and active, disabled, or unavailable states. Paths and diagnostic errors stay
@@ -130,6 +130,10 @@ The app root owns the terrain subscription and shares its status with the Data
 library across navigation.
 Terrain metadata and tile URLs include the inventory generation. The shell
 rejects other generations with HTTP 404 and disables response caching.
+Activation persists the selected marker before rechecking enabled files and
+publishing a new generation. Disabled files stay unopened. The frontend replaces
+the terrain source and restores its layers to refresh metadata, tiles, and
+credits together. The shared activation queue also owns terrain changes.
 
 ## State ownership
 

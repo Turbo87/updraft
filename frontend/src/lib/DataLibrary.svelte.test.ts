@@ -9,44 +9,60 @@ import DataLibrary from './DataLibrary.svelte';
 import { AirspaceStore } from './stores/airspace.svelte';
 import { BasemapsStore } from './stores/basemaps.svelte';
 import { DataActivation } from './stores/data-activation.svelte';
+import { TerrainStore } from './stores/terrain.svelte';
 import { WaypointsStore } from './stores/waypoints.svelte';
 
 function activation() {
   return new DataActivation(
-    { setAirspaceEnabled: vi.fn(), setBasemapEnabled: vi.fn(), setWaypointsEnabled: vi.fn() },
+    {
+      setAirspaceEnabled: vi.fn(),
+      setTerrainEnabled: vi.fn(),
+      setBasemapEnabled: vi.fn(),
+      setWaypointsEnabled: vi.fn(),
+    },
     new AirspaceStore(),
     new WaypointsStore(),
     new BasemapsStore(),
+    new TerrainStore(),
   );
 }
 
-it.each(['airspace', 'basemap'] as const)(
+it.each(['airspace', 'basemap', 'terrain'] as const)(
   'shows the latest %s choice without disabling the control',
   async (type) => {
     let airspace = new AirspaceStore();
     let waypoints = new WaypointsStore();
     let basemaps = new BasemapsStore();
+    let terrain = new TerrainStore();
     if (type === 'airspace') {
       airspace.current = {
         generation: 1,
         sources: [{ type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' }],
       };
     } else {
-      basemaps.current = {
+      let store = type === 'basemap' ? basemaps : terrain;
+      store.current = {
         generation: 1,
-        sources: [{ type: 'unavailable', sourceName: 'broken.mbtiles' }],
+        sources: [
+          {
+            type: 'unavailable',
+            sourceName: type === 'basemap' ? 'broken.mbtiles' : 'broken.terrain',
+          },
+        ],
       };
     }
     let result = Promise.withResolvers<void>();
     let client = {
       setAirspaceEnabled: vi.fn().mockReturnValue(result.promise),
       setBasemapEnabled: vi.fn().mockReturnValue(result.promise),
+      setTerrainEnabled: vi.fn().mockReturnValue(result.promise),
       setWaypointsEnabled: vi.fn(),
     };
-    let changes = new DataActivation(client, airspace, waypoints, basemaps);
+    let changes = new DataActivation(client, airspace, waypoints, basemaps, terrain);
     await render(DataLibrary, {
       importer: new FakeClient(),
       basemaps: basemaps.current,
+      terrain: terrain.current,
       airspace: airspace.current,
       waypoints: waypoints.current,
       activation: changes,
@@ -71,7 +87,8 @@ it.each(['airspace', 'basemap'] as const)(
     let loadError =
       type === 'airspace' ? 'Imported · could not be parsed' : 'Could not load the file.';
     await expect.element(page.getByText(loadError)).not.toBeInTheDocument();
-    await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
+    if (type !== 'terrain')
+      await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
     result.reject(new Error('storage failed'));
     await expect.element(toggle).toBeChecked();
     await expect
@@ -557,7 +574,7 @@ it('keeps accessible IDs unique across Data library instances', async () => {
   expect(new Set(hintIds).size).toBe(2);
 });
 
-it('shows read-only terrain details and keeps them current', async () => {
+it('shows terrain activation details and keeps them current', async () => {
   let view = await render(DataLibrary, {
     importer: new FakeClient(),
     activation: activation(),
@@ -582,22 +599,21 @@ it('shows read-only terrain details and keeps them current', async () => {
   );
   await page.getByRole('button', { name: /^a.terrain/ }).click();
   let dialog = page.getByRole('dialog');
-  await expect.element(dialog.getByText('Yes', { exact: true })).toBeVisible();
-  await expect.element(dialog.getByRole('switch')).not.toBeInTheDocument();
+  await expect.element(dialog.getByRole('switch')).toBeChecked();
   await expect
     .element(dialog.getByRole('button', { name: 'Remove from device' }))
     .not.toBeInTheDocument();
   await expect.element(dialog.getByText('Imported', { exact: true })).not.toBeInTheDocument();
   await userEvent.keyboard('{Escape}');
   await page.getByRole('button', { name: /^z.terrain/ }).click();
-  await expect.element(dialog.getByText('No', { exact: true })).toBeVisible();
+  await expect.element(dialog.getByRole('switch')).not.toBeChecked();
   await userEvent.keyboard('{Escape}');
   await page.getByRole('button', { name: /^broken.terrain/ }).click();
   await expect.element(dialog.getByText('Could not load the file.')).toBeVisible();
   await view.rerender({
     terrain: { generation: 1, sources: [{ sourceName: 'broken.terrain', type: 'disabled' }] },
   });
-  await expect.element(dialog.getByText('No', { exact: true })).toBeVisible();
+  await expect.element(dialog.getByRole('switch')).not.toBeChecked();
   await expect.element(dialog.getByText('Could not load the file.')).not.toBeInTheDocument();
   await view.rerender({ terrain: { generation: 2, sources: [] } });
   await expect.element(dialog).not.toBeInTheDocument();

@@ -32,6 +32,7 @@ it.each([
   ['setAirspaceEnabled', 'set_airspace_enabled'],
   ['setWaypointsEnabled', 'set_waypoints_enabled'],
   ['setBasemapEnabled', 'set_basemap_enabled'],
+  ['setTerrainEnabled', 'set_terrain_enabled'],
 ] as const)('forwards %s and propagates failures', async (method, command) => {
   let client = new TauriClient();
   mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('storage failed'));

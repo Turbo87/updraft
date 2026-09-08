@@ -3,13 +3,13 @@ use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct TerrainStatus {
     generation: u64,
     sources: Vec<TerrainSourceStatus>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
@@ -22,6 +22,12 @@ enum TerrainSourceStatus {
 }
 
 impl Terrain {
+    pub fn publish(&mut self) {
+        let status = self.status();
+        self.subscribers
+            .retain(|_, channel| channel.send(status.clone()).is_ok());
+    }
+
     fn status(&self) -> TerrainStatus {
         let sources = self
             .files
@@ -52,6 +58,28 @@ impl Terrain {
         self.subscribers.insert(channel.id(), channel);
         Ok(())
     }
+}
+
+#[tauri::command]
+pub async fn set_terrain_enabled(
+    source_name: String,
+    enabled: bool,
+    state: tauri::State<'_, Arc<Mutex<Terrain>>>,
+) -> Result<(), &'static str> {
+    let terrain = state.inner().clone();
+    let name = source_name.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        terrain
+            .lock()
+            .expect("Terrain access should not panic")
+            .set_enabled(&name, enabled)
+    })
+    .await
+    .unwrap_or_else(|error| Err(error.into()))
+    .map_err(|error| {
+        tracing::warn!(%error, source_name, "Could not change terrain activation");
+        "Could not change terrain activation"
+    })
 }
 
 #[tauri::command(async)]

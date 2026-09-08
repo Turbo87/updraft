@@ -402,6 +402,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         .invoke_handler(tauri::generate_handler![
             commands::subscribe_terrain,
             commands::unsubscribe_terrain,
+            commands::set_terrain_enabled,
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
@@ -425,10 +426,10 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         let body = json!({"channel":format!("__CHANNEL__:{id}")});
         assert_eq!(assert_ok!(invoke("subscribe_terrain", body)), Value::Null);
     }
-    let messages = messages.lock().unwrap();
-    assert_eq!(messages.len(), 2);
-    assert_eq!(messages[0], messages[1]);
-    insta::assert_json_snapshot!(messages[0], @r#"
+    let initial = messages.lock().unwrap();
+    assert_eq!(initial.len(), 2);
+    assert_eq!(initial[0], initial[1]);
+    insta::assert_json_snapshot!(initial[0], @r#"
     {
       "generation": 0,
       "sources": [
@@ -451,17 +452,55 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
       ]
     }
     "#);
-    drop(messages);
-    for id in [42, 42, 43] {
+    drop(initial);
+    for id in [42, 42] {
         let body = json!({"channelId":id});
         assert_eq!(assert_ok!(invoke("unsubscribe_terrain", body)), Value::Null);
         let terrain = terrain.lock().unwrap();
-        let expected = if id == 42 { vec![43] } else { vec![] };
         assert_eq!(
             terrain.subscribers.keys().copied().collect::<Vec<_>>(),
-            expected
+            [43]
         );
     }
+    let body = json!({"sourceName":"active.terrain", "enabled":false});
+    assert_eq!(assert_ok!(invoke("set_terrain_enabled", body)), Value::Null);
+    let delivered = messages.lock().unwrap();
+    assert_eq!(delivered.len(), 3);
+    insta::assert_json_snapshot!(delivered[2], @r#"
+    {
+      "generation": 1,
+      "sources": [
+        {
+          "sourceName": "active.terrain",
+          "type": "disabled"
+        },
+        {
+          "sourceName": "disabled.terrain",
+          "type": "disabled"
+        },
+        {
+          "sourceName": "incompatible.terrain",
+          "type": "active"
+        },
+        {
+          "sourceName": "invalid.terrain",
+          "type": "unavailable"
+        }
+      ]
+    }
+    "#);
+    drop(delivered);
+    let body = json!({"sourceName":"missing.terrain", "enabled":true});
+    assert_eq!(
+        invoke("set_terrain_enabled", body),
+        Err(json!("Could not change terrain activation"))
+    );
+    assert_eq!(messages.lock().unwrap().len(), 3);
+    assert_eq!(
+        assert_ok!(invoke("unsubscribe_terrain", json!({"channelId":43}))),
+        Value::Null
+    );
+    assert!(terrain.lock().unwrap().subscribers.is_empty());
     assert!(logs_contain("incompatible.terrain"));
     assert!(logs_contain("invalid.terrain"));
     assert!(!logs_contain("disabled.terrain"));
@@ -509,4 +548,94 @@ fn serves_only_the_requested_terrain_generation() {
       ]
     }
     "#);
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn activation_rechecks_compatibility_and_persists_without_opening_disabled_files() {
+    let directory = tempfile::tempdir().unwrap();
+    let first = directory.path().join("a.terrain");
+    let second = directory.path().join("b.terrain");
+    write_terrain(&first, &[(7, 66, 87, &webp_header(256, 256))]);
+    write_terrain(&second, &[(7, 66, 87, &webp_header(512, 512))]);
+    for (path, credit) in [(&first, "a"), (&second, "b")] {
+        assert_ok!(
+            Connection::open(path)
+                .unwrap()
+                .execute("INSERT INTO metadata VALUES ('attribution', ?1)", [credit])
+        );
+    }
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    assert_ok!(terrain.set_enabled("a.terrain", false));
+    assert_eq!(terrain.generation, 1);
+    assert!(first.with_extension("terrain.disabled").is_file());
+    std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
+    assert_eq!(
+        terrain.resource_response("1/7/66/40.webp").body(),
+        &webp_header(512, 512)
+    );
+    let metadata: serde_json::Value =
+        serde_json::from_slice(&assert_ok!(terrain.metadata())).unwrap();
+    assert_eq!(metadata["tileSize"], 512);
+    assert_eq!(metadata["attribution"], "b");
+    assert_eq!(
+        terrain.resource_response("0/metadata.json").status(),
+        StatusCode::NOT_FOUND
+    );
+    let restarted = assert_ok!(Terrain::load(directory.path()));
+    std::assert_matches!(restarted.files[&first], TerrainSource::Disabled);
+    std::assert_matches!(restarted.files[&second], TerrainSource::Active(_));
+    drop(restarted);
+    assert_ok!(fs::write(&first, b"disabled files must not be opened"));
+    assert_ok!(terrain.set_enabled("b.terrain", false));
+    assert_eq!(
+        terrain.resource_response("2/7/66/40.webp").status(),
+        StatusCode::NOT_FOUND
+    );
+    let channel = Channel::new(|_| Err(std::io::Error::other("closed channel").into()));
+    terrain.subscribers.insert(channel.id(), channel);
+    assert_ok!(terrain.set_enabled("b.terrain", true));
+    assert!(terrain.subscribers.is_empty());
+    assert!(!logs_contain("a.terrain"));
+    assert_ok!(terrain.set_enabled("a.terrain", true));
+    std::assert_matches!(terrain.files[&first], TerrainSource::Unavailable(_));
+    std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
+    assert!(!first.with_extension("terrain.disabled").exists());
+    assert_ok!(fs::remove_file(&first));
+    write_terrain(&first, &[(7, 66, 87, &webp_header(256, 256))]);
+    assert_ok!(terrain.set_enabled("a.terrain", true));
+    std::assert_matches!(terrain.files[&first], TerrainSource::Active(_));
+    std::assert_matches!(terrain.files[&second], TerrainSource::Unavailable(_));
+    assert_eq!(
+        terrain.resource_response("5/7/66/40.webp").body(),
+        &webp_header(256, 256)
+    );
+    assert!(logs_contain("Could not open offline terrain"));
+}
+
+#[test]
+fn activation_marker_failures_preserve_inventory_and_reject_unknown_names() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local.terrain");
+    write_terrain(&path, &[]);
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    let marker = path.with_extension("terrain.disabled");
+    assert_ok!(fs::create_dir(&marker));
+    for enabled in [false, true] {
+        assert_err!(terrain.set_enabled("local.terrain", enabled));
+        std::assert_matches!(terrain.files[&path], TerrainSource::Active(_));
+        assert_eq!(terrain.generation, 0);
+    }
+    assert_ok!(fs::remove_dir(&marker));
+    for name in [
+        "missing.terrain",
+        "../local.terrain",
+        "nested/local.terrain",
+    ] {
+        assert_err!(terrain.set_enabled(name, false));
+        assert_eq!(terrain.generation, 0);
+    }
+    assert_ok!(terrain.set_enabled("local.terrain", false));
+    assert_ok!(terrain.set_enabled("local.terrain", false));
+    assert_eq!(terrain.generation, 2);
 }

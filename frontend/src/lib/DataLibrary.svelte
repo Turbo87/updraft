@@ -167,7 +167,7 @@
     selectedGroup?.sources.find((source) => source.sourceName === selected?.name),
   );
   const selectedEnabled = $derived(
-    selected && selectedSource && isEnabled(selected.type, selectedSource),
+    selected && selectedSource && activation.isEnabled(selected.type, selectedSource),
   );
 
   $effect(() => {
@@ -191,10 +191,6 @@
     } finally {
       pending = false;
     }
-  }
-
-  function isEnabled(type: DatasetType, source: Source): boolean {
-    return type === 'terrain' ? source.type !== 'disabled' : activation.isEnabled(type, source);
   }
 
   function compareSources(a: Source, b: Source): number {
@@ -276,7 +272,7 @@
       <ResponsiveCard>
         <ul class="files">
           {#each group.sources.toSorted(compareSources) as source (source.sourceName)}
-            {let enabled = $derived(isEnabled(group.type, source))}
+            {let enabled = $derived(activation.isEnabled(group.type, source))}
             <li
               {@attach (element) => {
                 if (
@@ -309,8 +305,8 @@
                     {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
                   </span>
                   <span class="metadata">{metadata(source, group.type, enabled)}</span>
-                  {#if group.type !== 'terrain' && activation.hasError(group.type, source.sourceName)}<span
-                      class="error">{m.data_activation_failed()}</span
+                  {#if activation.hasError(group.type, source.sourceName)}<span class="error"
+                      >{m.data_activation_failed()}</span
                     >{/if}
                 </span>
                 <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
@@ -340,41 +336,32 @@
           </div>
           <Dialog.Close class="data-dialog-close" aria-label={m.data_close()}>×</Dialog.Close>
         </header>
-        {#if selectedGroup.type === 'terrain'}
-          <dl>
-            <div>
-              <dt>{m.data_enabled()}</dt>
-              <dd>{selectedEnabled ? m.yes_value() : m.no_value()}</dd>
-            </div>
-          </dl>
-        {:else}
-          <label class="activation">
-            <span>
-              <strong>{m.data_enabled()}</strong>
-              <span id={`${componentId}-enabled-hint`} class="activation-hint"
-                >{m.data_enabled_hint()}</span
-              >
-            </span>
-            <span class="activation-control">
-              <input
-                type="checkbox"
-                role="switch"
-                aria-label={m.data_enabled()}
-                aria-describedby={`${componentId}-enabled-hint`}
-                checked={selectedEnabled}
-                onchange={(event) => {
-                  let enabled = event.currentTarget.checked;
-                  event.currentTarget.checked = !!selectedEnabled;
-                  activation.setEnabled(selectedGroup.type, selectedSource.sourceName, enabled);
-                }}
-              />
-              <span class="activation-check" aria-hidden="true"
-                ><span class="i-mdi-check-bold"></span></span
-              >
-            </span>
-          </label>
-        {/if}
-        {#if selectedGroup.type !== 'terrain' && activation.hasError(selectedGroup.type, selectedSource.sourceName)}
+        <label class="activation">
+          <span>
+            <strong>{m.data_enabled()}</strong>
+            <span id={`${componentId}-enabled-hint`} class="activation-hint"
+              >{m.data_enabled_hint()}</span
+            >
+          </span>
+          <span class="activation-control">
+            <input
+              type="checkbox"
+              role="switch"
+              aria-label={m.data_enabled()}
+              aria-describedby={`${componentId}-enabled-hint`}
+              checked={selectedEnabled}
+              onchange={(event) => {
+                let enabled = event.currentTarget.checked;
+                event.currentTarget.checked = !!selectedEnabled;
+                activation.setEnabled(selectedGroup.type, selectedSource.sourceName, enabled);
+              }}
+            />
+            <span class="activation-check" aria-hidden="true"
+              ><span class="i-mdi-check-bold"></span></span
+            >
+          </span>
+        </label>
+        {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
           <p class="error" role="alert">{m.data_activation_failed()}</p>
         {/if}
         {#if selectedGroup.type === 'airspace' || selectedGroup.type === 'waypoints'}

@@ -24,8 +24,8 @@ Place `.terrain` files in the application data directory's `enroute` folder.
 Updraft loads the inventory at startup, in filename order. Files are enabled
 unless a sibling marker exists, such as `France.terrain.disabled` for
 `France.terrain`. Disabled files are not opened or validated. Enabled files
-are opened read-only. Restart the application after changing files or markers.
-Files must remain intact while it runs.
+are opened read-only. Restart the application after changing files or markers
+externally. Files must remain intact while it runs.
 
 The reader requires MBTiles with WebP format metadata, Terrarium encoding,
 and a compatible `tiles` table or view. It retains unsupported or invalid files
@@ -46,7 +46,8 @@ first WebP tile. SQL reads the zoom limits from its `tiles` table. Tiles must
 be square. The first valid enabled file with tiles establishes the tile size.
 Files with a different size remain enabled but unavailable. The source combines
 the compatible files' zoom ranges and retains their validated metadata until
-restart. Empty files do not establish a tile size or contribute zoom limits.
+activation changes or restart. Empty files do not establish a tile size or
+contribute zoom limits.
 MapLibre reuses the highest available level when the camera zooms further in.
 
 Missing tiles return HTTP 404 so MapLibre leaves those areas without terrain.
@@ -69,8 +70,15 @@ screen shows the resulting credits. Tauri converts both resource URLs for
 each platform.
 
 The Data page lists terrain files with their enabled state and load errors.
-Details update when the frontend receives terrain status. Activation and removal
-controls are not available yet.
+The Enabled control saves the disabled marker and rechecks all enabled files in
+filename order. An incompatible file can become active after another file is
+disabled. Invalid files remain enabled and unavailable. Disabled files are not
+opened. A marker write failure leaves the active inventory unchanged.
+
+Each successful activation command publishes a new generation. The frontend
+replaces the terrain source to discard cached tiles and cancel pending requests.
+Tiles, metadata, and credits refresh together without changing the map camera.
+Removal controls are not available yet.
 
 This version does not provide numeric elevation queries, AGL calculations,
 file import controls, downloads, or online fallback.

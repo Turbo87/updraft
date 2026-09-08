@@ -51,7 +51,7 @@
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
-  const dataActivation = new DataActivation(client, airspace, waypoints, basemaps);
+  const dataActivation = new DataActivation(client, airspace, waypoints, basemaps, terrain);
   const appContext = {
     client,
     dataActivation,
@@ -113,6 +113,7 @@
     let subscription = client.subscribeTerrain(
       (status) => {
         terrain.current = status;
+        dataActivation.apply({ topic: 'terrain', value: status });
       },
       () => {
         terrain.error = true;
@@ -139,6 +140,7 @@
     {client}
     airspace={airspace.current}
     basemapGeneration={basemaps.current?.generation ?? 0}
+    terrainGeneration={terrain.current?.generation ?? 0}
     waypoints={waypoints.current}
     instruments={instruments.current}
     {mapState}

@@ -19,6 +19,7 @@
     client?: UpdraftClient;
     airspace: AirspaceStatus;
     basemapGeneration?: number;
+    terrainGeneration?: number;
     waypoints?: WaypointStatus;
     instruments: Instruments;
     mapState: MapState;
@@ -31,6 +32,7 @@
     client,
     airspace,
     basemapGeneration,
+    terrainGeneration,
     waypoints,
     instruments,
     mapState,
@@ -53,6 +55,7 @@
     {client}
     {airspace}
     {basemapGeneration}
+    {terrainGeneration}
     {waypoints}
     {instruments}
     {mapState}

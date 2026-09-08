@@ -22,6 +22,7 @@
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
   import ReturnToPositionButton from './ReturnToPositionButton.svelte';
+  import { refreshTerrain } from './terrain-style';
   import Terrain from './Terrain.svelte';
   import Traffic from './Traffic.svelte';
   import Waypoints from './Waypoints.svelte';
@@ -36,6 +37,7 @@
     client?: UpdraftClient;
     airspace: AirspaceStatus;
     basemapGeneration?: number;
+    terrainGeneration?: number;
     waypoints?: WaypointStatus;
     testWaypointData?: GeoJSONSourceSpecification['data'];
     instruments: Instruments;
@@ -51,6 +53,7 @@
     client,
     airspace,
     basemapGeneration = 0,
+    terrainGeneration = 0,
     instruments,
     mapState,
     traffic,
@@ -91,6 +94,10 @@
 
   $effect(() => {
     if (map && spritesLoaded) refreshBasemap(map, basemapGeneration);
+  });
+
+  $effect(() => {
+    if (map && spritesLoaded) refreshTerrain(map, terrainGeneration);
   });
 
   $effect(() => {

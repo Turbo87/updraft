@@ -1,16 +1,17 @@
-import type { BasemapStatus, UpdraftClient } from '$lib/client';
+import type { BasemapStatus, TerrainStatus, UpdraftClient } from '$lib/client';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { AirspaceStore } from './airspace.svelte';
 import type { BasemapsStore } from './basemaps.svelte';
+import type { TerrainStore } from './terrain.svelte';
 import type { WaypointsStore } from './waypoints.svelte';
 
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
-type DatasetType = 'airspace' | 'waypoints' | 'basemap';
+type DatasetType = 'airspace' | 'waypoints' | 'basemap' | 'terrain';
 type Change = { type: DatasetType; name: string; enabled: boolean };
 type ActivationClient = Pick<
   UpdraftClient,
-  'setAirspaceEnabled' | 'setWaypointsEnabled' | 'setBasemapEnabled'
+  'setAirspaceEnabled' | 'setWaypointsEnabled' | 'setBasemapEnabled' | 'setTerrainEnabled'
 >;
 
 export class DataActivation {
@@ -25,6 +26,7 @@ export class DataActivation {
     private airspace: AirspaceStore,
     private waypoints: WaypointsStore,
     private basemaps: BasemapsStore,
+    private terrain: TerrainStore,
   ) {}
 
   isEnabled(type: DatasetType, source: { sourceName: string; type: string }): boolean {
@@ -46,8 +48,18 @@ export class DataActivation {
     void this.#drain();
   }
 
-  apply(topic: Topic | { topic: 'basemap'; value: BasemapStatus }): void {
-    if (topic.topic !== 'airspace' && topic.topic !== 'waypoints' && topic.topic !== 'basemap')
+  apply(
+    topic:
+      | Topic
+      | { topic: 'basemap'; value: BasemapStatus }
+      | { topic: 'terrain'; value: TerrainStatus },
+  ): void {
+    if (
+      topic.topic !== 'airspace' &&
+      topic.topic !== 'waypoints' &&
+      topic.topic !== 'basemap' &&
+      topic.topic !== 'terrain'
+    )
       return;
     let keys = topic.value.sources.map((source) => this.#key(topic.topic, source.sourceName));
     for (let key of this.#errors) {
@@ -61,6 +73,7 @@ export class DataActivation {
   }
 
   #status(type: DatasetType) {
+    if (type === 'terrain') return this.terrain.current ?? { generation: 0, sources: [] };
     if (type === 'basemap') return this.basemaps.current ?? { generation: 0, sources: [] };
     return type === 'airspace' ? this.airspace.current : this.waypoints.current;
   }
@@ -94,6 +107,8 @@ export class DataActivation {
           });
           if (change.type === 'airspace')
             await this.client.setAirspaceEnabled(change.name, change.enabled);
+          else if (change.type === 'terrain')
+            await this.client.setTerrainEnabled(change.name, change.enabled);
           else if (change.type === 'basemap')
             await this.client.setBasemapEnabled(change.name, change.enabled);
           else await this.client.setWaypointsEnabled(change.name, change.enabled);

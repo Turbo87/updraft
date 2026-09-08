@@ -123,6 +123,19 @@ export class FakeClient implements UpdraftClient {
     });
   }
 
+  async setTerrainEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    let source = this.#terrain.sources.find((source) => source.sourceName === sourceName);
+    if (!source) throw new Error('Terrain file is not installed');
+    this.emitTerrain({
+      generation: this.#terrain.generation + 1,
+      sources: this.#terrain.sources.map((source) =>
+        source.sourceName === sourceName
+          ? { ...source, type: enabled ? 'active' : 'disabled' }
+          : source,
+      ),
+    });
+  }
+
   async removeBasemap(sourceName: string): Promise<void> {
     this.emitBasemaps({
       generation: this.#basemaps.generation + 1,

@@ -495,14 +495,14 @@ for (let [width, height, theme] of [
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await page.getByRole('button', { name: /^local.terrain/ }).click();
     let dialog = page.getByRole('dialog');
-    await expect(dialog.getByText('Yes', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('switch')).toBeChecked();
     await page.evaluate(() =>
       (window as TestWindow).__updraftFake!.emitTerrain({
         generation: 1,
         sources: [{ sourceName: 'local.terrain', type: 'disabled' }],
       }),
     );
-    await expect(dialog.getByText('No', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('switch')).not.toBeChecked();
     await page.screenshot({ path: testInfo.outputPath('terrain-details.png') });
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();

@@ -132,8 +132,8 @@ status, feature count, and current errors or waypoint warnings. Close, Escape,
 Back, and a tap outside dismiss the dialog. Back keeps the library open.
 
 Basemap details show an Enabled control and a load error when an enabled file
-is unavailable. Terrain details show the enabled state as read-only text and
-any load error. Terrain activation and removal controls are not available yet.
+is unavailable. Terrain details use the same control and show any load error.
+Terrain removal controls are not available yet.
 The app maintains basemap and terrain status across navigation.
 Loading and subscription failure messages are distinct from an empty inventory.
 
@@ -144,6 +144,8 @@ A failed final change returns to the confirmed state and shows an error in
 the library and file details. An enabled file can have a parsing error.
 Disabling hides its counts and diagnostics until it is enabled again.
 Basemap activation and removal refresh tiles without changing the map position or zoom.
+Terrain activation refreshes tiles, metadata, and credits together. It rechecks
+tile-size compatibility across enabled files and preserves the map camera.
 
 Remove from device closes the details and opens a confirmation. Cancel returns
 to the library. A removal failure stays in the confirmation with an error and

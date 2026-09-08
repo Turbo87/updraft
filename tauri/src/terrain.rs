@@ -121,6 +121,58 @@ impl Terrain {
             .expect("the fixed terrain response should be valid")
     }
 
+    fn set_enabled(&mut self, name: &str, enabled: bool) -> Result<()> {
+        let path = self
+            .files
+            .keys()
+            .find(|path| path.file_name() == Some(std::ffi::OsStr::new(name)))
+            .context("Terrain file is not installed")?
+            .clone();
+        let marker = path.with_extension("terrain.disabled");
+        if enabled {
+            match fs::remove_file(&marker) {
+                Ok(_) => {}
+                Err(error) if error.kind() == ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        } else {
+            match fs::File::create_new(&marker) {
+                Ok(_) => {}
+                Err(error)
+                    if error.kind() == ErrorKind::AlreadyExists
+                        && fs::symlink_metadata(&marker)?.is_file() => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        let mut tile_size = None;
+        for (file_path, source) in &mut self.files {
+            let file_enabled = if *file_path == path {
+                enabled
+            } else {
+                !matches!(source, TerrainSource::Disabled)
+            };
+            if !file_enabled {
+                *source = TerrainSource::Disabled;
+                continue;
+            }
+            *source = match open_terrain(file_path, tile_size) {
+                Ok(file) => {
+                    if let Some((size, _, _)) = file.coverage {
+                        tile_size = Some(size);
+                    }
+                    TerrainSource::Active(file)
+                }
+                Err(error) => {
+                    tracing::warn!(%error, path = %file_path.display(), "Could not open offline terrain");
+                    TerrainSource::Unavailable(error)
+                }
+            };
+        }
+        self.generation += 1;
+        self.publish();
+        Ok(())
+    }
+
     fn metadata(&self) -> Result<Vec<u8>> {
         let mut attributions = Vec::new();
         let mut coverage: Option<(usize, u32, u32)> = None;

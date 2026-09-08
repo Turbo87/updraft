@@ -42,6 +42,11 @@ export type EnrouteCatalogStatus = {
   error: boolean;
 };
 export type EnrouteCatalogSubscription = { close(): Promise<void> };
+export type EnrouteDownloadStatus =
+  | { path: string; type: 'queued' }
+  | { path: string; type: 'downloading'; downloaded: number; total: number }
+  | { path: string; type: 'failed' };
+export type EnrouteDownloadSubscription = { close(): Promise<void> };
 export type SelectedDataFile = {
   selectionId: string;
   sourceName: string;
@@ -72,6 +77,14 @@ export interface UpdraftClient {
     onUpdate: (status: EnrouteCatalogStatus) => void,
     onError: (error: unknown) => void,
   ): EnrouteCatalogSubscription;
+  /** Delivers queue snapshots. Reports registration failures through onError. */
+  subscribeEnrouteDownloads(
+    onUpdate: (status: EnrouteDownloadStatus[]) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteDownloadSubscription;
+  /** Resolves when the queue accepts the selection, before transfers complete. */
+  downloadEnrouteBasemaps(paths: string[]): Promise<void>;
+  cancelEnrouteDownload(path: string): Promise<void>;
   refreshEnrouteCatalog(): Promise<void>;
   getEnrouteBasemapUpdates(): Promise<string[]>;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */

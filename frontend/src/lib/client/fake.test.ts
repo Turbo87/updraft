@@ -1,7 +1,7 @@
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
-import type { EnrouteCatalogStatus } from './index';
+import type { EnrouteCatalogStatus, EnrouteDownloadStatus } from './index';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -567,4 +567,29 @@ it('delivers cached catalog and refresh states until each subscription closes', 
   expect(first).toHaveBeenCalledTimes(2);
   expect(second).toHaveBeenLastCalledWith(failed);
   await other.close();
+});
+
+it('delivers download snapshots until each subscription closes', async () => {
+  let client = new FakeClient();
+  let first = vi.fn();
+  let second = vi.fn();
+  let subscription = client.subscribeEnrouteDownloads(first);
+  expect(first).toHaveBeenCalledExactlyOnceWith([]);
+  let status: EnrouteDownloadStatus[] = [
+    { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+    { path: 'Europe/Germany.mbtiles', type: 'queued' },
+    { path: 'Europe/France.mbtiles', type: 'failed' },
+  ];
+  client.emitEnrouteDownloads(status);
+  expect(first).toHaveBeenLastCalledWith(status);
+  let other = client.subscribeEnrouteDownloads(second);
+  expect(second).toHaveBeenCalledExactlyOnceWith(status);
+  await subscription.close();
+  await subscription.close();
+  client.emitEnrouteDownloads([]);
+  expect(first).toHaveBeenCalledTimes(2);
+  expect(second).toHaveBeenLastCalledWith([]);
+  await other.close();
+  client.emitEnrouteDownloads(status);
+  expect(second).toHaveBeenCalledTimes(2);
 });

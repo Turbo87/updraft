@@ -18,6 +18,8 @@ import type {
   BasemapSubscription,
   EnrouteCatalogStatus,
   EnrouteCatalogSubscription,
+  EnrouteDownloadStatus,
+  EnrouteDownloadSubscription,
   SelectedDataFile,
   TerrainStatus,
   TerrainSubscription,
@@ -55,6 +57,9 @@ export class FakeClient implements UpdraftClient {
 
   #enrouteCatalog: EnrouteCatalogStatus = { cached: null, refreshing: false, error: false };
   #enrouteCatalogListeners = new Set<(status: EnrouteCatalogStatus) => void>();
+
+  #enrouteDownloads: EnrouteDownloadStatus[] = [];
+  #enrouteDownloadsListeners = new Set<(status: EnrouteDownloadStatus[]) => void>();
 
   #terrain: TerrainStatus = { generation: 0, sources: [] };
   #terrainListeners = new Set<(status: TerrainStatus) => void>();
@@ -116,6 +121,29 @@ export class FakeClient implements UpdraftClient {
     this.#enrouteCatalog = status;
     for (let listener of this.#enrouteCatalogListeners) listener(status);
   }
+
+  subscribeEnrouteDownloads(
+    onUpdate: (status: EnrouteDownloadStatus[]) => void,
+  ): EnrouteDownloadSubscription {
+    onUpdate(this.#enrouteDownloads);
+    this.#enrouteDownloadsListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#enrouteDownloadsListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitEnrouteDownloads(status: EnrouteDownloadStatus[]): void {
+    this.#enrouteDownloads = status;
+    for (let listener of this.#enrouteDownloadsListeners) listener(status);
+  }
+
+  /** Tests and stories supply queue outcomes through emitEnrouteDownloads(). */
+  async downloadEnrouteBasemaps(): Promise<void> {}
+
+  /** Tests and stories supply cancellation outcomes through emitEnrouteDownloads(). */
+  async cancelEnrouteDownload(): Promise<void> {}
 
   async getEnrouteBasemapUpdates(): Promise<string[]> {
     return [];

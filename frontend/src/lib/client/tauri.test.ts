@@ -167,6 +167,16 @@ describe.each([
     { generation: 0, sources: [{ sourceName: 'local.terrain', type: 'active' }] },
   ],
   [
+    'subscribeEnrouteDownloads',
+    'subscribe_enroute_downloads',
+    'unsubscribe_enroute_downloads',
+    [
+      { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+      { path: 'Europe/Germany.mbtiles', type: 'queued' },
+      { path: 'Europe/France.mbtiles', type: 'failed' },
+    ],
+  ],
+  [
     'subscribeEnrouteCatalog',
     'subscribe_enroute_catalog',
     'unsubscribe_enroute_catalog',
@@ -255,4 +265,26 @@ it('reads available basemap updates and propagates check failures', async () => 
     ['get_enroute_basemap_updates'],
     ['get_enroute_basemap_updates'],
   ]);
+});
+
+it('waits for download acceptance and forwards cancellation and command failures', async () => {
+  let client = new TauriClient();
+  let accepted = Promise.withResolvers<void>();
+  mocks.invoke.mockReturnValueOnce(accepted.promise).mockResolvedValue(undefined);
+  let finished = vi.fn();
+  let paths = ['Europe/Malta.mbtiles', 'Europe/Germany.mbtiles'];
+  let submission = client.downloadEnrouteBasemaps(paths).then(finished);
+  await Promise.resolve();
+  expect(finished).not.toHaveBeenCalled();
+  accepted.resolve();
+  await submission;
+  expect(finished).toHaveBeenCalledExactlyOnceWith(undefined);
+  await client.cancelEnrouteDownload(paths[0]);
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['download_enroute_basemaps', { paths }],
+    ['cancel_enroute_download', { path: paths[0] }],
+  ]);
+  mocks.invoke.mockRejectedValue(new Error('command failed'));
+  await expect(client.downloadEnrouteBasemaps(paths)).rejects.toThrow('command failed');
+  await expect(client.cancelEnrouteDownload(paths[0])).rejects.toThrow('command failed');
 });

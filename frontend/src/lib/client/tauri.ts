@@ -13,6 +13,8 @@ import type {
   BasemapSubscription,
   EnrouteCatalogStatus,
   EnrouteCatalogSubscription,
+  EnrouteDownloadStatus,
+  EnrouteDownloadSubscription,
   SelectedDataFile,
   TerrainStatus,
   TerrainSubscription,
@@ -83,6 +85,43 @@ export class TauriClient implements UpdraftClient {
         return closing;
       },
     };
+  }
+
+  subscribeEnrouteDownloads(
+    onUpdate: (status: EnrouteDownloadStatus[]) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteDownloadSubscription {
+    let channel = new Channel<EnrouteDownloadStatus[]>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_enroute_downloads', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_enroute_downloads', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
+  downloadEnrouteBasemaps(paths: string[]): Promise<void> {
+    return invoke('download_enroute_basemaps', { paths });
+  }
+
+  cancelEnrouteDownload(path: string): Promise<void> {
+    return invoke('cancel_enroute_download', { path });
   }
 
   getEnrouteBasemapUpdates(): Promise<string[]> {

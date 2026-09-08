@@ -1,6 +1,6 @@
 use super::*;
 use crate::enroute::{BasemapEntry, parse_catalog, storage::installed_files};
-use claims::{assert_err, assert_le, assert_ok};
+use claims::{assert_err, assert_le, assert_ok, assert_some_eq};
 use std::fs::{self, FileTimes};
 use std::io::Write;
 use std::time::{Duration, SystemTime};
@@ -115,7 +115,8 @@ async fn response(raw: &'static str) -> (reqwest::Response, tokio::net::TcpStrea
         stream.write_all(raw.as_bytes()).await.unwrap();
         stream
     });
-    let response = reqwest::get(url).await.unwrap();
+    let client = assert_ok!(crate::enroute::http_client().build());
+    let response = assert_ok!(client.get(url).send().await);
     (response, server.await.unwrap())
 }
 
@@ -128,7 +129,7 @@ async fn streams_chunked_bytes_without_installing_or_using_the_catalog_size() {
     let raw =
         "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\nnew \r\n5\r\nbytes\r\n0\r\n\r\n";
     let (response, _connection) = response(raw).await;
-    let download = assert_ok!(download.receive(response).await);
+    let download = assert_ok!(download.receive(response, |_| {}).await);
     assert_eq!(
         assert_ok!(fs::read(download.temporary.path())),
         b"new bytes"
@@ -152,7 +153,7 @@ async fn transfer_failures_discard_partial_files_and_preserve_the_installed_vers
         assert_ok!(fs::write(&destination, b"installed"));
         let (response, connection) = response(raw).await;
         drop(connection);
-        assert_err!(download.receive(response).await);
+        assert_err!(download.receive(response, |_| {}).await);
         assert!(!temporary.exists());
         assert_eq!(assert_ok!(fs::read(destination)), b"installed");
     }
@@ -167,7 +168,10 @@ async fn disk_write_failure_discards_the_download() {
     assert_ok!(fs::write(&destination, b"installed"));
     *download.file_mut() = assert_ok!(fs::File::open(&temporary));
     let (response, _connection) = response("HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nnew").await;
-    assert_err!(download.receive(response).await);
+    let mut progress = Vec::new();
+    let transfer = download.receive(response, |bytes| progress.push(bytes));
+    assert_err!(transfer.await);
+    assert_eq!(progress, Vec::<u64>::new());
     assert!(!temporary.exists());
     assert_eq!(assert_ok!(fs::read(destination)), b"installed");
 }
@@ -181,7 +185,7 @@ async fn cancellation_discards_written_bytes_without_installing() {
     assert_ok!(fs::write(&destination, b"installed"));
     let (response, _connection) =
         response("HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\npartial").await;
-    let worker = tokio::spawn(download.receive(response));
+    let worker = tokio::spawn(download.receive(response, |_| {}));
     assert_ok!(
         tokio::time::timeout(Duration::from_secs(2), async {
             while fs::metadata(&temporary).unwrap().len() != 7 {
@@ -201,4 +205,29 @@ async fn cancellation_discards_written_bytes_without_installing() {
         .await
     );
     assert_eq!(assert_ok!(fs::read(destination)), b"installed");
+}
+
+#[tokio::test]
+async fn progress_counts_written_bytes_before_the_transfer_finishes() {
+    use tokio::io::AsyncWriteExt;
+
+    let directory = tempfile::tempdir().unwrap();
+    let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let temporary = download.temporary.path().to_owned();
+    let (response, mut connection) =
+        response("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nnew\r\n").await;
+    let (sender, mut progress) = tokio::sync::mpsc::unbounded_channel();
+    let worker = tokio::spawn(download.receive(response, move |bytes| {
+        assert_eq!(assert_ok!(fs::metadata(&temporary)).len(), bytes);
+        assert_ok!(sender.send(bytes));
+    }));
+    let first = tokio::time::timeout(Duration::from_secs(2), progress.recv()).await;
+    assert_some_eq!(assert_ok!(first), 3);
+    assert!(!worker.is_finished());
+    assert_ok!(connection.write_all(b"4\r\n map\r\n0\r\n\r\n").await);
+    let completed = tokio::time::timeout(Duration::from_secs(2), worker).await;
+    let download = assert_ok!(assert_ok!(assert_ok!(completed)));
+    assert_some_eq!(progress.recv().await, 7);
+    assert_eq!(progress.recv().await, None);
+    assert_eq!(assert_ok!(fs::read(download.temporary.path())), b"new map");
 }

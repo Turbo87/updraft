@@ -16,7 +16,12 @@ pub struct BasemapDownload {
 
 impl BasemapDownload {
     /// Downloads the complete response into a temporary file without installing it.
-    pub async fn fetch(directory: &Path, entry: &BasemapEntry) -> Result<Self> {
+    /// Reports cumulative bytes after each successful write. Progress does not imply installation.
+    pub async fn fetch(
+        directory: &Path,
+        entry: &BasemapEntry,
+        progress: impl FnMut(u64),
+    ) -> Result<Self> {
         let download = Self::new(directory, entry)?;
         let client = super::http_client()
             .connect_timeout(Duration::from_secs(30))
@@ -25,21 +30,29 @@ impl BasemapDownload {
         let base_url = "https://enroute-data.akaflieg-freiburg.de/enroute-GeoJSONv003";
         let url = format!("{base_url}/{}", entry.path);
         let response = client.get(url).send().await?;
-        download.receive(response).await
+        download.receive(response, progress).await
     }
 
-    async fn receive(mut self, response: reqwest::Response) -> Result<Self> {
+    async fn receive(
+        mut self,
+        response: reqwest::Response,
+        mut progress: impl FnMut(u64),
+    ) -> Result<Self> {
         let mut response = response.error_for_status()?;
         ensure!(
             response.status() == reqwest::StatusCode::OK,
             "Expected a complete basemap response"
         );
+        let mut written = 0;
         while let Some(chunk) = response.chunk().await? {
+            let length = chunk.len() as u64;
             self = tokio::task::spawn_blocking(move || -> Result<Self> {
                 self.file_mut().write_all(&chunk)?;
                 Ok(self)
             })
             .await??;
+            written += length;
+            progress(written);
         }
         Ok(self)
     }

@@ -32,12 +32,8 @@ impl Basemaps {
         let sources = self
             .files
             .iter()
-            .map(|(path, source)| {
-                let source_name = path
-                    .file_name()
-                    .expect("Basemap files have names")
-                    .to_string_lossy()
-                    .into_owned();
+            .map(|(id, source)| {
+                let source_name = id.clone();
                 match source {
                     BasemapSource::Active(_) => BasemapSourceStatus::Active { source_name },
                     BasemapSource::Disabled => BasemapSourceStatus::Disabled { source_name },

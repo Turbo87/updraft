@@ -27,12 +27,13 @@ fn write_basemap(path: &Path, tiles: &[(u32, u32, u32, &[u8])]) {
 #[test]
 fn activation_persists_and_invalidates_tiles_without_changing_priority() {
     let directory = tempfile::tempdir().unwrap();
-    let first = directory.path().join("a.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let first = directory.path().join("enroute/Europe/a.mbtiles");
     write_basemap(&first, &[(6, 33, 43, b"first")]);
-    let second = directory.path().join("b.mbtiles");
+    let second = directory.path().join("enroute/Europe/b.mbtiles");
     write_basemap(&second, &[(6, 33, 43, b"second")]);
     let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
-    assert_ok!(basemaps.set_enabled("a.mbtiles", false));
+    assert_ok!(basemaps.set_enabled("enroute/Europe/a.mbtiles", false));
     let stale = basemaps.resource_response("0/6/33/20.pbf");
     assert_eq!(stale.status(), StatusCode::NO_CONTENT);
     let tile = basemaps.resource_response("1/6/33/20.pbf");
@@ -40,14 +41,14 @@ fn activation_persists_and_invalidates_tiles_without_changing_priority() {
     let restarted = assert_ok!(Basemaps::load(directory.path()));
     let tile = restarted.resource_response("0/6/33/20.pbf");
     assert_eq!(tile.body(), b"second");
-    assert_ok!(basemaps.set_enabled("a.mbtiles", true));
+    assert_ok!(basemaps.set_enabled("enroute/Europe/a.mbtiles", true));
     assert!(!first.with_extension("mbtiles.disabled").exists());
     assert_eq!(basemaps.resource_response("2/6/33/20.pbf").body(), b"first");
-    assert_ok!(basemaps.set_enabled("a.mbtiles", true));
+    assert_ok!(basemaps.set_enabled("enroute/Europe/a.mbtiles", true));
     assert_eq!(basemaps.generation, 3);
     let channel = Channel::new(|_| Err(std::io::Error::other("closed channel").into()));
     basemaps.subscribers.insert(channel.id(), channel);
-    assert_ok!(basemaps.set_enabled("a.mbtiles", false));
+    assert_ok!(basemaps.set_enabled("enroute/Europe/a.mbtiles", false));
     assert!(basemaps.subscribers.is_empty());
     assert!(first.with_extension("mbtiles.disabled").exists());
     let tile = basemaps.resource_response("4/6/33/20.pbf");
@@ -57,19 +58,25 @@ fn activation_persists_and_invalidates_tiles_without_changing_priority() {
 #[test]
 fn marker_failures_leave_activation_and_generation_unchanged() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path_id = "enroute/Europe/local.mbtiles";
+    let path = directory.path().join(path_id);
     write_basemap(&path, &[(6, 33, 43, b"tile")]);
     let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
     let marker = path.with_extension("mbtiles.disabled");
     assert_ok!(fs::create_dir(&marker));
-    assert_err!(basemaps.set_enabled("local.mbtiles", false));
+    assert_err!(basemaps.set_enabled("enroute/Europe/local.mbtiles", false));
     assert_eq!(basemaps.generation, 0);
     assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"tile");
     let mut disabled = assert_ok!(Basemaps::load(directory.path()));
-    assert_err!(disabled.set_enabled("local.mbtiles", true));
+    assert_err!(disabled.set_enabled("enroute/Europe/local.mbtiles", true));
     assert_eq!(disabled.generation, 0);
-    std::assert_matches!(disabled.files[&path], BasemapSource::Disabled);
-    for name in ["../local.mbtiles", "missing.mbtiles", "local.terrain"] {
+    std::assert_matches!(disabled.files[path_id], BasemapSource::Disabled);
+    for name in [
+        "enroute/Europe/../local.mbtiles",
+        "enroute/Europe/missing.mbtiles",
+        "local.terrain",
+    ] {
         assert_err!(basemaps.set_enabled(name, false));
     }
 }
@@ -77,20 +84,21 @@ fn marker_failures_leave_activation_and_generation_unchanged() {
 #[test]
 fn removal_clears_markers_and_falls_back_to_remaining_tiles() {
     let directory = tempfile::tempdir().unwrap();
-    let first = directory.path().join("a.mbtiles");
-    let second = directory.path().join("b.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let first = directory.path().join("enroute/Europe/a.mbtiles");
+    let second = directory.path().join("enroute/Europe/b.mbtiles");
     write_basemap(&first, &[(6, 33, 43, b"first")]);
     write_basemap(&second, &[(6, 33, 43, b"second")]);
     let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
-    assert_err!(basemaps.remove("../a.mbtiles"));
-    assert_ok!(basemaps.remove("a.mbtiles"));
+    assert_err!(basemaps.remove("enroute/Europe/../a.mbtiles"));
+    assert_ok!(basemaps.remove("enroute/Europe/a.mbtiles"));
     assert!(!first.exists());
     let tile = basemaps.resource_response("1/6/33/20.pbf");
     assert_eq!(tile.body(), b"second");
     let stale = basemaps.resource_response("0/6/33/20.pbf");
     assert_eq!(stale.status(), StatusCode::NO_CONTENT);
-    assert_ok!(basemaps.set_enabled("b.mbtiles", false));
-    assert_ok!(basemaps.remove("b.mbtiles"));
+    assert_ok!(basemaps.set_enabled("enroute/Europe/b.mbtiles", false));
+    assert_ok!(basemaps.remove("enroute/Europe/b.mbtiles"));
     assert!(!second.exists());
     assert!(!second.with_extension("mbtiles.disabled").exists());
     assert!(basemaps.files.is_empty());
@@ -102,23 +110,27 @@ fn removal_clears_markers_and_falls_back_to_remaining_tiles() {
 #[test]
 fn removal_failures_can_be_retried_without_opening_disabled_files() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path_id = "enroute/Europe/local.mbtiles";
+    let path = directory.path().join(path_id);
     let marker = path.with_extension("mbtiles.disabled");
-    assert_ok!(fs::create_dir(&path));
+    assert_ok!(fs::write(&path, b"not sqlite"));
     assert_ok!(fs::create_dir(&marker));
     let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
-    assert_err!(basemaps.remove("local.mbtiles"));
+    assert_ok!(fs::remove_file(&path));
+    assert_ok!(fs::create_dir(&path));
+    assert_err!(basemaps.remove("enroute/Europe/local.mbtiles"));
     assert!(path.exists());
     assert!(marker.exists());
-    std::assert_matches!(basemaps.files[&path], BasemapSource::Disabled);
+    std::assert_matches!(basemaps.files[path_id], BasemapSource::Disabled);
     assert_ok!(fs::remove_dir(&path));
     assert_ok!(fs::write(&path, b"not sqlite"));
-    assert_err!(basemaps.remove("local.mbtiles"));
+    assert_err!(basemaps.remove("enroute/Europe/local.mbtiles"));
     assert!(!path.exists());
-    std::assert_matches!(basemaps.files[&path], BasemapSource::Disabled);
+    std::assert_matches!(basemaps.files[path_id], BasemapSource::Disabled);
     assert_ok!(fs::remove_dir(&marker));
     assert_ok!(fs::write(&marker, b""));
-    assert_ok!(basemaps.remove("local.mbtiles"));
+    assert_ok!(basemaps.remove("enroute/Europe/local.mbtiles"));
     assert!(!marker.exists());
     assert!(basemaps.files.is_empty());
 }
@@ -126,18 +138,20 @@ fn removal_failures_can_be_retried_without_opening_disabled_files() {
 #[test]
 fn marker_cleanup_failure_stops_serving_deleted_tiles_and_allows_retry() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path_id = "enroute/Europe/local.mbtiles";
+    let path = directory.path().join(path_id);
     let marker = path.with_extension("mbtiles.disabled");
     write_basemap(&path, &[(6, 33, 43, b"tile")]);
     let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
     assert_ok!(fs::create_dir(&marker));
-    assert_err!(basemaps.remove("local.mbtiles"));
+    assert_err!(basemaps.remove("enroute/Europe/local.mbtiles"));
     assert!(!path.exists());
-    std::assert_matches!(basemaps.files[&path], BasemapSource::Unavailable(_));
+    std::assert_matches!(basemaps.files[path_id], BasemapSource::Unavailable(_));
     let tile = basemaps.resource_response("1/6/33/20.pbf");
     assert_eq!(tile.status(), StatusCode::NO_CONTENT);
     assert_ok!(fs::remove_dir(&marker));
-    assert_ok!(basemaps.remove("local.mbtiles"));
+    assert_ok!(basemaps.remove("enroute/Europe/local.mbtiles"));
     assert!(basemaps.files.is_empty());
 }
 
@@ -145,25 +159,28 @@ fn marker_cleanup_failure_stops_serving_deleted_tiles_and_allows_retry() {
 #[tracing_test::traced_test]
 fn enabling_invalid_files_retains_them_and_disabling_does_not_open_them() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("broken.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path_id = "enroute/Europe/broken.mbtiles";
+    let path = directory.path().join(path_id);
     assert_ok!(fs::write(&path, b"not sqlite"));
     assert_ok!(fs::write(path.with_extension("mbtiles.disabled"), b""));
     let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
-    assert_ok!(basemaps.set_enabled("broken.mbtiles", false));
+    assert_ok!(basemaps.set_enabled("enroute/Europe/broken.mbtiles", false));
     assert!(!logs_contain("Could not open offline basemap"));
-    assert_ok!(basemaps.set_enabled("broken.mbtiles", true));
-    std::assert_matches!(basemaps.files[&path], BasemapSource::Unavailable(_));
+    assert_ok!(basemaps.set_enabled("enroute/Europe/broken.mbtiles", true));
+    std::assert_matches!(basemaps.files[path_id], BasemapSource::Unavailable(_));
     assert!(logs_contain("Could not open offline basemap"));
-    assert_ok!(basemaps.set_enabled("broken.mbtiles", false));
-    std::assert_matches!(basemaps.files[&path], BasemapSource::Disabled);
+    assert_ok!(basemaps.set_enabled("enroute/Europe/broken.mbtiles", false));
+    std::assert_matches!(basemaps.files[path_id], BasemapSource::Disabled);
 }
 
 #[test]
 fn serves_the_first_tile_in_filename_order_with_xyz_coordinates() {
     let directory = tempfile::tempdir().unwrap();
-    let germany = directory.path().join("Germany.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let germany = directory.path().join("enroute/Europe/Germany.mbtiles");
     write_basemap(&germany, &[(6, 33, 43, b"germany")]);
-    let france = directory.path().join("France.mbtiles");
+    let france = directory.path().join("enroute/Europe/France.mbtiles");
     write_basemap(&france, &[(6, 33, 43, b"france")]);
 
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
@@ -178,7 +195,8 @@ fn serves_the_first_tile_in_filename_order_with_xyz_coordinates() {
 #[test]
 fn serves_tiles_without_zoom_or_attribution_metadata() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("minimal.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/minimal.mbtiles");
     write_basemap(&path, &[(6, 33, 43, b"tile")]);
     Connection::open(path)
         .unwrap()
@@ -193,17 +211,24 @@ fn serves_tiles_without_zoom_or_attribution_metadata() {
 #[tracing_test::traced_test]
 fn skips_invalid_files_and_continues_with_valid_basemaps() {
     let directory = tempfile::tempdir().unwrap();
-    std::fs::write(directory.path().join("broken.mbtiles"), b"not sqlite").unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    std::fs::write(
+        directory.path().join("enroute/Europe/broken.mbtiles"),
+        b"not sqlite",
+    )
+    .unwrap();
     let raster_format = "UPDATE metadata SET value = 'png' WHERE name = 'format'";
     for (name, update) in [("raster", raster_format), ("schema", "DROP TABLE tiles")] {
-        let path = directory.path().join(format!("{name}.mbtiles"));
+        let path = directory
+            .path()
+            .join(format!("enroute/Europe/{name}.mbtiles"));
         write_basemap(&path, &[]);
         Connection::open(path)
             .unwrap()
             .execute_batch(update)
             .unwrap();
     }
-    let valid = directory.path().join("valid.mbtiles");
+    let valid = directory.path().join("enroute/Europe/valid.mbtiles");
     write_basemap(&valid, &[(6, 33, 43, b"valid")]);
     let ignored = directory.path().join("ignored.sqlite");
     write_basemap(&ignored, &[(6, 33, 43, b"ignored")]);
@@ -220,7 +245,7 @@ fn skips_invalid_files_and_continues_with_valid_basemaps() {
 #[test]
 fn missing_directory_has_no_tiles() {
     let directory = tempfile::tempdir().unwrap();
-    let basemaps = assert_ok!(Basemaps::load(&directory.path().join("enroute")));
+    let basemaps = assert_ok!(Basemaps::load(directory.path()));
 
     let response = basemaps.resource_response("0/6/33/20.pbf");
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
@@ -230,12 +255,15 @@ fn missing_directory_has_no_tiles() {
 #[test]
 fn looks_in_later_files_and_serves_both_antimeridian_columns() {
     let directory = tempfile::tempdir().unwrap();
-    let east = directory.path().join("east.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let east = directory.path().join("enroute/Europe/east.mbtiles");
     write_basemap(&east, &[(6, 63, 63, b"east")]);
-    let west = directory.path().join("west.mbtiles");
+    let west = directory.path().join("enroute/Europe/west.mbtiles");
     write_basemap(&west, &[(6, 0, 0, b"west")]);
     for name in ["east", "west"] {
-        let path = directory.path().join(format!("{name}.mbtiles"));
+        let path = directory
+            .path()
+            .join(format!("enroute/Europe/{name}.mbtiles"));
         let insert_bounds = "INSERT INTO metadata VALUES ('bounds', '170,-20,-170,20')";
         Connection::open(path)
             .unwrap()
@@ -272,7 +300,8 @@ fn rejects_invalid_tile_coordinates_without_querying_files() {
 #[tracing_test::traced_test]
 fn reports_database_and_gzip_failures_as_errors_instead_of_missing_tiles() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("corrupt.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/corrupt.mbtiles");
     write_basemap(&path, &[(6, 33, 43, b"tile")]);
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
     let connection = Connection::open(&path).unwrap();
@@ -292,9 +321,13 @@ fn reports_database_and_gzip_failures_as_errors_instead_of_missing_tiles() {
 #[tracing_test::traced_test]
 fn inventory_retains_invalid_files_and_does_not_open_disabled_files() {
     let directory = tempfile::tempdir().unwrap();
-    let broken = directory.path().join("broken.mbtiles");
-    let disabled = directory.path().join("disabled.mbtiles");
-    let valid = directory.path().join("valid.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let broken_id = "enroute/Europe/broken.mbtiles";
+    let broken = directory.path().join(broken_id);
+    let disabled_id = "enroute/Europe/disabled.mbtiles";
+    let disabled = directory.path().join(disabled_id);
+    let valid_id = "enroute/Europe/valid.mbtiles";
+    let valid = directory.path().join(valid_id);
     assert_ok!(fs::write(&broken, b"not sqlite"));
     assert_ok!(fs::write(&disabled, b"also not sqlite"));
     assert_ok!(fs::write(disabled.with_extension("mbtiles.disabled"), b""));
@@ -303,11 +336,11 @@ fn inventory_retains_invalid_files_and_does_not_open_disabled_files() {
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
     assert_eq!(
         basemaps.files.keys().collect::<Vec<_>>(),
-        [&broken, &disabled, &valid]
+        [broken_id, disabled_id, valid_id]
     );
-    std::assert_matches!(&basemaps.files[&broken], BasemapSource::Unavailable(_));
-    std::assert_matches!(&basemaps.files[&disabled], BasemapSource::Disabled);
-    std::assert_matches!(&basemaps.files[&valid], BasemapSource::Active(_));
+    std::assert_matches!(&basemaps.files[broken_id], BasemapSource::Unavailable(_));
+    std::assert_matches!(&basemaps.files[disabled_id], BasemapSource::Disabled);
+    std::assert_matches!(&basemaps.files[valid_id], BasemapSource::Active(_));
     assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"valid");
     assert!(logs_contain("broken.mbtiles"));
     assert!(!logs_contain("disabled.mbtiles"));
@@ -316,8 +349,9 @@ fn inventory_retains_invalid_files_and_does_not_open_disabled_files() {
 #[test]
 fn disabled_markers_persist_priority_across_reloads_and_new_files_start_enabled() {
     let directory = tempfile::tempdir().unwrap();
-    let first = directory.path().join("a.mbtiles");
-    let second = directory.path().join("b.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let first = directory.path().join("enroute/Europe/a.mbtiles");
+    let second = directory.path().join("enroute/Europe/b.mbtiles");
     write_basemap(&first, &[(6, 33, 43, b"first")]);
     write_basemap(&second, &[(6, 33, 43, b"second")]);
     assert_ok!(fs::write(first.with_extension("mbtiles.disabled"), b""));
@@ -329,7 +363,7 @@ fn disabled_markers_persist_priority_across_reloads_and_new_files_start_enabled(
         let tile = basemaps.resource_response("0/6/33/20.pbf");
         assert_eq!(tile.body(), b"second");
     }
-    let added = directory.path().join("0.mbtiles");
+    let added = directory.path().join("enroute/Europe/0.mbtiles");
     write_basemap(&added, &[(6, 33, 43, b"new")]);
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
     assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"new");
@@ -352,7 +386,8 @@ fn disabled_markers_persist_priority_across_reloads_and_new_files_start_enabled(
 #[test]
 fn unreadable_disabled_marker_fails_the_scan() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/local.mbtiles");
     write_basemap(&path, &[]);
     let marker = path.with_extension("mbtiles.disabled");
     assert_ok!(std::os::unix::fs::symlink(&marker, &marker));
@@ -365,13 +400,14 @@ fn unreadable_disabled_marker_fails_the_scan() {
 fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     use serde_json::{Value, json};
     let directory = tempfile::tempdir().unwrap();
-    let active = directory.path().join("active.mbtiles");
-    let disabled = directory.path().join("disabled.mbtiles");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let active = directory.path().join("enroute/Europe/active.mbtiles");
+    let disabled = directory.path().join("enroute/Europe/disabled.mbtiles");
     write_basemap(&active, &[]);
     assert_ok!(fs::write(&disabled, b"not sqlite"));
     assert_ok!(fs::write(disabled.with_extension("mbtiles.disabled"), b""));
     assert_ok!(fs::write(
-        directory.path().join("invalid.mbtiles"),
+        directory.path().join("enroute/Europe/invalid.mbtiles"),
         b"not sqlite"
     ));
     let basemaps = Arc::new(Mutex::new(assert_ok!(Basemaps::load(directory.path()))));
@@ -423,15 +459,15 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
       "generation": 0,
       "sources": [
         {
-          "sourceName": "active.mbtiles",
+          "sourceName": "enroute/Europe/active.mbtiles",
           "type": "active"
         },
         {
-          "sourceName": "disabled.mbtiles",
+          "sourceName": "enroute/Europe/disabled.mbtiles",
           "type": "disabled"
         },
         {
-          "sourceName": "invalid.mbtiles",
+          "sourceName": "enroute/Europe/invalid.mbtiles",
           "type": "unavailable"
         }
       ]
@@ -451,22 +487,22 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         [43]
     );
     drop(basemaps);
-    let body = json!({"sourceName":"active.mbtiles", "enabled":false});
+    let body = json!({"sourceName":"enroute/Europe/active.mbtiles", "enabled":false});
     assert_eq!(assert_ok!(invoke("set_basemap_enabled", body)), Value::Null);
     let messages = publications.lock().unwrap();
     assert_eq!(messages.len(), 3);
     assert_eq!(messages[2]["generation"], 1);
     assert_eq!(
         messages[2]["sources"][0],
-        json!({"sourceName":"active.mbtiles", "type":"disabled"})
+        json!({"sourceName":"enroute/Europe/active.mbtiles", "type":"disabled"})
     );
     drop(messages);
-    let body = json!({"sourceName":"missing.mbtiles", "enabled":true});
+    let body = json!({"sourceName":"enroute/Europe/missing.mbtiles", "enabled":true});
     assert_eq!(
         invoke("set_basemap_enabled", body),
         Err(json!("Could not change basemap activation"))
     );
-    let body = json!({"sourceName":"active.mbtiles"});
+    let body = json!({"sourceName":"enroute/Europe/active.mbtiles"});
     assert_eq!(assert_ok!(invoke("remove_basemap", body)), Value::Null);
     let messages = publications.lock().unwrap();
     assert_eq!(messages.len(), 4);
@@ -475,15 +511,46 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
       "generation": 2,
       "sources": [
         {
-          "sourceName": "disabled.mbtiles",
+          "sourceName": "enroute/Europe/disabled.mbtiles",
           "type": "disabled"
         },
         {
-          "sourceName": "invalid.mbtiles",
+          "sourceName": "enroute/Europe/invalid.mbtiles",
           "type": "unavailable"
         }
       ]
     }
     "#);
     assert!(logs_contain("Could not open offline basemap"));
+}
+
+#[test]
+fn managed_identities_keep_same_name_files_independent() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let first = "enroute/Asia/Georgia.mbtiles";
+    let second = "enroute/North America/United States/Georgia.mbtiles";
+    for id in [first, second] {
+        let path = root.join(id);
+        assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+        write_basemap(&path, &[(6, 33, 43, id.as_bytes())]);
+    }
+    let legacy = root.join("enroute/Georgia.mbtiles");
+    write_basemap(&legacy, &[(6, 33, 43, b"legacy")]);
+    let mut basemaps = assert_ok!(Basemaps::load(root));
+    assert_eq!(
+        basemaps.resource_response("0/6/33/20.pbf").body(),
+        first.as_bytes()
+    );
+    assert_err!(basemaps.set_enabled("Georgia.mbtiles", false));
+    assert_ok!(basemaps.set_enabled(first, false));
+    let restarted = assert_ok!(Basemaps::load(root));
+    assert_eq!(
+        restarted.resource_response("0/6/33/20.pbf").body(),
+        second.as_bytes()
+    );
+    assert_ok!(basemaps.remove(first));
+    assert!(!root.join(first).exists());
+    assert!(root.join(second).exists());
+    assert!(legacy.exists());
 }

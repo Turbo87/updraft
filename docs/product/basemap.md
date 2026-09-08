@@ -6,15 +6,13 @@ Updraft uses offline vector basemaps from Enroute Flight Navigation. It does
 not request online tiles. The application bundles its Positron style, fonts,
 and sprites.
 
-Enroute files are a temporary source during development until Updraft can
-generate and host its own basemaps.
-
 ## Files and lookup
 
-Place Enroute `.mbtiles` files in the `enroute` subdirectory of the application
-data directory. Updraft scans this directory at startup and opens enabled files
-read-only. Restart the application after changing files outside Updraft.
-Files must remain intact while the application runs.
+Basemaps use managed paths in application data, such as
+`enroute/Europe/Germany.mbtiles`. The provider and complete catalog-relative path
+identify a dataset. Updraft scans nested files at startup and opens enabled files
+read-only. Flat development files in `enroute` are ignored without migration.
+Symlinks are excluded. Download installation is not implemented yet.
 
 Files are enabled by default. An empty `France.mbtiles.disabled` marker
 beside `France.mbtiles` disables that basemap. Disabled files remain in the native inventory,
@@ -22,7 +20,7 @@ but Updraft does not open or validate them. Remove the marker to enable the file
 on the next startup, or use the Enabled control in Data for an immediate change.
 Terrain markers do not affect basemaps.
 
-Each tile request returns the first enabled file in filename order that contains
+Each tile request returns the first enabled file in managed-identity order that contains
 the requested tile.
 Updraft does not merge overlapping tiles. It converts XYZ row coordinates to
 the TMS convention used by MBTiles and decompresses gzip PBF data in the shell.
@@ -41,6 +39,8 @@ basemap empty and produces a warning.
 
 Settings → Data lists installed basemap filenames and their disabled or
 unavailable states. Select a file to see its enabled state and any load error.
+Commands use the full managed identity. Equal filenames in different regions
+have independent activation and removal state.
 The Enabled control saves the choice and refreshes the map. Disabled files are
 not opened or validated. Enabling an invalid file keeps it enabled and shows
 its load error. Marker-write failures keep the confirmed activation state.

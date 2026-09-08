@@ -193,8 +193,13 @@
     }
   }
 
-  function compareSources(a: Source, b: Source): number {
-    return a.sourceName.localeCompare(b.sourceName, getLocale());
+  function displayName(source: Source, type: DatasetType): string {
+    let name = source.sourceName;
+    return type === 'basemap' ? name.slice(name.lastIndexOf('/') + 1) : name;
+  }
+
+  function compareSources(a: Source, b: Source, type: DatasetType): number {
+    return displayName(a, type).localeCompare(displayName(b, type), getLocale());
   }
 
   function metadata(
@@ -271,7 +276,7 @@
       <h2 id={`${componentId}-${group.type}`}>{group.label}</h2>
       <ResponsiveCard>
         <ul class="files">
-          {#each group.sources.toSorted(compareSources) as source (source.sourceName)}
+          {#each group.sources.toSorted( (a, b) => compareSources(a, b, group.type) ) as source (source.sourceName)}
             {let enabled = $derived(activation.isEnabled(group.type, source))}
             <li
               {@attach (element) => {
@@ -301,7 +306,7 @@
                 <span aria-hidden="true" class={[group.icon, 'type-icon']}></span>
                 <span class="description">
                   <span class="name">
-                    <span class="filename">{source.sourceName}</span>
+                    <span class="filename">{displayName(source, group.type)}</span>
                     {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
                   </span>
                   <span class="metadata">{metadata(source, group.type, enabled)}</span>
@@ -328,7 +333,7 @@
           <span aria-hidden="true" class={[selectedGroup.icon, 'type-icon']}></span>
           <div class="description">
             <Dialog.Title class="data-dialog-title" level={2}
-              >{selectedSource.sourceName}</Dialog.Title
+              >{displayName(selectedSource, selectedGroup.type)}</Dialog.Title
             >
             <Dialog.Description class="data-dialog-description"
               >{selectedGroup.label}</Dialog.Description

@@ -142,8 +142,9 @@ pub fn run() {
             let waypoint_storage =
                 waypoints::storage::WaypointStorage::new(app.path().app_data_dir()?);
             let waypoint_catalog = Arc::new(waypoint_storage.load()?);
-            let basemap_directory = app.path().app_data_dir()?.join("enroute");
-            let basemaps = basemap::Basemaps::load(&basemap_directory).unwrap_or_else(|error| {
+            let data_directory = app.path().app_data_dir()?;
+            let basemap_directory = data_directory.join("enroute");
+            let basemaps = basemap::Basemaps::load(&data_directory).unwrap_or_else(|error| {
                 tracing::warn!(%error, "Could not scan offline basemap directory");
                 basemap::Basemaps::default()
             });

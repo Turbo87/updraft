@@ -109,8 +109,10 @@ The shell also reads offline Enroute MBTiles files and serves vector tiles
 under `updraft://localhost/basemap/`. SQLite access and gzip decompression run
 on blocking workers. The frontend uses Tauri's platform-specific resource URLs.
 A native basemap status subscription sends the initial generation and file
-states through a Tauri channel. It exposes filenames without filesystem paths
-or raw load errors. The subscriber can explicitly close its channel registration.
+states through a Tauri channel. Basemap identities contain the provider and
+catalog-relative path, without absolute filesystem paths or raw load errors.
+Startup discovers nested managed basemaps and ignores flat development files.
+The subscriber can explicitly close its channel registration.
 The frontend app root owns this subscription and shares its latest status with
 the Data library and map. Navigation does not interrupt status updates.
 Basemap activation writes its marker on a blocking worker and publishes a new

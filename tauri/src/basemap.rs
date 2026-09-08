@@ -18,7 +18,8 @@ const TILE_QUERY: &str =
 
 #[derive(Default)]
 pub struct Basemaps {
-    files: BTreeMap<PathBuf, BasemapSource>,
+    files: BTreeMap<String, BasemapSource>,
+    directory: PathBuf,
     generation: u64,
     subscribers: BTreeMap<u32, Channel<BasemapStatus>>,
 }
@@ -32,22 +33,11 @@ enum BasemapSource {
 
 impl Basemaps {
     pub fn load(directory: &Path) -> Result<Self> {
-        let entries = match fs::read_dir(directory) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Self::default()),
-            Err(error) => return Err(error.into()),
-        };
-        let paths = entries
-            .map(|entry| entry.map(|entry| entry.path()))
-            .filter(|path| match path {
-                Ok(path) => path
-                    .extension()
-                    .is_some_and(|extension| extension == "mbtiles"),
-                Err(_) => true,
-            })
-            .collect::<std::io::Result<Vec<_>>>()?;
         let mut files = BTreeMap::new();
-        for path in paths {
+        for (id, path) in crate::enroute::storage::installed_files(directory)? {
+            if !id.ends_with(".mbtiles") {
+                continue;
+            }
             let source = if path.with_extension("mbtiles.disabled").try_exists()? {
                 BasemapSource::Disabled
             } else {
@@ -59,10 +49,11 @@ impl Basemaps {
             if let BasemapSource::Unavailable(error) = &source {
                 tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
             }
-            files.insert(path, source);
+            files.insert(id, source);
         }
         Ok(Self {
             files,
+            directory: directory.to_owned(),
             ..Self::default()
         })
     }
@@ -91,10 +82,10 @@ impl Basemaps {
     }
 
     fn set_enabled(&mut self, name: &str, enabled: bool) -> Result<()> {
-        let (path, source) = self
+        let path = self.directory.join(name);
+        let source = self
             .files
-            .iter_mut()
-            .find(|(path, _)| path.file_name() == Some(std::ffi::OsStr::new(name)))
+            .get_mut(name)
             .context("Basemap file is not installed")?;
         let marker = path.with_extension("mbtiles.disabled");
         if enabled {
@@ -103,7 +94,7 @@ impl Basemaps {
                 Err(error) if error.kind() == ErrorKind::NotFound => {}
                 Err(error) => return Err(error.into()),
             }
-            *source = match open_basemap(path) {
+            *source = match open_basemap(&path) {
                 Ok(connection) => BasemapSource::Active(connection),
                 Err(error) => {
                     tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
@@ -126,12 +117,11 @@ impl Basemaps {
     }
 
     fn remove(&mut self, name: &str) -> Result<()> {
-        let (path, source) = self
+        let path = self.directory.join(name);
+        let source = self
             .files
-            .iter_mut()
-            .find(|(path, _)| path.file_name() == Some(std::ffi::OsStr::new(name)))
+            .get_mut(name)
             .context("Basemap file is not installed")?;
-        let path = path.clone();
         let enabled = !matches!(source, BasemapSource::Disabled);
         // Close SQLite before deletion, including on Windows.
         *source = BasemapSource::Disabled;
@@ -145,7 +135,7 @@ impl Basemaps {
                     Err(error) => Err(error),
                 });
         if result.is_ok() {
-            self.files.remove(&path);
+            self.files.remove(name);
         } else if enabled {
             *source = open_basemap(&path)
                 .map(BasemapSource::Active)

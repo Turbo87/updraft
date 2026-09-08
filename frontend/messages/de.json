@@ -334,10 +334,10 @@
   "data_select_failed": "Die Datei konnte nicht ausgewählt werden. Wähle eine OpenAir-Datei (.txt) oder CUP-Datei (.cup).",
   "data_replace_confirm": "Datei ersetzen",
   "data_cancel_failed": "Die Auswahl konnte nicht abgebrochen werden. Wähle erneut eine Datei aus.",
-  "data_basemap": "Grundkarte",
+  "data_basemap": "Basiskarte",
   "data_on_device": "Auf dem Gerät",
   "data_load_failed": "Die Datei konnte nicht geladen werden.",
-  "data_basemap_loading": "Grundkarten werden geladen…",
-  "data_basemap_failed": "Die Grundkartenliste konnte nicht geladen werden.",
+  "data_basemap_loading": "Basiskarten werden geladen…",
+  "data_basemap_failed": "Die Basiskartenliste konnte nicht geladen werden.",
   "data_status": "Status"
 }

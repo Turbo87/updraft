@@ -309,7 +309,7 @@
   "data_imported": "Imported",
   "data_disabled": "Disabled",
   "data_empty": "No data on this device",
-  "data_empty_hint": "Add OpenAir (.txt) or CUP (.cup) files from your device.",
+  "data_empty_hint": "Download basemaps or import airspace and waypoint files from your device.",
   "data_read_failed": "Imported · could not be read",
   "data_parse_failed": "Imported · could not be parsed",
   "data_geometry_failed": "Imported · invalid geometry",

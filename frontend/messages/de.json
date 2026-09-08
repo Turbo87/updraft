@@ -309,7 +309,7 @@
   "data_imported": "Importiert",
   "data_disabled": "Deaktiviert",
   "data_empty": "Keine Daten auf diesem Gerät",
-  "data_empty_hint": "OpenAir-Dateien (.txt) oder CUP-Dateien (.cup) vom Gerät hinzufügen.",
+  "data_empty_hint": "Basiskarten herunterladen oder Luftraum- und Wegpunktdateien vom Gerät importieren.",
   "data_read_failed": "Importiert · konnte nicht gelesen werden",
   "data_parse_failed": "Importiert · konnte nicht verarbeitet werden",
   "data_geometry_failed": "Importiert · ungültige Geometrie",

@@ -1,5 +1,5 @@
 use super::*;
-use claims::{assert_none, assert_some};
+use claims::{assert_none, assert_ok, assert_some};
 use time::macros::date;
 
 fn entry(path: &'static str) -> BasemapEntry {
@@ -98,4 +98,53 @@ fn cancelled_retries_retain_failure_and_ignore_late_completion() {
     assert!(queue.finish(&retry, DownloadOutcome::Installed));
     assert!(!queue.finish(&retry, DownloadOutcome::Failed));
     assert!(queue.failed.is_empty());
+}
+
+#[test]
+fn subscribers_receive_current_state_and_coalesced_progress() {
+    let mut queue = DownloadQueue::default();
+    let mut status = queue.subscribe();
+    assert!(status.borrow_and_update().is_empty());
+    queue.enqueue(entry("Europe/Germany.mbtiles"));
+    queue.enqueue(entry("Europe/France.mbtiles"));
+    let attempt = assert_some!(queue.start_next());
+    assert!(queue.report_progress(&attempt, 3));
+    assert!(queue.report_progress(&attempt, 12));
+    assert!(assert_ok!(status.has_changed()));
+    insta::assert_debug_snapshot!(*status.borrow_and_update());
+    assert_eq!(*queue.subscribe().borrow(), *status.borrow());
+    assert!(!queue.report_progress(&attempt, 12));
+    assert!(!queue.report_progress(&attempt, 2));
+    assert!(!queue.enqueue(entry(attempt.path)));
+    assert!(!queue.cancel("unknown"));
+    assert!(!assert_ok!(status.has_changed()));
+    queue.cancel(attempt.path);
+    assert_eq!(status.borrow_and_update().len(), 1);
+    queue.enqueue(entry(attempt.path));
+    let next = assert_some!(queue.start_next());
+    queue.finish(&next, DownloadOutcome::Installed);
+    let retry = assert_some!(queue.start_next());
+    status.borrow_and_update();
+    assert!(!queue.report_progress(&attempt, 20));
+    assert!(!assert_ok!(status.has_changed()));
+    assert!(queue.report_progress(&retry, 1));
+    queue.finish(&retry, DownloadOutcome::Installed);
+    assert!(status.borrow().is_empty());
+}
+
+#[test]
+fn retry_status_hides_the_failure_until_cancellation() {
+    let mut queue = DownloadQueue::default();
+    queue.enqueue(entry("Europe/Germany.mbtiles"));
+    let attempt = assert_some!(queue.start_next());
+    queue.finish(&attempt, DownloadOutcome::Failed);
+    let status = queue.subscribe();
+    let failed = status.borrow().clone();
+    insta::assert_debug_snapshot!(failed);
+    queue.enqueue(entry(attempt.path));
+    insta::assert_debug_snapshot!(*status.borrow());
+    assert_some!(queue.start_next());
+    assert_eq!(status.borrow().len(), 1);
+    queue.cancel(attempt.path);
+    assert_eq!(*status.borrow(), failed);
 }

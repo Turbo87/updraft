@@ -341,5 +341,18 @@
   "data_basemap_failed": "Die Basiskartenliste konnte nicht geladen werden.",
   "data_terrain": "Gelände",
   "data_terrain_loading": "Geländedaten werden geladen…",
-  "data_terrain_failed": "Die Geländedatenliste konnte nicht geladen werden."
+  "data_terrain_failed": "Die Geländedatenliste konnte nicht geladen werden.",
+  "back_to_data": "Zurück zu Daten",
+  "data_import_custom": "Eigene Datei importieren…",
+  "data_catalog_loading": "Länder werden geladen…",
+  "data_catalog_unavailable": "Keine Downloads verfügbar",
+  "data_catalog_unavailable_hint": "Du kannst weiterhin eine Datei importieren. Daten auf diesem Gerät sind nicht betroffen.",
+  "data_enroute_unreachable": "Enroute ist nicht erreichbar",
+  "data_catalog_last_checked": "Zuletzt geprüft: {date}",
+  "data_africa": "Afrika",
+  "data_asia": "Asien",
+  "data_oceania": "Ozeanien",
+  "data_europe": "Europa",
+  "data_north_america": "Nordamerika",
+  "data_south_america": "Südamerika"
 }

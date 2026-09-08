@@ -341,5 +341,18 @@
   "data_basemap_failed": "Could not load basemap inventory.",
   "data_terrain": "Terrain",
   "data_terrain_loading": "Loading terrain…",
-  "data_terrain_failed": "Could not load terrain inventory."
+  "data_terrain_failed": "Could not load terrain inventory.",
+  "back_to_data": "Back to data",
+  "data_import_custom": "Import custom file…",
+  "data_catalog_loading": "Loading countries…",
+  "data_catalog_unavailable": "No downloads available",
+  "data_catalog_unavailable_hint": "You can still import a file. Data on this device is unaffected.",
+  "data_enroute_unreachable": "Enroute could not be reached",
+  "data_catalog_last_checked": "Last checked {date}",
+  "data_africa": "Africa",
+  "data_asia": "Asia",
+  "data_oceania": "Oceania",
+  "data_europe": "Europe",
+  "data_north_america": "North America",
+  "data_south_america": "South America"
 }

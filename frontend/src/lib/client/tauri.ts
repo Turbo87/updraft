@@ -9,13 +9,13 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
-  BasemapFileDetails,
   BasemapStatus,
   BasemapSubscription,
   EnrouteCatalogStatus,
   EnrouteCatalogSubscription,
   EnrouteDownloadStatus,
   EnrouteDownloadSubscription,
+  ManagedFileDetails,
   SelectedDataFile,
   TerrainStatus,
   TerrainSubscription,
@@ -133,8 +133,12 @@ export class TauriClient implements UpdraftClient {
     return invoke('get_enroute_terrain_updates');
   }
 
-  getBasemapFileDetails(sourceName: string): Promise<BasemapFileDetails> {
+  getBasemapFileDetails(sourceName: string): Promise<ManagedFileDetails> {
     return invoke('get_basemap_file_details', { sourceName });
+  }
+
+  getTerrainFileDetails(sourceName: string): Promise<ManagedFileDetails> {
+    return invoke('get_terrain_file_details', { sourceName });
   }
 
   refreshEnrouteCatalog(): Promise<void> {

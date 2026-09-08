@@ -1,5 +1,7 @@
 use super::{Terrain, TerrainSource};
 use crate::enroute::commands::DownloadCommands;
+use crate::enroute::storage::ManagedFileDetails;
+use anyhow::ensure;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -55,6 +57,28 @@ impl Terrain {
         self.subscribers.insert(channel.id(), channel);
         Ok(())
     }
+}
+
+#[tauri::command]
+pub async fn get_terrain_file_details(
+    source_name: String,
+    state: tauri::State<'_, Arc<Mutex<Terrain>>>,
+) -> Result<ManagedFileDetails, &'static str> {
+    let terrain = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || -> anyhow::Result<_> {
+        let terrain = terrain.lock().unwrap();
+        ensure!(
+            terrain.files.contains_key(&source_name),
+            "Unknown terrain file"
+        );
+        ManagedFileDetails::read(&terrain.directory.join(&source_name))
+    })
+    .await
+    .unwrap_or_else(|error| Err(error.into()))
+    .map_err(|error| {
+        tracing::warn!(%error, "Could not read terrain file details");
+        "Could not read terrain file details"
+    })
 }
 
 #[tauri::command]
@@ -139,5 +163,65 @@ mod tests {
         let channel = Channel::new(|_| Err(std::io::Error::other("closed channel").into()));
         assert_err!(terrain.subscribe(channel));
         assert!(terrain.subscribers.is_empty());
+    }
+
+    #[test]
+    #[tracing_test::traced_test]
+    fn file_details_read_disabled_files_and_reject_unknown_paths_through_ipc() {
+        use claims::assert_ok;
+        use serde_json::{Value, json};
+        use std::fs::{self, FileTimes, OpenOptions};
+        use std::time::{Duration, UNIX_EPOCH};
+
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("enroute/Europe/France.terrain");
+        assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+        assert_ok!(fs::write(&path, b"not a database"));
+        assert_ok!(fs::write(path.with_extension("terrain.disabled"), b""));
+        let file = assert_ok!(OpenOptions::new().write(true).open(&path));
+        let modified = UNIX_EPOCH + Duration::from_secs(1234);
+        assert_ok!(file.set_times(FileTimes::new().set_modified(modified)));
+        let terrain = assert_ok!(Terrain::load(directory.path()));
+        let app = tauri::test::mock_builder()
+            .manage(Arc::new(Mutex::new(terrain)))
+            .invoke_handler(tauri::generate_handler![get_terrain_file_details])
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let invoke = |name: &str| {
+            let request = tauri::webview::InvokeRequest {
+                cmd: "get_terrain_file_details".into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: "tauri://localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(json!({"sourceName": name})),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.into(),
+            };
+            tauri::test::get_ipc_response(&window, request)
+                .map(|r| r.deserialize::<Value>().unwrap())
+        };
+        let name = "enroute/Europe/France.terrain";
+        insta::assert_json_snapshot!(assert_ok!(invoke(name)), @r#"
+        {
+          "modifiedAt": 1234000.0,
+          "size": 14
+        }
+        "#);
+        let modified = UNIX_EPOCH - Duration::from_secs(1);
+        assert_ok!(file.set_times(FileTimes::new().set_modified(modified)));
+        assert_eq!(assert_ok!(invoke(name))["modifiedAt"], json!(-1000.0));
+        let error = json!("Could not read terrain file details");
+        assert_eq!(assert_err!(invoke("../outside.terrain")), error);
+        assert_ok!(fs::remove_file(path));
+        assert_eq!(assert_err!(invoke(name)), error);
+        // Tauri dispatches IPC commands outside the test span.
+        assert!(tracing_test::internal::logs_with_scope_contain(
+            module_path!().trim_end_matches("::tests"),
+            "Could not read terrain file details"
+        ));
+        assert!(!logs_contain("Could not open offline terrain"));
     }
 }

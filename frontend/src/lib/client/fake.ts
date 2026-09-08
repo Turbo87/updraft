@@ -14,13 +14,13 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
-  BasemapFileDetails,
   BasemapStatus,
   BasemapSubscription,
   EnrouteCatalogStatus,
   EnrouteCatalogSubscription,
   EnrouteDownloadStatus,
   EnrouteDownloadSubscription,
+  ManagedFileDetails,
   SelectedDataFile,
   TerrainStatus,
   TerrainSubscription,
@@ -154,7 +154,11 @@ export class FakeClient implements UpdraftClient {
     return [];
   }
 
-  async getBasemapFileDetails(): Promise<BasemapFileDetails> {
+  async getBasemapFileDetails(): Promise<ManagedFileDetails> {
+    throw new Error('Installed file metadata is unavailable in the preview');
+  }
+
+  async getTerrainFileDetails(): Promise<ManagedFileDetails> {
     throw new Error('Installed file metadata is unavailable in the preview');
   }
 

@@ -1,9 +1,9 @@
 <script lang="ts">
   import type {
-    BasemapFileDetails,
     BasemapStatus,
     EnrouteCatalogStatus,
     EnrouteDownloadStatus,
+    ManagedFileDetails,
     TerrainStatus,
     UpdraftClient,
   } from './client';
@@ -44,7 +44,7 @@
     onRetryCatalog: () => Promise<void>;
     onCheckBasemapUpdates: () => Promise<string[]>;
     onCheckTerrainUpdates: () => Promise<string[]>;
-    onReadBasemapDetails: (name: string) => Promise<BasemapFileDetails>;
+    onReadBasemapDetails: (name: string) => Promise<ManagedFileDetails>;
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
@@ -249,7 +249,7 @@
       (download) => selected?.type === 'basemap' && selected.name === `enroute/${download.path}`,
     ),
   );
-  let installedDetails = $state.raw<Record<string, BasemapFileDetails | null>>({});
+  let installedDetails = $state.raw<Record<string, ManagedFileDetails | null>>({});
   let fileDetails = $derived(selected ? installedDetails[selected.name] : undefined);
   let fileDetailsError = $derived(fileDetails === null);
   let fileDetailsRetry = $state(0);

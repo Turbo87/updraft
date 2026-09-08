@@ -98,6 +98,7 @@ pub fn run() {
             enroute::commands::download_enroute_basemaps,
             basemap::commands::subscribe_basemaps,
             basemap::commands::get_basemap_file_details,
+            terrain::commands::get_terrain_file_details,
             basemap::commands::unsubscribe_basemaps,
             basemap::commands::set_basemap_enabled,
             basemap::commands::remove_basemap,

@@ -1,5 +1,6 @@
 use super::{BasemapSource, Basemaps};
 use crate::enroute::commands::DownloadCommands;
+use crate::enroute::storage::ManagedFileDetails;
 use anyhow::ensure;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
@@ -11,19 +12,11 @@ pub struct BasemapStatus {
     sources: Vec<BasemapSourceStatus>,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BasemapFileDetails {
-    size: u64,
-    /// File modification time in milliseconds since the Unix epoch.
-    modified_at: f64,
-}
-
 #[tauri::command]
 pub async fn get_basemap_file_details(
     source_name: String,
     state: tauri::State<'_, Arc<Mutex<Basemaps>>>,
-) -> Result<BasemapFileDetails, &'static str> {
+) -> Result<ManagedFileDetails, &'static str> {
     let basemaps = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || -> anyhow::Result<_> {
         let basemaps = basemaps.lock().unwrap();
@@ -31,16 +24,7 @@ pub async fn get_basemap_file_details(
             basemaps.files.contains_key(&source_name),
             "Unknown basemap file"
         );
-        let metadata = std::fs::metadata(basemaps.directory.join(&source_name))?;
-        let modified = metadata.modified()?.duration_since(std::time::UNIX_EPOCH);
-        let seconds = match modified {
-            Ok(duration) => duration.as_secs_f64(),
-            Err(error) => -error.duration().as_secs_f64(),
-        };
-        Ok(BasemapFileDetails {
-            size: metadata.len(),
-            modified_at: seconds * 1000.,
-        })
+        ManagedFileDetails::read(&basemaps.directory.join(&source_name))
     })
     .await
     .unwrap_or_else(|error| Err(error.into()))

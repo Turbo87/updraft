@@ -298,3 +298,15 @@ it('reads installed basemap metadata and propagates read failures', async () => 
     ['get_basemap_file_details', { sourceName: 'missing' }],
   ]);
 });
+
+it('reads installed terrain metadata and propagates read failures', async () => {
+  let client = new TauriClient();
+  let details = { size: 1234, modifiedAt: 1000 };
+  mocks.invoke.mockResolvedValueOnce(details).mockRejectedValueOnce(new Error('read failed'));
+  expect(await client.getTerrainFileDetails('enroute/Europe/France.terrain')).toEqual(details);
+  await expect(client.getTerrainFileDetails('missing')).rejects.toThrow('read failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['get_terrain_file_details', { sourceName: 'enroute/Europe/France.terrain' }],
+    ['get_terrain_file_details', { sourceName: 'missing' }],
+  ]);
+});

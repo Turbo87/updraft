@@ -2,7 +2,7 @@
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { ColorReliefLayer, HillshadeLayer, RasterDEMTileSource } from 'svelte-maplibre-gl';
 
-  const terrainUrl = convertFileSrc('terrain', 'updraft');
+  const terrainUrl = convertFileSrc('terrain/0', 'updraft');
 </script>
 
 <RasterDEMTileSource

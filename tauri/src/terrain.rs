@@ -89,15 +89,21 @@ impl Terrain {
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {
+        let Some((generation, path)) = path
+            .split_once('/')
+            .and_then(|(generation, path)| Some((generation.parse::<u64>().ok()?, path)))
+        else {
+            return error_response(StatusCode::BAD_REQUEST);
+        };
+        if generation != self.generation {
+            return error_response(StatusCode::NOT_FOUND);
+        }
         let (content_type, result) = if path == "metadata.json" {
             ("application/json", self.metadata().map(Some))
         } else if let Some([z, x, y]) = terrain_coordinates(path) {
             ("image/webp", self.tile(z, x, y))
         } else {
-            return Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(Vec::new())
-                .expect("the fixed error response should be valid");
+            return error_response(StatusCode::BAD_REQUEST);
         };
         let (status, body) = match result {
             Ok(Some(data)) => (StatusCode::OK, data),
@@ -137,9 +143,11 @@ impl Terrain {
                 }
             }
         }
+        let generation = self.generation;
+        let tiles = format!("updraft://localhost/terrain/{generation}/{{z}}/{{x}}/{{y}}.webp");
         let mut metadata = serde_json::json!({
             "tilejson": "3.0.0",
-            "tiles": ["updraft://localhost/terrain/{z}/{x}/{y}.webp"],
+            "tiles": [tiles],
             "encoding": "terrarium",
             "attribution": attributions.join("<br>"),
         });
@@ -193,6 +201,14 @@ pub async fn terrain_resource_response<R: tauri::Runtime>(
             .body(Vec::new())
             .expect("the fixed error response should be valid")
     })
+}
+
+fn error_response(status: StatusCode) -> Response<Vec<u8>> {
+    Response::builder()
+        .status(status)
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(Vec::new())
+        .expect("the fixed error response should be valid")
 }
 
 fn open_terrain(path: &Path, tile_size: Option<usize>) -> Result<TerrainFile> {

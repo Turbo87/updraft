@@ -39,7 +39,8 @@ original WebP bytes. SQLite reads run on blocking workers outside the core.
 
 ## Rendering and metadata
 
-The shell serves tiles at `updraft://localhost/terrain/{z}/{x}/{y}.webp`.
+The shell serves tiles at
+`updraft://localhost/terrain/{generation}/{z}/{x}/{y}.webp`.
 At startup, the `imagesize` parser reads dimensions from each enabled file's
 first WebP tile. SQL reads the zoom limits from its `tiles` table. Tiles must
 be square. The first valid enabled file with tiles establishes the tile size.
@@ -53,11 +54,14 @@ An empty image response would instead decode as an elevation sample. Read
 failures return HTTP 500 and produce a warning.
 
 The source reads TileJSON 3.0 metadata from
-`updraft://localhost/terrain/metadata.json`. The document contains the tile
+`updraft://localhost/terrain/{generation}/metadata.json`. The document contains the tile
 URL, zoom range, attribution, and MapLibre's `tileSize` and `encoding`
 extension fields.
 The frontend overrides the tile URL with Tauri's converted
 URL for the current platform.
+Both URLs identify the same inventory generation. Startup uses generation zero.
+Requests for another generation return HTTP 404 without cached content. Invalid
+generation values return HTTP 400. URLs without a generation are not supported.
 
 The endpoint combines the active files' attribution entries. It removes
 duplicates, empty entries, and Enroute's `None yet` placeholder. The About

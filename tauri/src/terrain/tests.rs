@@ -42,14 +42,14 @@ fn serves_unchanged_bytes_in_filename_order_with_xyz_coordinates() {
     );
     let terrain = assert_ok!(Terrain::load(directory.path()));
 
-    let response = terrain.resource_response("7/66/40.webp");
+    let response = terrain.resource_response("0/7/66/40.webp");
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.headers()[header::CONTENT_TYPE], "image/webp");
     assert_eq!(response.body(), &france);
-    assert_eq!(terrain.resource_response("10/0/1023.webp").body(), &west);
-    assert_eq!(terrain.resource_response("10/1023/0.webp").body(), &east);
+    assert_eq!(terrain.resource_response("0/10/0/1023.webp").body(), &west);
+    assert_eq!(terrain.resource_response("0/10/1023/0.webp").body(), &east);
     assert_eq!(
-        terrain.resource_response("7/0/0.webp").status(),
+        terrain.resource_response("0/7/0/0.webp").status(),
         StatusCode::NOT_FOUND
     );
 }
@@ -85,9 +85,9 @@ fn retains_invalid_files_without_contributing_tiles_or_metadata() {
         &[(7, 66, 87, &tile)],
     );
     let terrain = assert_ok!(Terrain::load(directory.path()));
-    assert_eq!(terrain.resource_response("7/66/40.webp").body(), &tile);
+    assert_eq!(terrain.resource_response("0/7/66/40.webp").body(), &tile);
     assert_eq!(
-        terrain.resource_response("metadata.json").status(),
+        terrain.resource_response("0/metadata.json").status(),
         StatusCode::OK
     );
     for name in [
@@ -110,7 +110,7 @@ fn missing_directory_is_empty_but_scan_failure_is_an_error() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("enroute");
     let terrain = assert_ok!(Terrain::load(&path));
-    let response = terrain.resource_response("7/66/40.webp");
+    let response = terrain.resource_response("0/7/66/40.webp");
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     assert!(response.body().is_empty());
     std::fs::write(&path, b"not a directory").unwrap();
@@ -121,14 +121,14 @@ fn missing_directory_is_empty_but_scan_failure_is_an_error() {
 fn rejects_invalid_requests() {
     let terrain = Terrain::default();
     for path in [
-        "32/0/0.webp",
-        "7/128/0.webp",
-        "7/0/128.webp",
-        "7/-1/0.webp",
-        "7/0.webp",
-        "7/0/0/0.webp",
-        "a/0/0.webp",
-        "7/0/0.pbf",
+        "0/32/0/0.webp",
+        "0/7/128/0.webp",
+        "0/7/0/128.webp",
+        "0/7/-1/0.webp",
+        "0/7/0.webp",
+        "0/7/0/0/0.webp",
+        "0/a/0/0.webp",
+        "0/7/0/0.pbf",
     ] {
         assert_eq!(
             terrain.resource_response(path).status(),
@@ -149,12 +149,13 @@ fn reports_tile_read_failures_and_retains_validated_metadata() {
     let connection = Connection::open(path).unwrap();
     connection.execute("DROP TABLE tiles", []).unwrap();
     assert_eq!(
-        terrain.resource_response("7/66/40.webp").status(),
+        terrain.resource_response("0/7/66/40.webp").status(),
         StatusCode::INTERNAL_SERVER_ERROR
     );
     assert!(logs_contain("Could not read offline terrain resource"));
     connection.execute("DROP TABLE metadata", []).unwrap();
-    assert_eq!(terrain.resource_response("metadata.json").body(), &metadata);
+    let response = terrain.resource_response("0/metadata.json");
+    assert_eq!(response.body(), &metadata);
 }
 
 #[test]
@@ -181,7 +182,7 @@ fn serves_tilejson_with_combined_attributions_without_duplicates_or_placeholders
             .unwrap();
     }
     let terrain = assert_ok!(Terrain::load(directory.path()));
-    let response = terrain.resource_response("metadata.json");
+    let response = terrain.resource_response("0/metadata.json");
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
     let metadata: serde_json::Value = serde_json::from_slice(response.body()).unwrap();
@@ -194,7 +195,7 @@ fn serves_tilejson_with_combined_attributions_without_duplicates_or_placeholders
       "tileSize": 512,
       "tilejson": "3.0.0",
       "tiles": [
-        "updraft://localhost/terrain/{z}/{x}/{y}.webp"
+        "updraft://localhost/terrain/0/{z}/{x}/{y}.webp"
       ]
     }
     "#);
@@ -211,7 +212,7 @@ fn empty_files_do_not_add_tile_dimensions_or_zoom_limits() {
     let directory = tempfile::tempdir().unwrap();
     write_terrain(&directory.path().join("empty.terrain"), &[]);
     let terrain = assert_ok!(Terrain::load(directory.path()));
-    let response = terrain.resource_response("metadata.json");
+    let response = terrain.resource_response("0/metadata.json");
     assert_eq!(response.status(), StatusCode::OK);
     let metadata: serde_json::Value = serde_json::from_slice(response.body()).unwrap();
     insta::assert_json_snapshot!(metadata, @r#"
@@ -220,14 +221,12 @@ fn empty_files_do_not_add_tile_dimensions_or_zoom_limits() {
       "encoding": "terrarium",
       "tilejson": "3.0.0",
       "tiles": [
-        "updraft://localhost/terrain/{z}/{x}/{y}.webp"
+        "updraft://localhost/terrain/0/{z}/{x}/{y}.webp"
       ]
     }
     "#);
-    assert_eq!(
-        response.body(),
-        Terrain::default().resource_response("metadata.json").body()
-    );
+    let empty = Terrain::default().resource_response("0/metadata.json");
+    assert_eq!(response.body(), empty.body());
 }
 
 #[test]
@@ -252,11 +251,11 @@ fn rejects_unsupported_or_inconsistent_tile_metadata() {
         let rejected = directory.path().join("Germany.terrain");
         std::assert_matches!(terrain.files[&rejected], TerrainSource::Unavailable(_));
         assert_eq!(
-            terrain.resource_response("metadata.json").status(),
+            terrain.resource_response("0/metadata.json").status(),
             StatusCode::OK
         );
         if zoom < 32 {
-            let path = format!("{zoom}/1/{}.webp", (1_u32 << zoom) - 1);
+            let path = format!("0/{zoom}/1/{}.webp", (1_u32 << zoom) - 1);
             assert_eq!(
                 terrain.resource_response(&path).status(),
                 StatusCode::NOT_FOUND
@@ -296,11 +295,11 @@ fn inventory_rechecks_compatibility_and_excludes_disabled_files() {
     std::assert_matches!(terrain.files[&first], TerrainSource::Active(_));
     std::assert_matches!(terrain.files[&second], TerrainSource::Unavailable(_));
     assert_eq!(
-        terrain.resource_response("7/0/127.webp").body(),
+        terrain.resource_response("0/7/0/127.webp").body(),
         &webp_header(256, 256)
     );
     assert_eq!(
-        terrain.resource_response("8/0/255.webp").status(),
+        terrain.resource_response("0/8/0/255.webp").status(),
         StatusCode::NOT_FOUND
     );
     let metadata: serde_json::Value =
@@ -314,7 +313,7 @@ fn inventory_rechecks_compatibility_and_excludes_disabled_files() {
       "tileSize": 256,
       "tilejson": "3.0.0",
       "tiles": [
-        "updraft://localhost/terrain/{z}/{x}/{y}.webp"
+        "updraft://localhost/terrain/0/{z}/{x}/{y}.webp"
       ]
     }
     "#);
@@ -326,7 +325,7 @@ fn inventory_rechecks_compatibility_and_excludes_disabled_files() {
         std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
         std::assert_matches!(terrain.files[&third], TerrainSource::Unavailable(_));
         assert_eq!(
-            terrain.resource_response("8/0/255.webp").body(),
+            terrain.resource_response("0/8/0/255.webp").body(),
             &webp_header(512, 512)
         );
         let metadata: serde_json::Value =
@@ -466,4 +465,48 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     assert!(logs_contain("incompatible.terrain"));
     assert!(logs_contain("invalid.terrain"));
     assert!(!logs_contain("disabled.terrain"));
+}
+
+#[test]
+fn serves_only_the_requested_terrain_generation() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local.terrain");
+    let tile = webp_header(256, 256);
+    write_terrain(&path, &[(7, 66, 87, &tile)]);
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    terrain.generation = 7;
+    for path in ["0/metadata.json", "0/7/66/40.webp", "8/metadata.json"] {
+        let response = terrain.resource_response(path);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert!(response.body().is_empty());
+        assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+    }
+    for path in [
+        "metadata.json",
+        "7/66/40.webp",
+        "invalid/metadata.json",
+        "18446744073709551616/metadata.json",
+    ] {
+        assert_eq!(
+            terrain.resource_response(path).status(),
+            StatusCode::BAD_REQUEST
+        );
+    }
+    assert_eq!(terrain.resource_response("7/7/66/40.webp").body(), &tile);
+    let response = terrain.resource_response("7/metadata.json");
+    assert_eq!(response.status(), StatusCode::OK);
+    let metadata: serde_json::Value = serde_json::from_slice(response.body()).unwrap();
+    insta::assert_json_snapshot!(metadata, @r#"
+    {
+      "attribution": "",
+      "encoding": "terrarium",
+      "maxzoom": 7,
+      "minzoom": 7,
+      "tileSize": 256,
+      "tilejson": "3.0.0",
+      "tiles": [
+        "updraft://localhost/terrain/7/{z}/{x}/{y}.webp"
+      ]
+    }
+    "#);
 }

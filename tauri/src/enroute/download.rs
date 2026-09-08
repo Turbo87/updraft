@@ -1,8 +1,9 @@
 use super::BasemapEntry;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use std::fs::{self, File, FileTimes};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use tempfile::NamedTempFile;
 
 /// Owns a partial basemap beside its destination. Dropping it discards the partial file.
@@ -13,6 +14,35 @@ pub struct BasemapDownload {
 }
 
 impl BasemapDownload {
+    /// Downloads the complete response into a temporary file without installing it.
+    pub async fn fetch(directory: &Path, entry: &BasemapEntry) -> Result<Self> {
+        let download = Self::new(directory, entry)?;
+        let client = super::http_client()
+            .connect_timeout(Duration::from_secs(30))
+            .read_timeout(Duration::from_secs(30))
+            .build()?;
+        let base_url = "https://enroute-data.akaflieg-freiburg.de/enroute-GeoJSONv003";
+        let url = format!("{base_url}/{}", entry.path);
+        let response = client.get(url).send().await?;
+        download.receive(response).await
+    }
+
+    async fn receive(mut self, response: reqwest::Response) -> Result<Self> {
+        let mut response = response.error_for_status()?;
+        ensure!(
+            response.status() == reqwest::StatusCode::OK,
+            "Expected a complete basemap response"
+        );
+        while let Some(chunk) = response.chunk().await? {
+            self = tokio::task::spawn_blocking(move || -> Result<Self> {
+                self.file_mut().write_all(&chunk)?;
+                Ok(self)
+            })
+            .await??;
+        }
+        Ok(self)
+    }
+
     pub fn new(directory: &Path, entry: &BasemapEntry) -> Result<Self> {
         let destination = directory.join("enroute").join(entry.path);
         let parent = destination.parent().context("Basemap path has no parent")?;

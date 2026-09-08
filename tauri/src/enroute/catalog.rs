@@ -95,14 +95,7 @@ impl CatalogService {
     }
 
     async fn fetch(&self) -> Result<CachedCatalog> {
-        let roots = rustls::RootCertStore {
-            roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
-        };
-        let tls = rustls::ClientConfig::builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
-        let client = reqwest::Client::builder()
-            .use_preconfigured_tls(tls)
+        let client = super::http_client()
             .timeout(Duration::from_secs(30))
             .build()?;
         let mut response = client.get(&self.url).send().await?.error_for_status()?;

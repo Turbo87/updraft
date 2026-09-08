@@ -87,3 +87,104 @@ fn update_detection_compares_publication_midnight_with_local_modification_time()
     assert!(!entry.update_available(publication));
     assert!(!entry.update_available(publication + Duration::from_nanos(1)));
 }
+
+async fn response(raw: &'static str) -> (reqwest::Response, tokio::net::TcpStream) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}/basemap", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut request = Vec::new();
+        while !request.ends_with(b"\r\n\r\n") {
+            request.push(stream.read_u8().await.unwrap());
+        }
+        stream.write_all(raw.as_bytes()).await.unwrap();
+        stream
+    });
+    let response = reqwest::get(url).await.unwrap();
+    (response, server.await.unwrap())
+}
+
+#[tokio::test]
+async fn streams_chunked_bytes_without_installing_or_using_the_catalog_size() {
+    let directory = tempfile::tempdir().unwrap();
+    let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
+    assert_ok!(fs::write(&destination, b"installed"));
+    let raw =
+        "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\nnew \r\n5\r\nbytes\r\n0\r\n\r\n";
+    let (response, _connection) = response(raw).await;
+    let download = assert_ok!(download.receive(response).await);
+    assert_eq!(
+        assert_ok!(fs::read(download.temporary.path())),
+        b"new bytes"
+    );
+    assert_eq!(assert_ok!(fs::read(&destination)), b"installed");
+    assert_ok!(download.install());
+    assert_eq!(assert_ok!(fs::read(destination)), b"new bytes");
+}
+
+#[tokio::test]
+async fn transfer_failures_discard_partial_files_and_preserve_the_installed_version() {
+    for raw in [
+        "HTTP/1.1 503 Unavailable\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 206 Partial Content\r\nContent-Length: 3\r\n\r\nnew",
+        "HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\nshort",
+    ] {
+        let directory = tempfile::tempdir().unwrap();
+        let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+        let temporary = download.temporary.path().to_owned();
+        let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
+        assert_ok!(fs::write(&destination, b"installed"));
+        let (response, connection) = response(raw).await;
+        drop(connection);
+        assert_err!(download.receive(response).await);
+        assert!(!temporary.exists());
+        assert_eq!(assert_ok!(fs::read(destination)), b"installed");
+    }
+}
+
+#[tokio::test]
+async fn disk_write_failure_discards_the_download() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let temporary = download.temporary.path().to_owned();
+    let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
+    assert_ok!(fs::write(&destination, b"installed"));
+    *download.file_mut() = assert_ok!(fs::File::open(&temporary));
+    let (response, _connection) = response("HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nnew").await;
+    assert_err!(download.receive(response).await);
+    assert!(!temporary.exists());
+    assert_eq!(assert_ok!(fs::read(destination)), b"installed");
+}
+
+#[tokio::test]
+async fn cancellation_discards_written_bytes_without_installing() {
+    let directory = tempfile::tempdir().unwrap();
+    let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let temporary = download.temporary.path().to_owned();
+    let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
+    assert_ok!(fs::write(&destination, b"installed"));
+    let (response, _connection) =
+        response("HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\npartial").await;
+    let worker = tokio::spawn(download.receive(response));
+    assert_ok!(
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while fs::metadata(&temporary).unwrap().len() != 7 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+    );
+    worker.abort();
+    assert!(assert_err!(worker.await).is_cancelled());
+    assert_ok!(
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while temporary.exists() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+    );
+    assert_eq!(assert_ok!(fs::read(destination)), b"installed");
+}

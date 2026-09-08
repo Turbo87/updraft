@@ -357,5 +357,17 @@
   "data_south_america": "Südamerika",
   "back_to_add_data": "Zurück zu Daten hinzufügen",
   "data_catalog_refresh_failed": "Der Katalog konnte nicht aktualisiert werden. Versuche es erneut.",
-  "data_catalog_subscription_failed": "Der Katalog konnte nicht geladen werden. Starte die App neu, um es erneut zu versuchen."
+  "data_catalog_subscription_failed": "Der Katalog konnte nicht geladen werden. Starte die App neu, um es erneut zu versuchen.",
+  "data_download": "Herunterladen",
+  "data_downloading": "Wird heruntergeladen",
+  "data_queued": "In Warteschlange",
+  "data_update_available": "Aktualisierung verfügbar",
+  "data_installed": "Installiert",
+  "data_checking_updates": "Aktualisierungen werden geprüft…",
+  "data_update_check_failed": "Aktualisierungen konnten nicht geprüft werden. Versuche es erneut.",
+  "data_download_start_failed": "Downloads konnten nicht gestartet werden. Versuche es erneut.",
+  "data_download_cancel_failed": "Download konnte nicht abgebrochen werden. Versuche es erneut.",
+  "data_download_state_failed": "Downloadstatus konnte nicht geladen werden. Starte die App neu, um es erneut zu versuchen.",
+  "data_download_progress": "{done} von {total}",
+  "data_cancel_download": "Download abbrechen: {name}"
 }

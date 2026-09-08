@@ -357,5 +357,17 @@
   "data_south_america": "South America",
   "back_to_add_data": "Back to Add data",
   "data_catalog_refresh_failed": "Could not refresh the catalog. Try again.",
-  "data_catalog_subscription_failed": "Could not load the catalog. Restart the app to try again."
+  "data_catalog_subscription_failed": "Could not load the catalog. Restart the app to try again.",
+  "data_download": "Download",
+  "data_downloading": "Downloading",
+  "data_queued": "Queued",
+  "data_update_available": "Update available",
+  "data_installed": "Installed",
+  "data_checking_updates": "Checking for updates…",
+  "data_update_check_failed": "Could not check for updates. Try again.",
+  "data_download_start_failed": "Could not start the downloads. Try again.",
+  "data_download_cancel_failed": "Could not cancel the download. Try again.",
+  "data_download_state_failed": "Could not load download state. Restart the app to try again.",
+  "data_download_progress": "{done} of {total}",
+  "data_cancel_download": "Cancel download: {name}"
 }

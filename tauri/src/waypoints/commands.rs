@@ -1,5 +1,8 @@
 use super::storage::WaypointStorage;
-use crate::{driver::DriverHandle, file_picker::FileBytesPickerState};
+use crate::{
+    driver::DriverHandle,
+    file_picker::{FileBytesPickerState, PickedFileBytes},
+};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -60,6 +63,14 @@ pub async fn import_waypoints(
     let Some(selected) = selected else {
         return Ok(ImportWaypointsResult::Cancelled);
     };
+    import_selected_waypoints(selected, state.storage.clone(), &handle).await
+}
+
+async fn import_selected_waypoints(
+    selected: PickedFileBytes,
+    storage: WaypointStorage,
+    handle: &DriverHandle,
+) -> Result<ImportWaypointsResult, WaypointCommandError> {
     let name = selected
         .display_name
         .filter(|name| !name.is_empty())
@@ -68,7 +79,6 @@ pub async fn import_waypoints(
         .send(GetWaypointCatalog)
         .await
         .map_err(|_| WaypointCommandError::DriverStopped)?;
-    let storage = state.storage.clone();
     let source_name = name.clone();
     let dataset =
         tokio::task::spawn_blocking(move || storage.import(&source_name, &selected.bytes))

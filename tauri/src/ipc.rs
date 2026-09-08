@@ -1,6 +1,6 @@
 use crate::airspace_storage::AirspaceStorage;
 use crate::driver::DriverHandle;
-use crate::file_picker::{FileBytesPickerError, FileBytesPickerState};
+use crate::file_picker::{FileBytesPickerError, FileBytesPickerState, PickedFileBytes};
 use serde::Serialize;
 use std::sync::Arc;
 use tauri::ipc::Channel;
@@ -85,6 +85,14 @@ pub async fn import_airspace(
     let Some(selected) = selected else {
         return Ok(ImportAirspaceResult::Cancelled);
     };
+    import_selected_airspace(selected, state.storage.clone(), &handle).await
+}
+
+async fn import_selected_airspace(
+    selected: PickedFileBytes,
+    storage: AirspaceStorage,
+    handle: &DriverHandle,
+) -> Result<ImportAirspaceResult, AirspaceCommandError> {
     let source_name = selected
         .display_name
         .filter(|name| !name.is_empty())
@@ -94,7 +102,6 @@ pub async fn import_airspace(
             source_name: Some(source_name.clone()),
         }
     })?;
-    let storage = state.storage.clone();
     let name = source_name.clone();
     let dataset =
         tokio::task::spawn_blocking(move || storage.import_airspace(&selected.bytes, &name))
@@ -111,7 +118,7 @@ pub async fn import_airspace(
             })?;
     let mut catalog = (*snapshot.catalog).clone();
     catalog.sources.insert(source_name.clone(), dataset.into());
-    activate_airspace_catalog(&handle, catalog, source_name).await?;
+    activate_airspace_catalog(handle, catalog, source_name).await?;
 
     Ok(ImportAirspaceResult::Imported)
 }

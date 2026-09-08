@@ -144,18 +144,24 @@ impl Terrain {
                 Err(error) => return Err(error.into()),
             }
         }
-        let mut tile_size = None;
-        for (file_path, source) in &mut self.files {
-            let file_enabled = if *file_path == path {
+        self.recheck(|file_path, source| {
+            if file_path == path {
                 enabled
             } else {
                 !matches!(source, TerrainSource::Disabled)
-            };
-            if !file_enabled {
+            }
+        });
+        Ok(())
+    }
+
+    fn recheck(&mut self, is_enabled: impl Fn(&Path, &TerrainSource) -> bool) {
+        let mut tile_size = None;
+        for (path, source) in &mut self.files {
+            if !is_enabled(path, source) {
                 *source = TerrainSource::Disabled;
                 continue;
             }
-            *source = match open_terrain(file_path, tile_size) {
+            *source = match open_terrain(path, tile_size) {
                 Ok(file) => {
                     if let Some((size, _, _)) = file.coverage {
                         tile_size = Some(size);
@@ -163,14 +169,13 @@ impl Terrain {
                     TerrainSource::Active(file)
                 }
                 Err(error) => {
-                    tracing::warn!(%error, path = %file_path.display(), "Could not open offline terrain");
+                    tracing::warn!(%error, path = %path.display(), "Could not open offline terrain");
                     TerrainSource::Unavailable(error)
                 }
             };
         }
         self.generation += 1;
         self.publish();
-        Ok(())
     }
 
     fn metadata(&self) -> Result<Vec<u8>> {

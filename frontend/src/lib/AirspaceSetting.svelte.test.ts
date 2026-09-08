@@ -62,6 +62,19 @@ describe('AirspaceSetting.svelte', () => {
     }
   });
 
+  it('shows a disabled source without a count or parsing error', async () => {
+    render(AirspaceSetting, {
+      status: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] },
+      onImport: async () => ({ type: 'cancelled' as const }),
+      onRemove: async () => {},
+    });
+    let source = page.getByRole('region', { name: 'local.txt' });
+    await expect.element(source.getByText('Disabled', { exact: true })).toBeVisible();
+    expect(source.element().querySelectorAll('.source-row')).toHaveLength(2);
+    expect(source.element().querySelector('.source-error')).toBeNull();
+    await expect.element(source.getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
+
   it('shows an import action when no source is selected', async () => {
     render(AirspaceSetting, {
       status: { generation: 0, sources: [] },

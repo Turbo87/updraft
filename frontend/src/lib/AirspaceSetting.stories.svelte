@@ -36,6 +36,11 @@
 />
 
 <Story
+  name="Disabled"
+  args={{ status: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] } }}
+/>
+
+<Story
   name="Unavailable"
   args={{
     status: {

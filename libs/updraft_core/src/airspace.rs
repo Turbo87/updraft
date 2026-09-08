@@ -5,7 +5,24 @@ use updraft_airspace::AirspaceDataset;
 /// Source names are exact display filenames, not filesystem paths.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AirspaceCatalog {
-    pub sources: BTreeMap<String, Result<Arc<AirspaceDataset>, AirspaceLoadError>>,
+    pub sources: BTreeMap<String, AirspaceSource>,
+}
+
+/// Disabled sources hold neither geometry nor load errors.
+#[derive(Clone, Debug, PartialEq)]
+pub enum AirspaceSource {
+    Disabled,
+    Active(Arc<AirspaceDataset>),
+    Unavailable(AirspaceLoadError),
+}
+
+impl From<Result<Arc<AirspaceDataset>, AirspaceLoadError>> for AirspaceSource {
+    fn from(result: Result<Arc<AirspaceDataset>, AirspaceLoadError>) -> Self {
+        match result {
+            Ok(dataset) => Self::Active(dataset),
+            Err(error) => Self::Unavailable(error),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -16,6 +33,9 @@ pub struct AirspaceCatalog {
     rename_all_fields = "camelCase"
 )]
 pub enum AirspaceSourceStatus {
+    Disabled {
+        source_name: String,
+    },
     Active {
         source_name: String,
         airspace_count: usize,
@@ -32,11 +52,14 @@ impl AirspaceCatalog {
         self.sources
             .iter()
             .map(|(name, source)| match source {
-                Ok(dataset) => AirspaceSourceStatus::Active {
+                AirspaceSource::Disabled => AirspaceSourceStatus::Disabled {
+                    source_name: name.clone(),
+                },
+                AirspaceSource::Active(dataset) => AirspaceSourceStatus::Active {
                     source_name: name.clone(),
                     airspace_count: dataset.airspaces().len(),
                 },
-                Err(error) => AirspaceSourceStatus::Unavailable {
+                AirspaceSource::Unavailable(error) => AirspaceSourceStatus::Unavailable {
                     source_name: name.clone(),
                     error: *error,
                 },

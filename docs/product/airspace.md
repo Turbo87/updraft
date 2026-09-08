@@ -5,15 +5,16 @@ Status: Current behavior
 Updraft imports local OpenAir files as independent sources. Each source has
 one canonical polygon dataset. The core owns the catalog and publishes its
 status. The Tauri shell owns file selection, storage, and GeoJSON delivery.
-All valid sources are active together. Duplicate airspaces remain separate.
+Enabled, valid sources are active together. Duplicate airspaces remain separate.
 
 ## Import
 
 The platform file picker supplies source bytes and a display name. The
 shell stores the original bytes, then the `updraft_airspace` crate parses all
 OpenAir records. A file must have a display filename. An import adds that filename
-or replaces only the source with the exact same filename. Other sources remain
-unchanged. Settings lists each source and requires confirmation before removal.
+or replaces only the source with the exact same filename. Import enables the source.
+Other sources remain unchanged. Settings lists each source and requires
+confirmation before removal.
 An invalid import remains stored and appears as unavailable with a parsing or
 geometry error. An invalid replacement replaces the previous file and removes
 its airspaces from the active dataset.
@@ -59,6 +60,7 @@ The airspace topic contains a catalog generation and source statuses in
 filename order. An empty source list means that no source is configured.
 Each source is either:
 
+- `disabled`, with its filename.
 - `active`, with its filename and airspace count.
 - `unavailable`, with its filename and a safe load-error category.
 
@@ -72,11 +74,22 @@ serialize geometry on the driver task.
 The Tauri shell stores the original bytes of each source in the application
 data directory under `airspaces/`. Encoded filenames retain exact source names,
 including case differences. Long encoded names use subdirectories. The original
-bytes remain authoritative. Updraft parses each file again at startup.
+bytes remain authoritative. Updraft parses enabled files again at startup.
+
+An empty `.disabled` marker beside a source records the disabled state. Files
+without a marker are enabled. Disabled files remain listed. The shell does not
+read or parse them, including at startup. The core retains no geometry or load
+error for them. They do not appear in map rendering, selection, or details.
+
+The `set_airspace_enabled()` command persists the choice before publishing the
+new catalog. Enabling reads and parses the file again. A load error leaves the
+source enabled and unavailable. A failed persistence operation does not publish
+a catalog change. Import and removal clear the disabled marker. Activation
+controls in Settings are a later step.
 
 Import and removal prepare a catalog replacement from the current snapshot.
 Import stores the selected bytes before parsing them. A failed write keeps
-the previous source. If catalog activation fails after an import or removal,
+the previous source. If catalog publication fails after a disk change,
 the command reports an error and retains the disk change. Restart reloads the
 stored files. Other sources remain unchanged.
 
@@ -120,12 +133,13 @@ and 20% opacity.
 FIS sectors use green dotted boundaries. Military training areas use slate
 dotted boundaries and translucent inner bands.
 Airspace interiors remain transparent.
-The catalog generation changes the resource URL after an import or removal.
+The catalog generation changes the resource URL after an import, removal, or
+activation change.
 
 A normal map tap can select rendered airspace features. The nearby page refreshes
 its selected features when the catalog or map source changes. `/airspaces/[id]` displays
-one feature from the current rendered dataset. Every import or removal invalidates old detail links, including links to
-unchanged sources. A direct or stale ID produces an explicit not-found state
+one feature from the current rendered dataset. Every import, removal, or activation
+change invalidates old detail links, including links to unchanged sources. A direct or stale ID produces an explicit not-found state
 when it does not identify a current feature.
 
 ## Excluded behavior

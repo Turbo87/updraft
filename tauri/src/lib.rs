@@ -92,6 +92,7 @@ pub fn run() {
             waypoints::arrival_stream::update_arrival_viewport,
             waypoints::arrival_stream::stop_arrivals,
             ipc::remove_airspace,
+            ipc::set_airspace_enabled,
             ipc::set_locale,
             ipc::set_units,
             ipc::get_polars,

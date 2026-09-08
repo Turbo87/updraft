@@ -28,8 +28,8 @@ mod traffic;
 mod waypoints;
 
 pub use airspace::{
-    AirspaceCatalog, AirspaceLoadError, AirspaceSnapshot, AirspaceSourceStatus, AirspaceState,
-    AirspaceStatus,
+    AirspaceCatalog, AirspaceLoadError, AirspaceSnapshot, AirspaceSource, AirspaceSourceStatus,
+    AirspaceState, AirspaceStatus,
 };
 pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
 pub use connection::{

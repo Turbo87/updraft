@@ -131,6 +131,8 @@
               <dd>
                 {#if source.type === 'active'}
                   <StatusPill label={m.airspace_active()} tone="success" />
+                {:else if source.type === 'disabled'}
+                  <StatusPill label={m.airspace_disabled()} />
                 {:else}
                   <StatusPill
                     icon="i-mdi-alert-circle"

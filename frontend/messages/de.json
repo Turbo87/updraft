@@ -13,6 +13,7 @@
   "airspace_import": "Importieren",
   "airspace_current_source": "Aktuelle Quelle",
   "airspace_file_label": "Datei",
+  "airspace_disabled": "Deaktiviert",
   "airspace_active": "Aktiv",
   "airspace_source_fallback": "Importierte Luftraumdatei",
   "airspace_replace": "Datei ersetzen",

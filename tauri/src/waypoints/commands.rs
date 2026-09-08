@@ -34,6 +34,7 @@ pub enum ImportWaypointsResult {
 #[serde(rename_all = "camelCase")]
 #[error("{self:?}")]
 pub enum WaypointCommandError {
+    NotFound,
     Busy,
     ReadFailed,
     MissingName,
@@ -78,7 +79,7 @@ pub async fn import_waypoints(
                 WaypointCommandError::StorageFailed
             })?;
     let mut replacement = (*catalog).clone();
-    replacement.sources.insert(name.clone(), dataset);
+    replacement.sources.insert(name.clone(), dataset.into());
     handle
         .send(ReplaceWaypointCatalog(Arc::new(replacement)))
         .await
@@ -117,6 +118,43 @@ pub async fn remove_waypoints(
         .await
         .map_err(|_| WaypointCommandError::DriverStopped)?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn set_waypoints_enabled(
+    source_name: String,
+    enabled: bool,
+    state: tauri::State<'_, WaypointCommandState>,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), WaypointCommandError> {
+    let _guard = state
+        .mutation
+        .try_lock()
+        .map_err(|_| WaypointCommandError::Busy)?;
+    let catalog = handle
+        .send(GetWaypointCatalog)
+        .await
+        .map_err(|_| WaypointCommandError::DriverStopped)?;
+    let mut replacement = (*catalog).clone();
+    let source = replacement
+        .sources
+        .get_mut(&source_name)
+        .ok_or(WaypointCommandError::NotFound)?;
+    let storage = state.storage.clone();
+    *source = tokio::task::spawn_blocking(move || storage.set_enabled(&source_name, enabled))
+        .await
+        .map_err(|error| {
+            tracing::warn!(%error, "Waypoint activation worker failed");
+            WaypointCommandError::WorkerFailed
+        })?
+        .map_err(|error| {
+            tracing::warn!(%error, "Could not persist waypoint activation");
+            WaypointCommandError::StorageFailed
+        })?;
+    handle
+        .send(ReplaceWaypointCatalog(Arc::new(replacement)))
+        .await
+        .map_err(|_| WaypointCommandError::DriverStopped)
 }
 
 #[cfg(test)]

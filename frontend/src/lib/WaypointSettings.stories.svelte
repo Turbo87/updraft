@@ -33,3 +33,8 @@
     },
   }}
 />
+
+<Story
+  name="Disabled"
+  args={{ status: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] } }}
+/>

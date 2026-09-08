@@ -88,6 +88,7 @@ pub fn run() {
             ipc::import_airspace,
             waypoints::commands::import_waypoints,
             waypoints::commands::remove_waypoints,
+            waypoints::commands::set_waypoints_enabled,
             waypoints::arrival_stream::start_arrivals,
             waypoints::arrival_stream::update_arrival_viewport,
             waypoints::arrival_stream::stop_arrivals,

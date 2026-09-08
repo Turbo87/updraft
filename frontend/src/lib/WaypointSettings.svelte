@@ -82,6 +82,8 @@
             </ul>
           </details>
         {/if}
+      {:else if source.type === 'disabled'}
+        <p>{m.waypoints_disabled()}</p>
       {:else}
         <p>
           {source.error === 'readFailed' ? m.waypoints_read_failed() : m.waypoints_parse_failed()}

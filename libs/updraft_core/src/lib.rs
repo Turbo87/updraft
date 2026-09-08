@@ -71,6 +71,6 @@ pub use traffic::{
     target_from_pflaa,
 };
 pub use waypoints::{
-    WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSnapshot, WaypointSourceStatus,
-    WaypointStatus,
+    WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSnapshot, WaypointSource,
+    WaypointSourceStatus, WaypointStatus,
 };

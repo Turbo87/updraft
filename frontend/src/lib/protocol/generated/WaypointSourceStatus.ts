@@ -2,4 +2,4 @@
 import type { WaypointDiagnostic } from "./WaypointDiagnostic";
 import type { WaypointLoadError } from "./WaypointLoadError";
 
-export type WaypointSourceStatus = { "type": "active", sourceName: string, waypointCount: number, warnings: Array<WaypointDiagnostic>, } | { "type": "unavailable", sourceName: string, error: WaypointLoadError, };
+export type WaypointSourceStatus = { "type": "disabled", sourceName: string, } | { "type": "active", sourceName: string, waypointCount: number, warnings: Array<WaypointDiagnostic>, } | { "type": "unavailable", sourceName: string, error: WaypointLoadError, };

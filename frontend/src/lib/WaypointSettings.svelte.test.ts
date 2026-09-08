@@ -86,3 +86,17 @@ it('requires confirmation before removal and reports removal failure', async () 
     .element(page.getByRole('alert'))
     .toHaveTextContent('Could not update waypoint files. Please try again.');
 });
+
+it('shows disabled files without counts or diagnostics', async () => {
+  await render(WaypointSettings, {
+    status: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
+    onImport: async () => ({ type: 'cancelled' }),
+    onRemove: async () => {},
+  });
+  await expect.element(page.getByRole('heading', { name: 'local.cup' })).toBeVisible();
+  await expect.element(page.getByText('Disabled', { exact: true })).toBeVisible();
+  let section = page.getByRole('heading', { name: 'local.cup' }).element().closest('section')!;
+  expect(section.querySelectorAll('p')).toHaveLength(1);
+  expect(section.querySelector('details')).toBeNull();
+  await expect.element(page.getByRole('button', { name: 'Remove file' })).toBeEnabled();
+});

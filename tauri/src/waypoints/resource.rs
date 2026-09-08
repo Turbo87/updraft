@@ -4,7 +4,7 @@ use tauri::{
     Manager,
     http::{Response, StatusCode},
 };
-use updraft_core::{GetWaypointSnapshot, WaypointCatalog};
+use updraft_core::{GetWaypointSnapshot, WaypointCatalog, WaypointSource};
 
 pub async fn waypoint_resource_response<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -31,7 +31,7 @@ pub async fn waypoint_resource_response<R: tauri::Runtime>(
 pub fn waypoint_geojson(generation: u64, catalog: &WaypointCatalog) -> Value {
     let mut features = Vec::new();
     for (source_index, (name, dataset)) in catalog.sources.iter().enumerate() {
-        let Ok(dataset) = dataset else {
+        let WaypointSource::Active(dataset) = dataset else {
             continue;
         };
         for (index, point) in dataset.waypoints().iter().enumerate() {
@@ -71,8 +71,8 @@ mod tests {
         let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(bytes)));
         let catalog = WaypointCatalog {
             sources: BTreeMap::from([
-                ("a.cup".into(), Ok(dataset.clone())),
-                ("b.cup".into(), Ok(dataset)),
+                ("a.cup".into(), WaypointSource::Active(dataset.clone())),
+                ("b.cup".into(), WaypointSource::Active(dataset)),
             ]),
         };
         let value = waypoint_geojson(7, &catalog);
@@ -103,11 +103,9 @@ mod tests {
             json!([])
         );
         let bytes = b"name,code,country,lat,lon,elev,style\nField,,,5000.000N,00600.000E,100m,2\n";
+        let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(bytes)));
         let catalog = Arc::new(WaypointCatalog {
-            sources: BTreeMap::from([(
-                "a.cup".into(),
-                Ok(Arc::new(assert_ok!(WaypointDataset::from_cup(bytes)))),
-            )]),
+            sources: BTreeMap::from([("a.cup".into(), WaypointSource::Active(dataset))]),
         });
         assert_ok!(handle.send(ReplaceWaypointCatalog(catalog)).await);
         let response = waypoint_resource_response(app.handle().clone()).await;

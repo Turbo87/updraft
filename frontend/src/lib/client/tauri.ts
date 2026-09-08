@@ -101,12 +101,20 @@ export class TauriClient implements UpdraftClient {
     return invoke('remove_waypoints', { sourceName });
   }
 
+  setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    return invoke('set_waypoints_enabled', { sourceName, enabled });
+  }
+
   importAirspace(): Promise<ImportAirspaceResult> {
     return invoke('import_airspace');
   }
 
   removeAirspace(sourceName: string): Promise<void> {
     return invoke('remove_airspace', { sourceName });
+  }
+
+  setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    return invoke('set_airspace_enabled', { sourceName, enabled });
   }
 
   quit(): Promise<void> {

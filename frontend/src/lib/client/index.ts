@@ -63,8 +63,10 @@ export interface UpdraftClient {
   setUnits(units: UnitSettings): Promise<void>;
   importWaypoints(): Promise<ImportWaypointsResult>;
   removeWaypoints(sourceName: string): Promise<void>;
+  setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void>;
   importAirspace(): Promise<ImportAirspaceResult>;
   removeAirspace(sourceName: string): Promise<void>;
+  setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void>;
   /**
    * Stops the platform session and ends the app.
    *

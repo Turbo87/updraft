@@ -49,6 +49,8 @@ export class FakeClient implements UpdraftClient {
   #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
   #airspace: AirspaceStatus = { generation: 0, sources: [] };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
+  #airspaceFixtures = new Map<string, AirspaceStatus['sources'][number]>();
+  #waypointFixtures = new Map<string, WaypointStatus['sources'][number]>();
   #listeners = new Set<TopicListener>();
   #externalDevices: PublishedExternalDevice[];
   #nextExternalDeviceId: ExternalDeviceId;
@@ -103,6 +105,36 @@ export class FakeClient implements UpdraftClient {
 
   async importAirspace(): Promise<ImportAirspaceResult> {
     return { type: 'cancelled' };
+  }
+
+  async setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    this.emit({
+      topic: 'waypoints',
+      value: {
+        generation: this.#waypoints.generation + 1,
+        sources: setSourceEnabled(
+          this.#waypoints.sources,
+          this.#waypointFixtures,
+          sourceName,
+          enabled,
+        ),
+      },
+    });
+  }
+
+  async setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    this.emit({
+      topic: 'airspace',
+      value: {
+        generation: this.#airspace.generation + 1,
+        sources: setSourceEnabled(
+          this.#airspace.sources,
+          this.#airspaceFixtures,
+          sourceName,
+          enabled,
+        ),
+      },
+    });
   }
 
   async removeAirspace(sourceName: string): Promise<void> {
@@ -252,10 +284,19 @@ export class FakeClient implements UpdraftClient {
     this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
   }
 
-  /** Publishes a topic as though the core had emitted it. */
+  /**
+   * Publishes a topic as though the core had emitted it.
+   * Enabled source records also seed fixtures for later activation.
+   */
   emit(topic: Topic): void {
-    if (topic.topic === 'airspace') this.#airspace = topic.value;
-    if (topic.topic === 'waypoints') this.#waypoints = topic.value;
+    if (topic.topic === 'airspace') {
+      this.#airspace = topic.value;
+      updateSourceFixtures(topic.value.sources, this.#airspaceFixtures);
+    }
+    if (topic.topic === 'waypoints') {
+      this.#waypoints = topic.value;
+      updateSourceFixtures(topic.value.sources, this.#waypointFixtures);
+    }
     for (let listener of this.#listeners) {
       listener(topic);
     }
@@ -264,4 +305,34 @@ export class FakeClient implements UpdraftClient {
   #publishExternalDevices(): void {
     this.emit({ topic: 'externalDevices', value: this.#externalDevices });
   }
+}
+
+function updateSourceFixtures<T extends { type: string; sourceName: string }>(
+  sources: T[],
+  fixtures: Map<string, T>,
+) {
+  for (let name of fixtures.keys()) {
+    if (!sources.some((source) => source.sourceName === name)) fixtures.delete(name);
+  }
+  for (let source of sources) {
+    if (source.type !== 'disabled') fixtures.set(source.sourceName, source);
+  }
+}
+
+function setSourceEnabled<T extends { sourceName: string }>(
+  sources: T[],
+  fixtures: Map<string, T>,
+  sourceName: string,
+  enabled: boolean,
+) {
+  if (!sources.some((source) => source.sourceName === sourceName))
+    throw new Error('Source not found');
+  let replacement = enabled
+    ? (fixtures.get(sourceName) ?? {
+        type: 'unavailable' as const,
+        sourceName,
+        error: 'readFailed' as const,
+      })
+    : { type: 'disabled' as const, sourceName };
+  return sources.map((source) => (source.sourceName === sourceName ? replacement : source));
 }

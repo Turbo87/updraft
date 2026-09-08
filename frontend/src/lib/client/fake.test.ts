@@ -411,3 +411,80 @@ it('removes only the named airspace source and advances its generation', async (
     value: { generation: 3, sources: [{ type: 'active', sourceName: 'b.txt', airspaceCount: 2 }] },
   });
 });
+
+it.each(['airspace', 'waypoints'] as const)(
+  'toggles %s fixtures without losing diagnostics',
+  async (kind) => {
+    let client = new FakeClient();
+    let received: Topic[] = [];
+    client.subscribe((topic) => received.push(topic));
+    let initial: Topic =
+      kind === 'airspace'
+        ? {
+            topic: kind,
+            value: {
+              generation: 1,
+              sources: [
+                { type: 'active', sourceName: 'local', airspaceCount: 2 },
+                { type: 'unavailable', sourceName: 'broken', error: 'parseFailed' },
+              ],
+            },
+          }
+        : {
+            topic: kind,
+            value: {
+              generation: 1,
+              sources: [
+                {
+                  type: 'active',
+                  sourceName: 'local',
+                  waypointCount: 2,
+                  warnings: [{ line: 4, message: 'Skipped waypoint' }],
+                },
+                { type: 'unavailable', sourceName: 'broken', error: 'parseFailed' },
+              ],
+            },
+          };
+    client.emit(initial);
+    let setEnabled =
+      kind === 'airspace'
+        ? client.setAirspaceEnabled.bind(client)
+        : client.setWaypointsEnabled.bind(client);
+    await setEnabled('local', false);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: {
+        generation: 2,
+        sources: [{ type: 'disabled', sourceName: 'local' }, initial.value.sources[1]],
+      },
+    });
+    await setEnabled('local', true);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: { generation: 3, sources: initial.value.sources },
+    });
+    await setEnabled('broken', false);
+    await setEnabled('broken', true);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: { generation: 5, sources: initial.value.sources },
+    });
+    let count = received.length;
+    await expect(setEnabled('missing', true)).rejects.toThrow('Source not found');
+    expect(received).toHaveLength(count);
+    if (kind === 'airspace') await client.removeAirspace('local');
+    else await client.removeWaypoints('local');
+    client.emit({
+      topic: kind,
+      value: { generation: 7, sources: [{ type: 'disabled', sourceName: 'local' }] },
+    });
+    await setEnabled('local', true);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: {
+        generation: 8,
+        sources: [{ type: 'unavailable', sourceName: 'local', error: 'readFailed' }],
+      },
+    });
+  },
+);

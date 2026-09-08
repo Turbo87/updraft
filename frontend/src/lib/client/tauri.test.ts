@@ -27,6 +27,20 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
+it.each([
+  ['setAirspaceEnabled', 'set_airspace_enabled'],
+  ['setWaypointsEnabled', 'set_waypoints_enabled'],
+] as const)('forwards %s and propagates failures', async (method, command) => {
+  let client = new TauriClient();
+  mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('storage failed'));
+  await client[method]('local.txt', false);
+  await expect(client[method]('local.txt', true)).rejects.toThrow('storage failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    [command, { sourceName: 'local.txt', enabled: false }],
+    [command, { sourceName: 'local.txt', enabled: true }],
+  ]);
+});
+
 it.each(['macos', 'windows'] as const)('builds arrival URLs on %s', async (os) => {
   mockConvertFileSrc(os);
   let origin = os === 'windows' ? 'http://updraft.localhost' : 'updraft://localhost';

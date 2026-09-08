@@ -41,7 +41,12 @@ for (let pendingResource of ['metadata', 'tiles'] as const) {
             tileSize: generation === 0 ? 256 : 512,
             minzoom: 6,
             maxzoom: 6,
-            attribution: generation === 0 ? 'Initial terrain credit' : 'Replacement terrain credit',
+            attribution:
+              generation === 0
+                ? 'Initial terrain credit'
+                : generation === 3
+                  ? 'Remaining terrain credit'
+                  : 'Replacement terrain credit',
             tiles: [`${new URL(url).origin}/__test/terrain/${generation}/{z}/{x}/{y}.webp`],
           },
         });
@@ -78,7 +83,10 @@ for (let pendingResource of ['metadata', 'tiles'] as const) {
       };
       (window as TestWindow).__updraftFake!.emitTerrain({
         generation: 0,
-        sources: [{ sourceName: 'local.terrain', type: 'active' }],
+        sources: [
+          { sourceName: 'local.terrain', type: 'active' },
+          { sourceName: 'remaining.terrain', type: 'active' },
+        ],
       });
       map.addSource('terrain', {
         type: 'raster-dem',
@@ -127,6 +135,12 @@ for (let pendingResource of ['metadata', 'tiles'] as const) {
     await expect.poll(() => [...tiles]).toEqual([0, 2]);
     await expect.poll(() => cancelled).toBe(pending.length);
     for (let route of pending) await route.abort();
+    await page.getByRole('button', { name: 'Remove from device' }).click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^local.terrain/ })).toHaveCount(0);
+    await expect.poll(metadata).toEqual({ attribution: 'Remaining terrain credit', tileSize: 512 });
+    await expect.poll(() => [...tiles]).toEqual([0, 2, 3]);
     let final = await page.evaluate(() => {
       let map = (window as TestWindow).__updraftApp!.mapState.map!;
       return {
@@ -138,10 +152,9 @@ for (let pendingResource of ['metadata', 'tiles'] as const) {
       };
     });
     expect(final).toEqual(initial);
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();
     await page.getByRole('link', { name: 'About' }).click();
-    await expect(page.getByText('Replacement terrain credit', { exact: true })).toBeVisible();
+    await expect(page.getByText('Remaining terrain credit', { exact: true })).toBeVisible();
     await expect(page.getByText('Initial terrain credit', { exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   });

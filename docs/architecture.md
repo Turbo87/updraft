@@ -134,6 +134,9 @@ Activation persists the selected marker before rechecking enabled files and
 publishing a new generation. Disabled files stay unopened. The frontend replaces
 the terrain source and restores its layers to refresh metadata, tiles, and
 credits together. The shared activation queue also owns terrain changes.
+Removal closes the selected SQLite connection before deleting the file and its
+disabled marker. It rechecks remaining enabled files and publishes the resulting
+inventory, including after a deletion failure. Failed removals remain retryable.
 
 ## State ownership
 

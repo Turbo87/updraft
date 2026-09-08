@@ -206,3 +206,14 @@ describe.each([
     await expect(subscription.close()).rejects.toThrow('unsubscribe failed');
   });
 });
+
+it('forwards terrain removal and propagates failures', async () => {
+  let client = new TauriClient();
+  mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('storage failed'));
+  await client.removeTerrain('local.terrain');
+  await expect(client.removeTerrain('local.terrain')).rejects.toThrow('storage failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['remove_terrain', { sourceName: 'local.terrain' }],
+    ['remove_terrain', { sourceName: 'local.terrain' }],
+  ]);
+});

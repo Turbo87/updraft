@@ -190,6 +190,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_terrain_enabled', { sourceName, enabled });
   }
 
+  removeTerrain(sourceName: string): Promise<void> {
+    return invoke('remove_terrain', { sourceName });
+  }
+
   removeBasemap(sourceName: string): Promise<void> {
     return invoke('remove_basemap', { sourceName });
   }

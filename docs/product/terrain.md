@@ -78,7 +78,11 @@ opened. A marker write failure leaves the active inventory unchanged.
 Each successful activation command publishes a new generation. The frontend
 replaces the terrain source to discard cached tiles and cancel pending requests.
 Tiles, metadata, and credits refresh together without changing the map camera.
-Removal controls are not available yet.
+Remove from device asks for confirmation. Removal closes the SQLite connection,
+deletes the file and its disabled marker, then rechecks the remaining files.
+A failure keeps the row for retry and publishes the current inventory. If the
+file was deleted but marker cleanup failed, an enabled row becomes unavailable.
+Retry also accepts an already missing file or marker.
 
 This version does not provide numeric elevation queries, AGL calculations,
 file import controls, downloads, or online fallback.

@@ -403,6 +403,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
             commands::subscribe_terrain,
             commands::unsubscribe_terrain,
             commands::set_terrain_enabled,
+            commands::remove_terrain,
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
@@ -496,6 +497,20 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         Err(json!("Could not change terrain activation"))
     );
     assert_eq!(messages.lock().unwrap().len(), 3);
+    let body = json!({"sourceName":"disabled.terrain"});
+    assert_eq!(assert_ok!(invoke("remove_terrain", body)), Value::Null);
+    let removed = messages.lock().unwrap();
+    assert_eq!(removed.len(), 4);
+    assert_eq!(removed[3]["generation"], 2);
+    let mut expected = removed[2]["sources"].as_array().unwrap().clone();
+    expected.retain(|source| source["sourceName"] != "disabled.terrain");
+    assert_eq!(removed[3]["sources"], json!(expected));
+    drop(removed);
+    assert_eq!(
+        invoke("remove_terrain", json!({"sourceName":"missing.terrain"})),
+        Err(json!("Could not remove terrain file"))
+    );
+    assert_eq!(messages.lock().unwrap().len(), 4);
     assert_eq!(
         assert_ok!(invoke("unsubscribe_terrain", json!({"channelId":43}))),
         Value::Null
@@ -638,4 +653,74 @@ fn activation_marker_failures_preserve_inventory_and_reject_unknown_names() {
     assert_ok!(terrain.set_enabled("local.terrain", false));
     assert_ok!(terrain.set_enabled("local.terrain", false));
     assert_eq!(terrain.generation, 2);
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn removal_rechecks_compatibility_and_clears_disabled_markers() {
+    let directory = tempfile::tempdir().unwrap();
+    let first = directory.path().join("a.terrain");
+    let second = directory.path().join("b.terrain");
+    write_terrain(&first, &[(7, 66, 87, &webp_header(256, 256))]);
+    write_terrain(&second, &[(7, 66, 87, &webp_header(512, 512))]);
+    for (path, credit) in [(&first, "a"), (&second, "b")] {
+        let connection = Connection::open(path).unwrap();
+        assert_ok!(connection.execute("INSERT INTO metadata VALUES ('attribution', ?1)", [credit]));
+    }
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    for name in ["missing.terrain", "../a.terrain"] {
+        assert_err!(terrain.remove(name));
+        assert_eq!(terrain.generation, 0);
+    }
+    assert_ok!(terrain.remove("a.terrain"));
+    assert!(!first.exists());
+    assert!(!terrain.files.contains_key(&first));
+    std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
+    assert_eq!(
+        terrain.resource_response("1/7/66/40.webp").body(),
+        &webp_header(512, 512)
+    );
+    let metadata: serde_json::Value =
+        serde_json::from_slice(&assert_ok!(terrain.metadata())).unwrap();
+    assert_eq!(metadata["tileSize"], 512);
+    assert_eq!(metadata["attribution"], "b");
+    assert_ok!(terrain.set_enabled("b.terrain", false));
+    assert_ok!(fs::write(&second, b"disabled file must stay unopened"));
+    assert_ok!(terrain.remove("b.terrain"));
+    assert!(!second.exists());
+    assert!(!second.with_extension("terrain.disabled").exists());
+    assert!(terrain.files.is_empty());
+    assert!(assert_ok!(Terrain::load(directory.path())).files.is_empty());
+    assert_eq!(
+        terrain.resource_response("3/7/66/40.webp").status(),
+        StatusCode::NOT_FOUND
+    );
+    assert!(logs_contain("Could not open offline terrain"));
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn removal_failures_publish_current_inventory_and_allow_retry() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local.terrain");
+    write_terrain(&path, &[]);
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    assert_ok!(fs::remove_file(&path));
+    assert_ok!(fs::create_dir(&path));
+    assert_err!(terrain.remove("local.terrain"));
+    assert_eq!(terrain.generation, 1);
+    std::assert_matches!(terrain.files[&path], TerrainSource::Unavailable(_));
+    assert_ok!(fs::remove_dir(&path));
+    write_terrain(&path, &[]);
+    let marker = path.with_extension("terrain.disabled");
+    assert_ok!(fs::create_dir(&marker));
+    assert_err!(terrain.remove("local.terrain"));
+    assert!(!path.exists());
+    assert_eq!(terrain.generation, 2);
+    std::assert_matches!(terrain.files[&path], TerrainSource::Unavailable(_));
+    assert_ok!(fs::remove_dir(&marker));
+    assert_ok!(terrain.remove("local.terrain"));
+    assert!(terrain.files.is_empty());
+    assert_eq!(terrain.generation, 3);
+    assert!(logs_contain("Could not open offline terrain"));
 }

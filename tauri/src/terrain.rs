@@ -154,6 +154,38 @@ impl Terrain {
         Ok(())
     }
 
+    fn remove(&mut self, name: &str) -> Result<()> {
+        let (path, source) = self
+            .files
+            .iter_mut()
+            .find(|(path, _)| path.file_name() == Some(std::ffi::OsStr::new(name)))
+            .context("Terrain file is not installed")?;
+        let path = path.clone();
+        let enabled = !matches!(source, TerrainSource::Disabled);
+        // Close SQLite before deletion, including on Windows.
+        *source = TerrainSource::Disabled;
+        let marker = path.with_extension("terrain.disabled");
+        let paths = [&path, &marker];
+        let result = paths
+            .into_iter()
+            .try_for_each(|path| match fs::remove_file(path) {
+                Ok(()) => Ok(()),
+                Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+                Err(error) => Err(error),
+            });
+        if result.is_ok() {
+            self.files.remove(&path);
+        }
+        self.recheck(|file_path, source| {
+            if file_path == path {
+                enabled
+            } else {
+                !matches!(source, TerrainSource::Disabled)
+            }
+        });
+        result.map_err(Into::into)
+    }
+
     fn recheck(&mut self, is_enabled: impl Fn(&Path, &TerrainSource) -> bool) {
         let mut tile_size = None;
         for (path, source) in &mut self.files {

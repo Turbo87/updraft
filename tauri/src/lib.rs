@@ -93,6 +93,7 @@ pub fn run() {
             terrain::commands::subscribe_terrain,
             terrain::commands::unsubscribe_terrain,
             terrain::commands::set_terrain_enabled,
+            terrain::commands::remove_terrain,
             data_import::select_data_file,
             data_import::import_data_file,
             data_import::discard_data_file,

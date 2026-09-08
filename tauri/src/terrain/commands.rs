@@ -82,6 +82,27 @@ pub async fn set_terrain_enabled(
     })
 }
 
+#[tauri::command]
+pub async fn remove_terrain(
+    source_name: String,
+    state: tauri::State<'_, Arc<Mutex<Terrain>>>,
+) -> Result<(), &'static str> {
+    let terrain = state.inner().clone();
+    let name = source_name.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        terrain
+            .lock()
+            .expect("Terrain access should not panic")
+            .remove(&name)
+    })
+    .await
+    .unwrap_or_else(|error| Err(error.into()))
+    .map_err(|error| {
+        tracing::warn!(%error, source_name, "Could not remove terrain file");
+        "Could not remove terrain file"
+    })
+}
+
 #[tauri::command(async)]
 pub fn subscribe_terrain(
     channel: Channel<TerrainStatus>,

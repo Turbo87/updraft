@@ -143,6 +143,13 @@ export class FakeClient implements UpdraftClient {
     });
   }
 
+  async removeTerrain(sourceName: string): Promise<void> {
+    this.emitTerrain({
+      generation: this.#terrain.generation + 1,
+      sources: this.#terrain.sources.filter((source) => source.sourceName !== sourceName),
+    });
+  }
+
   subscribeArrivals(
     _bounds: ArrivalViewport,
     onUpdate: (update: ArrivalUpdate) => void,

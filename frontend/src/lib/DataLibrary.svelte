@@ -28,7 +28,7 @@
     terrain?: TerrainStatus | null;
     terrainError?: boolean;
     detailsOpen?: boolean;
-    onRemove: (type: Exclude<DatasetType, 'terrain'>, name: string) => Promise<void>;
+    onRemove: (type: DatasetType, name: string) => Promise<void>;
     activation: Pick<DataActivation, 'isEnabled' | 'hasError' | 'setEnabled' | 'pending'>;
   };
   type Source =
@@ -180,7 +180,7 @@
   }
 
   async function removeFile() {
-    if (!selected || selected.type === 'terrain' || pending) return;
+    if (!selected || pending) return;
     pending = true;
     error = '';
     try {
@@ -395,19 +395,17 @@
             {/each}
           </ul>
         {/if}
-        {#if selectedGroup.type !== 'terrain'}
-          <Button
-            disabled={activation.pending}
-            variant="destructive-outline"
-            size="large"
-            style="width: 100%"
-            onclick={() => {
-              detailsOpen = false;
-              error = '';
-              removeOpen = true;
-            }}>{m.data_remove()}</Button
-          >
-        {/if}
+        <Button
+          disabled={activation.pending}
+          variant="destructive-outline"
+          size="large"
+          style="width: 100%"
+          onclick={() => {
+            detailsOpen = false;
+            error = '';
+            removeOpen = true;
+          }}>{m.data_remove()}</Button
+        >
       {/if}
     </Dialog.Content>
   </Dialog.Portal>

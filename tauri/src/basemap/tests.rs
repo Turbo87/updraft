@@ -1,5 +1,9 @@
 use super::*;
-use claims::{assert_err, assert_ok};
+use crate::enroute::{
+    commands::DownloadCommands, parse_catalog, queue::DownloadState,
+    storage::remove_partial_downloads,
+};
+use claims::{assert_err, assert_ok, assert_some};
 use flate2::{Compression, write::GzEncoder};
 use rusqlite::Connection;
 use std::{io::Write, path::Path};
@@ -553,4 +557,96 @@ fn managed_identities_keep_same_name_files_independent() {
     assert!(!root.join(first).exists());
     assert!(root.join(second).exists());
     assert!(legacy.exists());
+}
+
+fn basemap_download(directory: &Path, bytes: &[u8]) -> BasemapDownload {
+    let json = br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#;
+    let entry = assert_ok!(parse_catalog(json)).remove(0);
+    let mut download = assert_ok!(BasemapDownload::new(directory, &entry));
+    assert_ok!(download.file_mut().write_all(bytes));
+    download
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn downloaded_basemaps_replace_tiles_and_preserve_activation() {
+    let name = "enroute/Europe/Germany.mbtiles";
+    for installed in [false, true] {
+        for disabled in [false, true] {
+            let directory = tempfile::tempdir().unwrap();
+            let path = directory.path().join(name);
+            assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+            if installed {
+                write_basemap(&path, &[(6, 33, 43, b"old")]);
+            }
+            if disabled {
+                assert_ok!(fs::write(path.with_extension("mbtiles.disabled"), b""));
+            }
+            let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
+            let replacement = directory.path().join("replacement.mbtiles");
+            write_basemap(&replacement, &[(6, 33, 43, b"new")]);
+            let download = basemap_download(directory.path(), &assert_ok!(fs::read(replacement)));
+            assert_ok!(basemaps.install_download(name, download));
+            assert_eq!(basemaps.generation, 1);
+            let disabled = installed && disabled;
+            assert_eq!(
+                matches!(basemaps.files[name], BasemapSource::Disabled),
+                disabled
+            );
+            assert_eq!(path.with_extension("mbtiles.disabled").exists(), disabled);
+            let tile = basemaps.resource_response("1/6/33/20.pbf");
+            let expected: &[u8] = if disabled { b"" } else { b"new" };
+            assert_eq!(tile.body().as_slice(), expected);
+            let download = basemap_download(directory.path(), b"invalid");
+            assert_ok!(basemaps.install_download(name, download));
+            assert_eq!(assert_ok!(fs::read(&path)), b"invalid");
+            assert_eq!(basemaps.generation, 2);
+            assert_eq!(
+                matches!(basemaps.files[name], BasemapSource::Unavailable(_)),
+                !disabled
+            );
+        }
+    }
+    assert!(logs_contain("Could not open downloaded basemap"));
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn installation_finishes_the_queue_and_respects_cancellation() {
+    for (cancelled, failed) in [(false, false), (false, true), (true, false)] {
+        let directory = tempfile::tempdir().unwrap();
+        let name = "enroute/Europe/Germany.mbtiles";
+        let path = directory.path().join(name);
+        assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+        write_basemap(&path, &[(6, 33, 43, b"old")]);
+        let download = basemap_download(directory.path(), &assert_ok!(fs::read(&path)));
+        if failed {
+            assert_ok!(remove_partial_downloads(directory.path()));
+        }
+        let basemaps = Mutex::new(assert_ok!(Basemaps::load(directory.path())));
+        let state = DownloadCommands::default();
+        let json = br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#;
+        let entry = assert_ok!(parse_catalog(json)).remove(0);
+        let attempt = {
+            let mut queue = state.queue.lock().unwrap();
+            queue.enqueue(entry);
+            let attempt = assert_some!(queue.start_next());
+            if cancelled {
+                queue.cancel(attempt.path);
+            }
+            attempt
+        };
+        state.install_download(&basemaps, &attempt, download);
+        let status = state.queue.lock().unwrap().subscribe();
+        assert_eq!(status.borrow().len(), usize::from(failed));
+        if failed {
+            std::assert_matches!(status.borrow()[0].state, DownloadState::Failed);
+        }
+        let basemaps = basemaps.lock().unwrap();
+        assert_eq!(basemaps.generation, u64::from(!cancelled));
+        let resource = format!("{}/6/33/20.pbf", basemaps.generation);
+        assert_eq!(basemaps.resource_response(&resource).body(), b"old");
+        assert_eq!(assert_ok!(fs::read_dir(path.parent().unwrap())).count(), 1);
+    }
+    assert!(logs_contain("Could not install downloaded basemap"));
 }

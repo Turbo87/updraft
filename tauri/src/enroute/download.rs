@@ -71,6 +71,10 @@ impl BasemapDownload {
         })
     }
 
+    pub fn destination(&self) -> &Path {
+        &self.destination
+    }
+
     pub fn file_mut(&mut self) -> &mut File {
         self.temporary.as_file_mut()
     }

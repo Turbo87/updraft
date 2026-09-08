@@ -1,4 +1,5 @@
 use self::commands::BasemapStatus;
+use crate::enroute::download::BasemapDownload;
 use anyhow::{Context, Result, ensure};
 use flate2::read::GzDecoder;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -114,6 +115,45 @@ impl Basemaps {
         self.generation += 1;
         self.publish();
         Ok(())
+    }
+
+    pub fn install_download(&mut self, name: &str, download: BasemapDownload) -> Result<()> {
+        let path = self.directory.join(name);
+        ensure!(
+            download.destination() == path,
+            "Basemap download destination does not match"
+        );
+        if !self.files.contains_key(name) {
+            let marker = path.with_extension("mbtiles.disabled");
+            match fs::remove_file(marker) {
+                Ok(()) => {}
+                Err(error) if error.kind() == ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        let previous = self.files.remove(name);
+        let installed = previous.is_some();
+        let enabled = !matches!(previous, Some(BasemapSource::Disabled));
+        // Close SQLite before replacement, including on Windows.
+        drop(previous);
+        let result = download.install();
+        if result.is_ok() || installed {
+            let source = if enabled {
+                match open_basemap(&path) {
+                    Ok(connection) => BasemapSource::Active(connection),
+                    Err(error) => {
+                        tracing::warn!(%error, name, "Could not open downloaded basemap");
+                        BasemapSource::Unavailable(error)
+                    }
+                }
+            } else {
+                BasemapSource::Disabled
+            };
+            self.files.insert(name.to_owned(), source);
+            self.generation += 1;
+            self.publish();
+        }
+        result
     }
 
     fn remove(&mut self, name: &str) -> Result<()> {

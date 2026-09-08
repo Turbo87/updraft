@@ -1,4 +1,6 @@
-use super::queue::{DownloadQueue, DownloadStatus};
+use super::queue::{DownloadOutcome, DownloadQueue, DownloadStatus};
+use super::{BasemapEntry, download::BasemapDownload};
+use crate::basemap::Basemaps;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -29,6 +31,29 @@ impl Default for DownloadCommands {
 }
 
 impl DownloadCommands {
+    /// Runs on a blocking worker. The queue lock excludes cancellation during installation.
+    pub fn install_download(
+        &self,
+        basemaps: &Mutex<Basemaps>,
+        attempt: &Arc<BasemapEntry>,
+        download: BasemapDownload,
+    ) {
+        let mut queue = self.queue.lock().unwrap();
+        if !queue.is_active(attempt) {
+            return;
+        }
+        let name = format!("enroute/{}", attempt.path);
+        let result = basemaps.lock().unwrap().install_download(&name, download);
+        let outcome = match result {
+            Ok(()) => DownloadOutcome::Installed,
+            Err(error) => {
+                tracing::warn!(%error, name, "Could not install downloaded basemap");
+                DownloadOutcome::Failed
+            }
+        };
+        queue.finish(attempt, outcome);
+    }
+
     fn subscribe(&self, channel: Channel<Vec<DownloadStatus>>) -> tauri::Result<()> {
         let queue = self.queue.lock().unwrap();
         let mut subscribers = self.subscribers.lock().unwrap();

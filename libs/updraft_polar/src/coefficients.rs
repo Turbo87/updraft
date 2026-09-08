@@ -94,7 +94,7 @@ impl PolarCoefficients {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::{assert_gt, assert_lt, assert_none};
+    use claims::{assert_gt, assert_lt, assert_none, assert_some};
 
     fn kmh(value: f64) -> Speed {
         Speed::from_kilometers_per_hour(value)
@@ -111,7 +111,7 @@ mod tests {
             (kmh(155.), mps(1.45)),
             (kmh(185.), mps(2.5)),
         ];
-        let polar = PolarCoefficients::from_points(points).unwrap();
+        let polar = assert_some!(PolarCoefficients::from_points(points));
         for (speed, sink) in points {
             assert_abs_diff_eq!(polar.sink_rate(speed), sink);
         }
@@ -124,8 +124,8 @@ mod tests {
         let a = (kmh(100.), mps(0.67));
         let b = (kmh(155.), mps(1.45));
         let c = (kmh(185.), mps(2.5));
-        let fitted = PolarCoefficients::from_points([a, b, c]).unwrap();
-        let permuted = PolarCoefficients::from_points([c, a, b]).unwrap();
+        let fitted = assert_some!(PolarCoefficients::from_points([a, b, c]));
+        let permuted = assert_some!(PolarCoefficients::from_points([c, a, b]));
         for speed in [80., 120., 160., 200.] {
             assert_abs_diff_eq!(
                 permuted.sink_rate(kmh(speed)),
@@ -173,12 +173,12 @@ mod tests {
     #[test]
     fn derived_values() {
         // LS8 15m: min sink 0.67 m/s at ~99 km/h, best glide ~44 at ~112 km/h.
-        let polar = PolarCoefficients::from_points([
+        let points = [
             (kmh(100.), mps(0.67)),
             (kmh(155.), mps(1.45)),
             (kmh(185.), mps(2.5)),
-        ])
-        .unwrap();
+        ];
+        let polar = assert_some!(PolarCoefficients::from_points(points));
 
         let min_sink_speed = polar.min_sink_speed();
         assert_abs_diff_eq!(min_sink_speed.as_kilometers_per_hour(), 98.6, epsilon = 0.1);

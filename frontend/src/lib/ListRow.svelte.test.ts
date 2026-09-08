@@ -21,17 +21,17 @@ describe('ListRow.svelte', () => {
 
   it('renders the full navigating row as a 56-pixel link', async () => {
     render(ListRow, {
-      href: '/settings/airspace',
-      icon: 'i-mdi-vector-square',
-      label: 'Airspace',
+      href: '/settings/data',
+      icon: 'i-mdi-database-outline',
+      label: 'Data',
       size: 'large',
       value: 'Germany 2026',
     });
 
-    let link = page.getByRole('link', { name: 'Airspace Germany 2026' });
-    await expect.element(link).toHaveAttribute('href', '/settings/airspace');
+    let link = page.getByRole('link', { name: 'Data Germany 2026' });
+    await expect.element(link).toHaveAttribute('href', '/settings/data');
     expect(getComputedStyle(link.element()).height).toBe('56px');
-    expect(link.element().querySelector('.i-mdi-vector-square')).not.toBeNull();
+    expect(link.element().querySelector('.i-mdi-database-outline')).not.toBeNull();
     expect(link.element().querySelector('.i-mdi-chevron-right')).not.toBeNull();
   });
 

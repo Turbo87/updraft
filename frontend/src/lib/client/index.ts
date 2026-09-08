@@ -14,14 +14,11 @@ export type ArrivalSubscription = {
   updateViewport(bounds: ArrivalViewport): Promise<void>;
   close(): Promise<void>;
 };
-export type ImportWaypointsResult =
-  { type: 'imported'; sourceName: string } | { type: 'cancelled' };
 export type SelectedDataFile = {
   selectionId: string;
   sourceName: string;
   dataType: 'airspace' | 'waypoints';
 };
-export type ImportAirspaceResult = { type: 'imported' } | { type: 'cancelled' };
 
 /**
  * The only boundary between the frontend and the Rust shell.
@@ -69,10 +66,8 @@ export interface UpdraftClient {
   selectDataFile(): Promise<SelectedDataFile | null>;
   importDataFile(selectionId: string): Promise<SelectedDataFile>;
   discardDataFile(selectionId: string): Promise<void>;
-  importWaypoints(): Promise<ImportWaypointsResult>;
   removeWaypoints(sourceName: string): Promise<void>;
   setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void>;
-  importAirspace(): Promise<ImportAirspaceResult>;
   removeAirspace(sourceName: string): Promise<void>;
   setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void>;
   /**

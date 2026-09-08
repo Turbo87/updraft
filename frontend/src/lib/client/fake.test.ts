@@ -153,10 +153,10 @@ describe('FakeClient', () => {
     });
   });
 
-  it('cancels native airspace import in browser mode', async () => {
+  it('cancels native data selection in browser mode', async () => {
     let client = new FakeClient();
 
-    await expect(client.importAirspace()).resolves.toEqual({ type: 'cancelled' });
+    await expect(client.selectDataFile()).resolves.toBeNull();
   });
 
   it('delivers emitted topics to a subscriber', () => {
@@ -364,9 +364,8 @@ describe('FakeClient', () => {
   });
 });
 
-it('cancels native waypoint import and removes only the selected fake source', async () => {
+it('removes only the selected fake waypoint source', async () => {
   let client = new FakeClient();
-  await expect(client.importWaypoints()).resolves.toEqual({ type: 'cancelled' });
   let received: Topic[] = [];
   client.subscribe((topic) => received.push(topic));
   client.emit({

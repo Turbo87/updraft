@@ -44,7 +44,7 @@ The `set_waypoints_enabled()` command persists the choice before publishing
 the new catalog. Enabling parses the file again and restores its warnings or
 load error. A load error leaves the source enabled and unavailable. A failed
 persistence operation does not publish a catalog change. Import and removal
-clear the disabled marker. Settings activation controls are a later step.
+clear the disabled marker. The Data page in Settings provides activation controls.
 
 An activation change advances the catalog generation. Map features and arrival
 results from the previous generation become invalid. Source indices include

@@ -9,13 +9,12 @@ const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
 }).trim();
 
 type TestWindow = Window & {
-  __airspaceImportCalls?: number;
+  __dataSelectionCalls?: number;
   __quitCalls?: number;
   __releaseActivation?: () => void;
   __updraftApp?: AppContext;
   __updraftFake?: {
     emit: (topic: unknown) => void;
-    importAirspace: () => Promise<{ type: 'cancelled' }>;
     setWaypointsEnabled: (name: string, enabled: boolean) => Promise<void>;
     quit: () => Promise<void>;
   };
@@ -70,11 +69,12 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
     ['Language', '/settings/language'],
     ['Units', '/settings/units'],
     ['Data', '/settings/data'],
-    ['Airspace', '/settings/airspace'],
-    ['Waypoints', '/settings/waypoints'],
     ['External devices', '/settings/devices'],
     ['About', '/settings/about'],
   ] as const;
+
+  await expect(page.getByRole('link', { name: 'Airspace', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Waypoints', exact: true })).toHaveCount(0);
 
   for (let [name, route] of routes) {
     await expect(page.getByRole('link', { name })).toHaveAttribute('href', route);
@@ -109,8 +109,8 @@ test('uses the screen scaffold for unit settings', async ({ page }) => {
   await expect(page.getByRole('main')).not.toContainText('Back to settings');
 });
 
-test('uses the screen scaffold for airspace settings', async ({ page }) => {
-  await page.goto('/settings/airspace?testMode=1');
+test('uses the screen scaffold for the Data library', async ({ page }) => {
+  await page.goto('/settings/data?testMode=1');
 
   let back = page.getByRole('link', { name: 'Back to settings' });
 
@@ -214,9 +214,9 @@ test.describe('with a supported German browser language', () => {
     await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
-    await page.getByRole('link', { name: 'Lufträume' }).click();
-    await expect(page.getByText('Keine Luftraumdatei ausgewählt.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Importieren' })).toBeEnabled();
+    await page.getByRole('link', { name: 'Daten', exact: true }).click();
+    await expect(page.getByText('Keine Daten auf diesem Gerät')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Daten hinzufügen' })).toBeEnabled();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
     await page.getByRole('link', { name: 'Einheiten' }).click();
@@ -229,24 +229,23 @@ test.describe('with a supported German browser language', () => {
   });
 });
 
-test('propagates airspace status and invokes import through the fake client', async ({ page }) => {
-  await page.goto('/settings/airspace?testMode=1');
+test('propagates airspace status and invokes data selection through the client', async ({
+  page,
+}) => {
+  await page.goto('/settings/data?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
     let testWindow = window as TestWindow;
-    let client = testWindow.__updraftFake;
-    if (!client) throw new Error('the fake client should be available');
-    client.importAirspace = async () => {
-      testWindow.__airspaceImportCalls = (testWindow.__airspaceImportCalls ?? 0) + 1;
-      return { type: 'cancelled' };
+    let client = testWindow.__updraftApp!.client;
+    client.selectDataFile = async () => {
+      testWindow.__dataSelectionCalls = (testWindow.__dataSelectionCalls ?? 0) + 1;
+      return null;
     };
   });
 
-  await expect(page.getByText('No airspace file selected.')).toBeVisible();
-  await page.getByRole('button', { name: 'Import' }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__airspaceImportCalls))
-    .toBe(1);
+  await expect(page.getByText('No data on this device')).toBeVisible();
+  await page.getByRole('button', { name: 'Add data' }).click();
+  await expect.poll(() => page.evaluate(() => (window as TestWindow).__dataSelectionCalls)).toBe(1);
 
   await page.evaluate(() => {
     (window as TestWindow).__updraftFake?.emit({
@@ -258,9 +257,8 @@ test('propagates airspace status and invokes import through the fake client', as
     });
   });
 
-  await expect(page.getByRole('heading', { name: 'Current source' })).toBeVisible();
   await expect(page.getByText('rheinland.txt')).toBeVisible();
-  await expect(page.getByText('42', { exact: true })).toBeVisible();
+  await expect(page.getByText('Imported · 42 airspaces')).toBeVisible();
 });
 
 test('selects a glide polar and keeps it when revisiting settings', async ({ page }) => {

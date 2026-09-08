@@ -42,14 +42,6 @@
       />
     </Card>
     <Card>
-      <ListRow
-        href="/settings/waypoints"
-        icon="i-mdi-map-marker"
-        label={m.waypoints_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
       <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
     </Card>
     <Card>
@@ -57,14 +49,6 @@
         href="/settings/glide"
         icon="i-mdi-airplane"
         label={m.glide_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/airspace"
-        icon="i-mdi-vector-square"
-        label={m.airspace_label()}
         size="large"
       />
     </Card>

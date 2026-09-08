@@ -84,8 +84,8 @@ error for them. They do not appear in map rendering, selection, or details.
 The `set_airspace_enabled()` command persists the choice before publishing the
 new catalog. Enabling reads and parses the file again. A load error leaves the
 source enabled and unavailable. A failed persistence operation does not publish
-a catalog change. Import and removal clear the disabled marker. Activation
-controls in Settings are a later step.
+a catalog change. Import and removal clear the disabled marker. The Data page
+in Settings provides activation controls.
 
 Import and removal prepare a catalog replacement from the current snapshot.
 Import stores the selected bytes before parsing them. A failed write keeps

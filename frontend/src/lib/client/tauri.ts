@@ -9,8 +9,6 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
-  ImportAirspaceResult,
-  ImportWaypointsResult,
   SelectedDataFile,
   TopicListener,
   UpdraftClient,
@@ -106,20 +104,12 @@ export class TauriClient implements UpdraftClient {
     return invoke('discard_data_file', { selectionId });
   }
 
-  importWaypoints(): Promise<ImportWaypointsResult> {
-    return invoke('import_waypoints');
-  }
-
   removeWaypoints(sourceName: string): Promise<void> {
     return invoke('remove_waypoints', { sourceName });
   }
 
   setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {
     return invoke('set_waypoints_enabled', { sourceName, enabled });
-  }
-
-  importAirspace(): Promise<ImportAirspaceResult> {
-    return invoke('import_airspace');
   }
 
   removeAirspace(sourceName: string): Promise<void> {

@@ -10,15 +10,19 @@ type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClie
 test('imports two airspace files, replaces one, and removes only the confirmed file', async ({
   page,
 }) => {
-  await page.goto('/settings/airspace?testMode=1');
+  await page.goto('/settings/data?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
     let client = (window as TestWindow).__updraftFake!;
+    let commands = (window as TestWindow).__updraftApp!.client;
     let imports = ['a.txt', 'b.txt', 'a.txt'];
     let sources = new Map<string, number>();
     let generation = 0;
-    client.importAirspace = async () => {
+    commands.selectDataFile = async () => {
       let name = imports.shift()!;
+      return { selectionId: name, sourceName: name, dataType: 'airspace' };
+    };
+    commands.importDataFile = async (name) => {
       sources.set(name, (sources.get(name) ?? 0) + 1);
       client.emit({
         topic: 'airspace',
@@ -31,30 +35,31 @@ test('imports two airspace files, replaces one, and removes only the confirmed f
           })),
         },
       });
-      return { type: 'imported' };
+      return { selectionId: name, sourceName: name, dataType: 'airspace' };
     };
   });
-  let importButton = page.getByRole('button', { name: 'Import', exact: true });
+  let importButton = page.getByRole('button', { name: 'Add data', exact: true });
+  let first = page.getByRole('button', { name: /^a\.txt Imported/ });
+  let second = page.getByRole('button', { name: /^b\.txt Imported/ });
   await importButton.click();
-  await expect(page.getByRole('region', { name: 'a.txt', exact: true })).toBeVisible();
+  await expect(first).toBeVisible();
   await importButton.click();
-  let first = page.getByRole('region', { name: 'a.txt', exact: true });
-  let second = page.getByRole('region', { name: 'b.txt', exact: true });
   await expect(second).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Remove airspace source' })).toHaveCount(2);
   await importButton.click();
-  await expect(first.getByText('2', { exact: true })).toBeVisible();
-  await expect(second.getByText('1', { exact: true })).toBeVisible();
-  await first.getByRole('button', { name: 'Remove airspace source' }).click();
+  await page.getByRole('button', { name: 'Replace file', exact: true }).click();
+  await expect(first).toContainText('2 airspaces');
+  await expect(second).toContainText('1 airspace');
+  await first.click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
   let confirmation = page.getByRole('alertdialog', { name: 'Remove a.txt?' });
   await expect(confirmation).toBeVisible();
   await confirmation.getByRole('button', { name: 'Cancel' }).click();
   await expect(first).toBeVisible();
-  await first.getByRole('button', { name: 'Remove airspace source' }).click();
+  await first.click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
   await confirmation.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(first).toHaveCount(0);
   await expect(second).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Remove airspace source' })).toHaveCount(1);
 });
 
 test('keeps duplicate airspaces separate and invalidates details after any source change', async ({

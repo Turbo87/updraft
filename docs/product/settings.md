@@ -15,8 +15,6 @@ current settings topic and sends typed commands for changes.
 - `/settings/glide`
 - `/settings/flight-controls`
 - `/settings/data`
-- `/settings/airspace`
-- `/settings/waypoints`
 - `/settings/devices`
 - `/settings/about`
 
@@ -124,7 +122,8 @@ The Data page lists imported files in Airspace and Waypoints groups. Empty
 groups are hidden. Filenames are sorted alphabetically within each group.
 Active files show feature counts and waypoint warning counts. Disabled files
 show their disabled state. Unavailable files show a read, parse, or geometry error.
-The page updates when source status changes.
+The page updates when source status changes. Source catalogs and their status
+are separate from the settings snapshot.
 
 Select a file to open its details. The dialog shows source type, activation
 status, feature count, and current errors or waypoint warnings. Close, Escape,
@@ -139,15 +138,17 @@ Disabling hides its counts and diagnostics until it is enabled again.
 
 Remove from device closes the details and opens a confirmation. Cancel returns
 to the library. A removal failure stays in the confirmation with an error and
-allows another attempt. The Airspace and Waypoints pages still provide import,
-replacement, and removal controls. An empty library explains where to import files.
-Removal is unavailable while an activation change is pending.
+allows another attempt. Removal is unavailable while an activation change is pending.
 
-## Airspace source
+Add data opens a single-file picker for OpenAir (`.txt`) and CUP (`.cup`) files.
+The action appears in the footer through 544px and in the header above it.
+The library confirms replacement of an existing filename in the same dataset
+type. Cancel keeps the installed file. Import enables the selected file even
+when parsing fails. The library shows parsing errors in the row and details.
 
-The Airspace page imports, replaces, or removes one local OpenAir source. The
-airspace dataset and source status do not live in the settings snapshot. The
-page is part of Settings because it manages application data.
+After import, the library scrolls only as far as needed to reveal the file.
+It stays open and does not open details automatically. A visible file does not
+change the scroll position. Read failures do not replace installed files.
 
 ## About
 

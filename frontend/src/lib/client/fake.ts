@@ -14,8 +14,6 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
-  ImportAirspaceResult,
-  ImportWaypointsResult,
   SelectedDataFile,
   TopicListener,
   UpdraftClient,
@@ -100,10 +98,6 @@ export class FakeClient implements UpdraftClient {
 
   async discardDataFile(): Promise<void> {}
 
-  async importWaypoints(): Promise<ImportWaypointsResult> {
-    return { type: 'cancelled' };
-  }
-
   async removeWaypoints(sourceName: string): Promise<void> {
     this.emit({
       topic: 'waypoints',
@@ -112,10 +106,6 @@ export class FakeClient implements UpdraftClient {
         sources: this.#waypoints.sources.filter((source) => source.sourceName !== sourceName),
       },
     });
-  }
-
-  async importAirspace(): Promise<ImportAirspaceResult> {
-    return { type: 'cancelled' };
   }
 
   async setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {

@@ -33,6 +33,7 @@ tracing = "=0.1.44"
 tracing-appender = "=0.2.5"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 thiserror = "=2.0.20"
+time = { version = "=0.3.55", features = ["macros", "parsing"] }
 updraft_waypoint = { path = "../libs/updraft_waypoint" }
 updraft_airspace = { path = "../libs/updraft_airspace" }
 updraft_core = { path = "../libs/updraft_core" }

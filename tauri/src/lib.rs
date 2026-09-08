@@ -10,6 +10,7 @@ mod airspace_storage;
 mod basemap;
 mod data_import;
 mod driver;
+pub mod enroute;
 mod file_picker;
 mod ipc;
 mod settings;

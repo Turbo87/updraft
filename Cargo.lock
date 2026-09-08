@@ -5621,6 +5621,7 @@ dependencies = [
  "tauri-plugin-updraft",
  "tempfile",
  "thiserror 2.0.20",
+ "time",
  "tokio",
  "tracing",
  "tracing-appender",

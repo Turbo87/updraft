@@ -29,8 +29,6 @@
   "airspace_command_missing_name": "Die ausgewählte Datei hat keinen Dateinamen.",
   "airspace_command_picker_failed": "Die Dateiauswahl konnte nicht geöffnet werden.",
   "airspace_command_read_failed": "Die ausgewählte Luftraumdatei konnte nicht gelesen werden.",
-  "airspace_command_parse_failed": "Die ausgewählte Luftraumdatei konnte nicht verarbeitet werden.",
-  "airspace_command_geometry_failed": "Die ausgewählte Luftraumgeometrie ist ungültig.",
   "airspace_command_storage_failed": "Die ausgewählte Luftraumdatei konnte nicht gespeichert werden.",
   "airspace_command_driver_stopped": "Der Luftraumdienst ist nicht verfügbar.",
   "airspace_command_busy": "Eine andere Luftraumänderung wird bereits ausgeführt.",

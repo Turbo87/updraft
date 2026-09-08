@@ -230,14 +230,6 @@ describe('AirspaceSetting.svelte', () => {
       message: 'Could not read the selected airspace file.',
     },
     {
-      error: { kind: 'parseFailed', sourceName: 'broken.txt' },
-      message: 'The selected airspace file could not be parsed.',
-    },
-    {
-      error: { kind: 'geometryFailed', sourceName: 'broken.txt' },
-      message: 'The selected airspace geometry is invalid.',
-    },
-    {
       error: { kind: 'storageFailed', sourceName: 'broken.txt' },
       message: 'Could not save the selected airspace file.',
     },

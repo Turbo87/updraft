@@ -18,14 +18,7 @@
 
   type MutationState = { type: 'idle' } | { type: 'pending' } | { type: 'failed'; message: string };
   type AirspaceCommandErrorKind =
-    | 'missingName'
-    | 'pickerFailed'
-    | 'readFailed'
-    | 'parseFailed'
-    | 'geometryFailed'
-    | 'storageFailed'
-    | 'driverStopped'
-    | 'busy';
+    'missingName' | 'pickerFailed' | 'readFailed' | 'storageFailed' | 'driverStopped' | 'busy';
 
   let { status, onImport, onRemove }: Props = $props();
   let mutation = $state.raw<MutationState>({ type: 'idle' });
@@ -55,8 +48,6 @@
       case 'missingName':
       case 'pickerFailed':
       case 'readFailed':
-      case 'parseFailed':
-      case 'geometryFailed':
       case 'storageFailed':
       case 'driverStopped':
       case 'busy':
@@ -74,10 +65,6 @@
         return m.airspace_command_picker_failed();
       case 'readFailed':
         return m.airspace_command_read_failed();
-      case 'parseFailed':
-        return m.airspace_command_parse_failed();
-      case 'geometryFailed':
-        return m.airspace_command_geometry_failed();
       case 'storageFailed':
         return m.airspace_command_storage_failed();
       case 'driverStopped':

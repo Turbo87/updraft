@@ -29,8 +29,6 @@
   "airspace_command_missing_name": "The selected file has no filename.",
   "airspace_command_picker_failed": "Could not open the file picker.",
   "airspace_command_read_failed": "Could not read the selected airspace file.",
-  "airspace_command_parse_failed": "The selected airspace file could not be parsed.",
-  "airspace_command_geometry_failed": "The selected airspace geometry is invalid.",
   "airspace_command_storage_failed": "Could not save the selected airspace file.",
   "airspace_command_driver_stopped": "The airspace service is unavailable.",
   "airspace_command_busy": "Another airspace change is already in progress.",

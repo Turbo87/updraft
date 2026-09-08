@@ -17,7 +17,7 @@
 
   import Airspace from './Airspace.svelte';
   import Arrivals from './Arrivals.svelte';
-  import { BASEMAP_MIN_ZOOM, getBasemapStyle } from './basemap-style';
+  import { BASEMAP_MIN_ZOOM, getBasemapStyle, refreshBasemap } from './basemap-style';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
@@ -35,6 +35,7 @@
   type Props = {
     client?: UpdraftClient;
     airspace: AirspaceStatus;
+    basemapGeneration?: number;
     waypoints?: WaypointStatus;
     testWaypointData?: GeoJSONSourceSpecification['data'];
     instruments: Instruments;
@@ -49,6 +50,7 @@
   let {
     client,
     airspace,
+    basemapGeneration = 0,
     instruments,
     mapState,
     traffic,
@@ -86,6 +88,10 @@
         : `${convertFileSrc('waypoints.geojson', 'updraft')}?v=${waypoints.generation}`
       : null,
   );
+
+  $effect(() => {
+    if (map && spritesLoaded) refreshBasemap(map, basemapGeneration);
+  });
 
   $effect(() => {
     void waypointData;

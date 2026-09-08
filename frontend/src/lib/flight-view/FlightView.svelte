@@ -18,6 +18,7 @@
   type Props = {
     client?: UpdraftClient;
     airspace: AirspaceStatus;
+    basemapGeneration?: number;
     waypoints?: WaypointStatus;
     instruments: Instruments;
     mapState: MapState;
@@ -29,6 +30,7 @@
   let {
     client,
     airspace,
+    basemapGeneration,
     waypoints,
     instruments,
     mapState,
@@ -50,6 +52,7 @@
   <Map
     {client}
     {airspace}
+    {basemapGeneration}
     {waypoints}
     {instruments}
     {mapState}

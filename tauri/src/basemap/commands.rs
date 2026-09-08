@@ -3,13 +3,13 @@ use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct BasemapStatus {
     generation: u64,
     sources: Vec<BasemapSourceStatus>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
@@ -22,6 +22,12 @@ enum BasemapSourceStatus {
 }
 
 impl Basemaps {
+    pub fn publish(&mut self) {
+        let status = self.status();
+        self.subscribers
+            .retain(|_, channel| channel.send(status.clone()).is_ok());
+    }
+
     fn status(&self) -> BasemapStatus {
         let sources = self
             .files
@@ -52,6 +58,28 @@ impl Basemaps {
         self.subscribers.insert(channel.id(), channel);
         Ok(())
     }
+}
+
+#[tauri::command]
+pub async fn set_basemap_enabled(
+    source_name: String,
+    enabled: bool,
+    state: tauri::State<'_, Arc<Mutex<Basemaps>>>,
+) -> Result<(), &'static str> {
+    let basemaps = state.inner().clone();
+    let name = source_name.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        basemaps
+            .lock()
+            .expect("Basemap access should not panic")
+            .set_enabled(&name, enabled)
+    })
+    .await
+    .unwrap_or_else(|error| Err(error.into()))
+    .map_err(|error| {
+        tracing::warn!(%error, source_name, "Could not change basemap activation");
+        "Could not change basemap activation"
+    })
 }
 
 #[tauri::command(async)]

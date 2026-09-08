@@ -338,6 +338,5 @@
   "data_on_device": "On device",
   "data_load_failed": "Could not load the file.",
   "data_basemap_loading": "Loading basemaps…",
-  "data_basemap_failed": "Could not load basemap inventory.",
-  "data_status": "Status"
+  "data_basemap_failed": "Could not load basemap inventory."
 }

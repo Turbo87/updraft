@@ -49,7 +49,7 @@
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
-  const dataActivation = new DataActivation(client, airspace, waypoints);
+  const dataActivation = new DataActivation(client, airspace, waypoints, basemaps);
   const appContext = {
     client,
     dataActivation,
@@ -93,6 +93,7 @@
     let subscription = client.subscribeBasemaps(
       (status) => {
         basemaps.current = status;
+        dataActivation.apply({ topic: 'basemap', value: status });
       },
       () => {
         basemaps.error = true;
@@ -118,6 +119,7 @@
   <FlightView
     {client}
     airspace={airspace.current}
+    basemapGeneration={basemaps.current?.generation ?? 0}
     waypoints={waypoints.current}
     instruments={instruments.current}
     {mapState}

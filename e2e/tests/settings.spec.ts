@@ -445,14 +445,14 @@ for (let [width, height, theme] of [
       });
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await page.getByRole('button', { name: /^local.mbtiles/ }).click();
-    await expect(page.getByRole('dialog').getByText('Enabled', { exact: true })).toBeVisible();
+    await expect(page.getByRole('switch', { name: 'Enabled' })).toBeChecked();
     await page.evaluate(() =>
       (window as TestWindow).__updraftFake!.emitBasemaps({
         generation: 1,
         sources: [{ sourceName: 'local.mbtiles', type: 'disabled' }],
       }),
     );
-    await expect(page.getByRole('dialog').getByText('Disabled', { exact: true })).toBeVisible();
+    await expect(page.getByRole('switch', { name: 'Enabled' })).not.toBeChecked();
     await page.screenshot({ path: testInfo.outputPath('basemap-details.png') });
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();

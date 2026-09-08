@@ -1,13 +1,17 @@
-import type { UpdraftClient } from '$lib/client';
+import type { BasemapStatus, UpdraftClient } from '$lib/client';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { AirspaceStore } from './airspace.svelte';
+import type { BasemapsStore } from './basemaps.svelte';
 import type { WaypointsStore } from './waypoints.svelte';
 
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
-type DatasetType = 'airspace' | 'waypoints';
+type DatasetType = 'airspace' | 'waypoints' | 'basemap';
 type Change = { type: DatasetType; name: string; enabled: boolean };
-type ActivationClient = Pick<UpdraftClient, 'setAirspaceEnabled' | 'setWaypointsEnabled'>;
+type ActivationClient = Pick<
+  UpdraftClient,
+  'setAirspaceEnabled' | 'setWaypointsEnabled' | 'setBasemapEnabled'
+>;
 
 export class DataActivation {
   pending = $state(false);
@@ -20,6 +24,7 @@ export class DataActivation {
     private client: ActivationClient,
     private airspace: AirspaceStore,
     private waypoints: WaypointsStore,
+    private basemaps: BasemapsStore,
   ) {}
 
   isEnabled(type: DatasetType, source: { sourceName: string; type: string }): boolean {
@@ -41,8 +46,9 @@ export class DataActivation {
     void this.#drain();
   }
 
-  apply(topic: Topic): void {
-    if (topic.topic !== 'airspace' && topic.topic !== 'waypoints') return;
+  apply(topic: Topic | { topic: 'basemap'; value: BasemapStatus }): void {
+    if (topic.topic !== 'airspace' && topic.topic !== 'waypoints' && topic.topic !== 'basemap')
+      return;
     let keys = topic.value.sources.map((source) => this.#key(topic.topic, source.sourceName));
     for (let key of this.#errors) {
       if (key.startsWith(`${topic.topic}:`) && !keys.includes(key)) this.#errors.delete(key);
@@ -55,6 +61,7 @@ export class DataActivation {
   }
 
   #status(type: DatasetType) {
+    if (type === 'basemap') return this.basemaps.current ?? { generation: 0, sources: [] };
     return type === 'airspace' ? this.airspace.current : this.waypoints.current;
   }
 
@@ -81,12 +88,14 @@ export class DataActivation {
       let status = this.#status(change.type);
       if (status.sources.some((source) => source.sourceName === change.name)) {
         try {
-          // The topic and command reply can arrive in either order.
+          // The status update and command reply can arrive in either order.
           let published = new Promise<void>((resolve) => {
             this.#waiting = { change, generation: status.generation, resolve };
           });
           if (change.type === 'airspace')
             await this.client.setAirspaceEnabled(change.name, change.enabled);
+          else if (change.type === 'basemap')
+            await this.client.setBasemapEnabled(change.name, change.enabled);
           else await this.client.setWaypointsEnabled(change.name, change.enabled);
           await published;
         } catch {

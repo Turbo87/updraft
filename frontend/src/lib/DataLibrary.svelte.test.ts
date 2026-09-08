@@ -7,61 +7,79 @@ import '../app.css';
 import { FakeClient } from './client/fake';
 import DataLibrary from './DataLibrary.svelte';
 import { AirspaceStore } from './stores/airspace.svelte';
+import { BasemapsStore } from './stores/basemaps.svelte';
 import { DataActivation } from './stores/data-activation.svelte';
 import { WaypointsStore } from './stores/waypoints.svelte';
 
 function activation() {
   return new DataActivation(
-    { setAirspaceEnabled: vi.fn(), setWaypointsEnabled: vi.fn() },
+    { setAirspaceEnabled: vi.fn(), setBasemapEnabled: vi.fn(), setWaypointsEnabled: vi.fn() },
     new AirspaceStore(),
     new WaypointsStore(),
+    new BasemapsStore(),
   );
 }
 
-it('shows the latest activation choice without disabling the control', async () => {
-  let airspace = new AirspaceStore();
-  let waypoints = new WaypointsStore();
-  airspace.current = {
-    generation: 1,
-    sources: [{ type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' }],
-  };
-  let result = Promise.withResolvers<void>();
-  let client = {
-    setAirspaceEnabled: vi.fn().mockReturnValue(result.promise),
-    setWaypointsEnabled: vi.fn(),
-  };
-  let changes = new DataActivation(client, airspace, waypoints);
-  await render(DataLibrary, {
-    importer: new FakeClient(),
-    airspace: airspace.current,
-    waypoints: waypoints.current,
-    activation: changes,
-    onRemove: vi.fn(),
-  });
-  await page.getByRole('button', { name: /^broken.txt/ }).click();
-  let toggle = page.getByRole('switch', { name: 'Enabled', exact: true });
-  await expect.element(toggle).toBeChecked();
-  await userEvent.keyboard('{Tab}');
-  await expect.element(toggle).toHaveFocus();
-  let input = toggle.element();
-  let visual = input.nextElementSibling!;
-  expect(getComputedStyle(input).opacity).toBe('0');
-  expect([visual.getBoundingClientRect().width, visual.getBoundingClientRect().height]).toEqual([
-    28, 28,
-  ]);
-  expect(getComputedStyle(visual).outlineStyle).toBe('solid');
-  await toggle.click();
-  await expect.element(toggle).not.toBeChecked();
-  await expect.element(toggle).toBeEnabled();
-  await expect.element(page.getByText('Imported · could not be parsed')).not.toBeInTheDocument();
-  await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
-  result.reject(new Error('storage failed'));
-  await expect.element(toggle).toBeChecked();
-  await expect
-    .element(page.getByRole('alert'))
-    .toHaveTextContent('Could not change file activation.');
-  await userEvent.keyboard('{Escape}');
-});
+it.each(['airspace', 'basemap'] as const)(
+  'shows the latest %s choice without disabling the control',
+  async (type) => {
+    let airspace = new AirspaceStore();
+    let waypoints = new WaypointsStore();
+    let basemaps = new BasemapsStore();
+    if (type === 'airspace') {
+      airspace.current = {
+        generation: 1,
+        sources: [{ type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' }],
+      };
+    } else {
+      basemaps.current = {
+        generation: 1,
+        sources: [{ type: 'unavailable', sourceName: 'broken.mbtiles' }],
+      };
+    }
+    let result = Promise.withResolvers<void>();
+    let client = {
+      setAirspaceEnabled: vi.fn().mockReturnValue(result.promise),
+      setBasemapEnabled: vi.fn().mockReturnValue(result.promise),
+      setWaypointsEnabled: vi.fn(),
+    };
+    let changes = new DataActivation(client, airspace, waypoints, basemaps);
+    await render(DataLibrary, {
+      importer: new FakeClient(),
+      basemaps: basemaps.current,
+      airspace: airspace.current,
+      waypoints: waypoints.current,
+      activation: changes,
+      onRemove: vi.fn(),
+    });
+    await page.getByRole('button', { name: /^broken\./ }).click();
+    let toggle = page.getByRole('switch', { name: 'Enabled', exact: true });
+    await expect.element(toggle).toBeChecked();
+    await userEvent.keyboard('{Tab}');
+    await expect.element(toggle).toHaveFocus();
+    let input = toggle.element();
+    let visual = input.nextElementSibling!;
+    expect(getComputedStyle(input).opacity).toBe('0');
+    expect([visual.getBoundingClientRect().width, visual.getBoundingClientRect().height]).toEqual([
+      28, 28,
+    ]);
+    expect(getComputedStyle(visual).outlineStyle).toBe('solid');
+    await toggle.click();
+    await expect.element(toggle).not.toBeChecked();
+    await expect.element(toggle).toBeEnabled();
+    let loadError =
+      type === 'airspace' ? 'Imported · could not be parsed' : 'Could not load the file.';
+    await expect.element(page.getByText(loadError)).not.toBeInTheDocument();
+    if (type === 'airspace')
+      await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
+    result.reject(new Error('storage failed'));
+    await expect.element(toggle).toBeChecked();
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent('Could not change file activation.');
+    await userEvent.keyboard('{Escape}');
+  },
+);
 
 it('opens live file details and confirms removal separately', async () => {
   let onRemove = vi
@@ -416,7 +434,7 @@ it.each([
   },
 );
 
-it('shows read-only basemap details and keeps them current', async () => {
+it('shows basemap activation and keeps details current', async () => {
   let basemaps = {
     generation: 0,
     sources: [
@@ -438,7 +456,7 @@ it('shows read-only basemap details and keeps them current', async () => {
     ['a.mbtiles', 'broken.mbtiles', 'z.mbtiles'],
   );
   await page.getByRole('button', { name: /^a.mbtiles/ }).click();
-  await expect.element(page.getByRole('switch')).not.toBeInTheDocument();
+  await expect.element(page.getByRole('switch')).toBeChecked();
   await expect
     .element(page.getByRole('button', { name: 'Remove from device' }))
     .not.toBeInTheDocument();
@@ -452,9 +470,7 @@ it('shows read-only basemap details and keeps them current', async () => {
     .toBeVisible();
   await userEvent.keyboard('{Escape}');
   await page.getByRole('button', { name: /^z.mbtiles/ }).click();
-  await expect
-    .element(page.getByRole('dialog').getByText('Disabled', { exact: true }))
-    .toBeVisible();
+  await expect.element(page.getByRole('switch')).not.toBeChecked();
   await view.rerender({ basemaps: { generation: 1, sources: [] } });
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
   await expect.element(page.getByText('No data on this device')).toBeVisible();

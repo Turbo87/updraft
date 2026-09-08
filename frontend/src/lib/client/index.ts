@@ -80,6 +80,7 @@ export interface UpdraftClient {
   setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void>;
   removeAirspace(sourceName: string): Promise<void>;
   setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void>;
+  setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void>;
   /**
    * Stops the platform session and ends the app.
    *

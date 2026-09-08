@@ -68,6 +68,15 @@ impl Basemaps {
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {
+        let Some((generation, path)) = path.split_once('/') else {
+            return response(StatusCode::BAD_REQUEST, Vec::new());
+        };
+        let Ok(generation) = generation.parse::<u64>() else {
+            return response(StatusCode::BAD_REQUEST, Vec::new());
+        };
+        if generation != self.generation {
+            return response(StatusCode::NO_CONTENT, Vec::new());
+        }
         let Some([z, x, y]) = tile_coordinates(path) else {
             return response(StatusCode::BAD_REQUEST, Vec::new());
         };
@@ -79,6 +88,41 @@ impl Basemaps {
                 response(StatusCode::INTERNAL_SERVER_ERROR, Vec::new())
             }
         }
+    }
+
+    fn set_enabled(&mut self, name: &str, enabled: bool) -> Result<()> {
+        let (path, source) = self
+            .files
+            .iter_mut()
+            .find(|(path, _)| path.file_name() == Some(std::ffi::OsStr::new(name)))
+            .context("Basemap file is not installed")?;
+        let marker = path.with_extension("mbtiles.disabled");
+        if enabled {
+            match fs::remove_file(&marker) {
+                Ok(()) => {}
+                Err(error) if error.kind() == ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+            *source = match open_basemap(path) {
+                Ok(connection) => BasemapSource::Active(connection),
+                Err(error) => {
+                    tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
+                    BasemapSource::Unavailable(error)
+                }
+            };
+        } else {
+            match fs::File::create_new(&marker) {
+                Ok(_) => {}
+                Err(error)
+                    if error.kind() == ErrorKind::AlreadyExists
+                        && fs::symlink_metadata(&marker)?.is_file() => {}
+                Err(error) => return Err(error.into()),
+            }
+            *source = BasemapSource::Disabled;
+        }
+        self.generation += 1;
+        self.publish();
+        Ok(())
     }
 
     fn tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Vec<u8>>> {

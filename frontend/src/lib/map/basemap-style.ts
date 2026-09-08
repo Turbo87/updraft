@@ -1,4 +1,4 @@
-import type { StyleSpecification } from 'maplibre-gl';
+import type { Map, StyleSpecification } from 'maplibre-gl';
 
 import { convertFileSrc } from '@tauri-apps/api/core';
 
@@ -53,7 +53,7 @@ export function getBasemapStyle(testMode: boolean, origin: string): StyleSpecifi
   let basemapUrl = convertFileSrc('basemap', 'updraft');
   style.sources.openmaptiles = {
     type: 'vector',
-    tiles: [`${basemapUrl}/{z}/{x}/{y}.pbf`],
+    tiles: [`${basemapUrl}/0/{z}/{x}/{y}.pbf`],
     minzoom: BASEMAP_MIN_ZOOM,
     maxzoom: 10,
     attribution:
@@ -73,4 +73,24 @@ export function getBasemapStyle(testMode: boolean, origin: string): StyleSpecifi
   }
 
   return style;
+}
+
+export function refreshBasemap(map: Map, generation: number): void {
+  let style = map.getStyle();
+  let source = style.sources.openmaptiles;
+  if (!source || source.type !== 'vector') return;
+  let tiles = [`${convertFileSrc('basemap', 'updraft')}/${generation}/{z}/{x}/{y}.pbf`];
+  if (source.tiles?.[0] === tiles[0]) return;
+
+  // Replacing the source cancels pending requests and discards cached tiles.
+  for (let layer of style.layers) {
+    if ('source' in layer && layer.source === 'openmaptiles') map.removeLayer(layer.id);
+  }
+  map.removeSource('openmaptiles');
+  map.addSource('openmaptiles', { ...source, tiles });
+  for (let i = style.layers.length - 1; i >= 0; i--) {
+    let layer = style.layers[i];
+    if ('source' in layer && layer.source === 'openmaptiles')
+      map.addLayer(layer, style.layers[i + 1]?.id);
+  }
 }

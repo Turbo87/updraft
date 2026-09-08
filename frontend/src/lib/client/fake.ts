@@ -90,6 +90,19 @@ export class FakeClient implements UpdraftClient {
     for (let listener of this.#basemapListeners) listener(status);
   }
 
+  async setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    let source = this.#basemaps.sources.find((source) => source.sourceName === sourceName);
+    if (!source) throw new Error('Basemap file is not installed');
+    this.emitBasemaps({
+      generation: this.#basemaps.generation + 1,
+      sources: this.#basemaps.sources.map((source) =>
+        source.sourceName === sourceName
+          ? { ...source, type: enabled ? 'active' : 'disabled' }
+          : source,
+      ),
+    });
+  }
+
   subscribeArrivals(
     _bounds: ArrivalViewport,
     onUpdate: (update: ArrivalUpdate) => void,

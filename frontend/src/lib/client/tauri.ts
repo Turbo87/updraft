@@ -151,6 +151,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_airspace_enabled', { sourceName, enabled });
   }
 
+  setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    return invoke('set_basemap_enabled', { sourceName, enabled });
+  }
+
   quit(): Promise<void> {
     return invoke('quit');
   }

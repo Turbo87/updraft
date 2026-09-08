@@ -13,13 +13,14 @@ generate and host its own basemaps.
 
 Place Enroute `.mbtiles` files in the `enroute` subdirectory of the application
 data directory. Updraft scans this directory at startup and opens enabled files
-read-only. Restart the application after changing files.
+read-only. Restart the application after changing files outside Updraft.
 Files must remain intact while the application runs.
 
 Files are enabled by default. An empty `France.mbtiles.disabled` marker
 beside `France.mbtiles` disables that basemap. Disabled files remain in the native inventory,
 but Updraft does not open or validate them. Remove the marker to enable the file
-on the next startup. Terrain markers do not affect basemaps.
+on the next startup, or use the Enabled control in Data for an immediate change.
+Terrain markers do not affect basemaps.
 
 Each tile request returns the first enabled file in filename order that contains
 the requested tile.
@@ -40,10 +41,13 @@ basemap empty and produces a warning.
 
 Settings → Data lists installed basemap filenames and their disabled or
 unavailable states. Select a file to see its enabled state and any load error.
-Details are read-only. Activation and removal controls are not available yet.
-The library receives native status while it is open and closes the subscription
-when the user leaves. A subscription failure shows an error instead of an empty
-library.
+The Enabled control saves the choice and refreshes the map. Disabled files are
+not opened or validated. Enabling an invalid file keeps it enabled and shows
+its load error. Marker-write failures keep the confirmed activation state.
+Removal controls are not available yet.
+
+The app maintains the native status subscription across navigation. A subscription
+failure shows an error instead of an empty library.
 
 ## Display
 
@@ -54,10 +58,14 @@ A missing directory, empty directory, or missing tile leaves the basemap
 blank. Flight overlays remain available. Tile read and decompression failures
 produce error responses and warnings instead of ordinary missing-tile responses.
 
-The shell serves tiles under `updraft://localhost/basemap/{z}/{x}/{y}.pbf`.
+The shell serves tiles under `updraft://localhost/basemap/{generation}/{z}/{x}/{y}.pbf`.
 The frontend converts the base URL through Tauri before it appends the tile
 template. Android and Windows use the corresponding HTTP(S) URL with the
 `updraft.localhost` host.
+
+Activation advances the generation. Requests for other generations return no
+content. The frontend replaces the basemap source to discard cached tiles and
+cancel pending requests. It restores the layer order and preserves the camera.
 
 The About screen credits OpenStreetMap contributors, Enroute Flight Navigation,
 and Akaflieg Freiburg. Zoom limits and attribution are fixed in the style.

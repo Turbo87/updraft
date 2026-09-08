@@ -88,6 +88,7 @@ pub fn run() {
             ipc::bonded_bluetooth_devices,
             basemap::commands::subscribe_basemaps,
             basemap::commands::unsubscribe_basemaps,
+            basemap::commands::set_basemap_enabled,
             data_import::select_data_file,
             data_import::import_data_file,
             data_import::discard_data_file,

@@ -1,5 +1,5 @@
 use super::*;
-use claims::assert_ok;
+use claims::{assert_err, assert_ok};
 use flate2::{Compression, write::GzEncoder};
 use rusqlite::Connection;
 use std::{io::Write, path::Path};
@@ -25,6 +25,73 @@ fn write_basemap(path: &Path, tiles: &[(u32, u32, u32, &[u8])]) {
 }
 
 #[test]
+fn activation_persists_and_invalidates_tiles_without_changing_priority() {
+    let directory = tempfile::tempdir().unwrap();
+    let first = directory.path().join("a.mbtiles");
+    write_basemap(&first, &[(6, 33, 43, b"first")]);
+    let second = directory.path().join("b.mbtiles");
+    write_basemap(&second, &[(6, 33, 43, b"second")]);
+    let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
+    assert_ok!(basemaps.set_enabled("a.mbtiles", false));
+    let stale = basemaps.resource_response("0/6/33/20.pbf");
+    assert_eq!(stale.status(), StatusCode::NO_CONTENT);
+    let tile = basemaps.resource_response("1/6/33/20.pbf");
+    assert_eq!(tile.body(), b"second");
+    let restarted = assert_ok!(Basemaps::load(directory.path()));
+    let tile = restarted.resource_response("0/6/33/20.pbf");
+    assert_eq!(tile.body(), b"second");
+    assert_ok!(basemaps.set_enabled("a.mbtiles", true));
+    assert!(!first.with_extension("mbtiles.disabled").exists());
+    assert_eq!(basemaps.resource_response("2/6/33/20.pbf").body(), b"first");
+    assert_ok!(basemaps.set_enabled("a.mbtiles", true));
+    assert_eq!(basemaps.generation, 3);
+    let channel = Channel::new(|_| Err(std::io::Error::other("closed channel").into()));
+    basemaps.subscribers.insert(channel.id(), channel);
+    assert_ok!(basemaps.set_enabled("a.mbtiles", false));
+    assert!(basemaps.subscribers.is_empty());
+    assert!(first.with_extension("mbtiles.disabled").exists());
+    let tile = basemaps.resource_response("4/6/33/20.pbf");
+    assert_eq!(tile.body(), b"second");
+}
+
+#[test]
+fn marker_failures_leave_activation_and_generation_unchanged() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local.mbtiles");
+    write_basemap(&path, &[(6, 33, 43, b"tile")]);
+    let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
+    let marker = path.with_extension("mbtiles.disabled");
+    assert_ok!(fs::create_dir(&marker));
+    assert_err!(basemaps.set_enabled("local.mbtiles", false));
+    assert_eq!(basemaps.generation, 0);
+    assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"tile");
+    let mut disabled = assert_ok!(Basemaps::load(directory.path()));
+    assert_err!(disabled.set_enabled("local.mbtiles", true));
+    assert_eq!(disabled.generation, 0);
+    std::assert_matches!(disabled.files[&path], BasemapSource::Disabled);
+    for name in ["../local.mbtiles", "missing.mbtiles", "local.terrain"] {
+        assert_err!(basemaps.set_enabled(name, false));
+    }
+}
+
+#[test]
+#[tracing_test::traced_test]
+fn enabling_invalid_files_retains_them_and_disabling_does_not_open_them() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("broken.mbtiles");
+    assert_ok!(fs::write(&path, b"not sqlite"));
+    assert_ok!(fs::write(path.with_extension("mbtiles.disabled"), b""));
+    let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
+    assert_ok!(basemaps.set_enabled("broken.mbtiles", false));
+    assert!(!logs_contain("Could not open offline basemap"));
+    assert_ok!(basemaps.set_enabled("broken.mbtiles", true));
+    std::assert_matches!(basemaps.files[&path], BasemapSource::Unavailable(_));
+    assert!(logs_contain("Could not open offline basemap"));
+    assert_ok!(basemaps.set_enabled("broken.mbtiles", false));
+    std::assert_matches!(basemaps.files[&path], BasemapSource::Disabled);
+}
+
+#[test]
 fn serves_the_first_tile_in_filename_order_with_xyz_coordinates() {
     let directory = tempfile::tempdir().unwrap();
     let germany = directory.path().join("Germany.mbtiles");
@@ -33,7 +100,7 @@ fn serves_the_first_tile_in_filename_order_with_xyz_coordinates() {
     write_basemap(&france, &[(6, 33, 43, b"france")]);
 
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
-    let response = basemaps.resource_response("6/33/20.pbf");
+    let response = basemaps.resource_response("0/6/33/20.pbf");
 
     assert_eq!(response.status(), StatusCode::OK);
     let content_type = &response.headers()[header::CONTENT_TYPE];
@@ -52,7 +119,7 @@ fn serves_tiles_without_zoom_or_attribution_metadata() {
         .unwrap();
 
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
-    assert_eq!(basemaps.resource_response("6/33/20.pbf").body(), b"tile");
+    assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"tile");
 }
 
 #[test]
@@ -76,7 +143,7 @@ fn skips_invalid_files_and_continues_with_valid_basemaps() {
 
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
 
-    assert_eq!(basemaps.resource_response("6/33/20.pbf").body(), b"valid");
+    assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"valid");
     for name in ["broken.mbtiles", "raster.mbtiles", "schema.mbtiles"] {
         assert!(logs_contain(name));
     }
@@ -88,7 +155,7 @@ fn missing_directory_has_no_tiles() {
     let directory = tempfile::tempdir().unwrap();
     let basemaps = assert_ok!(Basemaps::load(&directory.path().join("enroute")));
 
-    let response = basemaps.resource_response("6/33/20.pbf");
+    let response = basemaps.resource_response("0/6/33/20.pbf");
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
     assert!(response.body().is_empty());
 }
@@ -110,9 +177,9 @@ fn looks_in_later_files_and_serves_both_antimeridian_columns() {
     }
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
 
-    assert_eq!(basemaps.resource_response("6/63/0.pbf").body(), b"east");
-    assert_eq!(basemaps.resource_response("6/0/63.pbf").body(), b"west");
-    let response = basemaps.resource_response("6/1/1.pbf");
+    assert_eq!(basemaps.resource_response("0/6/63/0.pbf").body(), b"east");
+    assert_eq!(basemaps.resource_response("0/6/0/63.pbf").body(), b"west");
+    let response = basemaps.resource_response("0/6/1/1.pbf");
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
@@ -129,7 +196,7 @@ fn rejects_invalid_tile_coordinates_without_querying_files() {
         "a/0/0.pbf",
         "6/0/0.png",
     ] {
-        let response = basemaps.resource_response(path);
+        let response = basemaps.resource_response(&format!("0/{path}"));
         assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{path}");
     }
 }
@@ -146,10 +213,10 @@ fn reports_database_and_gzip_failures_as_errors_instead_of_missing_tiles() {
         .execute("UPDATE tiles SET tile_data = ?1", [b"not gzip".as_slice()])
         .unwrap();
 
-    let response = basemaps.resource_response("6/33/20.pbf");
+    let response = basemaps.resource_response("0/6/33/20.pbf");
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     connection.execute("DROP TABLE tiles", []).unwrap();
-    let response = basemaps.resource_response("6/33/20.pbf");
+    let response = basemaps.resource_response("0/6/33/20.pbf");
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     assert!(logs_contain("Could not read offline basemap tile"));
 }
@@ -174,7 +241,7 @@ fn inventory_retains_invalid_files_and_does_not_open_disabled_files() {
     std::assert_matches!(&basemaps.files[&broken], BasemapSource::Unavailable(_));
     std::assert_matches!(&basemaps.files[&disabled], BasemapSource::Disabled);
     std::assert_matches!(&basemaps.files[&valid], BasemapSource::Active(_));
-    assert_eq!(basemaps.resource_response("6/33/20.pbf").body(), b"valid");
+    assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"valid");
     assert!(logs_contain("broken.mbtiles"));
     assert!(!logs_contain("disabled.mbtiles"));
 }
@@ -192,23 +259,24 @@ fn disabled_markers_persist_priority_across_reloads_and_new_files_start_enabled(
 
     for _ in 0..2 {
         let basemaps = assert_ok!(Basemaps::load(directory.path()));
-        assert_eq!(basemaps.resource_response("6/33/20.pbf").body(), b"second");
+        let tile = basemaps.resource_response("0/6/33/20.pbf");
+        assert_eq!(tile.body(), b"second");
     }
     let added = directory.path().join("0.mbtiles");
     write_basemap(&added, &[(6, 33, 43, b"new")]);
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
-    assert_eq!(basemaps.resource_response("6/33/20.pbf").body(), b"new");
+    assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"new");
 
     assert_ok!(fs::remove_file(first.with_extension("mbtiles.disabled")));
     assert_ok!(fs::write(added.with_extension("mbtiles.disabled"), b""));
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
-    assert_eq!(basemaps.resource_response("6/33/20.pbf").body(), b"first");
+    assert_eq!(basemaps.resource_response("0/6/33/20.pbf").body(), b"first");
 
     for path in [&first, &second] {
         assert_ok!(fs::write(path.with_extension("mbtiles.disabled"), b""));
     }
     let basemaps = assert_ok!(Basemaps::load(directory.path()));
-    let response = basemaps.resource_response("6/33/20.pbf");
+    let response = basemaps.resource_response("0/6/33/20.pbf");
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
     assert!(response.body().is_empty());
 }
@@ -253,7 +321,8 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::subscribe_basemaps,
-            commands::unsubscribe_basemaps
+            commands::unsubscribe_basemaps,
+            commands::set_basemap_enabled
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
@@ -277,6 +346,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         let body = json!({"channel":format!("__CHANNEL__:{id}")});
         assert_eq!(assert_ok!(invoke("subscribe_basemaps", body)), Value::Null);
     }
+    let publications = messages.clone();
     let messages = messages.lock().unwrap();
     assert_eq!(messages.len(), 2);
     assert_eq!(messages[0], messages[1]);
@@ -299,6 +369,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
       ]
     }
     "#);
+    drop(messages);
     for _ in 0..2 {
         let body = json!({"channelId":42});
         assert_eq!(
@@ -310,6 +381,22 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     assert_eq!(
         basemaps.subscribers.keys().copied().collect::<Vec<_>>(),
         [43]
+    );
+    drop(basemaps);
+    let body = json!({"sourceName":"active.mbtiles", "enabled":false});
+    assert_eq!(assert_ok!(invoke("set_basemap_enabled", body)), Value::Null);
+    let messages = publications.lock().unwrap();
+    assert_eq!(messages.len(), 3);
+    assert_eq!(messages[2]["generation"], 1);
+    assert_eq!(
+        messages[2]["sources"][0],
+        json!({"sourceName":"active.mbtiles", "type":"disabled"})
+    );
+    drop(messages);
+    let body = json!({"sourceName":"missing.mbtiles", "enabled":true});
+    assert_eq!(
+        invoke("set_basemap_enabled", body),
+        Err(json!("Could not change basemap activation"))
     );
     assert!(logs_contain("Could not open offline basemap"));
 }

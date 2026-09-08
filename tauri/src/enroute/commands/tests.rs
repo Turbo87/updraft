@@ -25,7 +25,8 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
         })
         .invoke_handler(tauri::generate_handler![
             subscribe_enroute_downloads,
-            unsubscribe_enroute_downloads
+            unsubscribe_enroute_downloads,
+            cancel_enroute_download
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
@@ -77,10 +78,15 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
             Value::Null
         );
     }
-    queue
-        .lock()
-        .unwrap()
-        .finish(&attempt, DownloadOutcome::Installed);
+    for _ in 0..2 {
+        let body = json!({"path": attempt.path});
+        assert_eq!(
+            assert_ok!(invoke("cancel_enroute_download", body)),
+            Value::Null
+        );
+    }
+    let outcome = DownloadOutcome::Installed;
+    assert!(!queue.lock().unwrap().finish(&attempt, outcome));
     let state = app.state::<DownloadCommands>();
     assert!(state.subscribers.lock().unwrap().is_empty());
     assert_err!(messages.try_recv());

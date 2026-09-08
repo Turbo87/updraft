@@ -79,5 +79,10 @@ pub fn unsubscribe_enroute_downloads(channel_id: u32, state: tauri::State<'_, Do
     state.subscribers.lock().unwrap().remove(&channel_id);
 }
 
+#[tauri::command(async)]
+pub fn cancel_enroute_download(path: String, state: tauri::State<'_, DownloadCommands>) {
+    state.queue.lock().unwrap().cancel(&path);
+}
+
 #[cfg(test)]
 mod tests;

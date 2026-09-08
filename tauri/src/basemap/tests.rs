@@ -417,8 +417,11 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     let basemaps = Arc::new(Mutex::new(assert_ok!(Basemaps::load(directory.path()))));
     let messages = Arc::new(Mutex::new(Vec::<Value>::new()));
     let received = messages.clone();
+    let downloads = DownloadCommands::default();
+    let queue = downloads.queue.clone();
     let app = tauri::test::mock_builder()
         .manage(basemaps.clone())
+        .manage(downloads)
         .channel_interceptor(move |_, _, _, body| {
             received
                 .lock()
@@ -506,8 +509,23 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         invoke("set_basemap_enabled", body),
         Err(json!("Could not change basemap activation"))
     );
+    let catalog = br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#;
+    let mut entry = assert_ok!(parse_catalog(catalog)).remove(0);
+    entry.path = "Europe/active.mbtiles";
+    let attempt = {
+        let mut queue = queue.lock().unwrap();
+        queue.enqueue(entry);
+        assert_some!(queue.start_next())
+    };
+    let download = assert_ok!(BasemapDownload::new(directory.path(), &attempt));
     let body = json!({"sourceName":"enroute/Europe/active.mbtiles"});
     assert_eq!(assert_ok!(invoke("remove_basemap", body)), Value::Null);
+    assert!(!queue.lock().unwrap().is_active(&attempt));
+    use tauri::Manager;
+    let basemaps = app.state::<Arc<Mutex<Basemaps>>>();
+    app.state::<DownloadCommands>()
+        .install_download(basemaps.inner(), &attempt, download);
+    assert!(!active.exists());
     let messages = publications.lock().unwrap();
     assert_eq!(messages.len(), 4);
     insta::assert_json_snapshot!(messages[3], @r#"

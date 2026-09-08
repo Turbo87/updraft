@@ -1,4 +1,5 @@
 use super::{BasemapSource, Basemaps};
+use crate::enroute::commands::DownloadCommands;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -93,11 +94,18 @@ pub fn subscribe_basemaps(
 #[tauri::command]
 pub async fn remove_basemap(
     source_name: String,
+    downloads: tauri::State<'_, DownloadCommands>,
     state: tauri::State<'_, Arc<Mutex<Basemaps>>>,
 ) -> Result<(), &'static str> {
     let basemaps = state.inner().clone();
+    let queue = downloads.queue.clone();
     let name = source_name.clone();
     tauri::async_runtime::spawn_blocking(move || {
+        // Keep the queue locked through deletion to exclude installation.
+        let mut queue = queue.lock().unwrap();
+        if let Some(path) = name.strip_prefix("enroute/") {
+            queue.cancel(path);
+        }
         basemaps
             .lock()
             .expect("Basemap access should not panic")

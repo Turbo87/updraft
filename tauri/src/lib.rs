@@ -90,6 +90,7 @@ pub fn run() {
             enroute::catalog::refresh_enroute_catalog,
             enroute::commands::subscribe_enroute_downloads,
             enroute::commands::unsubscribe_enroute_downloads,
+            enroute::commands::cancel_enroute_download,
             basemap::commands::subscribe_basemaps,
             basemap::commands::unsubscribe_basemaps,
             basemap::commands::set_basemap_enabled,

@@ -1,7 +1,10 @@
 use super::*;
 use crate::{
+    airspace_storage::AirspaceStorage,
+    data_import::{self, DataImportState},
     driver::Driver,
-    file_picker::{FileBytesPicker, FileBytesPickerFuture, PickedFileBytes},
+    file_picker::{FileBytesPicker, FileBytesPickerFuture, FileBytesPickerState, PickedFileBytes},
+    ipc::AirspaceCommandState,
 };
 use claims::{assert_err, assert_ok};
 use serde_json::{Value, json};
@@ -39,12 +42,18 @@ fn app(
             display_name: Some("local.cup".into()),
             bytes: bytes.to_vec(),
         }))));
+    let directory = tempfile::tempdir().unwrap();
+    let airspace = AirspaceCommandState::new(AirspaceStorage::new(directory.path()));
     tauri::test::mock_builder()
         .manage(WaypointCommandState::new(storage))
         .manage(handle)
+        .manage(DataImportState::default())
+        .manage(airspace)
+        .manage(directory)
         .manage(picker)
         .invoke_handler(tauri::generate_handler![
-            import_waypoints,
+            data_import::select_data_file,
+            data_import::import_data_file,
             remove_waypoints,
             set_waypoints_enabled
         ])
@@ -53,9 +62,17 @@ fn app(
 }
 
 fn invoke(app: &tauri::App<MockRuntime>, command: &str, body: Value) -> Result<Value, Value> {
-    let window = tauri::WebviewWindowBuilder::new(app, "main", Default::default())
-        .build()
-        .unwrap();
+    let body = if command == "import_data_file" {
+        let selected = invoke(app, "select_data_file", json!({}))?;
+        json!({"selectionId":selected["selectionId"]})
+    } else {
+        body
+    };
+    let window = app.get_webview_window("main").unwrap_or_else(|| {
+        tauri::WebviewWindowBuilder::new(app, "main", Default::default())
+            .build()
+            .unwrap()
+    });
     let request = tauri::webview::InvokeRequest {
         cmd: command.into(),
         callback: tauri::ipc::CallbackFn(0),
@@ -77,10 +94,10 @@ async fn import_persists_and_activates_valid_rows_with_diagnostics() {
         String::from_utf8_lossy(CUP)
     );
     let app = app(storage.clone(), Some(source.as_bytes()), driver());
-    let response = assert_ok!(invoke(&app, "import_waypoints", json!({})));
+    let response = assert_ok!(invoke(&app, "import_data_file", json!({})));
     assert_eq!(
         response,
-        json!({"type": "imported", "sourceName": "local.cup"})
+        json!({"selectionId":"0", "sourceName":"local.cup", "dataType":"waypoints"})
     );
     let catalog = assert_ok!(app.state::<DriverHandle>().send(GetWaypointCatalog).await);
     let WaypointSource::Active(dataset) = &catalog.sources["local.cup"] else {
@@ -96,8 +113,8 @@ async fn cancellation_does_not_create_a_source() {
     let storage = WaypointStorage::new(dir.path().to_owned());
     let app = app(storage.clone(), None, driver());
     assert_eq!(
-        assert_ok!(invoke(&app, "import_waypoints", json!({}))),
-        json!({"type":"cancelled"})
+        assert_ok!(invoke(&app, "select_data_file", json!({}))),
+        Value::Null
     );
     assert!(assert_ok!(storage.load()).sources.is_empty());
 }
@@ -116,8 +133,8 @@ async fn invalid_replacement_publishes_an_unavailable_source() {
     let handle = app.state::<DriverHandle>();
     assert_ok!(handle.send(ReplaceWaypointCatalog(original.clone())).await);
     assert_eq!(
-        assert_ok!(invoke(&app, "import_waypoints", json!({}))),
-        json!({"type": "imported", "sourceName": "local.cup"})
+        assert_ok!(invoke(&app, "import_data_file", json!({}))),
+        json!({"selectionId":"0", "sourceName":"local.cup", "dataType":"waypoints"})
     );
     let catalog = assert_ok!(handle.send(GetWaypointCatalog).await);
     assert_eq!(
@@ -136,8 +153,8 @@ async fn stopped_driver_does_not_change_storage() {
     let storage = WaypointStorage::new(dir.path().to_owned());
     let app = app(storage.clone(), Some(CUP), DriverHandle::stopped());
     assert_eq!(
-        assert_err!(invoke(&app, "import_waypoints", json!({}))),
-        json!("driverStopped")
+        assert_err!(invoke(&app, "import_data_file", json!({}))),
+        json!({"kind":"waypoints", "error":"driverStopped"})
     );
     assert!(assert_ok!(storage.load()).sources.is_empty());
 }
@@ -202,8 +219,8 @@ async fn failed_waypoint_publication_keeps_stored_changes() {
     use updraft_core::{Core, Timestamp};
 
     for (command, installed) in [
-        ("import_waypoints", false),
-        ("import_waypoints", true),
+        ("import_data_file", false),
+        ("import_data_file", true),
         ("remove_waypoints", true),
         ("set_waypoints_enabled", true),
     ] {
@@ -227,7 +244,12 @@ async fn failed_waypoint_publication_keeps_stored_changes() {
         );
         let args = json!({"sourceName": "local.cup", "enabled": false});
         let error = assert_err!(invoke(&app, command, args));
-        assert_eq!(error, json!("driverStopped"));
+        let expected = if command == "import_data_file" {
+            json!({"kind":"waypoints", "error":"driverStopped"})
+        } else {
+            json!("driverStopped")
+        };
+        assert_eq!(error, expected);
         let catalog = assert_ok!(storage.load());
         assert_eq!(catalog.sources["other.cup"], original.sources["other.cup"]);
         if command == "remove_waypoints" {
@@ -321,16 +343,21 @@ async fn activation_rejects_unknown_sources_and_concurrent_mutations() {
     );
     assert!(assert_ok!(storage.load()).sources.is_empty());
     for command in [
-        "import_waypoints",
+        "import_data_file",
         "remove_waypoints",
         "set_waypoints_enabled",
     ] {
-        let test_app = app(storage.clone(), None, driver());
+        let test_app = app(storage.clone(), Some(CUP), driver());
         let state = test_app.state::<WaypointCommandState>();
         let _guard = assert_ok!(state.mutation.try_lock());
+        let expected = if command == "import_data_file" {
+            json!({"kind":"waypoints", "error":"busy"})
+        } else {
+            json!("busy")
+        };
         assert_eq!(
             assert_err!(invoke(&test_app, command, args.clone())),
-            json!("busy")
+            expected
         );
     }
 }

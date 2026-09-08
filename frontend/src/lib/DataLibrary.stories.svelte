@@ -1,14 +1,23 @@
 <script module lang="ts">
+  import type { ComponentProps } from 'svelte';
+
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { fn } from 'storybook/test';
 
   import DataLibrary from './DataLibrary.svelte';
+
+  type Args = ComponentProps<typeof DataLibrary>;
 
   const { Story } = defineMeta({
     title: 'Screens/DataLibrary',
     component: DataLibrary,
     args: {
       onRemove: fn(),
+      importer: {
+        selectDataFile: fn(async () => null),
+        importDataFile: fn(),
+        discardDataFile: fn(),
+      },
       activation: {
         pending: false,
         isEnabled: (_type, source) => source.type !== 'disabled',
@@ -22,9 +31,14 @@
   });
 </script>
 
-<Story name="Empty" />
+{#snippet template(args: Args)}
+  <div class="screen"><DataLibrary {...args} /></div>
+{/snippet}
+
+<Story name="Empty" {template} />
 <Story
   name="Imported files"
+  {template}
   args={{
     airspace: {
       generation: 1,
@@ -56,3 +70,26 @@
     },
   }}
 />
+
+<Story
+  name="Replacement confirmation"
+  {template}
+  args={{
+    waypoints: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
+    importer: {
+      selectDataFile: fn(async () => ({
+        selectionId: '1',
+        sourceName: 'local.cup',
+        dataType: 'waypoints' as const,
+      })),
+      importDataFile: fn(),
+      discardDataFile: fn(),
+    },
+  }}
+/>
+
+<style>
+  .screen {
+    height: 100dvh;
+  }
+</style>

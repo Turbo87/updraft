@@ -11,6 +11,7 @@ import type {
   ArrivalViewport,
   ImportAirspaceResult,
   ImportWaypointsResult,
+  SelectedDataFile,
   TopicListener,
   UpdraftClient,
 } from './index';
@@ -91,6 +92,18 @@ export class TauriClient implements UpdraftClient {
 
   deleteExternalDevice(deviceId: ExternalDeviceId): Promise<void> {
     return invoke('delete_external_device', { deviceId });
+  }
+
+  selectDataFile(): Promise<SelectedDataFile | null> {
+    return invoke('select_data_file');
+  }
+
+  importDataFile(selectionId: string): Promise<SelectedDataFile> {
+    return invoke('import_data_file', { selectionId });
+  }
+
+  discardDataFile(selectionId: string): Promise<void> {
+    return invoke('discard_data_file', { selectionId });
   }
 
   importWaypoints(): Promise<ImportWaypointsResult> {

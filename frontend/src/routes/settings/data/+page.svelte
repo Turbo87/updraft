@@ -16,6 +16,7 @@
 </script>
 
 <DataLibrary
+  importer={client}
   activation={dataActivation}
   airspace={airspace.current}
   waypoints={waypoints.current}

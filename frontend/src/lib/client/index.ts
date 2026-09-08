@@ -16,6 +16,11 @@ export type ArrivalSubscription = {
 };
 export type ImportWaypointsResult =
   { type: 'imported'; sourceName: string } | { type: 'cancelled' };
+export type SelectedDataFile = {
+  selectionId: string;
+  sourceName: string;
+  dataType: 'airspace' | 'waypoints';
+};
 export type ImportAirspaceResult = { type: 'imported' } | { type: 'cancelled' };
 
 /**
@@ -61,6 +66,9 @@ export interface UpdraftClient {
   setBallast(ballast: number): Promise<void>;
   /** Replaces all display-unit selections. */
   setUnits(units: UnitSettings): Promise<void>;
+  selectDataFile(): Promise<SelectedDataFile | null>;
+  importDataFile(selectionId: string): Promise<SelectedDataFile>;
+  discardDataFile(selectionId: string): Promise<void>;
   importWaypoints(): Promise<ImportWaypointsResult>;
   removeWaypoints(sourceName: string): Promise<void>;
   setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void>;

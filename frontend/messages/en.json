@@ -346,7 +346,7 @@
   "data_imported": "Imported",
   "data_disabled": "Disabled",
   "data_empty": "No data on this device",
-  "data_empty_hint": "Import OpenAir or CUP files from the Airspace or Waypoints settings.",
+  "data_empty_hint": "Add OpenAir (.txt) or CUP (.cup) files from your device.",
   "data_read_failed": "Imported · could not be read",
   "data_parse_failed": "Imported · could not be parsed",
   "data_geometry_failed": "Imported · invalid geometry",
@@ -363,5 +363,12 @@
   "data_remove_description": "The file will be deleted from the device.",
   "data_remove_failed": "Could not remove the file.",
   "data_enabled_hint": "Kept on the device but not drawn or used in calculations when off",
-  "data_activation_failed": "Could not change file activation."
+  "data_activation_failed": "Could not change file activation.",
+  "data_add": "Add data",
+  "data_replace": "Replace this file?",
+  "data_replace_description": "Replace “{name}” with the selected file? The replacement will be enabled, even if it cannot be parsed.",
+  "data_import_failed": "Could not import the file. Select it again to retry.",
+  "data_select_failed": "Could not select the file. Choose an OpenAir (.txt) or CUP (.cup) file.",
+  "data_replace_confirm": "Replace file",
+  "data_cancel_failed": "Could not cancel the selection. Select a file again."
 }

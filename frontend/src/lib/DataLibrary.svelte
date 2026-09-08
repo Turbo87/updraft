@@ -1,8 +1,11 @@
 <script lang="ts">
+  import type { SelectedDataFile, UpdraftClient } from './client';
   import type { AirspaceStatus } from './protocol/generated/AirspaceStatus';
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
   import type { DataActivation } from './stores/data-activation.svelte';
 
+  import { onDestroy, tick } from 'svelte';
+  import { MediaQuery } from 'svelte/reactivity';
   import { Dialog } from 'bits-ui';
 
   import Button from './Button.svelte';
@@ -15,6 +18,7 @@
 
   type DatasetType = 'airspace' | 'waypoints';
   type Props = {
+    importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
     detailsOpen?: boolean;
@@ -24,6 +28,7 @@
   type Source = AirspaceStatus['sources'][number] | WaypointStatus['sources'][number];
 
   let {
+    importer,
     airspace,
     waypoints,
     detailsOpen = $bindable(false),
@@ -35,6 +40,81 @@
   let removeOpen = $state(false);
   let pending = $state(false);
   let error = $state('');
+  const wideScreen = new MediaQuery('(min-width: 545px)');
+  let importPending = $state(false);
+  let importError = $state('');
+  let importSelection = $state<SelectedDataFile>();
+  let disposed = false;
+  let importOpener: HTMLButtonElement | undefined;
+
+  onDestroy(() => {
+    disposed = true;
+    if (importSelection) void discardSelection(importSelection);
+  });
+
+  async function finishImport() {
+    importPending = false;
+    await tick();
+    if (disposed || importSelection) return;
+    let target = importOpener?.checkVisibility()
+      ? importOpener
+      : importOpener?.closest('.screen-scaffold')?.querySelector('main');
+    target?.focus({ preventScroll: true });
+  }
+
+  async function discardSelection(selection: SelectedDataFile) {
+    try {
+      await importer.discardDataFile(selection.selectionId);
+    } catch (error) {
+      if (disposed) console.warn('Could not discard selected data file.', error);
+      else importError = m.data_cancel_failed();
+    }
+  }
+
+  async function cancelImport() {
+    let selection = importSelection;
+    importSelection = undefined;
+    if (!selection) return;
+    importPending = true;
+    await discardSelection(selection);
+    await finishImport();
+  }
+
+  async function importFile(selection: SelectedDataFile) {
+    importSelection = undefined;
+    importPending = true;
+    try {
+      await importer.importDataFile(selection.selectionId);
+    } catch {
+      importError = m.data_import_failed();
+    } finally {
+      await finishImport();
+    }
+  }
+
+  async function selectFile() {
+    importPending = true;
+    importError = '';
+    try {
+      let selection = await importer.selectDataFile();
+      if (!selection) return;
+      if (disposed) {
+        await discardSelection(selection);
+        return;
+      }
+      let sources = selection.dataType === 'airspace' ? airspace.sources : waypoints.sources;
+      if (sources.some((source) => source.sourceName === selection.sourceName)) {
+        importSelection = selection;
+      } else {
+        await importFile(selection);
+      }
+    } catch {
+      importError = m.data_select_failed();
+    } finally {
+      await finishImport();
+    }
+  }
+
   const groups = $derived(
     [
       {
@@ -118,7 +198,27 @@
   }
 </script>
 
-<ScreenScaffold backHref="/settings" backLabel={m.back_to_settings()} title={m.data_heading()}>
+<ScreenScaffold
+  backHref="/settings"
+  backLabel={m.back_to_settings()}
+  title={m.data_heading()}
+  responsiveActions
+>
+  {#snippet actions()}
+    <Button
+      style="width: 100%"
+      size={wideScreen.current ? 'standard' : 'large'}
+      loading={importPending}
+      disabled={activation.pending}
+      onclick={(event) => {
+        importOpener = event.currentTarget;
+        void selectFile();
+      }}
+    >
+      <span aria-hidden="true" class="i-mdi-plus"></span>{m.data_add()}
+    </Button>
+  {/snippet}
+  {#if importError}<p class="error" role="alert">{importError}</p>{/if}
   {#if groups.length === 0}
     <div class="empty">
       <span aria-hidden="true" class="i-mdi-database-outline"></span>
@@ -139,6 +239,7 @@
             >
               <button
                 class="file-row"
+                disabled={importPending}
                 onclick={(event) => {
                   selected = { type: group.type, name: source.sourceName };
                   opener = event.currentTarget;
@@ -268,6 +369,20 @@
   }}
   onConfirm={removeFile}
 />
+
+{#if importSelection}
+  <ConfirmDialog
+    open={true}
+    title={m.data_replace()}
+    description={m.data_replace_description({ name: importSelection.sourceName })}
+    cancelLabel={m.cancel()}
+    confirmLabel={m.data_replace_confirm()}
+    onCancel={cancelImport}
+    onConfirm={() => {
+      if (importSelection) void importFile(importSelection);
+    }}
+  />
+{/if}
 
 <style>
   section + section {

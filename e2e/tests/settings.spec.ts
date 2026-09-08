@@ -390,3 +390,34 @@ test('the Data library handles live statuses, file details, and removal', async 
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByText('No data on this device')).toBeVisible();
 });
+
+test('the Data library imports through the client and shows published parsing errors', async ({
+  page,
+}) => {
+  await page.goto('/settings/data?testMode=1');
+  await expect(page.getByRole('button', { name: 'Add data' })).toBeVisible();
+  await page.evaluate(() => {
+    let testWindow = window as TestWindow;
+    let client = testWindow.__updraftApp!.client;
+    let selected = { selectionId: '1', sourceName: 'broken.cup', dataType: 'waypoints' as const };
+    client.selectDataFile = async () => selected;
+    client.importDataFile = async () => {
+      testWindow.__updraftFake!.emit({
+        topic: 'waypoints',
+        value: {
+          generation: 1,
+          sources: [{ type: 'unavailable', sourceName: 'broken.cup', error: 'parseFailed' }],
+        },
+      });
+      return selected;
+    };
+  });
+  await page.getByRole('button', { name: 'Add data' }).click();
+  let row = page.getByRole('button', { name: /broken.cup/ });
+  await expect(row).toContainText('Imported · could not be parsed');
+  await expect(page).toHaveURL(/\/settings\/data\?testMode=1$/);
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await row.click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
+  await expect(page.getByRole('dialog').getByText('Imported · could not be parsed')).toBeVisible();
+});

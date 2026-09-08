@@ -16,6 +16,7 @@ import type {
   ArrivalViewport,
   ImportAirspaceResult,
   ImportWaypointsResult,
+  SelectedDataFile,
   TopicListener,
   UpdraftClient,
 } from './index';
@@ -88,6 +89,16 @@ export class FakeClient implements UpdraftClient {
   emitArrivals(update: ArrivalUpdate): void {
     for (let listener of this.#arrivalListeners) listener(update);
   }
+
+  async selectDataFile(): Promise<SelectedDataFile | null> {
+    return null;
+  }
+
+  async importDataFile(): Promise<SelectedDataFile> {
+    throw new Error('No selected data file');
+  }
+
+  async discardDataFile(): Promise<void> {}
 
   async importWaypoints(): Promise<ImportWaypointsResult> {
     return { type: 'cancelled' };

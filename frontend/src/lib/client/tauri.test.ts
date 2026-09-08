@@ -128,3 +128,24 @@ it('reports startup failures and propagates command failures', async () => {
   await expect(subscription.updateViewport([0, 0, 2, 2])).rejects.toThrow('command failed');
   await expect(subscription.close()).rejects.toThrow('command failed');
 });
+
+it('forwards data selection, import, and discard commands', async () => {
+  let client = new TauriClient();
+  let selected = { selectionId: '4', sourceName: 'local.cup', dataType: 'waypoints' };
+  mocks.invoke
+    .mockResolvedValueOnce(selected)
+    .mockResolvedValueOnce(selected)
+    .mockResolvedValueOnce(undefined);
+  expect(await client.selectDataFile()).toEqual(selected);
+  expect(await client.importDataFile('4')).toEqual(selected);
+  await client.discardDataFile('4');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['select_data_file'],
+    ['import_data_file', { selectionId: '4' }],
+    ['discard_data_file', { selectionId: '4' }],
+  ]);
+  mocks.invoke.mockRejectedValue(new Error('read failed'));
+  await expect(client.selectDataFile()).rejects.toThrow('read failed');
+  await expect(client.importDataFile('4')).rejects.toThrow('read failed');
+  await expect(client.discardDataFile('4')).rejects.toThrow('read failed');
+});

@@ -107,6 +107,9 @@
     left: 50%;
     display: grid;
     width: min(calc(100% - 2 * var(--space-5)), 28rem);
+    max-height: calc(100dvh - 2 * var(--space-5));
+    overflow-y: auto;
+    overflow-wrap: anywhere;
     padding: var(--space-6);
     border-radius: var(--radius-card);
     background: var(--color-card-surface);

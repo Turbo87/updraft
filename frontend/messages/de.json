@@ -346,7 +346,7 @@
   "data_imported": "Importiert",
   "data_disabled": "Deaktiviert",
   "data_empty": "Keine Daten auf diesem Gerät",
-  "data_empty_hint": "OpenAir- oder CUP-Dateien können in den Luftraum- oder Wegpunkteinstellungen importiert werden.",
+  "data_empty_hint": "OpenAir-Dateien (.txt) oder CUP-Dateien (.cup) vom Gerät hinzufügen.",
   "data_read_failed": "Importiert · konnte nicht gelesen werden",
   "data_parse_failed": "Importiert · konnte nicht verarbeitet werden",
   "data_geometry_failed": "Importiert · ungültige Geometrie",
@@ -363,5 +363,12 @@
   "data_remove_description": "Die Datei wird vom Gerät gelöscht.",
   "data_remove_failed": "Die Datei konnte nicht entfernt werden.",
   "data_enabled_hint": "Bleibt auf dem Gerät, wird aber deaktiviert weder angezeigt noch für Berechnungen verwendet",
-  "data_activation_failed": "Die Datei konnte nicht aktiviert oder deaktiviert werden."
+  "data_activation_failed": "Die Datei konnte nicht aktiviert oder deaktiviert werden.",
+  "data_add": "Daten hinzufügen",
+  "data_replace": "Diese Datei ersetzen?",
+  "data_replace_description": "„{name}“ durch die ausgewählte Datei ersetzen? Die neue Datei wird aktiviert, auch wenn sie nicht verarbeitet werden kann.",
+  "data_import_failed": "Die Datei konnte nicht importiert werden. Wähle sie erneut aus.",
+  "data_select_failed": "Die Datei konnte nicht ausgewählt werden. Wähle eine OpenAir-Datei (.txt) oder CUP-Datei (.cup).",
+  "data_replace_confirm": "Datei ersetzen",
+  "data_cancel_failed": "Die Auswahl konnte nicht abgebrochen werden. Wähle erneut eine Datei aus."
 }

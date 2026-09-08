@@ -4,6 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../app.css';
 
+import { FakeClient } from './client/fake';
 import DataLibrary from './DataLibrary.svelte';
 import { AirspaceStore } from './stores/airspace.svelte';
 import { DataActivation } from './stores/data-activation.svelte';
@@ -31,6 +32,7 @@ it('shows the latest activation choice without disabling the control', async () 
   };
   let changes = new DataActivation(client, airspace, waypoints);
   await render(DataLibrary, {
+    importer: new FakeClient(),
     airspace: airspace.current,
     waypoints: waypoints.current,
     activation: changes,
@@ -81,7 +83,13 @@ it('opens live file details and confirms removal separately', async () => {
       },
     ],
   };
-  let view = await render(DataLibrary, { airspace, waypoints, onRemove, activation: activation() });
+  let view = await render(DataLibrary, {
+    importer: new FakeClient(),
+    airspace,
+    waypoints,
+    onRemove,
+    activation: activation(),
+  });
   let row = page.getByRole('region', { name: 'Waypoints' }).getByRole('button');
   await row.click();
   let dialog = page.getByRole('dialog', { name: 'local.txt' });
@@ -135,6 +143,7 @@ it('groups and sorts sources without changing the input order', async () => {
     ],
   };
   let component = await render(DataLibrary, {
+    importer: new FakeClient(),
     activation: activation(),
     onRemove: vi.fn(),
     airspace,
@@ -184,6 +193,7 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
   try {
     await page.viewport(width, 600);
     await render(DataLibrary, {
+      importer: new FakeClient(),
       activation: activation(),
       onRemove: vi.fn(),
       airspace: { generation: 0, sources: [] },
@@ -207,6 +217,111 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
     await expect
       .element(page.getByRole('link', { name: 'Back to settings' }))
       .toHaveAttribute('href', '/settings');
+  } finally {
+    await page.viewport(previous.width, previous.height);
+  }
+});
+
+it('confirms a same-name replacement and discards cancellation', async () => {
+  let selected = { selectionId: '1', sourceName: 'local.cup', dataType: 'waypoints' as const };
+  let importer = {
+    selectDataFile: vi.fn().mockResolvedValue(selected),
+    importDataFile: vi.fn().mockResolvedValue(selected),
+    discardDataFile: vi.fn().mockResolvedValue(undefined),
+  };
+  await render(DataLibrary, {
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
+    activation: activation(),
+    onRemove: vi.fn(),
+    importer,
+  });
+  await page.getByRole('button', { name: 'Add data' }).click();
+  await expect.element(page.getByRole('alertdialog')).toBeVisible();
+  expect(importer.importDataFile).not.toHaveBeenCalled();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect.poll(() => importer.discardDataFile.mock.calls).toEqual([['1']]);
+  await expect.element(page.getByRole('button', { name: 'Add data' })).toHaveFocus();
+  await page.getByRole('button', { name: 'Add data' }).click();
+  await page.getByRole('button', { name: 'Replace file', exact: true }).click();
+  await expect.poll(() => importer.importDataFile.mock.calls).toEqual([['1']]);
+  await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument();
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+});
+
+it('imports a new dataset without confusing filenames in another group', async () => {
+  let selected = { selectionId: '2', sourceName: 'local.cup', dataType: 'waypoints' as const };
+  let importer = {
+    selectDataFile: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(selected),
+    importDataFile: vi
+      .fn()
+      .mockRejectedValueOnce(new Error('storage failed'))
+      .mockResolvedValue(selected),
+    discardDataFile: vi.fn(),
+  };
+  await render(DataLibrary, {
+    importer,
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
+    waypoints: { generation: 0, sources: [] },
+  });
+  let add = page.getByRole('button', { name: 'Add data' });
+  await add.click();
+  await expect.element(add).toBeEnabled();
+  expect(importer.importDataFile).not.toHaveBeenCalled();
+  await add.click();
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not import the file. Select it again to retry.');
+  await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument();
+  await add.click();
+  await expect.poll(() => importer.importDataFile.mock.calls).toEqual([['2'], ['2']]);
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+});
+
+it('discards a picker result when the library has been closed', async () => {
+  let result = Promise.withResolvers<null | {
+    selectionId: string;
+    sourceName: string;
+    dataType: 'airspace';
+  }>();
+  let importer = {
+    selectDataFile: vi.fn().mockReturnValue(result.promise),
+    importDataFile: vi.fn(),
+    discardDataFile: vi.fn().mockResolvedValue(undefined),
+  };
+  let view = await render(DataLibrary, {
+    importer,
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+  });
+  await page.getByRole('button', { name: 'Add data' }).click();
+  await view.unmount();
+  result.resolve({ selectionId: '3', sourceName: 'local.txt', dataType: 'airspace' });
+  await expect.poll(() => importer.discardDataFile.mock.calls).toEqual([['3']]);
+  expect(importer.importDataFile).not.toHaveBeenCalled();
+});
+
+it('moves Add data from the footer to the header above 544px', async () => {
+  let previous = { width: window.innerWidth, height: window.innerHeight };
+  await render(DataLibrary, {
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+  });
+  try {
+    for (let width of [413, 544, 545, 915]) {
+      await page.viewport(width, 600);
+      let add = page.getByRole('button', { name: 'Add data' });
+      await expect.element(add).toBeVisible();
+      expect(add.element().closest(width > 544 ? 'header' : 'footer')).not.toBeNull();
+      expect(add.element().getBoundingClientRect().height).toBe(width > 544 ? 48 : 56);
+    }
   } finally {
     await page.viewport(previous.width, previous.height);
   }

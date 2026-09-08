@@ -129,3 +129,18 @@ describe('ConfirmDialog.svelte', () => {
     trigger.remove();
   });
 });
+
+it('keeps long filenames inside a short viewport', async () => {
+  let previous = { width: window.innerWidth, height: window.innerHeight };
+  await page.viewport(320, 320);
+  try {
+    await render(ConfirmDialog, { ...props, description: `Replace ${'a'.repeat(250)}.cup?` });
+    let dialog = page.getByRole('alertdialog').element();
+    expect(dialog.scrollWidth).toBe(dialog.clientWidth);
+    let bounds = dialog.getBoundingClientRect();
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.bottom).toBeLessThanOrEqual(320);
+  } finally {
+    await page.viewport(previous.width, previous.height);
+  }
+});

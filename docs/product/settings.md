@@ -133,7 +133,6 @@ Back, and a tap outside dismiss the dialog. Back keeps the library open.
 Basemap details show an Enabled control and a load error when an enabled file
 is unavailable. The app maintains basemap status across navigation.
 Loading and subscription failure messages are distinct from an empty inventory.
-Basemap removal controls are not available yet.
 
 The Enabled control changes immediately and stays interactive while saving.
 Activation changes run sequentially and continue after leaving Settings. The
@@ -141,7 +140,7 @@ latest choice stays visible until the command and its source status arrive.
 A failed final change returns to the confirmed state and shows an error in
 the library and file details. An enabled file can have a parsing error.
 Disabling hides its counts and diagnostics until it is enabled again.
-Basemap activation refreshes tiles without changing the map position or zoom.
+Basemap activation and removal refresh tiles without changing the map position or zoom.
 
 Remove from device closes the details and opens a confirmation. Cancel returns
 to the library. A removal failure stays in the confirmation with an error and

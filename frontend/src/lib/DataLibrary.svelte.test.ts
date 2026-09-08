@@ -70,8 +70,7 @@ it.each(['airspace', 'basemap'] as const)(
     let loadError =
       type === 'airspace' ? 'Imported · could not be parsed' : 'Could not load the file.';
     await expect.element(page.getByText(loadError)).not.toBeInTheDocument();
-    if (type === 'airspace')
-      await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
+    await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
     result.reject(new Error('storage failed'));
     await expect.element(toggle).toBeChecked();
     await expect
@@ -434,7 +433,11 @@ it.each([
   },
 );
 
-it('shows basemap activation and keeps details current', async () => {
+it('shows basemap activation, confirms removal, and keeps details current', async () => {
+  let onRemove = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('storage failed'))
+    .mockResolvedValue(undefined);
   let basemaps = {
     generation: 0,
     sources: [
@@ -446,7 +449,7 @@ it('shows basemap activation and keeps details current', async () => {
   let view = await render(DataLibrary, {
     importer: new FakeClient(),
     activation: activation(),
-    onRemove: vi.fn(),
+    onRemove,
     airspace: { generation: 0, sources: [] },
     waypoints: { generation: 0, sources: [] },
     basemaps,
@@ -457,9 +460,7 @@ it('shows basemap activation and keeps details current', async () => {
   );
   await page.getByRole('button', { name: /^a.mbtiles/ }).click();
   await expect.element(page.getByRole('switch')).toBeChecked();
-  await expect
-    .element(page.getByRole('button', { name: 'Remove from device' }))
-    .not.toBeInTheDocument();
+  await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeVisible();
   await expect
     .element(page.getByRole('dialog').getByText('Enabled', { exact: true }))
     .toBeVisible();
@@ -471,6 +472,20 @@ it('shows basemap activation and keeps details current', async () => {
   await userEvent.keyboard('{Escape}');
   await page.getByRole('button', { name: /^z.mbtiles/ }).click();
   await expect.element(page.getByRole('switch')).not.toBeChecked();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(onRemove).not.toHaveBeenCalled();
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+  await page.getByRole('button', { name: /^z.mbtiles/ }).click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect.element(page.getByRole('alert')).toHaveTextContent('Could not remove the file.');
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  expect(onRemove.mock.calls).toEqual([
+    ['basemap', 'z.mbtiles'],
+    ['basemap', 'z.mbtiles'],
+  ]);
+  await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument();
   await view.rerender({ basemaps: { generation: 1, sources: [] } });
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
   await expect.element(page.getByText('No data on this device')).toBeVisible();

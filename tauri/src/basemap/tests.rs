@@ -75,6 +75,73 @@ fn marker_failures_leave_activation_and_generation_unchanged() {
 }
 
 #[test]
+fn removal_clears_markers_and_falls_back_to_remaining_tiles() {
+    let directory = tempfile::tempdir().unwrap();
+    let first = directory.path().join("a.mbtiles");
+    let second = directory.path().join("b.mbtiles");
+    write_basemap(&first, &[(6, 33, 43, b"first")]);
+    write_basemap(&second, &[(6, 33, 43, b"second")]);
+    let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
+    assert_err!(basemaps.remove("../a.mbtiles"));
+    assert_ok!(basemaps.remove("a.mbtiles"));
+    assert!(!first.exists());
+    let tile = basemaps.resource_response("1/6/33/20.pbf");
+    assert_eq!(tile.body(), b"second");
+    let stale = basemaps.resource_response("0/6/33/20.pbf");
+    assert_eq!(stale.status(), StatusCode::NO_CONTENT);
+    assert_ok!(basemaps.set_enabled("b.mbtiles", false));
+    assert_ok!(basemaps.remove("b.mbtiles"));
+    assert!(!second.exists());
+    assert!(!second.with_extension("mbtiles.disabled").exists());
+    assert!(basemaps.files.is_empty());
+    write_basemap(&second, &[(6, 33, 43, b"new")]);
+    let restarted = assert_ok!(Basemaps::load(directory.path()));
+    assert_eq!(restarted.resource_response("0/6/33/20.pbf").body(), b"new");
+}
+
+#[test]
+fn removal_failures_can_be_retried_without_opening_disabled_files() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local.mbtiles");
+    let marker = path.with_extension("mbtiles.disabled");
+    assert_ok!(fs::create_dir(&path));
+    assert_ok!(fs::create_dir(&marker));
+    let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
+    assert_err!(basemaps.remove("local.mbtiles"));
+    assert!(path.exists());
+    assert!(marker.exists());
+    std::assert_matches!(basemaps.files[&path], BasemapSource::Disabled);
+    assert_ok!(fs::remove_dir(&path));
+    assert_ok!(fs::write(&path, b"not sqlite"));
+    assert_err!(basemaps.remove("local.mbtiles"));
+    assert!(!path.exists());
+    std::assert_matches!(basemaps.files[&path], BasemapSource::Disabled);
+    assert_ok!(fs::remove_dir(&marker));
+    assert_ok!(fs::write(&marker, b""));
+    assert_ok!(basemaps.remove("local.mbtiles"));
+    assert!(!marker.exists());
+    assert!(basemaps.files.is_empty());
+}
+
+#[test]
+fn marker_cleanup_failure_stops_serving_deleted_tiles_and_allows_retry() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local.mbtiles");
+    let marker = path.with_extension("mbtiles.disabled");
+    write_basemap(&path, &[(6, 33, 43, b"tile")]);
+    let mut basemaps = assert_ok!(Basemaps::load(directory.path()));
+    assert_ok!(fs::create_dir(&marker));
+    assert_err!(basemaps.remove("local.mbtiles"));
+    assert!(!path.exists());
+    std::assert_matches!(basemaps.files[&path], BasemapSource::Unavailable(_));
+    let tile = basemaps.resource_response("1/6/33/20.pbf");
+    assert_eq!(tile.status(), StatusCode::NO_CONTENT);
+    assert_ok!(fs::remove_dir(&marker));
+    assert_ok!(basemaps.remove("local.mbtiles"));
+    assert!(basemaps.files.is_empty());
+}
+
+#[test]
 #[tracing_test::traced_test]
 fn enabling_invalid_files_retains_them_and_disabling_does_not_open_them() {
     let directory = tempfile::tempdir().unwrap();
@@ -322,7 +389,8 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         .invoke_handler(tauri::generate_handler![
             commands::subscribe_basemaps,
             commands::unsubscribe_basemaps,
-            commands::set_basemap_enabled
+            commands::set_basemap_enabled,
+            commands::remove_basemap
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
@@ -398,5 +466,24 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         invoke("set_basemap_enabled", body),
         Err(json!("Could not change basemap activation"))
     );
+    let body = json!({"sourceName":"active.mbtiles"});
+    assert_eq!(assert_ok!(invoke("remove_basemap", body)), Value::Null);
+    let messages = publications.lock().unwrap();
+    assert_eq!(messages.len(), 4);
+    insta::assert_json_snapshot!(messages[3], @r#"
+    {
+      "generation": 2,
+      "sources": [
+        {
+          "sourceName": "disabled.mbtiles",
+          "type": "disabled"
+        },
+        {
+          "sourceName": "invalid.mbtiles",
+          "type": "unavailable"
+        }
+      ]
+    }
+    "#);
     assert!(logs_contain("Could not open offline basemap"));
 }

@@ -155,6 +155,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_basemap_enabled', { sourceName, enabled });
   }
 
+  removeBasemap(sourceName: string): Promise<void> {
+    return invoke('remove_basemap', { sourceName });
+  }
+
   quit(): Promise<void> {
     return invoke('quit');
   }

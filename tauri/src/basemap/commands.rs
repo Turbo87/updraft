@@ -94,6 +94,27 @@ pub fn subscribe_basemaps(
         .map_err(|_| "Could not subscribe to basemap status")
 }
 
+#[tauri::command]
+pub async fn remove_basemap(
+    source_name: String,
+    state: tauri::State<'_, Arc<Mutex<Basemaps>>>,
+) -> Result<(), &'static str> {
+    let basemaps = state.inner().clone();
+    let name = source_name.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        basemaps
+            .lock()
+            .expect("Basemap access should not panic")
+            .remove(&name)
+    })
+    .await
+    .unwrap_or_else(|error| Err(error.into()))
+    .map_err(|error| {
+        tracing::warn!(%error, source_name, "Could not remove basemap file");
+        "Could not remove basemap file"
+    })
+}
+
 #[tauri::command(async)]
 pub fn unsubscribe_basemaps(channel_id: u32, state: tauri::State<'_, Arc<Mutex<Basemaps>>>) {
     state

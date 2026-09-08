@@ -107,6 +107,8 @@ Basemap activation writes its marker on a blocking worker and publishes a new
 generation under the inventory lock. Tile URLs include this generation. The
 shell rejects stale generations, and the frontend replaces the basemap source
 to cancel pending requests and discard cached tiles.
+Removal closes the SQLite connection before deleting the file and marker.
+Failures retain the inventory entry for retry and publish the remaining tile state.
 
 Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under

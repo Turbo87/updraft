@@ -103,6 +103,13 @@ export class FakeClient implements UpdraftClient {
     });
   }
 
+  async removeBasemap(sourceName: string): Promise<void> {
+    this.emitBasemaps({
+      generation: this.#basemaps.generation + 1,
+      sources: this.#basemaps.sources.filter((source) => source.sourceName !== sourceName),
+    });
+  }
+
   subscribeArrivals(
     _bounds: ArrivalViewport,
     onUpdate: (update: ArrivalUpdate) => void,

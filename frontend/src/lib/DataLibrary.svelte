@@ -18,7 +18,7 @@
 
   const componentId = $props.id();
 
-  type DatasetType = 'airspace' | 'waypoints';
+  type DatasetType = 'airspace' | 'waypoints' | 'basemap';
   type Props = {
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
@@ -44,7 +44,7 @@
     onRemove,
     activation,
   }: Props = $props();
-  let selected = $state<{ type: DatasetType | 'basemap'; name: string }>();
+  let selected = $state<{ type: DatasetType; name: string }>();
   let opener: HTMLButtonElement | undefined;
   let removeOpen = $state(false);
   let pending = $state(false);
@@ -169,7 +169,7 @@
   }
 
   async function removeFile() {
-    if (!selected || selected.type === 'basemap' || pending) return;
+    if (!selected || pending) return;
     pending = true;
     error = '';
     try {
@@ -188,7 +188,7 @@
 
   function metadata(
     source: Source,
-    type: DatasetType | 'basemap',
+    type: DatasetType,
     enabled = source.type !== 'disabled',
   ): string {
     if (type === 'basemap')
@@ -382,19 +382,17 @@
             {/each}
           </ul>
         {/if}
-        {#if selectedGroup.type !== 'basemap'}
-          <Button
-            disabled={activation.pending}
-            variant="destructive-outline"
-            size="large"
-            style="width: 100%"
-            onclick={() => {
-              detailsOpen = false;
-              error = '';
-              removeOpen = true;
-            }}>{m.data_remove()}</Button
-          >
-        {/if}
+        <Button
+          disabled={activation.pending}
+          variant="destructive-outline"
+          size="large"
+          style="width: 100%"
+          onclick={() => {
+            detailsOpen = false;
+            error = '';
+            removeOpen = true;
+          }}>{m.data_remove()}</Button
+        >
       {/if}
     </Dialog.Content>
   </Dialog.Portal>
@@ -590,7 +588,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-4);
-    margin-block-start: var(--space-4);
+    margin-block: var(--space-4);
     padding-block: var(--space-4);
     border-block: 1px solid var(--color-separator);
     cursor: pointer;

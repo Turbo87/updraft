@@ -17,7 +17,7 @@ function pointTile(id: number): Buffer {
   return tile;
 }
 
-test('activation replaces cached and pending tiles without moving the map', async ({ page }) => {
+test('activation and removal refresh tiles without moving the map', async ({ page }) => {
   let pending: Route[] = [];
   let cancelled = 0;
   page.on('requestfailed', (request) => {
@@ -30,7 +30,9 @@ test('activation replaces cached and pending tiles without moving the map', asyn
     }
     await route.fulfill({
       contentType: 'application/vnd.mapbox-vector-tile',
-      body: pointTile(route.request().url().includes('/basemap/0/') ? 7 : 9),
+      body: route.request().url().includes('/basemap/3/')
+        ? Buffer.alloc(0)
+        : pointTile(route.request().url().includes('/basemap/0/') ? 7 : 9),
     });
   });
   await page.goto('/?testMode=1');
@@ -93,6 +95,14 @@ test('activation replaces cached and pending tiles without moving the map', asyn
   await expect.poll(() => cancelled).toBe(pending.length);
   for (let route of pending) await route.fulfill({ body: pointTile(7) });
   await expect.poll(features).toEqual([9]);
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect.poll(features).toEqual([9]);
+  await page.getByRole('button', { name: /^local.mbtiles/ }).click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(page.getByText('No data on this device')).toBeVisible();
+  await expect.poll(features).toEqual([]);
   let final = await page.evaluate(() => {
     let map = (window as TestWindow).__updraftApp!.mapState.map!;
     return {

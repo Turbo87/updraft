@@ -24,5 +24,9 @@
   waypoints={waypoints.current}
   bind:detailsOpen
   onRemove={(type, name) =>
-    type === 'airspace' ? client.removeAirspace(name) : client.removeWaypoints(name)}
+    type === 'basemap'
+      ? client.removeBasemap(name)
+      : type === 'airspace'
+        ? client.removeAirspace(name)
+        : client.removeWaypoints(name)}
 />

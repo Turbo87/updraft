@@ -125,6 +125,37 @@ impl Basemaps {
         Ok(())
     }
 
+    fn remove(&mut self, name: &str) -> Result<()> {
+        let (path, source) = self
+            .files
+            .iter_mut()
+            .find(|(path, _)| path.file_name() == Some(std::ffi::OsStr::new(name)))
+            .context("Basemap file is not installed")?;
+        let path = path.clone();
+        let enabled = !matches!(source, BasemapSource::Disabled);
+        // Close SQLite before deletion, including on Windows.
+        *source = BasemapSource::Disabled;
+        let marker = path.with_extension("mbtiles.disabled");
+        let result =
+            [&path, &marker]
+                .into_iter()
+                .try_for_each(|path| match fs::remove_file(path) {
+                    Ok(()) => Ok(()),
+                    Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+                    Err(error) => Err(error),
+                });
+        if result.is_ok() {
+            self.files.remove(&path);
+        } else if enabled {
+            *source = open_basemap(&path)
+                .map(BasemapSource::Active)
+                .unwrap_or_else(BasemapSource::Unavailable);
+        }
+        self.generation += 1;
+        self.publish();
+        result.map_err(Into::into)
+    }
+
     fn tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Vec<u8>>> {
         let tms_y = (1_u32 << z) - 1 - y;
         for source in self.files.values() {

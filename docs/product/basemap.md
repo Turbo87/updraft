@@ -44,7 +44,10 @@ unavailable states. Select a file to see its enabled state and any load error.
 The Enabled control saves the choice and refreshes the map. Disabled files are
 not opened or validated. Enabling an invalid file keeps it enabled and shows
 its load error. Marker-write failures keep the confirmed activation state.
-Removal controls are not available yet.
+Remove from device asks for confirmation, then deletes the file and its disabled
+marker. The map falls back to remaining files. A removal failure allows retry.
+If marker cleanup fails after deletion, the file stays listed until cleanup
+succeeds. Its deleted tiles no longer contribute to the map.
 
 The app maintains the native status subscription across navigation. A subscription
 failure shows an error instead of an empty library.
@@ -63,7 +66,7 @@ The frontend converts the base URL through Tauri before it appends the tile
 template. Android and Windows use the corresponding HTTP(S) URL with the
 `updraft.localhost` host.
 
-Activation advances the generation. Requests for other generations return no
+Activation and removal advance the generation. Requests for other generations return no
 content. The frontend replaces the basemap source to discard cached tiles and
 cancel pending requests. It restores the layer order and preserves the camera.
 

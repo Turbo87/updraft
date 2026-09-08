@@ -87,7 +87,9 @@
       style: 'unit',
       unit: 'megabyte',
       maximumFractionDigits: 1,
-    }).format(bytes / 1_000_000);
+    })
+      .format(bytes / 1_000_000)
+      .replaceAll(' ', '\u00a0');
   }
   $effect(() => {
     if (selectionCountry !== country) {

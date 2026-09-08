@@ -329,7 +329,9 @@
       style: 'unit',
       unit: 'megabyte',
       maximumFractionDigits: 1,
-    }).format(bytes / 1_000_000);
+    })
+      .format(bytes / 1_000_000)
+      .replaceAll(' ', '\u00a0');
   }
   function downloadStatus(download: EnrouteDownloadStatus): string {
     if (download.type === 'failed') return m.data_download_failed();

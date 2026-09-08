@@ -296,7 +296,7 @@ pub const POLAR_STORE: &[PolarStoreEntry] = &[
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::{assert_gt, assert_lt};
+    use claims::{assert_gt, assert_lt, assert_some};
 
     #[test]
     fn sorted_by_name() {
@@ -356,7 +356,8 @@ mod tests {
         // the coefficients in the source list.
         #[track_caller]
         fn check(name: &str, best_ld: f64, at_kmh: f64, min_sink: f64, at_min_sink_kmh: f64) {
-            let entry = POLAR_STORE.iter().find(|entry| entry.name == name).unwrap();
+            let entry = POLAR_STORE.iter().find(|entry| entry.name == name);
+            let entry = assert_some!(entry, "Missing polar: {name}");
             let polar = entry.glide_polar();
             assert_abs_diff_eq!(polar.best_glide_ratio(), best_ld, epsilon = 0.1);
             assert_abs_diff_eq!(

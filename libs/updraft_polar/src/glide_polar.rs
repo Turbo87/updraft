@@ -205,7 +205,7 @@ impl GlidePolar {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
-    use claims::{assert_lt, assert_none};
+    use claims::{assert_lt, assert_none, assert_some};
 
     fn kmh(value: f64) -> Speed {
         Speed::from_kilometers_per_hour(value)
@@ -217,13 +217,13 @@ mod tests {
 
     /// LS8 15m: 360 kg reference mass, best glide ~44 at ~112 km/h.
     fn ls8() -> GlidePolar {
-        let coefficients = PolarCoefficients::from_points([
+        let points = [
             (kmh(100.), mps(0.67)),
             (kmh(155.), mps(1.45)),
             (kmh(185.), mps(2.5)),
-        ])
-        .unwrap();
-        GlidePolar::new(coefficients, Mass::from_kilograms(360.)).unwrap()
+        ];
+        let coefficients = assert_some!(PolarCoefficients::from_points(points));
+        assert_some!(GlidePolar::new(coefficients, Mass::from_kilograms(360.)))
     }
 
     #[test]

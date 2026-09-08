@@ -419,7 +419,7 @@
     onBack={handleBack}
   />
 {/if}
-<div hidden={catalogOpen} bind:this={libraryContainer} style="height: 100%">
+<div class="data-library" hidden={catalogOpen} bind:this={libraryContainer} style="height: 100%">
   <ScreenScaffold
     {...updatesOpen ? { onBack: handleBack } : { backHref: '/settings' as const }}
     backLabel={updatesOpen ? m.back_to_data() : m.back_to_settings()}
@@ -465,7 +465,7 @@
       />
     {/if}
     {#if !updatesOpen && availableUpdates.length}
-      <ResponsiveCard style="margin-block-end: var(--space-4)">
+      <ResponsiveCard class="update-notice-card" style="margin-block-end: 15px">
         <button
           class="file-row update-notice"
           onclick={async () => {
@@ -477,7 +477,7 @@
             main.focus({ preventScroll: true });
           }}
         >
-          <span aria-hidden="true" class="i-mdi-download type-icon"></span>
+          <span aria-hidden="true" class="i-mdi-arrow-down-circle-outline type-icon"></span>
           <span class="description"
             >{availableUpdates.length === 1
               ? m.data_update_one()
@@ -558,7 +558,7 @@
                         ></progress>
                       {/if}
                     {:else if update}
-                      <span class="download-status"
+                      <span class="download-status update-available"
                         >{m.data_update_available()} · {new Intl.DateTimeFormat(getLocale(), {
                           dateStyle: 'medium',
                           timeZone: 'UTC',
@@ -811,7 +811,7 @@
     align-items: center;
     gap: var(--space-5);
     min-height: var(--target-min);
-    padding-block: var(--space-4);
+    padding-block: 10px;
     padding-inline: calc(var(--space-6) + var(--card-safe-area-start))
       calc(var(--space-5) + var(--card-safe-area-end));
   }
@@ -827,9 +827,27 @@
   }
   .download-status {
     display: block;
-    margin-block-start: var(--space-1);
     color: var(--color-text-muted);
-    font: var(--text-row-detail);
+    font: 500 15px/1.4 var(--font-ui);
+  }
+  .update-available {
+    color: var(--color-text);
+  }
+  .update-notice {
+    min-height: 56px;
+    padding-block: 12px;
+    font: var(--text-row-label);
+  }
+  .update-notice .type-icon {
+    line-height: 1;
+  }
+  .update-notice .i-mdi-arrow-down-circle-outline {
+    color: var(--color-action-primary-surface);
+  }
+  @media (max-width: 34rem) {
+    .data-library :global(.update-notice-card:first-child) {
+      margin-block-start: calc(-1 * var(--space-4));
+    }
   }
   .download-status.active {
     color: var(--color-action-primary-surface);
@@ -881,7 +899,6 @@
   }
   .metadata {
     display: block;
-    margin: var(--space-1) 0 0;
     color: var(--color-text-muted);
     font: 400 15px/1.4 var(--font-ui);
   }

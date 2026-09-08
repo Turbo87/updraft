@@ -14,6 +14,8 @@
     args: {
       catalog: null,
       onRetryCatalog: fn(),
+      onDownload: fn(),
+      onCancelDownload: fn(),
       onRemove: fn(),
       importer: {
         selectDataFile: fn(async () => null),
@@ -123,6 +125,27 @@
 />
 <Story name="Loading terrain" {template} args={{ terrain: null }} />
 <Story name="Terrain inventory failure" {template} args={{ terrain: null, terrainError: true }} />
+
+<Story
+  name="Downloads and installed update"
+  {template}
+  args={{
+    basemaps: {
+      generation: 1,
+      sources: [{ sourceName: 'enroute/Europe/Germany.mbtiles', type: 'disabled' }],
+    },
+    downloads: [
+      {
+        path: 'Europe/Germany.mbtiles',
+        type: 'downloading',
+        downloaded: 50_000_000,
+        total: 150_000_000,
+      },
+      { path: 'Europe/Malta.mbtiles', type: 'queued' },
+      { path: 'Europe/France.mbtiles', type: 'failed' },
+    ],
+  }}
+/>
 
 <style>
   .screen {

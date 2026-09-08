@@ -39,6 +39,8 @@ it.each([
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onDownload: vi.fn(),
+      onCancelDownload: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove,
@@ -92,6 +94,8 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onDownload: vi.fn(),
+      onCancelDownload: vi.fn(),
       importer: new FakeClient(),
       basemaps: basemaps.current,
       terrain: terrain.current,
@@ -152,6 +156,8 @@ it('opens live file details and confirms removal separately', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     importer: new FakeClient(),
     airspace,
     waypoints,
@@ -213,6 +219,8 @@ it('groups and sorts sources without changing the input order', async () => {
   let component = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     importer: new FakeClient(),
     activation: activation(),
     onRemove: vi.fn(),
@@ -265,6 +273,8 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onDownload: vi.fn(),
+      onCancelDownload: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove: vi.fn(),
@@ -304,6 +314,8 @@ it('confirms a same-name replacement and discards cancellation', async () => {
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     airspace: { generation: 0, sources: [] },
     waypoints: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
     activation: activation(),
@@ -336,6 +348,8 @@ it('imports a new dataset without confusing filenames in another group', async (
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     importer,
     activation: activation(),
     onRemove: vi.fn(),
@@ -371,6 +385,8 @@ it('discards a picker result when the library has been closed', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     importer,
     activation: activation(),
     onRemove: vi.fn(),
@@ -389,6 +405,8 @@ it('moves Add data from the footer to the header above 544px', async () => {
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     importer: new FakeClient(),
     activation: activation(),
     onRemove: vi.fn(),
@@ -440,6 +458,8 @@ it.each([
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onDownload: vi.fn(),
+      onCancelDownload: vi.fn(),
       importer,
       activation: activation(),
       onRemove: vi.fn(),
@@ -522,6 +542,8 @@ it.each(['basemap', 'terrain'] as const)(
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onDownload: vi.fn(),
+      onCancelDownload: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove,
@@ -585,6 +607,8 @@ it.each([
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onDownload: vi.fn(),
+      onCancelDownload: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove: vi.fn(),
@@ -606,6 +630,8 @@ it('keeps accessible IDs unique across Data library instances', async () => {
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onDownload: vi.fn(),
+      onCancelDownload: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove: vi.fn(),
@@ -649,6 +675,8 @@ it('shows terrain activation details and keeps them current', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     importer: new FakeClient(),
     activation: activation(),
     onRemove: vi.fn(),
@@ -698,3 +726,76 @@ async function openImport() {
   if (add.elements().length) await add.click();
   await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
 }
+
+function downloadProps() {
+  return {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
+    onDownload: vi.fn().mockResolvedValue(undefined),
+    onCancelDownload: vi.fn().mockResolvedValue(undefined),
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+  };
+}
+
+it('shows live download rows without opening details for uninstalled files', async () => {
+  let options = downloadProps();
+  let path = 'Europe/Malta.mbtiles';
+  let screen = await render(DataLibrary, {
+    ...options,
+    downloads: [{ path, type: 'downloading', downloaded: 1_000_000, total: 2_000_000 }],
+  });
+  await expect.element(page.getByText('Downloading · 1 MB of 2 MB', { exact: true })).toBeVisible();
+  await expect.element(page.getByRole('progressbar')).toHaveAttribute('value', '1000000');
+  await expect.element(page.getByRole('button', { name: /^Malta/ })).not.toBeInTheDocument();
+  await expect.element(page.getByText('On device', { exact: true })).not.toBeInTheDocument();
+  await page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }).click();
+  expect(options.onCancelDownload).toHaveBeenCalledExactlyOnceWith(path);
+  await screen.rerender({ downloads: [] });
+  await expect.element(page.getByText('Malta.mbtiles', { exact: true })).not.toBeInTheDocument();
+});
+
+it('combines an installed disabled file with its download and keeps details available', async () => {
+  let path = 'Europe/Malta.mbtiles';
+  let screen = await render(DataLibrary, {
+    ...downloadProps(),
+    basemaps: { generation: 1, sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }] },
+    downloads: [{ path, type: 'queued' }],
+  });
+  expect(page.getByText('Malta.mbtiles', { exact: true }).elements()).toHaveLength(1);
+  await expect.element(page.getByText('On device', { exact: true })).toBeVisible();
+  await expect.element(page.getByText('Disabled', { exact: true })).toBeVisible();
+  await expect.element(page.getByText('Queued', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /^Malta.mbtiles/ }).click();
+  await expect.element(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await screen.rerender({ downloads: [] });
+  await expect.element(page.getByText('Queued', { exact: true })).not.toBeInTheDocument();
+  await expect.element(page.getByText('Malta.mbtiles', { exact: true })).toBeVisible();
+});
+
+it('keeps failed rows, reports command errors, and retries the exact path', async () => {
+  let options = downloadProps();
+  let path = 'Europe/Malta.mbtiles';
+  let screen = await render(DataLibrary, { ...options, downloads: [{ path, type: 'failed' }] });
+  vi.mocked(options.onDownload).mockRejectedValueOnce(new Error('IPC failed'));
+  let retry = page.getByRole('button', { name: 'Retry download: Malta.mbtiles', exact: true });
+  await retry.click();
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not start the downloads. Try again.');
+  await expect.element(page.getByText('Download failed', { exact: true })).toBeVisible();
+  await retry.click();
+  expect(options.onDownload).toHaveBeenLastCalledWith([path]);
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+  await expect.element(page.getByText('Download failed', { exact: true })).toBeVisible();
+  await screen.rerender({ downloads: [{ path, type: 'queued' }] });
+  vi.mocked(options.onCancelDownload).mockRejectedValueOnce(new Error('IPC failed'));
+  await page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }).click();
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not cancel the download. Try again.');
+});

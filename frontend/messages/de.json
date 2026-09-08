@@ -369,5 +369,7 @@
   "data_download_cancel_failed": "Download konnte nicht abgebrochen werden. Versuche es erneut.",
   "data_download_state_failed": "Downloadstatus konnte nicht geladen werden. Starte die App neu, um es erneut zu versuchen.",
   "data_download_progress": "{done} von {total}",
-  "data_cancel_download": "Download abbrechen: {name}"
+  "data_cancel_download": "Download abbrechen: {name}",
+  "data_download_failed": "Download fehlgeschlagen",
+  "data_retry_download": "Download erneut versuchen: {name}"
 }

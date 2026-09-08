@@ -369,5 +369,7 @@
   "data_download_cancel_failed": "Could not cancel the download. Try again.",
   "data_download_state_failed": "Could not load download state. Restart the app to try again.",
   "data_download_progress": "{done} of {total}",
-  "data_cancel_download": "Cancel download: {name}"
+  "data_cancel_download": "Cancel download: {name}",
+  "data_download_failed": "Download failed",
+  "data_retry_download": "Retry download: {name}"
 }

@@ -1,5 +1,11 @@
 <script lang="ts">
-  import type { BasemapStatus, EnrouteCatalogStatus, TerrainStatus, UpdraftClient } from './client';
+  import type {
+    BasemapStatus,
+    EnrouteCatalogStatus,
+    EnrouteDownloadStatus,
+    TerrainStatus,
+    UpdraftClient,
+  } from './client';
   import type { AirspaceStatus } from './protocol/generated/AirspaceStatus';
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
   import type { DataActivation } from './stores/data-activation.svelte';
@@ -11,6 +17,7 @@
   import Button from './Button.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
   import DataCatalog from './DataCatalog.svelte';
+  import IconButton from './IconButton.svelte';
   import { m } from './paraglide/messages.js';
   import { getLocale } from './paraglide/runtime.js';
   import ResponsiveCard from './ResponsiveCard.svelte';
@@ -24,6 +31,10 @@
   type Props = {
     catalog: EnrouteCatalogStatus | null;
     catalogError?: boolean;
+    downloads?: EnrouteDownloadStatus[] | null;
+    downloadError?: boolean;
+    onDownload: (paths: string[]) => Promise<void>;
+    onCancelDownload: (path: string) => Promise<void>;
     onRetryCatalog: () => Promise<void>;
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
@@ -44,6 +55,10 @@
   let {
     catalog,
     catalogError = false,
+    downloads = [],
+    downloadError = false,
+    onDownload,
+    onCancelDownload,
     onRetryCatalog,
     importer,
     airspace,
@@ -63,6 +78,7 @@
   let removeOpen = $state(false);
   let pending = $state(false);
   let error = $state('');
+  let downloadActionError = $state('');
   const wideScreen = new MediaQuery('(min-width: 545px)');
   const dataImport = new DataImport(() => ({ importer, airspace, waypoints }));
   onDestroy(() => dataImport.destroy());
@@ -120,7 +136,9 @@
         icon: 'i-mdi-terrain',
         sources: terrain?.sources ?? [],
       },
-    ].filter((group) => group.sources.length > 0),
+    ].filter(
+      (group) => group.sources.length > 0 || (group.type === 'basemap' && downloads?.length),
+    ),
   );
 
   const selectedGroup = $derived(groups.find((group) => group.type === selected?.type));
@@ -154,13 +172,58 @@
     }
   }
 
-  function displayName(source: Source, type: DatasetType): string {
+  function displayName(source: Pick<Source, 'sourceName'>, type: DatasetType): string {
     let name = source.sourceName;
     return type === 'basemap' || type === 'terrain' ? name.slice(name.lastIndexOf('/') + 1) : name;
   }
 
-  function compareSources(a: Source, b: Source, type: DatasetType): number {
-    return displayName(a, type).localeCompare(displayName(b, type), getLocale());
+  type FileRow = { sourceName: string; source?: Source; download?: EnrouteDownloadStatus };
+  function fileRows(type: DatasetType, sources: Source[]): FileRow[] {
+    let transfers = type === 'basemap' ? (downloads ?? []) : [];
+    let rows: FileRow[] = sources.map((source) => ({
+      sourceName: source.sourceName,
+      source,
+      download: transfers.find((download) => `enroute/${download.path}` === source.sourceName),
+    }));
+    for (let download of transfers) {
+      let sourceName = `enroute/${download.path}`;
+      if (!sources.some((source) => source.sourceName === sourceName))
+        rows.push({ sourceName, download });
+    }
+    return rows.toSorted((a, b) =>
+      displayName(a, type).localeCompare(displayName(b, type), getLocale()),
+    );
+  }
+  function size(bytes: number) {
+    return new Intl.NumberFormat(getLocale(), {
+      style: 'unit',
+      unit: 'megabyte',
+      maximumFractionDigits: 1,
+    }).format(bytes / 1_000_000);
+  }
+  function downloadStatus(download: EnrouteDownloadStatus): string {
+    if (download.type === 'failed') return m.data_download_failed();
+    if (download.type === 'downloading')
+      return `${m.data_downloading()} · ${m.data_download_progress({ done: size(download.downloaded), total: size(download.total) })}`;
+    let entry = catalog?.cached?.entries.find((entry) => entry.path === download.path);
+    if (!entry) return m.data_queued();
+    let date = new Intl.DateTimeFormat(getLocale(), {
+      dateStyle: 'medium',
+      timeZone: 'UTC',
+    }).format(new Date(entry.publicationDate));
+    return `${m.data_queued()} · ${date} · ${size(entry.size)}`;
+  }
+  async function downloadAction(download: EnrouteDownloadStatus) {
+    downloadActionError = '';
+    try {
+      if (download.type === 'failed') await onDownload([download.path]);
+      else await onCancelDownload(download.path);
+    } catch {
+      downloadActionError =
+        download.type === 'failed'
+          ? m.data_download_start_failed()
+          : m.data_download_cancel_failed();
+    }
   }
 
   function metadata(
@@ -235,12 +298,14 @@
         <span aria-hidden="true" class="i-mdi-plus"></span>{m.data_add()}
       </Button>
     {/snippet}
+    {#if downloadActionError}<p class="error" role="alert">{downloadActionError}</p>{/if}
+    {#if downloadError}<p class="error" role="alert">{m.data_download_state_failed()}</p>{/if}
     {#if dataImport.error}<p class="error" role="alert">{dataImport.error}</p>{/if}
     {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>
     {:else if basemaps === null}<p role="status">{m.data_basemap_loading()}</p>{/if}
     {#if terrainError}<p class="error" role="alert">{m.data_terrain_failed()}</p>
     {:else if terrain === null}<p role="status">{m.data_terrain_loading()}</p>{/if}
-    {#if groups.length === 0 && basemaps !== null && !basemapError && terrain !== null && !terrainError}
+    {#if !downloadError && downloads !== null && groups.length === 0 && basemaps !== null && !basemapError && terrain !== null && !terrainError}
       <div class="empty">
         <span aria-hidden="true" class="i-mdi-database-outline"></span>
         <p class="empty-title">{m.data_empty()}</p>
@@ -252,11 +317,13 @@
         <h2 id={`${componentId}-${group.type}`}>{group.label}</h2>
         <ResponsiveCard>
           <ul class="files">
-            {#each group.sources.toSorted( (a, b) => compareSources(a, b, group.type) ) as source (source.sourceName)}
-              {let enabled = $derived(activation.isEnabled(group.type, source))}
+            {#each fileRows(group.type, group.sources) as row (row.sourceName)}
+              {let source = $derived(row.source)}
+              {let enabled = $derived(source && activation.isEnabled(group.type, source))}
               <li
                 {@attach (element) => {
                   if (
+                    !source ||
                     catalogOpen ||
                     source.type === 'disabled' ||
                     dataImport.scrollTarget?.dataType !== group.type ||
@@ -268,31 +335,68 @@
                   element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                   dataImport.scrollTarget = undefined;
                 }}
-                class:disabled={!enabled}
-                class:unavailable={source.type === 'unavailable' && enabled}
+                class:disabled={!!source && !enabled}
+                class:unavailable={source?.type === 'unavailable' && enabled}
+                class:download-failed={row.download?.type === 'failed'}
               >
-                <button
-                  class="file-row"
-                  disabled={dataImport.pending}
-                  onclick={(event) => {
-                    selected = { type: group.type, name: source.sourceName };
-                    opener = event.currentTarget;
-                    detailsOpen = true;
-                  }}
-                >
+                {#snippet description()}
                   <span aria-hidden="true" class={[group.icon, 'type-icon']}></span>
                   <span class="description">
                     <span class="name">
-                      <span class="filename">{displayName(source, group.type)}</span>
-                      {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
+                      <span class="filename">{displayName(row, group.type)}</span>
+                      {#if source && !enabled}<StatusPill label={m.data_disabled()} />{/if}
                     </span>
-                    <span class="metadata">{metadata(source, group.type, enabled)}</span>
-                    {#if activation.hasError(group.type, source.sourceName)}<span class="error"
-                        >{m.data_activation_failed()}</span
+                    {#if source}<span class="metadata">{metadata(source, group.type, enabled)}</span
+                      >{/if}
+                    {#if row.download}
+                      <span
+                        class="download-status"
+                        class:active={row.download.type === 'downloading'}
+                        >{downloadStatus(row.download)}</span
+                      >
+                      {#if row.download.type === 'downloading'}
+                        <progress
+                          value={row.download.downloaded}
+                          max={row.download.total}
+                          aria-label={displayName(row, group.type)}
+                        ></progress>
+                      {/if}
+                    {/if}
+                    {#if source && activation.hasError(group.type, source.sourceName)}<span
+                        class="error">{m.data_activation_failed()}</span
                       >{/if}
                   </span>
-                  <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
-                </button>
+                {/snippet}
+                {#if source}
+                  <button
+                    class="file-row"
+                    disabled={dataImport.pending}
+                    onclick={(event) => {
+                      selected = { type: group.type, name: row.sourceName };
+                      opener = event.currentTarget;
+                      detailsOpen = true;
+                    }}
+                  >
+                    {@render description()}
+                    {#if !row.download}<span
+                        aria-hidden="true"
+                        class="i-mdi-chevron-right type-icon"
+                      ></span>{/if}
+                  </button>
+                {:else}
+                  <div class="file-row">{@render description()}</div>
+                {/if}
+                {#if row.download}
+                  <span class="download-action">
+                    <IconButton
+                      icon={row.download.type === 'failed' ? 'i-mdi-refresh' : 'i-mdi-close'}
+                      label={row.download.type === 'failed'
+                        ? m.data_retry_download({ name: displayName(row, group.type) })
+                        : m.data_cancel_download({ name: displayName(row, group.type) })}
+                      onclick={() => downloadAction(row.download!)}
+                    />
+                  </span>
+                {/if}
               </li>
             {/each}
           </ul>
@@ -441,6 +545,7 @@
     list-style: none;
   }
   .file-row {
+    min-width: 0;
     width: 100%;
     border: 0;
     background: transparent;
@@ -454,6 +559,47 @@
     padding-block: var(--space-4);
     padding-inline: calc(var(--space-6) + var(--card-safe-area-start))
       calc(var(--space-5) + var(--card-safe-area-end));
+  }
+  .files > li {
+    display: flex;
+    align-items: center;
+  }
+  div.file-row {
+    cursor: default;
+  }
+  .download-action {
+    padding-inline-end: calc(var(--space-5) + var(--card-safe-area-end));
+  }
+  .download-status {
+    display: block;
+    margin-block-start: var(--space-1);
+    color: var(--color-text-muted);
+    font: var(--text-row-detail);
+  }
+  .download-status.active {
+    color: var(--color-action-primary-surface);
+  }
+  .download-failed .download-status,
+  .download-failed .type-icon {
+    color: var(--color-error-text);
+  }
+  progress {
+    width: 100%;
+    height: 6px;
+    appearance: none;
+    border: 0;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--color-separator);
+  }
+  progress::-webkit-progress-bar {
+    background: var(--color-separator);
+  }
+  progress::-webkit-progress-value {
+    background: var(--color-action-primary-surface);
+  }
+  progress::-moz-progress-bar {
+    background: var(--color-action-primary-surface);
   }
   .files > li + li {
     border-block-start: 1px solid var(--color-separator);
@@ -507,7 +653,7 @@
     color: var(--color-text);
     font: var(--text-row-label);
   }
-  .file-row:active {
+  button.file-row:active {
     background: var(--color-control-surface-raised-pressed);
   }
   .file-row:focus-visible {

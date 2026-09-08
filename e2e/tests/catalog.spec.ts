@@ -98,16 +98,30 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
     .toEqual([]);
   await page.evaluate(() => {
     (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
-      { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+      {
+        path: 'Europe/Malta.mbtiles',
+        type: 'downloading',
+        downloaded: 12_000_000,
+        total: 100_000_000,
+      },
       { path: 'Europe/Germany.mbtiles', type: 'queued' },
     ]);
   });
   await expect
     .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))
     .toEqual([
-      { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+      {
+        path: 'Europe/Malta.mbtiles',
+        type: 'downloading',
+        downloaded: 12_000_000,
+        total: 100_000_000,
+      },
       { path: 'Europe/Germany.mbtiles', type: 'queued' },
     ]);
+  await expect(page.getByText('Downloading · 12 MB of 100 MB', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Cancel download: Germany.mbtiles', exact: true }),
+  ).toBeVisible();
   await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
   await page.evaluate(() => {
     (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
@@ -123,6 +137,10 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
       }),
     )
     .toEqual({ current: [{ path: 'Europe/Malta.mbtiles', type: 'failed' }], error: false });
+  await expect(page.getByText('Download failed', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Retry download: Malta.mbtiles', exact: true }),
+  ).toBeVisible();
   await page.evaluate(() => (window as TestWindow).__updraftFake!.emitEnrouteDownloads([]));
   await expect
     .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))

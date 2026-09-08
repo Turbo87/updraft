@@ -4,8 +4,16 @@
   import { getAppContext } from '$lib/app-context';
   import DataLibrary from '$lib/DataLibrary.svelte';
 
-  const { client, airspace, basemaps, terrain, waypoints, dataActivation, enrouteCatalog } =
-    getAppContext();
+  const {
+    client,
+    airspace,
+    basemaps,
+    terrain,
+    waypoints,
+    dataActivation,
+    enrouteCatalog,
+    enrouteDownloads,
+  } = getAppContext();
   let library: { handleBack(): boolean };
 
   beforeNavigate((navigation) => {
@@ -14,6 +22,10 @@
 </script>
 
 <DataLibrary
+  downloads={enrouteDownloads.current}
+  downloadError={enrouteDownloads.error}
+  onDownload={(paths) => client.downloadEnrouteBasemaps(paths)}
+  onCancelDownload={(path) => client.cancelEnrouteDownload(path)}
   catalog={enrouteCatalog.current}
   catalogError={enrouteCatalog.error}
   onRetryCatalog={() => client.refreshEnrouteCatalog()}

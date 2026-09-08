@@ -190,14 +190,11 @@ it('shows registration failure instead of an endless loading state', async () =>
     .toBeEnabled();
 });
 
-it('shows regional datasets and handles their removal from the catalog', async () => {
-  let view = await render(DataCatalog, { ...props(), country: 'FR' });
-  await expect.element(page.getByRole('heading', { name: 'France', exact: true })).toBeVisible();
-  await expect.element(page.getByText('North', { exact: true })).toBeVisible();
-  await expect.element(page.getByText('South', { exact: true })).toBeVisible();
+it('removes countries when they leave the catalog', async () => {
+  let view = await render(DataCatalog, props());
   await view.rerender({ status: { ...catalog, cached: { entries: [], checkedAt: 0 } } });
   await expect.element(page.getByText('No downloads available', { exact: true })).toBeVisible();
   await expect
-    .element(page.getByRole('heading', { name: 'Basemap', exact: true }))
+    .element(page.getByRole('button', { name: 'France', exact: true }))
     .not.toBeInTheDocument();
 });

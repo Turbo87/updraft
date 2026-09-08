@@ -17,6 +17,7 @@
   import Button from './Button.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
   import DataCatalog from './DataCatalog.svelte';
+  import DataCountry from './DataCountry.svelte';
   import IconButton from './IconButton.svelte';
   import { m } from './paraglide/messages.js';
   import { getLocale } from './paraglide/runtime.js';
@@ -36,6 +37,7 @@
     onDownload: (paths: string[]) => Promise<void>;
     onCancelDownload: (path: string) => Promise<void>;
     onRetryCatalog: () => Promise<void>;
+    onCheckBasemapUpdates: () => Promise<string[]>;
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
@@ -60,6 +62,7 @@
     onDownload,
     onCancelDownload,
     onRetryCatalog,
+    onCheckBasemapUpdates,
     importer,
     airspace,
     waypoints,
@@ -72,6 +75,35 @@
   }: Props = $props();
   let catalogOpen = $state(false);
   let catalogCountry = $state<string>();
+  let acceptedDownloads = $state<string[] | null>(null);
+  let requestedDownloads: string[] = [];
+  const downloadClient = {
+    getEnrouteBasemapUpdates: () => onCheckBasemapUpdates(),
+    downloadEnrouteBasemaps: (paths: string[]) => {
+      requestedDownloads = paths;
+      return onDownload(paths);
+    },
+    cancelEnrouteDownload: (path: string) => onCancelDownload(path),
+  };
+  let countryEntries = $derived(
+    catalog?.cached?.entries.filter((entry) => entry.countryCode === catalogCountry) ?? [],
+  );
+  $effect(() => {
+    if (
+      acceptedDownloads?.every(
+        (path) =>
+          downloads?.some((download) => download.path === path) ||
+          basemaps?.sources.some((source) => source.sourceName === `enroute/${path}`),
+      )
+    ) {
+      acceptedDownloads = null;
+      catalogOpen = false;
+      catalogCountry = undefined;
+      void tick().then(() =>
+        libraryContainer.querySelector('main')?.focus({ preventScroll: true }),
+      );
+    }
+  });
   let detailsOpen = $state(false);
   let selected = $state<{ type: DatasetType; name: string }>();
   let opener: HTMLButtonElement | undefined;
@@ -87,8 +119,10 @@
   export function handleBack(): boolean {
     if (dataImport.selection) void dataImport.cancelImport();
     else if (detailsOpen) detailsOpen = false;
-    else if (catalogCountry) catalogCountry = undefined;
-    else if (catalogOpen) {
+    else if (catalogCountry) {
+      catalogCountry = undefined;
+      acceptedDownloads = null;
+    } else if (catalogOpen) {
       catalogOpen = false;
       void tick().then(() => {
         Array.from(libraryContainer.querySelectorAll<HTMLButtonElement>('.add-data'))
@@ -263,11 +297,22 @@
   }
 </script>
 
-{#if catalogOpen}
+{#if catalogOpen && catalogCountry}
+  <DataCountry
+    country={catalogCountry}
+    entries={countryEntries}
+    {basemaps}
+    {downloads}
+    stateError={basemapError || downloadError || catalogError}
+    awaitingLibrary={acceptedDownloads !== null}
+    client={downloadClient}
+    onBack={handleBack}
+    onDownloaded={() => (acceptedDownloads = requestedDownloads)}
+  />
+{:else if catalogOpen}
   <DataCatalog
     status={catalog}
     subscriptionError={catalogError}
-    country={catalogCountry}
     importPending={dataImport.pending}
     importError={dataImport.error}
     onImport={selectImport}

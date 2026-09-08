@@ -29,6 +29,7 @@
   catalog={enrouteCatalog.current}
   catalogError={enrouteCatalog.error}
   onRetryCatalog={() => client.refreshEnrouteCatalog()}
+  onCheckBasemapUpdates={() => client.getEnrouteBasemapUpdates()}
   basemaps={basemaps.current}
   basemapError={basemaps.error}
   terrain={terrain.current}

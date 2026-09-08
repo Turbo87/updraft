@@ -52,9 +52,7 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
     .toEqual({ current: { cached, refreshing: false, error: true }, error: false });
 });
 
-test('opens the live catalog and country preview without opening the file picker', async ({
-  page,
-}) => {
+test('selects a country update, handles failure, and returns to the library', async ({ page }) => {
   await page.goto('/settings?testMode=1');
   await page.getByRole('link', { name: 'Data', exact: true }).click();
   await page.waitForFunction(() => '__updraftFake' in window);
@@ -62,6 +60,19 @@ test('opens the live catalog and country preview without opening the file picker
     let app = (window as TestWindow).__updraftApp!;
     app.client.selectDataFile = async () => {
       throw new Error('Unexpected file picker');
+    };
+    let fake = (window as TestWindow).__updraftFake!;
+    let path = 'Europe/Malta.mbtiles';
+    fake.emitBasemaps({
+      generation: 1,
+      sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
+    });
+    app.client.getEnrouteBasemapUpdates = async () => [path];
+    let attempts = 0;
+    app.client.downloadEnrouteBasemaps = async (paths) => {
+      if (paths.length !== 1 || paths[0] !== path) throw new Error('Unexpected download selection');
+      if (attempts++ === 0) throw new Error('Submission failed');
+      fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
     };
     (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
       cached: {
@@ -89,6 +100,21 @@ test('opens the live catalog and country preview without opening the file picker
   await expect(page.getByRole('heading', { name: 'Add data', exact: true })).toBeVisible();
   await page.evaluate(() => history.back());
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Add data', exact: true }).click();
+  await page.getByRole('button', { name: 'Malta', exact: true }).click();
+  let checkbox = page.getByRole('checkbox', { name: 'Malta', exact: true });
+  await expect(checkbox).not.toBeChecked();
+  await checkbox.check();
+  await page.getByRole('button', { name: /^Download/ }).click();
+  await expect(page.getByRole('alert')).toHaveText('Could not start the downloads. Try again.');
+  await expect(checkbox).toBeChecked();
+  await page.getByRole('button', { name: /^Download/ }).click();
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Disabled', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('keeps download snapshots across settings navigation', async ({ page }) => {

@@ -14,6 +14,7 @@
     args: {
       catalog: null,
       onRetryCatalog: fn(),
+      onCheckBasemapUpdates: fn(async () => []),
       onDownload: fn(),
       onCancelDownload: fn(),
       onRemove: fn(),

@@ -39,6 +39,7 @@ it.each([
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
       importer: new FakeClient(),
@@ -94,6 +95,7 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
       importer: new FakeClient(),
@@ -156,6 +158,7 @@ it('opens live file details and confirms removal separately', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
     importer: new FakeClient(),
@@ -219,6 +222,7 @@ it('groups and sorts sources without changing the input order', async () => {
   let component = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
     importer: new FakeClient(),
@@ -273,6 +277,7 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
       importer: new FakeClient(),
@@ -314,6 +319,7 @@ it('confirms a same-name replacement and discards cancellation', async () => {
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
     airspace: { generation: 0, sources: [] },
@@ -348,6 +354,7 @@ it('imports a new dataset without confusing filenames in another group', async (
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
     importer,
@@ -385,6 +392,7 @@ it('discards a picker result when the library has been closed', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
     importer,
@@ -405,6 +413,7 @@ it('moves Add data from the footer to the header above 544px', async () => {
   await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
     importer: new FakeClient(),
@@ -458,6 +467,7 @@ it.each([
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
       importer,
@@ -542,6 +552,7 @@ it.each(['basemap', 'terrain'] as const)(
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
       importer: new FakeClient(),
@@ -607,6 +618,7 @@ it.each([
     let view = await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
       importer: new FakeClient(),
@@ -630,6 +642,7 @@ it('keeps accessible IDs unique across Data library instances', async () => {
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
       onCancelDownload: vi.fn(),
       importer: new FakeClient(),
@@ -675,6 +688,7 @@ it('shows terrain activation details and keeps them current', async () => {
   let view = await render(DataLibrary, {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
     onCancelDownload: vi.fn(),
     importer: new FakeClient(),
@@ -731,6 +745,7 @@ function downloadProps() {
   return {
     catalog: null,
     onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
     onDownload: vi.fn().mockResolvedValue(undefined),
     onCancelDownload: vi.fn().mockResolvedValue(undefined),
     importer: new FakeClient(),
@@ -799,3 +814,53 @@ it('keeps failed rows, reports command errors, and retries the exact path', asyn
     .element(page.getByRole('alert'))
     .toHaveTextContent('Could not cancel the download. Try again.');
 });
+
+it.each([false, true])(
+  'returns after acceptance and row delivery with statusFirst=%s',
+  async (statusFirst) => {
+    let options = downloadProps();
+    let accepted = Promise.withResolvers<void>();
+    options.onDownload.mockReturnValue(accepted.promise);
+    let path = 'Europe/Malta.mbtiles';
+    let screen = await render(DataLibrary, {
+      ...options,
+      onCheckBasemapUpdates: vi.fn().mockResolvedValue([]),
+      catalog: {
+        cached: {
+          checkedAt: 0,
+          entries: [
+            {
+              path,
+              countryCode: 'MT',
+              continent: 'europe',
+              size: 1_000_000,
+              publicationDate: '2026-09-08',
+            },
+          ],
+        },
+        refreshing: false,
+        error: false,
+      },
+    });
+    await page.getByRole('button', { name: 'Add data', exact: true }).click();
+    await page.getByRole('button', { name: 'Malta', exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Malta', exact: true }).click();
+    await page.getByRole('button', { name: /^Download/ }).click();
+    expect(options.onDownload).toHaveBeenCalledExactlyOnceWith([path]);
+    if (statusFirst) await screen.rerender({ downloads: [{ path, type: 'queued' }] });
+    await expect.element(page.getByRole('heading', { name: 'Malta', exact: true })).toBeVisible();
+    accepted.resolve();
+    await accepted.promise;
+    if (!statusFirst) {
+      await expect.element(page.getByRole('heading', { name: 'Malta', exact: true })).toBeVisible();
+      await expect.element(page.getByRole('button', { name: /^Download/ })).toBeDisabled();
+      await screen.rerender({ downloads: [{ path, type: 'queued' }] });
+    }
+    await expect.element(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+    await expect
+      .element(page.getByRole('button', { name: 'Cancel download: Malta.mbtiles', exact: true }))
+      .toBeVisible();
+    await expect.element(page.getByRole('main')).toHaveFocus();
+    await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+  },
+);

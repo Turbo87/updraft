@@ -179,3 +179,13 @@ it.each([413, 915])('keeps selection and the Download action usable at %ipx', as
     await page.viewport(previous.width, previous.height);
   }
 });
+
+it('shows unavailable downloads when the country leaves the catalog', async () => {
+  let screen = await render(DataCountry, props());
+  await screen.rerender({ entries: [] });
+  await expect.element(page.getByText('No downloads available', { exact: true })).toBeVisible();
+  await expect
+    .element(page.getByRole('heading', { name: 'Basemap', exact: true }))
+    .not.toBeInTheDocument();
+  await expect.element(page.getByRole('button', { name: 'Download', exact: true })).toBeDisabled();
+});

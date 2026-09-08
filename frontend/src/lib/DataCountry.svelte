@@ -21,6 +21,7 @@
     basemaps: BasemapStatus | null;
     downloads: EnrouteDownloadStatus[] | null;
     stateError?: boolean;
+    awaitingLibrary?: boolean;
     client: Pick<
       UpdraftClient,
       'getEnrouteBasemapUpdates' | 'downloadEnrouteBasemaps' | 'cancelEnrouteDownload'
@@ -34,6 +35,7 @@
     basemaps,
     downloads,
     stateError = false,
+    awaitingLibrary = false,
     client,
     onBack,
     onDownloaded,
@@ -148,7 +150,7 @@
 
 {#snippet downloadAction()}
   <Button
-    loading={pending}
+    loading={pending || awaitingLibrary}
     disabled={!ready || selected.length === 0}
     onclick={download}
     style="width: 100%"
@@ -172,69 +174,73 @@
     <p role="alert">{m.data_update_check_failed()}</p>
     <Button variant="secondary" onclick={() => retry++}>{m.retry()}</Button>
   {/if}
-  <section aria-labelledby={`${componentId}-basemaps`}>
-    <h2 id={`${componentId}-basemaps`}>{m.data_basemap()}</h2>
-    <ResponsiveCard>
-      {#each rows as row (row.entry.path)}
-        {#snippet description()}
-          <span class="description">
-            <strong>{row.name}</strong>
-            <span
-              >{new Intl.DateTimeFormat(getLocale(), {
-                dateStyle: 'medium',
-                timeZone: 'UTC',
-              }).format(new Date(row.entry.publicationDate))} · {size(row.entry.size)}</span
-            >
-            {#if row.transfer?.type === 'downloading'}
+  {#if entries.length === 0}
+    <p role="status">{m.data_catalog_unavailable()}</p>
+  {:else}
+    <section aria-labelledby={`${componentId}-basemaps`}>
+      <h2 id={`${componentId}-basemaps`}>{m.data_basemap()}</h2>
+      <ResponsiveCard>
+        {#each rows as row (row.entry.path)}
+          {#snippet description()}
+            <span class="description">
+              <strong>{row.name}</strong>
               <span
-                >{m.data_downloading()} · {m.data_download_progress({
-                  done: size(row.transfer.downloaded),
-                  total: size(row.transfer.total),
-                })}</span
+                >{new Intl.DateTimeFormat(getLocale(), {
+                  dateStyle: 'medium',
+                  timeZone: 'UTC',
+                }).format(new Date(row.entry.publicationDate))} · {size(row.entry.size)}</span
               >
-              <progress
-                value={row.transfer.downloaded}
-                max={row.transfer.total}
-                aria-label={row.name}
-              ></progress>
-            {:else if row.busy}<span>{m.data_queued()}</span>
-            {:else if row.update}<span>{m.data_update_available()}</span>
-            {:else if row.installed}<span
-                >{updates === null && !checkError
-                  ? m.data_checking_updates()
-                  : m.data_installed()}</span
-              >{/if}
-          </span>
-        {/snippet}
-        {#if row.selectable}
-          <label class="dataset">
-            {@render description()}
-            <span class="control">
-              <input
-                type="checkbox"
-                aria-label={row.name}
-                value={row.entry.path}
-                bind:group={selection}
-                disabled={!ready || pending}
-              />
-              <span class="check i-mdi-check-bold" aria-hidden="true"></span>
+              {#if row.transfer?.type === 'downloading'}
+                <span
+                  >{m.data_downloading()} · {m.data_download_progress({
+                    done: size(row.transfer.downloaded),
+                    total: size(row.transfer.total),
+                  })}</span
+                >
+                <progress
+                  value={row.transfer.downloaded}
+                  max={row.transfer.total}
+                  aria-label={row.name}
+                ></progress>
+              {:else if row.busy}<span>{m.data_queued()}</span>
+              {:else if row.update}<span>{m.data_update_available()}</span>
+              {:else if row.installed}<span
+                  >{updates === null && !checkError
+                    ? m.data_checking_updates()
+                    : m.data_installed()}</span
+                >{/if}
             </span>
-          </label>
-        {:else}
-          <div class="dataset">
-            {@render description()}
-            {#if row.busy}
-              <IconButton
-                icon="i-mdi-close"
-                label={m.data_cancel_download({ name: row.name })}
-                onclick={() => cancel(row.entry.path)}
-              />
-            {/if}
-          </div>
-        {/if}
-      {/each}
-    </ResponsiveCard>
-  </section>
+          {/snippet}
+          {#if row.selectable}
+            <label class="dataset">
+              {@render description()}
+              <span class="control">
+                <input
+                  type="checkbox"
+                  aria-label={row.name}
+                  value={row.entry.path}
+                  bind:group={selection}
+                  disabled={!ready || pending || awaitingLibrary}
+                />
+                <span class="check i-mdi-check-bold" aria-hidden="true"></span>
+              </span>
+            </label>
+          {:else}
+            <div class="dataset">
+              {@render description()}
+              {#if row.busy}
+                <IconButton
+                  icon="i-mdi-close"
+                  label={m.data_cancel_download({ name: row.name })}
+                  onclick={() => cancel(row.entry.path)}
+                />
+              {/if}
+            </div>
+          {/if}
+        {/each}
+      </ResponsiveCard>
+    </section>
+  {/if}
 </ScreenScaffold>
 
 <style>

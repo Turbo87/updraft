@@ -59,7 +59,6 @@
 {/snippet}
 
 <Story name="Countries" {template} />
-<Story name="Country regions" {template} args={{ country: 'FR' }} />
 <Story name="Loading" {template} args={{ status: null }} />
 <Story
   name="Unavailable"

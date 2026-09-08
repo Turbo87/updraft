@@ -154,6 +154,9 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
+  section:first-child h2 {
+    margin-block-start: 0;
+  }
   ul {
     margin: 0;
     padding: 0;

@@ -26,7 +26,7 @@ fn http_client() -> reqwest::ClientBuilder {
 
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BasemapEntry {
+pub struct CatalogEntry {
     pub path: &'static str,
     pub country_code: &'static str,
     pub continent: Continent,
@@ -62,7 +62,7 @@ struct Entry {
 /// Malformed catalog structure, invalid supported entries, and duplicate
 /// supported paths return an error. Download locations come from the bundled
 /// mapping, not the catalog's base URL.
-pub fn parse_catalog(bytes: &[u8]) -> Result<Vec<BasemapEntry>> {
+pub fn parse_catalog(bytes: &[u8]) -> Result<Vec<CatalogEntry>> {
     let catalog: Catalog = serde_json::from_slice(bytes).context("Invalid Enroute catalog")?;
     let mut files = BTreeMap::new();
     for value in catalog.maps {
@@ -83,7 +83,7 @@ pub fn parse_catalog(bytes: &[u8]) -> Result<Vec<BasemapEntry>> {
         );
         let publication_date = Date::parse(&entry.time, format_description!("[year][month][day]"))
             .with_context(|| format!("Invalid Enroute date: {path}"))?;
-        let file = BasemapEntry {
+        let file = CatalogEntry {
             path,
             country_code,
             continent,

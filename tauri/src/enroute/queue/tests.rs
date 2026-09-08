@@ -2,8 +2,8 @@ use super::*;
 use claims::{assert_none, assert_ok, assert_some};
 use time::macros::date;
 
-pub fn entry(path: &'static str) -> BasemapEntry {
-    BasemapEntry {
+pub fn entry(path: &'static str) -> CatalogEntry {
+    CatalogEntry {
         path,
         country_code: "DE",
         continent: super::super::Continent::Europe,

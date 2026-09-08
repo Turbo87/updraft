@@ -517,7 +517,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         queue.enqueue(entry);
         assert_some!(queue.start_next())
     };
-    let download = assert_ok!(BasemapDownload::new(directory.path(), &attempt));
+    let download = assert_ok!(DownloadFile::new(directory.path(), &attempt));
     let body = json!({"sourceName":"enroute/Europe/active.mbtiles"});
     assert_eq!(assert_ok!(invoke("remove_basemap", body)), Value::Null);
     assert!(!queue.lock().unwrap().is_active(&attempt));
@@ -577,10 +577,10 @@ fn managed_identities_keep_same_name_files_independent() {
     assert!(legacy.exists());
 }
 
-fn basemap_download(directory: &Path, bytes: &[u8]) -> BasemapDownload {
+fn basemap_download(directory: &Path, bytes: &[u8]) -> DownloadFile {
     let json = br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#;
     let entry = assert_ok!(parse_catalog(json)).remove(0);
-    let mut download = assert_ok!(BasemapDownload::new(directory, &entry));
+    let mut download = assert_ok!(DownloadFile::new(directory, &entry));
     assert_ok!(download.file_mut().write_all(bytes));
     download
 }

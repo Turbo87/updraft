@@ -1,4 +1,4 @@
-use super::{BasemapEntry, parse_catalog};
+use super::{CatalogEntry, parse_catalog};
 use anyhow::{Context, Result, ensure};
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -16,7 +16,7 @@ const CATALOG_URL: &str = "https://enroute-data.akaflieg-freiburg.de/enroute-Geo
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CachedCatalog {
-    pub entries: Vec<BasemapEntry>,
+    pub entries: Vec<CatalogEntry>,
     #[serde(serialize_with = "serialize_checked_at")]
     pub checked_at: SystemTime,
 }

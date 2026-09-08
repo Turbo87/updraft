@@ -1,11 +1,11 @@
 use super::*;
-use crate::enroute::{BasemapEntry, parse_catalog, storage::installed_files};
+use crate::enroute::{CatalogEntry, parse_catalog, storage::installed_files};
 use claims::{assert_err, assert_le, assert_ok, assert_some_eq};
 use std::fs::{self, FileTimes};
 use std::io::Write;
 use std::time::{Duration, SystemTime};
 
-fn entry() -> BasemapEntry {
+fn entry() -> CatalogEntry {
     let json = br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#;
     assert_ok!(parse_catalog(json)).remove(0)
 }
@@ -19,7 +19,7 @@ fn unfinished_downloads_stay_out_of_inventory_and_preserve_installed_files() {
     let destination = parent.join("Germany.mbtiles");
     assert_ok!(fs::write(&destination, b"installed"));
     let modified = assert_ok!(assert_ok!(fs::metadata(&destination)).modified());
-    let mut download = assert_ok!(BasemapDownload::new(directory.path(), &entry));
+    let mut download = assert_ok!(DownloadFile::new(directory.path(), &entry));
     assert_ok!(download.file_mut().write_all(b"partial"));
     assert_eq!(assert_ok!(installed_files(directory.path())).len(), 1);
     assert_eq!(assert_ok!(fs::read(&destination)), b"installed");
@@ -35,7 +35,7 @@ fn unfinished_downloads_stay_out_of_inventory_and_preserve_installed_files() {
 #[test]
 fn startup_cleanup_removes_an_abandoned_download() {
     let directory = tempfile::tempdir().unwrap();
-    let mut download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let mut download = assert_ok!(DownloadFile::new(directory.path(), &entry()));
     assert_ok!(download.file_mut().write_all(b"partial"));
     let (file, path) = assert_ok!(download.temporary.keep());
     drop(file);
@@ -52,7 +52,7 @@ fn installation_replaces_bytes_without_validation_or_changing_activation() {
     for (installed, disabled) in [(false, false), (true, false), (true, true)] {
         let directory = tempfile::tempdir().unwrap();
         let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
-        let mut download = assert_ok!(BasemapDownload::new(directory.path(), &entry));
+        let mut download = assert_ok!(DownloadFile::new(directory.path(), &entry));
         let marker = destination.with_extension("mbtiles.disabled");
         if installed {
             assert_ok!(fs::write(&destination, b"old"));
@@ -83,7 +83,7 @@ fn installation_replaces_bytes_without_validation_or_changing_activation() {
 #[test]
 fn installation_failure_discards_the_temporary_file() {
     let directory = tempfile::tempdir().unwrap();
-    let mut download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let mut download = assert_ok!(DownloadFile::new(directory.path(), &entry()));
     assert_ok!(download.file_mut().write_all(b"complete"));
     let parent = directory.path().join("enroute/Europe");
     let destination = parent.join("Germany.mbtiles");
@@ -123,7 +123,7 @@ async fn response(raw: &'static str) -> (reqwest::Response, tokio::net::TcpStrea
 #[tokio::test]
 async fn streams_chunked_bytes_without_installing_or_using_the_catalog_size() {
     let directory = tempfile::tempdir().unwrap();
-    let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let download = assert_ok!(DownloadFile::new(directory.path(), &entry()));
     let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
     assert_ok!(fs::write(&destination, b"installed"));
     let raw =
@@ -147,7 +147,7 @@ async fn transfer_failures_discard_partial_files_and_preserve_the_installed_vers
         "HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\nshort",
     ] {
         let directory = tempfile::tempdir().unwrap();
-        let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+        let download = assert_ok!(DownloadFile::new(directory.path(), &entry()));
         let temporary = download.temporary.path().to_owned();
         let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
         assert_ok!(fs::write(&destination, b"installed"));
@@ -162,7 +162,7 @@ async fn transfer_failures_discard_partial_files_and_preserve_the_installed_vers
 #[tokio::test]
 async fn disk_write_failure_discards_the_download() {
     let directory = tempfile::tempdir().unwrap();
-    let mut download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let mut download = assert_ok!(DownloadFile::new(directory.path(), &entry()));
     let temporary = download.temporary.path().to_owned();
     let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
     assert_ok!(fs::write(&destination, b"installed"));
@@ -179,7 +179,7 @@ async fn disk_write_failure_discards_the_download() {
 #[tokio::test]
 async fn cancellation_discards_written_bytes_without_installing() {
     let directory = tempfile::tempdir().unwrap();
-    let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let download = assert_ok!(DownloadFile::new(directory.path(), &entry()));
     let temporary = download.temporary.path().to_owned();
     let destination = directory.path().join("enroute/Europe/Germany.mbtiles");
     assert_ok!(fs::write(&destination, b"installed"));
@@ -212,7 +212,7 @@ async fn progress_counts_written_bytes_before_the_transfer_finishes() {
     use tokio::io::AsyncWriteExt;
 
     let directory = tempfile::tempdir().unwrap();
-    let download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    let download = assert_ok!(DownloadFile::new(directory.path(), &entry()));
     let temporary = download.temporary.path().to_owned();
     let (response, mut connection) =
         response("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nnew\r\n").await;

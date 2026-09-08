@@ -1,4 +1,4 @@
-use super::BasemapEntry;
+use super::CatalogEntry;
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,7 +9,7 @@ mod transfer;
 
 #[derive(Debug)]
 pub struct DownloadQueue {
-    pending: VecDeque<Arc<BasemapEntry>>,
+    pending: VecDeque<Arc<CatalogEntry>>,
     active: Option<ActiveDownload>,
     failed: BTreeSet<&'static str>,
     status: watch::Sender<Vec<DownloadStatus>>,
@@ -17,7 +17,7 @@ pub struct DownloadQueue {
 
 #[derive(Debug)]
 struct ActiveDownload {
-    entry: Arc<BasemapEntry>,
+    entry: Arc<CatalogEntry>,
     downloaded: u64,
     progress_published: Option<Instant>,
 }
@@ -63,7 +63,7 @@ impl DownloadQueue {
     /// Ignores stale attempts and non-increasing byte counts.
     /// Publishes byte progress at most every 100 ms to avoid flooding the webview.
     /// Queue transitions still publish the latest byte count immediately.
-    pub fn report_progress(&mut self, attempt: &Arc<BasemapEntry>, downloaded: u64) -> bool {
+    pub fn report_progress(&mut self, attempt: &Arc<CatalogEntry>, downloaded: u64) -> bool {
         let Some(active) = &mut self.active else {
             return false;
         };
@@ -110,7 +110,7 @@ impl DownloadQueue {
     }
 
     /// Adds a new attempt at the tail. Queued and active paths cannot be added again.
-    pub fn enqueue(&mut self, entry: BasemapEntry) -> bool {
+    pub fn enqueue(&mut self, entry: CatalogEntry) -> bool {
         let active = self.active.iter().map(|active| &active.entry);
         let mut attempts = self.pending.iter().chain(active);
         if attempts.any(|queued| queued.path == entry.path) {
@@ -126,7 +126,7 @@ impl DownloadQueue {
     }
 
     /// Returns an attempt only when no download is active.
-    pub fn start_next(&mut self) -> Option<Arc<BasemapEntry>> {
+    pub fn start_next(&mut self) -> Option<Arc<CatalogEntry>> {
         if self.active.is_some() {
             return None;
         }
@@ -141,14 +141,14 @@ impl DownloadQueue {
     }
 
     /// Returns whether the attempt still owns the active queue slot.
-    pub fn is_active(&self, attempt: &Arc<BasemapEntry>) -> bool {
+    pub fn is_active(&self, attempt: &Arc<CatalogEntry>) -> bool {
         let active = self.active.as_ref();
         active.is_some_and(|active| Arc::ptr_eq(&active.entry, attempt))
     }
 
     /// Records installation or failure. Transfer completion alone is not installation.
     /// Only the current attempt from `start_next()` can finish the download.
-    pub fn finish(&mut self, attempt: &Arc<BasemapEntry>, outcome: DownloadOutcome) -> bool {
+    pub fn finish(&mut self, attempt: &Arc<CatalogEntry>, outcome: DownloadOutcome) -> bool {
         if !self.is_active(attempt) {
             return false;
         }

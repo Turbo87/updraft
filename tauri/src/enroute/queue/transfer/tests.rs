@@ -16,7 +16,7 @@ async fn failures_advance_to_the_next_transfer_without_installing() {
             if entry.path == "Europe/Germany.mbtiles" {
                 anyhow::bail!("test transfer failure");
             }
-            BasemapDownload::new(directory, &entry)
+            DownloadFile::new(directory, &entry)
         }
     })
     .await;
@@ -43,7 +43,7 @@ async fn cancellation_drops_the_transfer_and_advances_to_the_next_file() {
         let directory = directory.path();
         let queue = &queue;
         async move {
-            let download = BasemapDownload::new(directory, &entry)?;
+            let download = DownloadFile::new(directory, &entry)?;
             if entry.path == "Europe/Germany.mbtiles" {
                 queue.lock().unwrap().report_progress(&entry, 3);
                 std::future::pending::<()>().await;
@@ -97,7 +97,7 @@ async fn cancellation_at_completion_discards_the_result() {
         let queue = &queue;
         let directory = directory.path();
         async move {
-            let download = BasemapDownload::new(directory, &entry)?;
+            let download = DownloadFile::new(directory, &entry)?;
             queue.lock().unwrap().cancel(entry.path);
             Ok(download)
         }

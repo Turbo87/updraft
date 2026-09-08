@@ -1,4 +1,4 @@
-use super::BasemapEntry;
+use super::CatalogEntry;
 use super::storage::{DOWNLOAD_PREFIX, DOWNLOAD_SUFFIX};
 use anyhow::{Context, Result, ensure};
 use std::fs::{self, File, FileTimes};
@@ -9,17 +9,17 @@ use tempfile::NamedTempFile;
 
 /// Owns a partial basemap beside its destination. Dropping it discards the partial file.
 #[derive(Debug)]
-pub struct BasemapDownload {
+pub struct DownloadFile {
     temporary: NamedTempFile,
     destination: PathBuf,
 }
 
-impl BasemapDownload {
+impl DownloadFile {
     /// Downloads the complete response into a temporary file without installing it.
     /// Reports cumulative bytes after each successful write. Progress does not imply installation.
     pub async fn fetch(
         directory: &Path,
-        entry: &BasemapEntry,
+        entry: &CatalogEntry,
         progress: impl FnMut(u64),
     ) -> Result<Self> {
         let download = Self::new(directory, entry)?;
@@ -57,7 +57,7 @@ impl BasemapDownload {
         Ok(self)
     }
 
-    pub fn new(directory: &Path, entry: &BasemapEntry) -> Result<Self> {
+    pub fn new(directory: &Path, entry: &CatalogEntry) -> Result<Self> {
         let destination = directory.join("enroute").join(entry.path);
         let parent = destination.parent().context("Basemap path has no parent")?;
         fs::create_dir_all(parent)?;
@@ -93,7 +93,7 @@ impl BasemapDownload {
     }
 }
 
-impl BasemapEntry {
+impl CatalogEntry {
     /// Compares the publication date at midnight UTC with the installed file's timestamp.
     pub fn update_available(&self, modified: SystemTime) -> bool {
         let publication: SystemTime = self.publication_date.midnight().assume_utc().into();

@@ -1,5 +1,5 @@
 use super::*;
-use crate::enroute::download::BasemapDownload;
+use crate::enroute::download::DownloadFile;
 use anyhow::Result;
 use std::path::Path;
 use std::sync::Mutex;
@@ -11,9 +11,9 @@ impl DownloadQueue {
     pub async fn transfer_next(
         queue: &Mutex<Self>,
         directory: &Path,
-    ) -> Option<(Arc<BasemapEntry>, BasemapDownload)> {
+    ) -> Option<(Arc<CatalogEntry>, DownloadFile)> {
         transfer_next_with(queue, |entry| async move {
-            BasemapDownload::fetch(directory, &entry, |bytes| {
+            DownloadFile::fetch(directory, &entry, |bytes| {
                 queue.lock().unwrap().report_progress(&entry, bytes);
             })
             .await
@@ -24,7 +24,7 @@ impl DownloadQueue {
 
 struct TransferAttempt<'a> {
     queue: &'a Mutex<DownloadQueue>,
-    entry: Arc<BasemapEntry>,
+    entry: Arc<CatalogEntry>,
     completed: bool,
 }
 
@@ -39,10 +39,10 @@ impl Drop for TransferAttempt<'_> {
     }
 }
 
-async fn transfer_next_with<F: Future<Output = Result<BasemapDownload>>>(
+async fn transfer_next_with<F: Future<Output = Result<DownloadFile>>>(
     queue: &Mutex<DownloadQueue>,
-    mut fetch: impl FnMut(Arc<BasemapEntry>) -> F,
-) -> Option<(Arc<BasemapEntry>, BasemapDownload)> {
+    mut fetch: impl FnMut(Arc<CatalogEntry>) -> F,
+) -> Option<(Arc<CatalogEntry>, DownloadFile)> {
     loop {
         let (entry, mut status) = {
             let mut queue = queue.lock().unwrap();

@@ -1,5 +1,5 @@
 use self::commands::BasemapStatus;
-use crate::enroute::{BasemapEntry, download::BasemapDownload};
+use crate::enroute::{CatalogEntry, download::DownloadFile};
 use anyhow::{Context, Result, ensure};
 use flate2::read::GzDecoder;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -59,7 +59,7 @@ impl Basemaps {
         })
     }
 
-    pub fn available_updates(&self, entries: &[BasemapEntry]) -> Result<Vec<&'static str>> {
+    pub fn available_updates(&self, entries: &[CatalogEntry]) -> Result<Vec<&'static str>> {
         let mut updates = Vec::new();
         for entry in entries {
             let name = format!("enroute/{}", entry.path);
@@ -134,7 +134,7 @@ impl Basemaps {
         Ok(())
     }
 
-    pub fn install_download(&mut self, name: &str, download: BasemapDownload) -> Result<()> {
+    pub fn install_download(&mut self, name: &str, download: DownloadFile) -> Result<()> {
         let path = self.directory.join(name);
         ensure!(
             download.destination() == path,

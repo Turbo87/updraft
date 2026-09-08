@@ -1,6 +1,6 @@
 use super::catalog::CatalogService;
 use super::queue::{DownloadOutcome, DownloadQueue, DownloadStatus};
-use super::{BasemapEntry, download::BasemapDownload};
+use super::{CatalogEntry, download::DownloadFile};
 use crate::basemap::Basemaps;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -37,8 +37,8 @@ impl DownloadCommands {
     pub fn install_download(
         &self,
         basemaps: &Mutex<Basemaps>,
-        attempt: &Arc<BasemapEntry>,
-        download: BasemapDownload,
+        attempt: &Arc<CatalogEntry>,
+        download: DownloadFile,
     ) {
         let mut queue = self.queue.lock().unwrap();
         if !queue.is_active(attempt) {

@@ -3,63 +3,63 @@ source: tauri/src/enroute/tests.rs
 expression: files
 ---
 [
-    BasemapEntry {
+    CatalogEntry {
         path: "Africa/Canary Islands.mbtiles",
         country_code: "ES",
         continent: Europe,
         size: 100,
         publication_date: 2026-09-08,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "Africa/Reunion.mbtiles",
         country_code: "RE",
         continent: Africa,
         size: 500,
         publication_date: 2026-08-01,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "Asia/Japan.mbtiles",
         country_code: "JP",
         continent: Asia,
         size: 600,
         publication_date: 2026-08-01,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "Australia Oceanica/Australia.mbtiles",
         country_code: "AU",
         continent: Oceania,
         size: 700,
         publication_date: 2026-08-01,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "Europe/Germany.mbtiles",
         country_code: "DE",
         continent: Europe,
         size: 47251456,
         publication_date: 2025-11-12,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "Europe/Great Britain.mbtiles",
         country_code: "GB",
         continent: Europe,
         size: 300,
         publication_date: 2024-02-29,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "Europe/Northern Ireland.mbtiles",
         country_code: "GB",
         continent: Europe,
         size: 400,
         publication_date: 2026-02-28,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "North America/USA West.mbtiles",
         country_code: "US",
         continent: NorthAmerica,
         size: 200,
         publication_date: 2026-08-01,
     },
-    BasemapEntry {
+    CatalogEntry {
         path: "South America/Falkland Islands.mbtiles",
         country_code: "FK",
         continent: SouthAmerica,

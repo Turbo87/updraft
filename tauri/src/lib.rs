@@ -89,6 +89,7 @@ pub fn run() {
             ipc::bonded_bluetooth_devices,
             enroute::catalog::refresh_enroute_catalog,
             enroute::catalog::commands::subscribe_enroute_catalog,
+            enroute::catalog::commands::get_enroute_basemap_updates,
             enroute::catalog::commands::unsubscribe_enroute_catalog,
             enroute::commands::subscribe_enroute_downloads,
             enroute::commands::unsubscribe_enroute_downloads,

@@ -1,4 +1,5 @@
 use super::{CatalogService, CatalogStatus};
+use crate::basemap::Basemaps;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -47,6 +48,27 @@ pub fn subscribe_enroute_catalog(
 #[tauri::command(async)]
 pub fn unsubscribe_enroute_catalog(channel_id: u32, state: tauri::State<'_, CatalogSubscriptions>) {
     state.channels.lock().unwrap().remove(&channel_id);
+}
+
+#[tauri::command]
+pub async fn get_enroute_basemap_updates(
+    catalog: tauri::State<'_, Arc<CatalogService>>,
+    basemaps: tauri::State<'_, Arc<Mutex<Basemaps>>>,
+) -> Result<Vec<&'static str>, &'static str> {
+    let cached = catalog
+        .status()
+        .cached
+        .ok_or("Basemap catalog is unavailable")?;
+    let basemaps = basemaps.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        basemaps.lock().unwrap().available_updates(&cached.entries)
+    })
+    .await
+    .unwrap_or_else(|error| Err(error.into()))
+    .map_err(|error| {
+        tracing::warn!(%error, "Could not check basemap updates");
+        "Could not check basemap updates"
+    })
 }
 
 #[cfg(test)]

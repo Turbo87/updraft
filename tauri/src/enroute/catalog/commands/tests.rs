@@ -78,3 +78,66 @@ fn catalog_subscription_serializes_metadata_through_ipc() {
             .is_empty()
     );
 }
+
+#[test]
+#[tracing_test::traced_test]
+fn available_updates_use_cached_catalog_and_report_read_failures_through_ipc() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("catalog.json");
+    assert_ok!(fs::write(
+        &path,
+        br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#
+    ));
+    let basemap = directory.path().join("enroute/Europe/Germany.mbtiles");
+    assert_ok!(fs::create_dir_all(basemap.parent().unwrap()));
+    assert_ok!(fs::write(&basemap, b"disabled"));
+    assert_ok!(fs::write(basemap.with_extension("mbtiles.disabled"), b""));
+    let file = assert_ok!(OpenOptions::new().write(true).open(&basemap));
+    assert_ok!(file.set_times(FileTimes::new().set_modified(std::time::UNIX_EPOCH)));
+    let basemaps = assert_ok!(crate::basemap::Basemaps::load(directory.path()));
+    let service = Arc::new(CatalogService::load(path));
+    let app = tauri::test::mock_builder()
+        .manage(service.clone())
+        .manage(Arc::new(Mutex::new(basemaps)))
+        .invoke_handler(tauri::generate_handler![get_enroute_basemap_updates])
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .unwrap();
+    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let invoke = || {
+        let request = tauri::webview::InvokeRequest {
+            cmd: "get_enroute_basemap_updates".into(),
+            callback: tauri::ipc::CallbackFn(0),
+            error: tauri::ipc::CallbackFn(1),
+            url: "tauri://localhost".parse().unwrap(),
+            body: tauri::ipc::InvokeBody::Json(json!({})),
+            headers: Default::default(),
+            invoke_key: tauri::test::INVOKE_KEY.into(),
+        };
+        tauri::test::get_ipc_response(&window, request).map(|r| r.deserialize::<Value>().unwrap())
+    };
+    let updates = assert_ok!(invoke());
+    insta::assert_json_snapshot!(updates, @r#"
+    [
+      "Europe/Germany.mbtiles"
+    ]
+    "#);
+    service.state.lock().unwrap().error = true;
+    assert_eq!(assert_ok!(invoke()), updates);
+    assert_ok!(fs::remove_file(basemap));
+    assert_eq!(
+        assert_err!(invoke()),
+        json!("Could not check basemap updates")
+    );
+    // Tauri dispatches IPC commands outside the test span.
+    assert!(tracing_test::internal::logs_with_scope_contain(
+        module_path!().trim_end_matches("::tests"),
+        "Could not check basemap updates"
+    ));
+    service.state.lock().unwrap().cached = None;
+    assert_eq!(
+        assert_err!(invoke()),
+        json!("Basemap catalog is unavailable")
+    );
+}

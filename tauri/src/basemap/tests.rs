@@ -668,3 +668,49 @@ fn installation_finishes_the_queue_and_respects_cancellation() {
     }
     assert!(logs_contain("Could not install downloaded basemap"));
 }
+
+#[test]
+fn available_updates_include_active_and_disabled_files_only_when_newer() {
+    use std::fs::{FileTimes, OpenOptions};
+    use std::time::Duration;
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("enroute/Europe");
+    assert_ok!(fs::create_dir_all(&root));
+    let entries = assert_ok!(parse_catalog(
+        br#"{"maps":[
+        {"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"},
+        {"path":"Europe/France.mbtiles","size":10,"time":"20260908"},
+        {"path":"Europe/Malta.mbtiles","size":10,"time":"20260908"}
+    ]}"#
+    ));
+    let publication: std::time::SystemTime = time::macros::datetime!(2026-09-08 0:00 UTC).into();
+    let germany = root.join("Germany.mbtiles");
+    let france = root.join("France.mbtiles");
+    write_basemap(&germany, &[]);
+    assert_ok!(fs::write(&france, b"disabled, not a database"));
+    assert_ok!(fs::write(france.with_extension("mbtiles.disabled"), b""));
+    for path in [&germany, &france] {
+        let file = assert_ok!(OpenOptions::new().write(true).open(path));
+        assert_ok!(
+            file.set_times(FileTimes::new().set_modified(publication - Duration::from_secs(1)))
+        );
+    }
+    let basemaps = assert_ok!(Basemaps::load(directory.path()));
+    insta::assert_json_snapshot!(assert_ok!(basemaps.available_updates(&entries)), @r#"
+    [
+      "Europe/France.mbtiles",
+      "Europe/Germany.mbtiles"
+    ]
+    "#);
+    for offset in [0, 1] {
+        for path in [&germany, &france] {
+            let file = assert_ok!(OpenOptions::new().write(true).open(path));
+            assert_ok!(file.set_times(
+                FileTimes::new().set_modified(publication + Duration::from_secs(offset))
+            ));
+        }
+        assert!(assert_ok!(basemaps.available_updates(&entries)).is_empty());
+    }
+    assert_ok!(fs::remove_file(germany));
+    assert_err!(basemaps.available_updates(&entries));
+}

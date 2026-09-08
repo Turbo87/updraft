@@ -73,6 +73,7 @@ export interface UpdraftClient {
     onError: (error: unknown) => void,
   ): EnrouteCatalogSubscription;
   refreshEnrouteCatalog(): Promise<void>;
+  getEnrouteBasemapUpdates(): Promise<string[]>;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */
   subscribeArrivals(
     bounds: ArrivalViewport,

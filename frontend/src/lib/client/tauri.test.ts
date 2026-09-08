@@ -243,3 +243,16 @@ it('forwards catalog refresh and propagates failures', async () => {
     ['refresh_enroute_catalog'],
   ]);
 });
+
+it('reads available basemap updates and propagates check failures', async () => {
+  let client = new TauriClient();
+  mocks.invoke
+    .mockResolvedValueOnce(['Europe/Malta.mbtiles'])
+    .mockRejectedValueOnce(new Error('check failed'));
+  expect(await client.getEnrouteBasemapUpdates()).toEqual(['Europe/Malta.mbtiles']);
+  await expect(client.getEnrouteBasemapUpdates()).rejects.toThrow('check failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['get_enroute_basemap_updates'],
+    ['get_enroute_basemap_updates'],
+  ]);
+});

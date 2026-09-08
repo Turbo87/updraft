@@ -117,6 +117,10 @@ export class FakeClient implements UpdraftClient {
     for (let listener of this.#enrouteCatalogListeners) listener(status);
   }
 
+  async getEnrouteBasemapUpdates(): Promise<string[]> {
+    return [];
+  }
+
   /** Tests and stories supply refresh outcomes through emitEnrouteCatalog(). */
   async refreshEnrouteCatalog(): Promise<void> {}
 

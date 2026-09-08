@@ -1,5 +1,5 @@
 use self::commands::BasemapStatus;
-use crate::enroute::download::BasemapDownload;
+use crate::enroute::{BasemapEntry, download::BasemapDownload};
 use anyhow::{Context, Result, ensure};
 use flate2::read::GzDecoder;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -57,6 +57,23 @@ impl Basemaps {
             directory: directory.to_owned(),
             ..Self::default()
         })
+    }
+
+    pub fn available_updates(&self, entries: &[BasemapEntry]) -> Result<Vec<&'static str>> {
+        let mut updates = Vec::new();
+        for entry in entries {
+            let name = format!("enroute/{}", entry.path);
+            if !self.files.contains_key(&name) {
+                continue;
+            }
+            let modified = fs::metadata(self.directory.join(&name))
+                .and_then(|metadata| metadata.modified())
+                .with_context(|| format!("Could not read basemap timestamp for {name}"))?;
+            if entry.update_available(modified) {
+                updates.push(entry.path);
+            }
+        }
+        Ok(updates)
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {

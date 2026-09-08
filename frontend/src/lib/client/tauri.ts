@@ -85,6 +85,10 @@ export class TauriClient implements UpdraftClient {
     };
   }
 
+  getEnrouteBasemapUpdates(): Promise<string[]> {
+    return invoke('get_enroute_basemap_updates');
+  }
+
   refreshEnrouteCatalog(): Promise<void> {
     return invoke('refresh_enroute_catalog');
   }

@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { BasemapStatus, SelectedDataFile, TerrainStatus, UpdraftClient } from './client';
+  import type { BasemapStatus, TerrainStatus, UpdraftClient } from './client';
   import type { AirspaceStatus } from './protocol/generated/AirspaceStatus';
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
   import type { DataActivation } from './stores/data-activation.svelte';
 
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
   import { Dialog } from 'bits-ui';
 
@@ -15,6 +15,7 @@
   import ResponsiveCard from './ResponsiveCard.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';
+  import { DataImport } from './stores/data-import.svelte';
 
   const componentId = $props.id();
 
@@ -55,83 +56,8 @@
   let pending = $state(false);
   let error = $state('');
   const wideScreen = new MediaQuery('(min-width: 545px)');
-  let importPending = $state(false);
-  let importError = $state('');
-  let importSelection = $state<SelectedDataFile>();
-  let scrollTarget = $state<SelectedDataFile & { generation: number }>();
-  let disposed = false;
-  let importOpener: HTMLButtonElement | undefined;
-
-  onDestroy(() => {
-    disposed = true;
-    if (importSelection) void discardSelection(importSelection);
-  });
-
-  async function finishImport() {
-    importPending = false;
-    await tick();
-    if (disposed || importSelection) return;
-    let target = importOpener?.checkVisibility()
-      ? importOpener
-      : importOpener?.closest('.screen-scaffold')?.querySelector('main');
-    target?.focus({ preventScroll: true });
-  }
-
-  async function discardSelection(selection: SelectedDataFile) {
-    try {
-      await importer.discardDataFile(selection.selectionId);
-    } catch (error) {
-      if (disposed) console.warn('Could not discard selected data file.', error);
-      else importError = m.data_cancel_failed();
-    }
-  }
-
-  async function cancelImport() {
-    let selection = importSelection;
-    importSelection = undefined;
-    if (!selection) return;
-    importPending = true;
-    await discardSelection(selection);
-    await finishImport();
-  }
-
-  async function importFile(selection: SelectedDataFile) {
-    importSelection = undefined;
-    importPending = true;
-    let generation = (selection.dataType === 'airspace' ? airspace : waypoints).generation;
-    try {
-      let imported = await importer.importDataFile(selection.selectionId);
-      scrollTarget = { ...imported, generation };
-    } catch {
-      importError = m.data_import_failed();
-    } finally {
-      await finishImport();
-    }
-  }
-
-  async function selectFile() {
-    scrollTarget = undefined;
-    importPending = true;
-    importError = '';
-    try {
-      let selection = await importer.selectDataFile();
-      if (!selection) return;
-      if (disposed) {
-        await discardSelection(selection);
-        return;
-      }
-      let sources = selection.dataType === 'airspace' ? airspace.sources : waypoints.sources;
-      if (sources.some((source) => source.sourceName === selection.sourceName)) {
-        importSelection = selection;
-      } else {
-        await importFile(selection);
-      }
-    } catch {
-      importError = m.data_select_failed();
-    } finally {
-      await finishImport();
-    }
-  }
+  const dataImport = new DataImport(() => ({ importer, airspace, waypoints }));
+  onDestroy(() => dataImport.destroy());
 
   const groups = $derived(
     [
@@ -249,17 +175,14 @@
     <Button
       style="width: 100%"
       size={wideScreen.current ? 'standard' : 'large'}
-      loading={importPending}
+      loading={dataImport.pending}
       disabled={activation.pending}
-      onclick={(event) => {
-        importOpener = event.currentTarget;
-        void selectFile();
-      }}
+      onclick={(event) => void dataImport.selectFile(event.currentTarget)}
     >
       <span aria-hidden="true" class="i-mdi-plus"></span>{m.data_add()}
     </Button>
   {/snippet}
-  {#if importError}<p class="error" role="alert">{importError}</p>{/if}
+  {#if dataImport.error}<p class="error" role="alert">{dataImport.error}</p>{/if}
   {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>
   {:else if basemaps === null}<p role="status">{m.data_basemap_loading()}</p>{/if}
   {#if terrainError}<p class="error" role="alert">{m.data_terrain_failed()}</p>
@@ -282,21 +205,21 @@
               {@attach (element) => {
                 if (
                   source.type === 'disabled' ||
-                  scrollTarget?.dataType !== group.type ||
-                  scrollTarget.sourceName !== source.sourceName
+                  dataImport.scrollTarget?.dataType !== group.type ||
+                  dataImport.scrollTarget.sourceName !== source.sourceName
                 )
                   return;
                 let status = group.type === 'airspace' ? airspace : waypoints;
-                if (status.generation <= scrollTarget.generation) return;
+                if (status.generation <= dataImport.scrollTarget.generation) return;
                 element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                scrollTarget = undefined;
+                dataImport.scrollTarget = undefined;
               }}
               class:disabled={!enabled}
               class:unavailable={source.type === 'unavailable' && enabled}
             >
               <button
                 class="file-row"
-                disabled={importPending}
+                disabled={dataImport.pending}
                 onclick={(event) => {
                   selected = { type: group.type, name: source.sourceName };
                   opener = event.currentTarget;
@@ -431,16 +354,16 @@
   onConfirm={removeFile}
 />
 
-{#if importSelection}
+{#if dataImport.selection}
   <ConfirmDialog
     open={true}
     title={m.data_replace()}
-    description={m.data_replace_description({ name: importSelection.sourceName })}
+    description={m.data_replace_description({ name: dataImport.selection.sourceName })}
     cancelLabel={m.cancel()}
     confirmLabel={m.data_replace_confirm()}
-    onCancel={cancelImport}
+    onCancel={() => dataImport.cancelImport()}
     onConfirm={() => {
-      if (importSelection) void importFile(importSelection);
+      if (dataImport.selection) void dataImport.importFile(dataImport.selection);
     }}
   />
 {/if}

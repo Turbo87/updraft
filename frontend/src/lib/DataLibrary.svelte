@@ -16,6 +16,8 @@
   import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';
 
+  const componentId = $props.id();
+
   type DatasetType = 'airspace' | 'waypoints';
   type Props = {
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
@@ -256,8 +258,8 @@
     </div>
   {/if}
   {#each groups as group (group.type)}
-    <section aria-labelledby={`data-${group.type}`}>
-      <h2 id={`data-${group.type}`}>{group.label}</h2>
+    <section aria-labelledby={`${componentId}-${group.type}`}>
+      <h2 id={`${componentId}-${group.type}`}>{group.label}</h2>
       <ResponsiveCard>
         <ul class="files">
           {#each group.sources.toSorted(compareSources) as source (source.sourceName)}
@@ -329,14 +331,16 @@
           <label class="activation">
             <span>
               <strong>{m.data_enabled()}</strong>
-              <span id="data-enabled-hint">{m.data_enabled_hint()}</span>
+              <span id={`${componentId}-enabled-hint`} class="activation-hint"
+                >{m.data_enabled_hint()}</span
+              >
             </span>
             <span class="activation-control">
               <input
                 type="checkbox"
                 role="switch"
                 aria-label={m.data_enabled()}
-                aria-describedby="data-enabled-hint"
+                aria-describedby={`${componentId}-enabled-hint`}
                 checked={selectedEnabled}
                 onchange={(event) => {
                   let enabled = event.currentTarget.checked;
@@ -606,7 +610,7 @@
   .activation strong {
     font: var(--text-row-label);
   }
-  #data-enabled-hint {
+  .activation-hint {
     display: block;
     color: var(--color-text-muted);
   }

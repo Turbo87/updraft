@@ -478,3 +478,44 @@ it('distinguishes pending and failed basemap inventory from an empty library', a
   await expect.element(page.getByRole('status')).not.toBeInTheDocument();
   await expect.element(page.getByText('No data on this device')).not.toBeInTheDocument();
 });
+
+it('keeps accessible IDs unique across Data library instances', async () => {
+  for (let name of ['first.txt', 'second.txt']) {
+    await render(DataLibrary, {
+      importer: new FakeClient(),
+      activation: activation(),
+      onRemove: vi.fn(),
+      airspace: {
+        generation: 0,
+        sources: [{ sourceName: name, type: 'active', airspaceCount: 1 }],
+      },
+      waypoints: { generation: 0, sources: [{ sourceName: 'local.cup', type: 'disabled' }] },
+      basemaps: { generation: 0, sources: [{ sourceName: 'local.mbtiles', type: 'active' }] },
+    });
+  }
+  let sections = [...document.querySelectorAll('section[aria-labelledby]')];
+  expect(sections).toHaveLength(6);
+  let headingIds = sections.map((section) => {
+    let heading = section.querySelector('h2')!;
+    expect(section.getAttribute('aria-labelledby')).toBe(heading.id);
+    expect(document.getElementById(heading.id)).toBe(heading);
+    return heading.id;
+  });
+  expect(new Set(headingIds).size).toBe(6);
+
+  let hintIds = [];
+  for (let name of ['first.txt', 'second.txt']) {
+    await page.getByRole('button', { name: new RegExp(`^${name}`) }).click();
+    let dialog = page.getByRole('dialog');
+    let hint = dialog
+      .getByText('Kept on the device but not drawn or used in calculations when off')
+      .element();
+    let toggle = dialog.getByRole('switch').element();
+    expect(toggle.getAttribute('aria-describedby')).toBe(hint.id);
+    expect(document.getElementById(hint.id)).toBe(hint);
+    expect(getComputedStyle(hint).display).toBe('block');
+    hintIds.push(hint.id);
+    await userEvent.keyboard('{Escape}');
+  }
+  expect(new Set(hintIds).size).toBe(2);
+});

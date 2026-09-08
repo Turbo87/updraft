@@ -90,3 +90,41 @@ test('opens the live catalog and country preview without opening the file picker
   await page.evaluate(() => history.back());
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
 });
+
+test('keeps download snapshots across settings navigation', async ({ page }) => {
+  await page.goto('/settings/data?testMode=1');
+  await expect
+    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp?.enrouteDownloads?.current))
+    .toEqual([]);
+  await page.evaluate(() => {
+    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+      { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+      { path: 'Europe/Germany.mbtiles', type: 'queued' },
+    ]);
+  });
+  await expect
+    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))
+    .toEqual([
+      { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+      { path: 'Europe/Germany.mbtiles', type: 'queued' },
+    ]);
+  await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
+  await page.evaluate(() => {
+    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+      { path: 'Europe/Malta.mbtiles', type: 'failed' },
+    ]);
+  });
+  await page.getByRole('link', { name: 'Data', exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        let downloads = (window as TestWindow).__updraftApp!.enrouteDownloads;
+        return { current: downloads.current, error: downloads.error };
+      }),
+    )
+    .toEqual({ current: [{ path: 'Europe/Malta.mbtiles', type: 'failed' }], error: false });
+  await page.evaluate(() => (window as TestWindow).__updraftFake!.emitEnrouteDownloads([]));
+  await expect
+    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))
+    .toEqual([]);
+});

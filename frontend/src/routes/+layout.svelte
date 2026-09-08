@@ -20,6 +20,7 @@
   import { BasemapsStore } from '$lib/stores/basemaps.svelte';
   import { DataActivation } from '$lib/stores/data-activation.svelte';
   import { EnrouteCatalogStore } from '$lib/stores/enroute-catalog.svelte';
+  import { EnrouteDownloadsStore } from '$lib/stores/enroute-downloads.svelte';
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
   import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
@@ -45,6 +46,7 @@
   const basemaps = new BasemapsStore();
   const terrain = new TerrainStore();
   const enrouteCatalog = new EnrouteCatalogStore();
+  const enrouteDownloads = new EnrouteDownloadsStore();
   const waypoints = new WaypointsStore();
   const mapState = new MapState();
   const settings = new SettingsStore();
@@ -61,6 +63,7 @@
     basemaps,
     terrain,
     enrouteCatalog,
+    enrouteDownloads,
     waypoints,
     externalDevices,
     instruments,
@@ -141,6 +144,22 @@
     return () => {
       void subscription.close().catch((error: unknown) => {
         console.warn('Could not close Enroute catalog subscription', error);
+      });
+    };
+  });
+
+  onMount(() => {
+    let subscription = client.subscribeEnrouteDownloads(
+      (status) => {
+        enrouteDownloads.current = status;
+      },
+      () => {
+        enrouteDownloads.error = true;
+      },
+    );
+    return () => {
+      void subscription.close().catch((error: unknown) => {
+        console.warn('Could not close Enroute download subscription', error);
       });
     };
   });

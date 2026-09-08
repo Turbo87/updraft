@@ -83,13 +83,14 @@ it.each([
   'shows managed %s names and removes the selected full identity',
   async (type, extension, prop) => {
     let filename = `Germany.${extension}`;
-    let label = type === 'basemap' ? 'Germany' : filename;
+    let label = 'Germany';
     let sourceName = `enroute/Europe/${filename}`;
     let onRemove = vi.fn().mockResolvedValue(undefined);
     await render(DataLibrary, {
       catalog: null,
       onRetryCatalog: vi.fn(),
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onCheckTerrainUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
@@ -151,6 +152,7 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
       catalog: null,
       onRetryCatalog: vi.fn(),
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onCheckTerrainUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
@@ -215,6 +217,7 @@ it('opens live file details and confirms removal separately', async () => {
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -281,6 +284,7 @@ it('groups and sorts sources without changing the input order', async () => {
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -334,6 +338,7 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
       catalog: null,
       onRetryCatalog: vi.fn(),
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onCheckTerrainUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
@@ -378,6 +383,7 @@ it('confirms a same-name replacement and discards cancellation', async () => {
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -415,6 +421,7 @@ it('imports a new dataset without confusing filenames in another group', async (
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -455,6 +462,7 @@ it('discards a picker result when the library has been closed', async () => {
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -478,6 +486,7 @@ it('moves Add data from the footer to the header above 544px', async () => {
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -534,6 +543,7 @@ it.each([
       catalog: null,
       onRetryCatalog: vi.fn(),
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onCheckTerrainUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
@@ -605,7 +615,7 @@ it.each(['basemap', 'terrain'] as const)(
   'shows %s activation and confirms removal',
   async (type) => {
     let extension = type === 'basemap' ? 'mbtiles' : 'terrain';
-    let suffix = type === 'basemap' ? '' : '.terrain';
+    let suffix = '';
     let onRemove = vi
       .fn()
       .mockRejectedValueOnce(new Error('storage failed'))
@@ -622,6 +632,7 @@ it.each(['basemap', 'terrain'] as const)(
       catalog: null,
       onRetryCatalog: vi.fn(),
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onCheckTerrainUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
@@ -690,6 +701,7 @@ it.each([
       catalog: null,
       onRetryCatalog: vi.fn(),
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onCheckTerrainUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
@@ -716,6 +728,7 @@ it('keeps accessible IDs unique across Data library instances', async () => {
       catalog: null,
       onRetryCatalog: vi.fn(),
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn(async () => []),
       onCheckTerrainUpdates: vi.fn(async () => []),
       onDownload: vi.fn(),
@@ -748,6 +761,7 @@ it('shows terrain activation details and keeps them current', async () => {
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -771,18 +785,18 @@ it('shows terrain activation details and keeps them current', async () => {
     [...document.querySelectorAll('section h2')].map((element) => element.textContent),
   ).toEqual(['Basemap', 'Terrain']);
   expect([...document.querySelectorAll('.filename')].map((element) => element.textContent)).toEqual(
-    ['local', 'a.terrain', 'broken.terrain', 'z.terrain'],
+    ['local', 'a', 'broken', 'z'],
   );
-  await page.getByRole('button', { name: /^a.terrain/ }).click();
+  await page.getByRole('button', { name: /^a / }).click();
   let dialog = page.getByRole('dialog');
   await expect.element(dialog.getByRole('switch')).toBeChecked();
   await expect.element(dialog.getByRole('button', { name: 'Remove from device' })).toBeVisible();
   await expect.element(dialog.getByText('Imported', { exact: true })).not.toBeInTheDocument();
   await userEvent.keyboard('{Escape}');
-  await page.getByRole('button', { name: /^z.terrain/ }).click();
+  await page.getByRole('button', { name: /^z / }).click();
   await expect.element(dialog.getByRole('switch')).not.toBeChecked();
   await userEvent.keyboard('{Escape}');
-  await page.getByRole('button', { name: /^broken.terrain/ }).click();
+  await page.getByRole('button', { name: /^broken / }).click();
   await expect.element(dialog.getByText('Could not load the file.')).toBeVisible();
   await view.rerender({
     terrain: { generation: 1, sources: [{ sourceName: 'broken.terrain', type: 'disabled' }] },
@@ -807,6 +821,7 @@ function downloadProps() {
     catalog: null,
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn().mockResolvedValue(undefined),
@@ -888,6 +903,7 @@ it.each([false, true])(
     let screen = await render(DataLibrary, {
       ...options,
       onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+      onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
       onCheckBasemapUpdates: vi.fn().mockResolvedValue([]),
       onCheckTerrainUpdates: vi.fn().mockResolvedValue([]),
       catalog: {
@@ -937,6 +953,7 @@ it('shows failed update checks and removes the notice after recovery', async () 
     updateCheckError: true,
     onRetryCatalog,
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload: vi.fn(),
@@ -996,6 +1013,7 @@ it('opens updates, queues only idle updates, and retains disabled file details',
     },
     onRetryCatalog: vi.fn(),
     onReadBasemapDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
+    onReadTerrainDetails: vi.fn(async () => ({ size: 0, modifiedAt: 0 })),
     onCheckBasemapUpdates: vi.fn(async () => []),
     onCheckTerrainUpdates: vi.fn(async () => []),
     onDownload,
@@ -1064,98 +1082,148 @@ it('opens updates, queues only idle updates, and retains disabled file details',
     .not.toBeInTheDocument();
 });
 
-it.each(['unavailable', 'active', 'disabled'] as const)(
-  'shows installed metadata and recovery for %s basemaps',
-  async (type) => {
-    let path = 'Europe/France.mbtiles';
-    let onDownload = vi.fn().mockResolvedValue(undefined);
-    let onReadBasemapDetails = vi.fn().mockResolvedValue({ size: 61_000_000, modifiedAt: 0 });
-    let screen = await render(DataLibrary, {
-      catalog: {
-        cached: {
-          checkedAt: 1000,
-          entries: [
-            {
-              path,
-              countryCode: 'FR',
-              continent: 'europe',
-              publicationDate: '2026-09-08',
-              size: 1_000_000,
-            },
-          ],
-        },
-        refreshing: false,
-        error: false,
+it.each(
+  ['mbtiles', 'terrain'].flatMap((extension) =>
+    (['unavailable', 'active', 'disabled'] as const).map((type) => ({ extension, type })),
+  ),
+)('shows installed metadata and recovery for $type $extension', async ({ extension, type }) => {
+  let path = `Europe/France.${extension}`;
+  let inventory = extension === 'mbtiles' ? 'basemaps' : 'terrain';
+  let onDownload = vi.fn().mockResolvedValue(undefined);
+  let onReadBasemapDetails = vi.fn().mockResolvedValue({ size: 61_000_000, modifiedAt: 0 });
+  let screen = await render(DataLibrary, {
+    catalog: {
+      cached: {
+        checkedAt: 1000,
+        entries: [
+          {
+            path,
+            countryCode: 'FR',
+            continent: 'europe',
+            publicationDate: '2026-09-08',
+            size: 1_000_000,
+          },
+        ],
       },
-      onReadBasemapDetails,
-      updates: [],
-      basemaps: { generation: 1, sources: [{ sourceName: `enroute/${path}`, type }] },
-      onRetryCatalog: vi.fn(),
-      onCheckBasemapUpdates: vi.fn(async () => []),
-      onCheckTerrainUpdates: vi.fn(async () => []),
-      onDownload,
-      onCancelDownload: vi.fn(),
-      importer: new FakeClient(),
-      activation: activation(),
-      onRemove: vi.fn(),
-      airspace: { generation: 0, sources: [] },
-      waypoints: { generation: 0, sources: [] },
-    });
-    let row = page.getByRole('button', { name: /^France / });
-    await expect.element(row).not.toHaveTextContent('Enroute');
-    await expect.element(row).toHaveTextContent('61 MB');
-    await expect.element(row).not.toHaveTextContent('On device');
-    await expect
-      .element(row.getByTitle('Downloaded'))
-      .toHaveAttribute('datetime', '1970-01-01T00:00:00.000Z');
-    await row.click();
-    await expect
-      .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))
-      .toBeVisible();
-    expect(onReadBasemapDetails).toHaveBeenCalledWith(`enroute/${path}`);
-    await screen.rerender({ downloads: [] });
-    expect(onReadBasemapDetails).toHaveBeenCalledTimes(1);
-    let action = page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Download again', exact: true });
-    if (type !== 'unavailable') {
-      await expect.element(action).not.toBeInTheDocument();
-      return;
-    }
-    let obsolete = Promise.withResolvers<{ size: number; modifiedAt: number }>();
-    onReadBasemapDetails.mockReturnValueOnce(obsolete.promise);
-    await screen.rerender({
-      basemaps: { generation: 2, sources: [{ sourceName: `enroute/${path}`, type }] },
-    });
-    await expect
-      .element(page.getByRole('dialog').getByText('Loading file details…', { exact: true }))
-      .toBeVisible();
-    onReadBasemapDetails.mockRejectedValueOnce(new Error('read failed'));
-    await screen.rerender({
-      basemaps: { generation: 3, sources: [{ sourceName: `enroute/${path}`, type }] },
-    });
-    await expect
-      .element(page.getByRole('dialog').getByRole('alert'))
-      .toHaveTextContent('Could not read file details.');
-    await expect.element(row).toHaveTextContent('Could not read file details.');
-    await page.getByRole('dialog').getByRole('button', { name: 'Retry', exact: true }).click();
-    await expect
-      .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))
-      .toBeVisible();
-    obsolete.resolve({ size: 1, modifiedAt: 0 });
-    await obsolete.promise;
-    await expect
-      .element(page.getByRole('dialog').getByText('61 MB', { exact: true }))
-      .toBeVisible();
-    onDownload.mockRejectedValueOnce(new Error('offline'));
-    await action.click();
-    await expect.element(page.getByRole('dialog').getByRole('alert')).toBeVisible();
-    await action.click();
-    expect(onDownload).toHaveBeenCalledWith([path]);
-    await expect.element(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
-    await screen.rerender({ downloads: [{ path, type: 'queued' }] });
-    await expect.element(action).toBeDisabled();
-    await screen.rerender({ catalog: null });
+      refreshing: false,
+      error: false,
+    },
+    onReadBasemapDetails,
+    onReadTerrainDetails: onReadBasemapDetails,
+    updates: [],
+    [inventory]: { generation: 1, sources: [{ sourceName: `enroute/${path}`, type }] },
+    onRetryCatalog: vi.fn(),
+    onCheckBasemapUpdates: vi.fn(async () => []),
+    onCheckTerrainUpdates: vi.fn(async () => []),
+    onDownload,
+    onCancelDownload: vi.fn(),
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+  });
+  let row = page.getByRole('button', { name: /^France / });
+  await expect.element(row).not.toHaveTextContent('Enroute');
+  await expect.element(row).toHaveTextContent('61 MB');
+  await expect.element(row).not.toHaveTextContent('On device');
+  await expect
+    .element(row.getByTitle('Downloaded'))
+    .toHaveAttribute('datetime', '1970-01-01T00:00:00.000Z');
+  await row.click();
+  await expect.element(page.getByRole('dialog').getByText('61 MB', { exact: true })).toBeVisible();
+  expect(onReadBasemapDetails).toHaveBeenCalledWith(`enroute/${path}`);
+  await screen.rerender({ downloads: [] });
+  expect(onReadBasemapDetails).toHaveBeenCalledTimes(1);
+  let action = page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Download again', exact: true });
+  if (type !== 'unavailable') {
     await expect.element(action).not.toBeInTheDocument();
-  },
-);
+    return;
+  }
+  let obsolete = Promise.withResolvers<{ size: number; modifiedAt: number }>();
+  onReadBasemapDetails.mockReturnValueOnce(obsolete.promise);
+  await screen.rerender({
+    [inventory]: { generation: 2, sources: [{ sourceName: `enroute/${path}`, type }] },
+  });
+  await expect
+    .element(page.getByRole('dialog').getByText('Loading file details…', { exact: true }))
+    .toBeVisible();
+  onReadBasemapDetails.mockRejectedValueOnce(new Error('read failed'));
+  await screen.rerender({
+    [inventory]: { generation: 3, sources: [{ sourceName: `enroute/${path}`, type }] },
+  });
+  await expect
+    .element(page.getByRole('dialog').getByRole('alert'))
+    .toHaveTextContent('Could not read file details.');
+  await expect.element(row).toHaveTextContent('Could not read file details.');
+  await page.getByRole('dialog').getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect.element(page.getByRole('dialog').getByText('61 MB', { exact: true })).toBeVisible();
+  obsolete.resolve({ size: 1, modifiedAt: 0 });
+  await obsolete.promise;
+  await expect.element(page.getByRole('dialog').getByText('61 MB', { exact: true })).toBeVisible();
+  onDownload.mockRejectedValueOnce(new Error('offline'));
+  await action.click();
+  await expect.element(page.getByRole('dialog').getByRole('alert')).toBeVisible();
+  await action.click();
+  expect(onDownload).toHaveBeenCalledWith([path]);
+  await expect.element(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
+  await screen.rerender({ downloads: [{ path, type: 'queued' }] });
+  await expect.element(action).toBeDisabled();
+  await screen.rerender({ catalog: null });
+  await expect.element(action).not.toBeInTheDocument();
+});
+
+it('separates mixed downloads and updates into their dataset groups', async () => {
+  let options = downloadProps();
+  let basemapPath = 'Europe/France.mbtiles';
+  let terrainPath = 'Europe/France.terrain';
+  let screen = await render(DataLibrary, {
+    ...options,
+    catalog: {
+      cached: {
+        checkedAt: 0,
+        entries: [basemapPath, terrainPath].map((path) => ({
+          path,
+          countryCode: 'FR',
+          continent: 'europe' as const,
+          publicationDate: '2026-09-08',
+          size: 1_000_000,
+        })),
+      },
+      refreshing: false,
+      error: false,
+    },
+    basemaps: {
+      generation: 1,
+      sources: [{ sourceName: `enroute/${basemapPath}`, type: 'active' }],
+    },
+    terrain: {
+      generation: 1,
+      sources: [{ sourceName: `enroute/${terrainPath}`, type: 'disabled' }],
+    },
+    updates: [basemapPath, terrainPath],
+    downloads: [
+      { path: basemapPath, type: 'downloading', downloaded: 500_000, total: 1_000_000 },
+      { path: terrainPath, type: 'failed' },
+    ],
+  });
+  let basemap = page.getByRole('region', { name: 'Basemap', exact: true });
+  let terrain = page.getByRole('region', { name: 'Terrain', exact: true });
+  await expect.element(basemap.getByRole('progressbar')).toBeVisible();
+  await expect.element(terrain.getByText('Download failed', { exact: true })).toBeVisible();
+  await expect.element(terrain.getByText('France', { exact: true })).toBeVisible();
+  await terrain.getByRole('button', { name: 'Retry download: France', exact: true }).click();
+  expect(options.onDownload).toHaveBeenCalledExactlyOnceWith([terrainPath]);
+  await page.getByRole('button', { name: '2 updates available', exact: true }).click();
+  await page.getByRole('button', { name: /Update all/ }).click();
+  expect(options.onDownload).toHaveBeenLastCalledWith([terrainPath]);
+  await screen.rerender({ downloads: [{ path: terrainPath, type: 'queued' }] });
+  await terrain.getByRole('button', { name: 'Cancel download: France', exact: true }).click();
+  expect(options.onCancelDownload).toHaveBeenCalledExactlyOnceWith(terrainPath);
+  await terrain.getByRole('button', { name: /^France / }).click();
+  await expect
+    .element(page.getByRole('switch', { name: 'Enabled', exact: true }))
+    .not.toBeChecked();
+});

@@ -45,6 +45,7 @@
     onCheckBasemapUpdates: () => Promise<string[]>;
     onCheckTerrainUpdates: () => Promise<string[]>;
     onReadBasemapDetails: (name: string) => Promise<ManagedFileDetails>;
+    onReadTerrainDetails: (name: string) => Promise<ManagedFileDetails>;
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
@@ -74,6 +75,7 @@
     onCheckBasemapUpdates,
     onCheckTerrainUpdates,
     onReadBasemapDetails,
+    onReadTerrainDetails,
     importer,
     airspace,
     waypoints,
@@ -92,7 +94,9 @@
     catalog?.cached?.entries.filter(
       (entry) =>
         updates?.includes(entry.path) &&
-        basemaps?.sources.some((source) => source.sourceName === `enroute/${entry.path}`),
+        [basemaps, terrain].some((inventory) =>
+          inventory?.sources.some((source) => source.sourceName === `enroute/${entry.path}`),
+        ),
     ) ?? [],
   );
   let idleUpdates = $derived(
@@ -121,7 +125,9 @@
       acceptedDownloads?.every(
         (path) =>
           downloads?.some((download) => download.path === path) ||
-          basemaps?.sources.some((source) => source.sourceName === `enroute/${path}`),
+          [basemaps, terrain].some((inventory) =>
+            inventory?.sources.some((source) => source.sourceName === `enroute/${path}`),
+          ),
       )
     ) {
       acceptedDownloads = null;
@@ -208,14 +214,18 @@
         sources: terrain?.sources ?? [],
       },
     ].filter(
-      (group) => group.sources.length > 0 || (group.type === 'basemap' && downloads?.length),
+      (group) =>
+        group.sources.length > 0 ||
+        downloads?.some((download) => matchesType(download.path, group.type)),
     ),
   );
 
   const selectedGroup = $derived(groups.find((group) => group.type === selected?.type));
   let visibleGroups = $derived(
     updatesOpen
-      ? groups.filter((group) => group.type === 'basemap' && availableUpdates.length > 0)
+      ? groups.filter((group) =>
+          availableUpdates.some((entry) => matchesType(entry.path, group.type)),
+        )
       : groups,
   );
 
@@ -239,39 +249,44 @@
   let selectedDownloadEntry = $derived(
     catalog?.cached?.entries.find(
       (entry) =>
-        selected?.type === 'basemap' &&
+        selected &&
+        isManaged(selected.type) &&
         selected.name === `enroute/${entry.path}` &&
         (selectedSource?.type === 'unavailable' || updates?.includes(entry.path)),
     ),
   );
   let selectedDownload = $derived(
     downloads?.find(
-      (download) => selected?.type === 'basemap' && selected.name === `enroute/${download.path}`,
+      (download) =>
+        selected && isManaged(selected.type) && selected.name === `enroute/${download.path}`,
     ),
   );
   let installedDetails = $state.raw<Record<string, ManagedFileDetails | null>>({});
   let fileDetails = $derived(selected ? installedDetails[selected.name] : undefined);
   let fileDetailsError = $derived(fileDetails === null);
   let fileDetailsRetry = $state(0);
-  let basemapSources = $derived(basemaps?.sources);
-  let detailsGeneration = $derived(basemaps?.generation);
-  let readDetails = $derived(onReadBasemapDetails);
+  let detailsBasemaps = $derived(basemaps);
+  let detailsTerrain = $derived(terrain);
+  let readBasemapDetails = $derived(onReadBasemapDetails);
+  let readTerrainDetails = $derived(onReadTerrainDetails);
   $effect(() => {
-    let sources = basemapSources ?? [];
-    let read = readDetails;
-    void detailsGeneration;
+    let inventories = [
+      { sources: detailsBasemaps?.sources ?? [], read: readBasemapDetails },
+      { sources: detailsTerrain?.sources ?? [], read: readTerrainDetails },
+    ];
     void fileDetailsRetry;
     let active = true;
     installedDetails = {};
-    for (let { sourceName: name } of sources)
-      untrack(() => read(name)).then(
-        (details) => {
-          if (active) installedDetails = { ...installedDetails, [name]: details };
-        },
-        () => {
-          if (active) installedDetails = { ...installedDetails, [name]: null };
-        },
-      );
+    for (let { sources, read } of inventories)
+      for (let { sourceName: name } of sources)
+        untrack(() => read(name)).then(
+          (details) => {
+            if (active) installedDetails = { ...installedDetails, [name]: details };
+          },
+          () => {
+            if (active) installedDetails = { ...installedDetails, [name]: null };
+          },
+        );
     return () => {
       active = false;
     };
@@ -302,10 +317,9 @@
 
   function displayName(source: Pick<Source, 'sourceName'>, type: DatasetType): string {
     let name = source.sourceName;
-    if (type !== 'basemap')
-      return type === 'terrain' ? name.slice(name.lastIndexOf('/') + 1) : name;
-    let region = name.slice(name.lastIndexOf('/') + 1).replace(/\.mbtiles$/, '');
-    let entries = catalog?.cached?.entries ?? [];
+    if (!isManaged(type)) return name;
+    let region = name.slice(name.lastIndexOf('/') + 1).replace(/\.(mbtiles|terrain)$/, '');
+    let entries = catalog?.cached?.entries.filter((entry) => matchesType(entry.path, type)) ?? [];
     let entry = entries.find((entry) => `enroute/${entry.path}` === name);
     if (!entry) return region;
     let country = countryNames.of(entry.countryCode)!;
@@ -314,9 +328,19 @@
       : `${country} · ${region}`;
   }
 
+  function isManaged(type: DatasetType): boolean {
+    return type === 'basemap' || type === 'terrain';
+  }
+  function matchesType(path: string, type: DatasetType): boolean {
+    return (
+      (type === 'basemap' && path.endsWith('.mbtiles')) ||
+      (type === 'terrain' && path.endsWith('.terrain'))
+    );
+  }
+
   type FileRow = { sourceName: string; source?: Source; download?: EnrouteDownloadStatus };
   function fileRows(type: DatasetType, sources: Source[]): FileRow[] {
-    let transfers = type === 'basemap' ? (downloads ?? []) : [];
+    let transfers = downloads?.filter((download) => matchesType(download.path, type)) ?? [];
     let rows: FileRow[] = sources.map((source) => ({
       sourceName: source.sourceName,
       source,
@@ -502,7 +526,7 @@
         </button>
       </ResponsiveCard>
     {/if}
-    {#if updatesOpen && !availableUpdates.length && !updateCheckError && !basemapError}
+    {#if updatesOpen && !availableUpdates.length && !updateCheckError && !basemapError && !terrainError}
       <p role="status">{updates === null ? m.data_checking_updates() : m.data_no_updates()}</p>
     {/if}
     {#if downloadError}<p class="error" role="alert">{m.data_download_state_failed()}</p>{/if}
@@ -526,9 +550,7 @@
             {#each fileRows(group.type, group.sources) as row (row.sourceName)}
               {let source = $derived(row.source)}
               {let update = $derived(
-                group.type === 'basemap'
-                  ? availableUpdates.find((entry) => row.sourceName === `enroute/${entry.path}`)
-                  : undefined,
+                availableUpdates.find((entry) => row.sourceName === `enroute/${entry.path}`),
               )}
               {let enabled = $derived(source && activation.isEnabled(group.type, source))}
               <li
@@ -557,7 +579,7 @@
                       <span class="filename">{displayName(row, group.type)}</span>
                       {#if source && !enabled}<StatusPill label={m.data_disabled()} />{/if}
                     </span>
-                    {#if source && group.type === 'basemap'}
+                    {#if source && isManaged(group.type)}
                       {let details = $derived(installedDetails[source.sourceName])}
                       <span class="metadata installed-metadata" class:error={details === null}>
                         {#if details}
@@ -697,7 +719,7 @@
         {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
           <p class="error" role="alert">{m.data_activation_failed()}</p>
         {/if}
-        {#if selectedGroup.type === 'basemap'}
+        {#if isManaged(selectedGroup.type)}
           <dl>
             <div>
               <dt>{m.data_source()}</dt>

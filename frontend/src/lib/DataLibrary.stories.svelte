@@ -16,6 +16,10 @@
       onRetryCatalog: fn(),
       onCheckBasemapUpdates: fn(async () => []),
       onCheckTerrainUpdates: fn(async () => []),
+      onReadTerrainDetails: fn(async () => ({
+        size: 37_000_000,
+        modifiedAt: Date.UTC(2026, 8, 8, 12),
+      })),
       onReadBasemapDetails: fn(async () => ({
         size: 61_000_000,
         modifiedAt: Date.UTC(2026, 8, 8, 12),
@@ -127,6 +131,45 @@
         { sourceName: 'Incompatible regional elevation data.terrain', type: 'unavailable' },
       ],
     },
+  }}
+/>
+<Story
+  name="Mixed terrain downloads"
+  {template}
+  args={{
+    catalog: {
+      cached: {
+        checkedAt: 0,
+        entries: ['mbtiles', 'terrain'].map((extension) => ({
+          path: `Europe/France.${extension}`,
+          countryCode: 'FR',
+          continent: 'europe' as const,
+          size: 37_000_000,
+          publicationDate: '2026-09-09',
+        })),
+      },
+      refreshing: false,
+      error: false,
+    },
+    basemaps: {
+      generation: 1,
+      sources: [{ sourceName: 'enroute/Europe/France.mbtiles', type: 'active' }],
+    },
+    terrain: {
+      generation: 1,
+      sources: [{ sourceName: 'enroute/Europe/France.terrain', type: 'disabled' }],
+    },
+    updates: ['Europe/France.terrain'],
+    downloads: [
+      {
+        path: 'Europe/France.mbtiles',
+        type: 'downloading',
+        downloaded: 10_000_000,
+        total: 61_000_000,
+      },
+      { path: 'Europe/Germany.terrain', type: 'queued' },
+      { path: 'Europe/Malta.terrain', type: 'failed' },
+    ],
   }}
 />
 <Story name="Loading terrain" {template} args={{ terrain: null }} />

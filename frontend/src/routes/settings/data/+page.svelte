@@ -34,6 +34,7 @@
   onCheckBasemapUpdates={() => client.getEnrouteBasemapUpdates()}
   onCheckTerrainUpdates={() => client.getEnrouteTerrainUpdates()}
   onReadBasemapDetails={(name) => client.getBasemapFileDetails(name)}
+  onReadTerrainDetails={(name) => client.getTerrainFileDetails(name)}
   basemaps={basemaps.current}
   basemapError={basemaps.error}
   terrain={terrain.current}

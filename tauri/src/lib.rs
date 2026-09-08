@@ -143,6 +143,9 @@ pub fn run() {
                 waypoints::storage::WaypointStorage::new(app.path().app_data_dir()?);
             let waypoint_catalog = Arc::new(waypoint_storage.load()?);
             let data_directory = app.path().app_data_dir()?;
+            if let Err(error) = enroute::storage::remove_partial_downloads(&data_directory) {
+                tracing::warn!(?error, "Could not clean up partial downloads");
+            }
             let basemaps = basemap::Basemaps::load(&data_directory).unwrap_or_else(|error| {
                 tracing::warn!(%error, "Could not scan offline basemap directory");
                 basemap::Basemaps::default()

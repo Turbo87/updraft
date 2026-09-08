@@ -112,6 +112,9 @@ A native basemap status subscription sends the initial generation and file
 states through a Tauri channel. Basemap identities contain the provider and
 catalog-relative path, without absolute filesystem paths or raw load errors.
 Startup discovers nested managed basemaps and ignores flat development files.
+Before loading managed inventories, startup removes abandoned partial downloads.
+Cleanup matches only the downloader's filename prefix and suffix and skips
+symlinks. Cleanup failures are logged without preventing startup.
 The subscriber can explicitly close its channel registration.
 The frontend app root owns this subscription and shares its latest status with
 the Data library and map. Navigation does not interrupt status updates.

@@ -1,4 +1,5 @@
 use super::BasemapEntry;
+use super::storage::{DOWNLOAD_PREFIX, DOWNLOAD_SUFFIX};
 use anyhow::{Context, Result, ensure};
 use std::fs::{self, File, FileTimes};
 use std::io::Write;
@@ -48,8 +49,8 @@ impl BasemapDownload {
         let parent = destination.parent().context("Basemap path has no parent")?;
         fs::create_dir_all(parent)?;
         let temporary = tempfile::Builder::new()
-            .prefix(".updraft-download-")
-            .suffix(".part")
+            .prefix(DOWNLOAD_PREFIX)
+            .suffix(DOWNLOAD_SUFFIX)
             .tempfile_in(parent)?;
         Ok(Self {
             temporary,

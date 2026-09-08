@@ -33,6 +33,20 @@ fn unfinished_downloads_stay_out_of_inventory_and_preserve_installed_files() {
 }
 
 #[test]
+fn startup_cleanup_removes_an_abandoned_download() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut download = assert_ok!(BasemapDownload::new(directory.path(), &entry()));
+    assert_ok!(download.file_mut().write_all(b"partial"));
+    let (file, path) = assert_ok!(download.temporary.keep());
+    drop(file);
+    assert_ok!(crate::enroute::storage::remove_partial_downloads(
+        directory.path()
+    ));
+    assert!(!path.exists());
+    assert!(assert_ok!(installed_files(directory.path())).is_empty());
+}
+
+#[test]
 fn installation_replaces_bytes_without_validation_or_changing_activation() {
     let entry = entry();
     for (installed, disabled) in [(false, false), (true, false), (true, true)] {

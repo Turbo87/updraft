@@ -20,6 +20,19 @@ impl WaypointCommandState {
             mutation: Mutex::new(()),
         }
     }
+
+    pub async fn import_selected(
+        &self,
+        selected: PickedFileBytes,
+        handle: &DriverHandle,
+    ) -> Result<(), WaypointCommandError> {
+        let _guard = self
+            .mutation
+            .try_lock()
+            .map_err(|_| WaypointCommandError::Busy)?;
+        import_selected_waypoints(selected, self.storage.clone(), handle).await?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize)]

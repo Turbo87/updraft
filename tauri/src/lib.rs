@@ -8,6 +8,7 @@ mod activity;
 mod airspace_resource;
 mod airspace_storage;
 mod basemap;
+mod data_import;
 mod driver;
 mod file_picker;
 mod ipc;
@@ -86,6 +87,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
             ipc::import_airspace,
+            data_import::select_data_file,
+            data_import::import_data_file,
+            data_import::discard_data_file,
             waypoints::commands::import_waypoints,
             waypoints::commands::remove_waypoints,
             waypoints::commands::set_waypoints_enabled,
@@ -172,6 +176,7 @@ pub fn run() {
             app.manage(handle);
             app.manage(waypoints::arrival_stream::ArrivalStreams::default());
             app.manage(file_picker);
+            app.manage(data_import::DataImportState::default());
             app.manage(ipc::AirspaceCommandState::new(airspace_storage));
 
             #[cfg(target_os = "android")]

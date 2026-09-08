@@ -25,6 +25,19 @@ impl AirspaceCommandState {
             mutation: Arc::new(Mutex::new(())),
         }
     }
+
+    pub async fn import_selected(
+        &self,
+        selected: PickedFileBytes,
+        handle: &DriverHandle,
+    ) -> Result<(), AirspaceCommandError> {
+        let _guard = self
+            .mutation
+            .try_lock()
+            .map_err(|_| AirspaceCommandError::Busy)?;
+        import_selected_airspace(selected, self.storage.clone(), handle).await?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize)]

@@ -1,7 +1,9 @@
 use super::BasemapEntry;
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::watch;
+use tokio::time::Instant;
 
 mod transfer;
 
@@ -17,6 +19,7 @@ pub struct DownloadQueue {
 struct ActiveDownload {
     entry: Arc<BasemapEntry>,
     downloaded: u64,
+    progress_published: Option<Instant>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
@@ -58,6 +61,8 @@ impl DownloadQueue {
     }
 
     /// Ignores stale attempts and non-increasing byte counts.
+    /// Publishes byte progress at most every 100 ms to avoid flooding the webview.
+    /// Queue transitions still publish the latest byte count immediately.
     pub fn report_progress(&mut self, attempt: &Arc<BasemapEntry>, downloaded: u64) -> bool {
         let Some(active) = &mut self.active else {
             return false;
@@ -66,7 +71,15 @@ impl DownloadQueue {
             return false;
         }
         active.downloaded = downloaded;
-        self.publish();
+        let now = Instant::now();
+        let interval = Duration::from_millis(100);
+        if active
+            .progress_published
+            .is_none_or(|last| now - last >= interval)
+        {
+            active.progress_published = Some(now);
+            self.publish();
+        }
         true
     }
 
@@ -121,6 +134,7 @@ impl DownloadQueue {
         self.active = Some(ActiveDownload {
             entry: Arc::clone(&attempt),
             downloaded: 0,
+            progress_published: None,
         });
         self.publish();
         Some(attempt)

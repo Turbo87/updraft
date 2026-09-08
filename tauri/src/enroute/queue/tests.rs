@@ -100,8 +100,8 @@ fn cancelled_retries_retain_failure_and_ignore_late_completion() {
     assert!(queue.failed.is_empty());
 }
 
-#[test]
-fn subscribers_receive_current_state_and_coalesced_progress() {
+#[tokio::test(start_paused = true)]
+async fn subscribers_receive_current_state_and_coalesced_progress() {
     let mut queue = DownloadQueue::default();
     let mut status = queue.subscribe();
     assert!(status.borrow_and_update().is_empty());
@@ -109,6 +109,7 @@ fn subscribers_receive_current_state_and_coalesced_progress() {
     queue.enqueue(entry("Europe/France.mbtiles"));
     let attempt = assert_some!(queue.start_next());
     assert!(queue.report_progress(&attempt, 3));
+    tokio::time::advance(std::time::Duration::from_millis(100)).await;
     assert!(queue.report_progress(&attempt, 12));
     assert!(assert_ok!(status.has_changed()));
     insta::assert_debug_snapshot!(*status.borrow_and_update());
@@ -147,4 +148,43 @@ fn retry_status_hides_the_failure_until_cancellation() {
     assert_eq!(status.borrow().len(), 1);
     queue.cancel(attempt.path);
     assert_eq!(*status.borrow(), failed);
+}
+
+#[tokio::test(start_paused = true)]
+async fn limits_progress_publications_without_delaying_queue_changes() {
+    let mut queue = DownloadQueue::default();
+    queue.enqueue(entry("Europe/Germany.mbtiles"));
+    let attempt = assert_some!(queue.start_next());
+    let mut status = queue.subscribe();
+    status.borrow_and_update();
+    let mut publications = 0;
+    for bytes in 1..=1000 {
+        tokio::time::advance(std::time::Duration::from_millis(1)).await;
+        assert!(queue.report_progress(&attempt, bytes));
+        if assert_ok!(status.has_changed()) {
+            publications += 1;
+            status.borrow_and_update();
+        }
+    }
+    assert_eq!(publications, 10);
+    queue.enqueue(entry("Europe/France.mbtiles"));
+    assert!(assert_ok!(status.has_changed()));
+    std::assert_matches!(
+        status.borrow_and_update()[0].state,
+        DownloadState::Downloading {
+            downloaded: 1000,
+            ..
+        }
+    );
+    assert!(queue.cancel(attempt.path));
+    assert!(assert_ok!(status.has_changed()));
+    assert_eq!(status.borrow_and_update()[0].path, "Europe/France.mbtiles");
+    let next = assert_some!(queue.start_next());
+    status.borrow_and_update();
+    assert!(queue.report_progress(&next, 1));
+    assert!(assert_ok!(status.has_changed()));
+    status.borrow_and_update();
+    assert!(queue.finish(&next, DownloadOutcome::Failed));
+    assert!(assert_ok!(status.has_changed()));
+    std::assert_matches!(status.borrow_and_update()[0].state, DownloadState::Failed);
 }

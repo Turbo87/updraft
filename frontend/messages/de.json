@@ -338,5 +338,8 @@
   "data_on_device": "Auf dem Gerät",
   "data_load_failed": "Die Datei konnte nicht geladen werden.",
   "data_basemap_loading": "Basiskarten werden geladen…",
-  "data_basemap_failed": "Die Basiskartenliste konnte nicht geladen werden."
+  "data_basemap_failed": "Die Basiskartenliste konnte nicht geladen werden.",
+  "data_terrain": "Gelände",
+  "data_terrain_loading": "Geländedaten werden geladen…",
+  "data_terrain_failed": "Die Geländedatenliste konnte nicht geladen werden."
 }

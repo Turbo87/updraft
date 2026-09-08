@@ -55,6 +55,7 @@ it.each(['airspace', 'basemap'] as const)(
     await page.getByRole('button', { name: /^broken\./ }).click();
     let toggle = page.getByRole('switch', { name: 'Enabled', exact: true });
     await expect.element(toggle).toBeChecked();
+    await expect.element(page.getByRole('button', { name: 'Close', exact: true })).toHaveFocus();
     await userEvent.keyboard('{Tab}');
     await expect.element(toggle).toHaveFocus();
     let input = toggle.element();
@@ -491,24 +492,28 @@ it('shows basemap activation, confirms removal, and keeps details current', asyn
   await expect.element(page.getByText('No data on this device')).toBeVisible();
 });
 
-it('distinguishes pending and failed basemap inventory from an empty library', async () => {
-  let view = await render(DataLibrary, {
-    importer: new FakeClient(),
-    activation: activation(),
-    onRemove: vi.fn(),
-    airspace: { generation: 0, sources: [] },
-    waypoints: { generation: 0, sources: [] },
-    basemaps: null,
-  });
-  await expect.element(page.getByRole('status')).toHaveTextContent('Loading basemaps…');
-  await expect.element(page.getByText('No data on this device')).not.toBeInTheDocument();
-  await view.rerender({ basemapError: true });
-  await expect
-    .element(page.getByRole('alert'))
-    .toHaveTextContent('Could not load basemap inventory.');
-  await expect.element(page.getByRole('status')).not.toBeInTheDocument();
-  await expect.element(page.getByText('No data on this device')).not.toBeInTheDocument();
-});
+it.each([
+  ['basemaps', 'basemapError', 'Loading basemaps…', 'Could not load basemap inventory.'],
+  ['terrain', 'terrainError', 'Loading terrain…', 'Could not load terrain inventory.'],
+] as const)(
+  'distinguishes pending and failed %s from an empty library',
+  async (dataset, error, loading, failure) => {
+    let view = await render(DataLibrary, {
+      importer: new FakeClient(),
+      activation: activation(),
+      onRemove: vi.fn(),
+      airspace: { generation: 0, sources: [] },
+      waypoints: { generation: 0, sources: [] },
+      [dataset]: null,
+    });
+    await expect.element(page.getByRole('status')).toHaveTextContent(loading);
+    await expect.element(page.getByText('No data on this device')).not.toBeInTheDocument();
+    await view.rerender({ [error]: true });
+    await expect.element(page.getByRole('alert')).toHaveTextContent(failure);
+    await expect.element(page.getByRole('status')).not.toBeInTheDocument();
+    await expect.element(page.getByText('No data on this device')).not.toBeInTheDocument();
+  },
+);
 
 it('keeps accessible IDs unique across Data library instances', async () => {
   for (let name of ['first.txt', 'second.txt']) {
@@ -522,17 +527,18 @@ it('keeps accessible IDs unique across Data library instances', async () => {
       },
       waypoints: { generation: 0, sources: [{ sourceName: 'local.cup', type: 'disabled' }] },
       basemaps: { generation: 0, sources: [{ sourceName: 'local.mbtiles', type: 'active' }] },
+      terrain: { generation: 0, sources: [{ sourceName: 'local.terrain', type: 'active' }] },
     });
   }
   let sections = [...document.querySelectorAll('section[aria-labelledby]')];
-  expect(sections).toHaveLength(6);
+  expect(sections).toHaveLength(8);
   let headingIds = sections.map((section) => {
     let heading = section.querySelector('h2')!;
     expect(section.getAttribute('aria-labelledby')).toBe(heading.id);
     expect(document.getElementById(heading.id)).toBe(heading);
     return heading.id;
   });
-  expect(new Set(headingIds).size).toBe(6);
+  expect(new Set(headingIds).size).toBe(8);
 
   let hintIds = [];
   for (let name of ['first.txt', 'second.txt']) {
@@ -549,4 +555,53 @@ it('keeps accessible IDs unique across Data library instances', async () => {
     await userEvent.keyboard('{Escape}');
   }
   expect(new Set(hintIds).size).toBe(2);
+});
+
+it('shows read-only terrain details and keeps them current', async () => {
+  let view = await render(DataLibrary, {
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+    basemaps: { generation: 0, sources: [{ sourceName: 'local.mbtiles', type: 'active' }] },
+    terrain: {
+      generation: 0,
+      sources: [
+        { sourceName: 'z.terrain', type: 'disabled' },
+        { sourceName: 'a.terrain', type: 'active' },
+        { sourceName: 'broken.terrain', type: 'unavailable' },
+      ],
+    },
+  });
+  expect(
+    [...document.querySelectorAll('section h2')].map((element) => element.textContent),
+  ).toEqual(['Basemap', 'Terrain']);
+  expect([...document.querySelectorAll('.filename')].map((element) => element.textContent)).toEqual(
+    ['local.mbtiles', 'a.terrain', 'broken.terrain', 'z.terrain'],
+  );
+  await page.getByRole('button', { name: /^a.terrain/ }).click();
+  let dialog = page.getByRole('dialog');
+  await expect.element(dialog.getByText('Yes', { exact: true })).toBeVisible();
+  await expect.element(dialog.getByRole('switch')).not.toBeInTheDocument();
+  await expect
+    .element(dialog.getByRole('button', { name: 'Remove from device' }))
+    .not.toBeInTheDocument();
+  await expect.element(dialog.getByText('Imported', { exact: true })).not.toBeInTheDocument();
+  await userEvent.keyboard('{Escape}');
+  await page.getByRole('button', { name: /^z.terrain/ }).click();
+  await expect.element(dialog.getByText('No', { exact: true })).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await page.getByRole('button', { name: /^broken.terrain/ }).click();
+  await expect.element(dialog.getByText('Could not load the file.')).toBeVisible();
+  await view.rerender({
+    terrain: { generation: 1, sources: [{ sourceName: 'broken.terrain', type: 'disabled' }] },
+  });
+  await expect.element(dialog.getByText('No', { exact: true })).toBeVisible();
+  await expect.element(dialog.getByText('Could not load the file.')).not.toBeInTheDocument();
+  await view.rerender({ terrain: { generation: 2, sources: [] } });
+  await expect.element(dialog).not.toBeInTheDocument();
+  await expect
+    .element(page.getByRole('heading', { name: 'Terrain', exact: true }))
+    .not.toBeInTheDocument();
 });

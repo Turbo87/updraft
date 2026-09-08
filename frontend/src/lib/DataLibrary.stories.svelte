@@ -105,6 +105,23 @@
 <Story name="Loading basemaps" {template} args={{ basemaps: null }} />
 <Story name="Basemap inventory failure" {template} args={{ basemaps: null, basemapError: true }} />
 
+<Story
+  name="Terrain files"
+  {template}
+  args={{
+    terrain: {
+      generation: 0,
+      sources: [
+        { sourceName: 'France.terrain', type: 'active' },
+        { sourceName: 'Germany.terrain', type: 'disabled' },
+        { sourceName: 'Incompatible regional elevation data.terrain', type: 'unavailable' },
+      ],
+    },
+  }}
+/>
+<Story name="Loading terrain" {template} args={{ terrain: null }} />
+<Story name="Terrain inventory failure" {template} args={{ terrain: null, terrainError: true }} />
+
 <style>
   .screen {
     height: 100dvh;

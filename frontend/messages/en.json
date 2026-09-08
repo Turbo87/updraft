@@ -338,5 +338,8 @@
   "data_on_device": "On device",
   "data_load_failed": "Could not load the file.",
   "data_basemap_loading": "Loading basemaps…",
-  "data_basemap_failed": "Could not load basemap inventory."
+  "data_basemap_failed": "Could not load basemap inventory.",
+  "data_terrain": "Terrain",
+  "data_terrain_loading": "Loading terrain…",
+  "data_terrain_failed": "Could not load terrain inventory."
 }

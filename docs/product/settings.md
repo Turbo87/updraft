@@ -119,7 +119,8 @@ Polar and reserve changes request new waypoint arrival calculations.
 ## Installed data
 
 The Data page lists imported files in Airspace and Waypoints groups and installed
-basemap files in a Basemap group. Empty groups are hidden. Filenames are sorted
+basemap and terrain files in Basemap and Terrain groups. The group order is
+Airspace, Waypoints, Basemap, then Terrain. Empty groups are hidden. Filenames are sorted
 alphabetically within each group. Active imported files show feature counts
 and waypoint warning counts. Disabled files show their disabled state.
 Unavailable imported files show a read, parse, or geometry error.
@@ -131,7 +132,9 @@ status, feature count, and current errors or waypoint warnings. Close, Escape,
 Back, and a tap outside dismiss the dialog. Back keeps the library open.
 
 Basemap details show an Enabled control and a load error when an enabled file
-is unavailable. The app maintains basemap status across navigation.
+is unavailable. Terrain details show the enabled state as read-only text and
+any load error. Terrain activation and removal controls are not available yet.
+The app maintains basemap and terrain status across navigation.
 Loading and subscription failure messages are distinct from an empty inventory.
 
 The Enabled control changes immediately and stays interactive while saving.

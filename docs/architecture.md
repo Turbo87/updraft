@@ -126,6 +126,8 @@ in the shell. Unsubscribe removes only the requested channel and is idempotent.
 The frontend client exposes terrain status through this channel. Closing stops
 local delivery immediately and waits for registration before native unsubscribe.
 The fake client retains the latest terrain status for new subscribers.
+The app root owns the terrain subscription and shares its status with the Data
+library across navigation.
 
 ## State ownership
 

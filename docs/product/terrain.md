@@ -64,5 +64,9 @@ duplicates, empty entries, and Enroute's `None yet` placeholder. The About
 screen shows the resulting credits. Tauri converts both resource URLs for
 each platform.
 
+The Data page lists terrain files with their enabled state and load errors.
+Details update when the frontend receives terrain status. Activation and removal
+controls are not available yet.
+
 This version does not provide numeric elevation queries, AGL calculations,
-terrain library controls, file import controls, downloads, or online fallback.
+file import controls, downloads, or online fallback.

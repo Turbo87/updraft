@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BasemapStatus, SelectedDataFile, UpdraftClient } from './client';
+  import type { BasemapStatus, SelectedDataFile, TerrainStatus, UpdraftClient } from './client';
   import type { AirspaceStatus } from './protocol/generated/AirspaceStatus';
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
   import type { DataActivation } from './stores/data-activation.svelte';
@@ -18,21 +18,24 @@
 
   const componentId = $props.id();
 
-  type DatasetType = 'airspace' | 'waypoints' | 'basemap';
+  type DatasetType = 'airspace' | 'waypoints' | 'basemap' | 'terrain';
   type Props = {
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
     basemaps?: BasemapStatus | null;
     basemapError?: boolean;
+    terrain?: TerrainStatus | null;
+    terrainError?: boolean;
     detailsOpen?: boolean;
-    onRemove: (type: DatasetType, name: string) => Promise<void>;
+    onRemove: (type: Exclude<DatasetType, 'terrain'>, name: string) => Promise<void>;
     activation: Pick<DataActivation, 'isEnabled' | 'hasError' | 'setEnabled' | 'pending'>;
   };
   type Source =
     | AirspaceStatus['sources'][number]
     | WaypointStatus['sources'][number]
-    | BasemapStatus['sources'][number];
+    | BasemapStatus['sources'][number]
+    | TerrainStatus['sources'][number];
 
   let {
     importer,
@@ -40,6 +43,8 @@
     waypoints,
     basemaps = { generation: 0, sources: [] },
     basemapError = false,
+    terrain = { generation: 0, sources: [] },
+    terrainError = false,
     detailsOpen = $bindable(false),
     onRemove,
     activation,
@@ -148,6 +153,12 @@
         icon: 'i-mdi-map-outline',
         sources: basemaps?.sources ?? [],
       },
+      {
+        type: 'terrain' as const,
+        label: m.data_terrain(),
+        icon: 'i-mdi-terrain',
+        sources: terrain?.sources ?? [],
+      },
     ].filter((group) => group.sources.length > 0),
   );
 
@@ -156,7 +167,7 @@
     selectedGroup?.sources.find((source) => source.sourceName === selected?.name),
   );
   const selectedEnabled = $derived(
-    selected && selectedSource && activation.isEnabled(selected.type, selectedSource),
+    selected && selectedSource && isEnabled(selected.type, selectedSource),
   );
 
   $effect(() => {
@@ -169,7 +180,7 @@
   }
 
   async function removeFile() {
-    if (!selected || pending) return;
+    if (!selected || selected.type === 'terrain' || pending) return;
     pending = true;
     error = '';
     try {
@@ -182,6 +193,10 @@
     }
   }
 
+  function isEnabled(type: DatasetType, source: Source): boolean {
+    return type === 'terrain' ? source.type !== 'disabled' : activation.isEnabled(type, source);
+  }
+
   function compareSources(a: Source, b: Source): number {
     return a.sourceName.localeCompare(b.sourceName, getLocale());
   }
@@ -191,7 +206,7 @@
     type: DatasetType,
     enabled = source.type !== 'disabled',
   ): string {
-    if (type === 'basemap')
+    if (type === 'basemap' || type === 'terrain')
       return enabled && source.type === 'unavailable' ? m.data_load_failed() : m.data_on_device();
     if (!enabled || source.type === 'disabled') return m.data_imported();
     if (source.type === 'unavailable' && 'error' in source) {
@@ -246,7 +261,9 @@
   {#if importError}<p class="error" role="alert">{importError}</p>{/if}
   {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>
   {:else if basemaps === null}<p role="status">{m.data_basemap_loading()}</p>{/if}
-  {#if groups.length === 0 && basemaps !== null && !basemapError}
+  {#if terrainError}<p class="error" role="alert">{m.data_terrain_failed()}</p>
+  {:else if terrain === null}<p role="status">{m.data_terrain_loading()}</p>{/if}
+  {#if groups.length === 0 && basemaps !== null && !basemapError && terrain !== null && !terrainError}
     <div class="empty">
       <span aria-hidden="true" class="i-mdi-database-outline"></span>
       <p class="empty-title">{m.data_empty()}</p>
@@ -259,7 +276,7 @@
       <ResponsiveCard>
         <ul class="files">
           {#each group.sources.toSorted(compareSources) as source (source.sourceName)}
-            {let enabled = $derived(activation.isEnabled(group.type, source))}
+            {let enabled = $derived(isEnabled(group.type, source))}
             <li
               {@attach (element) => {
                 if (
@@ -292,8 +309,8 @@
                     {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
                   </span>
                   <span class="metadata">{metadata(source, group.type, enabled)}</span>
-                  {#if activation.hasError(group.type, source.sourceName)}<span class="error"
-                      >{m.data_activation_failed()}</span
+                  {#if group.type !== 'terrain' && activation.hasError(group.type, source.sourceName)}<span
+                      class="error">{m.data_activation_failed()}</span
                     >{/if}
                 </span>
                 <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
@@ -323,35 +340,44 @@
           </div>
           <Dialog.Close class="data-dialog-close" aria-label={m.data_close()}>×</Dialog.Close>
         </header>
-        <label class="activation">
-          <span>
-            <strong>{m.data_enabled()}</strong>
-            <span id={`${componentId}-enabled-hint`} class="activation-hint"
-              >{m.data_enabled_hint()}</span
-            >
-          </span>
-          <span class="activation-control">
-            <input
-              type="checkbox"
-              role="switch"
-              aria-label={m.data_enabled()}
-              aria-describedby={`${componentId}-enabled-hint`}
-              checked={selectedEnabled}
-              onchange={(event) => {
-                let enabled = event.currentTarget.checked;
-                event.currentTarget.checked = !!selectedEnabled;
-                activation.setEnabled(selectedGroup.type, selectedSource.sourceName, enabled);
-              }}
-            />
-            <span class="activation-check" aria-hidden="true"
-              ><span class="i-mdi-check-bold"></span></span
-            >
-          </span>
-        </label>
-        {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
+        {#if selectedGroup.type === 'terrain'}
+          <dl>
+            <div>
+              <dt>{m.data_enabled()}</dt>
+              <dd>{selectedEnabled ? m.yes_value() : m.no_value()}</dd>
+            </div>
+          </dl>
+        {:else}
+          <label class="activation">
+            <span>
+              <strong>{m.data_enabled()}</strong>
+              <span id={`${componentId}-enabled-hint`} class="activation-hint"
+                >{m.data_enabled_hint()}</span
+              >
+            </span>
+            <span class="activation-control">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={m.data_enabled()}
+                aria-describedby={`${componentId}-enabled-hint`}
+                checked={selectedEnabled}
+                onchange={(event) => {
+                  let enabled = event.currentTarget.checked;
+                  event.currentTarget.checked = !!selectedEnabled;
+                  activation.setEnabled(selectedGroup.type, selectedSource.sourceName, enabled);
+                }}
+              />
+              <span class="activation-check" aria-hidden="true"
+                ><span class="i-mdi-check-bold"></span></span
+              >
+            </span>
+          </label>
+        {/if}
+        {#if selectedGroup.type !== 'terrain' && activation.hasError(selectedGroup.type, selectedSource.sourceName)}
           <p class="error" role="alert">{m.data_activation_failed()}</p>
         {/if}
-        {#if selectedGroup.type !== 'basemap'}
+        {#if selectedGroup.type === 'airspace' || selectedGroup.type === 'waypoints'}
           <dl>
             <div>
               <dt>{m.data_source()}</dt>
@@ -382,17 +408,19 @@
             {/each}
           </ul>
         {/if}
-        <Button
-          disabled={activation.pending}
-          variant="destructive-outline"
-          size="large"
-          style="width: 100%"
-          onclick={() => {
-            detailsOpen = false;
-            error = '';
-            removeOpen = true;
-          }}>{m.data_remove()}</Button
-        >
+        {#if selectedGroup.type !== 'terrain'}
+          <Button
+            disabled={activation.pending}
+            variant="destructive-outline"
+            size="large"
+            style="width: 100%"
+            onclick={() => {
+              detailsOpen = false;
+              error = '';
+              removeOpen = true;
+            }}>{m.data_remove()}</Button
+          >
+        {/if}
       {/if}
     </Dialog.Content>
   </Dialog.Portal>

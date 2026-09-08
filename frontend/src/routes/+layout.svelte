@@ -23,6 +23,7 @@
   import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
   import { SettingsStore } from '$lib/stores/settings.svelte';
+  import { TerrainStore } from '$lib/stores/terrain.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
   import { WaypointsStore } from '$lib/stores/waypoints.svelte';
 
@@ -41,6 +42,7 @@
   const instruments = new InstrumentsStore();
   const airspace = new AirspaceStore();
   const basemaps = new BasemapsStore();
+  const terrain = new TerrainStore();
   const waypoints = new WaypointsStore();
   const mapState = new MapState();
   const settings = new SettingsStore();
@@ -55,6 +57,7 @@
     dataActivation,
     airspace,
     basemaps,
+    terrain,
     waypoints,
     externalDevices,
     instruments,
@@ -102,6 +105,22 @@
     return () => {
       void subscription.close().catch((error: unknown) => {
         console.warn('Could not close basemap subscription', error);
+      });
+    };
+  });
+
+  onMount(() => {
+    let subscription = client.subscribeTerrain(
+      (status) => {
+        terrain.current = status;
+      },
+      () => {
+        terrain.error = true;
+      },
+    );
+    return () => {
+      void subscription.close().catch((error: unknown) => {
+        console.warn('Could not close terrain subscription', error);
       });
     };
   });

@@ -4,7 +4,7 @@
   import { getAppContext } from '$lib/app-context';
   import DataLibrary from '$lib/DataLibrary.svelte';
 
-  const { client, airspace, basemaps, waypoints, dataActivation } = getAppContext();
+  const { client, airspace, basemaps, terrain, waypoints, dataActivation } = getAppContext();
   let detailsOpen = $state(false);
 
   beforeNavigate((navigation) => {
@@ -18,6 +18,8 @@
 <DataLibrary
   basemaps={basemaps.current}
   basemapError={basemaps.error}
+  terrain={terrain.current}
+  terrainError={terrain.error}
   importer={client}
   activation={dataActivation}
   airspace={airspace.current}

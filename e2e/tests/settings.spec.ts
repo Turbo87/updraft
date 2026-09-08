@@ -1,5 +1,5 @@
 import type { AppContext } from '$lib/app-context';
-import type { BasemapStatus } from '$lib/client';
+import type { BasemapStatus, TerrainStatus } from '$lib/client';
 
 import { execFileSync } from 'node:child_process';
 
@@ -17,6 +17,7 @@ type TestWindow = Window & {
   __updraftFake?: {
     emit: (topic: unknown) => void;
     emitBasemaps: (status: BasemapStatus) => void;
+    emitTerrain: (status: TerrainStatus) => void;
     setWaypointsEnabled: (name: string, enabled: boolean) => Promise<void>;
     quit: () => Promise<void>;
   };
@@ -470,6 +471,49 @@ for (let [width, height, theme] of [
       });
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await expect(page.getByRole('button', { name: /^local.mbtiles/ })).toContainText(
+      'Could not load the file.',
+    );
+  });
+}
+
+for (let [width, height, theme] of [
+  [413, 915, 'light'],
+  [915, 413, 'dark'],
+] as const) {
+  test(`shows live terrain inventory at ${width}x${height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.goto('/?testMode=1');
+    await expect.poll(() => page.evaluate(() => !!(window as TestWindow).__updraftFake)).toBe(true);
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitTerrain({
+        generation: 0,
+        sources: [{ sourceName: 'local.terrain', type: 'active' }],
+      }),
+    );
+    await page.getByRole('link', { name: 'Settings' }).click();
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await page.getByRole('button', { name: /^local.terrain/ }).click();
+    let dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Yes', { exact: true })).toBeVisible();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitTerrain({
+        generation: 1,
+        sources: [{ sourceName: 'local.terrain', type: 'disabled' }],
+      }),
+    );
+    await expect(dialog.getByText('No', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('terrain-details.png') });
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('link', { name: 'Back to Settings' }).click();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitTerrain({
+        generation: 2,
+        sources: [{ sourceName: 'local.terrain', type: 'unavailable' }],
+      }),
+    );
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^local.terrain/ })).toContainText(
       'Could not load the file.',
     );
   });

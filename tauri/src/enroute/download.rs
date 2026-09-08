@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 use tempfile::NamedTempFile;
 
-/// Owns a partial basemap beside its destination. Dropping it discards the partial file.
+/// Owns a partial download beside its destination. Dropping it discards the partial file.
 #[derive(Debug)]
 pub struct DownloadFile {
     temporary: NamedTempFile,
@@ -41,7 +41,7 @@ impl DownloadFile {
         let mut response = response.error_for_status()?;
         ensure!(
             response.status() == reqwest::StatusCode::OK,
-            "Expected a complete basemap response"
+            "Expected a complete download response"
         );
         let mut written = 0;
         while let Some(chunk) = response.chunk().await? {
@@ -59,7 +59,7 @@ impl DownloadFile {
 
     pub fn new(directory: &Path, entry: &CatalogEntry) -> Result<Self> {
         let destination = directory.join("enroute").join(entry.path);
-        let parent = destination.parent().context("Basemap path has no parent")?;
+        let parent = destination.parent().context("Missing download parent")?;
         fs::create_dir_all(parent)?;
         let temporary = tempfile::Builder::new()
             .prefix(DOWNLOAD_PREFIX)

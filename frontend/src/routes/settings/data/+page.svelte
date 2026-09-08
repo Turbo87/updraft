@@ -24,7 +24,7 @@
 <DataLibrary
   downloads={enrouteDownloads.current}
   downloadError={enrouteDownloads.error}
-  onDownload={(paths) => client.downloadEnrouteBasemaps(paths)}
+  onDownload={(paths) => client.downloadEnrouteFiles(paths)}
   onCancelDownload={(path) => client.cancelEnrouteDownload(path)}
   catalog={enrouteCatalog.current}
   catalogError={enrouteCatalog.error}

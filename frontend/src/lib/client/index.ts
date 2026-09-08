@@ -88,7 +88,7 @@ export interface UpdraftClient {
     onError: (error: unknown) => void,
   ): EnrouteDownloadSubscription;
   /** Resolves when the queue accepts the selection, before transfers complete. */
-  downloadEnrouteBasemaps(paths: string[]): Promise<void>;
+  downloadEnrouteFiles(paths: string[]): Promise<void>;
   cancelEnrouteDownload(path: string): Promise<void>;
   refreshEnrouteCatalog(): Promise<void>;
   getEnrouteBasemapUpdates(): Promise<string[]>;

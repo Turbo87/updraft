@@ -33,7 +33,7 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
             subscribe_enroute_downloads,
             unsubscribe_enroute_downloads,
             cancel_enroute_download,
-            download_enroute_basemaps
+            download_enroute_files
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
@@ -87,15 +87,15 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
     }
     let body = json!({"paths":["Europe/France.mbtiles", "../unknown.mbtiles"]});
     assert_eq!(
-        invoke("download_enroute_basemaps", body),
-        Err(json!("Basemap is not in the catalog"))
+        invoke("download_enroute_files", body),
+        Err(json!("File is not in the Enroute catalog"))
     );
     assert_eq!(queue.lock().unwrap().subscribe().borrow().len(), 1);
     for _ in 0..2 {
         let body =
             json!({"paths":[attempt.path, "Europe/France.mbtiles", "Europe/France.mbtiles"]});
         assert_eq!(
-            assert_ok!(invoke("download_enroute_basemaps", body)),
+            assert_ok!(invoke("download_enroute_files", body)),
             Value::Null
         );
     }

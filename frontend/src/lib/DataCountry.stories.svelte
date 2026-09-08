@@ -25,7 +25,7 @@
       client: {
         getEnrouteTerrainUpdates: fn(async () => []),
         getEnrouteBasemapUpdates: fn(async () => [paths[1]]),
-        downloadEnrouteBasemaps: fn(async () => {}),
+        downloadEnrouteFiles: fn(async () => {}),
         cancelEnrouteDownload: fn(async () => {}),
       },
       onBack: fn(),

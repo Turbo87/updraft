@@ -271,7 +271,7 @@ it('waits for download acceptance and forwards cancellation and command failures
   mocks.invoke.mockReturnValueOnce(accepted.promise).mockResolvedValue(undefined);
   let finished = vi.fn();
   let paths = ['Europe/Malta.mbtiles', 'Europe/Germany.mbtiles'];
-  let submission = client.downloadEnrouteBasemaps(paths).then(finished);
+  let submission = client.downloadEnrouteFiles(paths).then(finished);
   await Promise.resolve();
   expect(finished).not.toHaveBeenCalled();
   accepted.resolve();
@@ -279,11 +279,11 @@ it('waits for download acceptance and forwards cancellation and command failures
   expect(finished).toHaveBeenCalledExactlyOnceWith(undefined);
   await client.cancelEnrouteDownload(paths[0]);
   expect(mocks.invoke.mock.calls).toEqual([
-    ['download_enroute_basemaps', { paths }],
+    ['download_enroute_files', { paths }],
     ['cancel_enroute_download', { path: paths[0] }],
   ]);
   mocks.invoke.mockRejectedValue(new Error('command failed'));
-  await expect(client.downloadEnrouteBasemaps(paths)).rejects.toThrow('command failed');
+  await expect(client.downloadEnrouteFiles(paths)).rejects.toThrow('command failed');
   await expect(client.cancelEnrouteDownload(paths[0])).rejects.toThrow('command failed');
 });
 

@@ -28,7 +28,7 @@
       UpdraftClient,
       | 'getEnrouteBasemapUpdates'
       | 'getEnrouteTerrainUpdates'
-      | 'downloadEnrouteBasemaps'
+      | 'downloadEnrouteFiles'
       | 'cancelEnrouteDownload'
     >;
     onBack: () => void;
@@ -169,7 +169,7 @@
     pending = true;
     error = '';
     try {
-      await client.downloadEnrouteBasemaps(selected.map((row) => row.entry.path));
+      await client.downloadEnrouteFiles(selected.map((row) => row.entry.path));
       if (!disposed && country === submittedCountry) onDownloaded();
     } catch {
       error = m.data_download_start_failed();

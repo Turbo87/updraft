@@ -95,7 +95,7 @@ pub fn run() {
             enroute::commands::subscribe_enroute_downloads,
             enroute::commands::unsubscribe_enroute_downloads,
             enroute::commands::cancel_enroute_download,
-            enroute::commands::download_enroute_basemaps,
+            enroute::commands::download_enroute_files,
             basemap::commands::subscribe_basemaps,
             basemap::commands::get_basemap_file_details,
             terrain::commands::get_terrain_file_details,

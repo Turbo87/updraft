@@ -73,7 +73,7 @@ impl DownloadCommands {
 }
 
 #[tauri::command(async)]
-pub fn download_enroute_basemaps<R: Runtime>(
+pub fn download_enroute_files<R: Runtime>(
     paths: Vec<String>,
     app: AppHandle<R>,
     state: tauri::State<'_, DownloadCommands>,
@@ -82,12 +82,12 @@ pub fn download_enroute_basemaps<R: Runtime>(
     let cached = catalog
         .status()
         .cached
-        .ok_or("Basemap catalog is unavailable")?;
+        .ok_or("Enroute catalog is unavailable")?;
     let entries = paths
         .iter()
         .map(|path| {
             let entry = cached.entries.iter().find(|entry| entry.path == path);
-            entry.cloned().ok_or("Basemap is not in the catalog")
+            entry.cloned().ok_or("File is not in the Enroute catalog")
         })
         .collect::<Result<Vec<_>, _>>()?;
     let directory = app

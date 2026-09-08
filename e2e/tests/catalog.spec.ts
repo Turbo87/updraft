@@ -69,7 +69,7 @@ test('selects a country update, handles failure, and returns to the library', as
     });
     app.client.getEnrouteBasemapUpdates = async () => [path];
     let attempts = 0;
-    app.client.downloadEnrouteBasemaps = async (paths) => {
+    app.client.downloadEnrouteFiles = async (paths) => {
       if (paths.length !== 1 || paths[0] !== path) throw new Error('Unexpected download selection');
       if (attempts++ === 0) throw new Error('Submission failed');
       fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
@@ -193,7 +193,7 @@ test('queues France while Germany continues downloading', async ({ page }) => {
       refreshing: false,
       error: false,
     });
-    client.downloadEnrouteBasemaps = async (paths) => {
+    client.downloadEnrouteFiles = async (paths) => {
       if (
         paths.length !== 1 ||
         !['Europe/Germany.mbtiles', 'Europe/France.mbtiles'].includes(paths[0])
@@ -252,7 +252,7 @@ test('carries startup update results through file replacement and settings navig
     let path = 'Europe/France.mbtiles';
     fake.getEnrouteBasemapUpdates = async () => [path];
     fake.getBasemapFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
-    (window as TestWindow).__updraftApp!.client.downloadEnrouteBasemaps = async (paths) => {
+    (window as TestWindow).__updraftApp!.client.downloadEnrouteFiles = async (paths) => {
       if (paths.length !== 1 || paths[0] !== path) throw new Error('Unexpected update selection');
       fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
     };

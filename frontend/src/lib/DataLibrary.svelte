@@ -111,7 +111,7 @@
   const downloadClient = {
     getEnrouteBasemapUpdates: () => onCheckBasemapUpdates(),
     getEnrouteTerrainUpdates: () => onCheckTerrainUpdates(),
-    downloadEnrouteBasemaps: (paths: string[]) => {
+    downloadEnrouteFiles: (paths: string[]) => {
       requestedDownloads = paths;
       return onDownload(paths);
     },

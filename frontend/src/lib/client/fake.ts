@@ -141,7 +141,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   /** Tests and stories supply queue outcomes through emitEnrouteDownloads(). */
-  async downloadEnrouteBasemaps(): Promise<void> {}
+  async downloadEnrouteFiles(): Promise<void> {}
 
   /** Tests and stories supply cancellation outcomes through emitEnrouteDownloads(). */
   async cancelEnrouteDownload(): Promise<void> {}

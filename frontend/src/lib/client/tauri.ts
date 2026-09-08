@@ -117,8 +117,8 @@ export class TauriClient implements UpdraftClient {
     };
   }
 
-  downloadEnrouteBasemaps(paths: string[]): Promise<void> {
-    return invoke('download_enroute_basemaps', { paths });
+  downloadEnrouteFiles(paths: string[]): Promise<void> {
+    return invoke('download_enroute_files', { paths });
   }
 
   cancelEnrouteDownload(path: string): Promise<void> {

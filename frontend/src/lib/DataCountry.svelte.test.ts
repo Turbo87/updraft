@@ -27,7 +27,7 @@ function props(): ComponentProps<typeof DataCountry> {
     client: {
       getEnrouteTerrainUpdates: vi.fn().mockResolvedValue([]),
       getEnrouteBasemapUpdates: vi.fn().mockResolvedValue([]),
-      downloadEnrouteBasemaps: vi.fn().mockResolvedValue(undefined),
+      downloadEnrouteFiles: vi.fn().mockResolvedValue(undefined),
       cancelEnrouteDownload: vi.fn().mockResolvedValue(undefined),
     },
     onBack: vi.fn(),
@@ -39,7 +39,7 @@ it.each([1, 2])('starts %i datasets unchecked and waits for queue acceptance', a
   let options = props();
   options.entries = options.entries.slice(0, count);
   let accepted = Promise.withResolvers<void>();
-  vi.mocked(options.client.downloadEnrouteBasemaps).mockReturnValue(accepted.promise);
+  vi.mocked(options.client.downloadEnrouteFiles).mockReturnValue(accepted.promise);
   await render(DataCountry, options);
   let checkbox = page.getByRole('checkbox').first();
   await expect.element(checkbox).not.toBeChecked();
@@ -49,7 +49,7 @@ it.each([1, 2])('starts %i datasets unchecked and waits for queue acceptance', a
   await userEvent.keyboard(' ');
   await expect.element(download).toHaveTextContent('Download · 1 MB');
   await download.click();
-  expect(options.client.downloadEnrouteBasemaps).toHaveBeenCalledExactlyOnceWith([north]);
+  expect(options.client.downloadEnrouteFiles).toHaveBeenCalledExactlyOnceWith([north]);
   expect(options.onDownloaded).not.toHaveBeenCalled();
   await expect.element(download).toBeDisabled();
   accepted.resolve();
@@ -120,7 +120,7 @@ it('removes live queued selections and cancels without confirmation', async () =
 
 it('retains selection after submission failure and clears it for another country', async () => {
   let options = props();
-  vi.mocked(options.client.downloadEnrouteBasemaps).mockRejectedValueOnce(new Error('IPC failed'));
+  vi.mocked(options.client.downloadEnrouteFiles).mockRejectedValueOnce(new Error('IPC failed'));
   let screen = await render(DataCountry, options);
   await page.getByRole('checkbox', { name: 'South', exact: true }).click();
   await page.getByRole('button', { name: /^Download/ }).click();
@@ -148,7 +148,7 @@ it.each(['close', 'country'])(
   async (change) => {
     let options = props();
     let accepted = Promise.withResolvers<void>();
-    vi.mocked(options.client.downloadEnrouteBasemaps).mockReturnValue(accepted.promise);
+    vi.mocked(options.client.downloadEnrouteFiles).mockReturnValue(accepted.promise);
     let screen = await render(DataCountry, options);
     await page.getByRole('checkbox', { name: 'North', exact: true }).click();
     await page.getByRole('button', { name: /^Download/ }).click();
@@ -217,7 +217,7 @@ it.each([false, true])(
     await expect.element(checkbox).toBeChecked();
     expect(options.client.getEnrouteBasemapUpdates).toHaveBeenCalledTimes(installed ? 1 : 0);
     await page.getByRole('button', { name: /^Download/ }).click();
-    expect(options.client.downloadEnrouteBasemaps).toHaveBeenCalledExactlyOnceWith([north]);
+    expect(options.client.downloadEnrouteFiles).toHaveBeenCalledExactlyOnceWith([north]);
   },
 );
 
@@ -236,7 +236,7 @@ it('selects basemap and terrain independently and submits both paths', async () 
     await checkbox.click();
   }
   await page.getByRole('button', { name: 'Download · 2 MB', exact: true }).click();
-  expect(options.client.downloadEnrouteBasemaps).toHaveBeenCalledExactlyOnceWith(
+  expect(options.client.downloadEnrouteFiles).toHaveBeenCalledExactlyOnceWith(
     options.entries.map((entry) => entry.path),
   );
 });

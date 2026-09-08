@@ -148,6 +148,27 @@
   }}
 />
 
+<Story
+  name="Update check failed"
+  {template}
+  args={{
+    updateCheckError: true,
+    catalog: {
+      cached: { entries: [], checkedAt: Date.UTC(2026, 8, 7, 12) },
+      refreshing: false,
+      error: true,
+    },
+  }}
+/>
+<Story
+  name="Update check never succeeded"
+  {template}
+  args={{
+    updateCheckError: true,
+    catalog: { cached: null, refreshing: false, error: true },
+  }}
+/>
+
 <style>
   .screen {
     height: 100dvh;

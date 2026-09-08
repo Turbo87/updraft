@@ -864,3 +864,35 @@ it.each([false, true])(
     await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
   },
 );
+
+it('shows failed update checks and removes the notice after recovery', async () => {
+  let onRetryCatalog = vi.fn().mockResolvedValue(undefined);
+  let screen = await render(DataLibrary, {
+    catalog: { cached: null, refreshing: false, error: true },
+    updateCheckError: true,
+    onRetryCatalog,
+    onCheckBasemapUpdates: vi.fn(async () => []),
+    onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
+    importer: new FakeClient(),
+    activation: activation(),
+    onRemove: vi.fn(),
+    airspace: { generation: 0, sources: [] },
+    waypoints: { generation: 0, sources: [] },
+  });
+  await expect
+    .element(page.getByText('Could not check for updates', { exact: true }))
+    .toBeVisible();
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  expect(onRetryCatalog).toHaveBeenCalledOnce();
+  await screen.rerender({
+    catalog: { cached: { entries: [], checkedAt: 1000 }, refreshing: false, error: false },
+    updateCheckError: false,
+  });
+  await expect
+    .element(page.getByText('Could not check for updates', { exact: true }))
+    .not.toBeInTheDocument();
+  await expect
+    .element(page.getByRole('button', { name: 'Retry', exact: true }))
+    .not.toBeInTheDocument();
+});

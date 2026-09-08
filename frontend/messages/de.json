@@ -362,6 +362,8 @@
   "data_downloading": "Wird heruntergeladen",
   "data_queued": "In Warteschlange",
   "data_update_available": "Aktualisierung verfügbar",
+  "data_update_check_unavailable": "Aktualisierungen konnten nicht geprüft werden",
+  "data_never_checked": "Noch nie erfolgreich geprüft",
   "data_installed": "Installiert",
   "data_checking_updates": "Aktualisierungen werden geprüft…",
   "data_update_check_failed": "Aktualisierungen konnten nicht geprüft werden. Versuche es erneut.",

@@ -18,6 +18,7 @@
   import ConfirmDialog from './ConfirmDialog.svelte';
   import DataCatalog from './DataCatalog.svelte';
   import DataCountry from './DataCountry.svelte';
+  import DataUpdateCheckFailure from './DataUpdateCheckFailure.svelte';
   import IconButton from './IconButton.svelte';
   import { m } from './paraglide/messages.js';
   import { getLocale } from './paraglide/runtime.js';
@@ -32,6 +33,7 @@
   type Props = {
     catalog: EnrouteCatalogStatus | null;
     catalogError?: boolean;
+    updateCheckError?: boolean;
     downloads?: EnrouteDownloadStatus[] | null;
     downloadError?: boolean;
     onDownload: (paths: string[]) => Promise<void>;
@@ -57,6 +59,7 @@
   let {
     catalog,
     catalogError = false,
+    updateCheckError = false,
     downloads = [],
     downloadError = false,
     onDownload,
@@ -344,6 +347,13 @@
       </Button>
     {/snippet}
     {#if downloadActionError}<p class="error" role="alert">{downloadActionError}</p>{/if}
+    {#if updateCheckError}
+      <DataUpdateCheckFailure
+        checkedAt={catalog?.cached?.checkedAt}
+        refreshing={catalog?.refreshing}
+        onRetry={onRetryCatalog}
+      />
+    {/if}
     {#if downloadError}<p class="error" role="alert">{m.data_download_state_failed()}</p>{/if}
     {#if dataImport.error}<p class="error" role="alert">{dataImport.error}</p>{/if}
     {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>

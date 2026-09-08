@@ -362,6 +362,8 @@
   "data_downloading": "Downloading",
   "data_queued": "Queued",
   "data_update_available": "Update available",
+  "data_update_check_unavailable": "Could not check for updates",
+  "data_never_checked": "Never checked successfully",
   "data_installed": "Installed",
   "data_checking_updates": "Checking for updates…",
   "data_update_check_failed": "Could not check for updates. Try again.",

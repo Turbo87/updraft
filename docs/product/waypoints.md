@@ -15,8 +15,12 @@ separate. Restarting the application reloads the stored source files.
 The importer uses `seeyou-cup` to parse the full file, including its task
 section. Updraft retains only the waypoint data and shows the parser warnings
 in Settings. A parser error or a file with no valid waypoints rejects the
-import. A failed replacement preserves the previous source. Removing a file requires
-confirmation and removes only that source.
+import. A parsing or storage failure preserves the previous source. Removing a
+file requires confirmation and removes only that source.
+
+Storage uses atomic file replacement. If catalog publication fails after an
+import or removal, the command reports an error and retains the disk change.
+Restart reloads the stored files.
 
 The importer retains the name, coordinates, CUP type, MSL elevation, runway
 direction and dimensions, frequency text, and description. It does not import

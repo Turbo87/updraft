@@ -1,4 +1,4 @@
-use crate::source_files::{SourceChange, SourceFiles};
+use crate::source_files::SourceFiles;
 use std::{io, path::PathBuf, sync::Arc};
 use updraft_airspace::{AirspaceDataset, AirspaceImportError};
 use updraft_core::{AirspaceCatalog, AirspaceLoadError};
@@ -49,13 +49,13 @@ impl AirspaceStorage {
         &self,
         bytes: &[u8],
         name: &str,
-    ) -> Result<(Arc<AirspaceDataset>, SourceChange), AirspaceStorageError> {
+    ) -> Result<Arc<AirspaceDataset>, AirspaceStorageError> {
         let dataset = Arc::new(AirspaceDataset::from_openair(bytes)?);
-        let change = self.files.replace(name, bytes)?;
-        Ok((dataset, change))
+        self.files.replace(name, bytes)?;
+        Ok(dataset)
     }
 
-    pub fn remove(&self, name: &str) -> io::Result<SourceChange> {
+    pub fn remove(&self, name: &str) -> io::Result<()> {
         self.files.remove(name)
     }
 }
@@ -154,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn failed_import_and_rollback_preserve_original_bytes() {
+    fn failed_import_preserves_original_bytes() {
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
         assert_ok!(storage.import_airspace(POLYGON, "a.txt"));
@@ -166,32 +166,10 @@ mod tests {
                 POLYGON
             );
         }
-        let (_, change) = assert_ok!(storage.import_airspace(CIRCLE, "a.txt"));
-        assert_ok!(change.rollback());
-        assert_eq!(
-            assert_ok!(std::fs::read(storage.files.path("a.txt"))),
-            POLYGON
-        );
-        let change = assert_ok!(storage.remove("a.txt"));
-        assert_eq!(
-            assert_ok!(storage.load())
-                .sources
-                .keys()
-                .collect::<Vec<_>>(),
-            vec!["b.txt"]
-        );
-        assert_ok!(change.rollback());
-        assert_eq!(
-            assert_ok!(std::fs::read(storage.files.path("a.txt"))),
-            POLYGON
-        );
         assert_eq!(
             assert_ok!(std::fs::read(storage.files.path("b.txt"))),
             CIRCLE
         );
-        let (_, change) = assert_ok!(storage.import_airspace(CIRCLE, "c.txt"));
-        assert_ok!(change.rollback());
-        assert_eq!(assert_ok!(storage.load()).sources.len(), 2);
     }
 
     #[test]
@@ -209,9 +187,8 @@ mod tests {
         }
         assert_eq!(assert_ok!(storage.load()).sources.len(), names.len());
         for name in &names {
-            let change = assert_ok!(storage.remove(name));
-            assert_ok!(change.rollback());
-            assert_eq!(assert_ok!(std::fs::read(storage.files.path(name))), POLYGON);
+            assert_ok!(storage.remove(name));
+            assert!(!storage.files.path(name).exists());
         }
         assert!(!directory.path().join("a.txt").exists());
     }
@@ -219,7 +196,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     #[traced_test]
-    fn unreadable_sources_can_be_removed_or_replaced_and_restored() {
+    fn unreadable_sources_can_be_removed_or_replaced() {
         use std::os::unix::fs::PermissionsExt;
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
@@ -234,21 +211,17 @@ mod tests {
             let catalog = assert_ok!(storage.load());
             assert_eq!(catalog.sources["a.txt"], Err(AirspaceLoadError::ReadFailed));
             assert_ok!(&catalog.sources["b.txt"]);
-            let change = if replace {
-                assert_ok!(storage.import_airspace(CIRCLE, "a.txt")).1
+            if replace {
+                assert_ok!(storage.import_airspace(CIRCLE, "a.txt"));
+                assert_eq!(assert_ok!(std::fs::read(&path)), CIRCLE);
             } else {
-                assert_ok!(storage.remove("a.txt"))
-            };
-            assert_ok!(change.rollback());
+                assert_ok!(storage.remove("a.txt"));
+                assert!(!path.exists());
+            }
             assert_eq!(
-                assert_ok!(std::fs::metadata(&path)).permissions().mode() & 0o777,
-                0
+                assert_ok!(std::fs::read(storage.files.path("b.txt"))),
+                CIRCLE
             );
-            assert_ok!(std::fs::set_permissions(
-                &path,
-                std::fs::Permissions::from_mode(0o600)
-            ));
-            assert_eq!(assert_ok!(std::fs::read(&path)), POLYGON);
         }
         assert!(logs_contain("Could not read stored airspace source"));
     }

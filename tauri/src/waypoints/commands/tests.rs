@@ -19,22 +19,21 @@ impl FileBytesPicker for Picker {
     }
 }
 
+fn driver() -> DriverHandle {
+    Driver::spawn(
+        SettingsSnapshot::default(),
+        AirspaceState::none_at_startup(),
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    )
+}
+
 fn app(
     storage: WaypointStorage,
     selected: Option<&[u8]>,
-    stopped: bool,
+    handle: DriverHandle,
 ) -> tauri::App<MockRuntime> {
-    let handle = if stopped {
-        DriverHandle::stopped()
-    } else {
-        Driver::spawn(
-            SettingsSnapshot::default(),
-            AirspaceState::none_at_startup(),
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
-        )
-    };
     let picker: FileBytesPickerState =
         Box::new(Picker(Mutex::new(selected.map(|bytes| PickedFileBytes {
             display_name: Some("local.cup".into()),
@@ -73,7 +72,7 @@ async fn import_persists_and_activates_valid_rows_with_diagnostics() {
         "{}Bad,,,bad,00600.000E,0m,1\n",
         String::from_utf8_lossy(CUP)
     );
-    let app = app(storage.clone(), Some(source.as_bytes()), false);
+    let app = app(storage.clone(), Some(source.as_bytes()), driver());
     let response = assert_ok!(invoke(&app, "import_waypoints", json!({})));
     assert_eq!(
         response,
@@ -89,7 +88,7 @@ async fn import_persists_and_activates_valid_rows_with_diagnostics() {
 async fn cancellation_does_not_create_a_source() {
     let dir = assert_ok!(tempfile::tempdir());
     let storage = WaypointStorage::new(dir.path().to_owned());
-    let app = app(storage.clone(), None, false);
+    let app = app(storage.clone(), None, driver());
     assert_eq!(
         assert_ok!(invoke(&app, "import_waypoints", json!({}))),
         json!({"type":"cancelled"})
@@ -103,7 +102,7 @@ async fn invalid_replacement_preserves_the_stored_source() {
     let storage = WaypointStorage::new(dir.path().to_owned());
     assert_ok!(storage.import("local.cup", CUP));
     let original = assert_ok!(storage.load());
-    let app = app(storage.clone(), Some(b"invalid"), false);
+    let app = app(storage.clone(), Some(b"invalid"), driver());
     assert_eq!(
         assert_err!(invoke(&app, "import_waypoints", json!({}))),
         json!("parseFailed")
@@ -115,7 +114,7 @@ async fn invalid_replacement_preserves_the_stored_source() {
 async fn stopped_driver_does_not_change_storage() {
     let dir = assert_ok!(tempfile::tempdir());
     let storage = WaypointStorage::new(dir.path().to_owned());
-    let app = app(storage.clone(), Some(CUP), true);
+    let app = app(storage.clone(), Some(CUP), DriverHandle::stopped());
     assert_eq!(
         assert_err!(invoke(&app, "import_waypoints", json!({}))),
         json!("driverStopped")
@@ -130,7 +129,7 @@ async fn removal_clears_only_the_selected_file() {
     assert_ok!(storage.import("a.cup", CUP));
     assert_ok!(storage.import("b.cup", CUP));
     let catalog = Arc::new(assert_ok!(storage.load()));
-    let app = app(storage.clone(), None, false);
+    let app = app(storage.clone(), None, driver());
     assert_ok!(
         app.state::<DriverHandle>()
             .send(ReplaceWaypointCatalog(catalog))
@@ -153,7 +152,7 @@ async fn failed_removal_keeps_the_active_catalog() {
     let storage = WaypointStorage::new(dir.path().to_owned());
     assert_ok!(storage.import("a.cup", CUP));
     let catalog = Arc::new(assert_ok!(storage.load()));
-    let app = app(storage.clone(), None, false);
+    let app = app(storage.clone(), None, driver());
     assert_ok!(
         app.state::<DriverHandle>()
             .send(ReplaceWaypointCatalog(catalog.clone()))
@@ -175,4 +174,46 @@ async fn failed_removal_keeps_the_active_catalog() {
     // Tauri runs IPC futures outside the test span.
     let logs = tracing_test::internal::global_buf().lock().unwrap().clone();
     assert!(String::from_utf8_lossy(&logs).contains("Could not remove waypoint source"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn failed_waypoint_publication_keeps_stored_changes() {
+    use crate::driver::tests::stop_after_next_input;
+    use updraft_core::{Core, Timestamp};
+
+    for (command, installed) in [
+        ("import_waypoints", false),
+        ("import_waypoints", true),
+        ("remove_waypoints", true),
+    ] {
+        let dir = assert_ok!(tempfile::tempdir());
+        let storage = WaypointStorage::new(dir.path().to_owned());
+        assert_ok!(storage.import("other.cup", CUP));
+        if installed {
+            assert_ok!(storage.import("local.cup", CUP));
+        }
+        let original = assert_ok!(storage.load());
+        let mut core = Core::new(SettingsSnapshot::default());
+        core.apply(
+            ReplaceWaypointCatalog(Arc::new(original.clone())),
+            Timestamp::from_millis(0),
+        );
+        let replacement = String::from_utf8_lossy(CUP).replace("Field", "Replacement");
+        let app = app(
+            storage.clone(),
+            Some(replacement.as_bytes()),
+            stop_after_next_input(core),
+        );
+        let error = assert_err!(invoke(&app, command, json!({"sourceName": "local.cup"})));
+        assert_eq!(error, json!("driverStopped"));
+        let catalog = assert_ok!(storage.load());
+        assert_eq!(catalog.sources["other.cup"], original.sources["other.cup"]);
+        if command == "remove_waypoints" {
+            assert_eq!(catalog.sources.keys().collect::<Vec<_>>(), ["other.cup"]);
+        } else {
+            assert_eq!(catalog.sources.len(), 2);
+            let dataset = assert_ok!(catalog.sources["local.cup"].as_ref());
+            assert_eq!(dataset.waypoints()[0].name, "Replacement");
+        }
+    }
 }

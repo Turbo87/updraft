@@ -71,7 +71,7 @@ pub async fn import_waypoints(
         .map_err(|_| WaypointCommandError::DriverStopped)?;
     let storage = state.storage.clone();
     let source_name = name.clone();
-    let (dataset, change) =
+    let dataset =
         tokio::task::spawn_blocking(move || storage.import(&source_name, &selected.bytes))
             .await
             .map_err(|_| WaypointCommandError::WorkerFailed)?
@@ -85,19 +85,10 @@ pub async fn import_waypoints(
             })?;
     let mut replacement = (*catalog).clone();
     replacement.sources.insert(name.clone(), Ok(dataset));
-    if handle
+    handle
         .send(ReplaceWaypointCatalog(Arc::new(replacement)))
         .await
-        .is_err()
-    {
-        tokio::task::spawn_blocking(move || change.rollback()).await
-            .map_err(|_| WaypointCommandError::WorkerFailed)?
-            .map_err(|error| {
-                tracing::error!(%error, "Could not restore waypoint source after activation failed");
-                WaypointCommandError::StorageFailed
-            })?;
-        return Err(WaypointCommandError::DriverStopped);
-    }
+        .map_err(|_| WaypointCommandError::DriverStopped)?;
     Ok(ImportWaypointsResult::Imported { source_name: name })
 }
 
@@ -120,27 +111,17 @@ pub async fn remove_waypoints(
         return Ok(());
     }
     let storage = state.storage.clone();
-    let change = tokio::task::spawn_blocking(move || storage.remove(&source_name))
+    tokio::task::spawn_blocking(move || storage.remove(&source_name))
         .await
         .map_err(|_| WaypointCommandError::WorkerFailed)?
         .map_err(|error| {
             tracing::warn!(%error, "Could not remove waypoint source");
             WaypointCommandError::StorageFailed
         })?;
-    if handle
+    handle
         .send(ReplaceWaypointCatalog(Arc::new(replacement)))
         .await
-        .is_err()
-    {
-        tokio::task::spawn_blocking(move || change.rollback())
-            .await
-            .map_err(|_| WaypointCommandError::WorkerFailed)?
-            .map_err(|error| {
-                tracing::error!(%error, "Could not restore waypoint source after removal failed");
-                WaypointCommandError::StorageFailed
-            })?;
-        return Err(WaypointCommandError::DriverStopped);
-    }
+        .map_err(|_| WaypointCommandError::DriverStopped)?;
     Ok(())
 }
 

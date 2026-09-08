@@ -72,8 +72,9 @@ bytes remain authoritative. Updraft parses each file again at startup.
 
 Import validates the complete file before it changes storage. Import and removal
 prepare a catalog replacement from the current snapshot. A failed write keeps
-the previous source. If catalog activation fails, the command restores the
-previous stored file. Other sources remain unchanged.
+the previous source. If catalog activation fails after an import or removal,
+the command reports an error and retains the disk change. Restart reloads the
+stored files. Other sources remain unchanged.
 
 A stored file that cannot be read or parsed appears as `unavailable`. Other
 sources remain usable. An unreadable source subdirectory is logged and skipped.

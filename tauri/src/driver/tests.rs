@@ -49,6 +49,28 @@ pub fn spawn(
     TestDriver { handle, task }
 }
 
+/// Answers one catalog query, then stops before the command publishes its change.
+pub fn stop_after_next_input(core: Core) -> DriverHandle {
+    let (messages, mut receiver) = mpsc::unbounded_channel();
+    let handle = DriverHandle { messages };
+    let mut state = DriverState {
+        core,
+        sinks: Vec::new(),
+        transports: ActiveTransports::default(),
+        open: Box::new(|_, _, _| Box::new(|| {})),
+        persist: Box::new(|_| {}),
+        handle: handle.clone(),
+    };
+    tokio::spawn(async move {
+        let Message::Input(input) = receiver.recv().await.unwrap() else {
+            panic!("Expected a catalog query");
+        };
+        receiver.close();
+        input.run(&mut state, Timestamp::from_millis(0));
+    });
+    handle
+}
+
 fn no_airspace() -> AirspaceState {
     AirspaceState::none_at_startup()
 }

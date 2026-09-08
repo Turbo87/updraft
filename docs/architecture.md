@@ -57,9 +57,11 @@ The shell owns work that crosses a process or platform boundary. This includes:
 - Tauri commands and channels
 - custom resource responses
 
-Airspace and waypoint storage share encoded source-file paths, file replacement,
-backups, rollback, and directory traversal. Their loaders own format parsing,
+Airspace and waypoint storage share encoded source-file paths, atomic file
+replacement, removal, and directory traversal. Their loaders own format parsing,
 catalog errors, and the policy for unreadable source directories.
+Storage changes precede catalog publication. A publication failure reports an
+error and retains the disk change. Restart reloads the stored files.
 
 Transport workers send bytes and connection state back through the driver.
 The core decides which configured transports should be active. The shell owns

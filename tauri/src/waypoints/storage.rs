@@ -1,4 +1,4 @@
-use crate::source_files::{SourceChange, SourceFiles};
+use crate::source_files::SourceFiles;
 use std::{io, path::PathBuf, sync::Arc};
 use updraft_core::{WaypointCatalog, WaypointLoadError};
 use updraft_waypoint::WaypointDataset;
@@ -36,17 +36,13 @@ impl WaypointStorage {
         Ok(catalog)
     }
 
-    pub fn import(
-        &self,
-        name: &str,
-        bytes: &[u8],
-    ) -> anyhow::Result<(Arc<WaypointDataset>, SourceChange)> {
+    pub fn import(&self, name: &str, bytes: &[u8]) -> anyhow::Result<Arc<WaypointDataset>> {
         let dataset = Arc::new(WaypointDataset::from_cup(bytes)?);
-        let change = self.files.replace(name, bytes)?;
-        Ok((dataset, change))
+        self.files.replace(name, bytes)?;
+        Ok(dataset)
     }
 
-    pub fn remove(&self, name: &str) -> io::Result<SourceChange> {
+    pub fn remove(&self, name: &str) -> io::Result<()> {
         self.files.remove(name)
     }
 }
@@ -113,17 +109,14 @@ mod tests {
                 "Field"
             );
             assert_eq!(assert_ok!(std::fs::read(storage.files.path(&name))), CUP);
-            let change = assert_ok!(storage.remove(&name));
-            assert_eq!(assert_ok!(storage.load()).sources.len(), 0);
-            assert_ok!(change.rollback());
-            assert_eq!(assert_ok!(storage.load()).sources.len(), 1);
             assert_ok!(storage.remove(&name));
+            assert_eq!(assert_ok!(storage.load()).sources.len(), 0);
         }
     }
 
     #[cfg(unix)]
     #[test]
-    fn removes_and_replaces_unreadable_sources_with_rollback() {
+    fn removes_and_replaces_unreadable_sources() {
         use std::os::unix::fs::PermissionsExt;
         let dir = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(dir.path().to_owned());
@@ -136,37 +129,22 @@ mod tests {
                 std::fs::Permissions::from_mode(0o000)
             ));
             assert_err!(std::fs::read(&path));
-            let change = if replace {
-                let (_, change) = assert_ok!(storage.import("a.cup", replacement.as_bytes()));
+            if replace {
+                assert_ok!(storage.import("a.cup", replacement.as_bytes()));
                 assert_eq!(assert_ok!(std::fs::read(&path)), replacement.as_bytes());
-                change
             } else {
-                let change = assert_ok!(storage.remove("a.cup"));
+                assert_ok!(storage.remove("a.cup"));
                 assert!(!path.exists());
-                change
-            };
-            assert_ok!(change.rollback());
-            assert_eq!(
-                assert_ok!(std::fs::metadata(&path)).permissions().mode() & 0o777,
-                0
-            );
-            assert_ok!(std::fs::set_permissions(
-                &path,
-                std::fs::Permissions::from_mode(0o600)
-            ));
-            assert_eq!(assert_ok!(std::fs::read(&path)), CUP);
+            }
         }
     }
 
     #[test]
-    fn failed_import_and_rollback_preserve_original_bytes() {
+    fn failed_import_preserves_original_bytes() {
         let dir = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(dir.path().to_owned());
         assert_ok!(storage.import("../a.cup", CUP));
         assert_err!(storage.import("../a.cup", b"invalid"));
-        let replacement = String::from_utf8_lossy(CUP).replace("Field", "Replacement");
-        let (_, change) = assert_ok!(storage.import("../a.cup", replacement.as_bytes()));
-        assert_ok!(change.rollback());
         assert_eq!(
             assert_ok!(std::fs::read(storage.files.path("../a.cup"))),
             CUP

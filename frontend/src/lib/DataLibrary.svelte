@@ -229,9 +229,12 @@
   const selectedEnabled = $derived(
     selected && selectedSource && activation.isEnabled(selected.type, selectedSource),
   );
-  let selectedUpdate = $derived(
-    availableUpdates.find(
-      (entry) => selected?.type === 'basemap' && selected.name === `enroute/${entry.path}`,
+  let selectedDownloadEntry = $derived(
+    catalog?.cached?.entries.find(
+      (entry) =>
+        selected?.type === 'basemap' &&
+        selected.name === `enroute/${entry.path}` &&
+        (selectedSource?.type === 'unavailable' || updates?.includes(entry.path)),
     ),
   );
   let selectedDownload = $derived(
@@ -660,7 +663,7 @@
         {/if}
         {#if downloadActionError}<p class="error" role="alert">{downloadActionError}</p>{/if}
         {#if selectedDownload}<p role="status">{downloadStatus(selectedDownload)}</p>{/if}
-        {#if selectedUpdate}
+        {#if selectedDownloadEntry}
           <Button
             loading={updatePending}
             disabled={downloads === null ||
@@ -668,7 +671,10 @@
               (selectedDownload && selectedDownload.type !== 'failed')}
             size="large"
             style="width: 100%; margin-block-end: var(--space-4)"
-            onclick={() => startUpdates([selectedUpdate.path])}>{m.data_update()}</Button
+            onclick={() => startUpdates([selectedDownloadEntry.path])}
+            >{selectedSource.type === 'unavailable'
+              ? m.data_download_again()
+              : m.data_update()}</Button
           >
         {/if}
         <Button

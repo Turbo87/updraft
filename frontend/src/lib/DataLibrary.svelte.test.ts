@@ -992,3 +992,58 @@ it('opens updates, queues only idle updates, and retains disabled file details',
     .element(page.getByRole('button', { name: /updates available/ }))
     .not.toBeInTheDocument();
 });
+
+it.each(['unavailable', 'active', 'disabled'] as const)(
+  'offers Download again only for an unavailable basemap (%s)',
+  async (type) => {
+    let path = 'Europe/France.mbtiles';
+    let onDownload = vi.fn().mockResolvedValue(undefined);
+    let screen = await render(DataLibrary, {
+      catalog: {
+        cached: {
+          checkedAt: 1000,
+          entries: [
+            {
+              path,
+              countryCode: 'FR',
+              continent: 'europe',
+              publicationDate: '2026-09-08',
+              size: 1_000_000,
+            },
+          ],
+        },
+        refreshing: false,
+        error: false,
+      },
+      updates: [],
+      basemaps: { generation: 1, sources: [{ sourceName: `enroute/${path}`, type }] },
+      onRetryCatalog: vi.fn(),
+      onCheckBasemapUpdates: vi.fn(async () => []),
+      onDownload,
+      onCancelDownload: vi.fn(),
+      importer: new FakeClient(),
+      activation: activation(),
+      onRemove: vi.fn(),
+      airspace: { generation: 0, sources: [] },
+      waypoints: { generation: 0, sources: [] },
+    });
+    await page.getByRole('button', { name: /^France.mbtiles/ }).click();
+    let action = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Download again', exact: true });
+    if (type !== 'unavailable') {
+      await expect.element(action).not.toBeInTheDocument();
+      return;
+    }
+    onDownload.mockRejectedValueOnce(new Error('offline'));
+    await action.click();
+    await expect.element(page.getByRole('dialog').getByRole('alert')).toBeVisible();
+    await action.click();
+    expect(onDownload).toHaveBeenCalledWith([path]);
+    await expect.element(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
+    await screen.rerender({ downloads: [{ path, type: 'queued' }] });
+    await expect.element(action).toBeDisabled();
+    await screen.rerender({ catalog: null });
+    await expect.element(action).not.toBeInTheDocument();
+  },
+);

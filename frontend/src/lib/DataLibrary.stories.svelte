@@ -197,6 +197,34 @@
   }}
 />
 
+<Story
+  name="Download unavailable basemap again"
+  {template}
+  args={{
+    updates: [],
+    catalog: {
+      cached: {
+        checkedAt: Date.UTC(2026, 8, 8),
+        entries: [
+          {
+            path: 'Europe/France.mbtiles',
+            countryCode: 'FR',
+            continent: 'europe',
+            publicationDate: '2026-09-08',
+            size: 61_000_000,
+          },
+        ],
+      },
+      refreshing: false,
+      error: false,
+    },
+    basemaps: {
+      generation: 1,
+      sources: [{ sourceName: 'enroute/Europe/France.mbtiles', type: 'unavailable' }],
+    },
+  }}
+/>
+
 <style>
   .screen {
     height: 100dvh;

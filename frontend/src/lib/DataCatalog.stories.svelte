@@ -45,6 +45,7 @@
     component: DataCatalog,
     args: {
       status: { cached, refreshing: false, error: false },
+      onBack: fn(),
       onCountry: fn(),
       onImport: fn(),
       onRetry: fn(),
@@ -58,6 +59,7 @@
 {/snippet}
 
 <Story name="Countries" {template} />
+<Story name="Country regions" {template} args={{ country: 'FR' }} />
 <Story name="Loading" {template} args={{ status: null }} />
 <Story
   name="Unavailable"

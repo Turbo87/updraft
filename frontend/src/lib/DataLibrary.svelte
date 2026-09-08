@@ -1,15 +1,16 @@
 <script lang="ts">
-  import type { BasemapStatus, TerrainStatus, UpdraftClient } from './client';
+  import type { BasemapStatus, EnrouteCatalogStatus, TerrainStatus, UpdraftClient } from './client';
   import type { AirspaceStatus } from './protocol/generated/AirspaceStatus';
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
   import type { DataActivation } from './stores/data-activation.svelte';
 
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
   import { Dialog } from 'bits-ui';
 
   import Button from './Button.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
+  import DataCatalog from './DataCatalog.svelte';
   import { m } from './paraglide/messages.js';
   import { getLocale } from './paraglide/runtime.js';
   import ResponsiveCard from './ResponsiveCard.svelte';
@@ -21,6 +22,9 @@
 
   type DatasetType = 'airspace' | 'waypoints' | 'basemap' | 'terrain';
   type Props = {
+    catalog: EnrouteCatalogStatus | null;
+    catalogError?: boolean;
+    onRetryCatalog: () => Promise<void>;
     importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;
     airspace: AirspaceStatus;
     waypoints: WaypointStatus;
@@ -28,7 +32,6 @@
     basemapError?: boolean;
     terrain?: TerrainStatus | null;
     terrainError?: boolean;
-    detailsOpen?: boolean;
     onRemove: (type: DatasetType, name: string) => Promise<void>;
     activation: Pick<DataActivation, 'isEnabled' | 'hasError' | 'setEnabled' | 'pending'>;
   };
@@ -39,6 +42,9 @@
     | TerrainStatus['sources'][number];
 
   let {
+    catalog,
+    catalogError = false,
+    onRetryCatalog,
     importer,
     airspace,
     waypoints,
@@ -46,10 +52,12 @@
     basemapError = false,
     terrain = { generation: 0, sources: [] },
     terrainError = false,
-    detailsOpen = $bindable(false),
     onRemove,
     activation,
   }: Props = $props();
+  let catalogOpen = $state(false);
+  let catalogCountry = $state<string>();
+  let detailsOpen = $state(false);
   let selected = $state<{ type: DatasetType; name: string }>();
   let opener: HTMLButtonElement | undefined;
   let removeOpen = $state(false);
@@ -58,6 +66,33 @@
   const wideScreen = new MediaQuery('(min-width: 545px)');
   const dataImport = new DataImport(() => ({ importer, airspace, waypoints }));
   onDestroy(() => dataImport.destroy());
+
+  let libraryContainer: HTMLDivElement;
+  export function handleBack(): boolean {
+    if (dataImport.selection) void dataImport.cancelImport();
+    else if (detailsOpen) detailsOpen = false;
+    else if (catalogCountry) catalogCountry = undefined;
+    else if (catalogOpen) {
+      catalogOpen = false;
+      void tick().then(() => {
+        Array.from(libraryContainer.querySelectorAll<HTMLButtonElement>('.add-data'))
+          .find((button) => button.checkVisibility())
+          ?.focus({ preventScroll: true });
+      });
+    } else return false;
+    return true;
+  }
+  async function returnAfterImport() {
+    if (!dataImport.scrollTarget) return;
+    catalogOpen = false;
+    catalogCountry = undefined;
+    await tick();
+    libraryContainer.querySelector('main')?.focus({ preventScroll: true });
+  }
+  async function selectImport(opener: HTMLButtonElement) {
+    await dataImport.selectFile(opener);
+    await returnAfterImport();
+  }
 
   const groups = $derived(
     [
@@ -165,87 +200,107 @@
   }
 </script>
 
-<ScreenScaffold
-  backHref="/settings"
-  backLabel={m.back_to_settings()}
-  title={m.data_heading()}
-  responsiveActions
->
-  {#snippet actions()}
-    <Button
-      style="width: 100%"
-      size={wideScreen.current ? 'standard' : 'large'}
-      loading={dataImport.pending}
-      disabled={activation.pending}
-      onclick={(event) => void dataImport.selectFile(event.currentTarget)}
-    >
-      <span aria-hidden="true" class="i-mdi-plus"></span>{m.data_add()}
-    </Button>
-  {/snippet}
-  {#if dataImport.error}<p class="error" role="alert">{dataImport.error}</p>{/if}
-  {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>
-  {:else if basemaps === null}<p role="status">{m.data_basemap_loading()}</p>{/if}
-  {#if terrainError}<p class="error" role="alert">{m.data_terrain_failed()}</p>
-  {:else if terrain === null}<p role="status">{m.data_terrain_loading()}</p>{/if}
-  {#if groups.length === 0 && basemaps !== null && !basemapError && terrain !== null && !terrainError}
-    <div class="empty">
-      <span aria-hidden="true" class="i-mdi-database-outline"></span>
-      <p class="empty-title">{m.data_empty()}</p>
-      <p>{m.data_empty_hint()}</p>
-    </div>
-  {/if}
-  {#each groups as group (group.type)}
-    <section aria-labelledby={`${componentId}-${group.type}`}>
-      <h2 id={`${componentId}-${group.type}`}>{group.label}</h2>
-      <ResponsiveCard>
-        <ul class="files">
-          {#each group.sources.toSorted( (a, b) => compareSources(a, b, group.type) ) as source (source.sourceName)}
-            {let enabled = $derived(activation.isEnabled(group.type, source))}
-            <li
-              {@attach (element) => {
-                if (
-                  source.type === 'disabled' ||
-                  dataImport.scrollTarget?.dataType !== group.type ||
-                  dataImport.scrollTarget.sourceName !== source.sourceName
-                )
-                  return;
-                let status = group.type === 'airspace' ? airspace : waypoints;
-                if (status.generation <= dataImport.scrollTarget.generation) return;
-                element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                dataImport.scrollTarget = undefined;
-              }}
-              class:disabled={!enabled}
-              class:unavailable={source.type === 'unavailable' && enabled}
-            >
-              <button
-                class="file-row"
-                disabled={dataImport.pending}
-                onclick={(event) => {
-                  selected = { type: group.type, name: source.sourceName };
-                  opener = event.currentTarget;
-                  detailsOpen = true;
+{#if catalogOpen}
+  <DataCatalog
+    status={catalog}
+    subscriptionError={catalogError}
+    country={catalogCountry}
+    importPending={dataImport.pending}
+    importError={dataImport.error}
+    onImport={selectImport}
+    onRetry={onRetryCatalog}
+    onCountry={(country) => (catalogCountry = country)}
+    onBack={handleBack}
+  />
+{/if}
+<div hidden={catalogOpen} bind:this={libraryContainer} style="height: 100%">
+  <ScreenScaffold
+    backHref="/settings"
+    backLabel={m.back_to_settings()}
+    title={m.data_heading()}
+    responsiveActions
+  >
+    {#snippet actions()}
+      <Button
+        class="add-data"
+        style="width: 100%"
+        size={wideScreen.current ? 'standard' : 'large'}
+        loading={dataImport.pending}
+        disabled={activation.pending}
+        onclick={() => {
+          catalogCountry = undefined;
+          catalogOpen = true;
+        }}
+      >
+        <span aria-hidden="true" class="i-mdi-plus"></span>{m.data_add()}
+      </Button>
+    {/snippet}
+    {#if dataImport.error}<p class="error" role="alert">{dataImport.error}</p>{/if}
+    {#if basemapError}<p class="error" role="alert">{m.data_basemap_failed()}</p>
+    {:else if basemaps === null}<p role="status">{m.data_basemap_loading()}</p>{/if}
+    {#if terrainError}<p class="error" role="alert">{m.data_terrain_failed()}</p>
+    {:else if terrain === null}<p role="status">{m.data_terrain_loading()}</p>{/if}
+    {#if groups.length === 0 && basemaps !== null && !basemapError && terrain !== null && !terrainError}
+      <div class="empty">
+        <span aria-hidden="true" class="i-mdi-database-outline"></span>
+        <p class="empty-title">{m.data_empty()}</p>
+        <p>{m.data_empty_hint()}</p>
+      </div>
+    {/if}
+    {#each groups as group (group.type)}
+      <section aria-labelledby={`${componentId}-${group.type}`}>
+        <h2 id={`${componentId}-${group.type}`}>{group.label}</h2>
+        <ResponsiveCard>
+          <ul class="files">
+            {#each group.sources.toSorted( (a, b) => compareSources(a, b, group.type) ) as source (source.sourceName)}
+              {let enabled = $derived(activation.isEnabled(group.type, source))}
+              <li
+                {@attach (element) => {
+                  if (
+                    catalogOpen ||
+                    source.type === 'disabled' ||
+                    dataImport.scrollTarget?.dataType !== group.type ||
+                    dataImport.scrollTarget.sourceName !== source.sourceName
+                  )
+                    return;
+                  let status = group.type === 'airspace' ? airspace : waypoints;
+                  if (status.generation <= dataImport.scrollTarget.generation) return;
+                  element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                  dataImport.scrollTarget = undefined;
                 }}
+                class:disabled={!enabled}
+                class:unavailable={source.type === 'unavailable' && enabled}
               >
-                <span aria-hidden="true" class={[group.icon, 'type-icon']}></span>
-                <span class="description">
-                  <span class="name">
-                    <span class="filename">{displayName(source, group.type)}</span>
-                    {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
+                <button
+                  class="file-row"
+                  disabled={dataImport.pending}
+                  onclick={(event) => {
+                    selected = { type: group.type, name: source.sourceName };
+                    opener = event.currentTarget;
+                    detailsOpen = true;
+                  }}
+                >
+                  <span aria-hidden="true" class={[group.icon, 'type-icon']}></span>
+                  <span class="description">
+                    <span class="name">
+                      <span class="filename">{displayName(source, group.type)}</span>
+                      {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
+                    </span>
+                    <span class="metadata">{metadata(source, group.type, enabled)}</span>
+                    {#if activation.hasError(group.type, source.sourceName)}<span class="error"
+                        >{m.data_activation_failed()}</span
+                      >{/if}
                   </span>
-                  <span class="metadata">{metadata(source, group.type, enabled)}</span>
-                  {#if activation.hasError(group.type, source.sourceName)}<span class="error"
-                      >{m.data_activation_failed()}</span
-                    >{/if}
-                </span>
-                <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
-              </button>
-            </li>
-          {/each}
-        </ul>
-      </ResponsiveCard>
-    </section>
-  {/each}
-</ScreenScaffold>
+                  <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        </ResponsiveCard>
+      </section>
+    {/each}
+  </ScreenScaffold>
+</div>
 
 <Dialog.Root bind:open={detailsOpen}>
   <Dialog.Portal>
@@ -362,8 +417,9 @@
     cancelLabel={m.cancel()}
     confirmLabel={m.data_replace_confirm()}
     onCancel={() => dataImport.cancelImport()}
-    onConfirm={() => {
-      if (dataImport.selection) void dataImport.importFile(dataImport.selection);
+    onConfirm={async () => {
+      if (dataImport.selection) await dataImport.importFile(dataImport.selection);
+      await returnAfterImport();
     }}
   />
 {/if}

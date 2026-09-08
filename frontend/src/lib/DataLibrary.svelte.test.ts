@@ -37,6 +37,8 @@ it.each([
     let sourceName = `enroute/Europe/${filename}`;
     let onRemove = vi.fn().mockResolvedValue(undefined);
     await render(DataLibrary, {
+      catalog: null,
+      onRetryCatalog: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove,
@@ -88,6 +90,8 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
     };
     let changes = new DataActivation(client, airspace, waypoints, basemaps, terrain);
     await render(DataLibrary, {
+      catalog: null,
+      onRetryCatalog: vi.fn(),
       importer: new FakeClient(),
       basemaps: basemaps.current,
       terrain: terrain.current,
@@ -146,6 +150,8 @@ it('opens live file details and confirms removal separately', async () => {
     ],
   };
   let view = await render(DataLibrary, {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
     importer: new FakeClient(),
     airspace,
     waypoints,
@@ -205,6 +211,8 @@ it('groups and sorts sources without changing the input order', async () => {
     ],
   };
   let component = await render(DataLibrary, {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
     importer: new FakeClient(),
     activation: activation(),
     onRemove: vi.fn(),
@@ -255,6 +263,8 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
   try {
     await page.viewport(width, 600);
     await render(DataLibrary, {
+      catalog: null,
+      onRetryCatalog: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove: vi.fn(),
@@ -292,19 +302,21 @@ it('confirms a same-name replacement and discards cancellation', async () => {
     discardDataFile: vi.fn().mockResolvedValue(undefined),
   };
   await render(DataLibrary, {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
     airspace: { generation: 0, sources: [] },
     waypoints: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
     activation: activation(),
     onRemove: vi.fn(),
     importer,
   });
-  await page.getByRole('button', { name: 'Add data' }).click();
+  await openImport();
   await expect.element(page.getByRole('alertdialog')).toBeVisible();
   expect(importer.importDataFile).not.toHaveBeenCalled();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect.poll(() => importer.discardDataFile.mock.calls).toEqual([['1']]);
-  await expect.element(page.getByRole('button', { name: 'Add data' })).toHaveFocus();
-  await page.getByRole('button', { name: 'Add data' }).click();
+  await expect.element(page.getByRole('button', { name: 'Import custom file…' })).toHaveFocus();
+  await openImport();
   await page.getByRole('button', { name: 'Replace file', exact: true }).click();
   await expect.poll(() => importer.importDataFile.mock.calls).toEqual([['1']]);
   await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument();
@@ -322,13 +334,16 @@ it('imports a new dataset without confusing filenames in another group', async (
     discardDataFile: vi.fn(),
   };
   await render(DataLibrary, {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
     importer,
     activation: activation(),
     onRemove: vi.fn(),
     airspace: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
     waypoints: { generation: 0, sources: [] },
   });
-  let add = page.getByRole('button', { name: 'Add data' });
+  await page.getByRole('button', { name: 'Add data' }).click();
+  let add = page.getByRole('button', { name: 'Import custom file…' });
   await add.click();
   await expect.element(add).toBeEnabled();
   expect(importer.importDataFile).not.toHaveBeenCalled();
@@ -354,13 +369,15 @@ it('discards a picker result when the library has been closed', async () => {
     discardDataFile: vi.fn().mockResolvedValue(undefined),
   };
   let view = await render(DataLibrary, {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
     importer,
     activation: activation(),
     onRemove: vi.fn(),
     airspace: { generation: 0, sources: [] },
     waypoints: { generation: 0, sources: [] },
   });
-  await page.getByRole('button', { name: 'Add data' }).click();
+  await openImport();
   await view.unmount();
   result.resolve({ selectionId: '3', sourceName: 'local.txt', dataType: 'airspace' });
   await expect.poll(() => importer.discardDataFile.mock.calls).toEqual([['3']]);
@@ -370,6 +387,8 @@ it('discards a picker result when the library has been closed', async () => {
 it('moves Add data from the footer to the header above 544px', async () => {
   let previous = { width: window.innerWidth, height: window.innerHeight };
   await render(DataLibrary, {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
     importer: new FakeClient(),
     activation: activation(),
     onRemove: vi.fn(),
@@ -419,6 +438,8 @@ it.each([
       discardDataFile: vi.fn(),
     };
     let view = await render(DataLibrary, {
+      catalog: null,
+      onRetryCatalog: vi.fn(),
       importer,
       activation: activation(),
       onRemove: vi.fn(),
@@ -430,7 +451,7 @@ it.each([
     main.parentElement!.style.height = '320px';
     if (position === 'replacement above') main.scrollTop = main.scrollHeight;
     let initialScroll = main.scrollTop;
-    await page.getByRole('button', { name: 'Add data' }).click();
+    await openImport();
     if (position !== 'new below')
       await page.getByRole('button', { name: 'Replace file', exact: true }).click();
     await expect.poll(() => importer.importDataFile.mock.calls.length).toBe(1);
@@ -443,7 +464,7 @@ it.each([
     };
     if (statusFirst) {
       await view.rerender({ [dataType]: updated });
-      expect(main.scrollTop).toBe(initialScroll);
+      expect(main.checkVisibility()).toBe(false);
       if (fails) completion.reject(new Error('publication failed'));
       else completion.resolve(selection);
     } else {
@@ -456,6 +477,10 @@ it.each([
       name: `${sourceName} Imported · could not be parsed`,
       exact: true,
     });
+    if (fails) {
+      await expect.element(page.getByRole('alert')).toBeVisible();
+      await page.getByRole('button', { name: 'Back to data', exact: true }).click();
+    }
     await expect.element(row).toBeVisible();
     if (position === 'visible' || fails) expect(main.scrollTop).toBe(initialScroll);
     else
@@ -495,6 +520,8 @@ it.each(['basemap', 'terrain'] as const)(
       ],
     };
     let view = await render(DataLibrary, {
+      catalog: null,
+      onRetryCatalog: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove,
@@ -556,6 +583,8 @@ it.each([
   'distinguishes pending and failed %s from an empty library',
   async (dataset, error, loading, failure) => {
     let view = await render(DataLibrary, {
+      catalog: null,
+      onRetryCatalog: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove: vi.fn(),
@@ -575,6 +604,8 @@ it.each([
 it('keeps accessible IDs unique across Data library instances', async () => {
   for (let name of ['first.txt', 'second.txt']) {
     await render(DataLibrary, {
+      catalog: null,
+      onRetryCatalog: vi.fn(),
       importer: new FakeClient(),
       activation: activation(),
       onRemove: vi.fn(),
@@ -616,6 +647,8 @@ it('keeps accessible IDs unique across Data library instances', async () => {
 
 it('shows terrain activation details and keeps them current', async () => {
   let view = await render(DataLibrary, {
+    catalog: null,
+    onRetryCatalog: vi.fn(),
     importer: new FakeClient(),
     activation: activation(),
     onRemove: vi.fn(),
@@ -659,3 +692,9 @@ it('shows terrain activation details and keeps them current', async () => {
     .element(page.getByRole('heading', { name: 'Terrain', exact: true }))
     .not.toBeInTheDocument();
 });
+
+async function openImport() {
+  let add = page.getByRole('button', { name: 'Add data', exact: true });
+  if (add.elements().length) await add.click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
+}

@@ -49,7 +49,7 @@ const catalog: EnrouteCatalogStatus = {
 };
 
 function props(status: EnrouteCatalogStatus | null = catalog) {
-  return { status, onCountry: vi.fn(), onImport: vi.fn(), onRetry: vi.fn() };
+  return { status, onBack: vi.fn(), onCountry: vi.fn(), onImport: vi.fn(), onRetry: vi.fn() };
 }
 
 afterEach(() => applyLocaleSetting('en'));
@@ -97,7 +97,7 @@ it.each([false, true])(
       expect(options.onRetry).toHaveBeenCalledExactlyOnceWith();
     }
     await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
-    expect(options.onImport).toHaveBeenCalledExactlyOnceWith();
+    expect(options.onImport).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLButtonElement));
   },
 );
 
@@ -117,7 +117,7 @@ it.each([
     )
     .toBeVisible();
   await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
-  expect(options.onImport).toHaveBeenCalledExactlyOnceWith();
+  expect(options.onImport).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLButtonElement));
 });
 
 it('replaces the loading state when a cached catalog arrives', async () => {
@@ -149,7 +149,7 @@ it.each([413, 915])('keeps country targets and import usable at %ipx', async (wi
     await userEvent.keyboard('{Enter}');
     expect(options.onCountry).toHaveBeenCalledExactlyOnceWith('DE');
     await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
-    expect(options.onImport).toHaveBeenCalledExactlyOnceWith();
+    expect(options.onImport).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLButtonElement));
     let visibleActions = Array.from(document.querySelectorAll('button')).filter(
       (button) => button.textContent?.includes('Import custom file') && button.checkVisibility(),
     );
@@ -158,4 +158,46 @@ it.each([413, 915])('keeps country targets and import usable at %ipx', async (wi
   } finally {
     await page.viewport(previous.width, previous.height);
   }
+});
+
+it('reports a failed Retry command and allows another attempt', async () => {
+  let retry = Promise.withResolvers<void>();
+  let options = {
+    ...props({ ...catalog, error: true }),
+    onRetry: vi.fn().mockReturnValueOnce(retry.promise).mockResolvedValue(undefined),
+  };
+  await render(DataCatalog, options);
+  let button = page.getByRole('button', { name: 'Retry', exact: true });
+  await button.click();
+  await expect.element(button).toBeDisabled();
+  retry.reject(new Error('IPC failed'));
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not refresh the catalog. Try again.');
+  await button.click();
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+  expect(options.onRetry).toHaveBeenCalledTimes(2);
+});
+
+it('shows registration failure instead of an endless loading state', async () => {
+  await render(DataCatalog, { ...props(null), subscriptionError: true });
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not load the catalog. Restart the app to try again.');
+  await expect.element(page.getByText('Loading countries…')).not.toBeInTheDocument();
+  await expect
+    .element(page.getByRole('button', { name: 'Import custom file…', exact: true }))
+    .toBeEnabled();
+});
+
+it('shows regional datasets and handles their removal from the catalog', async () => {
+  let view = await render(DataCatalog, { ...props(), country: 'FR' });
+  await expect.element(page.getByRole('heading', { name: 'France', exact: true })).toBeVisible();
+  await expect.element(page.getByText('North', { exact: true })).toBeVisible();
+  await expect.element(page.getByText('South', { exact: true })).toBeVisible();
+  await view.rerender({ status: { ...catalog, cached: { entries: [], checkedAt: 0 } } });
+  await expect.element(page.getByText('No downloads available', { exact: true })).toBeVisible();
+  await expect
+    .element(page.getByRole('heading', { name: 'Basemap', exact: true }))
+    .not.toBeInTheDocument();
 });

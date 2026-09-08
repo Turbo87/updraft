@@ -2,6 +2,7 @@
   import type { EnrouteCatalogStatus } from './client';
 
   import Button from './Button.svelte';
+  import ListRow from './ListRow.svelte';
   import { m } from './paraglide/messages.js';
   import { getLocale } from './paraglide/runtime.js';
   import ResponsiveCard from './ResponsiveCard.svelte';
@@ -10,11 +11,45 @@
   type Props = {
     status: EnrouteCatalogStatus | null;
     onCountry: (countryCode: string) => void;
-    onImport: () => void;
-    onRetry: () => void;
+    onImport: (opener: HTMLButtonElement) => void;
+    onBack: () => void;
+    country?: string;
+    importPending?: boolean;
+    importError?: string;
+    subscriptionError?: boolean;
+    onRetry: () => void | Promise<void>;
   };
 
-  let { status, onCountry, onImport, onRetry }: Props = $props();
+  let {
+    status,
+    onCountry,
+    onImport,
+    onRetry,
+    onBack,
+    country,
+    importPending = false,
+    importError = '',
+    subscriptionError = false,
+  }: Props = $props();
+  let retryPending = $state(false);
+  let retryError = $state(false);
+  let entries = $derived(
+    status?.cached?.entries.filter((entry) => entry.countryCode === country) ?? [],
+  );
+  let countryName = $derived(
+    country ? new Intl.DisplayNames(getLocale(), { type: 'region' }).of(country) : undefined,
+  );
+  async function retry() {
+    retryPending = true;
+    retryError = false;
+    try {
+      await onRetry();
+    } catch {
+      retryError = true;
+    } finally {
+      retryPending = false;
+    }
+  }
   const componentId = $props.id();
   let groups = $derived.by(() => {
     let names = new Intl.DisplayNames(getLocale(), { type: 'region' });
@@ -42,16 +77,25 @@
   });
 </script>
 
+{#snippet importAction()}
+  <Button
+    loading={importPending}
+    onclick={(event) => onImport(event.currentTarget)}
+    style="width: 100%">{m.data_import_custom()}</Button
+  >
+{/snippet}
+
 <ScreenScaffold
-  backHref="/settings/data"
-  backLabel={m.back_to_data()}
-  title={m.data_add()}
+  {onBack}
+  backLabel={country ? m.back_to_add_data() : m.back_to_data()}
+  title={countryName ?? m.data_add()}
   responsiveActions
+  actions={country ? undefined : importAction}
 >
-  {#snippet actions()}
-    <Button onclick={() => onImport()} style="width: 100%">{m.data_import_custom()}</Button>
-  {/snippet}
-  {#if status?.error || groups.length === 0}
+  {#if importError}<p role="alert">{importError}</p>{/if}
+  {#if retryError}<p role="alert">{m.data_catalog_refresh_failed()}</p>{/if}
+  {#if subscriptionError}<p role="alert">{m.data_catalog_subscription_failed()}</p>
+  {:else if status?.error || (country ? entries.length === 0 : groups.length === 0)}
     <ResponsiveCard>
       <div class="notice" role="status">
         {#if status?.error}
@@ -71,7 +115,7 @@
             <p>{m.data_enroute_unreachable()}</p>
             <p>{m.data_catalog_unavailable_hint()}</p>
           {/if}
-          <Button variant="secondary" disabled={status.refreshing} onclick={() => onRetry()}
+          <Button variant="secondary" disabled={status.refreshing || retryPending} onclick={retry}
             >{m.retry()}</Button
           >
         {:else if status === null || status.refreshing}
@@ -83,25 +127,52 @@
       </div>
     </ResponsiveCard>
   {/if}
-  {#each groups as group (group.continent)}
-    <section aria-labelledby={`${componentId}-${group.continent}`}>
-      <h2 id={`${componentId}-${group.continent}`}>{group.label}</h2>
-      <ResponsiveCard>
-        <ul>
-          {#each group.countries as country (country.code)}
-            <li>
-              <button class="country" onclick={() => onCountry(country.code)}>
-                <span aria-hidden="true" class={`flag i-circle-flags-${country.code.toLowerCase()}`}
-                ></span>
-                <span class="name">{country.name}</span>
-                <span aria-hidden="true" class="i-mdi-chevron-right"></span>
-              </button>
-            </li>
+  {#if country}
+    {#if entries.length > 0}
+      <section aria-labelledby={`${componentId}-basemaps`}>
+        <h2 id={`${componentId}-basemaps`}>{m.data_basemap()}</h2>
+        <ResponsiveCard>
+          {#each entries as entry (entry.path)}
+            <ListRow
+              label={entries.length === 1
+                ? countryName!
+                : entry.path
+                    .split('/')
+                    .at(-1)!
+                    .replace(/\.mbtiles$/, '')}
+              value={`${new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(entry.publicationDate))} · ${new Intl.NumberFormat(getLocale(), { style: 'unit', unit: 'megabyte', maximumFractionDigits: 1 }).format(entry.size / 1_000_000)}`}
+            />
           {/each}
-        </ul>
-      </ResponsiveCard>
-    </section>
-  {/each}
+        </ResponsiveCard>
+      </section>
+    {/if}
+  {:else}
+    {#each groups as group (group.continent)}
+      <section aria-labelledby={`${componentId}-${group.continent}`}>
+        <h2 id={`${componentId}-${group.continent}`}>{group.label}</h2>
+        <ResponsiveCard>
+          <ul>
+            {#each group.countries as country (country.code)}
+              <li>
+                <button
+                  class="country"
+                  disabled={importPending}
+                  onclick={() => onCountry(country.code)}
+                >
+                  <span
+                    aria-hidden="true"
+                    class={`flag i-circle-flags-${country.code.toLowerCase()}`}
+                  ></span>
+                  <span class="name">{country.name}</span>
+                  <span aria-hidden="true" class="i-mdi-chevron-right"></span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        </ResponsiveCard>
+      </section>
+    {/each}
+  {/if}
 </ScreenScaffold>
 
 <style>
@@ -122,6 +193,13 @@
   }
   li + li {
     border-block-start: 1px solid var(--color-separator);
+  }
+  section :global(.list-row + .list-row) {
+    border-block-start: 1px solid var(--color-separator);
+  }
+  section :global(.list-row) {
+    padding-inline: calc(var(--space-5) + var(--card-safe-area-start))
+      calc(var(--space-5) + var(--card-safe-area-end));
   }
   .country {
     display: flex;

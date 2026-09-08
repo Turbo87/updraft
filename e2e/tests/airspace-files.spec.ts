@@ -10,12 +10,13 @@ type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClie
 test('imports two airspace files, replaces one, and removes only the confirmed file', async ({
   page,
 }) => {
-  await page.goto('/settings/data?testMode=1');
+  await page.goto('/settings?testMode=1');
+  await page.getByRole('link', { name: 'Data', exact: true }).click();
   await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
     let client = (window as TestWindow).__updraftFake!;
     let commands = (window as TestWindow).__updraftApp!.client;
-    let imports = ['a.txt', 'b.txt', 'a.txt'];
+    let imports = ['a.txt', 'b.txt', 'a.txt', 'a.txt'];
     let sources = new Map<string, number>();
     let generation = 0;
     commands.selectDataFile = async () => {
@@ -42,10 +43,18 @@ test('imports two airspace files, replaces one, and removes only the confirmed f
   let first = page.getByRole('button', { name: /^a\.txt Imported/ });
   let second = page.getByRole('button', { name: /^b\.txt Imported/ });
   await importButton.click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
   await expect(first).toBeVisible();
   await importButton.click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
   await expect(second).toBeVisible();
   await importButton.click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.evaluate(() => history.back());
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Add data', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
   await page.getByRole('button', { name: 'Replace file', exact: true }).click();
   await expect(first).toContainText('2 airspaces');
   await expect(second).toContainText('1 airspace');

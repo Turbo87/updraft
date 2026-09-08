@@ -12,6 +12,8 @@
     title: 'Screens/DataLibrary',
     component: DataLibrary,
     args: {
+      catalog: null,
+      onRetryCatalog: fn(),
       onRemove: fn(),
       importer: {
         selectDataFile: fn(async () => null),

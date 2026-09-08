@@ -354,5 +354,8 @@
   "data_oceania": "Oceania",
   "data_europe": "Europe",
   "data_north_america": "North America",
-  "data_south_america": "South America"
+  "data_south_america": "South America",
+  "back_to_add_data": "Back to Add data",
+  "data_catalog_refresh_failed": "Could not refresh the catalog. Try again.",
+  "data_catalog_subscription_failed": "Could not load the catalog. Restart the app to try again."
 }

@@ -51,3 +51,42 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
     )
     .toEqual({ current: { cached, refreshing: false, error: true }, error: false });
 });
+
+test('opens the live catalog and country preview without opening the file picker', async ({
+  page,
+}) => {
+  await page.goto('/settings?testMode=1');
+  await page.getByRole('link', { name: 'Data', exact: true }).click();
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.evaluate(() => {
+    let app = (window as TestWindow).__updraftApp!;
+    app.client.selectDataFile = async () => {
+      throw new Error('Unexpected file picker');
+    };
+    (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
+      cached: {
+        entries: [
+          {
+            path: 'Europe/Malta.mbtiles',
+            countryCode: 'MT',
+            continent: 'europe',
+            size: 458752,
+            publicationDate: '2026-09-08',
+          },
+        ],
+        checkedAt: 0,
+      },
+      refreshing: false,
+      error: false,
+    });
+  });
+  await page.getByRole('button', { name: 'Add data', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Add data', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Malta', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Malta', exact: true })).toBeVisible();
+  await expect(page.getByText('Sep 8, 2026', { exact: false })).toBeVisible();
+  await page.evaluate(() => history.back());
+  await expect(page.getByRole('heading', { name: 'Add data', exact: true })).toBeVisible();
+  await page.evaluate(() => history.back());
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+});

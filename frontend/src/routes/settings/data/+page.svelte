@@ -4,18 +4,19 @@
   import { getAppContext } from '$lib/app-context';
   import DataLibrary from '$lib/DataLibrary.svelte';
 
-  const { client, airspace, basemaps, terrain, waypoints, dataActivation } = getAppContext();
-  let detailsOpen = $state(false);
+  const { client, airspace, basemaps, terrain, waypoints, dataActivation, enrouteCatalog } =
+    getAppContext();
+  let library: { handleBack(): boolean };
 
   beforeNavigate((navigation) => {
-    if (detailsOpen && navigation.type === 'popstate') {
-      navigation.cancel();
-      detailsOpen = false;
-    }
+    if (navigation.type === 'popstate' && library.handleBack()) navigation.cancel();
   });
 </script>
 
 <DataLibrary
+  catalog={enrouteCatalog.current}
+  catalogError={enrouteCatalog.error}
+  onRetryCatalog={() => client.refreshEnrouteCatalog()}
   basemaps={basemaps.current}
   basemapError={basemaps.error}
   terrain={terrain.current}
@@ -24,7 +25,7 @@
   activation={dataActivation}
   airspace={airspace.current}
   waypoints={waypoints.current}
-  bind:detailsOpen
+  bind:this={library}
   onRemove={(type, name) =>
     type === 'terrain'
       ? client.removeTerrain(name)

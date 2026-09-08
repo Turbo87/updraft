@@ -4,7 +4,6 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use updraft_core::{GetWaypointCatalog, ReplaceWaypointCatalog};
-use updraft_waypoint::WaypointImportError;
 
 pub struct WaypointCommandState {
     storage: WaypointStorage,
@@ -38,7 +37,6 @@ pub enum WaypointCommandError {
     Busy,
     ReadFailed,
     MissingName,
-    ParseFailed,
     StorageFailed,
     DriverStopped,
     WorkerFailed,
@@ -76,15 +74,11 @@ pub async fn import_waypoints(
             .await
             .map_err(|_| WaypointCommandError::WorkerFailed)?
             .map_err(|error| {
-                if error.downcast_ref::<WaypointImportError>().is_some() {
-                    WaypointCommandError::ParseFailed
-                } else {
-                    tracing::warn!(%error, "Could not store waypoint source");
-                    WaypointCommandError::StorageFailed
-                }
+                tracing::warn!(%error, "Could not store waypoint source");
+                WaypointCommandError::StorageFailed
             })?;
     let mut replacement = (*catalog).clone();
-    replacement.sources.insert(name.clone(), Ok(dataset));
+    replacement.sources.insert(name.clone(), dataset);
     handle
         .send(ReplaceWaypointCatalog(Arc::new(replacement)))
         .await

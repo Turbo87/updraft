@@ -8,7 +8,7 @@ import WaypointSettings from './WaypointSettings.svelte';
 
 it('imports through the fixed action bar and reports command failures', async () => {
   let onImport = vi.fn(async () => {
-    throw 'parseFailed';
+    throw 'storageFailed';
   });
   await render(WaypointSettings, {
     status: { generation: 0, sources: [] },
@@ -22,7 +22,7 @@ it('imports through the fixed action bar and reports command failures', async ()
   expect(onImport).toHaveBeenCalledOnce();
   await expect
     .element(page.getByRole('alert'))
-    .toHaveTextContent('The file has an invalid header or no valid waypoints.');
+    .toHaveTextContent('Could not update waypoint files. Please try again.');
 });
 
 it('shows each source and its import warnings', async () => {
@@ -40,6 +40,7 @@ it('shows each source and its import warnings', async () => {
           ],
         },
         { type: 'unavailable', sourceName: 'b.cup', error: 'readFailed' },
+        { type: 'unavailable', sourceName: 'c.cup', error: 'parseFailed' },
       ],
     },
     onImport: async () => ({ type: 'cancelled' }),
@@ -50,6 +51,9 @@ it('shows each source and its import warnings', async () => {
   await page.getByText('Import warnings (2)').click();
   await expect.element(page.getByText('Line 4: Skipped waypoint: invalid latitude')).toBeVisible();
   await expect.element(page.getByText('Could not read this stored file.')).toBeVisible();
+  await expect
+    .element(page.getByText('The file has an invalid header or no valid waypoints.'))
+    .toBeVisible();
 });
 
 it('requires confirmation before removal and reports removal failure', async () => {

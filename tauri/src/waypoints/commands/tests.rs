@@ -97,17 +97,31 @@ async fn cancellation_does_not_create_a_source() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn invalid_replacement_preserves_the_stored_source() {
+#[tracing_test::traced_test]
+async fn invalid_replacement_publishes_an_unavailable_source() {
+    use updraft_core::WaypointLoadError;
+
     let dir = assert_ok!(tempfile::tempdir());
     let storage = WaypointStorage::new(dir.path().to_owned());
-    assert_ok!(storage.import("local.cup", CUP));
-    let original = assert_ok!(storage.load());
+    assert_ok!(assert_ok!(storage.import("local.cup", CUP)));
+    assert_ok!(assert_ok!(storage.import("other.cup", CUP)));
+    let original = Arc::new(assert_ok!(storage.load()));
     let app = app(storage.clone(), Some(b"invalid"), driver());
+    let handle = app.state::<DriverHandle>();
+    assert_ok!(handle.send(ReplaceWaypointCatalog(original.clone())).await);
     assert_eq!(
-        assert_err!(invoke(&app, "import_waypoints", json!({}))),
-        json!("parseFailed")
+        assert_ok!(invoke(&app, "import_waypoints", json!({}))),
+        json!({"type": "imported", "sourceName": "local.cup"})
     );
-    assert_eq!(assert_ok!(storage.load()), original);
+    let catalog = assert_ok!(handle.send(GetWaypointCatalog).await);
+    assert_eq!(
+        catalog.sources["local.cup"],
+        Err(WaypointLoadError::ParseFailed)
+    );
+    assert_eq!(catalog.sources["other.cup"], original.sources["other.cup"]);
+    assert_eq!(assert_ok!(storage.load()), *catalog);
+    let logs = tracing_test::internal::global_buf().lock().unwrap().clone();
+    assert!(String::from_utf8_lossy(&logs).contains("Could not parse stored waypoint source"));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -126,8 +140,8 @@ async fn stopped_driver_does_not_change_storage() {
 async fn removal_clears_only_the_selected_file() {
     let dir = assert_ok!(tempfile::tempdir());
     let storage = WaypointStorage::new(dir.path().to_owned());
-    assert_ok!(storage.import("a.cup", CUP));
-    assert_ok!(storage.import("b.cup", CUP));
+    assert_ok!(assert_ok!(storage.import("a.cup", CUP)));
+    assert_ok!(assert_ok!(storage.import("b.cup", CUP)));
     let catalog = Arc::new(assert_ok!(storage.load()));
     let app = app(storage.clone(), None, driver());
     assert_ok!(
@@ -150,7 +164,7 @@ async fn removal_clears_only_the_selected_file() {
 async fn failed_removal_keeps_the_active_catalog() {
     let dir = assert_ok!(tempfile::tempdir());
     let storage = WaypointStorage::new(dir.path().to_owned());
-    assert_ok!(storage.import("a.cup", CUP));
+    assert_ok!(assert_ok!(storage.import("a.cup", CUP)));
     let catalog = Arc::new(assert_ok!(storage.load()));
     let app = app(storage.clone(), None, driver());
     assert_ok!(
@@ -188,9 +202,9 @@ async fn failed_waypoint_publication_keeps_stored_changes() {
     ] {
         let dir = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(dir.path().to_owned());
-        assert_ok!(storage.import("other.cup", CUP));
+        assert_ok!(assert_ok!(storage.import("other.cup", CUP)));
         if installed {
-            assert_ok!(storage.import("local.cup", CUP));
+            assert_ok!(assert_ok!(storage.import("local.cup", CUP)));
         }
         let original = assert_ok!(storage.load());
         let mut core = Core::new(SettingsSnapshot::default());

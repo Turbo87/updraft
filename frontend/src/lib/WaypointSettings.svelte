@@ -24,8 +24,8 @@
     error = '';
     try {
       await onImport();
-    } catch (cause) {
-      error = cause === 'parseFailed' ? m.waypoints_parse_failed() : m.waypoints_command_failed();
+    } catch {
+      error = m.waypoints_command_failed();
     } finally {
       pending = false;
     }

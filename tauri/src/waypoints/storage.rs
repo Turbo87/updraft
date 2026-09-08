@@ -20,12 +20,7 @@ impl WaypointStorage {
         let mut catalog = WaypointCatalog::default();
         for (name, path) in self.files.entries(|_, error| Err(error))? {
             let dataset = match std::fs::read(&path) {
-                Ok(bytes) => WaypointDataset::from_cup(&bytes)
-                    .map(Arc::new)
-                    .map_err(|error| {
-                        tracing::warn!(%error, "Could not parse stored waypoint source");
-                        WaypointLoadError::ParseFailed
-                    }),
+                Ok(bytes) => parse_waypoints(&bytes),
                 Err(error) => {
                     tracing::warn!(%error, "Could not read stored waypoint source");
                     Err(WaypointLoadError::ReadFailed)
@@ -36,15 +31,28 @@ impl WaypointStorage {
         Ok(catalog)
     }
 
-    pub fn import(&self, name: &str, bytes: &[u8]) -> anyhow::Result<Arc<WaypointDataset>> {
-        let dataset = Arc::new(WaypointDataset::from_cup(bytes)?);
+    /// Stores the original bytes even when parsing returns an error.
+    pub fn import(
+        &self,
+        name: &str,
+        bytes: &[u8],
+    ) -> io::Result<Result<Arc<WaypointDataset>, WaypointLoadError>> {
         self.files.replace(name, bytes)?;
-        Ok(dataset)
+        Ok(parse_waypoints(bytes))
     }
 
     pub fn remove(&self, name: &str) -> io::Result<()> {
         self.files.remove(name)
     }
+}
+
+fn parse_waypoints(bytes: &[u8]) -> Result<Arc<WaypointDataset>, WaypointLoadError> {
+    WaypointDataset::from_cup(bytes)
+        .map(Arc::new)
+        .map_err(|error| {
+            tracing::warn!(%error, "Could not parse stored waypoint source");
+            WaypointLoadError::ParseFailed
+        })
 }
 
 #[cfg(test)]
@@ -59,10 +67,10 @@ mod tests {
     fn restores_sources_and_replaces_only_the_matching_name() {
         let dir = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(dir.path().to_owned());
-        assert_ok!(storage.import("a.cup", CUP));
-        assert_ok!(storage.import("b.cup", CUP));
+        assert_ok!(assert_ok!(storage.import("a.cup", CUP)));
+        assert_ok!(assert_ok!(storage.import("b.cup", CUP)));
         let replacement = String::from_utf8_lossy(CUP).replace("Field", "Replacement");
-        assert_ok!(storage.import("a.cup", replacement.as_bytes()));
+        assert_ok!(assert_ok!(storage.import("a.cup", replacement.as_bytes())));
         let catalog = assert_ok!(storage.load());
         assert_eq!(catalog.sources.len(), 2);
         assert_eq!(
@@ -101,8 +109,8 @@ mod tests {
             format!("{}.cup", "a".repeat(122)),
             format!("{}.cup", "ä".repeat(100)),
         ] {
-            assert_ok!(storage.import(&name, CUP));
-            assert_ok!(storage.import(&name, CUP));
+            assert_ok!(assert_ok!(storage.import(&name, CUP)));
+            assert_ok!(assert_ok!(storage.import(&name, CUP)));
             let catalog = assert_ok!(storage.load());
             assert_eq!(
                 assert_ok!(catalog.sources[&name].as_ref()).waypoints()[0].name,
@@ -123,14 +131,14 @@ mod tests {
         let path = storage.files.path("a.cup");
         let replacement = String::from_utf8_lossy(CUP).replace("Field", "Replacement");
         for replace in [false, true] {
-            assert_ok!(storage.import("a.cup", CUP));
+            assert_ok!(assert_ok!(storage.import("a.cup", CUP)));
             assert_ok!(std::fs::set_permissions(
                 &path,
                 std::fs::Permissions::from_mode(0o000)
             ));
             assert_err!(std::fs::read(&path));
             if replace {
-                assert_ok!(storage.import("a.cup", replacement.as_bytes()));
+                assert_ok!(assert_ok!(storage.import("a.cup", replacement.as_bytes())));
                 assert_eq!(assert_ok!(std::fs::read(&path)), replacement.as_bytes());
             } else {
                 assert_ok!(storage.remove("a.cup"));
@@ -140,16 +148,22 @@ mod tests {
     }
 
     #[test]
-    fn failed_import_preserves_original_bytes() {
+    #[tracing_test::traced_test]
+    fn invalid_imports_retain_bytes_and_reload_errors() {
         let dir = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(dir.path().to_owned());
-        assert_ok!(storage.import("../a.cup", CUP));
-        assert_err!(storage.import("../a.cup", b"invalid"));
-        assert_eq!(
-            assert_ok!(std::fs::read(storage.files.path("../a.cup"))),
-            CUP
-        );
-        assert_eq!(assert_ok!(storage.load()).sources.len(), 1);
+        assert_ok!(assert_ok!(storage.import("../a.cup", CUP)));
+        assert_ok!(assert_ok!(storage.import("other.cup", CUP)));
+        for name in ["../a.cup", "new.cup"] {
+            let source = assert_ok!(storage.import(name, b"invalid"));
+            assert_eq!(source, Err(WaypointLoadError::ParseFailed));
+            let stored = assert_ok!(std::fs::read(storage.files.path(name)));
+            assert_eq!(stored, b"invalid");
+            let catalog = assert_ok!(WaypointStorage::new(dir.path().to_owned()).load());
+            assert_eq!(catalog.sources[name], Err(WaypointLoadError::ParseFailed));
+            assert_ok!(&catalog.sources["other.cup"]);
+        }
+        assert!(logs_contain("Could not parse stored waypoint source"));
     }
     #[cfg(unix)]
     #[test]
@@ -158,7 +172,7 @@ mod tests {
         let directory = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(directory.path().to_owned());
         let name = format!("{}.cup", "a".repeat(150));
-        assert_ok!(storage.import(&name, CUP));
+        assert_ok!(assert_ok!(storage.import(&name, CUP)));
         let path = storage.files.path(&name);
         let parent = path.parent().unwrap();
         assert_ok!(std::fs::set_permissions(
@@ -178,7 +192,7 @@ mod tests {
     fn malformed_stored_filenames_fail_catalog_loading() {
         let directory = assert_ok!(tempfile::tempdir());
         let storage = WaypointStorage::new(directory.path().to_owned());
-        assert_ok!(storage.import("valid.cup", CUP));
+        assert_ok!(assert_ok!(storage.import("valid.cup", CUP)));
         assert_ok!(std::fs::write(
             directory.path().join("waypoints/zz.cup"),
             CUP

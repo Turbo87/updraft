@@ -8,6 +8,7 @@ use std::num::NonZeroU64;
 use time::{Date, macros::format_description};
 
 pub mod catalog;
+pub mod download;
 mod regions;
 pub mod storage;
 

@@ -9,6 +9,7 @@ use time::{Date, macros::format_description};
 
 pub mod catalog;
 mod regions;
+pub mod storage;
 
 #[derive(Debug)]
 pub struct BasemapEntry {

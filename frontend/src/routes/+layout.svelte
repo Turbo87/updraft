@@ -19,6 +19,7 @@
   import { AirspaceStore } from '$lib/stores/airspace.svelte';
   import { BasemapsStore } from '$lib/stores/basemaps.svelte';
   import { DataActivation } from '$lib/stores/data-activation.svelte';
+  import { EnrouteCatalogStore } from '$lib/stores/enroute-catalog.svelte';
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
   import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
@@ -43,6 +44,7 @@
   const airspace = new AirspaceStore();
   const basemaps = new BasemapsStore();
   const terrain = new TerrainStore();
+  const enrouteCatalog = new EnrouteCatalogStore();
   const waypoints = new WaypointsStore();
   const mapState = new MapState();
   const settings = new SettingsStore();
@@ -58,6 +60,7 @@
     airspace,
     basemaps,
     terrain,
+    enrouteCatalog,
     waypoints,
     externalDevices,
     instruments,
@@ -122,6 +125,22 @@
     return () => {
       void subscription.close().catch((error: unknown) => {
         console.warn('Could not close terrain subscription', error);
+      });
+    };
+  });
+
+  onMount(() => {
+    let subscription = client.subscribeEnrouteCatalog(
+      (status) => {
+        enrouteCatalog.current = status;
+      },
+      () => {
+        enrouteCatalog.error = true;
+      },
+    );
+    return () => {
+      void subscription.close().catch((error: unknown) => {
+        console.warn('Could not close Enroute catalog subscription', error);
       });
     };
   });

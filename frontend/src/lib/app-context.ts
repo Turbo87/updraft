@@ -3,6 +3,7 @@ import type { MapState } from '$lib/map-state.svelte';
 import type { AirspaceStore } from '$lib/stores/airspace.svelte';
 import type { BasemapsStore } from '$lib/stores/basemaps.svelte';
 import type { DataActivation } from '$lib/stores/data-activation.svelte';
+import type { EnrouteCatalogStore } from '$lib/stores/enroute-catalog.svelte';
 import type { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
 import type { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
 import type { InstrumentsStore } from '$lib/stores/instruments.svelte';
@@ -18,6 +19,7 @@ export type AppContext = {
   airspace: AirspaceStore;
   basemaps: BasemapsStore;
   terrain: TerrainStore;
+  enrouteCatalog: EnrouteCatalogStore;
   dataActivation: DataActivation;
   waypoints: WaypointsStore;
   externalDevices: ExternalDevicesStore;

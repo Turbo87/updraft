@@ -86,6 +86,8 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("updraft", updraft_uri::handle_updraft_uri)
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
+            basemap::commands::subscribe_basemaps,
+            basemap::commands::unsubscribe_basemaps,
             data_import::select_data_file,
             data_import::import_data_file,
             data_import::discard_data_file,

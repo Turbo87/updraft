@@ -98,6 +98,9 @@ shell owns platform storage and the frontend-specific resource representation.
 The shell also reads offline Enroute MBTiles files and serves vector tiles
 under `updraft://localhost/basemap/`. SQLite access and gzip decompression run
 on blocking workers. The frontend uses Tauri's platform-specific resource URLs.
+A native basemap status subscription sends the initial generation and file
+states through a Tauri channel. It exposes filenames without filesystem paths
+or raw load errors. The subscriber can explicitly close its channel registration.
 
 Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under

@@ -224,3 +224,92 @@ fn unreadable_disabled_marker_fails_the_scan() {
 
     claims::assert_err!(Basemaps::load(directory.path()).map(|_| ()));
 }
+
+#[test]
+#[tracing_test::traced_test]
+fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
+    use serde_json::{Value, json};
+    let directory = tempfile::tempdir().unwrap();
+    let active = directory.path().join("active.mbtiles");
+    let disabled = directory.path().join("disabled.mbtiles");
+    write_basemap(&active, &[]);
+    assert_ok!(fs::write(&disabled, b"not sqlite"));
+    assert_ok!(fs::write(disabled.with_extension("mbtiles.disabled"), b""));
+    assert_ok!(fs::write(
+        directory.path().join("invalid.mbtiles"),
+        b"not sqlite"
+    ));
+    let basemaps = Arc::new(Mutex::new(assert_ok!(Basemaps::load(directory.path()))));
+    let messages = Arc::new(Mutex::new(Vec::<Value>::new()));
+    let received = messages.clone();
+    let app = tauri::test::mock_builder()
+        .manage(basemaps.clone())
+        .channel_interceptor(move |_, _, _, body| {
+            received
+                .lock()
+                .unwrap()
+                .push(body.clone().deserialize().unwrap());
+            true
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::subscribe_basemaps,
+            commands::unsubscribe_basemaps
+        ])
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .unwrap();
+    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let invoke = |command: &str, body| {
+        let request = tauri::webview::InvokeRequest {
+            cmd: command.into(),
+            callback: tauri::ipc::CallbackFn(0),
+            error: tauri::ipc::CallbackFn(1),
+            url: "tauri://localhost".parse().unwrap(),
+            body: tauri::ipc::InvokeBody::Json(body),
+            headers: Default::default(),
+            invoke_key: tauri::test::INVOKE_KEY.into(),
+        };
+        tauri::test::get_ipc_response(&window, request)
+            .map(|response| response.deserialize::<Value>().unwrap())
+    };
+    for id in [42, 43] {
+        let body = json!({"channel":format!("__CHANNEL__:{id}")});
+        assert_eq!(assert_ok!(invoke("subscribe_basemaps", body)), Value::Null);
+    }
+    let messages = messages.lock().unwrap();
+    assert_eq!(messages.len(), 2);
+    assert_eq!(messages[0], messages[1]);
+    insta::assert_json_snapshot!(messages[0], @r#"
+    {
+      "generation": 0,
+      "sources": [
+        {
+          "sourceName": "active.mbtiles",
+          "type": "active"
+        },
+        {
+          "sourceName": "disabled.mbtiles",
+          "type": "disabled"
+        },
+        {
+          "sourceName": "invalid.mbtiles",
+          "type": "unavailable"
+        }
+      ]
+    }
+    "#);
+    for _ in 0..2 {
+        let body = json!({"channelId":42});
+        assert_eq!(
+            assert_ok!(invoke("unsubscribe_basemaps", body)),
+            Value::Null
+        );
+    }
+    let basemaps = basemaps.lock().unwrap();
+    assert_eq!(
+        basemaps.subscribers.keys().copied().collect::<Vec<_>>(),
+        [43]
+    );
+    assert!(logs_contain("Could not open offline basemap"));
+}

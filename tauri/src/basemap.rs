@@ -1,3 +1,4 @@
+use self::commands::BasemapStatus;
 use anyhow::{Context, Result, ensure};
 use flate2::read::GzDecoder;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -7,7 +8,10 @@ use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::http::{Response, StatusCode, header};
+use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
+
+pub mod commands;
 
 const TILE_QUERY: &str =
     "SELECT tile_data FROM tiles WHERE zoom_level = ?1 AND tile_column = ?2 AND tile_row = ?3";
@@ -15,6 +19,8 @@ const TILE_QUERY: &str =
 #[derive(Default)]
 pub struct Basemaps {
     files: BTreeMap<PathBuf, BasemapSource>,
+    generation: u64,
+    subscribers: BTreeMap<u32, Channel<BasemapStatus>>,
 }
 
 #[derive(Debug)]
@@ -55,7 +61,10 @@ impl Basemaps {
             }
             files.insert(path, source);
         }
-        Ok(Self { files })
+        Ok(Self {
+            files,
+            ..Self::default()
+        })
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {

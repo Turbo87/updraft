@@ -17,6 +17,7 @@
   import { MapState } from '$lib/map-state.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { AirspaceStore } from '$lib/stores/airspace.svelte';
+  import { BasemapsStore } from '$lib/stores/basemaps.svelte';
   import { DataActivation } from '$lib/stores/data-activation.svelte';
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
   import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
@@ -39,6 +40,7 @@
   const externalDevices = new ExternalDevicesStore();
   const instruments = new InstrumentsStore();
   const airspace = new AirspaceStore();
+  const basemaps = new BasemapsStore();
   const waypoints = new WaypointsStore();
   const mapState = new MapState();
   const settings = new SettingsStore();
@@ -52,6 +54,7 @@
     client,
     dataActivation,
     airspace,
+    basemaps,
     waypoints,
     externalDevices,
     instruments,
@@ -84,6 +87,22 @@
         applyLocaleSetting(topic.value.locale);
       }
     });
+  });
+
+  onMount(() => {
+    let subscription = client.subscribeBasemaps(
+      (status) => {
+        basemaps.current = status;
+      },
+      () => {
+        basemaps.error = true;
+      },
+    );
+    return () => {
+      void subscription.close().catch((error: unknown) => {
+        console.warn('Could not close basemap subscription', error);
+      });
+    };
   });
 
   $effect(() => {

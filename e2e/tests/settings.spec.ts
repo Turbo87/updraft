@@ -437,6 +437,12 @@ for (let [width, height, theme] of [
         sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
       });
     });
+    await expect
+      .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.basemaps?.current))
+      .toEqual({
+        generation: 0,
+        sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
+      });
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await page.getByRole('button', { name: /^local.mbtiles/ }).click();
     await expect(page.getByRole('dialog').getByText('Enabled', { exact: true })).toBeVisible();
@@ -450,7 +456,21 @@ for (let [width, height, theme] of [
     await page.screenshot({ path: testInfo.outputPath('basemap-details.png') });
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitBasemaps({
+        generation: 2,
+        sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
+      }),
+    );
+    await expect
+      .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.basemaps?.current))
+      .toEqual({
+        generation: 2,
+        sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
+      });
     await page.getByRole('link', { name: 'Data', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^local.mbtiles/ })).toContainText('Disabled');
+    await expect(page.getByRole('button', { name: /^local.mbtiles/ })).toContainText(
+      'Could not load the file.',
+    );
   });
 }

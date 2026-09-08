@@ -669,7 +669,6 @@
           <Dialog.Close class="data-dialog-close" aria-label={m.data_close()}>×</Dialog.Close>
         </header>
         <label class="activation">
-          <strong>{m.data_enabled()}</strong>
           <span class="activation-control">
             <input
               type="checkbox"
@@ -686,6 +685,7 @@
               ><span class="i-mdi-check-bold"></span></span
             >
           </span>
+          <strong>{m.data_enabled()}</strong>
         </label>
         {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
           <p class="error" role="alert">{m.data_activation_failed()}</p>
@@ -1033,9 +1033,6 @@
     padding-block: var(--space-4);
     border-block: 1px solid var(--color-separator);
     cursor: pointer;
-  }
-  .activation > span:first-child {
-    flex: 1;
   }
   .activation strong {
     font: var(--text-row-label);

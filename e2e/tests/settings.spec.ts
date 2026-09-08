@@ -11,10 +11,12 @@ const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
 type TestWindow = Window & {
   __airspaceImportCalls?: number;
   __quitCalls?: number;
+  __releaseActivation?: () => void;
   __updraftApp?: AppContext;
   __updraftFake?: {
     emit: (topic: unknown) => void;
     importAirspace: () => Promise<{ type: 'cancelled' }>;
+    setWaypointsEnabled: (name: string, enabled: boolean) => Promise<void>;
     quit: () => Promise<void>;
   };
 };
@@ -345,12 +347,35 @@ test('the Data library handles live statuses, file details, and removal', async 
   await row.click();
   let dialog = page.getByRole('dialog', { name: 'local.cup' });
   await expect(dialog).toBeVisible();
+  await page.evaluate(() => {
+    let testWindow = window as TestWindow;
+    let client = testWindow.__updraftFake!;
+    let original = client.setWaypointsEnabled.bind(client);
+    let gate = new Promise<void>((resolve) => {
+      testWindow.__releaseActivation = resolve;
+    });
+    client.setWaypointsEnabled = async (name, enabled) => {
+      await gate;
+      await original(name, enabled);
+    };
+  });
+  await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Data', exact: true }).click();
+  await row.click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
+  await page.evaluate(() => (window as TestWindow).__releaseActivation!());
+  await expect(page.getByRole('button', { name: 'Remove from device' })).toBeEnabled();
+  await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await expect(dialog.getByText('2', { exact: true })).toBeVisible();
   await page.evaluate(() => history.back());
   await expect(dialog).not.toBeVisible();
   await expect(page).toHaveURL(/\/settings\/data$/);
   await row.click();
   await expect(dialog).toBeVisible();
-  await page.mouse.click(8, 100);
+  await page.locator('.data-dialog-overlay').click({ position: { x: 8, y: 100 } });
   await expect(dialog).not.toBeVisible();
   await row.click();
   await page.getByRole('button', { name: 'Remove from device' }).click();
@@ -358,6 +383,9 @@ test('the Data library handles live statuses, file details, and removal', async 
   await expect(row).not.toBeVisible();
   await expect(page.getByRole('button', { name: /^local\.txt/ })).toBeVisible();
   await page.getByRole('button', { name: /^local\.txt/ }).click();
+  await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
+  await expect(page.getByRole('dialog').getByText('Imported · could not be read')).toBeVisible();
   await page.getByRole('button', { name: 'Remove from device' }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByText('No data on this device')).toBeVisible();

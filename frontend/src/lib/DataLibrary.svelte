@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AirspaceStatus } from './protocol/generated/AirspaceStatus';
   import type { WaypointStatus } from './protocol/generated/WaypointStatus';
+  import type { DataActivation } from './stores/data-activation.svelte';
 
   import { Dialog } from 'bits-ui';
 
@@ -18,10 +19,17 @@
     waypoints: WaypointStatus;
     detailsOpen?: boolean;
     onRemove: (type: DatasetType, name: string) => Promise<void>;
+    activation: Pick<DataActivation, 'isEnabled' | 'hasError' | 'setEnabled' | 'pending'>;
   };
   type Source = AirspaceStatus['sources'][number] | WaypointStatus['sources'][number];
 
-  let { airspace, waypoints, detailsOpen = $bindable(false), onRemove }: Props = $props();
+  let {
+    airspace,
+    waypoints,
+    detailsOpen = $bindable(false),
+    onRemove,
+    activation,
+  }: Props = $props();
   let selected = $state<{ type: DatasetType; name: string }>();
   let opener: HTMLButtonElement | undefined;
   let removeOpen = $state(false);
@@ -47,6 +55,9 @@
   const selectedGroup = $derived(groups.find((group) => group.type === selected?.type));
   const selectedSource = $derived(
     selectedGroup?.sources.find((source) => source.sourceName === selected?.name),
+  );
+  const selectedEnabled = $derived(
+    selected && selectedSource && activation.isEnabled(selected.type, selectedSource),
   );
 
   $effect(() => {
@@ -76,8 +87,8 @@
     return a.sourceName.localeCompare(b.sourceName, getLocale());
   }
 
-  function metadata(source: Source): string {
-    if (source.type === 'disabled') return m.data_imported();
+  function metadata(source: Source, enabled = source.type !== 'disabled'): string {
+    if (!enabled || source.type === 'disabled') return m.data_imported();
     if (source.type === 'unavailable') {
       switch (source.error) {
         case 'readFailed':
@@ -121,9 +132,10 @@
       <ResponsiveCard>
         <ul class="files">
           {#each group.sources.toSorted(compareSources) as source (source.sourceName)}
+            {let enabled = $derived(activation.isEnabled(group.type, source))}
             <li
-              class:disabled={source.type === 'disabled'}
-              class:unavailable={source.type === 'unavailable'}
+              class:disabled={!enabled}
+              class:unavailable={source.type === 'unavailable' && enabled}
             >
               <button
                 class="file-row"
@@ -137,9 +149,12 @@
                 <span class="description">
                   <span class="name">
                     <span class="filename">{source.sourceName}</span>
-                    {#if source.type === 'disabled'}<StatusPill label={m.data_disabled()} />{/if}
+                    {#if !enabled}<StatusPill label={m.data_disabled()} />{/if}
                   </span>
-                  <span class="metadata">{metadata(source)}</span>
+                  <span class="metadata">{metadata(source, enabled)}</span>
+                  {#if activation.hasError(group.type, source.sourceName)}<span class="error"
+                      >{m.data_activation_failed()}</span
+                    >{/if}
                 </span>
                 <span aria-hidden="true" class="i-mdi-chevron-right type-icon"></span>
               </button>
@@ -168,16 +183,38 @@
           </div>
           <Dialog.Close class="data-dialog-close" aria-label={m.data_close()}>×</Dialog.Close>
         </header>
+        <label class="activation">
+          <span>
+            <strong>{m.data_enabled()}</strong>
+            <span id="data-enabled-hint">{m.data_enabled_hint()}</span>
+          </span>
+          <span class="activation-control">
+            <input
+              type="checkbox"
+              role="switch"
+              aria-label={m.data_enabled()}
+              aria-describedby="data-enabled-hint"
+              checked={selectedEnabled}
+              onchange={(event) => {
+                let enabled = event.currentTarget.checked;
+                event.currentTarget.checked = !!selectedEnabled;
+                activation.setEnabled(selectedGroup.type, selectedSource.sourceName, enabled);
+              }}
+            />
+            <span class="activation-check" aria-hidden="true"
+              ><span class="i-mdi-check-bold"></span></span
+            >
+          </span>
+        </label>
+        {#if activation.hasError(selectedGroup.type, selectedSource.sourceName)}
+          <p class="error" role="alert">{m.data_activation_failed()}</p>
+        {/if}
         <dl>
           <div>
             <dt>{m.data_source()}</dt>
             <dd>{m.data_imported()}</dd>
           </div>
-          <div>
-            <dt>{m.data_status()}</dt>
-            <dd>{selectedSource.type === 'disabled' ? m.data_disabled() : m.data_enabled()}</dd>
-          </div>
-          {#if selectedSource.type === 'active'}
+          {#if selectedEnabled && selectedSource.type === 'active'}
             <div>
               <dt>{selectedGroup.label}</dt>
               <dd>
@@ -188,9 +225,9 @@
             </div>
           {/if}
         </dl>
-        {#if selectedSource.type === 'unavailable'}
+        {#if selectedEnabled && selectedSource.type === 'unavailable'}
           <p class="error">{metadata(selectedSource)}</p>
-        {:else if selectedSource.type === 'active' && 'warnings' in selectedSource && selectedSource.warnings.length}
+        {:else if selectedEnabled && selectedSource.type === 'active' && 'warnings' in selectedSource && selectedSource.warnings.length}
           <ul class="diagnostics">
             {#each selectedSource.warnings as warning (warning)}
               <li>
@@ -202,6 +239,7 @@
           </ul>
         {/if}
         <Button
+          disabled={activation.pending}
           variant="destructive-outline"
           size="large"
           style="width: 100%"
@@ -371,8 +409,6 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
-    padding-block-start: var(--space-4);
-    border-block-start: 1px solid var(--color-separator);
   }
   dt {
     color: var(--color-text-muted);
@@ -389,6 +425,65 @@
   }
   .error {
     color: var(--color-error-text);
+  }
+  .activation {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-block-start: var(--space-4);
+    padding-block: var(--space-4);
+    border-block: 1px solid var(--color-separator);
+    cursor: pointer;
+  }
+  .activation > span:first-child {
+    flex: 1;
+  }
+  .activation strong {
+    font: var(--text-row-label);
+  }
+  #data-enabled-hint {
+    display: block;
+    color: var(--color-text-muted);
+  }
+  .activation-control {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .activation input {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .activation-check {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-border-strong);
+    border-radius: 3px;
+    background: var(--color-card-surface);
+    color: var(--color-white);
+    pointer-events: none;
+  }
+  .activation-check > span {
+    font-size: 20px;
+    opacity: 0;
+  }
+  .activation input:checked + .activation-check {
+    border-color: var(--color-action-primary-surface);
+    background: var(--color-action-primary-surface);
+  }
+  .activation input:checked + .activation-check > span {
+    opacity: 1;
+  }
+  .activation input:focus-visible + .activation-check {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
   }
   @media (min-width: 545px) {
     dl {

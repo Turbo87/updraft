@@ -17,6 +17,7 @@
   import { MapState } from '$lib/map-state.svelte';
   import { getLocale } from '$lib/paraglide/runtime.js';
   import { AirspaceStore } from '$lib/stores/airspace.svelte';
+  import { DataActivation } from '$lib/stores/data-activation.svelte';
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
   import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
@@ -46,8 +47,10 @@
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
+  const dataActivation = new DataActivation(client, airspace, waypoints);
   const appContext = {
     client,
+    dataActivation,
     airspace,
     waypoints,
     externalDevices,
@@ -73,6 +76,7 @@
       instruments.apply(topic);
       airspace.apply(topic);
       waypoints.apply(topic);
+      dataActivation.apply(topic);
       settings.apply(topic);
       glidePerformance.apply(topic);
       traffic.apply(topic);

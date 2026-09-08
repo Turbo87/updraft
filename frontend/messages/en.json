@@ -358,9 +358,10 @@
   "data_warnings": "{count} warnings",
   "data_close": "Close",
   "data_source": "Source",
-  "data_status": "Status",
   "data_enabled": "Enabled",
   "data_remove": "Remove from device",
   "data_remove_description": "The file will be deleted from the device.",
-  "data_remove_failed": "Could not remove the file."
+  "data_remove_failed": "Could not remove the file.",
+  "data_enabled_hint": "Kept on the device but not drawn or used in calculations when off",
+  "data_activation_failed": "Could not change file activation."
 }

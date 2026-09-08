@@ -1,6 +1,7 @@
 import type { UpdraftClient } from '$lib/client';
 import type { MapState } from '$lib/map-state.svelte';
 import type { AirspaceStore } from '$lib/stores/airspace.svelte';
+import type { DataActivation } from '$lib/stores/data-activation.svelte';
 import type { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
 import type { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
 import type { InstrumentsStore } from '$lib/stores/instruments.svelte';
@@ -13,6 +14,7 @@ import { createContext } from 'svelte';
 export type AppContext = {
   client: UpdraftClient;
   airspace: AirspaceStore;
+  dataActivation: DataActivation;
   waypoints: WaypointsStore;
   externalDevices: ExternalDevicesStore;
   instruments: InstrumentsStore;

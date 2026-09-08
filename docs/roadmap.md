@@ -31,8 +31,8 @@ documents for accepted behavior.
 - [x] **unit-selection** — persist display units and apply them to current flight and traffic values.
 - [x] **external-device-management** — persist TCP and Bluetooth SPP devices. Add, edit, enable, disable, and delete them in Settings.
 - [x] **airspace-source-management** — import, replace by filename, and remove independent local OpenAir sources in Settings.
-- [x] **airspace-source-activation** — persist per-file activation in the shell and exclude disabled sources from map resources. Settings activation controls remain part of the installed-data library.
-- [x] **waypoint-source-activation** — persist per-file activation and exclude disabled sources from map resources and arrival calculations. Settings activation controls remain part of the installed-data library.
+- [x] **airspace-source-activation**: persist per-file activation in the shell and exclude disabled sources from map resources. Data file details provide an optimistic activation control.
+- [x] **waypoint-source-activation**: persist per-file activation and exclude disabled sources from map resources and arrival calculations. Data file details provide an optimistic activation control.
 - [x] **installed-data-library-view**: show imported airspace and waypoint files in grouped lists with counts, disabled states, and errors. File details show diagnostics and allow confirmed removal. Import remains on the existing source pages.
 - [x] **map-inspection** — open a nearby route from a map point and show current
   airspace and traffic results with detail routes.

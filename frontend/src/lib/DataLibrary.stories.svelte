@@ -9,6 +9,12 @@
     component: DataLibrary,
     args: {
       onRemove: fn(),
+      activation: {
+        pending: false,
+        isEnabled: (_type, source) => source.type !== 'disabled',
+        hasError: () => false,
+        setEnabled: fn(),
+      },
       airspace: { generation: 0, sources: [] },
       waypoints: { generation: 0, sources: [] },
     },

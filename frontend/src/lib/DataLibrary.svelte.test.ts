@@ -5,6 +5,61 @@ import { page, userEvent } from 'vitest/browser';
 import '../app.css';
 
 import DataLibrary from './DataLibrary.svelte';
+import { AirspaceStore } from './stores/airspace.svelte';
+import { DataActivation } from './stores/data-activation.svelte';
+import { WaypointsStore } from './stores/waypoints.svelte';
+
+function activation() {
+  return new DataActivation(
+    { setAirspaceEnabled: vi.fn(), setWaypointsEnabled: vi.fn() },
+    new AirspaceStore(),
+    new WaypointsStore(),
+  );
+}
+
+it('shows the latest activation choice without disabling the control', async () => {
+  let airspace = new AirspaceStore();
+  let waypoints = new WaypointsStore();
+  airspace.current = {
+    generation: 1,
+    sources: [{ type: 'unavailable', sourceName: 'broken.txt', error: 'parseFailed' }],
+  };
+  let result = Promise.withResolvers<void>();
+  let client = {
+    setAirspaceEnabled: vi.fn().mockReturnValue(result.promise),
+    setWaypointsEnabled: vi.fn(),
+  };
+  let changes = new DataActivation(client, airspace, waypoints);
+  await render(DataLibrary, {
+    airspace: airspace.current,
+    waypoints: waypoints.current,
+    activation: changes,
+    onRemove: vi.fn(),
+  });
+  await page.getByRole('button', { name: /^broken.txt/ }).click();
+  let toggle = page.getByRole('switch', { name: 'Enabled', exact: true });
+  await expect.element(toggle).toBeChecked();
+  await userEvent.keyboard('{Tab}');
+  await expect.element(toggle).toHaveFocus();
+  let input = toggle.element();
+  let visual = input.nextElementSibling!;
+  expect(getComputedStyle(input).opacity).toBe('0');
+  expect([visual.getBoundingClientRect().width, visual.getBoundingClientRect().height]).toEqual([
+    28, 28,
+  ]);
+  expect(getComputedStyle(visual).outlineStyle).toBe('solid');
+  await toggle.click();
+  await expect.element(toggle).not.toBeChecked();
+  await expect.element(toggle).toBeEnabled();
+  await expect.element(page.getByText('Imported · could not be parsed')).not.toBeInTheDocument();
+  await expect.element(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
+  result.reject(new Error('storage failed'));
+  await expect.element(toggle).toBeChecked();
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not change file activation.');
+  await userEvent.keyboard('{Escape}');
+});
 
 it('opens live file details and confirms removal separately', async () => {
   let onRemove = vi
@@ -26,7 +81,7 @@ it('opens live file details and confirms removal separately', async () => {
       },
     ],
   };
-  let view = await render(DataLibrary, { airspace, waypoints, onRemove });
+  let view = await render(DataLibrary, { airspace, waypoints, onRemove, activation: activation() });
   let row = page.getByRole('region', { name: 'Waypoints' }).getByRole('button');
   await row.click();
   let dialog = page.getByRole('dialog', { name: 'local.txt' });
@@ -66,7 +121,7 @@ it('opens live file details and confirms removal separately', async () => {
   await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument();
   await view.rerender({ airspace, waypoints: { generation: 2, sources: [] } });
   await page.getByRole('region', { name: 'Airspace' }).getByRole('button').click();
-  await expect.element(dialog.getByText('Disabled', { exact: true })).toBeVisible();
+  await expect.element(dialog.getByRole('switch', { name: 'Enabled' })).not.toBeChecked();
   await view.rerender({ airspace: { generation: 2, sources: [] } });
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
 });
@@ -80,6 +135,7 @@ it('groups and sorts sources without changing the input order', async () => {
     ],
   };
   let component = await render(DataLibrary, {
+    activation: activation(),
     onRemove: vi.fn(),
     airspace,
     waypoints: {
@@ -128,6 +184,7 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
   try {
     await page.viewport(width, 600);
     await render(DataLibrary, {
+      activation: activation(),
       onRemove: vi.fn(),
       airspace: { generation: 0, sources: [] },
       waypoints: {

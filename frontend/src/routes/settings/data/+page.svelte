@@ -4,7 +4,7 @@
   import { getAppContext } from '$lib/app-context';
   import DataLibrary from '$lib/DataLibrary.svelte';
 
-  const { client, airspace, waypoints } = getAppContext();
+  const { client, airspace, waypoints, dataActivation } = getAppContext();
   let detailsOpen = $state(false);
 
   beforeNavigate((navigation) => {
@@ -16,6 +16,7 @@
 </script>
 
 <DataLibrary
+  activation={dataActivation}
   airspace={airspace.current}
   waypoints={waypoints.current}
   bind:detailsOpen

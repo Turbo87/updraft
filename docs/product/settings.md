@@ -130,10 +130,18 @@ Select a file to open its details. The dialog shows source type, activation
 status, feature count, and current errors or waypoint warnings. Close, Escape,
 Back, and a tap outside dismiss the dialog. Back keeps the library open.
 
+The Enabled control changes immediately and stays interactive while saving.
+Activation changes run sequentially and continue after leaving Settings. The
+latest choice stays visible until the command and its source status arrive.
+A failed final change returns to the confirmed state and shows an error in
+the library and file details. An enabled file can have a parsing error.
+Disabling hides its counts and diagnostics until it is enabled again.
+
 Remove from device closes the details and opens a confirmation. Cancel returns
 to the library. A removal failure stays in the confirmation with an error and
 allows another attempt. The Airspace and Waypoints pages still provide import,
 replacement, and removal controls. An empty library explains where to import files.
+Removal is unavailable while an activation change is pending.
 
 ## Airspace source
 

@@ -60,8 +60,14 @@ it('localizes managed countries and distinguishes regions without changing file 
         })),
       },
     });
-    for (let name of ['Deutschland', 'Spanien · Mainland', 'Spanien · Canary Islands'])
-      await expect.element(page.getByText(name, { exact: true })).toBeVisible();
+    for (let name of ['Deutschland', 'Spanien · Mainland', 'Spanien · Canary Islands']) {
+      await page.getByRole('button', { name: new RegExp(`^${name} `) }).click();
+      await page.getByRole('button', { name: 'Vom Gerät entfernen', exact: true }).click();
+      await expect
+        .element(page.getByRole('alertdialog').getByRole('heading'))
+        .toHaveTextContent(`${name} entfernen?`);
+      await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    }
     await screen.rerender({ catalog: null });
     await expect.element(page.getByText('Germany', { exact: true })).toBeVisible();
     await expect.element(page.getByText('Mainland', { exact: true })).toBeVisible();
@@ -97,6 +103,9 @@ it.each([
     await page.getByRole('button', { name: new RegExp(`^${label} `) }).click();
     await expect.element(page.getByRole('heading', { name: label, exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Remove from device', exact: true }).click();
+    await expect
+      .element(page.getByRole('alertdialog').getByRole('heading'))
+      .toHaveTextContent(`Remove ${label}?`);
     await page
       .getByRole('alertdialog')
       .getByRole('button', { name: 'Remove', exact: true })

@@ -781,7 +781,9 @@
 
 <ConfirmDialog
   bind:open={removeOpen}
-  title={m.waypoints_remove_title({ name: selected?.name ?? '' })}
+  title={m.waypoints_remove_title({
+    name: selected ? displayName({ sourceName: selected.name }, selected.type) : '',
+  })}
   description={m.data_remove_description()}
   cancelLabel={m.cancel()}
   confirmLabel={m.waypoints_remove_confirm()}

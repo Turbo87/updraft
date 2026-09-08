@@ -27,25 +27,33 @@ function activation() {
   );
 }
 
-it('shows managed basemap filenames and removes the selected full identity', async () => {
-  let sourceName = 'enroute/Europe/Germany.mbtiles';
-  let onRemove = vi.fn().mockResolvedValue(undefined);
-  await render(DataLibrary, {
-    importer: new FakeClient(),
-    activation: activation(),
-    onRemove,
-    airspace: { generation: 0, sources: [] },
-    waypoints: { generation: 0, sources: [] },
-    basemaps: { generation: 0, sources: [{ sourceName, type: 'active' }] },
-  });
-  await page.getByRole('button', { name: /^Germany\.mbtiles/ }).click();
-  await expect
-    .element(page.getByRole('heading', { name: 'Germany.mbtiles', exact: true }))
-    .toBeVisible();
-  await page.getByRole('button', { name: 'Remove from device', exact: true }).click();
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Remove', exact: true }).click();
-  expect(onRemove).toHaveBeenCalledWith('basemap', sourceName);
-});
+it.each([
+  ['basemap', 'mbtiles', 'basemaps'],
+  ['terrain', 'terrain', 'terrain'],
+] as const)(
+  'shows managed %s filenames and removes the selected full identity',
+  async (type, extension, prop) => {
+    let filename = `Germany.${extension}`;
+    let sourceName = `enroute/Europe/${filename}`;
+    let onRemove = vi.fn().mockResolvedValue(undefined);
+    await render(DataLibrary, {
+      importer: new FakeClient(),
+      activation: activation(),
+      onRemove,
+      airspace: { generation: 0, sources: [] },
+      waypoints: { generation: 0, sources: [] },
+      [prop]: { generation: 0, sources: [{ sourceName, type: 'active' }] },
+    });
+    await page.getByRole('button', { name: new RegExp(`^Germany\\.${extension}`) }).click();
+    await expect.element(page.getByRole('heading', { name: filename, exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Remove from device', exact: true }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Remove', exact: true })
+      .click();
+    expect(onRemove).toHaveBeenCalledWith(type, sourceName);
+  },
+);
 
 it.each(['airspace', 'basemap', 'terrain'] as const)(
   'shows the latest %s choice without disabling the control',

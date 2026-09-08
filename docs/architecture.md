@@ -132,9 +132,11 @@ the first valid enabled file with tiles and excludes incompatible files.
 Validated metadata remains in memory until activation changes or restart.
 Disabled markers prevent files from being opened or validated.
 Terrain status subscriptions send the initial inventory under the same lock
-that registers the channel. The payload contains a generation number, filenames,
-and active, disabled, or unavailable states. Paths and diagnostic errors stay
-in the shell. Unsubscribe removes only the requested channel and is idempotent.
+that registers the channel. The payload contains a generation number, managed
+identities, and active, disabled, or unavailable states. Absolute paths and
+diagnostic errors stay in the shell. Like basemaps, terrain startup discovers
+nested managed files and ignores flat development files. Unsubscribe removes
+only the requested channel and is idempotent.
 The frontend client exposes terrain status through this channel. Closing stops
 local delivery immediately and waits for registration before native unsubscribe.
 The fake client retains the latest terrain status for new subscribers.

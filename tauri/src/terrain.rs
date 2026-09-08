@@ -24,7 +24,8 @@ const TILE_METADATA_QUERY: &str = "
 
 #[derive(Default)]
 pub struct Terrain {
-    files: BTreeMap<PathBuf, TerrainSource>,
+    files: BTreeMap<String, TerrainSource>,
+    directory: PathBuf,
     generation: u64,
     subscribers: BTreeMap<u32, Channel<TerrainStatus>>,
 }
@@ -45,25 +46,12 @@ struct TerrainFile {
 
 impl Terrain {
     pub fn load(directory: &Path) -> Result<Self> {
-        let entries = match fs::read_dir(directory) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Self::default()),
-            Err(error) => return Err(error.into()),
-        };
-        let mut paths = Vec::new();
-        for entry in entries {
-            let path = entry?.path();
-            if path
-                .extension()
-                .is_some_and(|extension| extension == "terrain")
-            {
-                paths.push(path);
-            }
-        }
-        paths.sort();
         let mut files = BTreeMap::new();
         let mut tile_size = None;
-        for path in paths {
+        for (id, path) in crate::enroute::storage::installed_files(directory)? {
+            if !id.ends_with(".terrain") {
+                continue;
+            }
             let source = if path.with_extension("terrain.disabled").try_exists()? {
                 TerrainSource::Disabled
             } else {
@@ -80,10 +68,11 @@ impl Terrain {
             if let TerrainSource::Unavailable(error) = &source {
                 tracing::warn!(%error, path = %path.display(), "Could not open offline terrain");
             }
-            files.insert(path, source);
+            files.insert(id, source);
         }
         Ok(Self {
             files,
+            directory: directory.to_owned(),
             ..Self::default()
         })
     }
@@ -122,12 +111,11 @@ impl Terrain {
     }
 
     fn set_enabled(&mut self, name: &str, enabled: bool) -> Result<()> {
-        let path = self
-            .files
-            .keys()
-            .find(|path| path.file_name() == Some(std::ffi::OsStr::new(name)))
-            .context("Terrain file is not installed")?
-            .clone();
+        ensure!(
+            self.files.contains_key(name),
+            "Terrain file is not installed"
+        );
+        let path = self.directory.join(name);
         let marker = path.with_extension("terrain.disabled");
         if enabled {
             match fs::remove_file(&marker) {
@@ -144,8 +132,8 @@ impl Terrain {
                 Err(error) => return Err(error.into()),
             }
         }
-        self.recheck(|file_path, source| {
-            if file_path == path {
+        self.recheck(|id, source| {
+            if id == name {
                 enabled
             } else {
                 !matches!(source, TerrainSource::Disabled)
@@ -155,12 +143,11 @@ impl Terrain {
     }
 
     fn remove(&mut self, name: &str) -> Result<()> {
-        let (path, source) = self
+        let path = self.directory.join(name);
+        let source = self
             .files
-            .iter_mut()
-            .find(|(path, _)| path.file_name() == Some(std::ffi::OsStr::new(name)))
+            .get_mut(name)
             .context("Terrain file is not installed")?;
-        let path = path.clone();
         let enabled = !matches!(source, TerrainSource::Disabled);
         // Close SQLite before deletion, including on Windows.
         *source = TerrainSource::Disabled;
@@ -174,10 +161,10 @@ impl Terrain {
                 Err(error) => Err(error),
             });
         if result.is_ok() {
-            self.files.remove(&path);
+            self.files.remove(name);
         }
-        self.recheck(|file_path, source| {
-            if file_path == path {
+        self.recheck(|id, source| {
+            if id == name {
                 enabled
             } else {
                 !matches!(source, TerrainSource::Disabled)
@@ -186,14 +173,15 @@ impl Terrain {
         result.map_err(Into::into)
     }
 
-    fn recheck(&mut self, is_enabled: impl Fn(&Path, &TerrainSource) -> bool) {
+    fn recheck(&mut self, is_enabled: impl Fn(&str, &TerrainSource) -> bool) {
         let mut tile_size = None;
-        for (path, source) in &mut self.files {
-            if !is_enabled(path, source) {
+        for (id, source) in &mut self.files {
+            if !is_enabled(id, source) {
                 *source = TerrainSource::Disabled;
                 continue;
             }
-            *source = match open_terrain(path, tile_size) {
+            let path = self.directory.join(id);
+            *source = match open_terrain(&path, tile_size) {
                 Ok(file) => {
                     if let Some((size, _, _)) = file.coverage {
                         tile_size = Some(size);

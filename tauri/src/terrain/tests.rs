@@ -24,16 +24,17 @@ fn write_terrain(path: &Path, tiles: &[(u32, u32, u32, &[u8])]) {
 #[test]
 fn serves_unchanged_bytes_in_filename_order_with_xyz_coordinates() {
     let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
     let france = tagged_webp(b"france");
     let germany = tagged_webp(b"germany");
     let west = tagged_webp(b"west");
     let east = tagged_webp(b"east");
     write_terrain(
-        &directory.path().join("Germany.terrain"),
+        &directory.path().join("enroute/Europe/Germany.terrain"),
         &[(7, 66, 87, &germany), (10, 0, 0, &west)],
     );
     write_terrain(
-        &directory.path().join("France.terrain"),
+        &directory.path().join("enroute/Europe/France.terrain"),
         &[(7, 66, 87, &france), (10, 1023, 1023, &east)],
     );
     write_terrain(
@@ -58,7 +59,12 @@ fn serves_unchanged_bytes_in_filename_order_with_xyz_coordinates() {
 #[tracing_test::traced_test]
 fn retains_invalid_files_without_contributing_tiles_or_metadata() {
     let directory = tempfile::tempdir().unwrap();
-    std::fs::write(directory.path().join("broken.terrain"), b"not sqlite").unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    std::fs::write(
+        directory.path().join("enroute/Europe/broken.terrain"),
+        b"not sqlite",
+    )
+    .unwrap();
     for (name, sql) in [
         (
             "format",
@@ -75,13 +81,14 @@ fn retains_invalid_files_without_contributing_tiles_or_metadata() {
             "INSERT INTO metadata VALUES ('attribution', NULL)",
         ),
     ] {
-        let path = directory.path().join(format!("{name}.terrain"));
+        let path_id = format!("enroute/Europe/{name}.terrain");
+        let path = directory.path().join(&path_id);
         write_terrain(&path, &[]);
         Connection::open(path).unwrap().execute_batch(sql).unwrap();
     }
     let tile = webp_header(256, 256);
     write_terrain(
-        &directory.path().join("valid.terrain"),
+        &directory.path().join("enroute/Europe/valid.terrain"),
         &[(7, 66, 87, &tile)],
     );
     let terrain = assert_ok!(Terrain::load(directory.path()));
@@ -98,8 +105,11 @@ fn retains_invalid_files_without_contributing_tiles_or_metadata() {
         "schema",
         "attribution",
     ] {
-        let path = directory.path().join(format!("{name}.terrain"));
-        std::assert_matches!(terrain.files[&path], TerrainSource::Unavailable(_));
+        let path_id = format!("enroute/Europe/{name}.terrain");
+        std::assert_matches!(
+            terrain.files[path_id.as_str()],
+            TerrainSource::Unavailable(_)
+        );
         assert!(logs_contain(&format!("{name}.terrain")));
     }
     assert!(logs_contain("Could not open offline terrain"));
@@ -109,12 +119,12 @@ fn retains_invalid_files_without_contributing_tiles_or_metadata() {
 fn missing_directory_is_empty_but_scan_failure_is_an_error() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("enroute");
-    let terrain = assert_ok!(Terrain::load(&path));
+    let terrain = assert_ok!(Terrain::load(directory.path()));
     let response = terrain.resource_response("0/7/66/40.webp");
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     assert!(response.body().is_empty());
     std::fs::write(&path, b"not a directory").unwrap();
-    assert_err!(Terrain::load(&path).map(|_| ()));
+    assert_err!(Terrain::load(directory.path()).map(|_| ()));
 }
 
 #[test]
@@ -142,7 +152,8 @@ fn rejects_invalid_requests() {
 #[tracing_test::traced_test]
 fn reports_tile_read_failures_and_retains_validated_metadata() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("Germany.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/Germany.terrain");
     write_terrain(&path, &[]);
     let terrain = assert_ok!(Terrain::load(directory.path()));
     let metadata = assert_ok!(terrain.metadata());
@@ -161,6 +172,7 @@ fn reports_tile_read_failures_and_retains_validated_metadata() {
 #[test]
 fn serves_tilejson_with_combined_attributions_without_duplicates_or_placeholders() {
     let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
     let mut extended_header = b"RIFF\x16\0\0\0WEBPVP8X\x0a\0\0\0\0\0\0\0".to_vec();
     extended_header.extend_from_slice(&511_u32.to_le_bytes()[..3]);
     extended_header.extend_from_slice(&511_u32.to_le_bytes()[..3]);
@@ -168,7 +180,9 @@ fn serves_tilejson_with_combined_attributions_without_duplicates_or_placeholders
         ("Germany", 5, 12, webp_header(512, 512)),
         ("France", 4, 11, extended_header),
     ] {
-        let path = directory.path().join(format!("{country}.terrain"));
+        let path = directory
+            .path()
+            .join(format!("enroute/Europe/{country}.terrain"));
         write_terrain(&path, &[(minzoom, 0, 0, &tile), (maxzoom, 0, 0, &tile)]);
         let connection = Connection::open(path).unwrap();
         connection
@@ -210,7 +224,8 @@ fn webp_header(width: u32, height: u32) -> Vec<u8> {
 #[test]
 fn empty_files_do_not_add_tile_dimensions_or_zoom_limits() {
     let directory = tempfile::tempdir().unwrap();
-    write_terrain(&directory.path().join("empty.terrain"), &[]);
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    write_terrain(&directory.path().join("enroute/Europe/empty.terrain"), &[]);
     let terrain = assert_ok!(Terrain::load(directory.path()));
     let response = terrain.resource_response("0/metadata.json");
     assert_eq!(response.status(), StatusCode::OK);
@@ -239,17 +254,18 @@ fn rejects_unsupported_or_inconsistent_tile_metadata() {
         (webp_header(256, 256), 32),
     ] {
         let directory = tempfile::tempdir().unwrap();
+        fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
         write_terrain(
-            &directory.path().join("France.terrain"),
+            &directory.path().join("enroute/Europe/France.terrain"),
             &[(7, 0, 0, &webp_header(256, 256))],
         );
         write_terrain(
-            &directory.path().join("Germany.terrain"),
+            &directory.path().join("enroute/Europe/Germany.terrain"),
             &[(zoom, 1, 0, &tile)],
         );
         let terrain = assert_ok!(Terrain::load(directory.path()));
-        let rejected = directory.path().join("Germany.terrain");
-        std::assert_matches!(terrain.files[&rejected], TerrainSource::Unavailable(_));
+        let rejected_id = "enroute/Europe/Germany.terrain";
+        std::assert_matches!(terrain.files[rejected_id], TerrainSource::Unavailable(_));
         assert_eq!(
             terrain.resource_response("0/metadata.json").status(),
             StatusCode::OK
@@ -269,12 +285,17 @@ fn rejects_unsupported_or_inconsistent_tile_metadata() {
 #[tracing_test::traced_test]
 fn inventory_rechecks_compatibility_and_excludes_disabled_files() {
     let directory = tempfile::tempdir().unwrap();
-    let empty = directory.path().join("00-empty.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let empty_id = "enroute/Europe/00-empty.terrain";
+    let empty = directory.path().join(empty_id);
     write_terrain(&empty, &[]);
-    let invalid = directory.path().join("01-invalid.terrain");
+    let invalid_id = "enroute/Europe/01-invalid.terrain";
+    let invalid = directory.path().join(invalid_id);
     assert_ok!(fs::write(&invalid, b"not sqlite"));
     for (name, size, zoom) in [("a", 256, 6), ("b", 512, 8), ("c", 256, 7)] {
-        let path = directory.path().join(format!("{name}.terrain"));
+        let path = directory
+            .path()
+            .join(format!("enroute/Europe/{name}.terrain"));
         write_terrain(&path, &[(zoom, 0, 0, &webp_header(size, size))]);
         assert_ok!(
             Connection::open(path)
@@ -282,18 +303,19 @@ fn inventory_rechecks_compatibility_and_excludes_disabled_files() {
                 .execute("INSERT INTO metadata VALUES ('attribution', ?1)", [name])
         );
     }
-    let first = directory.path().join("a.terrain");
-    let second = directory.path().join("b.terrain");
-    let third = directory.path().join("c.terrain");
+    let first_id = "enroute/Europe/a.terrain";
+    let first = directory.path().join(first_id);
+    let second_id = "enroute/Europe/b.terrain";
+    let third_id = "enroute/Europe/c.terrain";
     assert_ok!(fs::write(first.with_extension("mbtiles.disabled"), b""));
     let terrain = assert_ok!(Terrain::load(directory.path()));
     assert_eq!(
         terrain.files.keys().collect::<Vec<_>>(),
-        [&empty, &invalid, &first, &second, &third]
+        [empty_id, invalid_id, first_id, second_id, third_id]
     );
-    std::assert_matches!(terrain.files[&invalid], TerrainSource::Unavailable(_));
-    std::assert_matches!(terrain.files[&first], TerrainSource::Active(_));
-    std::assert_matches!(terrain.files[&second], TerrainSource::Unavailable(_));
+    std::assert_matches!(terrain.files[invalid_id], TerrainSource::Unavailable(_));
+    std::assert_matches!(terrain.files[first_id], TerrainSource::Active(_));
+    std::assert_matches!(terrain.files[second_id], TerrainSource::Unavailable(_));
     assert_eq!(
         terrain.resource_response("0/7/0/127.webp").body(),
         &webp_header(256, 256)
@@ -321,9 +343,9 @@ fn inventory_rechecks_compatibility_and_excludes_disabled_files() {
     assert_ok!(fs::write(&first, b"disabled files must not be opened"));
     for _ in 0..2 {
         let terrain = assert_ok!(Terrain::load(directory.path()));
-        std::assert_matches!(terrain.files[&first], TerrainSource::Disabled);
-        std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
-        std::assert_matches!(terrain.files[&third], TerrainSource::Unavailable(_));
+        std::assert_matches!(terrain.files[first_id], TerrainSource::Disabled);
+        std::assert_matches!(terrain.files[second_id], TerrainSource::Active(_));
+        std::assert_matches!(terrain.files[third_id], TerrainSource::Unavailable(_));
         assert_eq!(
             terrain.resource_response("0/8/0/255.webp").body(),
             &webp_header(512, 512)
@@ -333,12 +355,14 @@ fn inventory_rechecks_compatibility_and_excludes_disabled_files() {
         assert_eq!(metadata["attribution"], "b");
         assert_eq!(metadata["tileSize"], 512);
     }
-    let added = directory.path().join("0-new.terrain");
+    let added_id = "enroute/Europe/0-new.terrain";
+    let added = directory.path().join(added_id);
     write_terrain(&added, &[(4, 0, 0, &webp_header(128, 128))]);
     let terrain = assert_ok!(Terrain::load(directory.path()));
-    std::assert_matches!(terrain.files[&added], TerrainSource::Active(_));
-    std::assert_matches!(terrain.files[&second], TerrainSource::Unavailable(_));
-    for path in terrain.files.keys() {
+    std::assert_matches!(terrain.files[added_id], TerrainSource::Active(_));
+    std::assert_matches!(terrain.files[second_id], TerrainSource::Unavailable(_));
+    for id in terrain.files.keys() {
+        let path = directory.path().join(id);
         assert_ok!(fs::write(path.with_extension("terrain.disabled"), b""));
     }
     let terrain = assert_ok!(Terrain::load(directory.path()));
@@ -366,7 +390,8 @@ fn tagged_webp(tag: &[u8]) -> Vec<u8> {
 #[test]
 fn unreadable_disabled_marker_fails_the_scan() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/local.terrain");
     write_terrain(&path, &[]);
     let marker = path.with_extension("terrain.disabled");
     assert_ok!(std::os::unix::fs::symlink(&marker, &marker));
@@ -378,15 +403,18 @@ fn unreadable_disabled_marker_fails_the_scan() {
 fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     use serde_json::{Value, json};
     let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
     for (name, size) in [("active", 256), ("incompatible", 512)] {
-        let path = directory.path().join(format!("{name}.terrain"));
+        let path = directory
+            .path()
+            .join(format!("enroute/Europe/{name}.terrain"));
         write_terrain(&path, &[(7, 0, 0, &webp_header(size, size))]);
     }
-    let disabled = directory.path().join("disabled.terrain");
+    let disabled = directory.path().join("enroute/Europe/disabled.terrain");
     assert_ok!(fs::write(&disabled, b"not sqlite"));
     assert_ok!(fs::write(disabled.with_extension("terrain.disabled"), b""));
     assert_ok!(fs::write(
-        directory.path().join("invalid.terrain"),
+        directory.path().join("enroute/Europe/invalid.terrain"),
         b"not sqlite"
     ));
     let terrain = Arc::new(Mutex::new(assert_ok!(Terrain::load(directory.path()))));
@@ -435,19 +463,19 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
       "generation": 0,
       "sources": [
         {
-          "sourceName": "active.terrain",
+          "sourceName": "enroute/Europe/active.terrain",
           "type": "active"
         },
         {
-          "sourceName": "disabled.terrain",
+          "sourceName": "enroute/Europe/disabled.terrain",
           "type": "disabled"
         },
         {
-          "sourceName": "incompatible.terrain",
+          "sourceName": "enroute/Europe/incompatible.terrain",
           "type": "unavailable"
         },
         {
-          "sourceName": "invalid.terrain",
+          "sourceName": "enroute/Europe/invalid.terrain",
           "type": "unavailable"
         }
       ]
@@ -463,7 +491,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
             [43]
         );
     }
-    let body = json!({"sourceName":"active.terrain", "enabled":false});
+    let body = json!({"sourceName":"enroute/Europe/active.terrain", "enabled":false});
     assert_eq!(assert_ok!(invoke("set_terrain_enabled", body)), Value::Null);
     let delivered = messages.lock().unwrap();
     assert_eq!(delivered.len(), 3);
@@ -472,42 +500,45 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
       "generation": 1,
       "sources": [
         {
-          "sourceName": "active.terrain",
+          "sourceName": "enroute/Europe/active.terrain",
           "type": "disabled"
         },
         {
-          "sourceName": "disabled.terrain",
+          "sourceName": "enroute/Europe/disabled.terrain",
           "type": "disabled"
         },
         {
-          "sourceName": "incompatible.terrain",
+          "sourceName": "enroute/Europe/incompatible.terrain",
           "type": "active"
         },
         {
-          "sourceName": "invalid.terrain",
+          "sourceName": "enroute/Europe/invalid.terrain",
           "type": "unavailable"
         }
       ]
     }
     "#);
     drop(delivered);
-    let body = json!({"sourceName":"missing.terrain", "enabled":true});
+    let body = json!({"sourceName":"enroute/Europe/missing.terrain", "enabled":true});
     assert_eq!(
         invoke("set_terrain_enabled", body),
         Err(json!("Could not change terrain activation"))
     );
     assert_eq!(messages.lock().unwrap().len(), 3);
-    let body = json!({"sourceName":"disabled.terrain"});
+    let body = json!({"sourceName":"enroute/Europe/disabled.terrain"});
     assert_eq!(assert_ok!(invoke("remove_terrain", body)), Value::Null);
     let removed = messages.lock().unwrap();
     assert_eq!(removed.len(), 4);
     assert_eq!(removed[3]["generation"], 2);
     let mut expected = removed[2]["sources"].as_array().unwrap().clone();
-    expected.retain(|source| source["sourceName"] != "disabled.terrain");
+    expected.retain(|source| source["sourceName"] != "enroute/Europe/disabled.terrain");
     assert_eq!(removed[3]["sources"], json!(expected));
     drop(removed);
     assert_eq!(
-        invoke("remove_terrain", json!({"sourceName":"missing.terrain"})),
+        invoke(
+            "remove_terrain",
+            json!({"sourceName":"enroute/Europe/missing.terrain"})
+        ),
         Err(json!("Could not remove terrain file"))
     );
     assert_eq!(messages.lock().unwrap().len(), 4);
@@ -524,7 +555,8 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
 #[test]
 fn serves_only_the_requested_terrain_generation() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/local.terrain");
     let tile = webp_header(256, 256);
     write_terrain(&path, &[(7, 66, 87, &tile)]);
     let mut terrain = assert_ok!(Terrain::load(directory.path()));
@@ -569,8 +601,11 @@ fn serves_only_the_requested_terrain_generation() {
 #[tracing_test::traced_test]
 fn activation_rechecks_compatibility_and_persists_without_opening_disabled_files() {
     let directory = tempfile::tempdir().unwrap();
-    let first = directory.path().join("a.terrain");
-    let second = directory.path().join("b.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let first_id = "enroute/Europe/a.terrain";
+    let first = directory.path().join(first_id);
+    let second_id = "enroute/Europe/b.terrain";
+    let second = directory.path().join(second_id);
     write_terrain(&first, &[(7, 66, 87, &webp_header(256, 256))]);
     write_terrain(&second, &[(7, 66, 87, &webp_header(512, 512))]);
     for (path, credit) in [(&first, "a"), (&second, "b")] {
@@ -581,10 +616,10 @@ fn activation_rechecks_compatibility_and_persists_without_opening_disabled_files
         );
     }
     let mut terrain = assert_ok!(Terrain::load(directory.path()));
-    assert_ok!(terrain.set_enabled("a.terrain", false));
+    assert_ok!(terrain.set_enabled("enroute/Europe/a.terrain", false));
     assert_eq!(terrain.generation, 1);
     assert!(first.with_extension("terrain.disabled").is_file());
-    std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
+    std::assert_matches!(terrain.files[second_id], TerrainSource::Active(_));
     assert_eq!(
         terrain.resource_response("1/7/66/40.webp").body(),
         &webp_header(512, 512)
@@ -598,29 +633,29 @@ fn activation_rechecks_compatibility_and_persists_without_opening_disabled_files
         StatusCode::NOT_FOUND
     );
     let restarted = assert_ok!(Terrain::load(directory.path()));
-    std::assert_matches!(restarted.files[&first], TerrainSource::Disabled);
-    std::assert_matches!(restarted.files[&second], TerrainSource::Active(_));
+    std::assert_matches!(restarted.files[first_id], TerrainSource::Disabled);
+    std::assert_matches!(restarted.files[second_id], TerrainSource::Active(_));
     drop(restarted);
     assert_ok!(fs::write(&first, b"disabled files must not be opened"));
-    assert_ok!(terrain.set_enabled("b.terrain", false));
+    assert_ok!(terrain.set_enabled("enroute/Europe/b.terrain", false));
     assert_eq!(
         terrain.resource_response("2/7/66/40.webp").status(),
         StatusCode::NOT_FOUND
     );
     let channel = Channel::new(|_| Err(std::io::Error::other("closed channel").into()));
     terrain.subscribers.insert(channel.id(), channel);
-    assert_ok!(terrain.set_enabled("b.terrain", true));
+    assert_ok!(terrain.set_enabled("enroute/Europe/b.terrain", true));
     assert!(terrain.subscribers.is_empty());
     assert!(!logs_contain("a.terrain"));
-    assert_ok!(terrain.set_enabled("a.terrain", true));
-    std::assert_matches!(terrain.files[&first], TerrainSource::Unavailable(_));
-    std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
+    assert_ok!(terrain.set_enabled("enroute/Europe/a.terrain", true));
+    std::assert_matches!(terrain.files[first_id], TerrainSource::Unavailable(_));
+    std::assert_matches!(terrain.files[second_id], TerrainSource::Active(_));
     assert!(!first.with_extension("terrain.disabled").exists());
     assert_ok!(fs::remove_file(&first));
     write_terrain(&first, &[(7, 66, 87, &webp_header(256, 256))]);
-    assert_ok!(terrain.set_enabled("a.terrain", true));
-    std::assert_matches!(terrain.files[&first], TerrainSource::Active(_));
-    std::assert_matches!(terrain.files[&second], TerrainSource::Unavailable(_));
+    assert_ok!(terrain.set_enabled("enroute/Europe/a.terrain", true));
+    std::assert_matches!(terrain.files[first_id], TerrainSource::Active(_));
+    std::assert_matches!(terrain.files[second_id], TerrainSource::Unavailable(_));
     assert_eq!(
         terrain.resource_response("5/7/66/40.webp").body(),
         &webp_header(256, 256)
@@ -631,27 +666,29 @@ fn activation_rechecks_compatibility_and_persists_without_opening_disabled_files
 #[test]
 fn activation_marker_failures_preserve_inventory_and_reject_unknown_names() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path_id = "enroute/Europe/local.terrain";
+    let path = directory.path().join(path_id);
     write_terrain(&path, &[]);
     let mut terrain = assert_ok!(Terrain::load(directory.path()));
     let marker = path.with_extension("terrain.disabled");
     assert_ok!(fs::create_dir(&marker));
     for enabled in [false, true] {
-        assert_err!(terrain.set_enabled("local.terrain", enabled));
-        std::assert_matches!(terrain.files[&path], TerrainSource::Active(_));
+        assert_err!(terrain.set_enabled("enroute/Europe/local.terrain", enabled));
+        std::assert_matches!(terrain.files[path_id], TerrainSource::Active(_));
         assert_eq!(terrain.generation, 0);
     }
     assert_ok!(fs::remove_dir(&marker));
     for name in [
-        "missing.terrain",
-        "../local.terrain",
-        "nested/local.terrain",
+        "enroute/Europe/missing.terrain",
+        "enroute/Europe/../local.terrain",
+        "enroute/Europe/nested/local.terrain",
     ] {
         assert_err!(terrain.set_enabled(name, false));
         assert_eq!(terrain.generation, 0);
     }
-    assert_ok!(terrain.set_enabled("local.terrain", false));
-    assert_ok!(terrain.set_enabled("local.terrain", false));
+    assert_ok!(terrain.set_enabled("enroute/Europe/local.terrain", false));
+    assert_ok!(terrain.set_enabled("enroute/Europe/local.terrain", false));
     assert_eq!(terrain.generation, 2);
 }
 
@@ -659,8 +696,11 @@ fn activation_marker_failures_preserve_inventory_and_reject_unknown_names() {
 #[tracing_test::traced_test]
 fn removal_rechecks_compatibility_and_clears_disabled_markers() {
     let directory = tempfile::tempdir().unwrap();
-    let first = directory.path().join("a.terrain");
-    let second = directory.path().join("b.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let first_id = "enroute/Europe/a.terrain";
+    let first = directory.path().join(first_id);
+    let second_id = "enroute/Europe/b.terrain";
+    let second = directory.path().join(second_id);
     write_terrain(&first, &[(7, 66, 87, &webp_header(256, 256))]);
     write_terrain(&second, &[(7, 66, 87, &webp_header(512, 512))]);
     for (path, credit) in [(&first, "a"), (&second, "b")] {
@@ -668,14 +708,17 @@ fn removal_rechecks_compatibility_and_clears_disabled_markers() {
         assert_ok!(connection.execute("INSERT INTO metadata VALUES ('attribution', ?1)", [credit]));
     }
     let mut terrain = assert_ok!(Terrain::load(directory.path()));
-    for name in ["missing.terrain", "../a.terrain"] {
+    for name in [
+        "enroute/Europe/missing.terrain",
+        "enroute/Europe/../a.terrain",
+    ] {
         assert_err!(terrain.remove(name));
         assert_eq!(terrain.generation, 0);
     }
-    assert_ok!(terrain.remove("a.terrain"));
+    assert_ok!(terrain.remove("enroute/Europe/a.terrain"));
     assert!(!first.exists());
-    assert!(!terrain.files.contains_key(&first));
-    std::assert_matches!(terrain.files[&second], TerrainSource::Active(_));
+    assert!(!terrain.files.contains_key(first_id));
+    std::assert_matches!(terrain.files[second_id], TerrainSource::Active(_));
     assert_eq!(
         terrain.resource_response("1/7/66/40.webp").body(),
         &webp_header(512, 512)
@@ -684,9 +727,9 @@ fn removal_rechecks_compatibility_and_clears_disabled_markers() {
         serde_json::from_slice(&assert_ok!(terrain.metadata())).unwrap();
     assert_eq!(metadata["tileSize"], 512);
     assert_eq!(metadata["attribution"], "b");
-    assert_ok!(terrain.set_enabled("b.terrain", false));
+    assert_ok!(terrain.set_enabled("enroute/Europe/b.terrain", false));
     assert_ok!(fs::write(&second, b"disabled file must stay unopened"));
-    assert_ok!(terrain.remove("b.terrain"));
+    assert_ok!(terrain.remove("enroute/Europe/b.terrain"));
     assert!(!second.exists());
     assert!(!second.with_extension("terrain.disabled").exists());
     assert!(terrain.files.is_empty());
@@ -702,25 +745,54 @@ fn removal_rechecks_compatibility_and_clears_disabled_markers() {
 #[tracing_test::traced_test]
 fn removal_failures_publish_current_inventory_and_allow_retry() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("local.terrain");
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path_id = "enroute/Europe/local.terrain";
+    let path = directory.path().join(path_id);
     write_terrain(&path, &[]);
     let mut terrain = assert_ok!(Terrain::load(directory.path()));
     assert_ok!(fs::remove_file(&path));
     assert_ok!(fs::create_dir(&path));
-    assert_err!(terrain.remove("local.terrain"));
+    assert_err!(terrain.remove("enroute/Europe/local.terrain"));
     assert_eq!(terrain.generation, 1);
-    std::assert_matches!(terrain.files[&path], TerrainSource::Unavailable(_));
+    std::assert_matches!(terrain.files[path_id], TerrainSource::Unavailable(_));
     assert_ok!(fs::remove_dir(&path));
     write_terrain(&path, &[]);
     let marker = path.with_extension("terrain.disabled");
     assert_ok!(fs::create_dir(&marker));
-    assert_err!(terrain.remove("local.terrain"));
+    assert_err!(terrain.remove("enroute/Europe/local.terrain"));
     assert!(!path.exists());
     assert_eq!(terrain.generation, 2);
-    std::assert_matches!(terrain.files[&path], TerrainSource::Unavailable(_));
+    std::assert_matches!(terrain.files[path_id], TerrainSource::Unavailable(_));
     assert_ok!(fs::remove_dir(&marker));
-    assert_ok!(terrain.remove("local.terrain"));
+    assert_ok!(terrain.remove("enroute/Europe/local.terrain"));
     assert!(terrain.files.is_empty());
     assert_eq!(terrain.generation, 3);
     assert!(logs_contain("Could not open offline terrain"));
+}
+
+#[test]
+fn managed_identities_keep_same_name_terrain_independent() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let first = "enroute/Asia/Georgia.terrain";
+    let second = "enroute/North America/United States/Georgia.terrain";
+    for id in [first, second] {
+        let path = root.join(id);
+        assert_ok!(fs::create_dir_all(path.parent().unwrap()));
+        write_terrain(&path, &[(7, 66, 87, &tagged_webp(id.as_bytes()))]);
+    }
+    let legacy = root.join("enroute/Georgia.terrain");
+    write_terrain(&legacy, &[(7, 66, 87, &tagged_webp(b"legacy"))]);
+    let mut terrain = assert_ok!(Terrain::load(root));
+    let tile = terrain.resource_response("0/7/66/40.webp");
+    assert_eq!(tile.body(), &tagged_webp(first.as_bytes()));
+    assert_err!(terrain.set_enabled("Georgia.terrain", false));
+    assert_ok!(terrain.set_enabled(first, false));
+    let restarted = assert_ok!(Terrain::load(root));
+    let tile = restarted.resource_response("0/7/66/40.webp");
+    assert_eq!(tile.body(), &tagged_webp(second.as_bytes()));
+    assert_ok!(terrain.remove(first));
+    assert!(!root.join(first).exists());
+    assert!(root.join(second).exists());
+    assert!(legacy.exists());
 }

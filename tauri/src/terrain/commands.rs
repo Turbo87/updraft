@@ -32,12 +32,8 @@ impl Terrain {
         let sources = self
             .files
             .iter()
-            .map(|(path, source)| {
-                let source_name = path
-                    .file_name()
-                    .expect("Terrain files have names")
-                    .to_string_lossy()
-                    .into_owned();
+            .map(|(id, source)| {
+                let source_name = id.clone();
                 match source {
                     TerrainSource::Active(_) => TerrainSourceStatus::Active { source_name },
                     TerrainSource::Disabled => TerrainSourceStatus::Disabled { source_name },

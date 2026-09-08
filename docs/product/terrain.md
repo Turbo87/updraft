@@ -9,9 +9,6 @@ lighting. Shadows use black at 65% opacity. The hillshade sits before the
 basemap's `waterway` layer. Terrain does not change the camera pitch or enable
 a 3D surface.
 
-Enroute files are a temporary source during development until Updraft can
-generate and host its own terrain assets.
-
 Elevation colours sit before the basemap's `water` layer, beneath land cover.
 The colour ramp uses 50% opacity and interpolates linearly between elevation
 stops. It uses white for lowlands, pale green and yellow for hills, tan and pink for
@@ -20,12 +17,16 @@ share one elevation source.
 
 ## Files and lookup
 
-Place `.terrain` files in the application data directory's `enroute` folder.
-Updraft loads the inventory at startup, in filename order. Files are enabled
+Terrain uses managed paths in application data, such as
+`enroute/Europe/Germany.terrain`. The provider and complete catalog-relative path
+identify a dataset. Updraft loads nested files at startup, in identity order.
+Flat development files are ignored without migration. Symlinks are excluded.
+Terrain download installation is not implemented yet. Files are enabled
 unless a sibling marker exists, such as `France.terrain.disabled` for
 `France.terrain`. Disabled files are not opened or validated. Enabled files
-are opened read-only. Restart the application after changing files or markers
-externally. Files must remain intact while it runs.
+are opened read-only. The library displays leaf filenames. Activation and
+removal commands use the full identity, so equal filenames in separate regions
+remain independent.
 
 The reader requires MBTiles with WebP format metadata, Terrarium encoding,
 and a compatible `tiles` table or view. It retains unsupported or invalid files

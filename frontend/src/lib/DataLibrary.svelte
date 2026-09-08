@@ -195,7 +195,7 @@
 
   function displayName(source: Source, type: DatasetType): string {
     let name = source.sourceName;
-    return type === 'basemap' ? name.slice(name.lastIndexOf('/') + 1) : name;
+    return type === 'basemap' || type === 'terrain' ? name.slice(name.lastIndexOf('/') + 1) : name;
   }
 
   function compareSources(a: Source, b: Source, type: DatasetType): number {

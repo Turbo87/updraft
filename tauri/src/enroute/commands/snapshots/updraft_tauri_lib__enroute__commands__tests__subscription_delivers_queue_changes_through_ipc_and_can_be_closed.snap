@@ -1,0 +1,12 @@
+---
+source: tauri/src/enroute/commands/tests.rs
+expression: assert_ok!(progress)
+---
+[
+  {
+    "downloaded": 3,
+    "path": "Europe/Germany.mbtiles",
+    "total": 10,
+    "type": "downloading"
+  }
+]

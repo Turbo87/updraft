@@ -19,13 +19,15 @@ struct ActiveDownload {
     downloaded: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct DownloadStatus {
     pub path: &'static str,
+    #[serde(flatten)]
     pub state: DownloadState,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum DownloadState {
     Queued,
     Downloading { downloaded: u64, total: u64 },

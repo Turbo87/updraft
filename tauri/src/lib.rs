@@ -88,6 +88,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
             enroute::catalog::refresh_enroute_catalog,
+            enroute::commands::subscribe_enroute_downloads,
+            enroute::commands::unsubscribe_enroute_downloads,
             basemap::commands::subscribe_basemaps,
             basemap::commands::unsubscribe_basemaps,
             basemap::commands::set_basemap_enabled,
@@ -146,6 +148,7 @@ pub fn run() {
             if let Err(error) = enroute::storage::remove_partial_downloads(&data_directory) {
                 tracing::warn!(?error, "Could not clean up partial downloads");
             }
+            app.manage(enroute::commands::DownloadCommands::default());
             let basemaps = basemap::Basemaps::load(&data_directory).unwrap_or_else(|error| {
                 tracing::warn!(%error, "Could not scan offline basemap directory");
                 basemap::Basemaps::default()

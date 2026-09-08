@@ -40,8 +40,8 @@ test('imports two airspace files, replaces one, and removes only the confirmed f
     };
   });
   let importButton = page.getByRole('button', { name: 'Add data', exact: true });
-  let first = page.getByRole('button', { name: /^a\.txt Imported/ });
-  let second = page.getByRole('button', { name: /^b\.txt Imported/ });
+  let first = page.getByRole('button', { name: /^a\.txt / });
+  let second = page.getByRole('button', { name: /^b\.txt / });
   await importButton.click();
   await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
   await expect(first).toBeVisible();

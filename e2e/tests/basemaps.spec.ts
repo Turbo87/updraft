@@ -83,7 +83,7 @@ test('activation and removal refresh tiles without moving the map', async ({ pag
   await expect.poll(features).toEqual([7]);
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
   await page.getByRole('link', { name: 'Data', exact: true }).click();
-  await page.getByRole('button', { name: /^local.mbtiles/ }).click();
+  await page.getByRole('button', { name: /^local / }).click();
   let toggle = page.getByRole('switch', { name: 'Enabled' });
   await toggle.click();
   await expect(toggle).not.toBeChecked();
@@ -98,7 +98,7 @@ test('activation and removal refresh tiles without moving the map', async ({ pag
   await page.getByRole('button', { name: 'Remove from device' }).click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect.poll(features).toEqual([9]);
-  await page.getByRole('button', { name: /^local.mbtiles/ }).click();
+  await page.getByRole('button', { name: /^local / }).click();
   await page.getByRole('button', { name: 'Remove from device' }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByText('No data on this device')).toBeVisible();

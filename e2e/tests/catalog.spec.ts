@@ -307,3 +307,144 @@ test('carries startup update results through file replacement and settings navig
   await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
 });
+
+test('selects both formats and keeps terrain updates disabled across navigation', async ({
+  page,
+}) => {
+  await page.goto('/settings/data?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.evaluate(() => {
+    let app = (window as TestWindow).__updraftApp!;
+    let fake = (window as TestWindow).__updraftFake!;
+    let paths = ['Europe/France.mbtiles', 'Europe/France.terrain'];
+    app.client.getBasemapFileDetails = app.client.getTerrainFileDetails = async () => ({
+      size: 2_000_000,
+      modifiedAt: 0,
+    });
+    app.client.downloadEnrouteFiles = async (selection) => {
+      if (JSON.stringify(selection) !== JSON.stringify(paths))
+        throw new Error('Unexpected selection');
+      fake.emitEnrouteDownloads([
+        { path: paths[0], type: 'downloading', downloaded: 1, total: 2_000_000 },
+        { path: paths[1], type: 'queued' },
+      ]);
+    };
+    fake.emitEnrouteCatalog({
+      cached: {
+        checkedAt: 0,
+        entries: paths.map((path) => ({
+          path,
+          countryCode: 'FR',
+          continent: 'europe',
+          size: 2_000_000,
+          publicationDate: '2026-09-09',
+        })),
+      },
+      refreshing: false,
+      error: false,
+    });
+  });
+  await page.getByRole('button', { name: 'Add data', exact: true }).click();
+  await page.getByRole('button', { name: 'France', exact: true }).click();
+  for (let type of ['Basemap', 'Terrain']) {
+    let checkbox = page
+      .getByRole('region', { name: type, exact: true })
+      .getByRole('checkbox', { name: 'France', exact: true });
+    await expect(checkbox).not.toBeChecked();
+    await checkbox.click();
+  }
+  await page.getByRole('button', { name: 'Download · 4 MB', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Basemap', exact: true }).getByRole('progressbar'),
+  ).toBeVisible();
+  let terrain = page.getByRole('region', { name: 'Terrain', exact: true });
+  await expect(
+    terrain.getByRole('button', { name: 'Cancel download: France', exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    let app = (window as TestWindow).__updraftApp!;
+    let fake = (window as TestWindow).__updraftFake!;
+    let path = 'Europe/France.terrain';
+    app.client.getEnrouteTerrainUpdates = async () => [path];
+    fake.emitBasemaps({
+      generation: 1,
+      sources: [{ sourceName: 'enroute/Europe/France.mbtiles', type: 'active' }],
+    });
+    fake.emitTerrain({
+      generation: 1,
+      sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
+    });
+    fake.emitEnrouteDownloads([]);
+    app.client.downloadEnrouteFiles = async (selection) => {
+      if (JSON.stringify(selection) !== JSON.stringify([path]))
+        throw new Error('Unexpected update');
+      app.client.getEnrouteTerrainUpdates = async () => [];
+      fake.emitTerrain({
+        generation: 2,
+        sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
+      });
+    };
+  });
+  await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
+  await expect(page.getByRole('link', { name: /Data/ })).toContainText('1 update');
+  await page.getByRole('link', { name: /Data/ }).click();
+  await page.getByRole('button', { name: '1 update available', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Basemap', exact: true })).toHaveCount(0);
+  await terrain.getByRole('button', { name: /^France / }).click();
+  let dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('2 MB', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('switch')).not.toBeChecked();
+  await dialog.getByRole('button', { name: 'Update', exact: true }).click();
+  await expect(dialog.getByRole('switch')).not.toBeChecked();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByText('No updates available', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to data', exact: true }).click();
+  await terrain.getByRole('button', { name: /^France / }).click();
+  await expect(dialog.getByRole('switch')).not.toBeChecked();
+});
+
+test('returns to the library when terrain finishes before queue delivery', async ({ page }) => {
+  await page.goto('/settings/data?testMode=1');
+  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.evaluate(() => {
+    let app = (window as TestWindow).__updraftApp!;
+    let fake = (window as TestWindow).__updraftFake!;
+    let path = 'Europe/Malta.terrain';
+    app.client.getTerrainFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
+    app.client.downloadEnrouteFiles = async (paths) => {
+      if (JSON.stringify(paths) !== JSON.stringify([path])) throw new Error('Unexpected selection');
+      fake.emitTerrain({
+        generation: 1,
+        sources: [{ sourceName: `enroute/${path}`, type: 'active' }],
+      });
+    };
+    fake.emitEnrouteCatalog({
+      cached: {
+        checkedAt: 0,
+        entries: [
+          {
+            path,
+            countryCode: 'MT',
+            continent: 'europe',
+            size: 1_000_000,
+            publicationDate: '2026-09-09',
+          },
+        ],
+      },
+      refreshing: false,
+      error: false,
+    });
+  });
+  await page.getByRole('button', { name: 'Add data', exact: true }).click();
+  await page.getByRole('button', { name: 'Malta', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Malta', exact: true }).click();
+  await page.getByRole('button', { name: 'Download · 1 MB', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Terrain', exact: true })
+      .getByRole('button', { name: /^Malta / }),
+  ).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

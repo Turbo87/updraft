@@ -119,7 +119,7 @@ for (let pendingResource of ['metadata', 'tiles'] as const) {
     await expect.poll(() => [...tiles]).toEqual([0]);
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await page.getByRole('link', { name: 'Data', exact: true }).click();
-    await page.getByRole('button', { name: /^local.terrain/ }).click();
+    await page.getByRole('button', { name: /^local / }).click();
     let toggle = page.getByRole('switch', { name: 'Enabled' });
     await toggle.click();
     await expect(toggle).not.toBeChecked();
@@ -138,7 +138,7 @@ for (let pendingResource of ['metadata', 'tiles'] as const) {
     await page.getByRole('button', { name: 'Remove from device' }).click();
     await page.getByRole('button', { name: 'Remove', exact: true }).click();
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^local.terrain/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^local / })).toHaveCount(0);
     await expect.poll(metadata).toEqual({ attribution: 'Remaining terrain credit', tileSize: 512 });
     await expect.poll(() => [...tiles]).toEqual([0, 2, 3]);
     let final = await page.evaluate(() => {

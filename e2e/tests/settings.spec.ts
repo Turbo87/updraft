@@ -496,7 +496,7 @@ for (let [width, height, theme] of [
     );
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('link', { name: 'Data', exact: true }).click();
-    await page.getByRole('button', { name: /^local.terrain/ }).click();
+    await page.getByRole('button', { name: /^local / }).click();
     let dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('switch')).toBeChecked();
     await page.evaluate(() =>
@@ -516,7 +516,7 @@ for (let [width, height, theme] of [
       }),
     );
     await page.getByRole('link', { name: 'Data', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^local.terrain/ })).toContainText(
+    await expect(page.getByRole('button', { name: /^local / })).toContainText(
       'Could not load the file.',
     );
   });

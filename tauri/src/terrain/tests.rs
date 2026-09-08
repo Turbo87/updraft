@@ -373,3 +373,97 @@ fn unreadable_disabled_marker_fails_the_scan() {
     assert_ok!(std::os::unix::fs::symlink(&marker, &marker));
     assert_err!(Terrain::load(directory.path()).map(|_| ()));
 }
+
+#[test]
+#[tracing_test::traced_test]
+fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
+    use serde_json::{Value, json};
+    let directory = tempfile::tempdir().unwrap();
+    for (name, size) in [("active", 256), ("incompatible", 512)] {
+        let path = directory.path().join(format!("{name}.terrain"));
+        write_terrain(&path, &[(7, 0, 0, &webp_header(size, size))]);
+    }
+    let disabled = directory.path().join("disabled.terrain");
+    assert_ok!(fs::write(&disabled, b"not sqlite"));
+    assert_ok!(fs::write(disabled.with_extension("terrain.disabled"), b""));
+    assert_ok!(fs::write(
+        directory.path().join("invalid.terrain"),
+        b"not sqlite"
+    ));
+    let terrain = Arc::new(Mutex::new(assert_ok!(Terrain::load(directory.path()))));
+    let messages = Arc::new(Mutex::new(Vec::<Value>::new()));
+    let received = messages.clone();
+    let app = tauri::test::mock_builder()
+        .manage(terrain.clone())
+        .channel_interceptor(move |_, _, _, body| {
+            let status = body.clone().deserialize().unwrap();
+            received.lock().unwrap().push(status);
+            true
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::subscribe_terrain,
+            commands::unsubscribe_terrain,
+        ])
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .unwrap();
+    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let invoke = |command: &str, body| {
+        let request = tauri::webview::InvokeRequest {
+            cmd: command.into(),
+            callback: tauri::ipc::CallbackFn(0),
+            error: tauri::ipc::CallbackFn(1),
+            url: "tauri://localhost".parse().unwrap(),
+            body: tauri::ipc::InvokeBody::Json(body),
+            headers: Default::default(),
+            invoke_key: tauri::test::INVOKE_KEY.into(),
+        };
+        tauri::test::get_ipc_response(&window, request)
+            .map(|response| response.deserialize::<Value>().unwrap())
+    };
+    for id in [42, 43] {
+        let body = json!({"channel":format!("__CHANNEL__:{id}")});
+        assert_eq!(assert_ok!(invoke("subscribe_terrain", body)), Value::Null);
+    }
+    let messages = messages.lock().unwrap();
+    assert_eq!(messages.len(), 2);
+    assert_eq!(messages[0], messages[1]);
+    insta::assert_json_snapshot!(messages[0], @r#"
+    {
+      "generation": 0,
+      "sources": [
+        {
+          "sourceName": "active.terrain",
+          "type": "active"
+        },
+        {
+          "sourceName": "disabled.terrain",
+          "type": "disabled"
+        },
+        {
+          "sourceName": "incompatible.terrain",
+          "type": "unavailable"
+        },
+        {
+          "sourceName": "invalid.terrain",
+          "type": "unavailable"
+        }
+      ]
+    }
+    "#);
+    drop(messages);
+    for id in [42, 42, 43] {
+        let body = json!({"channelId":id});
+        assert_eq!(assert_ok!(invoke("unsubscribe_terrain", body)), Value::Null);
+        let terrain = terrain.lock().unwrap();
+        let expected = if id == 42 { vec![43] } else { vec![] };
+        assert_eq!(
+            terrain.subscribers.keys().copied().collect::<Vec<_>>(),
+            expected
+        );
+    }
+    assert!(logs_contain("incompatible.terrain"));
+    assert!(logs_contain("invalid.terrain"));
+    assert!(!logs_contain("disabled.terrain"));
+}

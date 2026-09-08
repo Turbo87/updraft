@@ -90,6 +90,8 @@ pub fn run() {
             basemap::commands::unsubscribe_basemaps,
             basemap::commands::set_basemap_enabled,
             basemap::commands::remove_basemap,
+            terrain::commands::subscribe_terrain,
+            terrain::commands::unsubscribe_terrain,
             data_import::select_data_file,
             data_import::import_data_file,
             data_import::discard_data_file,

@@ -119,6 +119,10 @@ contribute tiles and metadata. Startup validation establishes one tile size from
 the first valid enabled file with tiles and excludes incompatible files.
 Validated metadata remains in memory until restart. Disabled markers prevent
 files from being opened or validated.
+Terrain status subscriptions send the initial inventory under the same lock
+that registers the channel. The payload contains a generation number, filenames,
+and active, disabled, or unavailable states. Paths and diagnostic errors stay
+in the shell. Unsubscribe removes only the requested channel and is idempotent.
 
 ## State ownership
 

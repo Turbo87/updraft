@@ -1,3 +1,4 @@
+use self::commands::TerrainStatus;
 use anyhow::{Context, Result, ensure};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use std::collections::BTreeMap;
@@ -8,7 +9,10 @@ use std::{
     path::{Path, PathBuf},
 };
 use tauri::http::{Response, StatusCode, header};
+use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
+
+pub mod commands;
 
 const TILE_QUERY: &str =
     "SELECT tile_data FROM tiles WHERE zoom_level = ?1 AND tile_column = ?2 AND tile_row = ?3";
@@ -21,6 +25,8 @@ const TILE_METADATA_QUERY: &str = "
 #[derive(Default)]
 pub struct Terrain {
     files: BTreeMap<PathBuf, TerrainSource>,
+    generation: u64,
+    subscribers: BTreeMap<u32, Channel<TerrainStatus>>,
 }
 
 #[derive(Debug)]
@@ -76,7 +82,10 @@ impl Terrain {
             }
             files.insert(path, source);
         }
-        Ok(Self { files })
+        Ok(Self {
+            files,
+            ..Self::default()
+        })
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {

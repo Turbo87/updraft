@@ -69,6 +69,14 @@ expression: topic
         "metersPerSecond": 1.4,
         "stale": false
       }
+    },
+    "terrainElevation": {
+      "meters": 100.0,
+      "stale": false
+    },
+    "altitudeAgl": {
+      "meters": 200.0,
+      "stale": false
     }
   }
 }

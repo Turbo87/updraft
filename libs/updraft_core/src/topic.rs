@@ -139,6 +139,8 @@ pub struct Instruments {
     pub pressure_altitude: Option<AltitudeInstrument>,
     pub true_airspeed: Option<SpeedInstrument>,
     pub derived: Option<Box<DerivedInstruments>>,
+    pub terrain_elevation: Option<AltitudeInstrument>,
+    pub altitude_agl: Option<AltitudeInstrument>,
 }
 
 impl Instruments {
@@ -201,6 +203,14 @@ mod tests {
     #[test]
     fn topic_serializes_to_tagged_camel_case_json() {
         let topic = Instruments {
+            terrain_elevation: Some(AltitudeInstrument {
+                meters: 100.0,
+                stale: false,
+            }),
+            altitude_agl: Some(AltitudeInstrument {
+                meters: 200.0,
+                stale: false,
+            }),
             gps: Some(GpsInstruments {
                 position: LatLon {
                     latitude_degrees: 50.823,

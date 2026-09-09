@@ -111,5 +111,32 @@ pending replacement before deleting the file. Installation rechecks all enabled
 terrain files and refreshes tiles, metadata, and credits together. It preserves
 the map camera. Restart discards unfinished transfers and in-memory failures.
 
-This version does not provide numeric elevation queries, AGL calculations,
-custom file import controls or online fallback.
+## Aircraft elevation
+
+A shell worker samples terrain at the selected GPS position. Lookup does not
+use map position, map zoom, or rendered tiles. It selects the highest active
+zoom with coverage. At each zoom, filename order resolves overlapping files.
+
+The reader decodes Terrarium WebP pixels and applies bilinear interpolation
+between pixel centers. It uses adjacent tiles across tile edges. When an adjacent
+tile is missing, it repeats the nearest available edge samples. Positions outside
+the Web Mercator latitude range have no terrain elevation.
+
+A Moka cache retains decoded tiles and missing-tile results. Its capacity is
+weighted by decoded pixel bytes with a 16 MiB target. The limit is approximate.
+Reads and decoding run on a blocking worker. Read failures produce a warning
+and retry after five seconds. Position updates coalesce while a lookup or retry
+is pending. Missing coverage does not trigger retries at an unchanged position.
+An inventory change clears decoded and missing-tile cache entries and samples
+terrain again, even when the aircraft position is unchanged.
+
+The core accepts results only for the current selected position. It publishes
+terrain elevation and calculates AGL from fused MSL altitude minus terrain
+elevation. AGL remains unavailable when either input is unavailable. Negative
+values remain visible. Terrain elevation follows position freshness. AGL is
+stale when position or fused altitude is stale.
+
+The debug overlay shows terrain elevation and AGL beside the fused altitude.
+Both values use the selected altitude unit. Unavailable values show `–`.
+
+This version does not provide custom file import controls or online fallback.

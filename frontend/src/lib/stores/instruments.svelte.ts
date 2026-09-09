@@ -25,6 +25,8 @@ export const EMPTY_INSTRUMENTS: Instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  terrainElevation: null,
+  altitudeAgl: null,
   derived: null,
 };
 

@@ -136,7 +136,9 @@ timestamps for update availability and filesystem metadata for file details.
 Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under
 `updraft://localhost/terrain/`. MapLibre decodes the tiles for hillshade and
-elevation colours.
+elevation colours. A separate shell worker samples numeric terrain elevation
+at the selected GPS position. It sends position-associated results to the core,
+which publishes terrain elevation and AGL through the instruments topic.
 The terrain inventory retains disabled and unavailable files. Only active files
 contribute tiles and metadata. Startup validation establishes one tile size from
 the first valid enabled file with tiles and excludes incompatible files.

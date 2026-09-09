@@ -4,6 +4,7 @@ mod ownship;
 mod pressure_altitude;
 mod settings;
 mod support;
+mod terrain;
 mod traffic;
 mod transport;
 mod true_airspeed;

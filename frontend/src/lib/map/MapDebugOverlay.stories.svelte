@@ -5,6 +5,7 @@
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
+  import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '$lib/stores/instruments.svelte';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
 
   const instruments = {
@@ -18,7 +19,12 @@
     },
     pressureAltitude: { meters: 1_000, stale: false },
     trueAirspeed: { metersPerSecond: 50, stale: false },
-    derived: null,
+    terrainElevation: { meters: 100, stale: false },
+    altitudeAgl: { meters: 110, stale: false },
+    derived: {
+      ...EMPTY_DERIVED_INSTRUMENTS,
+      altitude: { altitudeMslMeters: 210, stale: false },
+    },
   } satisfies Instruments;
 
   const staleInstruments = {
@@ -32,7 +38,12 @@
     },
     pressureAltitude: { meters: 1_000, stale: true },
     trueAirspeed: { metersPerSecond: 50, stale: true },
-    derived: null,
+    terrainElevation: { meters: 200, stale: true },
+    altitudeAgl: { meters: -10, stale: true },
+    derived: {
+      ...EMPTY_DERIVED_INSTRUMENTS,
+      altitude: { altitudeMslMeters: 190, stale: true },
+    },
   } satisfies Instruments;
 
   const metricUnits = {
@@ -74,6 +85,14 @@
 <Story
   name="Aviation"
   args={{ map, instruments: staleInstruments, units: aviationUnits }}
+  play={async ({ userEvent }) => {
+    await userEvent.keyboard('d');
+  }}
+/>
+
+<Story
+  name="Unavailable"
+  args={{ map, instruments: EMPTY_INSTRUMENTS, units: metricUnits }}
   play={async ({ userEvent }) => {
     await userEvent.keyboard('d');
   }}

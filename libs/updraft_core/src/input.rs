@@ -251,3 +251,12 @@ impl private::Sealed for GetGlideSnapshot {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct ReplaceAirspaceCatalog(pub Arc<crate::AirspaceCatalog>);
 impl private::Sealed for ReplaceAirspaceCatalog {}
+
+/// Reports terrain MSL elevation for the exact position that the shell sampled.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TerrainElevation {
+    pub position: crate::LatLon,
+    pub meters: Option<f64>,
+}
+
+impl private::Sealed for TerrainElevation {}

@@ -33,7 +33,14 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
     units,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
+    instruments: {
+      gps: null,
+      pressureAltitude: null,
+      trueAirspeed: null,
+      terrainElevation: null,
+      altitudeAgl: null,
+      derived: null,
+    },
     waypoints: {
       generation: 1,
       sources: [{ type: 'active', sourceName: 'fields.cup', waypointCount: 6, warnings: [] }],

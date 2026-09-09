@@ -7,4 +7,4 @@ import type { SpeedInstrument } from "./SpeedInstrument";
 /**
  * Fast-changing instrument values grouped by source-selection domain.
  */
-export type Instruments = { gps: GpsInstruments | null, pressureAltitude: AltitudeInstrument | null, trueAirspeed: SpeedInstrument | null, derived: DerivedInstruments | null, };
+export type Instruments = { gps: GpsInstruments | null, pressureAltitude: AltitudeInstrument | null, trueAirspeed: SpeedInstrument | null, derived: DerivedInstruments | null, terrainElevation: AltitudeInstrument | null, altitudeAgl: AltitudeInstrument | null, };

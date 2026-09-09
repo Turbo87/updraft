@@ -202,6 +202,15 @@ pub fn run() {
             app.manage(waypoints::commands::WaypointCommandState::new(
                 waypoint_storage,
             ));
+            let elevation_terrain = app.state::<Arc<Mutex<terrain::Terrain>>>().inner().clone();
+            let elevation_driver = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) =
+                    terrain::watch_elevation(elevation_terrain, elevation_driver).await
+                {
+                    tracing::error!(%error, "Terrain elevation worker stopped");
+                }
+            });
             app.manage(handle);
             app.manage(waypoints::arrival_stream::ArrivalStreams::default());
             app.manage(file_picker);

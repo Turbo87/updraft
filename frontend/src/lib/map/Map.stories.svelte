@@ -31,6 +31,8 @@
     },
     pressureAltitude: null,
     trueAirspeed: null,
+    terrainElevation: null,
+    altitudeAgl: null,
     derived: null,
   } satisfies Instruments;
 
@@ -129,6 +131,8 @@
       gps: null,
       pressureAltitude: null,
       trueAirspeed: null,
+      terrainElevation: null,
+      altitudeAgl: null,
       derived: null,
     },
     mapState: new MapState(),
@@ -183,7 +187,14 @@
     mapState: arrivalMap,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
+    instruments: {
+      gps: null,
+      pressureAltitude: null,
+      trueAirspeed: null,
+      terrainElevation: null,
+      altitudeAgl: null,
+      derived: null,
+    },
     units,
     testMode: true,
     testWaypointData: arrivalFixture,

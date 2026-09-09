@@ -12,6 +12,8 @@ const emptyInstruments: Instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  terrainElevation: null,
+  altitudeAgl: null,
   derived: null,
 };
 
@@ -161,6 +163,14 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Derived altitude",
           "value": "–",
         },
+        {
+          "label": "Terrain elevation",
+          "value": "–",
+        },
+        {
+          "label": "AGL altitude",
+          "value": "–",
+        },
       ]
     `);
   });
@@ -177,6 +187,8 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: false },
       trueAirspeed: { metersPerSecond: 50, stale: false },
+      terrainElevation: null,
+      altitudeAgl: null,
       derived: null,
     };
     let view = await render(MapDebugOverlay, {
@@ -259,6 +271,14 @@ describe('MapDebugOverlay.svelte', () => {
         },
         {
           "label": "Derived altitude",
+          "value": "–",
+        },
+        {
+          "label": "Terrain elevation",
+          "value": "–",
+        },
+        {
+          "label": "AGL altitude",
           "value": "–",
         },
       ]
@@ -384,6 +404,8 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: true },
       trueAirspeed: { metersPerSecond: 50, stale: true },
+      terrainElevation: null,
+      altitudeAgl: null,
       derived: null,
     };
     let units: UnitSettings = {
@@ -470,6 +492,14 @@ describe('MapDebugOverlay.svelte', () => {
           "label": "Derived altitude",
           "value": "–",
         },
+        {
+          "label": "Terrain elevation",
+          "value": "–",
+        },
+        {
+          "label": "AGL altitude",
+          "value": "–",
+        },
       ]
     `);
     expect(Array.from(view.container.querySelectorAll('dd.stale'), text)).toEqual([
@@ -481,4 +511,27 @@ describe('MapDebugOverlay.svelte', () => {
       '3281 ft',
     ]);
   });
+  it.each([
+    { unit: 'm' as const, elevation: '100 m', agl: '-10 m' },
+    { unit: 'ft' as const, elevation: '328 ft', agl: '-33 ft' },
+  ])(
+    'shows terrain and negative AGL in $unit with independent freshness',
+    async ({ unit, elevation, agl }) => {
+      let view = await render(MapDebugOverlay, {
+        map: undefined,
+        instruments: {
+          ...EMPTY_INSTRUMENTS,
+          terrainElevation: { meters: 100, stale: false },
+          altitudeAgl: { meters: -10, stale: true },
+        },
+        units: { ...metricUnits, altitude: unit },
+      });
+      await userEvent.keyboard('d');
+      expect(readValues(view.container).slice(-2)).toEqual([
+        { label: 'Terrain elevation', value: elevation },
+        { label: 'AGL altitude', value: agl },
+      ]);
+      expect(Array.from(view.container.querySelectorAll('dd.stale'), text)).toEqual([agl]);
+    },
+  );
 });

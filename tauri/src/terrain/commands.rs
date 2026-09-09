@@ -38,7 +38,7 @@ impl Terrain {
             .map(|(id, source)| {
                 let source_name = id.clone();
                 match source {
-                    TerrainSource::Active(_) => TerrainSourceStatus::Active { source_name },
+                    TerrainSource::Active => TerrainSourceStatus::Active { source_name },
                     TerrainSource::Disabled => TerrainSourceStatus::Disabled { source_name },
                     TerrainSource::Unavailable(_) => {
                         TerrainSourceStatus::Unavailable { source_name }

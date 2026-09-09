@@ -1,4 +1,4 @@
-# Parser fixtures
+# Test fixtures
 
 Some of these files are unmodified real-world inputs used to exercise Updraft's parsers. Keep their original bytes intact. Line endings, checksums, signatures, extensions, and unusual records are part of the fixture coverage.
 
@@ -7,3 +7,5 @@ Some of these files are unmodified real-world inputs used to exercise Updraft's 
 - `flight_1.nmea`: Real-life FLARM traffic scenario with multiple targets, copied byte-for-byte from an [XCSoar fixture](https://github.com/XCSoar/XCSoar/blob/b9ab9ca951552c759b7863fe09e01c2ac94bfea3/test/data/driver/FLARM/rl-traffic.nmea) introduced in [XCSoar commit `b9ab9ca`](https://github.com/XCSoar/XCSoar/commit/b9ab9ca951552c759b7863fe09e01c2ac94bfea3). XCSoar distributes its repository under `GPL-2.0-or-later`. This copied fixture is not covered by Updraft's `MIT OR Apache-2.0` license.
 - `weglide_1015312.igc`: Wave flight recorded and supplied by the pilot.
 - `weglide_1141558.igc`: IGC flight downloaded from [WeGlide flight 1141558](https://www.weglide.org/flight/1141558) and supplied by the pilot. It includes engine usage near the end of the flight.
+- `terrain/france.terrain`: Nine original zoom-10 tiles from Enroute France (`13-Nov-2025`), covering the wave flight. The database retains source attribution, including Copernicus EU-DEM. This fixture retains its source terms.
+- `terrain/flight.csv`: Benchmark segment from `weglide_1015312.igc`, containing valid fix indices 1587–1811 (zero-based). The 225 positions span 902 seconds. Timestamps are relative to the first fix, and coordinates use decimal degrees.

@@ -30,7 +30,7 @@ removal commands use the full identity, so equal filenames in separate regions
 remain independent.
 
 The reader requires MBTiles with WebP format metadata, Terrarium encoding,
-and a compatible `tiles` table or view. It retains unsupported or invalid files
+and a compatible `tiles` table or view. The shell retains unsupported or invalid files
 as unavailable and logs a warning. These files contribute no tiles or metadata.
 A missing directory gives empty coverage. Other directory or marker scan
 failures also produce a warning.

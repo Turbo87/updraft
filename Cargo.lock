@@ -5855,9 +5855,7 @@ dependencies = [
  "flate2",
  "hex",
  "image-webp 0.2.4",
- "imagesize 0.15.0",
  "insta",
- "moka",
  "reqwest",
  "rusqlite",
  "rustls",
@@ -5880,10 +5878,26 @@ dependencies = [
  "updraft_airspace",
  "updraft_core",
  "updraft_geo",
+ "updraft_terrain",
  "updraft_units",
  "updraft_waypoint",
  "uuid",
  "webpki-roots",
+]
+
+[[package]]
+name = "updraft_terrain"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "claims",
+ "criterion",
+ "image-webp 0.2.4",
+ "imagesize 0.15.0",
+ "moka",
+ "rusqlite",
+ "tempfile",
+ "updraft_geo",
 ]
 
 [[package]]

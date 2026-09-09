@@ -136,7 +136,13 @@ timestamps for update availability and filesystem metadata for file details.
 Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under
 `updraft://localhost/terrain/`. MapLibre decodes the tiles for hillshade and
-elevation colours. A separate shell worker samples numeric terrain elevation
+elevation colours. The synchronous `updraft_terrain` crate owns read-only SQLite
+access, file validation, combined metadata, Terrarium decoding, interpolation,
+and the decoded tile cache. The shell selects files and runs blocking reads.
+Map resources and numeric sampling use the same reader and source order.
+Source changes invalidate the reader's cached tiles and missing-tile results.
+The shell closes reader handles before file replacement or deletion.
+A separate shell worker samples numeric terrain elevation
 at the selected GPS position. It sends position-associated results to the core,
 which publishes terrain elevation and AGL through the instruments topic.
 The terrain inventory retains disabled and unavailable files. Only active files

@@ -82,6 +82,7 @@ mod tests {
     use updraft_core::{
         Fix, Input, InternalGps, MacCready, PolarId, ReplaceWaypointCatalog, SetArrivalReserve,
         SetBallast, SetBugs, SetMacCready, SetPolar, SettingsSnapshot, WaypointCatalog,
+        WaypointSource,
     };
     use updraft_geo::LatLon;
     use updraft_units::{Angle, EllipsoidAltitude, Length};
@@ -124,9 +125,10 @@ mod tests {
         let cup = b"name,code,country,lat,lon,elev,style\nField,,,0000.000N,00000.000E,100m,2\n";
         let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(cup)));
         let catalog = Arc::new(WaypointCatalog {
-            sources: BTreeMap::from([("field.cup".into(), Ok(dataset))]),
+            sources: BTreeMap::from([("field.cup".into(), WaypointSource::Active(dataset))]),
         });
-        assert_ok!(driver.handle.send(ReplaceWaypointCatalog(catalog)).await);
+        let input = ReplaceWaypointCatalog(catalog.clone());
+        assert_ok!(driver.handle.send(input).await);
         let fix = Fix {
             position: LatLon::from_degrees(0., 0.1),
             altitude_ellipsoid: Some(EllipsoidAltitude::new(Length::from_meters(1000.))),
@@ -170,6 +172,17 @@ mod tests {
         let reserve_margin =
             updated_margin(&driver.handle, &mut results, SetArrivalReserve { reserve }).await;
         assert_eq!(reserve_margin, polar_margin - 100.);
+        let disabled = Arc::new(WaypointCatalog {
+            sources: BTreeMap::from([("field.cup".into(), WaypointSource::Disabled)]),
+        });
+        assert_ok!(driver.handle.send(ReplaceWaypointCatalog(disabled)).await);
+        assert_ok!(results.changed().await);
+        assert_eq!(feature_count(&results), 0);
+        assert_eq!(assert_some!(results.borrow().as_ref()).generation, 2);
+        assert_ok!(driver.handle.send(ReplaceWaypointCatalog(catalog)).await);
+        assert_ok!(results.changed().await);
+        assert_eq!(feature_count(&results), 1);
+        assert_eq!(assert_some!(results.borrow().as_ref()).generation, 3);
         let third = Instant::now();
         let mac_cready = assert_ok!(MacCready::try_from(2.));
         assert_ok!(driver.handle.send(SetMacCready { mac_cready }).await);

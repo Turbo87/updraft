@@ -10,15 +10,24 @@
 
   type Props = BackTarget & {
     actions?: Snippet;
+    responsiveActions?: boolean;
     backLabel: string;
     children: Snippet;
     title: string;
   };
 
-  let { actions, backHref, backLabel, children, onBack, title }: Props = $props();
+  let {
+    actions,
+    responsiveActions = false,
+    backHref,
+    backLabel,
+    children,
+    onBack,
+    title,
+  }: Props = $props();
 </script>
 
-<div class="screen-scaffold">
+<div class="screen-scaffold" class:responsive-actions={responsiveActions}>
   <header>
     {#if backHref}
       <a class="back-control" aria-label={backLabel} href={resolve(backHref)}>
@@ -30,6 +39,9 @@
       </button>
     {/if}
     <h1>{title}</h1>
+    {#if responsiveActions && actions}
+      <div class="header-actions">{@render actions()}</div>
+    {/if}
   </header>
 
   <!-- The scrolling region must be keyboard-focusable. -->
@@ -137,5 +149,21 @@
     gap: var(--space-2);
     width: min(100%, 34rem);
     margin-inline: auto;
+  }
+  .header-actions {
+    display: none;
+    margin-inline-start: auto;
+  }
+
+  @media (min-width: 545px) {
+    .header-actions {
+      display: flex;
+    }
+    .responsive-actions footer {
+      display: none;
+    }
+    .responsive-actions .content {
+      padding-block-end: calc(var(--space-6) + var(--safe-area-bottom));
+    }
   }
 </style>

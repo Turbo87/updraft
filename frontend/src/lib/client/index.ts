@@ -14,19 +14,87 @@ export type ArrivalSubscription = {
   updateViewport(bounds: ArrivalViewport): Promise<void>;
   close(): Promise<void>;
 };
-export type ImportWaypointsResult =
-  { type: 'imported'; sourceName: string } | { type: 'cancelled' };
-export type ImportAirspaceResult = { type: 'imported' } | { type: 'cancelled' };
+export type BasemapStatus = {
+  generation: number;
+  sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
+};
+export type BasemapSubscription = { close(): Promise<void> };
+export type ManagedFileDetails = {
+  size: number;
+  /** File modification time in Unix milliseconds. */
+  modifiedAt: number;
+};
+export type TerrainStatus = {
+  generation: number;
+  sources: { sourceName: string; type: 'active' | 'disabled' | 'unavailable' }[];
+};
+export type TerrainSubscription = { close(): Promise<void> };
+export type EnrouteCatalogEntry = {
+  path: string;
+  countryCode: string;
+  continent: 'africa' | 'asia' | 'oceania' | 'europe' | 'northAmerica' | 'southAmerica';
+  size: number;
+  /** Publication date in YYYY-MM-DD format. */
+  publicationDate: string;
+};
+export type EnrouteCatalogStatus = {
+  cached: {
+    entries: EnrouteCatalogEntry[];
+    /** Unix timestamp in milliseconds. */
+    checkedAt: number;
+  } | null;
+  refreshing: boolean;
+  error: boolean;
+};
+export type EnrouteCatalogSubscription = { close(): Promise<void> };
+export type EnrouteDownloadStatus =
+  | { path: string; type: 'queued' }
+  | { path: string; type: 'downloading'; downloaded: number; total: number }
+  | { path: string; type: 'failed' };
+export type EnrouteDownloadSubscription = { close(): Promise<void> };
+export type SelectedDataFile = {
+  selectionId: string;
+  sourceName: string;
+  dataType: 'airspace' | 'waypoints';
+};
 
 /**
  * The only boundary between the frontend and the Rust shell.
  *
  * Components never import an implementation of this. The layout receives
  * one, so tests and browser-only development can substitute the fake.
- * Mutation promises report command completion. Only topics replace shared
- * frontend state.
+ * Mutation promises report command completion. Subscription updates replace
+ * shared frontend state.
  */
 export interface UpdraftClient {
+  /** Delivers the initial inventory and later changes. Reports registration failures through onError. */
+  subscribeBasemaps(
+    onUpdate: (status: BasemapStatus) => void,
+    onError: (error: unknown) => void,
+  ): BasemapSubscription;
+  /** Delivers terrain inventory snapshots. Reports registration failures through onError. */
+  subscribeTerrain(
+    onUpdate: (status: TerrainStatus) => void,
+    onError: (error: unknown) => void,
+  ): TerrainSubscription;
+  /** Delivers cached catalog and refresh status. Reports registration failures through onError. */
+  subscribeEnrouteCatalog(
+    onUpdate: (status: EnrouteCatalogStatus) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteCatalogSubscription;
+  /** Delivers queue snapshots. Reports registration failures through onError. */
+  subscribeEnrouteDownloads(
+    onUpdate: (status: EnrouteDownloadStatus[]) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteDownloadSubscription;
+  /** Resolves when the queue accepts the selection, before transfers complete. */
+  downloadEnrouteFiles(paths: string[]): Promise<void>;
+  cancelEnrouteDownload(path: string): Promise<void>;
+  refreshEnrouteCatalog(): Promise<void>;
+  getEnrouteBasemapUpdates(): Promise<string[]>;
+  getEnrouteTerrainUpdates(): Promise<string[]>;
+  getBasemapFileDetails(sourceName: string): Promise<ManagedFileDetails>;
+  getTerrainFileDetails(sourceName: string): Promise<ManagedFileDetails>;
   /** Reports startup and worker failures through onError. Command promises report their own failures. */
   subscribeArrivals(
     bounds: ArrivalViewport,
@@ -61,10 +129,17 @@ export interface UpdraftClient {
   setBallast(ballast: number): Promise<void>;
   /** Replaces all display-unit selections. */
   setUnits(units: UnitSettings): Promise<void>;
-  importWaypoints(): Promise<ImportWaypointsResult>;
+  selectDataFile(): Promise<SelectedDataFile | null>;
+  importDataFile(selectionId: string): Promise<SelectedDataFile>;
+  discardDataFile(selectionId: string): Promise<void>;
   removeWaypoints(sourceName: string): Promise<void>;
-  importAirspace(): Promise<ImportAirspaceResult>;
+  setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void>;
   removeAirspace(sourceName: string): Promise<void>;
+  setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void>;
+  setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void>;
+  setTerrainEnabled(sourceName: string, enabled: boolean): Promise<void>;
+  removeBasemap(sourceName: string): Promise<void>;
+  removeTerrain(sourceName: string): Promise<void>;
   /**
    * Stops the platform session and ends the app.
    *

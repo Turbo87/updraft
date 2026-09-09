@@ -1,5 +1,5 @@
 use serde_json::json;
-use updraft_core::GlideSnapshot;
+use updraft_core::{GlideSnapshot, WaypointSource};
 use updraft_geo::BoundingBox;
 
 /// Serialized map data built from the same catalog and inputs as its arrivals.
@@ -15,9 +15,9 @@ impl ArrivalResource {
         let sources: Vec<_> = snapshot.waypoints.catalog.sources.values().collect();
         let mut features = Vec::with_capacity(arrivals.entries.len());
         for entry in arrivals.entries {
-            let dataset = sources[entry.source_index]
-                .as_ref()
-                .expect("arrival source is loaded");
+            let WaypointSource::Active(dataset) = sources[entry.source_index] else {
+                unreachable!("arrival source is active")
+            };
             let point = &dataset.waypoints()[entry.waypoint_index];
             let id = format!(
                 "{}:{}:{}",
@@ -87,8 +87,11 @@ mod tests {
         snapshot.waypoints.generation = 7;
         snapshot.waypoints.catalog = Arc::new(WaypointCatalog {
             sources: BTreeMap::from([
-                ("a.cup".into(), Err(WaypointLoadError::ReadFailed)),
-                ("b.cup".into(), Ok(dataset)),
+                (
+                    "a.cup".into(),
+                    WaypointSource::Unavailable(WaypointLoadError::ReadFailed),
+                ),
+                ("b.cup".into(), WaypointSource::Active(dataset)),
             ]),
         });
         let bounds = BoundingBox::new(Angle::ZERO, Angle::ZERO, Angle::ZERO, Angle::ZERO);

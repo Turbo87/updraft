@@ -50,9 +50,9 @@
 <Story
   name="Navigation"
   args={{
-    href: '/settings/airspace',
-    icon: 'i-mdi-vector-square',
-    label: 'Airspace',
+    href: '/settings/data',
+    icon: 'i-mdi-database-outline',
+    label: 'Data',
     size: 'large',
     value: 'Germany 2026',
   }}

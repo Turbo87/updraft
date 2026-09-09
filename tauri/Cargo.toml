@@ -20,9 +20,11 @@ base64 = "=0.23.1"
 hex = "=0.4.3"
 flate2 = "=1.1.10"
 imagesize = "=0.15.0"
+reqwest = { version = "=0.13.4", default-features = false, features = ["rustls-no-provider"] }
+rustls = { version = "=0.23.43", default-features = false, features = ["ring", "std", "tls12"] }
 rusqlite = { version = "=0.40.2", features = ["bundled"] }
 serde_json = "=1.0.151"
-serde = { version = "=1.0.229", features = ["derive"] }
+serde = { version = "=1.0.229", features = ["derive", "rc"] }
 tauri = { version = "=2.11.5", features = [] }
 tauri-plugin-dialog = "=2.7.3"
 tauri-plugin-fs = "=2.5.2"
@@ -33,6 +35,7 @@ tracing = "=0.1.44"
 tracing-appender = "=0.2.5"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 thiserror = "=2.0.20"
+time = { version = "=0.3.55", features = ["macros", "parsing"] }
 updraft_waypoint = { path = "../libs/updraft_waypoint" }
 updraft_airspace = { path = "../libs/updraft_airspace" }
 updraft_core = { path = "../libs/updraft_core" }
@@ -40,6 +43,7 @@ updraft_geo = { path = "../libs/updraft_geo" }
 updraft_units = { path = "../libs/updraft_units" }
 tokio = { version = "=1.53.1", features = ["macros", "net", "rt-multi-thread", "sync", "time", "io-util"] }
 uuid = "=1.26.0"
+webpki-roots = "=1.0.9"
 
 [dev-dependencies]
 approx = "=0.6.0-rc2"

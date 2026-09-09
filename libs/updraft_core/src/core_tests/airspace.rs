@@ -1,7 +1,7 @@
 use super::super::*;
 use super::support::at;
-use crate::{AirspaceLoadError, AirspaceStatus};
-use std::sync::Arc;
+use crate::{AirspaceLoadError, AirspaceSource, AirspaceStatus};
+use std::{collections::BTreeMap, sync::Arc};
 use updraft_airspace::AirspaceDataset;
 
 const POLYGON: &[u8] = include_bytes!("../../../../testdata/airspace/polygon.txt");
@@ -32,7 +32,10 @@ fn activating_airspace_dataset_publishes_and_onboards_active_status() {
 
     let update = core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([("Local airspace.txt".into(), Ok(dataset))]),
+            sources: BTreeMap::from([(
+                "Local airspace.txt".into(),
+                AirspaceSource::Active(dataset),
+            )]),
         })),
         at(0),
     );
@@ -57,14 +60,17 @@ fn airspace_generation_changes_for_each_replacement() {
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
     core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([("First name".into(), Ok(dataset.clone()))]),
+            sources: BTreeMap::from([(
+                "First name".into(),
+                AirspaceSource::Active(dataset.clone()),
+            )]),
         })),
         at(0),
     );
 
     core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([("Updated name".into(), Ok(dataset))]),
+            sources: BTreeMap::from([("Updated name".into(), AirspaceSource::Active(dataset))]),
         })),
         at(1),
     );
@@ -83,7 +89,7 @@ fn airspace_generation_changes_for_each_replacement() {
     let replacement = Arc::new(AirspaceDataset::default());
     core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([("Empty source".into(), Ok(replacement))]),
+            sources: BTreeMap::from([("Empty source".into(), AirspaceSource::Active(replacement))]),
         })),
         at(2),
     );
@@ -106,9 +112,9 @@ fn airspace_generation_advances_across_removal() {
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
     core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([(
+            sources: BTreeMap::from([(
                 "airspace.txt".into(),
-                Ok(dataset.clone()),
+                AirspaceSource::Active(dataset.clone()),
             )]),
         })),
         at(0),
@@ -117,7 +123,7 @@ fn airspace_generation_advances_across_removal() {
 
     core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([("airspace.txt".into(), Ok(dataset))]),
+            sources: BTreeMap::from([("airspace.txt".into(), AirspaceSource::Active(dataset))]),
         })),
         at(2),
     );
@@ -140,7 +146,10 @@ fn clearing_airspace_dataset_publishes_none_status() {
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
     core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([("Local airspace.txt".into(), Ok(dataset))]),
+            sources: BTreeMap::from([(
+                "Local airspace.txt".into(),
+                AirspaceSource::Active(dataset),
+            )]),
         })),
         at(0),
     );
@@ -169,9 +178,9 @@ fn setting_airspace_unavailable_publishes_safe_load_error() {
 
     let update = core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([(
+            sources: BTreeMap::from([(
                 "Broken airspace.txt".into(),
-                Err(AirspaceLoadError::ParseFailed),
+                AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed),
             )]),
         })),
         at(0),
@@ -197,16 +206,18 @@ fn airspace_snapshot_shares_the_immutable_dataset() {
     let dataset = Arc::new(AirspaceDataset::from_openair(POLYGON).expect("a valid fixture"));
     core.apply(
         crate::ReplaceAirspaceCatalog(Arc::new(crate::AirspaceCatalog {
-            sources: std::collections::BTreeMap::from([(
+            sources: BTreeMap::from([(
                 "airspace.txt".into(),
-                Ok(dataset.clone()),
+                AirspaceSource::Active(dataset.clone()),
             )]),
         })),
         at(0),
     );
 
     let snapshot = core.apply(GetAirspaceSnapshot, at(1)).response;
-    let snapshot = snapshot.catalog.sources["airspace.txt"].as_ref().unwrap();
+    let AirspaceSource::Active(snapshot) = &snapshot.catalog.sources["airspace.txt"] else {
+        panic!("an active source")
+    };
 
     assert!(Arc::ptr_eq(snapshot, &dataset));
 }

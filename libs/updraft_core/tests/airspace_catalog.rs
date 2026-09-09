@@ -1,17 +1,21 @@
 use claims::assert_ok;
 use std::{collections::BTreeMap, sync::Arc};
 use updraft_airspace::AirspaceDataset;
-use updraft_core::{AirspaceCatalog, AirspaceLoadError, AirspaceSourceStatus};
+use updraft_core::{AirspaceCatalog, AirspaceLoadError, AirspaceSource, AirspaceSourceStatus};
 
 #[test]
-fn catalog_keeps_duplicate_airspaces_and_unavailable_sources_independent() {
+fn catalog_keeps_duplicate_airspaces_and_source_states_independent() {
     let bytes = include_bytes!("../../../testdata/airspace/polygon.txt");
     let dataset = Arc::new(assert_ok!(AirspaceDataset::from_openair(bytes)));
     let catalog = AirspaceCatalog {
         sources: BTreeMap::from([
-            ("a.txt".into(), Ok(dataset.clone())),
-            ("b.txt".into(), Ok(dataset)),
-            ("broken.txt".into(), Err(AirspaceLoadError::ParseFailed)),
+            ("a.txt".into(), AirspaceSource::Active(dataset.clone())),
+            ("b.txt".into(), AirspaceSource::Active(dataset)),
+            (
+                "broken.txt".into(),
+                AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed),
+            ),
+            ("disabled.txt".into(), AirspaceSource::Disabled),
         ]),
     };
     assert_eq!(
@@ -29,6 +33,9 @@ fn catalog_keeps_duplicate_airspaces_and_unavailable_sources_independent() {
                 source_name: "broken.txt".into(),
                 error: AirspaceLoadError::ParseFailed
             },
+            AirspaceSourceStatus::Disabled {
+                source_name: "disabled.txt".into()
+            },
         ]
     );
 }
@@ -42,7 +49,10 @@ fn replacing_catalog_publishes_status_and_keeps_old_snapshots_immutable() {
     let at = Timestamp::from_millis(0);
     let initial = core.apply(GetAirspaceSnapshot, at).response;
     let catalog = Arc::new(AirspaceCatalog {
-        sources: BTreeMap::from([("broken.txt".into(), Err(AirspaceLoadError::ReadFailed))]),
+        sources: BTreeMap::from([(
+            "broken.txt".into(),
+            AirspaceSource::Unavailable(AirspaceLoadError::ReadFailed),
+        )]),
     });
     let update = core.apply(ReplaceAirspaceCatalog(catalog.clone()), at);
     let snapshot = core.apply(GetAirspaceSnapshot, at).response;

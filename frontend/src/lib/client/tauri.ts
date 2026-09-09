@@ -9,8 +9,16 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
-  ImportAirspaceResult,
-  ImportWaypointsResult,
+  BasemapStatus,
+  BasemapSubscription,
+  EnrouteCatalogStatus,
+  EnrouteCatalogSubscription,
+  EnrouteDownloadStatus,
+  EnrouteDownloadSubscription,
+  ManagedFileDetails,
+  SelectedDataFile,
+  TerrainStatus,
+  TerrainSubscription,
   TopicListener,
   UpdraftClient,
 } from './index';
@@ -22,6 +30,150 @@ type ArrivalNotification =
 
 /** Invokes the concrete Tauri commands that form the frontend shell boundary. */
 export class TauriClient implements UpdraftClient {
+  subscribeBasemaps(
+    onUpdate: (status: BasemapStatus) => void,
+    onError: (error: unknown) => void,
+  ): BasemapSubscription {
+    let channel = new Channel<BasemapStatus>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_basemaps', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_basemaps', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
+  subscribeEnrouteCatalog(
+    onUpdate: (status: EnrouteCatalogStatus) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteCatalogSubscription {
+    let channel = new Channel<EnrouteCatalogStatus>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_enroute_catalog', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_enroute_catalog', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
+  subscribeEnrouteDownloads(
+    onUpdate: (status: EnrouteDownloadStatus[]) => void,
+    onError: (error: unknown) => void,
+  ): EnrouteDownloadSubscription {
+    let channel = new Channel<EnrouteDownloadStatus[]>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_enroute_downloads', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_enroute_downloads', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
+  downloadEnrouteFiles(paths: string[]): Promise<void> {
+    return invoke('download_enroute_files', { paths });
+  }
+
+  cancelEnrouteDownload(path: string): Promise<void> {
+    return invoke('cancel_enroute_download', { path });
+  }
+
+  getEnrouteBasemapUpdates(): Promise<string[]> {
+    return invoke('get_enroute_basemap_updates');
+  }
+
+  getEnrouteTerrainUpdates(): Promise<string[]> {
+    return invoke('get_enroute_terrain_updates');
+  }
+
+  getBasemapFileDetails(sourceName: string): Promise<ManagedFileDetails> {
+    return invoke('get_basemap_file_details', { sourceName });
+  }
+
+  getTerrainFileDetails(sourceName: string): Promise<ManagedFileDetails> {
+    return invoke('get_terrain_file_details', { sourceName });
+  }
+
+  refreshEnrouteCatalog(): Promise<void> {
+    return invoke('refresh_enroute_catalog');
+  }
+
+  subscribeTerrain(
+    onUpdate: (status: TerrainStatus) => void,
+    onError: (error: unknown) => void,
+  ): TerrainSubscription {
+    let channel = new Channel<TerrainStatus>();
+    channel.onmessage = onUpdate;
+    let closed = false;
+    let closing: Promise<void> | undefined;
+    let ready = invoke('subscribe_terrain', { channel }).then(
+      () => true,
+      (error: unknown) => {
+        channel.onmessage = () => {};
+        if (!closed) onError(error);
+        return false;
+      },
+    );
+    return {
+      close() {
+        if (closing) return closing;
+        closed = true;
+        channel.onmessage = () => {};
+        closing = ready.then(async (registered) => {
+          if (registered) await invoke('unsubscribe_terrain', { channelId: channel.id });
+        });
+        return closing;
+      },
+    };
+  }
+
   subscribeArrivals(
     bounds: ArrivalViewport,
     onUpdate: (update: ArrivalUpdate) => void,
@@ -93,20 +245,48 @@ export class TauriClient implements UpdraftClient {
     return invoke('delete_external_device', { deviceId });
   }
 
-  importWaypoints(): Promise<ImportWaypointsResult> {
-    return invoke('import_waypoints');
+  selectDataFile(): Promise<SelectedDataFile | null> {
+    return invoke('select_data_file');
+  }
+
+  importDataFile(selectionId: string): Promise<SelectedDataFile> {
+    return invoke('import_data_file', { selectionId });
+  }
+
+  discardDataFile(selectionId: string): Promise<void> {
+    return invoke('discard_data_file', { selectionId });
   }
 
   removeWaypoints(sourceName: string): Promise<void> {
     return invoke('remove_waypoints', { sourceName });
   }
 
-  importAirspace(): Promise<ImportAirspaceResult> {
-    return invoke('import_airspace');
+  setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    return invoke('set_waypoints_enabled', { sourceName, enabled });
   }
 
   removeAirspace(sourceName: string): Promise<void> {
     return invoke('remove_airspace', { sourceName });
+  }
+
+  setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    return invoke('set_airspace_enabled', { sourceName, enabled });
+  }
+
+  setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    return invoke('set_basemap_enabled', { sourceName, enabled });
+  }
+
+  setTerrainEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    return invoke('set_terrain_enabled', { sourceName, enabled });
+  }
+
+  removeTerrain(sourceName: string): Promise<void> {
+    return invoke('remove_terrain', { sourceName });
+  }
+
+  removeBasemap(sourceName: string): Promise<void> {
+    return invoke('remove_basemap', { sourceName });
   }
 
   quit(): Promise<void> {

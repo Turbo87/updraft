@@ -7,16 +7,16 @@ import '../app.css';
 import SettingsIndexScreen from './SettingsIndexScreen.svelte';
 
 describe('SettingsIndexScreen.svelte', () => {
-  it.each([413, 915])('keeps separate inset navigation cards at width %s', async (width) => {
+  it.each([320, 413, 915])('keeps separate inset navigation cards at width %s', async (width) => {
     let oldWidth = window.innerWidth;
     let oldHeight = window.innerHeight;
     try {
       await page.viewport(width, 600);
-      render(SettingsIndexScreen, {});
+      render(SettingsIndexScreen, { updateCount: 2 });
       let nav = page.getByRole('navigation', { name: 'Settings' }).element();
       let navBounds = nav.getBoundingClientRect();
       let links = [...nav.querySelectorAll('a')];
-      expect(links).toHaveLength(8);
+      expect(links).toHaveLength(7);
       expect(navBounds.left).toBe((width - Math.min(width, 544)) / 2 + 20);
       expect(navBounds.right).toBe(width - navBounds.left);
       for (let [index, link] of links.entries()) {
@@ -54,10 +54,14 @@ describe('SettingsIndexScreen.svelte', () => {
     await expect
       .element(page.getByRole('link', { name: 'Flight controls' }))
       .toHaveAttribute('href', '/settings/flight-controls');
-    await expect.element(page.getByRole('spinbutton')).not.toBeInTheDocument();
     await expect
-      .element(page.getByRole('link', { name: 'Airspace' }))
-      .toHaveAttribute('href', '/settings/airspace');
+      .element(page.getByRole('link', { name: 'Data', exact: true }))
+      .toHaveAttribute('href', '/settings/data');
+    await expect
+      .element(page.getByRole('link', { name: 'Waypoints', exact: true }))
+      .not.toBeInTheDocument();
+    await expect.element(page.getByRole('spinbutton')).not.toBeInTheDocument();
+    await expect.element(page.getByRole('link', { name: 'Airspace' })).not.toBeInTheDocument();
     await expect
       .element(page.getByRole('link', { name: 'External devices' }))
       .toHaveAttribute('href', '/settings/devices');
@@ -75,4 +79,17 @@ describe('SettingsIndexScreen.svelte', () => {
       '—',
     ]);
   });
+});
+
+it('shows the update count and removes it when no updates remain', async () => {
+  let screen = await render(SettingsIndexScreen, { updateCount: 2 });
+  await expect
+    .element(page.getByRole('link', { name: 'Data 2 updates', exact: true }))
+    .toHaveAttribute('href', '/settings/data');
+  await screen.rerender({ updateCount: 1 });
+  await expect
+    .element(page.getByRole('link', { name: 'Data 1 update', exact: true }))
+    .toBeVisible();
+  await screen.rerender({ updateCount: 0 });
+  await expect.element(page.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
 });

@@ -5,7 +5,24 @@ use updraft_waypoint::WaypointDataset;
 /// Source names are exact display names, not filesystem paths.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct WaypointCatalog {
-    pub sources: BTreeMap<String, Result<Arc<WaypointDataset>, WaypointLoadError>>,
+    pub sources: BTreeMap<String, WaypointSource>,
+}
+
+/// Disabled sources hold neither waypoints nor load errors.
+#[derive(Clone, Debug, PartialEq)]
+pub enum WaypointSource {
+    Disabled,
+    Active(Arc<WaypointDataset>),
+    Unavailable(WaypointLoadError),
+}
+
+impl From<Result<Arc<WaypointDataset>, WaypointLoadError>> for WaypointSource {
+    fn from(result: Result<Arc<WaypointDataset>, WaypointLoadError>) -> Self {
+        match result {
+            Ok(dataset) => Self::Active(dataset),
+            Err(error) => Self::Unavailable(error),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -32,6 +49,9 @@ pub struct WaypointDiagnostic {
     rename_all_fields = "camelCase"
 )]
 pub enum WaypointSourceStatus {
+    Disabled {
+        source_name: String,
+    },
     Active {
         source_name: String,
         waypoint_count: usize,
@@ -57,7 +77,10 @@ impl WaypointCatalog {
             .sources
             .iter()
             .map(|(name, source)| match source {
-                Ok(dataset) => WaypointSourceStatus::Active {
+                WaypointSource::Disabled => WaypointSourceStatus::Disabled {
+                    source_name: name.clone(),
+                },
+                WaypointSource::Active(dataset) => WaypointSourceStatus::Active {
                     source_name: name.clone(),
                     waypoint_count: dataset.waypoints().len(),
                     warnings: dataset
@@ -69,7 +92,7 @@ impl WaypointCatalog {
                         })
                         .collect(),
                 },
-                Err(error) => WaypointSourceStatus::Unavailable {
+                WaypointSource::Unavailable(error) => WaypointSourceStatus::Unavailable {
                     source_name: name.clone(),
                     error: *error,
                 },

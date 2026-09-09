@@ -1,5 +1,5 @@
 import { mockConvertFileSrc } from '@tauri-apps/api/mocks';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TauriClient } from './tauri';
 
@@ -11,6 +11,7 @@ vi.mock('@tauri-apps/api/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tauri-apps/api/core')>()),
   invoke: mocks.invoke,
   Channel: class {
+    id = mocks.channels.length;
     onmessage: (value: unknown) => void = () => {};
     constructor() {
       mocks.channels.push(this);
@@ -26,6 +27,22 @@ beforeEach(() => {
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+it.each([
+  ['setAirspaceEnabled', 'set_airspace_enabled'],
+  ['setWaypointsEnabled', 'set_waypoints_enabled'],
+  ['setBasemapEnabled', 'set_basemap_enabled'],
+  ['setTerrainEnabled', 'set_terrain_enabled'],
+] as const)('forwards %s and propagates failures', async (method, command) => {
+  let client = new TauriClient();
+  mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('storage failed'));
+  await client[method]('local.txt', false);
+  await expect(client[method]('local.txt', true)).rejects.toThrow('storage failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    [command, { sourceName: 'local.txt', enabled: false }],
+    [command, { sourceName: 'local.txt', enabled: true }],
+  ]);
+});
 
 it.each(['macos', 'windows'] as const)('builds arrival URLs on %s', async (os) => {
   mockConvertFileSrc(os);
@@ -113,4 +130,183 @@ it('reports startup failures and propagates command failures', async () => {
   let subscription = new TauriClient().subscribeArrivals([0, 0, 1, 1], vi.fn(), error);
   await expect(subscription.updateViewport([0, 0, 2, 2])).rejects.toThrow('command failed');
   await expect(subscription.close()).rejects.toThrow('command failed');
+});
+
+it('forwards data selection, import, and discard commands', async () => {
+  let client = new TauriClient();
+  let selected = { selectionId: '4', sourceName: 'local.cup', dataType: 'waypoints' };
+  mocks.invoke
+    .mockResolvedValueOnce(selected)
+    .mockResolvedValueOnce(selected)
+    .mockResolvedValueOnce(undefined);
+  expect(await client.selectDataFile()).toEqual(selected);
+  expect(await client.importDataFile('4')).toEqual(selected);
+  await client.discardDataFile('4');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['select_data_file'],
+    ['import_data_file', { selectionId: '4' }],
+    ['discard_data_file', { selectionId: '4' }],
+  ]);
+  mocks.invoke.mockRejectedValue(new Error('read failed'));
+  await expect(client.selectDataFile()).rejects.toThrow('read failed');
+  await expect(client.importDataFile('4')).rejects.toThrow('read failed');
+  await expect(client.discardDataFile('4')).rejects.toThrow('read failed');
+});
+
+describe.each([
+  [
+    'subscribeBasemaps',
+    'subscribe_basemaps',
+    'unsubscribe_basemaps',
+    { generation: 0, sources: [{ sourceName: 'local.mbtiles', type: 'active' }] },
+  ],
+  [
+    'subscribeTerrain',
+    'subscribe_terrain',
+    'unsubscribe_terrain',
+    { generation: 0, sources: [{ sourceName: 'local.terrain', type: 'active' }] },
+  ],
+  [
+    'subscribeEnrouteDownloads',
+    'subscribe_enroute_downloads',
+    'unsubscribe_enroute_downloads',
+    [
+      { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+      { path: 'Europe/Germany.mbtiles', type: 'queued' },
+      { path: 'Europe/France.mbtiles', type: 'failed' },
+    ],
+  ],
+  [
+    'subscribeEnrouteCatalog',
+    'subscribe_enroute_catalog',
+    'unsubscribe_enroute_catalog',
+    { cached: null, refreshing: true, error: false },
+  ],
+] as const)('%s', (method, subscribe, unsubscribe, status) => {
+  it('delivers status and closes native registration after pending startup', async () => {
+    let start = Promise.withResolvers<void>();
+    mocks.invoke.mockReturnValueOnce(start.promise).mockResolvedValue(undefined);
+    let update = vi.fn();
+    let error = vi.fn();
+    let subscription = new TauriClient()[method](update, error);
+    let channel = mocks.channels[0];
+    channel.onmessage(status);
+    expect(update).toHaveBeenCalledExactlyOnceWith(status);
+    let closing = subscription.close();
+    expect(subscription.close()).toBe(closing);
+    channel.onmessage(status);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+    start.resolve();
+    await closing;
+    expect(mocks.invoke.mock.calls).toEqual([
+      [subscribe, { channel }],
+      [unsubscribe, { channelId: 0 }],
+    ]);
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('handles startup failure with closed=%s', async (closed) => {
+    let start = Promise.withResolvers<void>();
+    mocks.invoke.mockReturnValueOnce(start.promise);
+    let error = vi.fn();
+    let update = vi.fn();
+    let subscription = new TauriClient()[method](update, error);
+    let closing = closed ? subscription.close() : undefined;
+    let failure = new Error('subscription failed');
+    start.reject(failure);
+    await start.promise.catch(() => {});
+    mocks.channels[0].onmessage(status);
+    expect(update).not.toHaveBeenCalled();
+    await (closing ?? subscription.close());
+    expect(error.mock.calls).toEqual(closed ? [] : [[failure]]);
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates native unsubscribe failures', async () => {
+    mocks.invoke
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('unsubscribe failed'));
+    let subscription = new TauriClient()[method](vi.fn(), vi.fn());
+    await expect(subscription.close()).rejects.toThrow('unsubscribe failed');
+  });
+});
+
+it('forwards terrain removal and propagates failures', async () => {
+  let client = new TauriClient();
+  mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('storage failed'));
+  await client.removeTerrain('local.terrain');
+  await expect(client.removeTerrain('local.terrain')).rejects.toThrow('storage failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['remove_terrain', { sourceName: 'local.terrain' }],
+    ['remove_terrain', { sourceName: 'local.terrain' }],
+  ]);
+});
+
+it('forwards catalog refresh and propagates failures', async () => {
+  let client = new TauriClient();
+  mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('refresh failed'));
+  await client.refreshEnrouteCatalog();
+  await expect(client.refreshEnrouteCatalog()).rejects.toThrow('refresh failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['refresh_enroute_catalog'],
+    ['refresh_enroute_catalog'],
+  ]);
+});
+
+it.each([
+  ['getEnrouteBasemapUpdates', 'get_enroute_basemap_updates', 'Europe/Malta.mbtiles'],
+  ['getEnrouteTerrainUpdates', 'get_enroute_terrain_updates', 'Europe/Malta.terrain'],
+] as const)('reads updates through %s and propagates failures', async (method, command, path) => {
+  let client = new TauriClient();
+  mocks.invoke.mockResolvedValueOnce([path]).mockRejectedValueOnce(new Error('check failed'));
+  expect(await client[method]()).toEqual([path]);
+  await expect(client[method]()).rejects.toThrow('check failed');
+  expect(mocks.invoke.mock.calls).toEqual([[command], [command]]);
+});
+
+it('waits for download acceptance and forwards cancellation and command failures', async () => {
+  let client = new TauriClient();
+  let accepted = Promise.withResolvers<void>();
+  mocks.invoke.mockReturnValueOnce(accepted.promise).mockResolvedValue(undefined);
+  let finished = vi.fn();
+  let paths = ['Europe/Malta.mbtiles', 'Europe/Germany.mbtiles'];
+  let submission = client.downloadEnrouteFiles(paths).then(finished);
+  await Promise.resolve();
+  expect(finished).not.toHaveBeenCalled();
+  accepted.resolve();
+  await submission;
+  expect(finished).toHaveBeenCalledExactlyOnceWith(undefined);
+  await client.cancelEnrouteDownload(paths[0]);
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['download_enroute_files', { paths }],
+    ['cancel_enroute_download', { path: paths[0] }],
+  ]);
+  mocks.invoke.mockRejectedValue(new Error('command failed'));
+  await expect(client.downloadEnrouteFiles(paths)).rejects.toThrow('command failed');
+  await expect(client.cancelEnrouteDownload(paths[0])).rejects.toThrow('command failed');
+});
+
+it('reads installed basemap metadata and propagates read failures', async () => {
+  let client = new TauriClient();
+  let details = { size: 1234, modifiedAt: 1000 };
+  mocks.invoke.mockResolvedValueOnce(details).mockRejectedValueOnce(new Error('read failed'));
+  expect(await client.getBasemapFileDetails('enroute/Europe/France.mbtiles')).toEqual(details);
+  await expect(client.getBasemapFileDetails('missing')).rejects.toThrow('read failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['get_basemap_file_details', { sourceName: 'enroute/Europe/France.mbtiles' }],
+    ['get_basemap_file_details', { sourceName: 'missing' }],
+  ]);
+});
+
+it('reads installed terrain metadata and propagates read failures', async () => {
+  let client = new TauriClient();
+  let details = { size: 1234, modifiedAt: 1000 };
+  mocks.invoke.mockResolvedValueOnce(details).mockRejectedValueOnce(new Error('read failed'));
+  expect(await client.getTerrainFileDetails('enroute/Europe/France.terrain')).toEqual(details);
+  await expect(client.getTerrainFileDetails('missing')).rejects.toThrow('read failed');
+  expect(mocks.invoke.mock.calls).toEqual([
+    ['get_terrain_file_details', { sourceName: 'enroute/Europe/France.terrain' }],
+    ['get_terrain_file_details', { sourceName: 'missing' }],
+  ]);
 });

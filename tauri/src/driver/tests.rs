@@ -12,10 +12,10 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use updraft_airspace::AirspaceDataset;
 use updraft_core::{
-    AddExternalDevice, AirspaceLoadError, AirspaceState, AirspaceStatus, Bytes, ConnectionSpec,
-    DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig, ExternalDeviceId, LatLon,
-    PublishedExternalDevice, SetExternalDeviceEnabled, SetLocale, SettingsSnapshot, Topic,
-    TrafficUpdate,
+    AddExternalDevice, AirspaceLoadError, AirspaceSource, AirspaceState, AirspaceStatus, Bytes,
+    ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
+    ExternalDeviceId, LatLon, PublishedExternalDevice, SetExternalDeviceEnabled, SetLocale,
+    SettingsSnapshot, Topic, TrafficUpdate,
 };
 
 const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -47,6 +47,28 @@ pub fn spawn(
         tick_interval,
     );
     TestDriver { handle, task }
+}
+
+/// Answers one catalog query, then stops before the command publishes its change.
+pub fn stop_after_next_input(core: Core) -> DriverHandle {
+    let (messages, mut receiver) = mpsc::unbounded_channel();
+    let handle = DriverHandle { messages };
+    let mut state = DriverState {
+        core,
+        sinks: Vec::new(),
+        transports: ActiveTransports::default(),
+        open: Box::new(|_, _, _| Box::new(|| {})),
+        persist: Box::new(|_| {}),
+        handle: handle.clone(),
+    };
+    tokio::spawn(async move {
+        let Message::Input(input) = receiver.recv().await.unwrap() else {
+            panic!("Expected a catalog query");
+        };
+        receiver.close();
+        input.run(&mut state, Timestamp::from_millis(0));
+    });
+    handle
 }
 
 fn no_airspace() -> AirspaceState {
@@ -177,7 +199,10 @@ async fn new_subscriber_receives_current_airspace_status() {
     handle
         .send(updraft_core::ReplaceAirspaceCatalog(Arc::new(
             updraft_core::AirspaceCatalog {
-                sources: std::collections::BTreeMap::from([("airspace.txt".into(), Ok(dataset))]),
+                sources: std::collections::BTreeMap::from([(
+                    "airspace.txt".into(),
+                    AirspaceSource::Active(dataset),
+                )]),
             },
         )))
         .await
@@ -202,7 +227,10 @@ async fn new_subscriber_receives_current_airspace_status() {
 async fn driver_starts_with_active_airspace_at_generation_zero() {
     let dataset = Arc::new(AirspaceDataset::default());
     let initial_airspace = AirspaceState::at_startup(updraft_core::AirspaceCatalog {
-        sources: std::collections::BTreeMap::from([("Stored airspace.txt".into(), Ok(dataset))]),
+        sources: std::collections::BTreeMap::from([(
+            "Stored airspace.txt".into(),
+            AirspaceSource::Active(dataset),
+        )]),
     });
     let handle = Driver::spawn(
         snapshot(),
@@ -230,7 +258,7 @@ async fn driver_starts_with_unavailable_airspace() {
     let initial_airspace = AirspaceState::at_startup(updraft_core::AirspaceCatalog {
         sources: std::collections::BTreeMap::from([(
             "Broken airspace.txt".into(),
-            Err(AirspaceLoadError::ParseFailed),
+            AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed),
         )]),
     });
     let handle = Driver::spawn(

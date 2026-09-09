@@ -8,15 +8,22 @@ Tauri shell owns the file picker, persistent storage, and GeoJSON delivery.
 
 ## Import and storage
 
-An import replaces the source with the exact same display filename. Other
-sources remain unchanged. Identical waypoints in different files remain
-separate. Restarting the application reloads the stored source files.
+An import replaces the source with the exact same display filename and enables
+it. Other sources remain unchanged. Identical waypoints in different files remain
+separate. Restarting the application reloads enabled source files.
 
 The importer uses `seeyou-cup` to parse the full file, including its task
 section. Updraft retains only the waypoint data and shows the parser warnings
-in Settings. A parser error or a file with no valid waypoints rejects the
-import. A failed replacement preserves the previous source. Removing a file requires
-confirmation and removes only that source.
+in Settings. Import stores the original bytes before parsing them. A parser
+error or a file with no valid waypoints leaves the stored source unavailable.
+An invalid replacement replaces the previous file and removes its waypoints
+from rendering and arrival calculations. A failed source-file write preserves
+the previous bytes. Removing a file requires confirmation and removes only
+that source.
+
+Storage uses atomic file replacement. If catalog publication fails after a
+disk change, the command reports an error and retains the disk change.
+Restart reloads the stored files.
 
 The importer retains the name, coordinates, CUP type, MSL elevation, runway
 direction and dimensions, frequency text, and description. It does not import
@@ -24,6 +31,24 @@ tasks, embedded images, or navigation targets.
 
 A stored source that cannot be read or parsed appears as unavailable. Other
 sources remain usable.
+
+## Source activation
+
+An empty `.disabled` marker beside a stored CUP file records its disabled state.
+Files without a marker are enabled. Disabled sources remain listed in Settings.
+The shell does not read or parse them, including at startup. The core retains
+no waypoints, warnings, or load errors for them. They do not participate in map
+rendering, selection, details, or arrival calculations.
+
+The `set_waypoints_enabled()` command persists the choice before publishing
+the new catalog. Enabling parses the file again and restores its warnings or
+load error. A load error leaves the source enabled and unavailable. A failed
+persistence operation does not publish a catalog change. Import and removal
+clear the disabled marker. The Data page in Settings provides activation controls.
+
+An activation change advances the catalog generation. Map features and arrival
+results from the previous generation become invalid. Source indices include
+disabled sources so waypoint and arrival feature IDs agree.
 
 ## Map and details
 

@@ -1,7 +1,7 @@
-use crate::source_files::{SourceChange, SourceFiles};
+use crate::source_files::SourceFiles;
 use std::{io, path::PathBuf, sync::Arc};
 use updraft_airspace::{AirspaceDataset, AirspaceImportError};
-use updraft_core::{AirspaceCatalog, AirspaceLoadError};
+use updraft_core::{AirspaceCatalog, AirspaceLoadError, AirspaceSource};
 
 /// Original OpenAir bytes are stored separately under encoded source names.
 #[derive(Clone, Debug)]
@@ -23,49 +23,77 @@ impl AirspaceStorage {
         })?;
         let mut catalog = AirspaceCatalog::default();
         for (name, path) in sources {
-            let dataset = match std::fs::read(&path) {
-                Ok(bytes) => AirspaceDataset::from_openair(&bytes)
-                    .map(Arc::new)
-                    .map_err(|error| {
-                        tracing::warn!(%error, "Could not parse stored airspace source");
-                        match error {
-                            AirspaceImportError::Parse { .. } => AirspaceLoadError::ParseFailed,
-                            AirspaceImportError::Geometry { .. } => {
-                                AirspaceLoadError::GeometryFailed
-                            }
-                        }
-                    }),
-                Err(error) => {
-                    tracing::warn!(%error, "Could not read stored airspace source");
-                    Err(AirspaceLoadError::ReadFailed)
-                }
+            let source = if self.disabled_path(&name).try_exists()? {
+                AirspaceSource::Disabled
+            } else {
+                load_airspace(&path)
             };
-            catalog.sources.insert(name, dataset);
+            catalog.sources.insert(name, source);
         }
         Ok(catalog)
     }
 
+    /// Stores the original bytes even when parsing returns an error.
     pub fn import_airspace(
         &self,
         bytes: &[u8],
         name: &str,
-    ) -> Result<(Arc<AirspaceDataset>, SourceChange), AirspaceStorageError> {
-        let dataset = Arc::new(AirspaceDataset::from_openair(bytes)?);
-        let change = self.files.replace(name, bytes)?;
-        Ok((dataset, change))
+    ) -> io::Result<Result<Arc<AirspaceDataset>, AirspaceLoadError>> {
+        self.files.replace(name, bytes)?;
+        self.persist_enabled(name, true)?;
+        Ok(parse_airspace(bytes))
     }
 
-    pub fn remove(&self, name: &str) -> io::Result<SourceChange> {
-        self.files.remove(name)
+    pub fn remove(&self, name: &str) -> io::Result<()> {
+        self.files.remove(name)?;
+        self.persist_enabled(name, true)
+    }
+
+    pub fn set_enabled(&self, name: &str, enabled: bool) -> io::Result<AirspaceSource> {
+        self.persist_enabled(name, enabled)?;
+        Ok(if enabled {
+            load_airspace(&self.files.path(name))
+        } else {
+            AirspaceSource::Disabled
+        })
+    }
+
+    fn disabled_path(&self, name: &str) -> PathBuf {
+        self.files.path(name).with_extension("disabled")
+    }
+
+    fn persist_enabled(&self, name: &str, enabled: bool) -> io::Result<()> {
+        let path = self.disabled_path(name);
+        if !enabled {
+            return std::fs::File::create(path)?.sync_all();
+        }
+        match std::fs::remove_file(path) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+            result => result,
+        }
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum AirspaceStorageError {
-    #[error(transparent)]
-    Import(#[from] AirspaceImportError),
-    #[error(transparent)]
-    Io(#[from] io::Error),
+fn load_airspace(path: &std::path::Path) -> AirspaceSource {
+    match std::fs::read(path) {
+        Ok(bytes) => parse_airspace(&bytes).into(),
+        Err(error) => {
+            tracing::warn!(%error, "Could not read stored airspace source");
+            AirspaceSource::Unavailable(AirspaceLoadError::ReadFailed)
+        }
+    }
+}
+
+fn parse_airspace(bytes: &[u8]) -> Result<Arc<AirspaceDataset>, AirspaceLoadError> {
+    AirspaceDataset::from_openair(bytes)
+        .map(Arc::new)
+        .map_err(|error| {
+            tracing::warn!(%error, "Could not parse stored airspace source");
+            match error {
+                AirspaceImportError::Parse { .. } => AirspaceLoadError::ParseFailed,
+                AirspaceImportError::Geometry { .. } => AirspaceLoadError::GeometryFailed,
+            }
+        })
 }
 
 #[cfg(test)]
@@ -80,14 +108,91 @@ mod tests {
     const PARSER_ERROR: &[u8] = include_bytes!("../../testdata/airspace/parser_error.txt");
     const GEOMETRY_ERROR: &[u8] = b"AC D\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:00:00 N 010:00:00 E\n";
 
+    #[cfg(unix)]
+    #[test]
+    #[traced_test]
+    fn disabled_sources_are_not_read_at_startup_and_enable_parses_again() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let directory = assert_ok!(tempdir());
+        let storage = AirspaceStorage::new(directory.path());
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "a.txt")));
+        assert_eq!(
+            assert_ok!(storage.set_enabled("a.txt", false)),
+            AirspaceSource::Disabled
+        );
+        let path = storage.files.path("a.txt");
+        assert_ok!(std::fs::write(&path, PARSER_ERROR));
+        assert_ok!(std::fs::set_permissions(
+            &path,
+            std::fs::Permissions::from_mode(0o000)
+        ));
+        let catalog = assert_ok!(AirspaceStorage::new(directory.path()).load());
+        assert_eq!(catalog.sources["a.txt"], AirspaceSource::Disabled);
+        assert!(!logs_contain("Could not read stored airspace source"));
+        assert!(!logs_contain("Could not parse stored airspace source"));
+        assert_ok!(std::fs::set_permissions(
+            &path,
+            std::fs::Permissions::from_mode(0o600)
+        ));
+        assert_eq!(
+            assert_ok!(storage.set_enabled("a.txt", true)),
+            AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed)
+        );
+        assert_eq!(
+            assert_ok!(storage.load()).sources["a.txt"],
+            AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed)
+        );
+        assert!(logs_contain("Could not parse stored airspace source"));
+    }
+
+    #[test]
+    #[traced_test]
+    fn import_enables_disabled_sources_and_removal_clears_activation() {
+        let directory = assert_ok!(tempdir());
+        let storage = AirspaceStorage::new(directory.path());
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "a.txt")));
+        assert_ok!(storage.set_enabled("a.txt", false));
+        assert_ok!(assert_ok!(storage.import_airspace(CIRCLE, "a.txt")));
+        std::assert_matches!(
+            assert_ok!(storage.load()).sources["a.txt"],
+            AirspaceSource::Active(_)
+        );
+        assert_ok!(storage.set_enabled("a.txt", false));
+        assert_eq!(
+            assert_ok!(storage.import_airspace(PARSER_ERROR, "a.txt")),
+            Err(AirspaceLoadError::ParseFailed)
+        );
+        assert_eq!(
+            assert_ok!(storage.load()).sources["a.txt"],
+            AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed)
+        );
+        assert_eq!(
+            assert_ok!(storage.set_enabled("a.txt", false)),
+            AirspaceSource::Disabled
+        );
+        assert_eq!(
+            assert_ok!(storage.load()).sources["a.txt"],
+            AirspaceSource::Disabled
+        );
+        assert!(logs_contain("Could not parse stored airspace source"));
+        assert_ok!(storage.remove("a.txt"));
+        assert!(assert_ok!(storage.load()).sources.is_empty());
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "a.txt")));
+        std::assert_matches!(
+            assert_ok!(storage.load()).sources["a.txt"],
+            AirspaceSource::Active(_)
+        );
+    }
+
     #[test]
     fn reloads_two_sources_without_replacing_the_first_file() {
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
-        assert_ok!(storage.import_airspace(POLYGON, "a.txt"));
-        assert_ok!(storage.import_airspace(CIRCLE, "b.txt"));
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "a.txt")));
+        assert_ok!(assert_ok!(storage.import_airspace(CIRCLE, "b.txt")));
         assert_eq!(assert_ok!(storage.load()).sources.len(), 2);
-        assert_ok!(storage.import_airspace(CIRCLE, "a.txt"));
+        assert_ok!(assert_ok!(storage.import_airspace(CIRCLE, "a.txt")));
         let catalog = assert_ok!(AirspaceStorage::new(directory.path()).load());
         assert_eq!(catalog.sources.len(), 2);
         assert_eq!(
@@ -98,10 +203,8 @@ mod tests {
             assert_ok!(std::fs::read(storage.files.path("b.txt"))),
             CIRCLE
         );
-        assert_eq!(
-            assert_ok!(catalog.sources["a.txt"].as_ref()),
-            assert_ok!(catalog.sources["b.txt"].as_ref())
-        );
+        std::assert_matches!(&catalog.sources["a.txt"], AirspaceSource::Active(_));
+        assert_eq!(catalog.sources["a.txt"], catalog.sources["b.txt"]);
     }
 
     #[test]
@@ -118,7 +221,7 @@ mod tests {
             b"{}"
         ));
         assert_eq!(assert_ok!(storage.load()).sources.len(), 0);
-        assert_ok!(storage.import_airspace(CIRCLE, "airspace.txt"));
+        assert_ok!(assert_ok!(storage.import_airspace(CIRCLE, "airspace.txt")));
         assert_eq!(
             assert_ok!(std::fs::read(directory.path().join("airspace.txt"))),
             POLYGON
@@ -130,7 +233,7 @@ mod tests {
     fn invalid_stored_sources_do_not_hide_valid_sources() {
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
-        assert_ok!(storage.import_airspace(POLYGON, "valid.txt"));
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "valid.txt")));
         assert_ok!(std::fs::write(
             storage.files.path("parse.txt"),
             PARSER_ERROR
@@ -141,57 +244,38 @@ mod tests {
         ));
         let catalog = assert_ok!(storage.load());
         assert_eq!(catalog.sources.len(), 3);
-        assert_ok!(&catalog.sources["valid.txt"]);
+        std::assert_matches!(&catalog.sources["valid.txt"], AirspaceSource::Active(_));
         assert_eq!(
             catalog.sources["parse.txt"],
-            Err(AirspaceLoadError::ParseFailed)
+            AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed)
         );
         assert_eq!(
             catalog.sources["geometry.txt"],
-            Err(AirspaceLoadError::GeometryFailed)
+            AirspaceSource::Unavailable(AirspaceLoadError::GeometryFailed)
         );
         assert!(logs_contain("Could not parse stored airspace source"));
     }
 
     #[test]
-    fn failed_import_and_rollback_preserve_original_bytes() {
+    #[traced_test]
+    fn invalid_imports_retain_bytes_and_reload_errors() {
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
-        assert_ok!(storage.import_airspace(POLYGON, "a.txt"));
-        assert_ok!(storage.import_airspace(CIRCLE, "b.txt"));
-        for bytes in [PARSER_ERROR, GEOMETRY_ERROR] {
-            assert_err!(storage.import_airspace(bytes, "a.txt"));
-            assert_eq!(
-                assert_ok!(std::fs::read(storage.files.path("a.txt"))),
-                POLYGON
-            );
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "a.txt")));
+        assert_ok!(assert_ok!(storage.import_airspace(CIRCLE, "b.txt")));
+        for (bytes, error) in [
+            (PARSER_ERROR, AirspaceLoadError::ParseFailed),
+            (GEOMETRY_ERROR, AirspaceLoadError::GeometryFailed),
+        ] {
+            for name in ["a.txt", "new.txt"] {
+                assert_eq!(assert_ok!(storage.import_airspace(bytes, name)), Err(error));
+                assert_eq!(assert_ok!(std::fs::read(storage.files.path(name))), bytes);
+                let catalog = assert_ok!(AirspaceStorage::new(directory.path()).load());
+                assert_eq!(catalog.sources[name], AirspaceSource::Unavailable(error));
+                std::assert_matches!(&catalog.sources["b.txt"], AirspaceSource::Active(_));
+            }
         }
-        let (_, change) = assert_ok!(storage.import_airspace(CIRCLE, "a.txt"));
-        assert_ok!(change.rollback());
-        assert_eq!(
-            assert_ok!(std::fs::read(storage.files.path("a.txt"))),
-            POLYGON
-        );
-        let change = assert_ok!(storage.remove("a.txt"));
-        assert_eq!(
-            assert_ok!(storage.load())
-                .sources
-                .keys()
-                .collect::<Vec<_>>(),
-            vec!["b.txt"]
-        );
-        assert_ok!(change.rollback());
-        assert_eq!(
-            assert_ok!(std::fs::read(storage.files.path("a.txt"))),
-            POLYGON
-        );
-        assert_eq!(
-            assert_ok!(std::fs::read(storage.files.path("b.txt"))),
-            CIRCLE
-        );
-        let (_, change) = assert_ok!(storage.import_airspace(CIRCLE, "c.txt"));
-        assert_ok!(change.rollback());
-        assert_eq!(assert_ok!(storage.load()).sources.len(), 2);
+        assert!(logs_contain("Could not parse stored airspace source"));
     }
 
     #[test]
@@ -205,13 +289,12 @@ mod tests {
             format!("{}.txt", "ä".repeat(100)),
         ];
         for name in &names {
-            assert_ok!(storage.import_airspace(POLYGON, name));
+            assert_ok!(assert_ok!(storage.import_airspace(POLYGON, name)));
         }
         assert_eq!(assert_ok!(storage.load()).sources.len(), names.len());
         for name in &names {
-            let change = assert_ok!(storage.remove(name));
-            assert_ok!(change.rollback());
-            assert_eq!(assert_ok!(std::fs::read(storage.files.path(name))), POLYGON);
+            assert_ok!(storage.remove(name));
+            assert!(!storage.files.path(name).exists());
         }
         assert!(!directory.path().join("a.txt").exists());
     }
@@ -219,36 +302,35 @@ mod tests {
     #[cfg(unix)]
     #[test]
     #[traced_test]
-    fn unreadable_sources_can_be_removed_or_replaced_and_restored() {
+    fn unreadable_sources_can_be_removed_or_replaced() {
         use std::os::unix::fs::PermissionsExt;
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
-        assert_ok!(storage.import_airspace(CIRCLE, "b.txt"));
+        assert_ok!(assert_ok!(storage.import_airspace(CIRCLE, "b.txt")));
         let path = storage.files.path("a.txt");
         for replace in [false, true] {
-            assert_ok!(storage.import_airspace(POLYGON, "a.txt"));
+            assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "a.txt")));
             assert_ok!(std::fs::set_permissions(
                 &path,
                 std::fs::Permissions::from_mode(0o000)
             ));
             let catalog = assert_ok!(storage.load());
-            assert_eq!(catalog.sources["a.txt"], Err(AirspaceLoadError::ReadFailed));
-            assert_ok!(&catalog.sources["b.txt"]);
-            let change = if replace {
-                assert_ok!(storage.import_airspace(CIRCLE, "a.txt")).1
-            } else {
-                assert_ok!(storage.remove("a.txt"))
-            };
-            assert_ok!(change.rollback());
             assert_eq!(
-                assert_ok!(std::fs::metadata(&path)).permissions().mode() & 0o777,
-                0
+                catalog.sources["a.txt"],
+                AirspaceSource::Unavailable(AirspaceLoadError::ReadFailed)
             );
-            assert_ok!(std::fs::set_permissions(
-                &path,
-                std::fs::Permissions::from_mode(0o600)
-            ));
-            assert_eq!(assert_ok!(std::fs::read(&path)), POLYGON);
+            std::assert_matches!(&catalog.sources["b.txt"], AirspaceSource::Active(_));
+            if replace {
+                assert_ok!(assert_ok!(storage.import_airspace(CIRCLE, "a.txt")));
+                assert_eq!(assert_ok!(std::fs::read(&path)), CIRCLE);
+            } else {
+                assert_ok!(storage.remove("a.txt"));
+                assert!(!path.exists());
+            }
+            assert_eq!(
+                assert_ok!(std::fs::read(storage.files.path("b.txt"))),
+                CIRCLE
+            );
         }
         assert!(logs_contain("Could not read stored airspace source"));
     }
@@ -259,9 +341,9 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
-        assert_ok!(storage.import_airspace(POLYGON, "valid.txt"));
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "valid.txt")));
         let name = format!("{}.txt", "a".repeat(150));
-        assert_ok!(storage.import_airspace(POLYGON, &name));
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, &name)));
         let path = storage.files.path(&name);
         let parent = path.parent().unwrap();
         assert_ok!(std::fs::set_permissions(
@@ -285,7 +367,7 @@ mod tests {
     fn malformed_stored_filenames_fail_catalog_loading() {
         let directory = assert_ok!(tempdir());
         let storage = AirspaceStorage::new(directory.path());
-        assert_ok!(storage.import_airspace(POLYGON, "valid.txt"));
+        assert_ok!(assert_ok!(storage.import_airspace(POLYGON, "valid.txt")));
         assert_ok!(std::fs::write(
             directory.path().join("airspaces/zz.txt"),
             POLYGON

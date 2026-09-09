@@ -31,13 +31,17 @@ documents for accepted behavior.
 - [x] **unit-selection** — persist display units and apply them to current flight and traffic values.
 - [x] **external-device-management** — persist TCP and Bluetooth SPP devices. Add, edit, enable, disable, and delete them in Settings.
 - [x] **airspace-source-management** — import, replace by filename, and remove independent local OpenAir sources in Settings.
+- [x] **airspace-source-activation**: persist per-file activation in the shell and exclude disabled sources from map resources. Data file details provide an optimistic activation control.
+- [x] **waypoint-source-activation**: persist per-file activation and exclude disabled sources from map resources and arrival calculations. Data file details provide an optimistic activation control.
+- [x] **installed-data-library-view**: show imported airspace and waypoint files in grouped lists with counts, disabled states, and errors. File details show diagnostics and allow confirmed removal. Import remains on the existing source pages.
 - [x] **map-inspection** — open a nearby route from a map point and show current
   airspace and traffic results with detail routes.
 - [ ] **map-orientation-setting** — persist map orientation and add its Settings control. _(needs: map-orientation, settings-persistence)_
 - [ ] **flight-data-fields** — add a fixed-slot Flight View dock for the first altitude, speed, direction, and time values. _(needs: route-shell, frontend-protocol, units-settings)_
 - [x] **basemap-assets** — bundle the basemap style, glyphs, and sprites. _(needs: frontend-map)_
 - [x] **offline-basemap-serving** — scan the application data directory's `enroute` folder for MBTiles basemaps and serve the first matching vector tile. The map uses offline tiles only, with fixed Enroute zoom limits. _(needs: basemap-assets, resource-scheme)_
-- [ ] **basemap-downloads** — download, update, and delete repository-backed basemap regions on the Map data screen. _(needs: offline-basemap-serving)_
+- [x] **basemap-inventory** — retain basemap files and load errors in the native inventory. Honor per-file disabled markers at startup without opening disabled files. _(needs: offline-basemap-serving)_
+- [x] **basemap-downloads** — manage Enroute basemaps in Settings → Data, with country selection, a download queue, manual updates, cancellation, recovery, and file details. Physical Android background and screen-lock validation remains pending. _(needs: offline-basemap-serving)_
 
 ## Scaffolding
 
@@ -124,6 +128,8 @@ documents for accepted behavior.
 - [ ] **vnav** — VNAV to altitude constraints. _(needs: final-glide, navigation-targets)_
 
 ## Terrain
+
+- [x] **terrain-downloads** — manage Enroute terrain through the country catalog and shared download queue, with installed metadata, manual updates, cancellation, and recovery. Physical Android background and screen-lock validation remains pending. _(needs: basemap-downloads, terrain-hillshade)_
 
 - [x] **terrain-hillshade** — display offline Enroute terrain with Igor hillshade and installed source attribution. _(needs: offline-basemap-serving)_
 - [x] **terrain-colours** — show elevation colours beneath land cover from the same offline terrain source. _(needs: terrain-hillshade)_
@@ -224,7 +230,7 @@ documents for accepted behavior.
 Online services use async effect adapters. Bulk imagery and datasets use the resource path. They do not run as compute jobs.
 
 - [ ] **connectivity** — online/offline detection and state in core, offline-first hooks (status indicator, queue-and-retry for uploads). _(needs: core-app)_
-- [ ] **data-downloads** — extend the basemap download facility with waypoint, airspace, and DEM data. Add more repositories with the first feature that needs each one. _(needs: basemap-downloads, connectivity)_
+- [ ] **data-downloads** — extend managed downloads with waypoint and airspace data. Add more repositories with the first feature that needs each one. _(needs: basemap-downloads, connectivity)_
 - [ ] **metar-taf** — METAR/TAF fetch, decode, map flags, QNH extraction. _(needs: core-app, frontend-map)_
 - [ ] **weather-overlays** — rain radar and satellite imagery overlays with time slider; forecast overlays (SkySight/TopMeteo) behind the same interface. _(needs: frontend-map)_
 - [ ] **map-inspector-weather** — add weather features and their time/context information to map-inspector results. _(needs: weather-overlays, map-inspector-waypoints)_

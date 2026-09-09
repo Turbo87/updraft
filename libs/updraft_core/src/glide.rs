@@ -1,4 +1,4 @@
-use crate::{ArrivalReserve, MacCready, WaypointSnapshot, topic::Instruments};
+use crate::{ArrivalReserve, MacCready, WaypointSnapshot, WaypointSource, topic::Instruments};
 use updraft_geo::{BoundingBox, LatLon};
 use updraft_polar::GlidePolar;
 use updraft_units::{Angle, Length, Speed};
@@ -39,13 +39,15 @@ pub struct WaypointArrivalEntry {
 impl GlideSnapshot {
     /// Calculates all landables within the viewport plus 10% on each side.
     /// Padding uses latitude and longitude spans. The viewport must follow `BoundingBox`'s contract.
-    /// Indices refer to the full catalog, including unavailable sources and non-landables.
+    /// Indices include disabled and unavailable sources, and non-landable waypoints.
     /// Selected waypoints without a solution remain in the batch with `arrival: None`.
     pub fn arrivals_in(&self, viewport: BoundingBox) -> WaypointArrivals {
         let bounds = buffered_viewport(viewport);
         let mut entries = Vec::new();
         for (source_index, source) in self.waypoints.catalog.sources.values().enumerate() {
-            let Ok(dataset) = source else { continue };
+            let WaypointSource::Active(dataset) = source else {
+                continue;
+            };
             for (waypoint_index, waypoint) in dataset.waypoints().iter().enumerate() {
                 let landable = matches!(
                     waypoint.kind,
@@ -280,9 +282,13 @@ mod tests {
             generation: 42,
             catalog: Arc::new(WaypointCatalog {
                 sources: BTreeMap::from([
-                    ("a.cup".into(), Err(WaypointLoadError::ReadFailed)),
-                    ("b.cup".into(), Ok(dataset.clone())),
-                    ("c.cup".into(), Ok(dataset.clone())),
+                    (
+                        "a.cup".into(),
+                        WaypointSource::Unavailable(WaypointLoadError::ReadFailed),
+                    ),
+                    ("aa.cup".into(), WaypointSource::Disabled),
+                    ("b.cup".into(), WaypointSource::Active(dataset.clone())),
+                    ("c.cup".into(), WaypointSource::Active(dataset.clone())),
                 ]),
             }),
         };
@@ -295,14 +301,14 @@ mod tests {
             .map(|entry| (entry.source_index, entry.waypoint_index))
             .collect();
         let expected_ids = [
-            (1, 2),
-            (1, 3),
-            (1, 4),
-            (1, 5),
             (2, 2),
             (2, 3),
             (2, 4),
             (2, 5),
+            (3, 2),
+            (3, 3),
+            (3, 4),
+            (3, 5),
         ];
         assert_eq!(identities, expected_ids);
         let expected = assert_some!(snapshot.arrival_at(&dataset.waypoints()[2]));
@@ -358,7 +364,7 @@ mod tests {
         let cup = b"name,code,country,lat,lon,elev,style\nField,,,0000.000N,00006.000E,100m,2\n";
         let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(cup)));
         snapshot.waypoints.catalog = Arc::new(crate::WaypointCatalog {
-            sources: BTreeMap::from([("field.cup".into(), Ok(dataset))]),
+            sources: BTreeMap::from([("field.cup".into(), WaypointSource::Active(dataset))]),
         });
         let viewport = bounds(-1., 1., -1., 0.);
         assert!(!viewport.contains(waypoint.position));

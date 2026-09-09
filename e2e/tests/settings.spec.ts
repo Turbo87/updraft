@@ -1,4 +1,5 @@
 import type { AppContext } from '$lib/app-context';
+import type { BasemapStatus, TerrainStatus } from '$lib/client';
 
 import { execFileSync } from 'node:child_process';
 
@@ -9,12 +10,15 @@ const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
 }).trim();
 
 type TestWindow = Window & {
-  __airspaceImportCalls?: number;
+  __dataSelectionCalls?: number;
   __quitCalls?: number;
+  __releaseActivation?: () => void;
   __updraftApp?: AppContext;
   __updraftFake?: {
     emit: (topic: unknown) => void;
-    importAirspace: () => Promise<{ type: 'cancelled' }>;
+    emitBasemaps: (status: BasemapStatus) => void;
+    emitTerrain: (status: TerrainStatus) => void;
+    setWaypointsEnabled: (name: string, enabled: boolean) => Promise<void>;
     quit: () => Promise<void>;
   };
 };
@@ -67,10 +71,13 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
   let routes = [
     ['Language', '/settings/language'],
     ['Units', '/settings/units'],
-    ['Airspace', '/settings/airspace'],
+    ['Data', '/settings/data'],
     ['External devices', '/settings/devices'],
     ['About', '/settings/about'],
   ] as const;
+
+  await expect(page.getByRole('link', { name: 'Airspace', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Waypoints', exact: true })).toHaveCount(0);
 
   for (let [name, route] of routes) {
     await expect(page.getByRole('link', { name })).toHaveAttribute('href', route);
@@ -105,8 +112,8 @@ test('uses the screen scaffold for unit settings', async ({ page }) => {
   await expect(page.getByRole('main')).not.toContainText('Back to settings');
 });
 
-test('uses the screen scaffold for airspace settings', async ({ page }) => {
-  await page.goto('/settings/airspace?testMode=1');
+test('uses the screen scaffold for the Data library', async ({ page }) => {
+  await page.goto('/settings/data?testMode=1');
 
   let back = page.getByRole('link', { name: 'Back to settings' });
 
@@ -210,9 +217,9 @@ test.describe('with a supported German browser language', () => {
     await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
-    await page.getByRole('link', { name: 'Lufträume' }).click();
-    await expect(page.getByText('Keine Luftraumdatei ausgewählt.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Importieren' })).toBeEnabled();
+    await page.getByRole('link', { name: 'Daten', exact: true }).click();
+    await expect(page.getByText('Keine Daten auf diesem Gerät')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Daten hinzufügen' })).toBeEnabled();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
     await page.getByRole('link', { name: 'Einheiten' }).click();
@@ -225,24 +232,25 @@ test.describe('with a supported German browser language', () => {
   });
 });
 
-test('propagates airspace status and invokes import through the fake client', async ({ page }) => {
-  await page.goto('/settings/airspace?testMode=1');
+test('propagates airspace status and invokes data selection through the client', async ({
+  page,
+}) => {
+  await page.goto('/settings/data?testMode=1');
   await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
     let testWindow = window as TestWindow;
-    let client = testWindow.__updraftFake;
-    if (!client) throw new Error('the fake client should be available');
-    client.importAirspace = async () => {
-      testWindow.__airspaceImportCalls = (testWindow.__airspaceImportCalls ?? 0) + 1;
-      return { type: 'cancelled' };
+    let client = testWindow.__updraftApp!.client;
+    client.selectDataFile = async () => {
+      testWindow.__dataSelectionCalls = (testWindow.__dataSelectionCalls ?? 0) + 1;
+      return null;
     };
   });
 
-  await expect(page.getByText('No airspace file selected.')).toBeVisible();
-  await page.getByRole('button', { name: 'Import' }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__airspaceImportCalls))
-    .toBe(1);
+  await expect(page.getByText('No data on this device')).toBeVisible();
+  await page.getByRole('button', { name: 'Add data' }).click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as TestWindow).__dataSelectionCalls)).toBe(1);
+  await page.getByRole('button', { name: 'Back to data', exact: true }).click();
 
   await page.evaluate(() => {
     (window as TestWindow).__updraftFake?.emit({
@@ -254,9 +262,8 @@ test('propagates airspace status and invokes import through the fake client', as
     });
   });
 
-  await expect(page.getByRole('heading', { name: 'Current source' })).toBeVisible();
   await expect(page.getByText('rheinland.txt')).toBeVisible();
-  await expect(page.getByText('42', { exact: true })).toBeVisible();
+  await expect(page.getByText('42 airspaces')).toBeVisible();
 });
 
 test('selects a glide polar and keeps it when revisiting settings', async ({ page }) => {
@@ -315,3 +322,202 @@ test('keeps bugs and ballast during navigation and resets them on restart', asyn
   await expect(bugs).toHaveValue('0');
   await expect(ballast).toHaveValue('0');
 });
+
+test('the Data library handles live statuses, file details, and removal', async ({ page }) => {
+  await page.goto('/settings/data?testMode=1');
+  await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await page.reload();
+  await page.evaluate(() => {
+    let client = (window as TestWindow).__updraftFake!;
+    client.emit({
+      topic: 'airspace',
+      value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] },
+    });
+    client.emit({
+      topic: 'waypoints',
+      value: {
+        generation: 1,
+        sources: [{ type: 'active', sourceName: 'local.cup', waypointCount: 2, warnings: [] }],
+      },
+    });
+  });
+  await expect(page.getByRole('button', { name: /^local\.txt/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^local\.cup/ })).toBeVisible();
+  await expect(page.getByText('Disabled', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Data', exact: true }).click();
+  let row = page.getByRole('button', { name: /^local\.cup/ });
+  await row.click();
+  let dialog = page.getByRole('dialog', { name: 'local.cup' });
+  await expect(dialog).toBeVisible();
+  await page.evaluate(() => {
+    let testWindow = window as TestWindow;
+    let client = testWindow.__updraftFake!;
+    let original = client.setWaypointsEnabled.bind(client);
+    let gate = new Promise<void>((resolve) => {
+      testWindow.__releaseActivation = resolve;
+    });
+    client.setWaypointsEnabled = async (name, enabled) => {
+      await gate;
+      await original(name, enabled);
+    };
+  });
+  await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Data', exact: true }).click();
+  await row.click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
+  await page.evaluate(() => (window as TestWindow).__releaseActivation!());
+  await expect(page.getByRole('button', { name: 'Remove from device' })).toBeEnabled();
+  await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await expect(dialog.getByText('2', { exact: true })).toBeVisible();
+  await page.evaluate(() => history.back());
+  await expect(dialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/settings\/data$/);
+  await row.click();
+  await expect(dialog).toBeVisible();
+  await page.locator('.data-dialog-overlay').click({ position: { x: 8, y: 100 } });
+  await expect(dialog).not.toBeVisible();
+  await row.click();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(row).not.toBeVisible();
+  await expect(page.getByRole('button', { name: /^local\.txt/ })).toBeVisible();
+  await page.getByRole('button', { name: /^local\.txt/ }).click();
+  await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
+  await expect(page.getByRole('dialog').getByText('Could not be read')).toBeVisible();
+  await page.getByRole('button', { name: 'Remove from device' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(page.getByText('No data on this device')).toBeVisible();
+});
+
+test('the Data library imports through the client and shows published parsing errors', async ({
+  page,
+}) => {
+  await page.goto('/settings/data?testMode=1');
+  await expect(page.getByRole('button', { name: 'Add data' })).toBeVisible();
+  await page.evaluate(() => {
+    let testWindow = window as TestWindow;
+    let client = testWindow.__updraftApp!.client;
+    let selected = { selectionId: '1', sourceName: 'broken.cup', dataType: 'waypoints' as const };
+    client.selectDataFile = async () => selected;
+    client.importDataFile = async () => {
+      testWindow.__updraftFake!.emit({
+        topic: 'waypoints',
+        value: {
+          generation: 1,
+          sources: [{ type: 'unavailable', sourceName: 'broken.cup', error: 'parseFailed' }],
+        },
+      });
+      return selected;
+    };
+  });
+  await page.getByRole('button', { name: 'Add data' }).click();
+  await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
+  let row = page.getByRole('button', { name: /broken.cup/ });
+  await expect(row).toContainText('Could not be parsed');
+  await expect(page).toHaveURL(/\/settings\/data\?testMode=1$/);
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await row.click();
+  await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
+  await expect(page.getByRole('dialog').getByText('Could not be parsed')).toBeVisible();
+});
+
+for (let [width, height, theme] of [
+  [413, 915, 'light'],
+  [915, 413, 'dark'],
+] as const) {
+  test(`shows live basemap inventory at ${width}x${height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.goto('/?testMode=1');
+    await page.getByRole('link', { name: 'Settings' }).click();
+    await page.evaluate(() => {
+      (window as TestWindow).__updraftFake!.emitBasemaps({
+        generation: 0,
+        sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
+      });
+    });
+    await expect
+      .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.basemaps?.current))
+      .toEqual({
+        generation: 0,
+        sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
+      });
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await page.getByRole('button', { name: /^local\b/ }).click();
+    await expect(page.getByRole('switch', { name: 'Enabled' })).toBeChecked();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitBasemaps({
+        generation: 1,
+        sources: [{ sourceName: 'local.mbtiles', type: 'disabled' }],
+      }),
+    );
+    await expect(page.getByRole('switch', { name: 'Enabled' })).not.toBeChecked();
+    await page.screenshot({ path: testInfo.outputPath('basemap-details.png') });
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('link', { name: 'Back to Settings' }).click();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitBasemaps({
+        generation: 2,
+        sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
+      }),
+    );
+    await expect
+      .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.basemaps?.current))
+      .toEqual({
+        generation: 2,
+        sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
+      });
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^local\b/ })).toContainText(
+      'Could not load the file.',
+    );
+  });
+}
+
+for (let [width, height, theme] of [
+  [413, 915, 'light'],
+  [915, 413, 'dark'],
+] as const) {
+  test(`shows live terrain inventory at ${width}x${height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.goto('/?testMode=1');
+    await expect.poll(() => page.evaluate(() => !!(window as TestWindow).__updraftFake)).toBe(true);
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitTerrain({
+        generation: 0,
+        sources: [{ sourceName: 'local.terrain', type: 'active' }],
+      }),
+    );
+    await page.getByRole('link', { name: 'Settings' }).click();
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await page.getByRole('button', { name: /^local / }).click();
+    let dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('switch')).toBeChecked();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitTerrain({
+        generation: 1,
+        sources: [{ sourceName: 'local.terrain', type: 'disabled' }],
+      }),
+    );
+    await expect(dialog.getByRole('switch')).not.toBeChecked();
+    await page.screenshot({ path: testInfo.outputPath('terrain-details.png') });
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('link', { name: 'Back to Settings' }).click();
+    await page.evaluate(() =>
+      (window as TestWindow).__updraftFake!.emitTerrain({
+        generation: 2,
+        sources: [{ sourceName: 'local.terrain', type: 'unavailable' }],
+      }),
+    );
+    await page.getByRole('link', { name: 'Data', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^local / })).toContainText(
+      'Could not load the file.',
+    );
+  });
+}

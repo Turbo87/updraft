@@ -14,8 +14,16 @@ import type {
   ArrivalSubscription,
   ArrivalUpdate,
   ArrivalViewport,
-  ImportAirspaceResult,
-  ImportWaypointsResult,
+  BasemapStatus,
+  BasemapSubscription,
+  EnrouteCatalogStatus,
+  EnrouteCatalogSubscription,
+  EnrouteDownloadStatus,
+  EnrouteDownloadSubscription,
+  ManagedFileDetails,
+  SelectedDataFile,
+  TerrainStatus,
+  TerrainSubscription,
   TopicListener,
   UpdraftClient,
 } from './index';
@@ -45,10 +53,24 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #basemaps: BasemapStatus = { generation: 0, sources: [] };
+  #basemapListeners = new Set<(status: BasemapStatus) => void>();
+
+  #enrouteCatalog: EnrouteCatalogStatus = { cached: null, refreshing: false, error: false };
+  #enrouteCatalogListeners = new Set<(status: EnrouteCatalogStatus) => void>();
+
+  #enrouteDownloads: EnrouteDownloadStatus[] = [];
+  #enrouteDownloadsListeners = new Set<(status: EnrouteDownloadStatus[]) => void>();
+
+  #terrain: TerrainStatus = { generation: 0, sources: [] };
+  #terrainListeners = new Set<(status: TerrainStatus) => void>();
+
   #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
   #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
   #airspace: AirspaceStatus = { generation: 0, sources: [] };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
+  #airspaceFixtures = new Map<string, AirspaceStatus['sources'][number]>();
+  #waypointFixtures = new Map<string, WaypointStatus['sources'][number]>();
   #listeners = new Set<TopicListener>();
   #externalDevices: PublishedExternalDevice[];
   #nextExternalDeviceId: ExternalDeviceId;
@@ -69,6 +91,135 @@ export class FakeClient implements UpdraftClient {
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
   }
 
+  subscribeBasemaps(onUpdate: (status: BasemapStatus) => void): BasemapSubscription {
+    onUpdate(this.#basemaps);
+    this.#basemapListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#basemapListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitBasemaps(status: BasemapStatus): void {
+    this.#basemaps = status;
+    for (let listener of this.#basemapListeners) listener(status);
+  }
+
+  subscribeEnrouteCatalog(
+    onUpdate: (status: EnrouteCatalogStatus) => void,
+  ): EnrouteCatalogSubscription {
+    onUpdate(this.#enrouteCatalog);
+    this.#enrouteCatalogListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#enrouteCatalogListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitEnrouteCatalog(status: EnrouteCatalogStatus): void {
+    this.#enrouteCatalog = status;
+    for (let listener of this.#enrouteCatalogListeners) listener(status);
+  }
+
+  subscribeEnrouteDownloads(
+    onUpdate: (status: EnrouteDownloadStatus[]) => void,
+  ): EnrouteDownloadSubscription {
+    onUpdate(this.#enrouteDownloads);
+    this.#enrouteDownloadsListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#enrouteDownloadsListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitEnrouteDownloads(status: EnrouteDownloadStatus[]): void {
+    this.#enrouteDownloads = status;
+    for (let listener of this.#enrouteDownloadsListeners) listener(status);
+  }
+
+  /** Tests and stories supply queue outcomes through emitEnrouteDownloads(). */
+  async downloadEnrouteFiles(): Promise<void> {}
+
+  /** Tests and stories supply cancellation outcomes through emitEnrouteDownloads(). */
+  async cancelEnrouteDownload(): Promise<void> {}
+
+  async getEnrouteBasemapUpdates(): Promise<string[]> {
+    return [];
+  }
+
+  async getEnrouteTerrainUpdates(): Promise<string[]> {
+    return [];
+  }
+
+  async getBasemapFileDetails(): Promise<ManagedFileDetails> {
+    throw new Error('Installed file metadata is unavailable in the preview');
+  }
+
+  async getTerrainFileDetails(): Promise<ManagedFileDetails> {
+    throw new Error('Installed file metadata is unavailable in the preview');
+  }
+
+  /** Tests and stories supply refresh outcomes through emitEnrouteCatalog(). */
+  async refreshEnrouteCatalog(): Promise<void> {}
+
+  subscribeTerrain(onUpdate: (status: TerrainStatus) => void): TerrainSubscription {
+    onUpdate(this.#terrain);
+    this.#terrainListeners.add(onUpdate);
+    return {
+      close: async () => {
+        this.#terrainListeners.delete(onUpdate);
+      },
+    };
+  }
+
+  emitTerrain(status: TerrainStatus): void {
+    this.#terrain = status;
+    for (let listener of this.#terrainListeners) listener(status);
+  }
+
+  async setBasemapEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    let source = this.#basemaps.sources.find((source) => source.sourceName === sourceName);
+    if (!source) throw new Error('Basemap file is not installed');
+    this.emitBasemaps({
+      generation: this.#basemaps.generation + 1,
+      sources: this.#basemaps.sources.map((source) =>
+        source.sourceName === sourceName
+          ? { ...source, type: enabled ? 'active' : 'disabled' }
+          : source,
+      ),
+    });
+  }
+
+  async setTerrainEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    let source = this.#terrain.sources.find((source) => source.sourceName === sourceName);
+    if (!source) throw new Error('Terrain file is not installed');
+    this.emitTerrain({
+      generation: this.#terrain.generation + 1,
+      sources: this.#terrain.sources.map((source) =>
+        source.sourceName === sourceName
+          ? { ...source, type: enabled ? 'active' : 'disabled' }
+          : source,
+      ),
+    });
+  }
+
+  async removeBasemap(sourceName: string): Promise<void> {
+    this.emitBasemaps({
+      generation: this.#basemaps.generation + 1,
+      sources: this.#basemaps.sources.filter((source) => source.sourceName !== sourceName),
+    });
+  }
+
+  async removeTerrain(sourceName: string): Promise<void> {
+    this.emitTerrain({
+      generation: this.#terrain.generation + 1,
+      sources: this.#terrain.sources.filter((source) => source.sourceName !== sourceName),
+    });
+  }
+
   subscribeArrivals(
     _bounds: ArrivalViewport,
     onUpdate: (update: ArrivalUpdate) => void,
@@ -87,9 +238,15 @@ export class FakeClient implements UpdraftClient {
     for (let listener of this.#arrivalListeners) listener(update);
   }
 
-  async importWaypoints(): Promise<ImportWaypointsResult> {
-    return { type: 'cancelled' };
+  async selectDataFile(): Promise<SelectedDataFile | null> {
+    return null;
   }
+
+  async importDataFile(): Promise<SelectedDataFile> {
+    throw new Error('No selected data file');
+  }
+
+  async discardDataFile(): Promise<void> {}
 
   async removeWaypoints(sourceName: string): Promise<void> {
     this.emit({
@@ -101,8 +258,34 @@ export class FakeClient implements UpdraftClient {
     });
   }
 
-  async importAirspace(): Promise<ImportAirspaceResult> {
-    return { type: 'cancelled' };
+  async setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    this.emit({
+      topic: 'waypoints',
+      value: {
+        generation: this.#waypoints.generation + 1,
+        sources: setSourceEnabled(
+          this.#waypoints.sources,
+          this.#waypointFixtures,
+          sourceName,
+          enabled,
+        ),
+      },
+    });
+  }
+
+  async setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    this.emit({
+      topic: 'airspace',
+      value: {
+        generation: this.#airspace.generation + 1,
+        sources: setSourceEnabled(
+          this.#airspace.sources,
+          this.#airspaceFixtures,
+          sourceName,
+          enabled,
+        ),
+      },
+    });
   }
 
   async removeAirspace(sourceName: string): Promise<void> {
@@ -252,10 +435,19 @@ export class FakeClient implements UpdraftClient {
     this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
   }
 
-  /** Publishes a topic as though the core had emitted it. */
+  /**
+   * Publishes a topic as though the core had emitted it.
+   * Enabled source records also seed fixtures for later activation.
+   */
   emit(topic: Topic): void {
-    if (topic.topic === 'airspace') this.#airspace = topic.value;
-    if (topic.topic === 'waypoints') this.#waypoints = topic.value;
+    if (topic.topic === 'airspace') {
+      this.#airspace = topic.value;
+      updateSourceFixtures(topic.value.sources, this.#airspaceFixtures);
+    }
+    if (topic.topic === 'waypoints') {
+      this.#waypoints = topic.value;
+      updateSourceFixtures(topic.value.sources, this.#waypointFixtures);
+    }
     for (let listener of this.#listeners) {
       listener(topic);
     }
@@ -264,4 +456,34 @@ export class FakeClient implements UpdraftClient {
   #publishExternalDevices(): void {
     this.emit({ topic: 'externalDevices', value: this.#externalDevices });
   }
+}
+
+function updateSourceFixtures<T extends { type: string; sourceName: string }>(
+  sources: T[],
+  fixtures: Map<string, T>,
+) {
+  for (let name of fixtures.keys()) {
+    if (!sources.some((source) => source.sourceName === name)) fixtures.delete(name);
+  }
+  for (let source of sources) {
+    if (source.type !== 'disabled') fixtures.set(source.sourceName, source);
+  }
+}
+
+function setSourceEnabled<T extends { sourceName: string }>(
+  sources: T[],
+  fixtures: Map<string, T>,
+  sourceName: string,
+  enabled: boolean,
+) {
+  if (!sources.some((source) => source.sourceName === sourceName))
+    throw new Error('Source not found');
+  let replacement = enabled
+    ? (fixtures.get(sourceName) ?? {
+        type: 'unavailable' as const,
+        sourceName,
+        error: 'readFailed' as const,
+      })
+    : { type: 'disabled' as const, sourceName };
+  return sources.map((source) => (source.sourceName === sourceName ? replacement : source));
 }

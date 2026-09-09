@@ -1,10 +1,15 @@
 import type { UpdraftClient } from '$lib/client';
 import type { MapState } from '$lib/map-state.svelte';
 import type { AirspaceStore } from '$lib/stores/airspace.svelte';
+import type { BasemapsStore } from '$lib/stores/basemaps.svelte';
+import type { DataActivation } from '$lib/stores/data-activation.svelte';
+import type { EnrouteCatalogStore } from '$lib/stores/enroute-catalog.svelte';
+import type { EnrouteDownloadsStore } from '$lib/stores/enroute-downloads.svelte';
 import type { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
 import type { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
 import type { InstrumentsStore } from '$lib/stores/instruments.svelte';
 import type { SettingsStore } from '$lib/stores/settings.svelte';
+import type { TerrainStore } from '$lib/stores/terrain.svelte';
 import type { TrafficStore } from '$lib/stores/traffic.svelte';
 import type { WaypointsStore } from '$lib/stores/waypoints.svelte';
 
@@ -13,6 +18,11 @@ import { createContext } from 'svelte';
 export type AppContext = {
   client: UpdraftClient;
   airspace: AirspaceStore;
+  basemaps: BasemapsStore;
+  terrain: TerrainStore;
+  enrouteCatalog: EnrouteCatalogStore;
+  enrouteDownloads: EnrouteDownloadsStore;
+  dataActivation: DataActivation;
   waypoints: WaypointsStore;
   externalDevices: ExternalDevicesStore;
   instruments: InstrumentsStore;

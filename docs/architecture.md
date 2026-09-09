@@ -57,9 +57,11 @@ The shell owns work that crosses a process or platform boundary. This includes:
 - Tauri commands and channels
 - custom resource responses
 
-Airspace and waypoint storage share encoded source-file paths, file replacement,
-backups, rollback, and directory traversal. Their loaders own format parsing,
+Airspace and waypoint storage share encoded source-file paths, atomic file
+replacement, removal, and directory traversal. Their loaders own format parsing,
 catalog errors, and the policy for unreadable source directories.
+Storage changes precede catalog publication. A publication failure reports an
+error and retains the disk change. Restart reloads the stored files.
 
 Transport workers send bytes and connection state back through the driver.
 The core decides which configured transports should be active. The shell owns
@@ -93,14 +95,74 @@ Resource projection and serialization run outside the core driver task. The
 core can own an immutable canonical dataset when domain queries need it. The
 shell owns platform storage and the frontend-specific resource representation.
 
+The shell loads a saved Enroute basemap and terrain catalog before starting one asynchronous
+refresh at startup. The retry command shares its refresh lock. HTTP, parsing,
+and cache-write failures retain the previous catalog and last-success time.
+The cache file is replaced atomically. Its modification time records the last
+successful refresh. Native status distinguishes missing data, refresh progress,
+and failure. The frontend shares catalog and download subscriptions across
+navigation. Country selection and the library submit paths to the native queue.
+Catalog HTTP requests have a 30-second timeout and a 4 MiB response limit.
+Rustls uses bundled Mozilla trust roots, with certificate and hostname
+verification enabled. The client does not require Android JVM verifier setup.
+
 The shell also reads offline Enroute MBTiles files and serves vector tiles
 under `updraft://localhost/basemap/`. SQLite access and gzip decompression run
 on blocking workers. The frontend uses Tauri's platform-specific resource URLs.
+A native basemap status subscription sends the initial generation and file
+states through a Tauri channel. Basemap identities contain the provider and
+catalog-relative path, without absolute filesystem paths or raw load errors.
+Startup discovers nested managed basemaps and ignores flat development files.
+Before loading managed inventories, startup removes abandoned partial downloads.
+Cleanup matches only the downloader's filename prefix and suffix and skips
+symlinks. Cleanup failures are logged without preventing startup.
+The subscriber can explicitly close its channel registration.
+The frontend app root owns this subscription and shares its latest status with
+the Data library and map. Navigation does not interrupt status updates.
+Basemap activation writes its marker on a blocking worker and publishes a new
+generation under the inventory lock. Tile URLs include this generation. The
+shell rejects stale generations, and the frontend replaces the basemap source
+to cancel pending requests and discard cached tiles.
+Removal closes the SQLite connection before deleting the file and marker.
+Failures retain the inventory entry for retry and publish the remaining tile state.
+
+Rust owns one FIFO download queue for basemaps and terrain. Transfers write temporary files and install
+completed files atomically. Installation and removal coordinate under the queue
+lock so a cancelled replacement cannot reinstall a removed dataset. Transfer
+failure preserves installed bytes. Progress notifications have a 100 ms minimum
+interval. Queue transitions publish immediately. The frontend queries installed
+timestamps for update availability and filesystem metadata for file details.
 
 Offline Enroute terrain follows the same shell boundary. The shell serves
 encoded elevation tiles and installed attribution under
 `updraft://localhost/terrain/`. MapLibre decodes the tiles for hillshade and
 elevation colours.
+The terrain inventory retains disabled and unavailable files. Only active files
+contribute tiles and metadata. Startup validation establishes one tile size from
+the first valid enabled file with tiles and excludes incompatible files.
+Validated metadata remains in memory until activation, installation, removal,
+or restart.
+Disabled markers prevent files from being opened or validated.
+Terrain status subscriptions send the initial inventory under the same lock
+that registers the channel. The payload contains a generation number, managed
+identities, and active, disabled, or unavailable states. Absolute paths and
+diagnostic errors stay in the shell. Like basemaps, terrain startup discovers
+nested managed files and ignores flat development files. Unsubscribe removes
+only the requested channel and is idempotent.
+The frontend client exposes terrain status through this channel. Closing stops
+local delivery immediately and waits for registration before native unsubscribe.
+The fake client retains the latest terrain status for new subscribers.
+The app root owns the terrain subscription and shares its status with the Data
+library across navigation.
+Terrain metadata and tile URLs include the inventory generation. The shell
+rejects other generations with HTTP 404 and disables response caching.
+Activation persists the selected marker before rechecking enabled files and
+publishing a new generation. Disabled files stay unopened. The frontend replaces
+the terrain source and restores its layers to refresh metadata, tiles, and
+credits together. The shared activation queue also owns terrain changes.
+Removal closes the selected SQLite connection before deleting the file and its
+disabled marker. It rechecks remaining enabled files and publishes the resulting
+inventory, including after a deletion failure. Failed removals remain retryable.
 
 ## State ownership
 

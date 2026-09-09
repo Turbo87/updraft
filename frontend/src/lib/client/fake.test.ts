@@ -1,6 +1,7 @@
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
+import type { EnrouteCatalogStatus, EnrouteDownloadStatus } from './index';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -153,10 +154,10 @@ describe('FakeClient', () => {
     });
   });
 
-  it('cancels native airspace import in browser mode', async () => {
+  it('cancels native data selection in browser mode', async () => {
     let client = new FakeClient();
 
-    await expect(client.importAirspace()).resolves.toEqual({ type: 'cancelled' });
+    await expect(client.selectDataFile()).resolves.toBeNull();
   });
 
   it('delivers emitted topics to a subscriber', () => {
@@ -364,9 +365,8 @@ describe('FakeClient', () => {
   });
 });
 
-it('cancels native waypoint import and removes only the selected fake source', async () => {
+it('removes only the selected fake waypoint source', async () => {
   let client = new FakeClient();
-  await expect(client.importWaypoints()).resolves.toEqual({ type: 'cancelled' });
   let received: Topic[] = [];
   client.subscribe((topic) => received.push(topic));
   client.emit({
@@ -410,4 +410,186 @@ it('removes only the named airspace source and advances its generation', async (
     topic: 'airspace',
     value: { generation: 3, sources: [{ type: 'active', sourceName: 'b.txt', airspaceCount: 2 }] },
   });
+});
+
+it.each(['airspace', 'waypoints'] as const)(
+  'toggles %s fixtures without losing diagnostics',
+  async (kind) => {
+    let client = new FakeClient();
+    let received: Topic[] = [];
+    client.subscribe((topic) => received.push(topic));
+    let initial: Topic =
+      kind === 'airspace'
+        ? {
+            topic: kind,
+            value: {
+              generation: 1,
+              sources: [
+                { type: 'active', sourceName: 'local', airspaceCount: 2 },
+                { type: 'unavailable', sourceName: 'broken', error: 'parseFailed' },
+              ],
+            },
+          }
+        : {
+            topic: kind,
+            value: {
+              generation: 1,
+              sources: [
+                {
+                  type: 'active',
+                  sourceName: 'local',
+                  waypointCount: 2,
+                  warnings: [{ line: 4, message: 'Skipped waypoint' }],
+                },
+                { type: 'unavailable', sourceName: 'broken', error: 'parseFailed' },
+              ],
+            },
+          };
+    client.emit(initial);
+    let setEnabled =
+      kind === 'airspace'
+        ? client.setAirspaceEnabled.bind(client)
+        : client.setWaypointsEnabled.bind(client);
+    await setEnabled('local', false);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: {
+        generation: 2,
+        sources: [{ type: 'disabled', sourceName: 'local' }, initial.value.sources[1]],
+      },
+    });
+    await setEnabled('local', true);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: { generation: 3, sources: initial.value.sources },
+    });
+    await setEnabled('broken', false);
+    await setEnabled('broken', true);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: { generation: 5, sources: initial.value.sources },
+    });
+    let count = received.length;
+    await expect(setEnabled('missing', true)).rejects.toThrow('Source not found');
+    expect(received).toHaveLength(count);
+    if (kind === 'airspace') await client.removeAirspace('local');
+    else await client.removeWaypoints('local');
+    client.emit({
+      topic: kind,
+      value: { generation: 7, sources: [{ type: 'disabled', sourceName: 'local' }] },
+    });
+    await setEnabled('local', true);
+    expect(received.at(-1)).toEqual({
+      topic: kind,
+      value: {
+        generation: 8,
+        sources: [{ type: 'unavailable', sourceName: 'local', error: 'readFailed' }],
+      },
+    });
+  },
+);
+
+it.each([
+  ['subscribeBasemaps', 'emitBasemaps', 'local.mbtiles'],
+  ['subscribeTerrain', 'emitTerrain', 'local.terrain'],
+] as const)(
+  'delivers current status and updates until each %s closes',
+  async (subscribe, emit, sourceName) => {
+    let client = new FakeClient();
+    let first = vi.fn();
+    let second = vi.fn();
+    let subscription = client[subscribe](first);
+    expect(first).toHaveBeenCalledExactlyOnceWith({ generation: 0, sources: [] });
+    let status = {
+      generation: 1,
+      sources: [{ sourceName, type: 'disabled' as const }],
+    };
+    client[emit](status);
+    expect(first).toHaveBeenLastCalledWith(status);
+    let other = client[subscribe](second);
+    expect(second).toHaveBeenCalledExactlyOnceWith(status);
+    await subscription.close();
+    await subscription.close();
+    client[emit]({ generation: 2, sources: [] });
+    expect(first).toHaveBeenCalledTimes(2);
+    expect(second).toHaveBeenLastCalledWith({ generation: 2, sources: [] });
+    await other.close();
+  },
+);
+
+it('keeps terrain and basemap subscriptions independent', async () => {
+  let client = new FakeClient();
+  let basemaps = vi.fn();
+  let terrain = vi.fn();
+  let basemapSubscription = client.subscribeBasemaps(basemaps);
+  let terrainSubscription = client.subscribeTerrain(terrain);
+  client.emitTerrain({ generation: 2, sources: [] });
+  expect(basemaps).toHaveBeenCalledExactlyOnceWith({ generation: 0, sources: [] });
+  client.emitBasemaps({ generation: 1, sources: [] });
+  expect(terrain.mock.calls).toEqual([
+    [{ generation: 0, sources: [] }],
+    [{ generation: 2, sources: [] }],
+  ]);
+  await basemapSubscription.close();
+  await terrainSubscription.close();
+});
+
+it('delivers cached catalog and refresh states until each subscription closes', async () => {
+  let client = new FakeClient();
+  let first = vi.fn();
+  let second = vi.fn();
+  let subscription = client.subscribeEnrouteCatalog(first);
+  expect(first).toHaveBeenCalledExactlyOnceWith({ cached: null, refreshing: false, error: false });
+  let status: EnrouteCatalogStatus = {
+    cached: {
+      entries: [
+        {
+          path: 'Europe/Malta.mbtiles',
+          countryCode: 'MT',
+          continent: 'europe',
+          size: 458752,
+          publicationDate: '2026-09-08',
+        },
+      ],
+      checkedAt: 1788825600000,
+    },
+    refreshing: true,
+    error: false,
+  };
+  client.emitEnrouteCatalog(status);
+  expect(first).toHaveBeenLastCalledWith(status);
+  let other = client.subscribeEnrouteCatalog(second);
+  expect(second).toHaveBeenCalledExactlyOnceWith(status);
+  await subscription.close();
+  await subscription.close();
+  let failed = { ...status, refreshing: false, error: true };
+  client.emitEnrouteCatalog(failed);
+  expect(first).toHaveBeenCalledTimes(2);
+  expect(second).toHaveBeenLastCalledWith(failed);
+  await other.close();
+});
+
+it('delivers download snapshots until each subscription closes', async () => {
+  let client = new FakeClient();
+  let first = vi.fn();
+  let second = vi.fn();
+  let subscription = client.subscribeEnrouteDownloads(first);
+  expect(first).toHaveBeenCalledExactlyOnceWith([]);
+  let status: EnrouteDownloadStatus[] = [
+    { path: 'Europe/Malta.mbtiles', type: 'downloading', downloaded: 12, total: 100 },
+    { path: 'Europe/Germany.mbtiles', type: 'queued' },
+    { path: 'Europe/France.mbtiles', type: 'failed' },
+  ];
+  client.emitEnrouteDownloads(status);
+  expect(first).toHaveBeenLastCalledWith(status);
+  let other = client.subscribeEnrouteDownloads(second);
+  expect(second).toHaveBeenCalledExactlyOnceWith(status);
+  await subscription.close();
+  await subscription.close();
+  client.emitEnrouteDownloads([]);
+  expect(first).toHaveBeenCalledTimes(2);
+  expect(second).toHaveBeenLastCalledWith([]);
+  await other.close();
+  client.emitEnrouteDownloads(status);
+  expect(second).toHaveBeenCalledTimes(2);
 });

@@ -8,10 +8,11 @@
   type Props = {
     language?: string;
     buildDate?: string;
+    updateCount?: number;
     onQuit?: () => void;
   };
 
-  let { language, buildDate, onQuit }: Props = $props();
+  let { language, buildDate, updateCount = 0, onQuit }: Props = $props();
 </script>
 
 <ScreenScaffold backHref="/" backLabel={m.back_to_flight_view()} title={m.settings_heading()}>
@@ -33,14 +34,21 @@
         value={language ?? '—'}
       />
     </Card>
-    <Card>
-      <ListRow
-        href="/settings/waypoints"
-        icon="i-mdi-map-marker"
-        label={m.waypoints_heading()}
-        size="large"
-      />
-    </Card>
+    <div class="data-settings">
+      <Card>
+        <ListRow
+          href="/settings/data"
+          icon="i-mdi-database-outline"
+          label={m.data_heading()}
+          size="large"
+          value={updateCount === 1
+            ? m.data_update_count_one()
+            : updateCount > 0
+              ? m.data_update_count({ count: updateCount })
+              : ''}
+        />
+      </Card>
+    </div>
     <Card>
       <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
     </Card>
@@ -49,14 +57,6 @@
         href="/settings/glide"
         icon="i-mdi-airplane"
         label={m.glide_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/airspace"
-        icon="i-mdi-vector-square"
-        label={m.airspace_label()}
         size="large"
       />
     </Card>
@@ -90,6 +90,13 @@
 </ScreenScaffold>
 
 <style>
+  .data-settings :global(.value) {
+    max-width: 30vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   nav {
     display: grid;
     gap: var(--space-2);

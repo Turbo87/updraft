@@ -2,7 +2,7 @@ use claims::assert_ok;
 use std::{collections::BTreeMap, sync::Arc};
 use updraft_core::{
     Core, GetWaypointCatalog, ReplaceWaypointCatalog, SettingsSnapshot, Timestamp, Topic,
-    WaypointCatalog,
+    WaypointCatalog, WaypointSource,
 };
 use updraft_waypoint::WaypointDataset;
 
@@ -29,7 +29,7 @@ fn glide_snapshot_keeps_the_catalog_flight_state_and_performance_from_one_query(
     let bytes = b"name,code,country,lat,lon,elev,style\nField,,,5000.000N,00600.000E,100m,2\n";
     let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(bytes)));
     let catalog = Arc::new(WaypointCatalog {
-        sources: BTreeMap::from([("field.cup".into(), Ok(dataset))]),
+        sources: BTreeMap::from([("field.cup".into(), WaypointSource::Active(dataset))]),
     });
     core.apply(ReplaceWaypointCatalog(catalog.clone()), at);
     let position = LatLon::from_degrees(50.1, 6.1);
@@ -79,8 +79,9 @@ fn replaces_catalog_and_publishes_a_generation_without_merging_sources() {
     let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(bytes)));
     let catalog = Arc::new(WaypointCatalog {
         sources: BTreeMap::from([
-            ("a.cup".into(), Ok(dataset.clone())),
-            ("b.cup".into(), Ok(dataset)),
+            ("a.cup".into(), WaypointSource::Active(dataset.clone())),
+            ("b.cup".into(), WaypointSource::Active(dataset)),
+            ("disabled.cup".into(), WaypointSource::Disabled),
         ]),
     });
     let mut core = Core::new(SettingsSnapshot::default());
@@ -97,7 +98,13 @@ fn replaces_catalog_and_publishes_a_generation_without_merging_sources() {
         })
         .unwrap();
     assert_eq!(status.generation, 1);
-    assert_eq!(status.sources.len(), 2);
+    assert_eq!(status.sources.len(), 3);
+    assert_eq!(
+        status.sources[2],
+        updraft_core::WaypointSourceStatus::Disabled {
+            source_name: "disabled.cup".into()
+        }
+    );
     core.apply(
         ReplaceWaypointCatalog(Arc::new(WaypointCatalog::default())),
         at,
@@ -108,5 +115,5 @@ fn replaces_catalog_and_publishes_a_generation_without_merging_sources() {
             .sources
             .is_empty()
     );
-    assert_eq!(catalog.sources.len(), 2);
+    assert_eq!(catalog.sources.len(), 3);
 }

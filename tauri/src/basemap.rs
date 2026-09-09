@@ -1,50 +1,91 @@
+use self::commands::BasemapStatus;
+use crate::enroute::{CatalogEntry, download::DownloadFile};
 use anyhow::{Context, Result, ensure};
 use flate2::read::GzDecoder;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use std::collections::BTreeMap;
+use std::fs;
 use std::io::{ErrorKind, Read};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::{fs, path::Path};
 use tauri::http::{Response, StatusCode, header};
+use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
+
+pub mod commands;
 
 const TILE_QUERY: &str =
     "SELECT tile_data FROM tiles WHERE zoom_level = ?1 AND tile_column = ?2 AND tile_row = ?3";
 
 #[derive(Default)]
 pub struct Basemaps {
-    files: Vec<Connection>,
+    files: BTreeMap<String, BasemapSource>,
+    directory: PathBuf,
+    generation: u64,
+    subscribers: BTreeMap<u32, Channel<BasemapStatus>>,
+}
+
+#[derive(Debug)]
+enum BasemapSource {
+    Active(Connection),
+    Disabled,
+    Unavailable(anyhow::Error),
 }
 
 impl Basemaps {
     pub fn load(directory: &Path) -> Result<Self> {
-        let entries = match fs::read_dir(directory) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Self::default()),
-            Err(error) => return Err(error.into()),
-        };
-        let mut paths = entries
-            .map(|entry| entry.map(|entry| entry.path()))
-            .filter(|path| match path {
-                Ok(path) => path
-                    .extension()
-                    .is_some_and(|extension| extension == "mbtiles"),
-                Err(_) => true,
-            })
-            .collect::<std::io::Result<Vec<_>>>()?;
-        paths.sort();
-        let mut files = Vec::new();
-        for path in paths {
-            match open_basemap(&path) {
-                Ok(connection) => files.push(connection),
-                Err(error) => {
-                    tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
+        let mut files = BTreeMap::new();
+        for (id, path) in crate::enroute::storage::installed_files(directory)? {
+            if !id.ends_with(".mbtiles") {
+                continue;
+            }
+            let source = if path.with_extension("mbtiles.disabled").try_exists()? {
+                BasemapSource::Disabled
+            } else {
+                match open_basemap(&path) {
+                    Ok(connection) => BasemapSource::Active(connection),
+                    Err(error) => BasemapSource::Unavailable(error),
                 }
+            };
+            if let BasemapSource::Unavailable(error) = &source {
+                tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
+            }
+            files.insert(id, source);
+        }
+        Ok(Self {
+            files,
+            directory: directory.to_owned(),
+            ..Self::default()
+        })
+    }
+
+    pub fn available_updates(&self, entries: &[CatalogEntry]) -> Result<Vec<&'static str>> {
+        let mut updates = Vec::new();
+        for entry in entries {
+            let name = format!("enroute/{}", entry.path);
+            if !self.files.contains_key(&name) {
+                continue;
+            }
+            let modified = fs::metadata(self.directory.join(&name))
+                .and_then(|metadata| metadata.modified())
+                .with_context(|| format!("Could not read basemap timestamp for {name}"))?;
+            if entry.update_available(modified) {
+                updates.push(entry.path);
             }
         }
-        Ok(Self { files })
+        Ok(updates)
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {
+        let Some((generation, path)) = path.split_once('/') else {
+            return response(StatusCode::BAD_REQUEST, Vec::new());
+        };
+        let Ok(generation) = generation.parse::<u64>() else {
+            return response(StatusCode::BAD_REQUEST, Vec::new());
+        };
+        if generation != self.generation {
+            return response(StatusCode::NO_CONTENT, Vec::new());
+        }
         let Some([z, x, y]) = tile_coordinates(path) else {
             return response(StatusCode::BAD_REQUEST, Vec::new());
         };
@@ -58,9 +99,116 @@ impl Basemaps {
         }
     }
 
+    fn set_enabled(&mut self, name: &str, enabled: bool) -> Result<()> {
+        let path = self.directory.join(name);
+        let source = self
+            .files
+            .get_mut(name)
+            .context("Basemap file is not installed")?;
+        let marker = path.with_extension("mbtiles.disabled");
+        if enabled {
+            match fs::remove_file(&marker) {
+                Ok(()) => {}
+                Err(error) if error.kind() == ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+            *source = match open_basemap(&path) {
+                Ok(connection) => BasemapSource::Active(connection),
+                Err(error) => {
+                    tracing::warn!(%error, path = %path.display(), "Could not open offline basemap");
+                    BasemapSource::Unavailable(error)
+                }
+            };
+        } else {
+            match fs::File::create_new(&marker) {
+                Ok(_) => {}
+                Err(error)
+                    if error.kind() == ErrorKind::AlreadyExists
+                        && fs::symlink_metadata(&marker)?.is_file() => {}
+                Err(error) => return Err(error.into()),
+            }
+            *source = BasemapSource::Disabled;
+        }
+        self.generation += 1;
+        self.publish();
+        Ok(())
+    }
+
+    pub fn install_download(&mut self, name: &str, download: DownloadFile) -> Result<()> {
+        let path = self.directory.join(name);
+        ensure!(
+            download.destination() == path,
+            "Basemap download destination does not match"
+        );
+        if !self.files.contains_key(name) {
+            let marker = path.with_extension("mbtiles.disabled");
+            match fs::remove_file(marker) {
+                Ok(()) => {}
+                Err(error) if error.kind() == ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        let previous = self.files.remove(name);
+        let installed = previous.is_some();
+        let enabled = !matches!(previous, Some(BasemapSource::Disabled));
+        // Close SQLite before replacement, including on Windows.
+        drop(previous);
+        let result = download.install();
+        if result.is_ok() || installed {
+            let source = if enabled {
+                match open_basemap(&path) {
+                    Ok(connection) => BasemapSource::Active(connection),
+                    Err(error) => {
+                        tracing::warn!(%error, name, "Could not open downloaded basemap");
+                        BasemapSource::Unavailable(error)
+                    }
+                }
+            } else {
+                BasemapSource::Disabled
+            };
+            self.files.insert(name.to_owned(), source);
+            self.generation += 1;
+            self.publish();
+        }
+        result
+    }
+
+    fn remove(&mut self, name: &str) -> Result<()> {
+        let path = self.directory.join(name);
+        let source = self
+            .files
+            .get_mut(name)
+            .context("Basemap file is not installed")?;
+        let enabled = !matches!(source, BasemapSource::Disabled);
+        // Close SQLite before deletion, including on Windows.
+        *source = BasemapSource::Disabled;
+        let marker = path.with_extension("mbtiles.disabled");
+        let result =
+            [&path, &marker]
+                .into_iter()
+                .try_for_each(|path| match fs::remove_file(path) {
+                    Ok(()) => Ok(()),
+                    Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+                    Err(error) => Err(error),
+                });
+        if result.is_ok() {
+            self.files.remove(name);
+        } else if enabled {
+            *source = open_basemap(&path)
+                .map(BasemapSource::Active)
+                .unwrap_or_else(BasemapSource::Unavailable);
+        }
+        self.generation += 1;
+        self.publish();
+        result.map_err(Into::into)
+    }
+
     fn tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Vec<u8>>> {
         let tms_y = (1_u32 << z) - 1 - y;
-        for connection in &self.files {
+        for source in self.files.values() {
+            let BasemapSource::Active(connection) = source else {
+                continue;
+            };
             let data: Option<Vec<u8>> = connection
                 .prepare_cached(TILE_QUERY)?
                 .query_row((z, x, tms_y), |row| row.get(0))

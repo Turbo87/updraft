@@ -8,7 +8,9 @@ mod activity;
 mod airspace_resource;
 mod airspace_storage;
 mod basemap;
+mod data_import;
 mod driver;
+pub mod enroute;
 mod file_picker;
 mod ipc;
 mod settings;
@@ -85,13 +87,35 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("updraft", updraft_uri::handle_updraft_uri)
         .invoke_handler(tauri::generate_handler![
             ipc::bonded_bluetooth_devices,
-            ipc::import_airspace,
-            waypoints::commands::import_waypoints,
+            enroute::catalog::refresh_enroute_catalog,
+            enroute::catalog::commands::subscribe_enroute_catalog,
+            enroute::catalog::commands::get_enroute_basemap_updates,
+            enroute::catalog::commands::get_enroute_terrain_updates,
+            enroute::catalog::commands::unsubscribe_enroute_catalog,
+            enroute::commands::subscribe_enroute_downloads,
+            enroute::commands::unsubscribe_enroute_downloads,
+            enroute::commands::cancel_enroute_download,
+            enroute::commands::download_enroute_files,
+            basemap::commands::subscribe_basemaps,
+            basemap::commands::get_basemap_file_details,
+            terrain::commands::get_terrain_file_details,
+            basemap::commands::unsubscribe_basemaps,
+            basemap::commands::set_basemap_enabled,
+            basemap::commands::remove_basemap,
+            terrain::commands::subscribe_terrain,
+            terrain::commands::unsubscribe_terrain,
+            terrain::commands::set_terrain_enabled,
+            terrain::commands::remove_terrain,
+            data_import::select_data_file,
+            data_import::import_data_file,
+            data_import::discard_data_file,
             waypoints::commands::remove_waypoints,
+            waypoints::commands::set_waypoints_enabled,
             waypoints::arrival_stream::start_arrivals,
             waypoints::arrival_stream::update_arrival_viewport,
             waypoints::arrival_stream::stop_arrivals,
             ipc::remove_airspace,
+            ipc::set_airspace_enabled,
             ipc::set_locale,
             ipc::set_units,
             ipc::get_polars,
@@ -116,6 +140,13 @@ pub fn run() {
             if let Some(guard) = init_tracing(app.handle()) {
                 app.manage(guard);
             }
+            let catalog_path = app.path().app_data_dir()?.join("enroute-catalog.json");
+            let catalog = Arc::new(enroute::catalog::CatalogService::load(catalog_path));
+            app.manage(enroute::catalog::commands::CatalogSubscriptions::new(
+                &catalog,
+            ));
+            app.manage(catalog.clone());
+            tauri::async_runtime::spawn(async move { catalog.refresh().await });
             let settings_file = settings::SettingsFile::new(app.path().app_config_dir()?);
             let snapshot = settings_file.load();
             let airspace_storage =
@@ -124,13 +155,17 @@ pub fn run() {
             let waypoint_storage =
                 waypoints::storage::WaypointStorage::new(app.path().app_data_dir()?);
             let waypoint_catalog = Arc::new(waypoint_storage.load()?);
-            let basemap_directory = app.path().app_data_dir()?.join("enroute");
-            let basemaps = basemap::Basemaps::load(&basemap_directory).unwrap_or_else(|error| {
+            let data_directory = app.path().app_data_dir()?;
+            if let Err(error) = enroute::storage::remove_partial_downloads(&data_directory) {
+                tracing::warn!(?error, "Could not clean up partial downloads");
+            }
+            app.manage(enroute::commands::DownloadCommands::default());
+            let basemaps = basemap::Basemaps::load(&data_directory).unwrap_or_else(|error| {
                 tracing::warn!(%error, "Could not scan offline basemap directory");
                 basemap::Basemaps::default()
             });
             app.manage(Arc::new(Mutex::new(basemaps)));
-            let terrain = terrain::Terrain::load(&basemap_directory).unwrap_or_else(|error| {
+            let terrain = terrain::Terrain::load(&data_directory).unwrap_or_else(|error| {
                 tracing::warn!(%error, "Could not scan offline terrain directory");
                 terrain::Terrain::default()
             });
@@ -170,6 +205,7 @@ pub fn run() {
             app.manage(handle);
             app.manage(waypoints::arrival_stream::ArrivalStreams::default());
             app.manage(file_picker);
+            app.manage(data_import::DataImportState::default());
             app.manage(ipc::AirspaceCommandState::new(airspace_storage));
 
             #[cfg(target_os = "android")]

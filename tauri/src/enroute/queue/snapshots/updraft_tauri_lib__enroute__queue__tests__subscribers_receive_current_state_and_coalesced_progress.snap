@@ -1,0 +1,17 @@
+---
+source: tauri/src/enroute/queue/tests.rs
+expression: "*status.borrow_and_update()"
+---
+[
+    DownloadStatus {
+        path: "Europe/Germany.mbtiles",
+        state: Downloading {
+            downloaded: 12,
+            total: 10,
+        },
+    },
+    DownloadStatus {
+        path: "Europe/France.mbtiles",
+        state: Queued,
+    },
+]

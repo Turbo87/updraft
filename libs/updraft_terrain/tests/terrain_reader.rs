@@ -1,4 +1,5 @@
 use claims::{assert_err, assert_none, assert_ok, assert_some_eq};
+use image_webp::{ColorType, WebPEncoder};
 use rusqlite::Connection;
 use std::path::Path;
 use updraft_geo::LatLon;
@@ -13,12 +14,8 @@ fn write_terrain(path: &Path, tiles: &[(u32, u32, u32, &[u8])]) {
          CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);",
     ).unwrap();
     for &(z, x, tms_y, data) in tiles {
-        connection
-            .execute(
-                "INSERT INTO tiles VALUES (?1, ?2, ?3, ?4)",
-                (z, x, tms_y, data),
-            )
-            .unwrap();
+        let query = "INSERT INTO tiles VALUES (?1, ?2, ?3, ?4)";
+        connection.execute(query, (z, x, tms_y, data)).unwrap();
     }
 }
 
@@ -26,9 +23,8 @@ fn elevation_webp(meters: u16) -> Vec<u8> {
     let value = meters + 32768;
     let pixel = [(value >> 8) as u8, value as u8, 0];
     let mut bytes = Vec::new();
-    image_webp::WebPEncoder::new(&mut bytes)
-        .encode(&pixel.repeat(4), 2, 2, image_webp::ColorType::Rgb8)
-        .unwrap();
+    let encoder = WebPEncoder::new(&mut bytes);
+    assert_ok!(encoder.encode(&pixel.repeat(4), 2, 2, ColorType::Rgb8));
     bytes
 }
 
@@ -96,38 +92,31 @@ fn elevation_selects_highest_available_zoom() {
     let mut terrain = TerrainReader::default();
     assert_ok!(terrain.insert("a".into(), &directory.path().join("a.terrain")));
     assert_ok!(terrain.insert("b".into(), &directory.path().join("b.terrain")));
-    let position = updraft_geo::LatLon::from_degrees(-40.0, 60.0);
+    let position = LatLon::from_degrees(-40.0, 60.0);
     assert_some_eq!(assert_ok!(terrain.elevation(position)), 500.0);
-    assert_some_eq!(
-        assert_ok!(terrain.elevation(updraft_geo::LatLon::from_degrees(40.0, -60.0))),
-        100.0
-    );
+    let west = LatLon::from_degrees(40.0, -60.0);
+    assert_some_eq!(assert_ok!(terrain.elevation(west)), 100.0);
 }
 
 #[test]
 fn elevation_distinguishes_missing_coverage_and_read_errors() {
     let terrain = TerrainReader::default();
-    assert_none!(assert_ok!(
-        terrain.elevation(updraft_geo::LatLon::from_degrees(0.0, 0.0))
-    ));
-    assert_none!(assert_ok!(
-        terrain.elevation(updraft_geo::LatLon::from_degrees(90.0, 0.0))
-    ));
-    assert_none!(assert_ok!(
-        terrain.elevation(updraft_geo::LatLon::from_degrees(f64::NAN, 0.0))
-    ));
+    let origin = LatLon::from_degrees(0.0, 0.0);
+    let pole = LatLon::from_degrees(90.0, 0.0);
+    let invalid = LatLon::from_degrees(f64::NAN, 0.0);
+    assert_none!(assert_ok!(terrain.elevation(origin)));
+    assert_none!(assert_ok!(terrain.elevation(pole)));
+    assert_none!(assert_ok!(terrain.elevation(invalid)));
     let directory = tempfile::tempdir().unwrap();
-    write_terrain(
-        &directory.path().join("broken.terrain"),
-        &[(0, 0, 0, &elevation_webp(100))],
-    );
+    let path = directory.path().join("broken.terrain");
+    write_terrain(&path, &[(0, 0, 0, &elevation_webp(100))]);
     let mut terrain = TerrainReader::default();
-    assert_ok!(terrain.insert("broken".into(), &directory.path().join("broken.terrain")));
-    Connection::open(directory.path().join("broken.terrain"))
+    assert_ok!(terrain.insert("broken".into(), &path));
+    Connection::open(path)
         .unwrap()
         .execute("UPDATE tiles SET tile_data = ?1", [b"broken".as_slice()])
         .unwrap();
-    assert_err!(terrain.elevation(updraft_geo::LatLon::from_degrees(0.0, 0.0)));
+    assert_err!(terrain.elevation(origin));
 }
 
 #[test]
@@ -135,16 +124,12 @@ fn elevation_interpolates_across_tile_edges() {
     let directory = tempfile::tempdir().unwrap();
     let west = elevation_webp(100);
     let east = elevation_webp(200);
-    write_terrain(
-        &directory.path().join("a.terrain"),
-        &[(1, 0, 1, &west), (1, 1, 1, &east)],
-    );
+    let path = directory.path().join("a.terrain");
+    write_terrain(&path, &[(1, 0, 1, &west), (1, 1, 1, &east)]);
     let mut terrain = TerrainReader::default();
-    assert_ok!(terrain.insert("a".into(), &directory.path().join("a.terrain")));
-    assert_some_eq!(
-        assert_ok!(terrain.elevation(updraft_geo::LatLon::from_degrees(40.0, 0.0))),
-        150.0
-    );
+    assert_ok!(terrain.insert("a".into(), &path));
+    let position = LatLon::from_degrees(40.0, 0.0);
+    assert_some_eq!(assert_ok!(terrain.elevation(position)), 150.0);
 }
 
 #[test]

@@ -1,4 +1,5 @@
-use anyhow::{Result, ensure};
+use anyhow::{Context, Result, ensure};
+use image_webp::WebPDecoder;
 use std::io::Cursor;
 
 #[derive(Debug)]
@@ -10,7 +11,7 @@ pub struct TerrainTile {
 
 impl TerrainTile {
     pub fn decode(bytes: &[u8]) -> Result<Self> {
-        let mut decoder = image_webp::WebPDecoder::new(Cursor::new(bytes))?;
+        let mut decoder = WebPDecoder::new(Cursor::new(bytes))?;
         let (width, height) = decoder.dimensions();
         ensure!(
             width == height && width > 0,
@@ -19,7 +20,7 @@ impl TerrainTile {
         let channels = if decoder.has_alpha() { 4 } else { 3 };
         let length = decoder
             .output_buffer_size()
-            .ok_or_else(|| anyhow::anyhow!("Terrain tile dimensions overflow"))?;
+            .context("Terrain tile dimensions overflow")?;
         let mut pixels = vec![0; length];
         decoder.read_image(&mut pixels)?;
         Ok(Self {
@@ -46,12 +47,12 @@ pub fn bilinear(samples: [[f64; 2]; 2], x: f64, y: f64) -> f64 {
 mod tests {
     use super::*;
     use claims::{assert_err, assert_ok};
+    use image_webp::{ColorType, WebPEncoder};
 
     pub fn webp(width: u32, height: u32, pixels: &[u8]) -> Vec<u8> {
         let mut bytes = Vec::new();
-        image_webp::WebPEncoder::new(&mut bytes)
-            .encode(pixels, width, height, image_webp::ColorType::Rgb8)
-            .unwrap();
+        let encoder = WebPEncoder::new(&mut bytes);
+        assert_ok!(encoder.encode(pixels, width, height, ColorType::Rgb8));
         bytes
     }
 

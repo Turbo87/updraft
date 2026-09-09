@@ -3,9 +3,13 @@
 //! Callers select files and run blocking reads. This crate does not manage
 //! downloads, activation settings, runtime tasks, or instrument state.
 
+use self::dem::{TerrainTile, bilinear};
 use anyhow::{Context, Result, ensure};
+use imagesize::{ImageSize, ImageType};
+use moka::sync::Cache;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use std::{collections::BTreeMap, f64::consts::PI, path::Path, sync::Arc};
+use updraft_geo::LatLon;
 
 mod dem;
 
@@ -24,7 +28,7 @@ const TILE_METADATA_QUERY: &str = "
 #[derive(Debug)]
 pub struct TerrainReader {
     files: BTreeMap<String, TerrainFile>,
-    decoded: moka::sync::Cache<(u32, u32, u32), Option<Arc<dem::TerrainTile>>>,
+    decoded: Cache<(u32, u32, u32), Option<Arc<TerrainTile>>>,
 }
 
 /// Validated tile dimensions, zoom limits, and attribution from selected files.
@@ -53,9 +57,9 @@ impl Default for TerrainReader {
     fn default() -> Self {
         Self {
             files: BTreeMap::new(),
-            decoded: moka::sync::Cache::builder()
+            decoded: Cache::builder()
                 .max_capacity(16 * 1024 * 1024)
-                .weigher(|_, tile: &Option<Arc<dem::TerrainTile>>| {
+                .weigher(|_, tile: &Option<Arc<TerrainTile>>| {
                     tile.as_ref().map_or(1, |tile| tile.pixels.len() as u32)
                 })
                 .build(),
@@ -128,15 +132,14 @@ impl TerrainReader {
     /// Returns `None` outside coverage or Web Mercator latitude bounds. Read
     /// and decode failures return an error. Interpolation uses adjacent tiles
     /// when available and repeats edge samples where coverage ends.
-    pub fn elevation(&self, position: updraft_geo::LatLon) -> Result<Option<f64>> {
+    pub fn elevation(&self, position: LatLon) -> Result<Option<f64>> {
         let lat = position.latitude().as_degrees();
         let lon = position.longitude().as_degrees();
         if !lat.is_finite() || lat.abs() > 85.0511287798066 || !lon.is_finite() {
             return Ok(None);
         }
         let mx = (lon + 180.0).rem_euclid(360.0) / 360.0;
-        let my =
-            (1.0 - position.latitude().as_radians().tan().asinh() / std::f64::consts::PI) / 2.0;
+        let my = (1.0 - position.latitude().as_radians().tan().asinh() / PI) / 2.0;
         for z in (0..32).rev().filter(|z| {
             self.files.values().any(|source| {
                 source
@@ -193,20 +196,17 @@ impl TerrainReader {
                     };
                 }
             }
-            return Ok(Some(dem::bilinear(
-                samples,
-                px - px.floor(),
-                py - py.floor(),
-            )));
+            let elevation = bilinear(samples, px - px.floor(), py - py.floor());
+            return Ok(Some(elevation));
         }
         Ok(None)
     }
 
-    fn decoded_tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Arc<dem::TerrainTile>>> {
+    fn decoded_tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Arc<TerrainTile>>> {
         self.decoded
             .try_get_with((z, x, y), || {
                 self.tile(z, x, y)?
-                    .map(|bytes| dem::TerrainTile::decode(&bytes).map(Arc::new))
+                    .map(|bytes| TerrainTile::decode(&bytes).map(Arc::new))
                     .transpose()
             })
             .map_err(|error: Arc<anyhow::Error>| {
@@ -257,11 +257,9 @@ fn open_terrain(path: &Path, tile_size: Option<usize>) -> Result<TerrainFile> {
         .query_row([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
         .optional()?;
     let coverage = if let Some((data, minzoom, maxzoom)) = tile_metadata {
-        ensure!(
-            imagesize::image_type(&data)? == imagesize::ImageType::Webp,
-            "Terrain tiles must use WebP"
-        );
-        let imagesize::ImageSize { width, height } = imagesize::blob_size(&data)?;
+        let image_type = imagesize::image_type(&data)?;
+        ensure!(image_type == ImageType::Webp, "Terrain tiles must use WebP");
+        let ImageSize { width, height } = imagesize::blob_size(&data)?;
         ensure!(width == height, "Terrain tiles must be square");
         ensure!(maxzoom < 32, "Terrain zoom levels must be below 32");
         ensure!(

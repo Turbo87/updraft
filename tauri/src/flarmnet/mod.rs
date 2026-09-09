@@ -4,8 +4,9 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use tempfile::NamedTempFile;
+use tokio::sync::Notify;
 use updraft_core::{FlarmnetDatabase, ReplaceFlarmnetDatabase};
 
 const DATABASE_URL: &str = "https://turbo87.github.io/united-flarmnet/united.json";
@@ -14,6 +15,7 @@ const MAX_DATABASE_BYTES: usize = 8 * 1024 * 1024;
 pub struct FlarmnetService {
     path: PathBuf,
     url: String,
+    wake: Notify,
 }
 
 impl FlarmnetService {
@@ -21,24 +23,42 @@ impl FlarmnetService {
         Self {
             path,
             url: DATABASE_URL.into(),
+            wake: Notify::new(),
         }
     }
 
-    pub fn start(self, driver: DriverHandle) -> Result<()> {
+    pub fn start(self: Arc<Self>, driver: DriverHandle) -> Result<()> {
         let database = Arc::new(self.load());
         tauri::async_runtime::block_on(driver.send(ReplaceFlarmnetDatabase(database)))?;
         tauri::async_runtime::spawn(async move {
-            match self.refresh().await {
-                Ok(database) => {
-                    let input = ReplaceFlarmnetDatabase(Arc::new(database));
-                    if let Err(error) = driver.send(input).await {
-                        tracing::error!(%error, "Could not publish FlarmNet database");
-                    }
-                }
-                Err(error) => tracing::warn!(?error, "Could not refresh FlarmNet database"),
+            if let Err(error) = self.run(driver).await {
+                tracing::error!(?error, "FlarmNet refresh worker stopped");
             }
         });
         Ok(())
+    }
+
+    pub fn check_due(&self) {
+        self.wake.notify_one();
+    }
+
+    async fn run(&self, driver: DriverHandle) -> Result<()> {
+        let mut schedule = RefreshSchedule::new(SystemTime::now());
+        loop {
+            schedule.wait(&self.wake).await;
+            let refreshed = match self.refresh().await {
+                Ok(database) => {
+                    let input = ReplaceFlarmnetDatabase(Arc::new(database));
+                    driver.send(input).await?;
+                    true
+                }
+                Err(error) => {
+                    tracing::warn!(?error, "Could not refresh FlarmNet database");
+                    false
+                }
+            };
+            schedule.complete(refreshed, SystemTime::now());
+        }
     }
 
     fn load(&self) -> FlarmnetDatabase {
@@ -90,6 +110,47 @@ impl FlarmnetService {
             Ok(database)
         })
         .await?
+    }
+}
+
+struct RefreshSchedule {
+    due: SystemTime,
+    failures: usize,
+}
+
+impl RefreshSchedule {
+    fn new(now: SystemTime) -> Self {
+        Self {
+            due: now,
+            failures: 0,
+        }
+    }
+
+    fn complete(&mut self, success: bool, now: SystemTime) {
+        let minutes = if success {
+            self.failures = 0;
+            180
+        } else {
+            let retries = [1, 5, 15, 30, 60];
+            let minutes = retries[self.failures];
+            self.failures = (self.failures + 1).min(retries.len() - 1);
+            minutes
+        };
+        self.due = now + Duration::from_secs(minutes * 60);
+    }
+
+    fn remaining(&self, now: SystemTime) -> Duration {
+        self.due.duration_since(now).unwrap_or_default()
+    }
+
+    async fn wait(&self, wake: &Notify) {
+        loop {
+            let remaining = self.remaining(SystemTime::now());
+            tokio::select! {
+                _ = tokio::time::sleep(remaining) => return,
+                _ = wake.notified() => {},
+            }
+        }
     }
 }
 

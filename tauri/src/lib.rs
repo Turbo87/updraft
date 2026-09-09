@@ -214,7 +214,9 @@ pub fn run() {
                 }
             });
             let flarmnet_path = data_directory.join("united-flarmnet.json");
-            flarmnet::FlarmnetService::new(flarmnet_path).start(handle.clone())?;
+            let flarmnet = Arc::new(flarmnet::FlarmnetService::new(flarmnet_path));
+            app.manage(flarmnet.clone());
+            flarmnet.start(handle.clone())?;
             app.manage(handle);
             app.manage(waypoints::arrival_stream::ArrivalStreams::default());
             app.manage(file_picker);

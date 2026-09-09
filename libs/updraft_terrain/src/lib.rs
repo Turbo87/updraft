@@ -158,6 +158,13 @@ impl TerrainReader {
             // Elevation samples lie at pixel centers.
             let px = (tx - f64::from(x)) * f64::from(tile.size) - 0.5;
             let py = (ty - f64::from(y)) * f64::from(tile.size) - 0.5;
+            let decoded_neighbour = |nx, ny| {
+                if (nx, ny) == (x, y) {
+                    Ok(Some(tile.clone()))
+                } else {
+                    self.decoded_tile(z, nx, ny)
+                }
+            };
             let mut samples = [[0.0; 2]; 2];
             for (dy, row) in samples.iter_mut().enumerate() {
                 for (dx, sample) in row.iter_mut().enumerate() {
@@ -168,18 +175,18 @@ impl TerrainReader {
                         (i64::from(x) + ix.div_euclid(size)).rem_euclid(i64::from(count)) as u32;
                     let ny = i64::from(y) + iy.div_euclid(size);
                     let mut neighbour = if (0..i64::from(count)).contains(&ny) {
-                        self.decoded_tile(z, nx, ny as u32)?
+                        decoded_neighbour(nx, ny as u32)?
                     } else {
                         None
                     };
                     let mut sx = ix.rem_euclid(size) as u32;
                     let mut sy = iy.rem_euclid(size) as u32;
                     if neighbour.is_none() {
-                        neighbour = self.decoded_tile(z, nx, y)?;
+                        neighbour = decoded_neighbour(nx, y)?;
                         sy = iy.clamp(0, size - 1) as u32;
                     }
                     if neighbour.is_none() && (0..i64::from(count)).contains(&ny) {
-                        neighbour = self.decoded_tile(z, x, ny as u32)?;
+                        neighbour = decoded_neighbour(x, ny as u32)?;
                         sx = ix.clamp(0, size - 1) as u32;
                         sy = iy.rem_euclid(size) as u32;
                     }

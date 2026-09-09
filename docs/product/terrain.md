@@ -136,4 +136,7 @@ elevation. AGL remains unavailable when either input is unavailable. Negative
 values remain visible. Terrain elevation follows position freshness. AGL is
 stale when position or fused altitude is stale.
 
+The debug overlay shows terrain elevation and AGL beside the fused altitude.
+Both values use the selected altitude unit. Unavailable values show `–`.
+
 This version does not provide custom file import controls or online fallback.

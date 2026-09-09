@@ -193,6 +193,14 @@
       <dd class:stale={derivedInstruments?.altitude?.stale}>
         {altitude(derivedInstruments?.altitude?.altitudeMslMeters)}
       </dd>
+      <dt>Terrain elevation</dt>
+      <dd class:stale={instruments.terrainElevation?.stale}>
+        {altitude(instruments.terrainElevation?.meters)}
+      </dd>
+      <dt>AGL altitude</dt>
+      <dd class:stale={instruments.altitudeAgl?.stale}>
+        {altitude(instruments.altitudeAgl?.meters)}
+      </dd>
     </dl>
     <label>
       <input type="checkbox" bind:checked={showTileBoundaries} />

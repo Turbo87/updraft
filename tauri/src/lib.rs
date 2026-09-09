@@ -12,6 +12,8 @@ mod data_import;
 mod driver;
 pub mod enroute;
 mod file_picker;
+mod flarmnet;
+mod http;
 mod ipc;
 mod settings;
 mod source_files;
@@ -211,6 +213,10 @@ pub fn run() {
                     tracing::error!(%error, "Terrain elevation worker stopped");
                 }
             });
+            let flarmnet_path = data_directory.join("united-flarmnet.json");
+            let flarmnet = Arc::new(flarmnet::FlarmnetService::new(flarmnet_path));
+            app.manage(flarmnet.clone());
+            flarmnet.start(handle.clone())?;
             app.manage(handle);
             app.manage(waypoints::arrival_stream::ArrivalStreams::default());
             app.manage(file_picker);

@@ -4,6 +4,7 @@ use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::time::Duration;
+use updraft_flarmnet::{FlarmnetDatabase, FlarmnetRecord};
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmIdType, Pflaa};
 use updraft_units::{Angle, Length, MslAltitude};
@@ -197,10 +198,10 @@ impl TrafficState {
         self.targets.values().map(|stored| stored.target).collect()
     }
 
-    pub fn published_targets(&self) -> Vec<PublishedTrafficTarget> {
+    pub fn published_targets(&self, database: &FlarmnetDatabase) -> Vec<PublishedTrafficTarget> {
         self.targets
             .values()
-            .map(|stored| stored.target.into())
+            .map(|stored| stored.target.publish(database))
             .collect()
     }
 }
@@ -216,11 +217,18 @@ impl TrafficChanges {
         self.removed.insert(id);
     }
 
-    pub fn into_delta(self) -> Option<TrafficDelta> {
+    pub fn into_delta(self, database: &FlarmnetDatabase) -> Option<TrafficDelta> {
         if self.upserts.is_empty() && self.removed.is_empty() {
             None
         } else {
-            Some(self.into())
+            Some(TrafficDelta {
+                upserts: self
+                    .upserts
+                    .into_values()
+                    .map(|target| target.publish(database))
+                    .collect(),
+                removed: self.removed.into_iter().map(|id| id.to_string()).collect(),
+            })
         }
     }
 }
@@ -229,6 +237,9 @@ impl TrafficChanges {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct PublishedTrafficTarget {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub flarmnet: Option<FlarmnetRecord>,
     pub id: String,
     pub position: LatLon,
     pub altitude_msl_meters: Option<f64>,
@@ -257,6 +268,7 @@ pub enum TrafficUpdate {
 impl From<TrafficTarget> for PublishedTrafficTarget {
     fn from(target: TrafficTarget) -> Self {
         Self {
+            flarmnet: None,
             id: target.id.to_string(),
             position: LatLon {
                 latitude_degrees: target.position.latitude().as_degrees(),
@@ -273,15 +285,16 @@ impl From<TrafficTarget> for PublishedTrafficTarget {
     }
 }
 
-impl From<TrafficChanges> for TrafficDelta {
-    fn from(changes: TrafficChanges) -> Self {
-        Self {
-            upserts: changes.upserts.into_values().map(Into::into).collect(),
-            removed: changes
-                .removed
-                .into_iter()
-                .map(|id| id.to_string())
-                .collect(),
+impl TrafficTarget {
+    fn publish(self, database: &FlarmnetDatabase) -> PublishedTrafficTarget {
+        let id = self.id;
+        let flarmnet = match id.id_type {
+            TrafficTargetIdType::Flarm | TrafficTargetIdType::Icao => database.lookup(id.value),
+            TrafficTargetIdType::Random | TrafficTargetIdType::Other(_) => None,
+        };
+        PublishedTrafficTarget {
+            flarmnet: flarmnet.cloned(),
+            ..self.into()
         }
     }
 }

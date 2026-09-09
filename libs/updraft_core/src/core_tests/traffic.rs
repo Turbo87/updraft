@@ -1,10 +1,12 @@
 use super::super::*;
 use super::support::*;
+use crate::ReplaceFlarmnetDatabase;
 use crate::connection::{ConnectionSpec, ConnectionState};
 use crate::settings::SettingsSnapshot;
 use approx::assert_abs_diff_eq;
-use claims::assert_some_eq;
+use claims::{assert_none, assert_ok, assert_some, assert_some_eq};
 use std::assert_matches;
+use updraft_flarmnet::FlarmnetDatabase;
 
 #[test]
 fn traffic_prefers_the_sending_devices_ownship_references() {
@@ -299,4 +301,51 @@ fn tick_emits_nothing() {
     core.apply(Bytes::new(device_id, RMC), at(100));
 
     assert_eq!(core.apply(Tick, at(200)).effects, vec![]);
+}
+
+#[test]
+fn flarmnet_updates_existing_targets_without_refreshing_report_age() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(0));
+    core.apply(Bytes::new(device_id, PFLAA_A), at(0));
+    core.apply(Tick, at(5_000));
+    let before = traffic_snapshot(&core)[0].clone();
+    assert!(before.stale);
+
+    let json = br#"[{"flarm_id":"ABC123","call_sign":"EL"}]"#;
+    let database = Arc::new(assert_ok!(FlarmnetDatabase::from_json(json)));
+    let update = core.apply(ReplaceFlarmnetDatabase(database.clone()), at(6_000));
+    let [Effect::Emit(Topic::Traffic(TrafficUpdate::Snapshot(targets)))] =
+        update.effects.as_slice()
+    else {
+        panic!("Database replacement should refresh existing traffic");
+    };
+    let mut target = targets[0].clone();
+    assert_eq!(assert_some!(target.flarmnet.take()).call_sign, "EL");
+    assert_eq!(target, before);
+    assert_eq!(&traffic_snapshot(&core), targets);
+    let unchanged = core.apply(ReplaceFlarmnetDatabase(database), at(7_000));
+    assert!(unchanged.effects.is_empty());
+
+    let empty = Arc::new(FlarmnetDatabase::default());
+    core.apply(ReplaceFlarmnetDatabase(empty), at(8_000));
+    assert_none!(&traffic_snapshot(&core)[0].flarmnet);
+    core.apply(Tick, at(30_000));
+    assert!(traffic_snapshot(&core).is_empty());
+}
+
+#[test]
+fn flarmnet_enriches_report_and_expiry_deltas() {
+    let (mut core, device_id) = core_with_external_device();
+    let json = br#"[{"flarm_id":"ABC123","registration":"D-TEST"}]"#;
+    let database = Arc::new(assert_ok!(FlarmnetDatabase::from_json(json)));
+    core.apply(ReplaceFlarmnetDatabase(database), at(0));
+    core.apply(Bytes::new(device_id, RMC), at(0));
+    let report = core.apply(Bytes::new(device_id, PFLAA_A), at(0));
+    let reported = traffic_delta(&report.effects).upserts[0].clone();
+    assert_eq!(assert_some!(&reported.flarmnet).registration, "D-TEST");
+    let expiry = core.apply(Tick, at(5_000));
+    let stale = traffic_delta(&expiry.effects).upserts[0].clone();
+    assert_eq!(stale.flarmnet, reported.flarmnet);
+    assert!(stale.stale);
 }

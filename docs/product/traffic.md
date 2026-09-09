@@ -38,8 +38,14 @@ Internal identity contains the FLARM ID type and 24-bit value. The frontend ID
 is a stable string for that typed value, such as `icao:ABC123` or
 `flarm:ABC123`.
 
-The current model does not resolve registration, competition ID, pilot name, or
-aliases.
+The core resolves FLARM and ICAO addresses through the United FlarmNet database.
+Lookup uses the six-digit hexadecimal value and ignores letter case. Random and
+unknown ID types are excluded. United FlarmNet shares one address namespace, so
+it cannot distinguish a FLARM address from an ICAO address with the same value.
+
+Published targets include the matching database record, when available. Database
+replacement refreshes current targets without changing their report age or stale
+state.
 
 ## Freshness
 
@@ -52,10 +58,11 @@ state. Tick inputs apply stale and removal transitions.
 
 ## Topic updates
 
-A new subscriber receives one complete traffic snapshot. Later changes use
-deltas with ordered upserts and removed IDs. A repeated report that does not
-change the published target produces no delta, but it still refreshes the
-target age.
+A new subscriber receives one complete traffic snapshot. Later reports use
+deltas with ordered upserts and removed IDs. Database replacement publishes a new
+snapshot when the information attached to existing targets changes. A repeated
+report that does not change the published target produces no delta, but it still
+refreshes the target age.
 
 The frontend store replaces all entries for a snapshot. For a delta, it applies
 upserts and then removals. Store subscribers receive the update after the store
@@ -69,14 +76,17 @@ while leaving the map source partially updated.
 
 MapLibre uses one GeoJSON point per target. The feature contains the typed ID,
 aircraft type, FLARM alarm level, stale state, optional track, and formatted MSL
-altitude.
+altitude, with callsign or registration above it.
 
 Symbols use aircraft-type icons. Directional targets rotate with the map track.
 Balloons and targets without track use fixed symbols. Icon size changes with map
 zoom.
 
 FLARM alarm level controls symbol color. Stale targets use reduced opacity. The
-altitude label appears from zoom level 7 and uses the configured altitude unit.
+label appears from zoom level 7 and uses the configured altitude unit. The first
+line shows callsign, with registration as the fallback. The second line shows
+MSL altitude. Missing name or altitude removes that line. A target without either
+value has no label.
 
 One invisible 24-pixel-radius hit layer supports map inspection. The debug
 overlay can make this hit area visible.
@@ -91,8 +101,31 @@ A removed target remains in that mounted result as unavailable. A later update
 for the same ID restores it. `/traffic/[id]` supports direct visits and the same
 live or unavailable behavior.
 
+Traffic details also show callsign, registration, aircraft model, pilot, airfield,
+frequency, and FLARM ID from the matching database record. Empty fields are hidden.
+The database aircraft model is separate from the reported aircraft category.
+
+## Database refresh
+
+The shell downloads [United FlarmNet](https://turbo87.github.io/united-flarmnet/united.json)
+at startup. It loads the saved database before the first download completes.
+A successful download schedules the next refresh three hours later. Failed attempts
+retry after 1, 5, 15, 30, and then 60 minutes. Further failures retry hourly.
+Success resets the retry sequence.
+
+Refresh runs while the application process is alive, including during Android
+background operation. Android resume events check for an overdue refresh.
+One worker serializes downloads. Closing the process stops refresh.
+
+Requests have a 30-second timeout and an 8 MiB response limit. The shell validates
+the JSON before atomic file replacement and core publication. It rejects empty
+files, invalid IDs, and duplicate IDs. HTTP, parsing, and storage failures retain
+the previous database and are logged without a user notification. A missing or
+unreadable cache leaves traffic usable without database information until refresh
+succeeds.
+
 ## Excluded behavior
 
 The current contract does not include OGN or ADS-B input, cross-network
-deduplication, traffic lookup, trails, radar view, navigation toward traffic,
+deduplication, trails, radar view, navigation toward traffic,
 warning presentation, acknowledgement, or Updraft-calculated collision risk.

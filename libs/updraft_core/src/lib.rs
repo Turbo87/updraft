@@ -50,9 +50,9 @@ pub use glide_performance::{
 pub use input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, GetGlideSnapshot, GetWaypointCatalog, GetWaypointSnapshot, Input,
-    InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceWaypointCatalog,
-    SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready,
-    SetPolar, SetUnits, Start, TerrainElevation, Tick, Update,
+    InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceFlarmnetDatabase,
+    ReplaceWaypointCatalog, SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled,
+    SetLocale, SetMacCready, SetPolar, SetUnits, Start, TerrainElevation, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

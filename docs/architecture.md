@@ -106,6 +106,15 @@ Catalog HTTP requests have a 30-second timeout and a 4 MiB response limit.
 Rustls uses bundled Mozilla trust roots, with certificate and hostname
 verification enabled. The client does not require Android JVM verifier setup.
 
+`updraft_flarmnet` owns United FlarmNet parsing, normalization, and address lookup.
+The core selects eligible traffic address types and attaches matching records.
+The shell loads a saved United FlarmNet database before its startup download.
+One worker owns refresh and retry timing. It validates and atomically saves each
+replacement before sending it to the core. The core owns the parsed database and
+enriches published traffic. Database changes do not refresh traffic report age.
+Android resume events wake the worker to check its deadline. The
+[traffic contract](product/traffic.md) defines the schedule and failure behavior.
+
 The shell also reads offline Enroute MBTiles files and serves vector tiles
 under `updraft://localhost/basemap/`. SQLite access and gzip decompression run
 on blocking workers. The frontend uses Tauri's platform-specific resource URLs.

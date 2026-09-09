@@ -51,18 +51,13 @@
     ],
     'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.3, 8, 0.75],
     'icon-allow-overlap': true,
-    'text-field': [
-      'step',
-      ['zoom'],
-      ['coalesce', ''],
-      7,
-      ['coalesce', ['get', 'altitudeLabel'], ''],
-    ],
+    'text-field': ['step', ['zoom'], ['coalesce', ''], 7, ['coalesce', ['get', 'label'], '']],
     'text-font': FONT_REGULAR,
     'text-size': 11,
     'text-rotation-alignment': 'viewport',
     'text-allow-overlap': true,
     'text-offset': [0, 2],
+    'text-anchor': 'top',
     'symbol-sort-key': ['match', ['get', 'alarmLevel'], 'low', 1, 'important', 2, 'urgent', 3, 0],
   };
 

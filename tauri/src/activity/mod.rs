@@ -283,7 +283,11 @@ pub fn watch<R: Runtime>(app: AppHandle<R>) {
             // The rest of what `UpdraftMobilePlugin.kt` reports. Naming them
             // rather than defaulting is what makes a rename of the two above
             // loud instead of silent.
-            "created" | "resumed" | "paused" | "stopped" => {}
+            "resumed" => {
+                let flarmnet = rebuild_for.state::<Arc<crate::flarmnet::FlarmnetService>>();
+                flarmnet.check_due();
+            }
+            "created" | "paused" | "stopped" => {}
             _ => tracing::warn!(%stage, "Unrecognised activity transition"),
         }
         Ok(())

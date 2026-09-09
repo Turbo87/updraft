@@ -19,13 +19,21 @@ export type TrafficFeatureProperties = {
   alarmLevel: TrafficAlarmLevel;
   stale: boolean;
   trackDegrees: number | null;
-  altitudeLabel: string | null;
+  label: string | null;
 };
 
 export function trafficFeature(
   target: PublishedTrafficTarget,
   altitudeUnit: AltitudeUnit,
 ): GeoJSON.Feature<GeoJSON.Point, TrafficFeatureProperties> {
+  let altitude = target.altitudeMslMeters;
+  let altitudeLabel =
+    altitude === null
+      ? null
+      : `${Math.round(convertAltitude(altitude, altitudeUnit))} ${altitudeUnit}`;
+  let name = target.flarmnet?.callSign || target.flarmnet?.registration;
+  let label = [name, altitudeLabel].filter(Boolean).join('\n') || null;
+
   return {
     type: 'Feature',
     id: target.id,
@@ -39,10 +47,7 @@ export function trafficFeature(
       alarmLevel: target.alarmLevel,
       stale: target.stale,
       trackDegrees: target.trackDegrees,
-      altitudeLabel:
-        target.altitudeMslMeters === null
-          ? null
-          : `${Math.round(convertAltitude(target.altitudeMslMeters, altitudeUnit))} ${altitudeUnit}`,
+      label,
     },
   };
 }

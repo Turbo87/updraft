@@ -1,7 +1,7 @@
 use super::*;
 use crate::time::Timestamp;
 use approx::assert_abs_diff_eq;
-use claims::{assert_none, assert_some, assert_some_eq};
+use claims::{assert_none, assert_ok, assert_some, assert_some_eq};
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa};
 use updraft_units::{Angle, Length, MslAltitude, Speed};
@@ -281,7 +281,7 @@ fn projects_ordered_and_mutually_exclusive_traffic_deltas() {
     changes.upsert(target(2));
     changes.remove(target(4).id);
 
-    let delta: TrafficDelta = changes.into();
+    let delta = assert_some!(changes.into_delta(&FlarmnetDatabase::default()));
     let upsert_ids = delta
         .upserts
         .into_iter()
@@ -317,4 +317,22 @@ fn formats_canonical_wire_target_ids() {
     ] {
         assert_eq!(id.to_string(), expected);
     }
+}
+
+#[test]
+fn flarmnet_matches_only_flarm_and_icao_addresses() {
+    let json = br#"[{"flarm_id":"ABC123","call_sign":"EL"}]"#;
+    let database = assert_ok!(FlarmnetDatabase::from_json(json));
+    for id_type in [TrafficTargetIdType::Flarm, TrafficTargetIdType::Icao] {
+        let mut target = target(0xABC123);
+        target.id.id_type = id_type;
+        let record = assert_some!(target.publish(&database).flarmnet);
+        assert_eq!(record.call_sign, "EL");
+    }
+    for id_type in [TrafficTargetIdType::Random, TrafficTargetIdType::Other(4)] {
+        let mut target = target(0xABC123);
+        target.id.id_type = id_type;
+        assert_none!(target.publish(&database).flarmnet);
+    }
+    assert_none!(target(1).publish(&database).flarmnet);
 }

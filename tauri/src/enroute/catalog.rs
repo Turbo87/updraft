@@ -134,7 +134,7 @@ impl CatalogService {
     }
 
     async fn fetch(&self) -> Result<CachedCatalog> {
-        let client = super::http_client()
+        let client = crate::http::client()
             .timeout(Duration::from_secs(30))
             .build()?;
         let mut response = client.get(&self.url).send().await?.error_for_status()?;

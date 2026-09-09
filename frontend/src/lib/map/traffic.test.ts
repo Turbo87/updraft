@@ -42,8 +42,8 @@ describe('trafficFeature', () => {
         "id": "flarm:000123",
         "properties": {
           "alarmLevel": "none",
-          "altitudeLabel": "200 m",
           "id": "flarm:000123",
+          "label": "200 m",
           "stale": false,
           "trackDegrees": 270,
           "trafficType": "glider",
@@ -71,8 +71,8 @@ describe('trafficFeature', () => {
         "id": "flarm:000123",
         "properties": {
           "alarmLevel": "none",
-          "altitudeLabel": null,
           "id": "flarm:000123",
+          "label": null,
           "stale": false,
           "trackDegrees": null,
           "trafficType": "glider",
@@ -85,7 +85,7 @@ describe('trafficFeature', () => {
   it('projects a target with a whole-foot altitude label', () => {
     let feature = trafficFeature(target('flarm:000123'), 'ft');
 
-    expect(feature.properties.altitudeLabel).toBe('656 ft');
+    expect(feature.properties.label).toBe('656 ft');
   });
 });
 
@@ -251,4 +251,32 @@ describe('applyTrafficSourceUpdate', () => {
 
     warn.mockRestore();
   });
+});
+
+describe('FlarmNet traffic labels', () => {
+  it.each([
+    ['EL', 'D-TEST', 200, 'EL\n200 m'],
+    ['', 'D-TEST', 200, 'D-TEST\n200 m'],
+    ['EL', 'D-TEST', null, 'EL'],
+    ['', 'D-TEST', null, 'D-TEST'],
+    ['', '', 200, '200 m'],
+    ['', '', null, null],
+  ])(
+    'formats callsign %s, registration %s, and altitude %s',
+    (callSign, registration, altitudeMslMeters, expected) => {
+      let traffic = target('flarm:ABC123', {
+        altitudeMslMeters,
+        flarmnet: {
+          flarmId: 'ABC123',
+          callSign,
+          registration,
+          planeType: '',
+          pilotName: '',
+          airfield: '',
+          frequency: '',
+        },
+      });
+      expect(trafficFeature(traffic, 'm').properties.label).toBe(expected);
+    },
+  );
 });

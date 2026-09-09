@@ -51,6 +51,20 @@
     retainedTarget ? retainedTarget.target.stale || !retainedTarget.available : true,
   );
 
+  let flarmnetFields = $derived.by(() => {
+    let record = retainedTarget?.target.flarmnet;
+    if (!record) return [];
+    return [
+      [m.callsign_label(), record.callSign],
+      [m.registration_label(), record.registration],
+      [m.aircraft_model_label(), record.planeType],
+      [m.pilot_label(), record.pilotName],
+      [m.airfield_label(), record.airfield],
+      [m.frequency_label(), record.frequency],
+      [m.flarm_id_label(), record.flarmId],
+    ];
+  });
+
   function createRetainedTarget(): RetainedTarget {
     let target = traffic.current.get(id);
     return target ? { target, available: true } : null;
@@ -186,6 +200,24 @@
         </dl>
       </ResponsiveCard>
     </section>
+
+    {#if target.flarmnet}
+      <section aria-labelledby="flarmnet-heading">
+        <h2 id="flarmnet-heading">FlarmNet</h2>
+        <ResponsiveCard>
+          <dl>
+            {#each flarmnetFields as [label, value] (label)}
+              {#if value}
+                <div>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              {/if}
+            {/each}
+          </dl>
+        </ResponsiveCard>
+      </section>
+    {/if}
 
     <section>
       <h2>{m.position_label()}</h2>

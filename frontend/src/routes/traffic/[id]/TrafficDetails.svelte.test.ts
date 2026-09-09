@@ -71,3 +71,74 @@ it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (wid
     await page.viewport(oldWidth, oldHeight);
   }
 });
+
+it('shows available FlarmNet fields and follows database replacements', async () => {
+  let traffic = new TrafficStore();
+  let target = {
+    id: 'flarm:ABC123',
+    position: { latitudeDegrees: 50.82, longitudeDegrees: 6.24 },
+    altitudeMslMeters: 1180,
+    trafficType: 'glider' as const,
+    trackDegrees: 241,
+    alarmLevel: 'none' as const,
+    stale: false,
+  };
+  let record = {
+    flarmId: 'ABC123',
+    callSign: 'EL',
+    registration: 'D-TEST',
+    planeType: 'AS 33',
+    pilotName: 'Example Pilot',
+    airfield: 'Example Airfield',
+    frequency: '123.450',
+  };
+  traffic.apply({
+    topic: 'traffic',
+    value: { type: 'snapshot', value: [{ ...target, flarmnet: record }] },
+  });
+  await render(TrafficDetails, {
+    backLabel: 'Back',
+    id: target.id,
+    locale: 'en',
+    onBack: () => {},
+    instruments: new InstrumentsStore(),
+    traffic,
+    units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+  });
+  let region = page.getByRole('region', { name: 'FlarmNet' });
+  await expect.element(region).toBeVisible();
+  let rows = [...region.element().querySelectorAll('dl > div')].map((row) => [
+    row.querySelector('dt')!.textContent,
+    row.querySelector('dd')!.textContent,
+  ]);
+  expect(Object.fromEntries(rows)).toMatchInlineSnapshot(`
+    {
+      "Aircraft model": "AS 33",
+      "Airfield": "Example Airfield",
+      "Callsign": "EL",
+      "FLARM ID": "ABC123",
+      "Frequency": "123.450",
+      "Pilot": "Example Pilot",
+      "Registration": "D-TEST",
+    }
+  `);
+  traffic.apply({
+    topic: 'traffic',
+    value: {
+      type: 'snapshot',
+      value: [
+        {
+          ...target,
+          flarmnet: { ...record, callSign: '', pilotName: '', airfield: '', frequency: '' },
+        },
+      ],
+    },
+  });
+  await expect.element(region.getByText('Pilot', { exact: true })).not.toBeInTheDocument();
+  await expect.element(region.getByText('Callsign', { exact: true })).not.toBeInTheDocument();
+  await expect.element(region.getByText('Airfield', { exact: true })).not.toBeInTheDocument();
+  await expect.element(region.getByText('Frequency', { exact: true })).not.toBeInTheDocument();
+  await expect.element(region.getByText('D-TEST', { exact: true })).toBeVisible();
+  traffic.apply({ topic: 'traffic', value: { type: 'snapshot', value: [target] } });
+  await expect.element(region).not.toBeInTheDocument();
+});

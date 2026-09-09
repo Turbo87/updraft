@@ -21,6 +21,20 @@
     stale: false,
   } satisfies PublishedTrafficTarget;
 
+  const identifiedTarget = {
+    ...target,
+    id: 'flarm:ABC123',
+    flarmnet: {
+      flarmId: 'ABC123',
+      callSign: 'EL',
+      registration: 'D-TEST',
+      planeType: 'AS 33',
+      pilotName: 'Example Pilot',
+      airfield: 'Example Airfield',
+      frequency: '123.450',
+    },
+  } satisfies PublishedTrafficTarget;
+
   const ownship = {
     position: { latitudeDegrees: 50.806, longitudeDegrees: 6.19 },
     altitudeMeters: 1115,
@@ -117,3 +131,25 @@
 <Story name="No ownship position" args={{ instruments: createInstrumentsStore(null) }} />
 
 <Story name="Not found" args={{ traffic: createTrafficStore(null) }} />
+
+<Story
+  name="FlarmNet record"
+  args={{ id: identifiedTarget.id, traffic: createTrafficStore(identifiedTarget) }}
+/>
+
+<Story
+  name="Partial FlarmNet record"
+  args={{
+    id: identifiedTarget.id,
+    traffic: createTrafficStore({
+      ...identifiedTarget,
+      flarmnet: {
+        ...identifiedTarget.flarmnet,
+        callSign: '',
+        pilotName: '',
+        airfield: '',
+        frequency: '',
+      },
+    }),
+  }}
+/>

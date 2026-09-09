@@ -33,6 +33,8 @@ describe('SettingsStore', () => {
         gps: null,
         pressureAltitude: null,
         trueAirspeed: null,
+        terrainElevation: null,
+        altitudeAgl: null,
         derived: null,
       },
     });

@@ -12,6 +12,8 @@ const emptyInstruments: Instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  terrainElevation: null,
+  altitudeAgl: null,
   derived: null,
 };
 
@@ -177,6 +179,8 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: false },
       trueAirspeed: { metersPerSecond: 50, stale: false },
+      terrainElevation: null,
+      altitudeAgl: null,
       derived: null,
     };
     let view = await render(MapDebugOverlay, {
@@ -384,6 +388,8 @@ describe('MapDebugOverlay.svelte', () => {
       },
       pressureAltitude: { meters: 1_000, stale: true },
       trueAirspeed: { metersPerSecond: 50, stale: true },
+      terrainElevation: null,
+      altitudeAgl: null,
       derived: null,
     };
     let units: UnitSettings = {

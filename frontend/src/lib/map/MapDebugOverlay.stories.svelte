@@ -18,6 +18,8 @@
     },
     pressureAltitude: { meters: 1_000, stale: false },
     trueAirspeed: { metersPerSecond: 50, stale: false },
+    terrainElevation: null,
+    altitudeAgl: null,
     derived: null,
   } satisfies Instruments;
 
@@ -32,6 +34,8 @@
     },
     pressureAltitude: { meters: 1_000, stale: true },
     trueAirspeed: { metersPerSecond: 50, stale: true },
+    terrainElevation: null,
+    altitudeAgl: null,
     derived: null,
   } satisfies Instruments;
 

@@ -52,7 +52,7 @@ pub use input::{
     GetAirspaceSnapshot, GetGlideSnapshot, GetWaypointCatalog, GetWaypointSnapshot, Input,
     InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceWaypointCatalog,
     SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready,
-    SetPolar, SetUnits, Start, Tick, Update,
+    SetPolar, SetUnits, Start, TerrainElevation, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{

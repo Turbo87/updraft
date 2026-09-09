@@ -14,6 +14,8 @@ const instruments = {
   gps: null,
   pressureAltitude: null,
   trueAirspeed: null,
+  terrainElevation: null,
+  altitudeAgl: null,
   derived: null,
 };
 
@@ -28,6 +30,8 @@ const positionInstruments = {
   },
   pressureAltitude: null,
   trueAirspeed: null,
+  terrainElevation: null,
+  altitudeAgl: null,
   derived: null,
 };
 

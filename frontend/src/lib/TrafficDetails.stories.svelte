@@ -34,7 +34,14 @@
     let instruments = new InstrumentsStore();
     instruments.apply({
       topic: 'instruments',
-      value: { gps, pressureAltitude: null, trueAirspeed: null, derived: null },
+      value: {
+        gps,
+        pressureAltitude: null,
+        trueAirspeed: null,
+        terrainElevation: null,
+        altitudeAgl: null,
+        derived: null,
+      },
     });
     return instruments;
   }

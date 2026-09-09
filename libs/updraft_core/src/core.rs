@@ -43,6 +43,7 @@ pub struct Core {
     true_airspeed: DomainState<Speed>,
     sensor_fusion: SensorFusion,
     traffic: TrafficState,
+    terrain_elevation: Option<(crate::LatLon, f64)>,
 }
 
 impl Core {
@@ -72,6 +73,7 @@ impl Core {
             true_airspeed: DomainState::Unavailable,
             sensor_fusion,
             traffic: TrafficState::default(),
+            terrain_elevation: None,
         }
     }
 
@@ -383,11 +385,29 @@ impl Core {
     }
 
     fn instruments(&self) -> Instruments {
+        let gps = self.gps.published();
+        let derived = self.sensor_fusion.instruments().map(Box::new);
+        let terrain_elevation = self.terrain_elevation.and_then(|(position, meters)| {
+            let gps = gps.filter(|gps| gps.position == position)?;
+            Some(crate::AltitudeInstrument {
+                meters,
+                stale: gps.stale,
+            })
+        });
+        let altitude_agl = terrain_elevation.and_then(|terrain| {
+            let altitude = derived.as_ref()?.altitude?;
+            Some(crate::AltitudeInstrument {
+                meters: altitude.altitude_msl_meters - terrain.meters,
+                stale: terrain.stale || altitude.stale,
+            })
+        });
         Instruments {
-            gps: self.gps.published(),
+            gps,
             pressure_altitude: self.pressure_altitude.published(),
             true_airspeed: self.true_airspeed.published(),
-            derived: self.sensor_fusion.instruments().map(Box::new),
+            derived,
+            terrain_elevation,
+            altitude_agl,
         }
     }
 }
@@ -781,6 +801,27 @@ impl Input for crate::GetGlideSnapshot {
             polar: core.glide_performance.glide_polar(core.settings.polar),
             mac_cready: core.glide_performance.mac_cready,
             arrival_reserve: core.settings.arrival_reserve,
+        })
+    }
+}
+
+impl Input for crate::TerrainElevation {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<()> {
+        let before = core.instruments();
+        if before.gps.is_none_or(|gps| gps.position != self.position) {
+            return Update::empty();
+        }
+        core.terrain_elevation = self
+            .meters
+            .filter(|meters| meters.is_finite())
+            .map(|meters| (self.position, meters));
+        let after = core.instruments();
+        Update::effects(if before != after {
+            vec![Effect::emit(after.as_topic())]
+        } else {
+            Vec::new()
         })
     }
 }

@@ -51,6 +51,8 @@ function instruments(trackDegrees: number): Topic {
       },
       pressureAltitude: null,
       trueAirspeed: null,
+      terrainElevation: null,
+      altitudeAgl: null,
       derived: null,
     },
   };

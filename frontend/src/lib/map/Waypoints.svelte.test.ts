@@ -13,7 +13,14 @@ it('renders waypoint types and removes the source when all files are removed', a
     mapState,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: { gps: null, pressureAltitude: null, trueAirspeed: null, derived: null },
+    instruments: {
+      gps: null,
+      pressureAltitude: null,
+      trueAirspeed: null,
+      terrainElevation: null,
+      altitudeAgl: null,
+      derived: null,
+    },
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     waypoints: {
       generation: 1,

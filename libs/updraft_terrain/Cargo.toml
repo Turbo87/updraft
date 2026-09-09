@@ -17,4 +17,9 @@ updraft_geo = { path = "../updraft_geo" }
 
 [dev-dependencies]
 claims = "=0.8.0"
+criterion = "=0.8.2"
 tempfile = "=3.27.0"
+
+[[bench]]
+name = "elevation"
+harness = false

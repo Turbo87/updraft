@@ -5891,6 +5891,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "claims",
+ "criterion",
  "image-webp 0.2.4",
  "imagesize 0.15.0",
  "moka",

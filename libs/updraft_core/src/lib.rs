@@ -14,6 +14,7 @@ mod decoder;
 mod effect;
 mod external_device;
 mod fix;
+mod flarmnet;
 mod glide;
 mod glide_performance;
 mod input;
@@ -43,6 +44,7 @@ pub use external_device::{
     UnknownExternalDevice,
 };
 pub use fix::{Fix, FixTime, UtcInstant, UtcTime};
+pub use flarmnet::{FlarmnetDatabase, FlarmnetRecord};
 pub use glide::{GlideSnapshot, WaypointArrival, WaypointArrivalEntry, WaypointArrivals};
 pub use glide_performance::{
     Ballast, Bugs, GlidePerformance, InvalidBallast, InvalidBugs, InvalidMacCready, MacCready,

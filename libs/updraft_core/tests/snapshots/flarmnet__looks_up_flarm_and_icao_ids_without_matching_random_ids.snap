@@ -1,0 +1,13 @@
+---
+source: libs/updraft_core/tests/flarmnet.rs
+expression: record
+---
+{
+  "flarmId": "ABC123",
+  "callSign": "EL",
+  "registration": "D-TEST",
+  "planeType": "AS 33",
+  "pilotName": "Example Pilot",
+  "airfield": "Example",
+  "frequency": "123.450"
+}

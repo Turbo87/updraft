@@ -1,0 +1,13 @@
+---
+source: libs/updraft_core/tests/flarmnet.rs
+expression: assert_some!(database.lookup(id))
+---
+FlarmnetRecord {
+    flarm_id: "000001",
+    call_sign: "",
+    registration: "",
+    plane_type: "",
+    pilot_name: "",
+    airfield: "",
+    frequency: "",
+}

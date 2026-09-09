@@ -2,7 +2,7 @@ use super::*;
 use crate::basemap::Basemaps;
 use crate::enroute::{CatalogEntry, Continent, commands::DownloadCommands, download::DownloadFile};
 use crate::enroute::{queue::DownloadState, storage::remove_partial_downloads};
-use claims::{assert_err, assert_ok, assert_some};
+use claims::{assert_err, assert_none, assert_ok, assert_some, assert_some_eq};
 use rusqlite::Connection;
 use tauri::http::header;
 
@@ -1020,4 +1020,227 @@ fn available_updates_use_timestamps_for_active_and_disabled_terrain() {
     }
     assert_ok!(fs::remove_file(france));
     assert_err!(terrain.available_updates(&entries));
+}
+
+fn elevation_webp(meters: u16) -> Vec<u8> {
+    let value = meters + 32768;
+    let pixel = [(value >> 8) as u8, value as u8, 0];
+    let mut bytes = Vec::new();
+    image_webp::WebPEncoder::new(&mut bytes)
+        .encode(&pixel.repeat(4), 2, 2, image_webp::ColorType::Rgb8)
+        .unwrap();
+    bytes
+}
+
+#[test]
+fn elevation_selects_highest_available_zoom_and_caches_decoding() {
+    let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let low = elevation_webp(100);
+    let high = elevation_webp(500);
+    write_terrain(
+        &directory.path().join("enroute/Europe/a.terrain"),
+        &[(0, 0, 0, &low)],
+    );
+    write_terrain(
+        &directory.path().join("enroute/Europe/b.terrain"),
+        &[(1, 1, 0, &high)],
+    );
+    let terrain = assert_ok!(Terrain::load(directory.path()));
+    let position = updraft_geo::LatLon::from_degrees(-40.0, 60.0);
+    assert_some_eq!(assert_ok!(terrain.elevation(position)), 500.0);
+    let first = assert_some!(assert_ok!(terrain.decoded_tile(1, 1, 1)));
+    let second = assert_some!(assert_ok!(terrain.decoded_tile(1, 1, 1)));
+    assert!(Arc::ptr_eq(&first, &second));
+    assert_some_eq!(
+        assert_ok!(terrain.elevation(updraft_geo::LatLon::from_degrees(40.0, -60.0))),
+        100.0
+    );
+}
+
+#[test]
+fn elevation_distinguishes_missing_coverage_and_read_errors() {
+    let terrain = Terrain::default();
+    assert_none!(assert_ok!(
+        terrain.elevation(updraft_geo::LatLon::from_degrees(0.0, 0.0))
+    ));
+    assert_none!(assert_ok!(
+        terrain.elevation(updraft_geo::LatLon::from_degrees(90.0, 0.0))
+    ));
+    assert_none!(assert_ok!(
+        terrain.elevation(updraft_geo::LatLon::from_degrees(f64::NAN, 0.0))
+    ));
+    let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    write_terrain(
+        &directory.path().join("enroute/Europe/broken.terrain"),
+        &[(0, 0, 0, &elevation_webp(100))],
+    );
+    let terrain = assert_ok!(Terrain::load(directory.path()));
+    Connection::open(directory.path().join("enroute/Europe/broken.terrain"))
+        .unwrap()
+        .execute("UPDATE tiles SET tile_data = ?1", [b"broken".as_slice()])
+        .unwrap();
+    assert_err!(terrain.elevation(updraft_geo::LatLon::from_degrees(0.0, 0.0)));
+}
+
+#[test]
+fn elevation_interpolates_across_tile_edges() {
+    let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let west = elevation_webp(100);
+    let east = elevation_webp(200);
+    write_terrain(
+        &directory.path().join("enroute/Europe/a.terrain"),
+        &[(1, 0, 1, &west), (1, 1, 1, &east)],
+    );
+    let terrain = assert_ok!(Terrain::load(directory.path()));
+    assert_some_eq!(
+        assert_ok!(terrain.elevation(updraft_geo::LatLon::from_degrees(40.0, 0.0))),
+        150.0
+    );
+}
+
+#[tokio::test]
+async fn worker_publishes_elevation_without_a_map() {
+    use std::time::Duration;
+    use updraft_core::{Fix, InternalGps, Topic};
+    let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let tile = elevation_webp(100);
+    write_terrain(
+        &directory.path().join("enroute/Europe/a.terrain"),
+        &[(0, 0, 0, &tile)],
+    );
+    let terrain = Arc::new(Mutex::new(assert_ok!(Terrain::load(directory.path()))));
+    let driver = crate::driver::tests::spawn(
+        Default::default(),
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    );
+    let (sender, mut results) = tokio::sync::mpsc::unbounded_channel();
+    driver.handle.subscribe(Box::new(move |topic| {
+        if let Topic::Instruments(instruments) = topic
+            && instruments.terrain_elevation.is_some()
+        {
+            return sender.send(instruments.clone()).is_ok();
+        }
+        true
+    }));
+    let worker = tokio::spawn(watch_elevation(terrain.clone(), driver.handle.clone()));
+    assert_ok!(
+        driver
+            .handle
+            .send(InternalGps::new(Fix {
+                position: updraft_geo::LatLon::from_degrees(40.0, 6.0),
+                altitude_ellipsoid: Some(updraft_units::EllipsoidAltitude::new(
+                    updraft_units::Length::from_meters(1000.0)
+                )),
+                ground_speed: None,
+                track: None,
+                fix_time: None,
+            }))
+            .await
+    );
+    let instruments =
+        assert_ok!(tokio::time::timeout(Duration::from_secs(5), results.recv()).await).unwrap();
+    assert_eq!(instruments.terrain_elevation.unwrap().meters, 100.0);
+    let fused = instruments
+        .derived
+        .unwrap()
+        .altitude
+        .unwrap()
+        .altitude_msl_meters;
+    assert_eq!(instruments.altitude_agl.unwrap().meters, fused - 100.0);
+    let connection = assert_ok!(Connection::open(
+        directory.path().join("enroute/Europe/a.terrain")
+    ));
+    assert_ok!(connection.execute("UPDATE tiles SET tile_data = ?1", [elevation_webp(200)]));
+    terrain.lock().unwrap().recheck(|_, _| true);
+    let updated = assert_some!(assert_ok!(
+        tokio::time::timeout(Duration::from_secs(5), results.recv()).await
+    ));
+    assert_eq!(assert_some!(updated.terrain_elevation).meters, 200.0);
+    worker.abort();
+    assert!(worker.await.unwrap_err().is_cancelled());
+    driver.terminate().await;
+}
+
+#[tokio::test]
+#[tracing_test::traced_test]
+async fn worker_retries_failed_reads_without_a_position_change() {
+    use std::time::Duration;
+    use updraft_core::{Fix, InternalGps, Topic};
+    let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/a.terrain");
+    write_terrain(&path, &[(0, 0, 0, &elevation_webp(100))]);
+    let terrain = Arc::new(Mutex::new(assert_ok!(Terrain::load(directory.path()))));
+    Connection::open(&path)
+        .unwrap()
+        .execute("UPDATE tiles SET tile_data = ?1", [b"broken".as_slice()])
+        .unwrap();
+    let driver = crate::driver::tests::spawn(
+        Default::default(),
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    );
+    let (sender, mut results) = tokio::sync::mpsc::unbounded_channel();
+    driver.handle.subscribe(Box::new(move |topic| {
+        if let Topic::Instruments(instruments) = topic
+            && let Some(elevation) = instruments.terrain_elevation
+        {
+            return sender.send(elevation.meters).is_ok();
+        }
+        true
+    }));
+    let worker = tokio::spawn(watch_elevation(terrain, driver.handle.clone()));
+    assert_ok!(
+        driver
+            .handle
+            .send(InternalGps::new(Fix {
+                position: updraft_geo::LatLon::from_degrees(40.0, 6.0),
+                altitude_ellipsoid: None,
+                ground_speed: None,
+                track: None,
+                fix_time: None,
+            }))
+            .await
+    );
+    assert_ok!(
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while !logs_contain("Could not sample terrain elevation") {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+    );
+    let connection = assert_ok!(Connection::open(path));
+    assert_ok!(connection.execute("UPDATE tiles SET tile_data = ?1", [elevation_webp(100)]));
+    let elevation = assert_ok!(tokio::time::timeout(Duration::from_secs(10), results.recv()).await);
+    assert_some_eq!(elevation, 100.0);
+    worker.abort();
+    assert!(worker.await.unwrap_err().is_cancelled());
+    driver.terminate().await;
+}
+
+#[test]
+fn elevation_discards_cached_tiles_when_inventory_changes() {
+    let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("enroute/Europe")).unwrap();
+    let path = directory.path().join("enroute/Europe/a.terrain");
+    write_terrain(&path, &[(0, 0, 0, &elevation_webp(100))]);
+    let mut terrain = assert_ok!(Terrain::load(directory.path()));
+    let position = updraft_geo::LatLon::from_degrees(40.0, 6.0);
+    assert_some_eq!(assert_ok!(terrain.elevation(position)), 100.0);
+    assert_ok!(terrain.set_enabled("enroute/Europe/a.terrain", false));
+    assert_none!(assert_ok!(terrain.elevation(position)));
+    let connection = assert_ok!(Connection::open(path));
+    assert_ok!(connection.execute("UPDATE tiles SET tile_data = ?1", [elevation_webp(200)]));
+    assert_ok!(terrain.set_enabled("enroute/Europe/a.terrain", true));
+    assert_some_eq!(assert_ok!(terrain.elevation(position)), 200.0);
+    assert_ok!(terrain.remove("enroute/Europe/a.terrain"));
+    assert_none!(assert_ok!(terrain.elevation(position)));
 }

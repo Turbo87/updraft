@@ -14,6 +14,9 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
 
 pub mod commands;
+mod dem;
+mod worker;
+pub use worker::watch_elevation;
 
 const TILE_QUERY: &str =
     "SELECT tile_data FROM tiles WHERE zoom_level = ?1 AND tile_column = ?2 AND tile_row = ?3";
@@ -23,11 +26,12 @@ const TILE_METADATA_QUERY: &str = "
            (SELECT min(zoom_level) FROM tiles), (SELECT max(zoom_level) FROM tiles)
     FROM tiles LIMIT 1";
 
-#[derive(Default)]
 pub struct Terrain {
     files: BTreeMap<String, TerrainSource>,
     directory: PathBuf,
     generation: u64,
+    changes: tokio::sync::watch::Sender<u64>,
+    decoded: moka::sync::Cache<(u32, u32, u32), Option<Arc<dem::TerrainTile>>>,
     subscribers: BTreeMap<u32, Channel<TerrainStatus>>,
 }
 
@@ -43,6 +47,24 @@ struct TerrainFile {
     connection: Connection,
     coverage: Option<(usize, u32, u32)>,
     attributions: Vec<String>,
+}
+
+impl Default for Terrain {
+    fn default() -> Self {
+        Self {
+            files: BTreeMap::new(),
+            directory: PathBuf::new(),
+            generation: 0,
+            changes: tokio::sync::watch::channel(0).0,
+            subscribers: BTreeMap::new(),
+            decoded: moka::sync::Cache::builder()
+                .max_capacity(16 * 1024 * 1024)
+                .weigher(|_, tile: &Option<Arc<dem::TerrainTile>>| {
+                    tile.as_ref().map_or(1, |tile| tile.pixels.len() as u32)
+                })
+                .build(),
+        }
+    }
 }
 
 impl Terrain {
@@ -93,6 +115,89 @@ impl Terrain {
             }
         }
         Ok(updates)
+    }
+
+    /// Samples terrain MSL elevation independently of the rendered map tiles.
+    pub fn elevation(&self, position: updraft_geo::LatLon) -> Result<Option<f64>> {
+        let lat = position.latitude().as_degrees();
+        let lon = position.longitude().as_degrees();
+        if !lat.is_finite() || lat.abs() > 85.0511287798066 || !lon.is_finite() {
+            return Ok(None);
+        }
+        let mx = (lon + 180.0).rem_euclid(360.0) / 360.0;
+        let my =
+            (1.0 - position.latitude().as_radians().tan().asinh() / std::f64::consts::PI) / 2.0;
+        for z in (0..32).rev().filter(|z| self.files.values().any(|source| {
+            matches!(source, TerrainSource::Active(file) if file.coverage.is_some_and(|(_, min, max)| (min..=max).contains(z)))
+        })) {
+            let count = 1_u32 << z;
+            let tx = mx * f64::from(count);
+            let ty = (my * f64::from(count))
+                .clamp(0.0, f64::from(count) - f64::EPSILON * f64::from(count));
+            let (x, y) = (tx.floor() as u32, ty.floor() as u32);
+            let Some(tile) = self.decoded_tile(z, x, y)? else {
+                continue;
+            };
+            // Elevation samples lie at pixel centers.
+            let px = (tx - f64::from(x)) * f64::from(tile.size) - 0.5;
+            let py = (ty - f64::from(y)) * f64::from(tile.size) - 0.5;
+            let mut samples = [[0.0; 2]; 2];
+            for (dy, row) in samples.iter_mut().enumerate() {
+                for (dx, sample) in row.iter_mut().enumerate() {
+                    let ix = px.floor() as i64 + dx as i64;
+                    let iy = py.floor() as i64 + dy as i64;
+                    let size = i64::from(tile.size);
+                    let nx =
+                        (i64::from(x) + ix.div_euclid(size)).rem_euclid(i64::from(count)) as u32;
+                    let ny = i64::from(y) + iy.div_euclid(size);
+                    let mut neighbour = if (0..i64::from(count)).contains(&ny) {
+                        self.decoded_tile(z, nx, ny as u32)?
+                    } else {
+                        None
+                    };
+                    let mut sx = ix.rem_euclid(size) as u32;
+                    let mut sy = iy.rem_euclid(size) as u32;
+                    if neighbour.is_none() {
+                        neighbour = self.decoded_tile(z, nx, y)?;
+                        sy = iy.clamp(0, size - 1) as u32;
+                    }
+                    if neighbour.is_none() && (0..i64::from(count)).contains(&ny) {
+                        neighbour = self.decoded_tile(z, x, ny as u32)?;
+                        sx = ix.clamp(0, size - 1) as u32;
+                        sy = iy.rem_euclid(size) as u32;
+                    }
+                    *sample = match neighbour {
+                        Some(neighbour) => {
+                            ensure!(
+                                neighbour.size == tile.size,
+                                "Terrain tiles must use the same size"
+                            );
+                            neighbour.elevation(sx, sy)
+                        }
+                        None => tile
+                            .elevation(ix.clamp(0, size - 1) as u32, iy.clamp(0, size - 1) as u32),
+                    };
+                }
+            }
+            return Ok(Some(dem::bilinear(
+                samples,
+                px - px.floor(),
+                py - py.floor(),
+            )));
+        }
+        Ok(None)
+    }
+
+    fn decoded_tile(&self, z: u32, x: u32, y: u32) -> Result<Option<Arc<dem::TerrainTile>>> {
+        self.decoded
+            .try_get_with((z, x, y), || {
+                self.tile(z, x, y)?
+                    .map(|bytes| dem::TerrainTile::decode(&bytes).map(Arc::new))
+                    .transpose()
+            })
+            .map_err(|error: Arc<anyhow::Error>| {
+                anyhow::anyhow!("Could not decode terrain tile {z}/{x}/{y}: {error:#}")
+            })
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {
@@ -246,6 +351,8 @@ impl Terrain {
             };
         }
         self.generation += 1;
+        self.decoded.invalidate_all();
+        self.changes.send_replace(self.generation);
         self.publish();
     }
 

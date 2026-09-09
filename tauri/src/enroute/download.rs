@@ -23,7 +23,7 @@ impl DownloadFile {
         progress: impl FnMut(u64),
     ) -> Result<Self> {
         let download = Self::new(directory, entry)?;
-        let client = super::http_client()
+        let client = crate::http::client()
             .connect_timeout(Duration::from_secs(30))
             .read_timeout(Duration::from_secs(30))
             .build()?;

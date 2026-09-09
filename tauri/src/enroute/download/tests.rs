@@ -115,7 +115,7 @@ async fn response(raw: &'static str) -> (reqwest::Response, tokio::net::TcpStrea
         stream.write_all(raw.as_bytes()).await.unwrap();
         stream
     });
-    let client = assert_ok!(crate::enroute::http_client().build());
+    let client = assert_ok!(crate::http::client().build());
     let response = assert_ok!(client.get(url).send().await);
     (response, server.await.unwrap())
 }

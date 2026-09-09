@@ -45,6 +45,7 @@ pub async fn watch_elevation(
                 terrain
                     .lock()
                     .map_err(|_| anyhow::anyhow!("Terrain lock is poisoned"))?
+                    .reader
                     .elevation(updraft_geo::LatLon::from_degrees(
                         position.latitude_degrees,
                         position.longitude_degrees,

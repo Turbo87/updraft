@@ -3,7 +3,8 @@
 //! Callers select files and run blocking reads. This crate does not manage
 //! downloads, activation settings, runtime tasks, or instrument state.
 
-use self::dem::{TerrainTile, bilinear};
+pub use self::dem::TerrainTile;
+use self::dem::bilinear;
 use anyhow::{Context, Result, ensure};
 use imagesize::{ImageSize, ImageType};
 use moka::sync::Cache;

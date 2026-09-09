@@ -5756,6 +5756,7 @@ dependencies = [
  "ts-rs",
  "updraft_airspace",
  "updraft_egm96",
+ "updraft_flarmnet",
  "updraft_geo",
  "updraft_nmea",
  "updraft_polar",
@@ -5772,6 +5773,17 @@ dependencies = [
  "criterion",
  "updraft_geo",
  "updraft_units",
+]
+
+[[package]]
+name = "updraft_flarmnet"
+version = "0.0.0"
+dependencies = [
+ "claims",
+ "insta",
+ "serde",
+ "serde_json",
+ "ts-rs",
 ]
 
 [[package]]
@@ -5878,6 +5890,7 @@ dependencies = [
  "tracing-test",
  "updraft_airspace",
  "updraft_core",
+ "updraft_flarmnet",
  "updraft_geo",
  "updraft_terrain",
  "updraft_units",

@@ -1,10 +1,10 @@
 use crate::time::Timestamp;
 use crate::topic::LatLon;
-use crate::{FlarmnetDatabase, FlarmnetRecord};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::time::Duration;
+use updraft_flarmnet::{FlarmnetDatabase, FlarmnetRecord};
 use updraft_geo::LatLon as GeoLatLon;
 use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmIdType, Pflaa};
 use updraft_units::{Angle, Length, MslAltitude};
@@ -287,8 +287,13 @@ impl From<TrafficTarget> for PublishedTrafficTarget {
 
 impl TrafficTarget {
     fn publish(self, database: &FlarmnetDatabase) -> PublishedTrafficTarget {
+        let id = self.id;
+        let flarmnet = match id.id_type {
+            TrafficTargetIdType::Flarm | TrafficTargetIdType::Icao => database.lookup(id.value),
+            TrafficTargetIdType::Random | TrafficTargetIdType::Other(_) => None,
+        };
         PublishedTrafficTarget {
-            flarmnet: database.lookup(self.id).cloned(),
+            flarmnet: flarmnet.cloned(),
             ..self.into()
         }
     }

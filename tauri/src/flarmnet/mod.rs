@@ -7,7 +7,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tempfile::NamedTempFile;
 use tokio::sync::Notify;
-use updraft_core::{FlarmnetDatabase, ReplaceFlarmnetDatabase};
+use updraft_core::ReplaceFlarmnetDatabase;
+use updraft_flarmnet::FlarmnetDatabase;
 
 const DATABASE_URL: &str = "https://turbo87.github.io/united-flarmnet/united.json";
 const MAX_DATABASE_BYTES: usize = 8 * 1024 * 1024;

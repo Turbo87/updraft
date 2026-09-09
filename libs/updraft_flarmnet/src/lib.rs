@@ -1,4 +1,5 @@
-use crate::{TrafficTargetId, TrafficTargetIdType};
+//! United FlarmNet records, JSON validation, and lookup by aircraft address.
+
 use serde::de::Error as _;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -57,11 +58,8 @@ impl FlarmnetDatabase {
         Ok(database)
     }
 
-    /// Matches FLARM and ICAO addresses. Random and unknown ID types are excluded.
-    pub fn lookup(&self, id: TrafficTargetId) -> Option<&FlarmnetRecord> {
-        match id.id_type {
-            TrafficTargetIdType::Flarm | TrafficTargetIdType::Icao => self.records.get(&id.value),
-            TrafficTargetIdType::Random | TrafficTargetIdType::Other(_) => None,
-        }
+    /// Returns the record for a 24-bit aircraft address, or `None` if absent.
+    pub fn lookup(&self, address: u32) -> Option<&FlarmnetRecord> {
+        self.records.get(&address)
     }
 }

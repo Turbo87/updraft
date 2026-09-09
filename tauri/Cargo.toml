@@ -38,6 +38,7 @@ time = { version = "=0.3.55", features = ["macros", "parsing"] }
 updraft_waypoint = { path = "../libs/updraft_waypoint" }
 updraft_airspace = { path = "../libs/updraft_airspace" }
 updraft_core = { path = "../libs/updraft_core" }
+updraft_flarmnet = { path = "../libs/updraft_flarmnet" }
 updraft_geo = { path = "../libs/updraft_geo" }
 updraft_terrain = { path = "../libs/updraft_terrain" }
 updraft_units = { path = "../libs/updraft_units" }

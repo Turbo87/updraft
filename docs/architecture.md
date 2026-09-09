@@ -106,6 +106,8 @@ Catalog HTTP requests have a 30-second timeout and a 4 MiB response limit.
 Rustls uses bundled Mozilla trust roots, with certificate and hostname
 verification enabled. The client does not require Android JVM verifier setup.
 
+`updraft_flarmnet` owns United FlarmNet parsing, normalization, and address lookup.
+The core selects eligible traffic address types and attaches matching records.
 The shell loads a saved United FlarmNet database before its startup download.
 One worker owns refresh and retry timing. It validates and atomically saves each
 replacement before sending it to the core. The core owns the parsed database and

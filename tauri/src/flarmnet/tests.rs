@@ -2,14 +2,12 @@ use super::*;
 use claims::{assert_err, assert_ok, assert_some};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use updraft_core::{TrafficTargetId, TrafficTargetIdType};
 
 const OLD: &[u8] = br#"[{"flarm_id":"ABC123","call_sign":"OLD"}]"#;
 const NEW: &[u8] = br#"[{"flarm_id":"ABC123","call_sign":"NEW"}]"#;
 
 fn callsign(database: &FlarmnetDatabase) -> &str {
-    let id = TrafficTargetId::new(TrafficTargetIdType::Flarm, 0xABC123);
-    &assert_some!(database.lookup(id)).call_sign
+    &assert_some!(database.lookup(0xABC123)).call_sign
 }
 
 async fn server(body: Vec<u8>, status: u16) -> (String, tokio::task::JoinHandle<()>) {

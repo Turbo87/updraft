@@ -1,5 +1,5 @@
 ---
-source: libs/updraft_core/tests/flarmnet.rs
+source: libs/updraft_flarmnet/tests/flarmnet.rs
 expression: record
 ---
 {

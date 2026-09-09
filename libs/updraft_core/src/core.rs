@@ -18,9 +18,10 @@ use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
-use crate::{FlarmnetDatabase, GlidePerformance, ReplaceFlarmnetDatabase};
+use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
 use std::sync::Arc;
 use updraft_egm96::ellipsoidal_to_msl;
+use updraft_flarmnet::FlarmnetDatabase;
 use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
 use updraft_units::{MslAltitude, PressureAltitude, Speed};
 

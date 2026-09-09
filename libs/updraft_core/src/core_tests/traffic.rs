@@ -1,11 +1,12 @@
 use super::super::*;
 use super::support::*;
+use crate::ReplaceFlarmnetDatabase;
 use crate::connection::{ConnectionSpec, ConnectionState};
 use crate::settings::SettingsSnapshot;
-use crate::{FlarmnetDatabase, ReplaceFlarmnetDatabase};
 use approx::assert_abs_diff_eq;
 use claims::{assert_none, assert_ok, assert_some, assert_some_eq};
 use std::assert_matches;
+use updraft_flarmnet::FlarmnetDatabase;
 
 #[test]
 fn traffic_prefers_the_sending_devices_ownship_references() {

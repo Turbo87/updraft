@@ -1,4 +1,3 @@
-use crate::GlidePerformance;
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
@@ -19,6 +18,7 @@ use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
+use crate::{FlarmnetDatabase, GlidePerformance, ReplaceFlarmnetDatabase};
 use std::sync::Arc;
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
@@ -43,6 +43,7 @@ pub struct Core {
     true_airspeed: DomainState<Speed>,
     sensor_fusion: SensorFusion,
     traffic: TrafficState,
+    flarmnet: Arc<FlarmnetDatabase>,
     terrain_elevation: Option<(crate::LatLon, f64)>,
 }
 
@@ -73,6 +74,7 @@ impl Core {
             true_airspeed: DomainState::Unavailable,
             sensor_fusion,
             traffic: TrafficState::default(),
+            flarmnet: Arc::default(),
             terrain_elevation: None,
         }
     }
@@ -88,13 +90,14 @@ impl Core {
     /// The current value of every topic, for a client that has just
     /// subscribed and holds no state yet.
     pub fn topics(&self) -> Vec<Topic> {
+        let traffic = self.traffic.published_targets(&self.flarmnet);
         vec![
             self.instruments().as_topic(),
             self.settings.as_topic(),
             self.external_devices.as_topic(),
             Topic::Airspace(self.airspace.status()),
             Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
-            Topic::Traffic(TrafficUpdate::Snapshot(self.traffic.published_targets())),
+            Topic::Traffic(TrafficUpdate::Snapshot(traffic)),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -132,7 +135,7 @@ impl Core {
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }
-        if let Some(delta) = traffic_changes.into_delta() {
+        if let Some(delta) = traffic_changes.into_delta(&self.flarmnet) {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
         }
 
@@ -456,7 +459,7 @@ impl Input for Tick {
             effects.push(Effect::emit(after.as_topic()));
         }
         let changes = core.traffic.expire(at);
-        if let Some(delta) = changes.into_delta() {
+        if let Some(delta) = changes.into_delta(&core.flarmnet) {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
         }
         Update::effects(effects)
@@ -823,6 +826,21 @@ impl Input for crate::TerrainElevation {
         } else {
             Vec::new()
         })
+    }
+}
+
+impl Input for ReplaceFlarmnetDatabase {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<()> {
+        let before = core.traffic.published_targets(&core.flarmnet);
+        core.flarmnet = self.0;
+        let after = core.traffic.published_targets(&core.flarmnet);
+        if before == after {
+            return Update::empty();
+        }
+        let topic = Topic::Traffic(TrafficUpdate::Snapshot(after));
+        Update::effects(vec![Effect::emit(topic)])
     }
 }
 

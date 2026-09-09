@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 /// United FlarmNet fields. Missing text is represented by an empty string.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(rename_all = "camelCase"))]
 #[serde(default, rename_all(serialize = "camelCase"))]
 pub struct FlarmnetRecord {
     pub flarm_id: String,

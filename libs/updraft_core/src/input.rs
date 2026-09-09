@@ -260,3 +260,8 @@ pub struct TerrainElevation {
 }
 
 impl private::Sealed for TerrainElevation {}
+
+/// Replaces traffic identity records without changing observation timestamps.
+#[derive(Clone, Debug)]
+pub struct ReplaceFlarmnetDatabase(pub Arc<crate::FlarmnetDatabase>);
+impl private::Sealed for ReplaceFlarmnetDatabase {}

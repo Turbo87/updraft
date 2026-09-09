@@ -281,7 +281,7 @@ fn projects_ordered_and_mutually_exclusive_traffic_deltas() {
     changes.upsert(target(2));
     changes.remove(target(4).id);
 
-    let delta: TrafficDelta = changes.into();
+    let delta = assert_some!(changes.into_delta(&FlarmnetDatabase::default()));
     let upsert_ids = delta
         .upserts
         .into_iter()

@@ -6,7 +6,7 @@ Run the suite with the release profile:
 cargo bench -p updraft_terrain --bench elevation
 ```
 
-The benchmarks use the public `TerrainReader` API and the checked-in
+The benchmarks use the public `TerrainReader` and `TerrainTile` APIs and the checked-in
 [France fixtures](../../../testdata/README.md). CSV parsing occurs
 outside the timed work. Missing elevations and read failures stop the benchmark.
 
@@ -32,6 +32,32 @@ The cache-miss benchmark uses `iter_batched_ref()` with `BatchSize::PerIteration
 to keep only one fresh reader and SQLite connection alive at a time. Criterion's
 per-iteration timing overhead is included. The suite does not measure cache
 pressure, eviction, source activation, or file discovery.
+
+## Tile loading
+
+Run the component measurements separately:
+
+```sh
+cargo bench -p updraft_terrain --bench elevation -- terrain_tile_loading
+```
+
+The `terrain_tile_loading` group measures all nine fixture tiles individually,
+starting with XYZ tile `10/528/371`, which the existing interior miss case uses.
+Each tile has three cases:
+
+- `read` retrieves encoded bytes with `TerrainReader::tile()` on a fresh reader.
+  The measurement includes SQLite lookup and allocation and copying of the
+  compressed bytes.
+- `decode` calls `TerrainTile::decode()` on bytes loaded before measurement.
+  It includes decoder construction and allocation of the decoded pixel buffer.
+- `cache_miss` samples an interior position on a fresh reader. It includes
+  retrieval, decoding, cache insertion, and interpolation.
+
+Each iteration processes one tile or one elevation lookup. All three cases use
+`BatchSize::PerIteration`. Setup and result destruction are outside the timed
+work. File pages may be cached by the operating system. Component times need
+not add up exactly because the separate runs have different cache and allocation
+histories. Compare the same tile across cases before comparing different tiles.
 
 ## Comparisons
 

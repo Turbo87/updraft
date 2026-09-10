@@ -91,6 +91,10 @@ for (let scenario of [
         name: locale === 'en' ? 'Flight instruments' : 'Fluginstrumente',
       });
       await expect(dock.getByRole('group')).toHaveCount(10);
+      for (let edge of ['top', 'right', 'bottom', 'left']) {
+        await expect(dock.locator('.cells')).toHaveCSS(`border-${edge}-width`, '1px');
+        await expect(dock.locator('.cells')).toHaveCSS(`border-${edge}-style`, 'solid');
+      }
       await page.evaluate(async () => {
         await document.fonts.ready;
       });

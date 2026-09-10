@@ -2,6 +2,8 @@ use updraft_units::Speed;
 
 mod ema;
 #[cfg(test)]
+mod energy;
+#[cfg(test)]
 mod velocity;
 mod window;
 

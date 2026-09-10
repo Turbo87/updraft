@@ -175,7 +175,12 @@
       <Terrain />
     {/if}
     {#if spritesLoaded}
-      <Traffic {traffic} altitudeUnit={units.altitude} {showHitAreas} />
+      <Traffic
+        {traffic}
+        altitudeUnit={units.altitude}
+        verticalSpeedUnit={units.verticalSpeed}
+        {showHitAreas}
+      />
       {#if position}
         <Ownship {position} trackDegrees={gps?.trackDegrees ?? null} />
       {/if}

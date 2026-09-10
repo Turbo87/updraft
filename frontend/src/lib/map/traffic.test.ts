@@ -28,7 +28,7 @@ function target(
 
 describe('trafficFeature', () => {
   it('projects a target with a whole-meter altitude label', () => {
-    let feature = trafficFeature(target('flarm:000123', { altitudeMslMeters: 200.4 }), 'm');
+    let feature = trafficFeature(target('flarm:000123', { altitudeMslMeters: 200.4 }), 'm', 'm/s');
 
     expect(feature).toMatchInlineSnapshot(`
       {
@@ -57,6 +57,7 @@ describe('trafficFeature', () => {
     let feature = trafficFeature(
       target('flarm:000123', { trackDegrees: null, altitudeMslMeters: null }),
       'm',
+      'm/s',
     );
 
     expect(feature).toMatchInlineSnapshot(`
@@ -83,7 +84,7 @@ describe('trafficFeature', () => {
   });
 
   it('projects a target with a whole-foot altitude label', () => {
-    let feature = trafficFeature(target('flarm:000123'), 'ft');
+    let feature = trafficFeature(target('flarm:000123'), 'ft', 'm/s');
 
     expect(feature.properties.label).toBe('656 ft');
   });
@@ -94,7 +95,7 @@ describe('trafficFeatureCollection', () => {
     let first = target('flarm:000001');
     let second = target('icao:000002');
 
-    expect(trafficFeatureCollection([first, second], 'm').features.length).toEqual(2);
+    expect(trafficFeatureCollection([first, second], 'm', 'm/s').features.length).toEqual(2);
   });
 });
 
@@ -102,8 +103,8 @@ describe('trafficSourceDiff', () => {
   it('adds a new target', () => {
     let added = target('flarm:000001');
 
-    expect(trafficSourceDiff({ upserts: [added], removed: [] }, 'm')).toEqual({
-      add: [trafficFeature(added, 'm')],
+    expect(trafficSourceDiff({ upserts: [added], removed: [] }, 'm', 'm/s')).toEqual({
+      add: [trafficFeature(added, 'm', 'm/s')],
     });
   });
 
@@ -117,8 +118,8 @@ describe('trafficSourceDiff', () => {
       altitudeMslMeters: 500,
     });
 
-    expect(trafficSourceDiff({ upserts: [updated], removed: [] }, 'm')).toEqual({
-      add: [trafficFeature(updated, 'm')],
+    expect(trafficSourceDiff({ upserts: [updated], removed: [] }, 'm', 'm/s')).toEqual({
+      add: [trafficFeature(updated, 'm', 'm/s')],
     });
   });
 
@@ -128,17 +129,17 @@ describe('trafficSourceDiff', () => {
       altitudeMslMeters: null,
     });
 
-    let diff = trafficSourceDiff({ upserts: [updated], removed: [] }, 'm');
+    let diff = trafficSourceDiff({ upserts: [updated], removed: [] }, 'm', 'm/s');
 
     expect(diff).toEqual({
-      add: [trafficFeature(updated, 'm')],
+      add: [trafficFeature(updated, 'm', 'm/s')],
     });
   });
 
   it('removes a target without another source operation', () => {
     let removed = 'flarm:000001';
 
-    expect(trafficSourceDiff({ upserts: [], removed: [removed] }, 'm')).toEqual({
+    expect(trafficSourceDiff({ upserts: [], removed: [removed] }, 'm', 'm/s')).toEqual({
       remove: ['flarm:000001'],
     });
   });
@@ -158,10 +159,11 @@ describe('applyTrafficSourceUpdate', () => {
       { type: 'snapshot', value: [current] },
       new Map([['flarm:000002', current]]),
       'm',
+      'm/s',
     );
 
     expect(source.setData).toHaveBeenCalledExactlyOnceWith(
-      trafficFeatureCollection([current], 'm'),
+      trafficFeatureCollection([current], 'm', 'm/s'),
     );
     expect(source.updateData).not.toHaveBeenCalled();
   });
@@ -180,9 +182,10 @@ describe('applyTrafficSourceUpdate', () => {
       { type: 'delta', value: delta },
       new Map([['flarm:000001', updated]]),
       'm',
+      'm/s',
     );
 
-    expect(source.updateData).toHaveBeenCalledExactlyOnceWith(trafficSourceDiff(delta, 'm'));
+    expect(source.updateData).toHaveBeenCalledExactlyOnceWith(trafficSourceDiff(delta, 'm', 'm/s'));
     expect(source.setData).not.toHaveBeenCalled();
   });
 
@@ -203,6 +206,7 @@ describe('applyTrafficSourceUpdate', () => {
       { type: 'delta', value: { upserts: [updated], removed: [] } },
       new Map([['flarm:000001', updated]]),
       'm',
+      'm/s',
     );
 
     expect(warn).toHaveBeenCalledExactlyOnceWith(
@@ -210,7 +214,7 @@ describe('applyTrafficSourceUpdate', () => {
       error,
     );
     expect(source.setData).toHaveBeenCalledExactlyOnceWith(
-      trafficFeatureCollection([updated], 'm'),
+      trafficFeatureCollection([updated], 'm', 'm/s'),
     );
 
     warn.mockRestore();
@@ -238,6 +242,7 @@ describe('applyTrafficSourceUpdate', () => {
       { type: 'delta', value: { upserts: [updated], removed: [] } },
       new Map([['flarm:000001', updated]]),
       'm',
+      'm/s',
     );
 
     expect(warn).toHaveBeenCalledExactlyOnceWith(
@@ -245,7 +250,7 @@ describe('applyTrafficSourceUpdate', () => {
       error,
     );
     expect(source.setData).toHaveBeenCalledExactlyOnceWith(
-      trafficFeatureCollection([updated], 'm'),
+      trafficFeatureCollection([updated], 'm', 'm/s'),
     );
     expect(unsubscribe).toHaveBeenCalledOnce();
 
@@ -276,7 +281,23 @@ describe('FlarmNet traffic labels', () => {
           frequency: '',
         },
       });
-      expect(trafficFeature(traffic, 'm').properties.label).toBe(expected);
+      expect(trafficFeature(traffic, 'm', 'm/s').properties.label).toBe(expected);
     },
   );
+});
+
+it('adds positive normalized climb in the selected vertical-speed unit', () => {
+  let aircraft = target('flarm:000123', {
+    climb: { average20s: 1, average30s: 3, normalizedEma: 2.1 },
+  });
+  expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m\n+2.1 m/s');
+  expect(trafficFeature(aircraft, 'm', 'kt').properties.label).toBe('200 m\n+4.1 kt');
+  expect(trafficFeature(aircraft, 'm', 'ft/min').properties.label).toBe('200 m\n+413 ft/min');
+  for (let normalizedEma of [-1, 0, 0.01]) {
+    aircraft.climb!.normalizedEma = normalizedEma;
+    expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m');
+  }
+  aircraft.climb!.normalizedEma = 2;
+  aircraft.stale = true;
+  expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m');
 });

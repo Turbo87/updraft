@@ -59,7 +59,7 @@
     height: 100%;
     min-width: 0;
     min-height: 0;
-    grid-template-rows: 1.5rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 0.125rem;
     padding: 0.375rem 0.25rem;
     background: var(--color-screen-surface);
@@ -74,6 +74,8 @@
     line-height: 1.2;
     text-align: center;
     text-transform: uppercase;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .numeric-value {

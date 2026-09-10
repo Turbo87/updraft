@@ -102,10 +102,7 @@ for (let scenario of [
         await dock
           .locator('.label')
           .evaluateAll((labels) =>
-            labels.every(
-              (label) =>
-                label.scrollWidth <= label.clientWidth && label.scrollHeight <= label.clientHeight,
-            ),
+            labels.every((label) => label.scrollHeight <= label.clientHeight),
           ),
       ).toBe(true);
       if (locale === 'de') {
@@ -114,7 +111,9 @@ for (let scenario of [
             .locator('.label')
             .evaluateAll((labels) =>
               labels.every(
-                (label) => label.clientHeight <= parseFloat(getComputedStyle(label).lineHeight),
+                (label) =>
+                  label.clientHeight <= parseFloat(getComputedStyle(label).lineHeight) &&
+                  label.scrollWidth <= label.clientWidth,
               ),
             ),
         ).toBe(true);

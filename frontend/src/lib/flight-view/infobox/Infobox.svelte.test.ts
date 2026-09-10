@@ -7,6 +7,28 @@ import '../../../app.css';
 import Infobox from './Infobox.svelte';
 
 describe('Infobox', () => {
+  it('ellipsizes long labels and gives the value more vertical space', async () => {
+    let label = 'Geschwindigkeit über Grund';
+    let view = await render(Infobox, {
+      label,
+      value: { kind: 'speed', metersPerSecond: 30, unit: 'km/h' },
+      stale: false,
+    });
+    let box = view.container.querySelector<HTMLElement>('.infobox')!;
+    box.style.width = '71px';
+    box.style.height = '71px';
+    await document.fonts.ready;
+    let heading = box.querySelector<HTMLElement>('.label')!;
+    expect(getComputedStyle(heading).textOverflow).toBe('ellipsis');
+    expect(getComputedStyle(heading).whiteSpace).toBe('nowrap');
+    expect(heading.scrollWidth).toBeGreaterThan(heading.clientWidth);
+    let [labelHeight, valueHeight] = getComputedStyle(box)
+      .gridTemplateRows.split(' ')
+      .map(parseFloat);
+    expect(valueHeight).toBeGreaterThan(labelHeight * 2);
+    await expect.element(page.getByRole('group', { name: label })).toBeVisible();
+  });
+
   it('fits long altitude and climb readouts in a phone-width cell', async () => {
     let view = await render(Infobox, {
       label: 'Altitude',

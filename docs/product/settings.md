@@ -13,6 +13,7 @@ current settings topic and sends typed commands for changes.
 - `/settings/language`
 - `/settings/units`
 - `/settings/glide`
+- `/settings/vario`
 - `/settings/flight-controls`
 - `/settings/data`
 - `/settings/devices`
@@ -121,8 +122,10 @@ Polar and reserve changes request new waypoint arrival calculations.
 The persisted climb averaging method defaults to normalized EMA with a 10-second
 time constant. The alternatives are 20-second and 30-second averages. Missing
 stored values use the default. The map updates its labels when the setting changes,
-using estimates already collected by the core. The settings control is not yet
-implemented. The setting is shared with future ownship climb display.
+using estimates already collected by the core. The Vario page selects the method
+with three radio options. A pending command disables the control. A failed command
+restores the authoritative setting and shows an error. The setting is shared with
+future ownship climb display.
 
 ## Installed data
 

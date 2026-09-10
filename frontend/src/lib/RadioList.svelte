@@ -7,18 +7,28 @@
     options: ReadonlyArray<{ value: Value; label: string; description?: string; icon?: string }>;
     value: Value;
     hideLegend?: boolean;
+    disabled?: boolean;
     error?: string;
     onChange: (value: Value) => void;
   };
 
   const generatedId = $props.id();
 
-  let { name, legend, options, value, hideLegend = false, error, onChange }: Props = $props();
+  let {
+    name,
+    legend,
+    options,
+    value,
+    hideLegend = false,
+    disabled = false,
+    error,
+    onChange,
+  }: Props = $props();
 
   let errorId = $derived(`${generatedId}-error`);
 </script>
 
-<fieldset aria-describedby={error ? errorId : undefined}>
+<fieldset {disabled} aria-describedby={error ? errorId : undefined}>
   <legend class:sr-only={hideLegend}>{legend}</legend>
   <ResponsiveCard error={Boolean(error)}>
     {#each options as option (option.value)}

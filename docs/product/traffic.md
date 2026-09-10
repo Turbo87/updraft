@@ -79,7 +79,8 @@ than 60 seconds without usable altitude. The next sample after a reset establish
 a baseline. A subsequent sample produces the first estimates.
 
 The map shows the selected climb estimate and defaults to normalized EMA.
-The settings control and details comparison are not yet implemented.
+The Vario settings page selects the shared climb averaging method. Details comparison is not yet
+implemented.
 
 ## Topic updates
 

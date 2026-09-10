@@ -404,5 +404,11 @@
   "infobox_wind_speed": "Windstärke",
   "infobox_wind_direction": "Windricht.",
   "infobox_zoom": "Zoom",
-  "flight_view_instruments": "Fluginstrumente"
+  "flight_view_instruments": "Fluginstrumente",
+  "climb_ema_label": "Normalisierter EMA (10 s)",
+  "climb_20s_label": "20-s-Mittelwert",
+  "climb_30s_label": "30-s-Mittelwert",
+  "vario_settings_heading": "Vario",
+  "climb_average_label": "Mittelwert für das Steigen",
+  "climb_average_change_failed": "Die Methode für das Steigen konnte nicht geändert werden."
 }

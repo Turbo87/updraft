@@ -79,8 +79,7 @@ than 60 seconds without usable altitude. The next sample after a reset establish
 a baseline. A subsequent sample produces the first estimates.
 
 The map shows the selected climb estimate and defaults to normalized EMA.
-The Vario settings page selects the shared climb averaging method. Details comparison is not yet
-implemented.
+The Vario settings page selects the shared climb averaging method.
 
 ## Topic updates
 
@@ -133,6 +132,11 @@ live or unavailable behavior.
 Traffic details also show callsign, registration, aircraft model, pilot, airfield,
 frequency, and FLARM ID from the matching database record. Empty fields are hidden.
 The database aircraft model is separate from the reported aircraft category.
+
+Traffic details show all three climb estimates in the selected vertical-speed
+unit, independent of the map method setting. Details include positive, zero,
+and negative values. Missing estimates show a dash. Retained values use the
+existing stale presentation when the target is stale or unavailable.
 
 ## Database refresh
 

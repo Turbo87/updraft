@@ -593,7 +593,7 @@ test('updates and retains traffic details', async ({ page }) => {
   await expect(page.getByText('032', { exact: true })).toBeVisible();
   await expect(page.getByText('Stale', { exact: true })).toBeVisible();
   await expect(page.getByText('Important', { exact: true })).toBeVisible();
-  await expect(page.getByText('—', { exact: true })).toHaveCount(3);
+  await expect(page.getByText('—', { exact: true })).toHaveCount(6);
 
   await emitInstruments(page, POSITION_C);
   await expect(page.getByText('212', { exact: true })).toBeVisible();

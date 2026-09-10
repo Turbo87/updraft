@@ -12,9 +12,6 @@ use updraft_units::{Angle, Length, MslAltitude};
 const STALE_AFTER: Duration = Duration::from_secs(5);
 const REMOVE_AFTER: Duration = Duration::from_secs(30);
 
-#[cfg(test)]
-mod window;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TrafficTargetIdType {
     Random,

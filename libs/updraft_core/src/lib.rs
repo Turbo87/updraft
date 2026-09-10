@@ -7,6 +7,8 @@ mod airspace;
 mod arrival_reserve;
 #[cfg(feature = "ts")]
 pub mod bindings;
+#[cfg(test)]
+mod climb;
 mod connection;
 mod connection_diagnostics;
 mod core;

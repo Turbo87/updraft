@@ -102,7 +102,7 @@
   }
 
   .unit {
-    margin-left: 0.0714em;
+    margin-left: 0.2em;
     color: var(--color-text-muted);
     font-size: 0.4em;
     font-weight: 600;
@@ -131,7 +131,7 @@
   .chevron {
     align-self: center;
     flex: none;
-    width: 0.6em;
+    width: 0.8em;
     height: 1em;
     color: var(--color-text-muted);
   }

@@ -1,9 +1,9 @@
+import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
-import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
@@ -310,8 +310,8 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_polar', { polar });
   }
 
-  setTrafficClimbMethod(method: TrafficClimbMethod): Promise<void> {
-    return invoke('set_traffic_climb_method', { method });
+  setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
+    return invoke('set_climb_average_method', { method });
   }
 
   setArrivalReserve(reserve: number): Promise<void> {

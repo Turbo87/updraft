@@ -2,9 +2,9 @@
   import type { UpdraftClient } from '$lib/client';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
+  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
-  import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -19,7 +19,7 @@
   import InfoboxDock from './infobox/InfoboxDock.svelte';
 
   type Props = {
-    trafficClimbMethod?: TrafficClimbMethod;
+    climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
     airspace: AirspaceStatus;
     basemapGeneration?: number;
@@ -33,7 +33,7 @@
   };
 
   let {
-    trafficClimbMethod = 'normalizedEma',
+    climbAverageMethod = 'normalizedEma',
     client,
     airspace,
     basemapGeneration,
@@ -60,7 +60,7 @@
 <section class="flight-view" aria-label={m.flight_view()}>
   <div class="map">
     <Map
-      {trafficClimbMethod}
+      {climbAverageMethod}
       {client}
       {airspace}
       {basemapGeneration}

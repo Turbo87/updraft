@@ -5,7 +5,7 @@
     SymbolLayerSpecification,
   } from 'maplibre-gl';
   import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-  import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
+  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
   import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
@@ -83,7 +83,7 @@
   };
 
   type Props = {
-    trafficClimbMethod?: TrafficClimbMethod;
+    climbAverageMethod?: ClimbAverageMethod;
     traffic: TrafficStore;
     altitudeUnit: AltitudeUnit;
     verticalSpeedUnit: VerticalSpeedUnit;
@@ -95,7 +95,7 @@
     altitudeUnit,
     verticalSpeedUnit,
     showHitAreas,
-    trafficClimbMethod = 'normalizedEma',
+    climbAverageMethod = 'normalizedEma',
   }: Props = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
@@ -105,7 +105,7 @@
     let activeSource = source;
     let activeAltitudeUnit = altitudeUnit;
     let activeVerticalSpeedUnit = verticalSpeedUnit;
-    let activeMethod = trafficClimbMethod;
+    let activeMethod = climbAverageMethod;
     if (!activeSource) return;
 
     updateQueue = updateQueue.then(() =>
@@ -132,7 +132,7 @@
           currentTargets,
           altitudeUnit,
           verticalSpeedUnit,
-          trafficClimbMethod,
+          climbAverageMethod,
         ),
       );
     }),

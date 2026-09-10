@@ -1,9 +1,9 @@
 import type * as GeoJSON from 'geojson';
 import type { ErrorEvent, GeoJSONSource, GeoJSONSourceDiff, Subscription } from 'maplibre-gl';
 import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
+import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
 import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
-import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
 import type { TrafficDelta } from '$lib/protocol/generated/TrafficDelta';
 import type { TrafficType } from '$lib/protocol/generated/TrafficType';
 import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
@@ -28,7 +28,7 @@ export function trafficFeature(
   target: PublishedTrafficTarget,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: TrafficClimbMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'normalizedEma',
 ): GeoJSON.Feature<GeoJSON.Point, TrafficFeatureProperties> {
   let altitude = target.altitudeMslMeters;
   let altitudeLabel =
@@ -69,7 +69,7 @@ export function trafficFeatureCollection(
   targets: Iterable<PublishedTrafficTarget>,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: TrafficClimbMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'normalizedEma',
 ): GeoJSON.FeatureCollection<GeoJSON.Point, TrafficFeatureProperties> {
   return {
     type: 'FeatureCollection',
@@ -83,7 +83,7 @@ export function trafficSourceDiff(
   delta: TrafficDelta,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: TrafficClimbMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'normalizedEma',
 ): GeoJSONSourceDiff {
   return {
     ...(delta.removed.length > 0 && { remove: delta.removed }),
@@ -101,7 +101,7 @@ export async function applyTrafficSourceUpdate(
   currentTargets: ReadonlyMap<string, PublishedTrafficTarget>,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: TrafficClimbMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'normalizedEma',
 ): Promise<void> {
   if (update.type === 'snapshot') {
     await source.setData(

@@ -1,4 +1,5 @@
 import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
+import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
@@ -7,7 +8,6 @@ import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
-import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
@@ -80,7 +80,7 @@ export class FakeClient implements UpdraftClient {
     locale: null,
     polar: 'LS 8',
     arrivalReserve: 200,
-    trafficClimbMethod: 'normalizedEma',
+    climbAverageMethod: 'normalizedEma',
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 
@@ -401,9 +401,9 @@ export class FakeClient implements UpdraftClient {
     this.emit({ topic: 'settings', value: this.#settings });
   }
 
-  async setTrafficClimbMethod(method: TrafficClimbMethod): Promise<void> {
-    if (this.#settings.trafficClimbMethod === method) return;
-    this.#settings = { ...this.#settings, trafficClimbMethod: method };
+  async setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
+    if (this.#settings.climbAverageMethod === method) return;
+    this.#settings = { ...this.#settings, climbAverageMethod: method };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

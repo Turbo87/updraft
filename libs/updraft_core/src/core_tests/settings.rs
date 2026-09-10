@@ -321,22 +321,22 @@ fn loaded_and_changed_polars_drive_netto() {
 }
 
 #[test]
-fn traffic_climb_method_defaults_and_persists_changes() {
-    use crate::{SetTrafficClimbMethod, TrafficClimbMethod};
+fn climb_average_method_defaults_and_persists_changes() {
+    use crate::{ClimbAverageMethod, SetClimbAverageMethod};
     let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
     assert_eq!(
-        settings.traffic_climb_method,
-        TrafficClimbMethod::NormalizedEma
+        settings.climb_average_method,
+        ClimbAverageMethod::NormalizedEma
     );
     let mut core = Core::new(SettingsSnapshot::default());
     for method in [
-        TrafficClimbMethod::Average20s,
-        TrafficClimbMethod::Average30s,
-        TrafficClimbMethod::NormalizedEma,
+        ClimbAverageMethod::Average20s,
+        ClimbAverageMethod::Average30s,
+        ClimbAverageMethod::NormalizedEma,
     ] {
-        let effects = core.apply(SetTrafficClimbMethod { method }, at(0)).effects;
+        let effects = core.apply(SetClimbAverageMethod { method }, at(0)).effects;
         let expected = Settings {
-            traffic_climb_method: method,
+            climb_average_method: method,
             ..Settings::default()
         };
         assert_eq!(
@@ -350,7 +350,7 @@ fn traffic_climb_method_defaults_and_persists_changes() {
             ]
         );
         assert!(
-            core.apply(SetTrafficClimbMethod { method }, at(1))
+            core.apply(SetClimbAverageMethod { method }, at(1))
                 .effects
                 .is_empty()
         );

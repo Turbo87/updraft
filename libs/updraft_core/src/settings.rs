@@ -75,7 +75,7 @@ pub struct UnitSettings {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
-pub enum TrafficClimbMethod {
+pub enum ClimbAverageMethod {
     #[default]
     NormalizedEma,
     Average20s,
@@ -87,7 +87,7 @@ pub enum TrafficClimbMethod {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     #[serde(default)]
-    pub traffic_climb_method: TrafficClimbMethod,
+    pub climb_average_method: ClimbAverageMethod,
     pub locale: Option<Locale>,
     #[serde(default)]
     pub polar: PolarId,

@@ -129,7 +129,7 @@ describe('FakeClient', () => {
         locale: null,
         polar: 'LS 8',
         arrivalReserve: 304.8,
-        trafficClimbMethod: 'normalizedEma',
+        climbAverageMethod: 'normalizedEma',
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -152,7 +152,7 @@ describe('FakeClient', () => {
         locale: null,
         polar: 'LS 8-18',
         arrivalReserve: 200,
-        trafficClimbMethod: 'normalizedEma',
+        climbAverageMethod: 'normalizedEma',
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -209,7 +209,7 @@ describe('FakeClient', () => {
         locale: 'de',
         polar: 'LS 8',
         arrivalReserve: 200,
-        trafficClimbMethod: 'normalizedEma',
+        climbAverageMethod: 'normalizedEma',
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -248,7 +248,7 @@ describe('FakeClient', () => {
         polar: 'LS 8',
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
         arrivalReserve: 200,
-        trafficClimbMethod: 'normalizedEma',
+        climbAverageMethod: 'normalizedEma',
       },
     });
   });
@@ -605,11 +605,11 @@ it('publishes only changed traffic climb settings', async () => {
   let onTopic = vi.fn();
   client.subscribe(onTopic);
   onTopic.mockClear();
-  await client.setTrafficClimbMethod('normalizedEma');
+  await client.setClimbAverageMethod('normalizedEma');
   expect(onTopic).not.toHaveBeenCalled();
-  await client.setTrafficClimbMethod('average30s');
+  await client.setClimbAverageMethod('average30s');
   expect(onTopic).toHaveBeenCalledExactlyOnceWith({
     topic: 'settings',
-    value: expect.objectContaining({ trafficClimbMethod: 'average30s' }),
+    value: expect.objectContaining({ climbAverageMethod: 'average30s' }),
   });
 });

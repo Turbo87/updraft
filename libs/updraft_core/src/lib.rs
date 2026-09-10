@@ -53,13 +53,13 @@ pub use input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, GetGlideSnapshot, GetWaypointCatalog, GetWaypointSnapshot, Input,
     InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceFlarmnetDatabase,
-    ReplaceWaypointCatalog, SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled,
-    SetLocale, SetMacCready, SetPolar, SetTrafficClimbMethod, SetUnits, Start, TerrainElevation,
+    ReplaceWaypointCatalog, SetArrivalReserve, SetBallast, SetBugs, SetClimbAverageMethod,
+    SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, TerrainElevation,
     Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{
-    AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, TrafficClimbMethod,
+    AltitudeUnit, ClimbAverageMethod, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit,
     UnitSettings, VerticalSpeedUnit,
 };
 pub use time::Timestamp;

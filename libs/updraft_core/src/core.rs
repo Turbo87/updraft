@@ -5,7 +5,7 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
-    SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetTrafficClimbMethod,
+    SetBugs, SetClimbAverageMethod, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar,
     SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
@@ -563,14 +563,14 @@ impl Input for SetArrivalReserve {
     }
 }
 
-impl Input for SetTrafficClimbMethod {
+impl Input for SetClimbAverageMethod {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
-        if core.settings.traffic_climb_method == self.method {
+        if core.settings.climb_average_method == self.method {
             return Update::empty();
         }
-        core.settings.traffic_climb_method = self.method;
+        core.settings.climb_average_method = self.method;
         Update::effects(vec![
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),

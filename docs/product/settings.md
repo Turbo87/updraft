@@ -116,13 +116,13 @@ metres and accepts only finite, nonnegative values. A settings file without a
 reserve uses the default.
 Polar and reserve changes request new waypoint arrival calculations.
 
-## Traffic climb
+## Climb averaging
 
-The persisted traffic climb method defaults to normalized EMA with a 10-second
+The persisted climb averaging method defaults to normalized EMA with a 10-second
 time constant. The alternatives are 20-second and 30-second averages. Missing
 stored values use the default. The map updates its labels when the setting changes,
 using estimates already collected by the core. The settings control is not yet
-implemented.
+implemented. The setting is shared with future ownship climb display.
 
 ## Installed data
 

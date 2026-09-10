@@ -17,7 +17,9 @@ use crate::sensor_fusion::{FusionInputs, SensorFusion};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
-use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
+use crate::traffic::{
+    TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, target_from_pflaa,
+};
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
 use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
 use std::sync::Arc;
@@ -259,11 +261,16 @@ impl Core {
                     return;
                 };
                 let same_device = device.gps;
-                let displayed = self.displayed_gps();
-                let Some(position) = same_device
+                let Some((position, position_source)) = same_device
                     .position
-                    .map(|position| position.value)
-                    .or(displayed.map(|gps| gps.position))
+                    .map(|position| (position, SourceId::External(device_id)))
+                    .or_else(|| {
+                        let selected = self.gps.selected()?;
+                        Some((
+                            Timed::new(selected.value.position, selected.ingested_at),
+                            selected.source,
+                        ))
+                    })
                 else {
                     return;
                 };
@@ -275,7 +282,7 @@ impl Core {
                         Some((selected.value.altitude_msl?, selected.source))
                     });
                 let altitude = altitude_reference.map(|(altitude, _)| altitude.value);
-                let Some(mut target) = target_from_pflaa(&pflaa, position, altitude) else {
+                let Some(mut target) = target_from_pflaa(&pflaa, position.value, altitude) else {
                     return;
                 };
                 let altitude_source = altitude_reference
@@ -290,8 +297,15 @@ impl Core {
                     .current_wind()
                     .filter(|_| crate::traffic::within_wind_range(&pflaa))
                     .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
+                let motion = TrafficMotion {
+                    velocity,
+                    wind,
+                    position: position
+                        .fresh(at)
+                        .map(|_| (position_source, target.position)),
+                };
                 self.traffic
-                    .update_climb(&mut target, altitude_source, at, velocity, wind);
+                    .update_climb(&mut target, altitude_source, at, motion);
                 self.traffic.observe(target, at, traffic_changes);
             }
             _ => {}
@@ -402,10 +416,6 @@ impl Core {
         if selected_source_was_reset && matches!(self.gps, DomainState::LastKnown(_)) {
             self.gps = DomainState::Unavailable;
         }
-    }
-
-    fn displayed_gps(&self) -> Option<GpsSnapshot> {
-        self.gps.selected().map(|selected| selected.value)
     }
 
     fn instruments(&self) -> Instruments {

@@ -420,8 +420,7 @@ fn climb_resets_when_reporting_device_or_fallback_altitude_source_changes() {
     assert_none!(traffic_snapshot(&core)[0].climb);
 }
 
-#[test]
-fn traffic_refreshes_wind_before_using_reports_in_a_navigation_batch() {
+fn core_with_traffic_wind() -> (Core, ExternalDeviceId) {
     let (mut core, device) = core_with_external_device();
     for second in 0..60 {
         let navigation = format!(
@@ -431,6 +430,12 @@ fn traffic_refreshes_wind_before_using_reports_in_a_navigation_batch() {
         core.apply(Bytes::new(device, navigation.as_bytes()), at(second * 1000));
     }
     assert_some!(core.sensor_fusion.current_wind());
+    (core, device)
+}
+
+#[test]
+fn traffic_refreshes_wind_before_using_reports_in_a_navigation_batch() {
+    let (mut core, device) = core_with_traffic_wind();
     core.apply(Bytes::new(device, GGA), at(59_000));
     core.apply(Bytes::new(device, PFLAA_A), at(59_000));
     let batch = [GGA, PFLAA_A_REPLACEMENT].concat();
@@ -442,4 +447,37 @@ fn traffic_refreshes_wind_before_using_reports_in_a_navigation_batch() {
         Speed::from_meters_per_second(50. / 11.),
         epsilon = 1e-12
     );
+}
+
+#[test]
+fn derived_traffic_velocity_accounts_for_ownship_motion_when_either_field_is_missing() {
+    use updraft_geo::LatLon;
+    use updraft_units::{Angle, Length};
+    for fields in [",0,25", "90,0,"] {
+        let (mut core, device) = core_with_traffic_wind();
+        let origin = LatLon::from_degrees(50.823, 6.186);
+        for (millis, ownship_north, relative_north) in
+            [(60_000, 0., 1000), (62_000, 60., 940), (64_000, 60., 980)]
+        {
+            let timestamp = at(millis);
+            let position = origin.destination(Angle::ZERO, Length::from_meters(ownship_north));
+            let gps = &mut assert_some!(core.external_devices.get_mut(device)).gps;
+            gps.position = Some(Timed::new(position, timestamp));
+            gps.altitude = Some(Timed::new(
+                MslAltitude::new(Length::from_meters(200.)),
+                timestamp,
+            ));
+            assert_some!(gps.track.as_mut()).ingested_at = timestamp;
+            assert_some!(gps.ground_speed.as_mut()).ingested_at = timestamp;
+            let report = format!("$PFLAA,0,{relative_north},0,50,1,ABC123,{fields},0,1,0\r\n");
+            core.apply(Bytes::new(device, report.as_bytes()), timestamp);
+            assert_some!(core.sensor_fusion.current_wind());
+        }
+        let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+        let wind = assert_some!(core.sensor_fusion.current_wind());
+        let wind_north = -wind.speed.as_meters_per_second() * wind.direction.cos();
+        let expected =
+            Speed::from_meters_per_second((400. - 40. * wind_north) / (2. * 9.80665) / 3.);
+        assert_abs_diff_eq!(climb.average_20s, expected, epsilon = 1e-6);
+    }
 }

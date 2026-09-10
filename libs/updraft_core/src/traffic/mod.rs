@@ -1,11 +1,13 @@
 mod climb;
+mod velocity;
 
 use crate::ExternalDeviceId;
-use crate::climb::{ClimbEstimates, Velocity};
+use crate::climb::ClimbEstimates;
 use crate::ownship::SourceId;
 use crate::time::Timestamp;
 use crate::topic::LatLon;
 use climb::TrafficClimb;
+pub use climb::TrafficMotion;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -162,8 +164,7 @@ impl TrafficState {
         target: &mut TrafficTarget,
         source: Option<(ExternalDeviceId, SourceId)>,
         at: Timestamp,
-        velocity: Option<Velocity>,
-        wind: Option<Velocity>,
+        motion: TrafficMotion,
     ) {
         target.climb = source
             .zip(target.altitude_msl)
@@ -176,8 +177,7 @@ impl TrafficState {
                     source,
                     at,
                     altitude.into_inner(),
-                    velocity.map(|value| (at.since_start(), value)),
-                    wind,
+                    motion,
                 )
             });
     }

@@ -1,13 +1,23 @@
+use super::velocity::TrafficVelocity;
 use crate::climb::{ClimbEma, ClimbEstimates, ClimbWindow, EnergyClimb, Velocity};
 use crate::ownship::SourceId;
 use crate::{ExternalDeviceId, Timestamp};
 use std::time::Duration;
+use updraft_geo::LatLon;
 use updraft_units::Length;
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TrafficMotion {
+    pub velocity: Option<Velocity>,
+    pub wind: Option<Velocity>,
+    pub position: Option<(SourceId, LatLon)>,
+}
 
 #[derive(Debug, Default)]
 pub struct TrafficClimb {
     previous: Option<(Timestamp, (ExternalDeviceId, SourceId))>,
     energy: EnergyClimb,
+    velocity: TrafficVelocity,
     window: ClimbWindow,
     ema: ClimbEma,
     estimates: Option<ClimbEstimates>,
@@ -24,8 +34,7 @@ impl TrafficClimb {
         source: (ExternalDeviceId, SourceId),
         at: Timestamp,
         altitude: Length,
-        velocity: Option<(Duration, Velocity)>,
-        wind: Option<Velocity>,
+        motion: TrafficMotion,
     ) -> Option<ClimbEstimates> {
         if let Some((previous, previous_source)) = self.previous {
             if at <= previous {
@@ -36,9 +45,10 @@ impl TrafficClimb {
             }
         }
         self.previous = Some((at, source));
-        let (time, altitude) = self
-            .energy
-            .observe(at.since_start(), altitude, velocity, wind)?;
+        let velocity = self.velocity.observe(at, motion.position, motion.velocity);
+        let (time, altitude) =
+            self.energy
+                .observe(at.since_start(), altitude, velocity, motion.wind)?;
         self.window.observe(time, altitude);
         self.estimates = self.ema.observe(time, altitude).and_then(|normalized_ema| {
             Some(ClimbEstimates {
@@ -69,16 +79,22 @@ mod tests {
             source,
             Timestamp::from_millis(0),
             Length::ZERO,
-            Some((Duration::ZERO, fast)),
-            wind
+            TrafficMotion {
+                velocity: Some(fast),
+                wind,
+                ..TrafficMotion::default()
+            }
         ));
         let gain = Length::from_meters(700. / (2. * 9.80665));
         let estimates = assert_some!(climb.observe(
             source,
             Timestamp::from_millis(10_000),
             gain,
-            Some((Duration::from_secs(10), slow)),
-            wind
+            TrafficMotion {
+                velocity: Some(slow),
+                wind,
+                ..TrafficMotion::default()
+            }
         ));
         approx::assert_abs_diff_eq!(estimates.normalized_ema, Speed::ZERO, epsilon = 1e-12);
         let changed = (ExternalDeviceId(2), SourceId::InternalGps);
@@ -86,8 +102,11 @@ mod tests {
             changed,
             Timestamp::from_millis(11_000),
             gain,
-            Some((Duration::from_secs(11), fast)),
-            wind
+            TrafficMotion {
+                velocity: Some(fast),
+                wind,
+                ..TrafficMotion::default()
+            }
         ));
     }
 
@@ -101,23 +120,20 @@ mod tests {
             source,
             Timestamp::from_millis(0),
             Length::from_meters(100.0),
-            None,
-            None
+            TrafficMotion::default()
         ));
         let estimate = assert_some!(climb.observe(
             source,
             Timestamp::from_millis(1_000),
             Length::from_meters(102.0),
-            None,
-            None
+            TrafficMotion::default()
         ));
         assert_some_eq!(
             climb.observe(
                 changed,
                 Timestamp::from_millis(1_000),
                 changed_altitude,
-                None,
-                None
+                TrafficMotion::default()
             ),
             estimate
         );
@@ -126,8 +142,7 @@ mod tests {
                 changed,
                 Timestamp::from_millis(500),
                 changed_altitude,
-                None,
-                None
+                TrafficMotion::default()
             ),
             estimate
         );
@@ -135,22 +150,19 @@ mod tests {
             changed,
             Timestamp::from_millis(2_000),
             changed_altitude,
-            None,
-            None
+            TrafficMotion::default()
         ));
         assert_some!(climb.observe(
             changed,
             Timestamp::from_millis(62_000),
             Length::from_meters(960.0),
-            None,
-            None
+            TrafficMotion::default()
         ));
         assert_none!(climb.observe(
             changed,
             Timestamp::from_millis(122_001),
             Length::from_meters(980.0),
-            None,
-            None
+            TrafficMotion::default()
         ));
     }
 }

@@ -70,6 +70,17 @@ This estimates total-energy climb without a target polar or sink-rate correction
 Both velocity endpoints use the same wind estimate to avoid energy offsets from
 wind updates. Reported velocity uses its report timestamp.
 
+When either reported velocity field is missing, the core derives both components
+from consecutive absolute target positions. Ownship motion is included in that
+reconstruction. Both position references must be fresh and use the same source.
+The reception interval must be positive and at most five seconds.
+
+Derived velocity represents the midpoint of its position interval. The core
+interpolates altitude to the velocity timestamps. It delays the compensated result
+by half the latest derivation interval, at most 2.5 seconds. This midpoint estimate
+is approximate during turns. Missing derivation inputs use raw climb and flush any
+pending altitude change once. Reported velocity is preferred when both fields return.
+
 Compensation requires current wind, horizontal separation at most 10 km, and
 absolute vertical separation at most 1,500 m. Missing velocity or geometry, or
 stale wind, uses raw altitude change. Compensation and raw climb share continuous

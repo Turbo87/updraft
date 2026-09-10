@@ -7,7 +7,6 @@ mod airspace;
 mod arrival_reserve;
 #[cfg(feature = "ts")]
 pub mod bindings;
-#[cfg(test)]
 mod climb;
 mod connection;
 mod connection_diagnostics;
@@ -34,6 +33,7 @@ pub use airspace::{
     AirspaceState, AirspaceStatus,
 };
 pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
+pub use climb::ClimbEstimates;
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };

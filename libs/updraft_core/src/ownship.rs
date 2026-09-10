@@ -24,7 +24,7 @@ impl<T> Timed<T> {
 }
 
 impl<T: Copy> Timed<T> {
-    fn fresh(self, at: Timestamp) -> Option<Self> {
+    pub fn fresh(self, at: Timestamp) -> Option<Self> {
         (at.saturating_since(self.ingested_at) < DOMAIN_FRESHNESS_LIMIT).then_some(self)
     }
 

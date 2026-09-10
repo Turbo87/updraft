@@ -1,0 +1,9 @@
+---
+source: libs/updraft_core/src/core_tests/traffic.rs
+expression: climb
+---
+{
+  "average20s": 50.0,
+  "average30s": 50.0,
+  "normalizedEma": 50.0
+}

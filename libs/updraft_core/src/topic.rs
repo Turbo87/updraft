@@ -186,6 +186,7 @@ mod tests {
 
     fn published_target(id_type: TrafficTargetIdType) -> PublishedTrafficTarget {
         TrafficTarget {
+            climb: None,
             id: TrafficTargetId {
                 id_type,
                 value: 0xABC123,

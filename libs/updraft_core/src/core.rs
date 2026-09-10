@@ -265,13 +265,21 @@ impl Core {
                 else {
                     return;
                 };
-                let altitude = same_device
+                let altitude_reference = same_device
                     .altitude
-                    .map(|altitude| altitude.value)
-                    .or(displayed.and_then(|gps| gps.altitude_msl.map(|altitude| altitude.value)));
-                let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
+                    .map(|altitude| (altitude, SourceId::External(device_id)))
+                    .or_else(|| {
+                        let selected = self.gps.selected()?;
+                        Some((selected.value.altitude_msl?, selected.source))
+                    });
+                let altitude = altitude_reference.map(|(altitude, _)| altitude.value);
+                let Some(mut target) = target_from_pflaa(&pflaa, position, altitude) else {
                     return;
                 };
+                let altitude_source = altitude_reference
+                    .filter(|(altitude, _)| altitude.fresh(at).is_some())
+                    .map(|(_, source)| (device_id, source));
+                self.traffic.update_climb(&mut target, altitude_source, at);
                 self.traffic.observe(target, at, traffic_changes);
             }
             _ => {}

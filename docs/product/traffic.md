@@ -56,6 +56,30 @@ removes the target.
 A fresh report before removal replaces the stale target and clears the stale
 state. Tick inputs apply stale and removal transitions.
 
+## Climb estimates
+
+The core publishes a normalized EMA with a 10-second time constant and 20-second
+and 30-second altitude-change averages. It ignores the reported FLARM climb rate.
+All estimates use target MSL altitude. Ownship altitude must satisfy the existing
+three-second freshness rule before it can supply an estimator sample.
+
+The window averages use partial history and interpolate altitude at the window
+boundary. The shared core climb module keeps window history separate from the
+EMA's previous sample, weighted sum, and weight. The EMA normalizes its accumulated
+weight during startup. Both algorithms weight intervals by their duration.
+
+Missing usable altitude makes the published estimates unavailable without
+refreshing averaging history. Reception gaps through 60 seconds use the altitude
+change across the gap. Longer gaps reset the estimates. A change of reporting
+device or ownship altitude source also resets them. Duplicate or older samples
+do not change averaging state.
+
+Averaging history survives target removal at 30 seconds and expires after more
+than 60 seconds without usable altitude. The next sample after a reset establishes
+a baseline. A subsequent sample produces the first estimates.
+
+Map labels and settings selection for these estimates are not yet implemented.
+
 ## Topic updates
 
 A new subscriber receives one complete traffic snapshot. Later reports use

@@ -1,5 +1,11 @@
+mod climb;
+
+use crate::ExternalDeviceId;
+use crate::climb::ClimbEstimates;
+use crate::ownship::SourceId;
 use crate::time::Timestamp;
 use crate::topic::LatLon;
+use climb::TrafficClimb;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -125,6 +131,7 @@ pub struct TrafficTarget {
     pub id: TrafficTargetId,
     pub position: GeoLatLon,
     pub altitude_msl: Option<MslAltitude>,
+    pub climb: Option<ClimbEstimates>,
     pub traffic_type: TrafficType,
     pub track: Option<Angle>,
     pub alarm_level: TrafficAlarmLevel,
@@ -140,6 +147,7 @@ struct StoredTrafficTarget {
 #[derive(Debug, Default)]
 pub struct TrafficState {
     targets: BTreeMap<TrafficTargetId, StoredTrafficTarget>,
+    climbs: BTreeMap<TrafficTargetId, TrafficClimb>,
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -149,6 +157,26 @@ pub struct TrafficChanges {
 }
 
 impl TrafficState {
+    pub fn update_climb(
+        &mut self,
+        target: &mut TrafficTarget,
+        source: Option<(ExternalDeviceId, SourceId)>,
+        at: Timestamp,
+    ) {
+        target.climb = source
+            .zip(target.altitude_msl)
+            .and_then(|(source, altitude)| {
+                let meters = altitude.into_inner().as_meters();
+                if !meters.is_finite() {
+                    return None;
+                }
+                self.climbs
+                    .entry(target.id)
+                    .or_default()
+                    .observe(source, at, meters)
+            });
+    }
+
     pub fn observe(
         &mut self,
         mut target: TrafficTarget,
@@ -173,6 +201,7 @@ impl TrafficState {
     }
 
     pub fn expire(&mut self, at: Timestamp) -> TrafficChanges {
+        self.climbs.retain(|_, climb| !climb.expired(at));
         let mut changes = TrafficChanges::default();
         let mut removed = Vec::new();
 
@@ -243,6 +272,9 @@ pub struct PublishedTrafficTarget {
     pub id: String,
     pub position: LatLon,
     pub altitude_msl_meters: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub climb: Option<ClimbEstimates>,
     pub traffic_type: TrafficType,
     pub track_degrees: Option<f64>,
     pub alarm_level: TrafficAlarmLevel,
@@ -277,6 +309,7 @@ impl From<TrafficTarget> for PublishedTrafficTarget {
             altitude_msl_meters: target
                 .altitude_msl
                 .map(|altitude| altitude.into_inner().as_meters()),
+            climb: target.climb,
             traffic_type: target.traffic_type,
             track_degrees: target.track.map(Angle::as_degrees),
             alarm_level: target.alarm_level,
@@ -320,6 +353,7 @@ pub fn target_from_pflaa(
         id,
         position,
         altitude_msl,
+        climb: None,
         traffic_type: pflaa.aircraft_type.into(),
         track: pflaa.track,
         alarm_level: pflaa.alarm_level.into(),

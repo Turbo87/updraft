@@ -349,3 +349,69 @@ fn flarmnet_enriches_report_and_expiry_deltas() {
     assert_eq!(stale.flarmnet, reported.flarmnet);
     assert!(stale.stale);
 }
+
+#[test]
+fn climb_uses_altitude_changes_and_rejects_stale_ownship_altitude() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, GGA), at(0));
+    core.apply(Bytes::new(device, PFLAA_A), at(0));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(device, PFLAA_A_REPLACEMENT), at(1_000));
+    let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+    assert_eq!(climb.average_20s, 50.0);
+    assert_eq!(climb.average_30s, 50.0);
+    assert_eq!(climb.normalized_ema, 50.0);
+    insta::assert_json_snapshot!(climb);
+    core.apply(Bytes::new(device, PFLAA_A), at(3_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(device, GGA), at(5_000));
+    core.apply(Bytes::new(device, PFLAA_A), at(5_000));
+    assert_eq!(
+        assert_some!(traffic_snapshot(&core)[0].climb).average_20s,
+        0.0
+    );
+}
+
+#[test]
+fn climb_history_survives_target_removal_and_expires_after_sixty_seconds() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, GGA), at(0));
+    core.apply(Bytes::new(device, PFLAA_A), at(0));
+    core.apply(Tick, at(30_000));
+    assert!(traffic_snapshot(&core).is_empty());
+    core.apply(Tick, at(60_000));
+    core.apply(Bytes::new(device, GGA), at(60_000));
+    core.apply(Bytes::new(device, PFLAA_A_REPLACEMENT), at(60_000));
+    let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+    assert_abs_diff_eq!(climb.average_20s, 50.0 / 60.0, epsilon = 1e-12);
+    core.apply(Tick, at(120_001));
+    core.apply(Bytes::new(device, GGA), at(120_001));
+    core.apply(Bytes::new(device, PFLAA_A), at(120_001));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+}
+
+#[test]
+fn climb_resets_when_reporting_device_or_fallback_altitude_source_changes() {
+    let mut core = Core::new(SettingsSnapshot {
+        settings: Settings::default(),
+        external_devices: (4353..4356)
+            .map(|port| device_config(true, ConnectionSpec::tcp("127.0.0.1", port)))
+            .collect(),
+    });
+    let first = device_id(&core, 0);
+    let second = device_id(&core, 1);
+    let reporter = device_id(&core, 2);
+    core.apply(Bytes::new(first, GGA), at(0));
+    core.apply(Bytes::new(reporter, PFLAA_A), at(0));
+    core.apply(Bytes::new(reporter, PFLAA_A_REPLACEMENT), at(1_000));
+    assert_some!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(reporter, PFLAA_A), at(3_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(second, GGA_SECOND_DEVICE), at(4_000));
+    core.apply(Bytes::new(reporter, PFLAA_A), at(4_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(reporter, PFLAA_A_REPLACEMENT), at(5_000));
+    assert_some!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(second, PFLAA_A), at(6_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+}

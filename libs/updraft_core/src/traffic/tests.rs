@@ -30,6 +30,7 @@ fn pflaa() -> Pflaa {
 
 fn target(value: u32) -> TrafficTarget {
     TrafficTarget {
+        climb: None,
         id: TrafficTargetId::new(TrafficTargetIdType::Flarm, value),
         position: GeoLatLon::from_degrees(50.823, 6.186),
         altitude_msl: Some(MslAltitude::new(Length::from_meters(200.0))),

@@ -394,5 +394,14 @@
   "data_download_failed": "Download fehlgeschlagen",
   "data_retry_download": "Download erneut versuchen: {name}",
   "infobox_left": "links",
-  "infobox_right": "rechts"
+  "infobox_right": "rechts",
+  "infobox_agl": "AGL",
+  "infobox_ground_speed": "Fahrt über Grund",
+  "infobox_tas": "TAS",
+  "infobox_bank": "Querneigung",
+  "infobox_vario": "Vario",
+  "infobox_netto": "Netto",
+  "infobox_wind_speed": "Windstärke",
+  "infobox_wind_direction": "Windrichtung",
+  "infobox_zoom": "Zoom"
 }

@@ -54,12 +54,13 @@ pub use input::{
     GetAirspaceSnapshot, GetGlideSnapshot, GetWaypointCatalog, GetWaypointSnapshot, Input,
     InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceFlarmnetDatabase,
     ReplaceWaypointCatalog, SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled,
-    SetLocale, SetMacCready, SetPolar, SetUnits, Start, TerrainElevation, Tick, Update,
+    SetLocale, SetMacCready, SetPolar, SetTrafficClimbMethod, SetUnits, Start, TerrainElevation,
+    Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{
-    AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
-    VerticalSpeedUnit,
+    AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, TrafficClimbMethod,
+    UnitSettings, VerticalSpeedUnit,
 };
 pub use time::Timestamp;
 pub use topic::{

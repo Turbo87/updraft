@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
+
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
 
@@ -34,6 +36,7 @@
 
   const FOLLOW_DURATION_MS = 300;
   type Props = {
+    trafficClimbMethod?: TrafficClimbMethod;
     client?: UpdraftClient;
     airspace: AirspaceStatus;
     basemapGeneration?: number;
@@ -50,6 +53,7 @@
   };
 
   let {
+    trafficClimbMethod = 'normalizedEma',
     client,
     airspace,
     basemapGeneration = 0,
@@ -176,6 +180,7 @@
     {/if}
     {#if spritesLoaded}
       <Traffic
+        {trafficClimbMethod}
         {traffic}
         altitudeUnit={units.altitude}
         verticalSpeedUnit={units.verticalSpeed}

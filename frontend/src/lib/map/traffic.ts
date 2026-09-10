@@ -3,6 +3,7 @@ import type { ErrorEvent, GeoJSONSource, GeoJSONSourceDiff, Subscription } from 
 import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
 import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
+import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
 import type { TrafficDelta } from '$lib/protocol/generated/TrafficDelta';
 import type { TrafficType } from '$lib/protocol/generated/TrafficType';
 import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
@@ -27,6 +28,7 @@ export function trafficFeature(
   target: PublishedTrafficTarget,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
+  method: TrafficClimbMethod = 'normalizedEma',
 ): GeoJSON.Feature<GeoJSON.Point, TrafficFeatureProperties> {
   let altitude = target.altitudeMslMeters;
   let altitudeLabel =
@@ -34,7 +36,7 @@ export function trafficFeature(
       ? null
       : `${Math.round(convertAltitude(altitude, altitudeUnit))} ${altitudeUnit}`;
   let name = target.flarmnet?.callSign || target.flarmnet?.registration;
-  let climb = target.climb?.normalizedEma;
+  let climb = target.climb?.[method];
   let climbValue =
     !target.stale && climb !== undefined
       ? convertVerticalSpeed(climb, verticalSpeedUnit).toFixed(
@@ -67,11 +69,12 @@ export function trafficFeatureCollection(
   targets: Iterable<PublishedTrafficTarget>,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
+  method: TrafficClimbMethod = 'normalizedEma',
 ): GeoJSON.FeatureCollection<GeoJSON.Point, TrafficFeatureProperties> {
   return {
     type: 'FeatureCollection',
     features: Array.from(targets, (target) =>
-      trafficFeature(target, altitudeUnit, verticalSpeedUnit),
+      trafficFeature(target, altitudeUnit, verticalSpeedUnit, method),
     ),
   };
 }
@@ -80,11 +83,14 @@ export function trafficSourceDiff(
   delta: TrafficDelta,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
+  method: TrafficClimbMethod = 'normalizedEma',
 ): GeoJSONSourceDiff {
   return {
     ...(delta.removed.length > 0 && { remove: delta.removed }),
     ...(delta.upserts.length > 0 && {
-      add: delta.upserts.map((target) => trafficFeature(target, altitudeUnit, verticalSpeedUnit)),
+      add: delta.upserts.map((target) =>
+        trafficFeature(target, altitudeUnit, verticalSpeedUnit, method),
+      ),
     }),
   };
 }
@@ -95,10 +101,11 @@ export async function applyTrafficSourceUpdate(
   currentTargets: ReadonlyMap<string, PublishedTrafficTarget>,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
+  method: TrafficClimbMethod = 'normalizedEma',
 ): Promise<void> {
   if (update.type === 'snapshot') {
     await source.setData(
-      trafficFeatureCollection(currentTargets.values(), altitudeUnit, verticalSpeedUnit),
+      trafficFeatureCollection(currentTargets.values(), altitudeUnit, verticalSpeedUnit, method),
     );
     return;
   }
@@ -109,7 +116,9 @@ export async function applyTrafficSourceUpdate(
   });
 
   try {
-    await source.updateData(trafficSourceDiff(update.value, altitudeUnit, verticalSpeedUnit));
+    await source.updateData(
+      trafficSourceDiff(update.value, altitudeUnit, verticalSpeedUnit, method),
+    );
   } catch (error) {
     sourceError ??= error;
   } finally {
@@ -120,6 +129,6 @@ export async function applyTrafficSourceUpdate(
 
   console.warn('Traffic source update failed. Rebuilding the source.', sourceError);
   await source.setData(
-    trafficFeatureCollection(currentTargets.values(), altitudeUnit, verticalSpeedUnit),
+    trafficFeatureCollection(currentTargets.values(), altitudeUnit, verticalSpeedUnit, method),
   );
 }

@@ -301,3 +301,15 @@ it('adds positive normalized climb in the selected vertical-speed unit', () => {
   aircraft.stale = true;
   expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m');
 });
+
+it('switches the displayed method using estimates already on the target', () => {
+  let aircraft = target('flarm:000123', {
+    climb: { average20s: 1, average30s: 3, normalizedEma: 2 },
+  });
+  expect(trafficFeature(aircraft, 'm', 'm/s', 'average20s').properties.label).toBe(
+    '200 m\n+1.0 m/s',
+  );
+  expect(trafficFeature(aircraft, 'm', 'm/s', 'average30s').properties.label).toBe(
+    '200 m\n+3.0 m/s',
+  );
+});

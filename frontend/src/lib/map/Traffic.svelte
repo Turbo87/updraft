@@ -5,6 +5,7 @@
     SymbolLayerSpecification,
   } from 'maplibre-gl';
   import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
+  import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
   import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
@@ -82,13 +83,20 @@
   };
 
   type Props = {
+    trafficClimbMethod?: TrafficClimbMethod;
     traffic: TrafficStore;
     altitudeUnit: AltitudeUnit;
     verticalSpeedUnit: VerticalSpeedUnit;
     showHitAreas: boolean;
   };
 
-  let { traffic, altitudeUnit, verticalSpeedUnit, showHitAreas }: Props = $props();
+  let {
+    traffic,
+    altitudeUnit,
+    verticalSpeedUnit,
+    showHitAreas,
+    trafficClimbMethod = 'normalizedEma',
+  }: Props = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
@@ -97,6 +105,7 @@
     let activeSource = source;
     let activeAltitudeUnit = altitudeUnit;
     let activeVerticalSpeedUnit = verticalSpeedUnit;
+    let activeMethod = trafficClimbMethod;
     if (!activeSource) return;
 
     updateQueue = updateQueue.then(() =>
@@ -105,6 +114,7 @@
           traffic.current.values(),
           activeAltitudeUnit,
           activeVerticalSpeedUnit,
+          activeMethod,
         ),
       ),
     );
@@ -122,6 +132,7 @@
           currentTargets,
           altitudeUnit,
           verticalSpeedUnit,
+          trafficClimbMethod,
         ),
       );
     }),

@@ -4,6 +4,7 @@
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
+  import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -18,6 +19,7 @@
   import InfoboxDock from './infobox/InfoboxDock.svelte';
 
   type Props = {
+    trafficClimbMethod?: TrafficClimbMethod;
     client?: UpdraftClient;
     airspace: AirspaceStatus;
     basemapGeneration?: number;
@@ -31,6 +33,7 @@
   };
 
   let {
+    trafficClimbMethod = 'normalizedEma',
     client,
     airspace,
     basemapGeneration,
@@ -57,6 +60,7 @@
 <section class="flight-view" aria-label={m.flight_view()}>
   <div class="map">
     <Map
+      {trafficClimbMethod}
       {client}
       {airspace}
       {basemapGeneration}

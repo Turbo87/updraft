@@ -3,6 +3,7 @@ import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId'
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
+import type { TrafficClimbMethod } from '$lib/protocol/generated/TrafficClimbMethod';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 
@@ -124,6 +125,7 @@ export interface UpdraftClient {
   getPolars(): Promise<PolarId[]>;
   setPolar(polar: PolarId): Promise<void>;
   setArrivalReserve(reserve: number): Promise<void>;
+  setTrafficClimbMethod(method: TrafficClimbMethod): Promise<void>;
   setMacCready(macCready: number): Promise<void>;
   setBugs(bugs: number): Promise<void>;
   setBallast(ballast: number): Promise<void>;

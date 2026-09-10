@@ -78,8 +78,8 @@ Averaging history survives target removal at 30 seconds and expires after more
 than 60 seconds without usable altitude. The next sample after a reset establishes
 a baseline. A subsequent sample produces the first estimates.
 
-The map shows normalized EMA climb. Settings selection and details comparison
-are not yet implemented.
+The map shows the selected climb estimate and defaults to normalized EMA.
+The settings control and details comparison are not yet implemented.
 
 ## Topic updates
 
@@ -110,7 +110,7 @@ zoom.
 FLARM alarm level controls symbol color. Stale targets use reduced opacity. The
 label appears from zoom level 7 and uses the configured altitude unit. The first
 line shows callsign, with registration as the fallback. The second line shows
-MSL altitude. A third line shows positive normalized EMA climb in the selected
+MSL altitude. A third line shows the positive selected climb estimate in the selected
 vertical-speed unit. It uses one decimal place for m/s and knots, and whole ft/min.
 Stale targets, missing estimates, and estimates that round to zero or below have
 no climb line. Missing name or altitude removes that line. A target without any

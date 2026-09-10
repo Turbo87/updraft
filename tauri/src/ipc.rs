@@ -286,6 +286,17 @@ pub async fn set_mac_cready(
 }
 
 #[tauri::command]
+pub async fn set_traffic_climb_method(
+    method: updraft_core::TrafficClimbMethod,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetTrafficClimbMethod { method })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_arrival_reserve(
     reserve: updraft_core::ArrivalReserve,
     handle: tauri::State<'_, DriverHandle>,
@@ -450,6 +461,7 @@ mod tests {
                 set_bugs,
                 set_ballast,
                 set_arrival_reserve,
+                set_traffic_climb_method,
                 set_polar,
                 add_external_device,
                 delete_external_device,
@@ -588,6 +600,20 @@ mod tests {
             .expect("the bonded-device result should deserialize");
 
         assert_eq!(response, json!({ "status": "unsupported" }));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn traffic_climb_method_command_accepts_only_known_methods() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for method in ["normalizedEma", "average20s", "average30s"] {
+            let input = request("set_traffic_climb_method", json!({ "method": method }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        let input = request("set_traffic_climb_method", json!({ "method": "unknown" }));
+        claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -125,6 +125,7 @@ pub fn run() {
             ipc::set_bugs,
             ipc::set_ballast,
             ipc::set_arrival_reserve,
+            ipc::set_traffic_climb_method,
             ipc::set_polar,
             ipc::add_external_device,
             ipc::delete_external_device,

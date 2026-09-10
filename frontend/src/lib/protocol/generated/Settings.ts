@@ -2,6 +2,7 @@
 import type { ArrivalReserve } from "./ArrivalReserve";
 import type { Locale } from "./Locale";
 import type { PolarId } from "./PolarId";
+import type { TrafficClimbMethod } from "./TrafficClimbMethod";
 import type { UnitSettings } from "./UnitSettings";
 
-export type Settings = { locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };
+export type Settings = { trafficClimbMethod: TrafficClimbMethod, locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };

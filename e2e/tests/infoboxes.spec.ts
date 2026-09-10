@@ -104,6 +104,17 @@ for (let scenario of [
             ),
           ),
       ).toBe(true);
+      if (locale === 'de') {
+        expect(
+          await dock
+            .locator('.label')
+            .evaluateAll((labels) =>
+              labels.every(
+                (label) => label.clientHeight <= parseFloat(getComputedStyle(label).lineHeight),
+              ),
+            ),
+        ).toBe(true);
+      }
       let cells = await dock.getByRole('group').evaluateAll((elements) =>
         elements.map((element) => {
           let { x, y, width, height } = element.getBoundingClientRect();

@@ -396,13 +396,13 @@
   "infobox_left": "links",
   "infobox_right": "rechts",
   "infobox_agl": "AGL",
-  "infobox_ground_speed": "Fahrt über Grund",
+  "infobox_ground_speed": "GS",
   "infobox_tas": "TAS",
-  "infobox_bank": "Quer\u00adneigung",
+  "infobox_bank": "Querlage",
   "infobox_vario": "Vario",
   "infobox_netto": "Netto",
   "infobox_wind_speed": "Windstärke",
-  "infobox_wind_direction": "Wind\u00adrichtung",
+  "infobox_wind_direction": "Windricht.",
   "infobox_zoom": "Zoom",
   "flight_view_instruments": "Fluginstrumente"
 }

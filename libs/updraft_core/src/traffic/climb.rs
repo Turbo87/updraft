@@ -2,6 +2,7 @@ use crate::climb::{ClimbEma, ClimbEstimates, ClimbWindow};
 use crate::ownship::SourceId;
 use crate::{ExternalDeviceId, Timestamp};
 use std::time::Duration;
+use updraft_units::Length;
 
 #[derive(Debug, Default)]
 pub struct TrafficClimb {
@@ -21,7 +22,7 @@ impl TrafficClimb {
         &mut self,
         source: (ExternalDeviceId, SourceId),
         at: Timestamp,
-        altitude: f64,
+        altitude: Length,
     ) -> Option<ClimbEstimates> {
         if let Some((previous, previous_source)) = self.previous {
             if at <= previous {
@@ -32,18 +33,15 @@ impl TrafficClimb {
             }
         }
         self.previous = Some((at, source));
-        let seconds = at.since_start().as_secs_f64();
-        self.window.observe(seconds, altitude);
-        self.estimates = self
-            .ema
-            .observe(seconds, altitude)
-            .and_then(|normalized_ema| {
-                Some(ClimbEstimates {
-                    average_20s: self.window.average(20.0)?,
-                    average_30s: self.window.average(30.0)?,
-                    normalized_ema,
-                })
-            });
+        let time = at.since_start();
+        self.window.observe(time, altitude);
+        self.estimates = self.ema.observe(time, altitude).and_then(|normalized_ema| {
+            Some(ClimbEstimates {
+                average_20s: self.window.average(Duration::from_secs(20))?,
+                average_30s: self.window.average(Duration::from_secs(30))?,
+                normalized_ema,
+            })
+        });
         self.estimates
     }
 }
@@ -58,18 +56,35 @@ mod tests {
         let mut climb = TrafficClimb::default();
         let source = (ExternalDeviceId(1), SourceId::InternalGps);
         let changed = (ExternalDeviceId(1), SourceId::External(ExternalDeviceId(2)));
-        assert_none!(climb.observe(source, Timestamp::from_millis(0), 100.0));
-        let estimate = assert_some!(climb.observe(source, Timestamp::from_millis(1_000), 102.0));
+        let changed_altitude = Length::from_meters(900.0);
+        assert_none!(climb.observe(
+            source,
+            Timestamp::from_millis(0),
+            Length::from_meters(100.0)
+        ));
+        let estimate = assert_some!(climb.observe(
+            source,
+            Timestamp::from_millis(1_000),
+            Length::from_meters(102.0)
+        ));
         assert_some_eq!(
-            climb.observe(changed, Timestamp::from_millis(1_000), 900.0),
+            climb.observe(changed, Timestamp::from_millis(1_000), changed_altitude),
             estimate
         );
         assert_some_eq!(
-            climb.observe(changed, Timestamp::from_millis(500), 900.0),
+            climb.observe(changed, Timestamp::from_millis(500), changed_altitude),
             estimate
         );
-        assert_none!(climb.observe(changed, Timestamp::from_millis(2_000), 900.0));
-        assert_some!(climb.observe(changed, Timestamp::from_millis(62_000), 960.0));
-        assert_none!(climb.observe(changed, Timestamp::from_millis(122_001), 980.0));
+        assert_none!(climb.observe(changed, Timestamp::from_millis(2_000), changed_altitude));
+        assert_some!(climb.observe(
+            changed,
+            Timestamp::from_millis(62_000),
+            Length::from_meters(960.0)
+        ));
+        assert_none!(climb.observe(
+            changed,
+            Timestamp::from_millis(122_001),
+            Length::from_meters(980.0)
+        ));
     }
 }

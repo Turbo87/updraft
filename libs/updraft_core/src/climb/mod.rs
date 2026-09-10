@@ -1,3 +1,5 @@
+use updraft_units::Speed;
+
 mod ema;
 mod window;
 
@@ -9,7 +11,10 @@ pub use window::ClimbWindow;
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct ClimbEstimates {
-    pub average_20s: f64,
-    pub average_30s: f64,
-    pub normalized_ema: f64,
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub average_20s: Speed,
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub average_30s: Speed,
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub normalized_ema: Speed,
 }

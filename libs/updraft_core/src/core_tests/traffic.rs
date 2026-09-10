@@ -358,9 +358,9 @@ fn climb_uses_altitude_changes_and_rejects_stale_ownship_altitude() {
     assert_none!(traffic_snapshot(&core)[0].climb);
     core.apply(Bytes::new(device, PFLAA_A_REPLACEMENT), at(1_000));
     let climb = assert_some!(traffic_snapshot(&core)[0].climb);
-    assert_eq!(climb.average_20s, 50.0);
-    assert_eq!(climb.average_30s, 50.0);
-    assert_eq!(climb.normalized_ema, 50.0);
+    assert_eq!(climb.average_20s, Speed::from_meters_per_second(50.0));
+    assert_eq!(climb.average_30s, Speed::from_meters_per_second(50.0));
+    assert_eq!(climb.normalized_ema, Speed::from_meters_per_second(50.0));
     insta::assert_json_snapshot!(climb);
     core.apply(Bytes::new(device, PFLAA_A), at(3_000));
     assert_none!(traffic_snapshot(&core)[0].climb);
@@ -368,7 +368,7 @@ fn climb_uses_altitude_changes_and_rejects_stale_ownship_altitude() {
     core.apply(Bytes::new(device, PFLAA_A), at(5_000));
     assert_eq!(
         assert_some!(traffic_snapshot(&core)[0].climb).average_20s,
-        0.0
+        Speed::ZERO
     );
 }
 
@@ -383,7 +383,11 @@ fn climb_history_survives_target_removal_and_expires_after_sixty_seconds() {
     core.apply(Bytes::new(device, GGA), at(60_000));
     core.apply(Bytes::new(device, PFLAA_A_REPLACEMENT), at(60_000));
     let climb = assert_some!(traffic_snapshot(&core)[0].climb);
-    assert_abs_diff_eq!(climb.average_20s, 50.0 / 60.0, epsilon = 1e-12);
+    assert_abs_diff_eq!(
+        climb.average_20s,
+        Speed::from_meters_per_second(50.0) / 60.0,
+        epsilon = 1e-12
+    );
     core.apply(Tick, at(120_001));
     core.apply(Bytes::new(device, GGA), at(120_001));
     core.apply(Bytes::new(device, PFLAA_A), at(120_001));

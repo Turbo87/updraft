@@ -173,7 +173,7 @@ impl TrafficState {
                 self.climbs
                     .entry(target.id)
                     .or_default()
-                    .observe(source, at, meters)
+                    .observe(source, at, altitude.into_inner())
             });
     }
 

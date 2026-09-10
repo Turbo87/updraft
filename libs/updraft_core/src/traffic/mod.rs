@@ -1,7 +1,7 @@
 mod climb;
 
 use crate::ExternalDeviceId;
-use crate::climb::ClimbEstimates;
+use crate::climb::{ClimbEstimates, Velocity};
 use crate::ownship::SourceId;
 use crate::time::Timestamp;
 use crate::topic::LatLon;
@@ -162,6 +162,8 @@ impl TrafficState {
         target: &mut TrafficTarget,
         source: Option<(ExternalDeviceId, SourceId)>,
         at: Timestamp,
+        velocity: Option<Velocity>,
+        wind: Option<Velocity>,
     ) {
         target.climb = source
             .zip(target.altitude_msl)
@@ -170,10 +172,13 @@ impl TrafficState {
                 if !meters.is_finite() {
                     return None;
                 }
-                self.climbs
-                    .entry(target.id)
-                    .or_default()
-                    .observe(source, at, altitude.into_inner())
+                self.climbs.entry(target.id).or_default().observe(
+                    source,
+                    at,
+                    altitude.into_inner(),
+                    velocity.map(|value| (at.since_start(), value)),
+                    wind,
+                )
             });
     }
 
@@ -330,6 +335,17 @@ impl TrafficTarget {
             ..self.into()
         }
     }
+}
+
+pub fn within_wind_range(pflaa: &Pflaa) -> bool {
+    let Some((north, east)) = pflaa.relative_north.zip(pflaa.relative_east) else {
+        return false;
+    };
+    let distance = Length::from_meters(north.as_meters().hypot(east.as_meters()));
+    distance <= Length::from_kilometers(10.)
+        && pflaa
+            .relative_vertical
+            .is_some_and(|height| height.abs() <= Length::from_meters(1500.))
 }
 
 pub fn target_from_pflaa(

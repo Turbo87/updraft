@@ -337,3 +337,26 @@ fn flarmnet_matches_only_flarm_and_icao_addresses() {
     }
     assert_none!(target(1).publish(&database).flarmnet);
 }
+
+#[test]
+fn wind_compensation_requires_nearby_targets_with_known_geometry() {
+    let mut report = pflaa();
+    report.relative_north = Some(Length::from_meters(6000.));
+    report.relative_east = Some(Length::from_meters(8000.));
+    for height in [-1500., 1500.] {
+        report.relative_vertical = Some(Length::from_meters(height));
+        assert!(within_wind_range(&report));
+    }
+    for height in [-1500.01, 1500.01] {
+        report.relative_vertical = Some(Length::from_meters(height));
+        assert!(!within_wind_range(&report));
+    }
+    report.relative_vertical = Some(Length::ZERO);
+    report.relative_east = Some(Length::from_meters(8000.01));
+    assert!(!within_wind_range(&report));
+    report.relative_east = None;
+    assert!(!within_wind_range(&report));
+    report.relative_east = Some(Length::ZERO);
+    report.relative_vertical = None;
+    assert!(!within_wind_range(&report));
+}

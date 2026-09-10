@@ -419,3 +419,27 @@ fn climb_resets_when_reporting_device_or_fallback_altitude_source_changes() {
     core.apply(Bytes::new(second, PFLAA_A), at(6_000));
     assert_none!(traffic_snapshot(&core)[0].climb);
 }
+
+#[test]
+fn traffic_refreshes_wind_before_using_reports_in_a_navigation_batch() {
+    let (mut core, device) = core_with_external_device();
+    for second in 0..60 {
+        let navigation = format!(
+            "$GPRMC,120000.00,A,5049.38,N,00611.16,E,64.7948,{},010126,,,A\r\n$LXWP0,Y,100,,,,,,,,,,\r\n",
+            second * 6
+        );
+        core.apply(Bytes::new(device, navigation.as_bytes()), at(second * 1000));
+    }
+    assert_some!(core.sensor_fusion.current_wind());
+    core.apply(Bytes::new(device, GGA), at(59_000));
+    core.apply(Bytes::new(device, PFLAA_A), at(59_000));
+    let batch = [GGA, PFLAA_A_REPLACEMENT].concat();
+    core.apply(Bytes::new(device, batch), at(70_000));
+    assert_none!(core.sensor_fusion.current_wind());
+    let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+    assert_abs_diff_eq!(
+        climb.average_20s,
+        Speed::from_meters_per_second(50. / 11.),
+        epsilon = 1e-12
+    );
+}

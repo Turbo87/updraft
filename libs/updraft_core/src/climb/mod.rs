@@ -1,16 +1,16 @@
 use updraft_units::Speed;
 
 mod ema;
-#[cfg(test)]
 mod energy;
-#[cfg(test)]
 mod velocity;
 mod window;
 
 pub use ema::ClimbEma;
+pub use energy::EnergyClimb;
+pub use velocity::Velocity;
 pub use window::ClimbWindow;
 
-/// Altitude-derived climb estimates in metres per second.
+/// Averaged climb estimates in metres per second.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]

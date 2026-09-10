@@ -1,3 +1,4 @@
+use crate::climb::Velocity;
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
@@ -253,6 +254,7 @@ impl Core {
                 device.true_airspeed = Some(Timed::new(true_airspeed, at));
             }
             Message::Pflaa(pflaa) => {
+                self.reevaluate_flight_data(at);
                 let Some(device) = self.external_devices.get(device_id) else {
                     return;
                 };
@@ -279,7 +281,17 @@ impl Core {
                 let altitude_source = altitude_reference
                     .filter(|(altitude, _)| altitude.fresh(at).is_some())
                     .map(|(_, source)| (device_id, source));
-                self.traffic.update_climb(&mut target, altitude_source, at);
+                let velocity = pflaa
+                    .track
+                    .zip(pflaa.ground_speed)
+                    .map(|(track, speed)| Velocity::from_track(track, speed));
+                let wind = self
+                    .sensor_fusion
+                    .current_wind()
+                    .filter(|_| crate::traffic::within_wind_range(&pflaa))
+                    .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
+                self.traffic
+                    .update_climb(&mut target, altitude_source, at, velocity, wind);
                 self.traffic.observe(target, at, traffic_changes);
             }
             _ => {}

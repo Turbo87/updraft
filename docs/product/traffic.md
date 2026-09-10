@@ -59,9 +59,22 @@ state. Tick inputs apply stale and removal transitions.
 ## Climb estimates
 
 The core publishes a normalized EMA with a 10-second time constant and 20-second
-and 30-second altitude-change averages. It ignores the reported FLARM climb rate.
+and 30-second climb averages. It ignores the reported FLARM climb rate.
 All estimates use target MSL altitude. Ownship altitude must satisfy the existing
 three-second freshness rule before it can supply an estimator sample.
+
+When FLARM provides ground speed and track, the core estimates target airspeed
+by subtracting current ownship wind from the target ground-velocity vector.
+It adds the airspeed energy-height change to the altitude change before averaging.
+This estimates total-energy climb without a target polar or sink-rate correction.
+Both velocity endpoints use the same wind estimate to avoid energy offsets from
+wind updates. Reported velocity uses its report timestamp.
+
+Compensation requires current wind, horizontal separation at most 10 km, and
+absolute vertical separation at most 1,500 m. Missing velocity or geometry, or
+stale wind, uses raw altitude change. Compensation and raw climb share continuous
+averaging history. Recovery establishes a new velocity baseline before compensation
+resumes. Switching modes does not add or remove an energy-height offset.
 
 The window averages use partial history and interpolate altitude at the window
 boundary. The shared core climb module keeps window history separate from the

@@ -37,7 +37,7 @@ documents for accepted behavior.
 - [x] **map-inspection** — open a nearby route from a map point and show current
   airspace and traffic results with detail routes.
 - [ ] **map-orientation-setting** — persist map orientation and add its Settings control. _(needs: map-orientation, settings-persistence)_
-- [ ] **flight-data-fields** — add a fixed-slot Flight View dock for the first altitude, speed, direction, and time values. _(needs: route-shell, frontend-protocol, units-settings)_
+- [x] **flight-data-fields** — show ten fixed Flight View infoboxes for altitude, AGL, ground speed, TAS, bank, vario, netto, wind speed, wind direction, and zoom. The dock respects safe areas in portrait and landscape. _(needs: route-shell, frontend-protocol, units-settings)_
 - [x] **basemap-assets** — bundle the basemap style, glyphs, and sprites. _(needs: frontend-map)_
 - [x] **offline-basemap-serving** — scan the application data directory's `enroute` folder for MBTiles basemaps and serve the first matching vector tile. The map uses offline tiles only, with fixed Enroute zoom limits. _(needs: basemap-assets, resource-scheme)_
 - [x] **basemap-inventory** — retain basemap files and load errors in the native inventory. Honor per-file disabled markers at startup without opening disabled files. _(needs: offline-basemap-serving)_

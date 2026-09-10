@@ -59,23 +59,21 @@
     height: 100%;
     min-width: 0;
     min-height: 0;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: 1.5rem minmax(0, 1fr);
     gap: 0.125rem;
-    padding: 0.4375rem 0.25rem;
+    padding: 0.375rem 0.25rem;
     background: var(--color-screen-surface);
   }
 
   .label {
+    align-self: center;
     overflow: hidden;
     color: var(--color-text-muted);
     font-size: 0.625rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
     line-height: 1.2;
     text-align: center;
-    text-overflow: ellipsis;
     text-transform: uppercase;
-    white-space: nowrap;
   }
 
   .numeric-value {
@@ -134,8 +132,9 @@
   .chevron {
     align-self: center;
     flex: none;
-    width: 0.65rem;
-    height: 1.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-inline: -0.5rem;
     color: var(--color-text-muted);
   }
 

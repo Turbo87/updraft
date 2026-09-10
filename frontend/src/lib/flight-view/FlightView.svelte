@@ -14,6 +14,8 @@
   import Map from '$lib/map/Map.svelte';
   import MapOverlayControl from '$lib/MapOverlayControl.svelte';
   import { m } from '$lib/paraglide/messages.js';
+  import { flightInfoboxes } from './infobox/fields';
+  import InfoboxDock from './infobox/InfoboxDock.svelte';
 
   type Props = {
     client?: UpdraftClient;
@@ -41,6 +43,8 @@
     testMode = false,
   }: Props = $props();
 
+  const infoboxes = $derived(flightInfoboxes(instruments, units, mapState.zoom));
+
   function openNearbyRoute(position: LatLon) {
     let path = resolve('/nearby/[latitude]/[longitude]', {
       latitude: position.latitudeDegrees.toFixed(6),
@@ -51,29 +55,52 @@
 </script>
 
 <section class="flight-view" aria-label={m.flight_view()}>
-  <Map
-    {client}
-    {airspace}
-    {basemapGeneration}
-    {terrainGeneration}
-    {waypoints}
-    {instruments}
-    {mapState}
-    {traffic}
-    {units}
-    {testMode}
-    onInspect={openNearbyRoute}
-  />
-  <div class="overlay">
-    <MapOverlayControl href="/settings" icon="i-mdi-menu" label={m.settings_heading()} />
+  <div class="map">
+    <Map
+      {client}
+      {airspace}
+      {basemapGeneration}
+      {terrainGeneration}
+      {waypoints}
+      {instruments}
+      {mapState}
+      {traffic}
+      {units}
+      {testMode}
+      onInspect={openNearbyRoute}
+    />
+    <div class="overlay">
+      <MapOverlayControl href="/settings" icon="i-mdi-menu" label={m.settings_heading()} />
+    </div>
   </div>
+  <InfoboxDock {infoboxes} />
 </section>
 
 <style>
   .flight-view {
     position: relative;
+    display: flex;
+    flex-direction: column;
     width: 100%;
     height: 100%;
+  }
+
+  .map {
+    --safe-area-bottom: 0px;
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  @media (orientation: landscape) {
+    .flight-view {
+      flex-direction: row;
+    }
+    .map {
+      --safe-area-right: 0px;
+      --safe-area-bottom: inherit;
+    }
   }
 
   .overlay {

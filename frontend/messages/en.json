@@ -403,5 +403,6 @@
   "infobox_netto": "Netto",
   "infobox_wind_speed": "Wind speed",
   "infobox_wind_direction": "Wind direction",
-  "infobox_zoom": "Zoom"
+  "infobox_zoom": "Zoom",
+  "flight_view_instruments": "Flight instruments"
 }

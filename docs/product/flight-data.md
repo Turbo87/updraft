@@ -117,7 +117,10 @@ from IAS, altitude, or temperature. It does not ingest IAS.
 
 TAS uses the same external-device ordering and three-second freshness boundary
 as pressure altitude. The debug overlay displays the selected value with the
-configured horizontal-speed unit. There is no pilot-facing TAS infobox yet.
+configured horizontal-speed unit. The Flight View TAS infobox prefers fresh
+direct TAS, then fresh derived airspeed. If both are unavailable or stale, it
+uses stale direct TAS, then stale derived airspeed. If neither exists, it shows
+a dash. The infobox retains the selected value's freshness state.
 
 ## Frontend projection
 

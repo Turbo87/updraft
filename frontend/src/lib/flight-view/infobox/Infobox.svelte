@@ -1,0 +1,143 @@
+<script lang="ts">
+  import type { InfoboxValue } from './value';
+
+  import { m } from '$lib/paraglide/messages';
+  import { getLocale } from '$lib/paraglide/runtime';
+  import { fitReadout } from './fit-readout';
+  import { formatInfoboxValue } from './value';
+
+  type Props = {
+    label: string;
+    value: InfoboxValue;
+    stale: boolean;
+  };
+
+  let { label, value, stale }: Props = $props();
+  const presentation = $derived(formatInfoboxValue(value, getLocale()));
+  const stackedUnit = $derived(
+    presentation.unit?.includes('/') ? presentation.unit.split('/', 2) : null,
+  );
+</script>
+
+<div class="infobox" role="group" aria-label={label}>
+  <span class="label">{label}</span>
+  <div class="readout-area" {@attach fitReadout}>
+    <span class="numeric-value" class:stale class:unavailable={presentation.text === '–'}>
+      {#if presentation.direction === -1 || presentation.direction === 0}
+        <span class="chevron chevron-left i-mdi-chevron-left" aria-hidden="true"></span>
+      {/if}
+      <span class="value">{presentation.text}</span>
+      {#if stackedUnit}
+        <span class="unit stacked">
+          <span aria-hidden="true">{stackedUnit[0]}</span>
+          <span aria-hidden="true">{stackedUnit[1]}</span>
+          <span class="unit-label sr-only">{presentation.unit}</span>
+        </span>
+      {:else if presentation.unit}
+        <span class="unit" class:degree={presentation.unit === '°'}>{presentation.unit}</span>
+      {/if}
+      {#if presentation.direction === 1 || presentation.direction === 0}
+        <span class="chevron chevron-right i-mdi-chevron-right" aria-hidden="true"></span>
+      {/if}
+      {#if presentation.direction === -1}
+        <span class="sr-only">{m.infobox_left()}</span>
+      {:else if presentation.direction === 1}
+        <span class="sr-only">{m.infobox_right()}</span>
+      {/if}
+      {#if stale && presentation.text !== '–'}
+        <span class="sr-only">{m.stale_value()}</span>
+      {/if}
+    </span>
+  </div>
+</div>
+
+<style>
+  .infobox {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.125rem;
+    padding: 0.375rem 0.25rem;
+    background: var(--color-screen-surface);
+  }
+
+  .label {
+    align-self: center;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .readout-area {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .numeric-value {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    place-self: center;
+    color: var(--color-value-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .value {
+    font-family: var(--font-numeric);
+    font-size: 1em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  .unit {
+    margin-left: 0.2em;
+    color: var(--color-text-muted);
+    font-size: 0.4em;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .unit.degree {
+    align-self: flex-start;
+    margin-top: 0.25em;
+    font-size: 0.5em;
+  }
+
+  .unit.stacked {
+    display: inline-flex;
+    align-self: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2em;
+  }
+
+  .unit.stacked span:first-child {
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid currentcolor;
+  }
+
+  .chevron {
+    align-self: center;
+    flex: none;
+    width: 0.8em;
+    height: 1em;
+    color: var(--color-text-muted);
+  }
+
+  .numeric-value.stale,
+  .numeric-value.unavailable {
+    color: var(--color-value-stale);
+  }
+</style>

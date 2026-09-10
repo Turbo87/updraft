@@ -392,5 +392,17 @@
   "data_download_progress": "{done} of {total}",
   "data_cancel_download": "Cancel download: {name}",
   "data_download_failed": "Download failed",
-  "data_retry_download": "Retry download: {name}"
+  "data_retry_download": "Retry download: {name}",
+  "infobox_left": "left",
+  "infobox_right": "right",
+  "infobox_agl": "AGL",
+  "infobox_ground_speed": "Ground speed",
+  "infobox_tas": "TAS",
+  "infobox_bank": "Bank angle",
+  "infobox_vario": "Vario",
+  "infobox_netto": "Netto",
+  "infobox_wind_speed": "Wind speed",
+  "infobox_wind_direction": "Wind direction",
+  "infobox_zoom": "Zoom",
+  "flight_view_instruments": "Flight instruments"
 }

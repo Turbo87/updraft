@@ -392,5 +392,17 @@
   "data_download_progress": "{done} von {total}",
   "data_cancel_download": "Download abbrechen: {name}",
   "data_download_failed": "Download fehlgeschlagen",
-  "data_retry_download": "Download erneut versuchen: {name}"
+  "data_retry_download": "Download erneut versuchen: {name}",
+  "infobox_left": "links",
+  "infobox_right": "rechts",
+  "infobox_agl": "AGL",
+  "infobox_ground_speed": "GS",
+  "infobox_tas": "TAS",
+  "infobox_bank": "Querlage",
+  "infobox_vario": "Vario",
+  "infobox_netto": "Netto",
+  "infobox_wind_speed": "Windstärke",
+  "infobox_wind_direction": "Windricht.",
+  "infobox_zoom": "Zoom",
+  "flight_view_instruments": "Fluginstrumente"
 }

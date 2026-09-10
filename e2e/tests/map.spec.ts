@@ -109,6 +109,7 @@ test('follows live positions until the user pans and returns', async ({ page }) 
 });
 
 test('keeps the Settings button inside the safe area', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
   await page.goto('/?testMode=1');
   await page.locator('html').evaluate((element) => {
     element.style.setProperty('--safe-area-top', '32px');
@@ -128,6 +129,7 @@ test('keeps the Settings button inside the safe area', async ({ page }) => {
 });
 
 test('keeps the return-to-position button inside the safe area', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
   await page.goto('/?testMode=1');
   await page.locator('html').evaluate((element) => {
     element.style.setProperty('--safe-area-right', '24px');
@@ -139,7 +141,7 @@ test('keeps the return-to-position button inside the safe area', async ({ page }
   await expect(returnButton).toHaveCSS('width', '56px');
   await expect(returnButton).toHaveCSS('height', '56px');
   await expect(returnButton.locator('..')).toHaveCSS('right', '40px');
-  await expect(returnButton.locator('..')).toHaveCSS('bottom', '36px');
+  await expect(returnButton.locator('..')).toHaveCSS('bottom', '16px');
 });
 
 test('renders active airspace below traffic and ownship', async ({ page }) => {
@@ -188,26 +190,28 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
   await expect(page).toHaveURL('/nearby/50.823000/6.186000');
   await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
-  await expect(page.getByText('50.82300° N, 6.18600° E')).toBeVisible();
-  await expect(page.getByText('0.0', { exact: true })).toBeVisible();
-  await expect(page.getByText('km', { exact: true })).toBeVisible();
-  await expect(page.getByText('0', { exact: true })).toBeVisible();
-  await expect(page.getByText('°', { exact: true })).toBeVisible();
-  await expect(page.getByText('Arrival')).toBeVisible();
-  await expect(page.getByText('Req. L/D')).toBeVisible();
-  await expect(page.getByText('Elevation')).toBeVisible();
-  await expect(page.getByText('—', { exact: true })).toHaveCount(3);
+  await expect(page.getByRole('main').getByText('50.82300° N, 6.18600° E')).toBeVisible();
+  await expect(page.getByRole('main').getByText('0.0', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('km', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('0', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('°', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Arrival')).toBeVisible();
+  await expect(page.getByRole('main').getByText('Req. L/D')).toBeVisible();
+  await expect(page.getByRole('main').getByText('Elevation')).toBeVisible();
+  await expect(page.getByRole('main').getByText('—', { exact: true })).toHaveCount(3);
 
   await emitInstruments(page, POSITION_B);
-  await expect(page.getByText('0.1', { exact: true })).toBeVisible();
-  await expect(page.getByText('212', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('0.1', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('212', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
 
   await page.goto('/nearby/91/6.186?testMode=1');
   await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
-  await expect(page.getByText('The selected map position is invalid.')).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText('The selected map position is invalid.'),
+  ).toBeVisible();
   await expect(page.getByRole('main')).not.toContainText('Back to map');
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');

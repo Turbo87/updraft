@@ -392,5 +392,7 @@
   "data_download_progress": "{done} von {total}",
   "data_cancel_download": "Download abbrechen: {name}",
   "data_download_failed": "Download fehlgeschlagen",
-  "data_retry_download": "Download erneut versuchen: {name}"
+  "data_retry_download": "Download erneut versuchen: {name}",
+  "infobox_left": "links",
+  "infobox_right": "rechts"
 }

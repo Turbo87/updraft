@@ -1,6 +1,8 @@
 use updraft_units::Speed;
 
 mod ema;
+#[cfg(test)]
+mod velocity;
 mod window;
 
 pub use ema::ClimbEma;

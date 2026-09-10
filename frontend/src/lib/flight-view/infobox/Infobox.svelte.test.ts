@@ -29,27 +29,42 @@ describe('Infobox', () => {
     await expect.element(page.getByRole('group', { name: label })).toBeVisible();
   });
 
-  it('fits long altitude and climb readouts in a phone-width cell', async () => {
+  it('fits the complete readout and resists resizing near a size boundary', async () => {
     let view = await render(Infobox, {
-      label: 'Altitude',
-      value: { kind: 'altitude', meters: 3048, unit: 'ft' },
+      label: 'Vario',
+      value: { kind: 'vertical-speed', metersPerSecond: -5.08, unit: 'ft/min' },
       stale: false,
     });
     let box = view.container.querySelector<HTMLElement>('.infobox')!;
-    box.style.width = '71px';
-    box.style.height = '64px';
+    box.style.width = '240px';
+    box.style.height = '100px';
     await document.fonts.ready;
     let readout = box.querySelector<HTMLElement>('.numeric-value')!;
-    expect(readout.getBoundingClientRect().right).toBeLessThanOrEqual(
-      box.getBoundingClientRect().right - 4,
-    );
-    await view.rerender({
-      value: { kind: 'vertical-speed', metersPerSecond: -5.08, unit: 'ft/min' },
-    });
-    expect(readout.getBoundingClientRect().right).toBeLessThanOrEqual(
-      box.getBoundingClientRect().right - 4,
-    );
+    function fontSize() {
+      return parseFloat(getComputedStyle(readout).fontSize);
+    }
+    await expect.poll(fontSize).toBe(40);
+    let fullWidth = readout.getBoundingClientRect().width;
+    box.style.width = `${fullWidth + 7}px`;
+    await expect.poll(fontSize).toBe(36);
+    box.style.width = `${fullWidth + 9}px`;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    expect(fontSize()).toBe(36);
+    box.style.width = '71px';
+    await expect.poll(() => readout.getBoundingClientRect().width).toBeLessThanOrEqual(63);
+    box.style.width = '240px';
+    await expect.poll(fontSize).toBe(40);
+    box.style.height = '50px';
+    await expect.poll(() => readout.getBoundingClientRect().height).toBeLessThanOrEqual(24);
+    box.style.height = '71px';
+    box.style.width = '71px';
+    await view.rerender({ value: { kind: 'relative-angle', degrees: 0 } });
+    await expect.poll(() => readout.getBoundingClientRect().width).toBeLessThanOrEqual(63);
+    expect(box.querySelectorAll('.chevron')).toHaveLength(2);
+    await view.rerender({ value: { kind: 'altitude', meters: 30480, unit: 'ft' } });
+    await expect.poll(() => readout.getBoundingClientRect().width).toBeLessThanOrEqual(63);
   });
+
   it('converts canonical altitude and updates when the unit changes', async () => {
     let view = await render(Infobox, {
       label: 'Altitude',

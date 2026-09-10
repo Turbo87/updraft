@@ -3,6 +3,7 @@
 
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
+  import { fitReadout } from './fit-readout';
   import { formatInfoboxValue } from './value';
 
   type Props = {
@@ -20,36 +21,34 @@
 
 <div class="infobox" role="group" aria-label={label}>
   <span class="label">{label}</span>
-  <span class="numeric-value" class:stale class:unavailable={presentation.text === '–'}>
-    {#if presentation.direction === -1 || presentation.direction === 0}
-      <span class="chevron chevron-left i-mdi-chevron-left" aria-hidden="true"></span>
-    {/if}
-    <span
-      class="value"
-      class:compact={presentation.text.length === 4}
-      class:long={presentation.text.length >= 5}>{presentation.text}</span
-    >
-    {#if stackedUnit}
-      <span class="unit stacked">
-        <span aria-hidden="true">{stackedUnit[0]}</span>
-        <span aria-hidden="true">{stackedUnit[1]}</span>
-        <span class="unit-label sr-only">{presentation.unit}</span>
-      </span>
-    {:else if presentation.unit}
-      <span class="unit" class:degree={presentation.unit === '°'}>{presentation.unit}</span>
-    {/if}
-    {#if presentation.direction === 1 || presentation.direction === 0}
-      <span class="chevron chevron-right i-mdi-chevron-right" aria-hidden="true"></span>
-    {/if}
-    {#if presentation.direction === -1}
-      <span class="sr-only">{m.infobox_left()}</span>
-    {:else if presentation.direction === 1}
-      <span class="sr-only">{m.infobox_right()}</span>
-    {/if}
-    {#if stale && presentation.text !== '–'}
-      <span class="sr-only">{m.stale_value()}</span>
-    {/if}
-  </span>
+  <div class="readout-area" {@attach fitReadout}>
+    <span class="numeric-value" class:stale class:unavailable={presentation.text === '–'}>
+      {#if presentation.direction === -1 || presentation.direction === 0}
+        <span class="chevron chevron-left i-mdi-chevron-left" aria-hidden="true"></span>
+      {/if}
+      <span class="value">{presentation.text}</span>
+      {#if stackedUnit}
+        <span class="unit stacked">
+          <span aria-hidden="true">{stackedUnit[0]}</span>
+          <span aria-hidden="true">{stackedUnit[1]}</span>
+          <span class="unit-label sr-only">{presentation.unit}</span>
+        </span>
+      {:else if presentation.unit}
+        <span class="unit" class:degree={presentation.unit === '°'}>{presentation.unit}</span>
+      {/if}
+      {#if presentation.direction === 1 || presentation.direction === 0}
+        <span class="chevron chevron-right i-mdi-chevron-right" aria-hidden="true"></span>
+      {/if}
+      {#if presentation.direction === -1}
+        <span class="sr-only">{m.infobox_left()}</span>
+      {:else if presentation.direction === 1}
+        <span class="sr-only">{m.infobox_right()}</span>
+      {/if}
+      {#if stale && presentation.text !== '–'}
+        <span class="sr-only">{m.stale_value()}</span>
+      {/if}
+    </span>
+  </div>
 </div>
 
 <style>
@@ -78,6 +77,12 @@
     white-space: nowrap;
   }
 
+  .readout-area {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+  }
+
   .numeric-value {
     display: inline-flex;
     align-items: baseline;
@@ -90,32 +95,24 @@
 
   .value {
     font-family: var(--font-numeric);
-    font-size: 1.75rem;
+    font-size: 1em;
     font-weight: 700;
     letter-spacing: -0.01em;
     line-height: 1;
   }
 
   .unit {
-    margin-left: 0.125rem;
+    margin-left: 0.0714em;
     color: var(--color-text-muted);
-    font-size: 0.7rem;
+    font-size: 0.4em;
     font-weight: 600;
     line-height: 1;
-  }
-
-  .value.compact {
-    font-size: 1.375rem;
-  }
-
-  .value.long {
-    font-size: 1.0625rem;
   }
 
   .unit.degree {
     align-self: flex-start;
     margin-top: 0.25em;
-    font-size: 0.875rem;
+    font-size: 0.5em;
   }
 
   .unit.stacked {
@@ -123,20 +120,19 @@
     align-self: center;
     flex-direction: column;
     align-items: center;
-    gap: 0.08rem;
+    gap: 0.2em;
   }
 
   .unit.stacked span:first-child {
-    padding-bottom: 0.08rem;
+    padding-bottom: 0.2em;
     border-bottom: 1px solid currentcolor;
   }
 
   .chevron {
     align-self: center;
     flex: none;
-    width: 1.75rem;
-    height: 1.75rem;
-    margin-inline: -0.5rem;
+    width: 0.6em;
+    height: 1em;
     color: var(--color-text-muted);
   }
 

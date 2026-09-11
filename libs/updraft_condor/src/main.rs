@@ -8,6 +8,8 @@ mod ini;
 mod nmea;
 mod nmea_input;
 mod server;
+mod spectate;
+mod spectate_watch;
 
 use crate::config::{CompetitionNumber, Config};
 use anyhow::{Context as _, Result};
@@ -15,6 +17,7 @@ use bytes::Bytes;
 use clap::Parser;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tracing::info;
@@ -70,12 +73,19 @@ async fn serve(settings: &Settings) -> Result<()> {
     let output = bind(config.output_listen).await?;
     let nmea_input = bind(config.nmea_listen).await?;
     let (sender, _) = broadcast::channel::<Bytes>(BROADCAST_CAPACITY);
+    let own_fix: nmea::SharedOwnFix = Arc::new(Mutex::new(None));
     info!("listening for Updraft on {}", config.output_listen);
     info!("listening for Condor NMEA on {}", config.nmea_listen);
 
     tokio::select! {
         result = server::run(output, sender.clone()) => result?,
-        result = nmea_input::run(nmea_input, sender.clone()) => result?,
+        result = nmea_input::run(nmea_input, own_fix.clone(), sender.clone()) => result?,
+        result = spectate_watch::run(
+            spectate_watch::spectate_path(&settings.condor_folder),
+            settings.competition_number.clone(),
+            own_fix,
+            sender.clone(),
+        ) => result?,
     }
     Ok(())
 }
@@ -160,6 +170,10 @@ fn print_summary(settings: &Settings, config_path: &Path) {
     println!("  Competition number:   {}", settings.competition_number);
     println!("  HW VSP3 connects to:  {}", config.nmea_listen);
     println!("  Condor UDP sends to:  {}", config.udp_listen);
+    println!(
+        "  Spectate file:        {}",
+        spectate_watch::spectate_path(&settings.condor_folder).display()
+    );
     println!("  Updraft connects to:  {}", config.output_listen);
     if let Some(address) = local_address() {
         println!("  This PC on the LAN:   {address}");

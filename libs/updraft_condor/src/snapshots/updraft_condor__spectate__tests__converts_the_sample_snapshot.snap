@@ -1,0 +1,7 @@
+---
+source: libs/updraft_condor/src/spectate.rs
+expression: "String::from_utf8(output).unwrap()"
+---
+$PFLAA,0,-1213,-1202,-70,2,00599A!JD,268,,19,0,1*30
+$PFLAA,0,-556,-776,,2,000011,,,,,1*45
+$PFLAU,2,1,2,1,0,,0,,,*4E

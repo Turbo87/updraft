@@ -12,9 +12,12 @@ workspace = true
 anyhow = "=1.0.104"
 bytes = "=1.12.1"
 clap = { version = "=4.6.6", features = ["derive"] }
+notify = "=8.2.0"
+serde_json = "=1.0.151"
 tokio = { version = "=1.53.1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 tracing = "=0.1.44"
 tracing-subscriber = "=0.3.23"
+updraft_geo = { path = "../updraft_geo" }
 updraft_nmea = { path = "../updraft_nmea" }
 updraft_units = { path = "../updraft_units" }
 

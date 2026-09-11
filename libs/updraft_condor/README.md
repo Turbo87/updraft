@@ -1,7 +1,7 @@
 # updraft_condor
 
-Status: Planned design. Steps 1 and 2 of the implementation plan are complete. The
-other sections describe planned behavior.
+Status: Planned design. Steps 1 to 3 of the implementation plan are complete.
+The UDP sections describe planned behavior.
 
 `updraft_condor` is a development tool that runs on the Windows PC that runs
 the Condor 3 soaring simulator. It merges the three Condor outputs into one
@@ -87,12 +87,14 @@ seconds old. Without either reference the snapshot emits nothing.
 For every other player the tool emits one `$PFLAA`:
 
 - alarm level `0`
-- relative north and east in metres from a flat-earth approximation
-- relative vertical from the altitudes
-- ID type `1` and a 24-bit identity from the numeric `ID` masked to 24 bits,
+- relative north and east in whole metres from the geodesic distance and
+  bearing
+- relative vertical in whole metres, when both altitudes are known
+- ID type `2` and a 24-bit identity from the numeric `ID` masked to 24 bits,
   with a hash of the text as fallback, followed by `!` and the competition
   number
-- heading as track, speed converted to m/s, and vario as climb rate
+- heading as track, speed in whole m/s, and vario as climb rate with one
+  decimal
 - aircraft type `1` for glider
 
 One `$PFLAU` with the traffic count closes each snapshot. The tool sends
@@ -197,7 +199,7 @@ encoder, and on `updraft_units` for conversions. It does not depend on
 ## Tests
 
 - Insta snapshots for the sentence output of a fixed JSON snapshot, including
-  the XCSoar test fixture, and for a passthrough sample with its derived
+  the `XCSoar` test fixture, and for a passthrough sample with its derived
   `$PGRMZ`.
 - Unit tests for coordinate parsing, the flat-earth offsets, the 24-bit
   identity, the rate limit, and config precedence.
@@ -230,8 +232,8 @@ Each step is one reviewable commit with its tests.
 
 1. Config file, detection, prompts, and the startup summary.
 2. Output server and NMEA input with passthrough and the `$PGRMZ` derivation.
-3. Spectate snapshot conversion as a pure function with snapshots.
-4. Spectate file watcher and own-ship reference selection.
-5. UDP input with `$LXWP2`.
-6. The `UDP.ini` check and offer to write it.
-7. A Windows build in CI and a release artifact.
+3. Spectate snapshot conversion, the file watcher, and own-ship reference
+   selection.
+4. UDP input with `$LXWP2`.
+5. The `UDP.ini` check and offer to write it.
+6. A Windows build in CI and a release artifact.

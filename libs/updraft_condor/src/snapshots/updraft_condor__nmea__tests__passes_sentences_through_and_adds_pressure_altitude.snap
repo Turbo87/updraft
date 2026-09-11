@@ -1,0 +1,8 @@
+---
+source: libs/updraft_condor/src/nmea.rs
+expression: "String::from_utf8(output).unwrap()"
+---
+$GPGGA,120009.136,4621.5849,N,01410.2437,E,1,12,10,504.7,M,,,,,0000*00
+$GPRMC,120009.136,A,4621.5849,N,01410.2437,E,0.00,134.00,,,,*20
+$LXWP0,Y,0.1,504.7,0.00,,,,,,134,351,19.5*71
+$PGRMZ,1656,f,3*2F

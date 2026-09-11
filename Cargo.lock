@@ -5743,12 +5743,16 @@ name = "updraft_condor"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "claims",
  "clap",
  "insta",
  "tempfile",
+ "tokio",
  "tracing",
  "tracing-subscriber",
+ "updraft_nmea",
+ "updraft_units",
 ]
 
 [[package]]

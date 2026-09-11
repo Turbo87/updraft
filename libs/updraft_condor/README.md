@@ -1,6 +1,6 @@
 # updraft_condor
 
-Status: Planned design. Step 1 of the implementation plan is complete. The
+Status: Planned design. Steps 1 and 2 of the implementation plan are complete. The
 other sections describe planned behavior.
 
 `updraft_condor` is a development tool that runs on the Windows PC that runs

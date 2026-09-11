@@ -5,13 +5,22 @@
 mod config;
 mod console;
 mod ini;
+mod nmea;
+mod nmea_input;
+mod server;
 
 use crate::config::{CompetitionNumber, Config};
 use anyhow::{Context as _, Result};
+use bytes::Bytes;
 use clap::Parser;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use tokio::net::TcpListener;
+use tokio::sync::broadcast;
 use tracing::info;
 use tracing_subscriber::filter::LevelFilter;
+
+const BROADCAST_CAPACITY: usize = 64;
 
 #[derive(Parser)]
 #[command(about = "Bridge Condor 3 outputs to Updraft as one NMEA stream over TCP")]
@@ -31,6 +40,8 @@ struct Settings {
 fn main() {
     tracing_subscriber::fmt()
         .compact()
+        .with_ansi(false)
+        .with_target(false)
         .with_max_level(LevelFilter::INFO)
         .init();
 
@@ -49,7 +60,30 @@ fn run() -> Result<()> {
     };
     let settings = resolve_settings(&config_path)?;
     print_summary(&settings, &config_path);
+
+    let runtime = tokio::runtime::Runtime::new().context("failed to start the runtime")?;
+    runtime.block_on(serve(&settings))
+}
+
+async fn serve(settings: &Settings) -> Result<()> {
+    let config = &settings.config;
+    let output = bind(config.output_listen).await?;
+    let nmea_input = bind(config.nmea_listen).await?;
+    let (sender, _) = broadcast::channel::<Bytes>(BROADCAST_CAPACITY);
+    info!("listening for Updraft on {}", config.output_listen);
+    info!("listening for Condor NMEA on {}", config.nmea_listen);
+
+    tokio::select! {
+        result = server::run(output, sender.clone()) => result?,
+        result = nmea_input::run(nmea_input, sender.clone()) => result?,
+    }
     Ok(())
+}
+
+async fn bind(address: SocketAddr) -> Result<TcpListener> {
+    TcpListener::bind(address)
+        .await
+        .with_context(|| format!("failed to listen on {address}"))
 }
 
 fn default_config_path() -> Result<PathBuf> {

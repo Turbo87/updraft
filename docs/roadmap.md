@@ -84,6 +84,7 @@ documents for accepted behavior.
 - [ ] **gps-status** — retain fix quality and satellite information. Add a user-visible source and fix-status indicator. _(needs: source-selection)_
 - [ ] **io-detection-and-corrections** — add passive capability observation, optional framing selection, manual overrides, and per-device corrections when a concrete device needs them. _(needs: connection-ingestion)_
 - [x] **developer-replay** — `updraft_replay` sends NMEA files or converted IGC data through a TCP server in real time. It supports skip and loop controls. _(needs: nmea, tcp-client)_
+- [ ] **condor-bridge** — `updraft_condor` merges the Condor 3 NMEA, UDP, and Spectate outputs into one NMEA TCP stream for Updraft. It adds `$PGRMZ`, `$LXWP2`, and FLARM traffic sentences. The design is in the crate `README.md`. _(needs: nmea, tcp-client, flarm-nmea)_
 - [ ] **igc-read** — add reusable application-level IGC parsing for the records and extensions that future product features need. _(needs: units, geo)_
 - [ ] **replay** — add in-app replay at variable speed for simulator mode and demos. It sends typed simulator inputs and does not act as a device. _(needs: igc-read, core-time)_
 - [ ] **input-recording** — optionally record the exact core input sequence in `captures/`. Save worker results in a compressed companion file. Replay can start from an empty core or a saved resume snapshot. _(needs: replay, compute-workers)_

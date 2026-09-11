@@ -5739,6 +5739,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "updraft_condor"
+version = "0.0.0"
+
+[[package]]
 name = "updraft_core"
 version = "0.0.0"
 dependencies = [

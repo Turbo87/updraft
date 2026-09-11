@@ -261,10 +261,12 @@ Version history from the forum:
   not managing a webserver anymore but generate a JSON file on the drive". The
   manual for 3.0.9 still describes the HTTP server and has not been updated.
 - XCSoar 7.45 (2026-08-15) added a `Condor3Spectate` driver that reads
-  `Spectate.json` and presents the players as FLARM traffic. Its author used
-  the example path `c:\condor3\logs\spectate.json`. This suggests the file
-  lives in the `Logs` folder, but the location was not confirmed by the
-  Condor team in any source found.
+  `Spectate.json` and presents the players as FLARM traffic. Its default path
+  constant is `c:\condor3\logs\spectate.json`, and its device help text
+  describes the competition number as "excluded from traffic, used as position
+  reference". This places the file in the `Logs` folder of the installation,
+  but the Condor team did not confirm the location in any source found. No
+  source states whether Condor rewrites the file in place or by rename.
 
 The XCSoar implementation documents the file shape that Condor 3 writes today:
 

@@ -608,7 +608,7 @@ mod tests {
         let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
             .build()
             .expect("the IPC test webview should build");
-        for method in ["normalizedEma", "average20s", "average30s"] {
+        for method in ["normalizedEma", "average20s", "average30s", "smoothed20s"] {
             let input = request("set_climb_average_method", json!({ "method": method }));
             claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
         }

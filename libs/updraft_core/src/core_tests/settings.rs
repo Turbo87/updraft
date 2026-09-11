@@ -326,13 +326,14 @@ fn climb_average_method_defaults_and_persists_changes() {
     let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
     assert_eq!(
         settings.climb_average_method,
-        ClimbAverageMethod::NormalizedEma
+        ClimbAverageMethod::Smoothed20s
     );
     let mut core = Core::new(SettingsSnapshot::default());
     for method in [
         ClimbAverageMethod::Average20s,
         ClimbAverageMethod::Average30s,
         ClimbAverageMethod::NormalizedEma,
+        ClimbAverageMethod::Smoothed20s,
     ] {
         let effects = core.apply(SetClimbAverageMethod { method }, at(0)).effects;
         let expected = Settings {

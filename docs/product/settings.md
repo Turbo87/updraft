@@ -119,11 +119,12 @@ Polar and reserve changes request new waypoint arrival calculations.
 
 ## Climb averaging
 
-The persisted climb averaging method defaults to normalized EMA with a 10-second
-time constant. The alternatives are 20-second and 30-second averages. Missing
-stored values use the default. The map updates its labels when the setting changes,
+The persisted climb averaging method defaults to a smoothed 20-second average.
+This method smooths height with a 7.5-second time constant before averaging.
+The alternatives are normalized EMA with a 10-second time constant and
+20-second and 30-second averages. Missing stored values use the default. The map updates its labels when the setting changes,
 using estimates already collected by the core. The Vario page selects the method
-with three radio options. A pending command disables the control. A failed command
+with four radio options. A pending command disables the control. A failed command
 restores the authoritative setting and shows an error. The setting is shared with
 future ownship climb display.
 

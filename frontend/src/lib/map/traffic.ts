@@ -28,7 +28,7 @@ export function trafficFeature(
   target: PublishedTrafficTarget,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: ClimbAverageMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'smoothed20s',
 ): GeoJSON.Feature<GeoJSON.Point, TrafficFeatureProperties> {
   let altitude = target.altitudeMslMeters;
   let altitudeLabel =
@@ -69,7 +69,7 @@ export function trafficFeatureCollection(
   targets: Iterable<PublishedTrafficTarget>,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: ClimbAverageMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'smoothed20s',
 ): GeoJSON.FeatureCollection<GeoJSON.Point, TrafficFeatureProperties> {
   return {
     type: 'FeatureCollection',
@@ -83,7 +83,7 @@ export function trafficSourceDiff(
   delta: TrafficDelta,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: ClimbAverageMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'smoothed20s',
 ): GeoJSONSourceDiff {
   return {
     ...(delta.removed.length > 0 && { remove: delta.removed }),
@@ -101,7 +101,7 @@ export async function applyTrafficSourceUpdate(
   currentTargets: ReadonlyMap<string, PublishedTrafficTarget>,
   altitudeUnit: AltitudeUnit,
   verticalSpeedUnit: VerticalSpeedUnit,
-  method: ClimbAverageMethod = 'normalizedEma',
+  method: ClimbAverageMethod = 'smoothed20s',
 ): Promise<void> {
   if (update.type === 'snapshot') {
     await source.setData(

@@ -306,7 +306,7 @@ mod tests {
         {
           "topic": "settings",
           "value": {
-            "climbAverageMethod": "normalizedEma",
+            "climbAverageMethod": "smoothed20s",
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

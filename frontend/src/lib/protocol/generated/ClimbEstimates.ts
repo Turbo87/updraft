@@ -3,4 +3,4 @@
 /**
  * Averaged climb estimates in metres per second.
  */
-export type ClimbEstimates = { average20s: number, average30s: number, normalizedEma: number, };
+export type ClimbEstimates = { average20s: number, average30s: number, normalizedEma: number, smoothed20s: number, };

@@ -286,25 +286,25 @@ describe('FlarmNet traffic labels', () => {
   );
 });
 
-it('adds positive normalized climb in the selected vertical-speed unit', () => {
+it('adds positive smoothed climb by default in the selected vertical-speed unit', () => {
   let aircraft = target('flarm:000123', {
-    climb: { average20s: 1, average30s: 3, normalizedEma: 2.1 },
+    climb: { average20s: 1, average30s: 3, normalizedEma: 4, smoothed20s: 2.1 },
   });
   expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m\n+2.1 m/s');
   expect(trafficFeature(aircraft, 'm', 'kt').properties.label).toBe('200 m\n+4.1 kt');
   expect(trafficFeature(aircraft, 'm', 'ft/min').properties.label).toBe('200 m\n+413 ft/min');
-  for (let normalizedEma of [-1, 0, 0.01]) {
-    aircraft.climb!.normalizedEma = normalizedEma;
+  for (let smoothed20s of [-1, 0, 0.01]) {
+    aircraft.climb!.smoothed20s = smoothed20s;
     expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m');
   }
-  aircraft.climb!.normalizedEma = 2;
+  aircraft.climb!.smoothed20s = 2;
   aircraft.stale = true;
   expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m');
 });
 
 it('switches the displayed method using estimates already on the target', () => {
   let aircraft = target('flarm:000123', {
-    climb: { average20s: 1, average30s: 3, normalizedEma: 2 },
+    climb: { average20s: 1, average30s: 3, normalizedEma: 2, smoothed20s: 4 },
   });
   expect(trafficFeature(aircraft, 'm', 'm/s', 'average20s').properties.label).toBe(
     '200 m\n+1.0 m/s',

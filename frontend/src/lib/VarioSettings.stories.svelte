@@ -6,10 +6,11 @@
   const { Story } = defineMeta({
     title: 'Screens/VarioSettings',
     component: VarioSettings,
-    args: { method: 'normalizedEma', setMethod: async () => {} },
+    args: { method: 'smoothed20s', setMethod: async () => {} },
   });
 </script>
 
-<Story name="Normalized EMA" />
+<Story name="Smoothed twenty second average" />
+<Story name="Normalized EMA" args={{ method: 'normalizedEma' }} />
 <Story name="Twenty second average" args={{ method: 'average20s' }} />
 <Story name="Thirty second average" args={{ method: 'average30s' }} />

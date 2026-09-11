@@ -153,7 +153,7 @@ it('shows all signed climb estimates and updates their units and availability', 
     trackDegrees: 241,
     alarmLevel: 'none' as const,
     stale: false,
-    climb: { average20s: 2, average30s: 0, normalizedEma: -1 },
+    climb: { average20s: 2, average30s: 0, normalizedEma: -1, smoothed20s: 1 },
   };
   traffic.apply({ topic: 'traffic', value: { type: 'snapshot', value: [target] } });
   let screen = await render(TrafficDetails, {
@@ -168,11 +168,11 @@ it('shows all signed climb estimates and updates their units and availability', 
   function values() {
     return [...document.querySelectorAll('.climb')].map((row) => row.textContent?.trim());
   }
-  await expect.poll(values).toEqual(['+2.0 m/s', '0.0 m/s', '-1.0 m/s']);
+  await expect.poll(values).toEqual(['+2.0 m/s', '0.0 m/s', '-1.0 m/s', '+1.0 m/s']);
   await screen.rerender({
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'ft/min' },
   });
-  await expect.poll(values).toEqual(['+394 ft/min', '0 ft/min', '-197 ft/min']);
+  await expect.poll(values).toEqual(['+394 ft/min', '0 ft/min', '-197 ft/min', '+197 ft/min']);
   await screen.rerender({
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'kt' },
   });
@@ -181,28 +181,33 @@ it('shows all signed climb estimates and updates their units and availability', 
     value: {
       type: 'delta',
       value: {
-        upserts: [{ ...target, climb: { average20s: -2, average30s: 0.001, normalizedEma: 3 } }],
+        upserts: [
+          {
+            ...target,
+            climb: { average20s: -2, average30s: 0.001, normalizedEma: 3, smoothed20s: -1 },
+          },
+        ],
         removed: [],
       },
     },
   });
-  await expect.poll(values).toEqual(['-3.9 kt', '0.0 kt', '+5.8 kt']);
+  await expect.poll(values).toEqual(['-3.9 kt', '0.0 kt', '+5.8 kt', '-1.9 kt']);
 
   traffic.apply({
     topic: 'traffic',
     value: { type: 'delta', value: { upserts: [{ ...target, stale: true }], removed: [] } },
   });
-  await expect.poll(() => document.querySelectorAll('.climb.stale').length).toBe(3);
+  await expect.poll(() => document.querySelectorAll('.climb.stale').length).toBe(4);
   traffic.apply({
     topic: 'traffic',
     value: { type: 'delta', value: { upserts: [], removed: [target.id] } },
   });
-  await expect.poll(values).toEqual(['+3.9 kt', '0.0 kt', '-1.9 kt']);
-  await expect.poll(() => document.querySelectorAll('.climb.stale').length).toBe(3);
+  await expect.poll(values).toEqual(['+3.9 kt', '0.0 kt', '-1.9 kt', '+1.9 kt']);
+  await expect.poll(() => document.querySelectorAll('.climb.stale').length).toBe(4);
 
   traffic.apply({
     topic: 'traffic',
     value: { type: 'delta', value: { upserts: [{ ...target, climb: undefined }], removed: [] } },
   });
-  await expect.poll(values).toEqual(['—', '—', '—']);
+  await expect.poll(values).toEqual(['—', '—', '—', '—']);
 });

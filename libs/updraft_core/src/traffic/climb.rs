@@ -1,5 +1,7 @@
 use super::velocity::TrafficVelocity;
-use crate::climb::{ClimbEma, ClimbEstimates, ClimbWindow, EnergyClimb, Velocity};
+use crate::climb::{
+    ClimbEma, ClimbEstimates, ClimbWindow, EnergyClimb, SmoothedClimbWindow, Velocity,
+};
 use crate::ownship::SourceId;
 use crate::{ExternalDeviceId, Timestamp};
 use std::time::Duration;
@@ -20,6 +22,7 @@ pub struct TrafficClimb {
     velocity: TrafficVelocity,
     window: ClimbWindow,
     ema: ClimbEma,
+    smoothed: SmoothedClimbWindow,
     estimates: Option<ClimbEstimates>,
 }
 
@@ -50,11 +53,13 @@ impl TrafficClimb {
             self.energy
                 .observe(at.since_start(), altitude, velocity, motion.wind)?;
         self.window.observe(time, altitude);
+        let smoothed_20s = self.smoothed.observe(time, altitude);
         self.estimates = self.ema.observe(time, altitude).and_then(|normalized_ema| {
             Some(ClimbEstimates {
                 average_20s: self.window.average(Duration::from_secs(20))?,
                 average_30s: self.window.average(Duration::from_secs(30))?,
                 normalized_ema,
+                smoothed_20s: smoothed_20s?,
             })
         });
         self.estimates

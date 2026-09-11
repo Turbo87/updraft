@@ -95,7 +95,7 @@
     altitudeUnit,
     verticalSpeedUnit,
     showHitAreas,
-    climbAverageMethod = 'normalizedEma',
+    climbAverageMethod = 'smoothed20s',
   }: Props = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();

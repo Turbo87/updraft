@@ -77,6 +77,7 @@ pub struct UnitSettings {
 #[serde(rename_all = "camelCase")]
 pub enum ClimbAverageMethod {
     #[default]
+    Smoothed20s,
     NormalizedEma,
     Average20s,
     Average30s,

@@ -5,5 +5,6 @@ expression: climb
 {
   "average20s": 50.0,
   "average30s": 50.0,
-  "normalizedEma": 50.0
+  "normalizedEma": 50.0,
+  "smoothed20s": 6.241334047852627
 }

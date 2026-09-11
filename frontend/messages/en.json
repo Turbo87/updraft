@@ -407,6 +407,7 @@
   "flight_view_instruments": "Flight instruments",
   "climb_ema_label": "Normalized EMA (10 s)",
   "climb_20s_label": "20 s average",
+  "climb_smoothed_20s_label": "Smoothed 20 s average",
   "climb_30s_label": "30 s average",
   "vario_settings_heading": "Vario",
   "climb_average_label": "Climb averaging",

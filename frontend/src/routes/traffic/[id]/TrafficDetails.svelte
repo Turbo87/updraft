@@ -252,7 +252,7 @@
               </span>
             </dd>
           </div>
-          {#each [{ label: m.climb_20s_label(), value: target.climb?.average20s }, { label: m.climb_30s_label(), value: target.climb?.average30s }, { label: m.climb_ema_label(), value: target.climb?.normalizedEma }] as estimate (estimate.label)}
+          {#each [{ label: m.climb_20s_label(), value: target.climb?.average20s }, { label: m.climb_30s_label(), value: target.climb?.average30s }, { label: m.climb_ema_label(), value: target.climb?.normalizedEma }, { label: m.climb_smoothed_20s_label(), value: target.climb?.smoothed20s }] as estimate (estimate.label)}
             <div>
               <dt>{estimate.label}</dt>
               <dd class="climb numeric" class:stale={valueStale || estimate.value === undefined}>

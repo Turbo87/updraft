@@ -33,7 +33,7 @@
   };
 
   let {
-    climbAverageMethod = 'normalizedEma',
+    climbAverageMethod = 'smoothed20s',
     client,
     airspace,
     basemapGeneration,

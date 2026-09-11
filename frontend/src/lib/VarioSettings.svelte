@@ -13,6 +13,7 @@
   let pending = $state<ClimbAverageMethod | null>(null);
   let error = $state<string>();
   let options = $derived([
+    { value: 'smoothed20s', label: m.climb_smoothed_20s_label() },
     { value: 'normalizedEma', label: m.climb_ema_label() },
     { value: 'average20s', label: m.climb_20s_label() },
     { value: 'average30s', label: m.climb_30s_label() },

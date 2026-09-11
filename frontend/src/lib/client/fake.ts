@@ -80,7 +80,7 @@ export class FakeClient implements UpdraftClient {
     locale: null,
     polar: 'LS 8',
     arrivalReserve: 200,
-    climbAverageMethod: 'normalizedEma',
+    climbAverageMethod: 'smoothed20s',
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 

@@ -16,6 +16,12 @@ pub fn prompt(question: &str) -> Result<String> {
     Ok(answer.trim().to_owned())
 }
 
+/// Asks a yes or no question. Enter alone means no.
+pub fn confirm(question: &str) -> Result<bool> {
+    let answer = prompt(&format!("{question} [y/N]"))?;
+    Ok(answer.eq_ignore_ascii_case("y") || answer.eq_ignore_ascii_case("yes"))
+}
+
 /// Keeps a console window open after a fatal error, so the message stays
 /// readable when the tool was started with a double click.
 pub fn wait_for_enter() {

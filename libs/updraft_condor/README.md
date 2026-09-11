@@ -1,7 +1,7 @@
 # updraft_condor
 
-Status: Planned design. Steps 1 to 4 of the implementation plan are complete.
-The `UDP.ini` check is planned behavior.
+Status: Current behavior. Steps 1 to 5 of the implementation plan are
+complete. The Windows build in CI is planned.
 
 `updraft_condor` is a development tool that runs on the Windows PC that runs
 the Condor 3 soaring simulator. It merges the three Condor outputs into one

@@ -11,6 +11,7 @@ mod server;
 mod spectate;
 mod spectate_watch;
 mod udp;
+mod udp_ini;
 mod udp_input;
 
 use crate::config::{CompetitionNumber, Config};
@@ -22,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::sync::broadcast;
-use tracing::info;
+use tracing::{info, warn};
 use tracing_subscriber::filter::LevelFilter;
 
 const BROADCAST_CAPACITY: usize = 64;
@@ -65,6 +66,7 @@ fn run() -> Result<()> {
     };
     let settings = resolve_settings(&config_path)?;
     print_summary(&settings, &config_path);
+    check_udp_ini(&settings)?;
 
     let runtime = tokio::runtime::Runtime::new().context("failed to start the runtime")?;
     runtime.block_on(serve(&settings))
@@ -157,6 +159,29 @@ fn resolve_settings(config_path: &Path) -> Result<Settings> {
         competition_number,
         config,
     })
+}
+
+/// Reports what keeps Condor from sending the MacCready value, and offers
+/// to change the file. Condor reads the file at the next flight.
+fn check_udp_ini(settings: &Settings) -> Result<()> {
+    let path = udp_ini::path(&settings.condor_folder);
+    let problems = udp_ini::check(&path, settings.config.udp_listen);
+    if problems.is_empty() {
+        return Ok(());
+    }
+    println!();
+    println!("{} needs changes:", path.display());
+    for problem in &problems {
+        println!("  - {problem}");
+    }
+    if console::confirm("Write the required values now?")? {
+        udp_ini::enable(&path, settings.config.udp_listen)?;
+        println!("Written. Condor reads the file at the next flight.");
+    } else {
+        warn!("without these values Updraft does not receive the MacCready setting");
+    }
+    println!();
+    Ok(())
 }
 
 /// The user's Documents folder, where Condor keeps the pilot profiles.

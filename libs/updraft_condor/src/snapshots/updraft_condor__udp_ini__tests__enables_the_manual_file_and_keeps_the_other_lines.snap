@@ -1,0 +1,14 @@
+---
+source: libs/updraft_condor/src/udp_ini.rs
+expression: "std::fs::read_to_string(&path).unwrap()"
+---
+[General]
+Enabled=1
+[Connection]
+Host=127.0.0.1
+Port=55278
+[Misc]
+SendIntervalMs=1
+ExtendedData=0
+ExtendedData1=1
+LogToFile=0

@@ -1,6 +1,7 @@
 # updraft_condor
 
-Status: Planned design. The crate is a scaffold. Nothing below is implemented.
+Status: Planned design. Step 1 of the implementation plan is complete. The
+other sections describe planned behavior.
 
 `updraft_condor` is a development tool that runs on the Windows PC that runs
 the Condor 3 soaring simulator. It merges the three Condor outputs into one

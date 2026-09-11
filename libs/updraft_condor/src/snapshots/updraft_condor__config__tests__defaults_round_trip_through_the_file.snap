@@ -1,0 +1,19 @@
+---
+source: libs/updraft_condor/src/config.rs
+expression: config.to_ini()
+---
+[Condor]
+; Condor 3 installation folder. Detected when empty.
+Folder=
+; Own competition number for the Spectate file. Detected from the pilot profile when empty.
+CompetitionNumber=
+
+[Input]
+; HW VSP3 connects here with the NMEA stream from Condor.
+NmeaListen=127.0.0.1:4353
+; Must match Host and Port in Condor's UDP.ini.
+UdpListen=127.0.0.1:55278
+
+[Output]
+; Updraft connects here. 0.0.0.0 accepts connections from other devices.
+NmeaListen=0.0.0.0:4354

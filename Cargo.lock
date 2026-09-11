@@ -5741,6 +5741,15 @@ dependencies = [
 [[package]]
 name = "updraft_condor"
 version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "claims",
+ "clap",
+ "insta",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "updraft_core"

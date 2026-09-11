@@ -26,9 +26,21 @@ speed before adding the relative traffic position. The altitude correction uses
 the cycle's GGA height and its change from the preceding GGA fix. It projects
 that height two seconds before adding the relative traffic height. Both fixes
 must be fresh and one to three seconds apart in GPS time. Missing altitude
-history uses the existing GPS-altitude fallback. The correction affects target
-altitude and climb calculations. It does not shift ownship, pressure altitude,
-or reception time.
+history uses the existing GPS-altitude fallback.
+
+The decoded target is a prediction for two seconds after the cycle timestamp.
+The core uses the target's reported ground velocity and climb rate to move it
+back to the latest same-device GPS timestamp. A report before the next GPS fix
+moves back two seconds. A report after that fix moves back one second.
+Horizontal correction requires target speed and track. Zero target speed needs
+no track. Vertical correction requires the target climb rate. Missing motion
+uses the original fallback for that component.
+
+Later same-device GPS fixes project each fresh target from its retained
+prediction. These display updates do not add climb samples or refresh report
+age. Projection stops when the report reaches five seconds of age. GPS offsets
+outside two seconds before to five seconds after the prediction are ignored.
+The correction does not shift ownship, pressure altitude, or reception time.
 
 Each device retains the active traffic references and the latest RMC and GGA
 fixes. New GPS fixes leave the active reference unchanged until the traffic
@@ -41,9 +53,10 @@ reports and older reports without a source field. Other reported sources retain
 the existing calculation.
 
 Device runtime resets, connection changes, backward GPS time changes, and stale
-input gaps clear the reference history. Midnight retains continuity. Changing
-the setting affects subsequent reports and resets climb histories so a position
-or altitude jump cannot become a derived velocity or climb sample.
+input gaps clear the reference history and retained target projections.
+Midnight retains continuity. A setting change affects subsequent reports and
+resets climb histories. This prevents a position or altitude jump from becoming
+a derived velocity or climb sample.
 
 This model comes from one recording. It remains experimental until other
 devices have been checked. Its predicted positions do not establish exact
@@ -97,9 +110,16 @@ The core publishes a normalized EMA with a 10-second time constant and 20-second
 and 30-second climb averages. A fourth estimate smooths height with a 7.5-second
 time constant, then calculates a 20-second window average. Its first sample seeds
 the height filter. It keeps separate filtered height history.
-The core ignores the reported FLARM climb rate.
+The reported FLARM climb rate only aligns target altitude in time. The core
+derives climb estimates from the aligned altitude samples.
 All estimates use target MSL altitude. Ownship altitude must satisfy the existing
 three-second freshness rule before it can supply an estimator sample.
+
+Corrected altitude samples use GPS intervals for the averages and filters.
+Reception time still controls history expiry and target freshness. Changing
+between GPS and reception intervals resets the estimator. Backward GPS time or
+a sample gap longer than 60 seconds also resets it. Repeated sample times do
+not add another measurement.
 
 When energy compensation is enabled and FLARM provides ground speed and track,
 the core estimates target airspeed

@@ -1,4 +1,3 @@
-use crate::Timestamp;
 use crate::climb::Velocity;
 use crate::ownship::SourceId;
 use std::time::Duration;
@@ -6,13 +5,13 @@ use updraft_geo::LatLon;
 
 #[derive(Debug, Default)]
 pub struct TrafficVelocity {
-    previous: Option<(Timestamp, SourceId, LatLon)>,
+    previous: Option<(Duration, SourceId, LatLon)>,
 }
 
 impl TrafficVelocity {
     pub fn observe(
         &mut self,
-        at: Timestamp,
+        at: Duration,
         position: Option<(SourceId, LatLon)>,
         reported: Option<Velocity>,
     ) -> Option<(Duration, Velocity)> {
@@ -22,11 +21,11 @@ impl TrafficVelocity {
         let previous = self.previous;
         self.previous = position.map(|(source, point)| (at, source, point));
         if let Some(reported) = reported {
-            return Some((at.since_start(), reported));
+            return Some((at, reported));
         }
         let (previous_at, previous_source, previous_position) = previous?;
         let (source, position) = position?;
-        let interval = at.saturating_since(previous_at);
+        let interval = at.saturating_sub(previous_at);
         if source != previous_source || interval > Duration::from_secs(5) {
             return None;
         }
@@ -35,7 +34,7 @@ impl TrafficVelocity {
             return None;
         }
         let velocity = Velocity::from_track(track, distance / interval);
-        Some((previous_at.since_start() + interval / 2, velocity))
+        Some((previous_at + interval / 2, velocity))
     }
 }
 
@@ -54,13 +53,13 @@ mod tests {
         let invalid = LatLon::from_degrees(95., 6.);
         for (millis, position) in [(0, valid), (1000, invalid), (2000, valid)] {
             assert_none!(velocity.observe(
-                Timestamp::from_millis(millis),
+                Duration::from_millis(millis),
                 Some((source, position)),
                 None
             ));
         }
         let (_, recovered) = assert_some!(velocity.observe(
-            Timestamp::from_millis(3000),
+            Duration::from_millis(3000),
             Some((source, valid)),
             None
         ));
@@ -74,20 +73,20 @@ mod tests {
         let start = LatLon::from_degrees(50., 6.);
         let end = start.destination(Angle::ZERO, Length::from_meters(150.));
         let source = SourceId::InternalGps;
-        assert_none!(velocity.observe(Timestamp::from_millis(0), Some((source, start)), None));
+        assert_none!(velocity.observe(Duration::from_millis(0), Some((source, start)), None));
         let (time, derived) =
-            assert_some!(velocity.observe(Timestamp::from_millis(5000), Some((source, end)), None));
+            assert_some!(velocity.observe(Duration::from_millis(5000), Some((source, end)), None));
         assert_eq!(time, Duration::from_millis(2500));
         assert_abs_diff_eq!(
             derived.north,
             Speed::from_meters_per_second(30.),
             epsilon = 1e-8
         );
-        assert_none!(velocity.observe(Timestamp::from_millis(10_001), Some((source, start)), None));
+        assert_none!(velocity.observe(Duration::from_millis(10_001), Some((source, start)), None));
         let changed = SourceId::External(crate::ExternalDeviceId(1));
-        assert_none!(velocity.observe(Timestamp::from_millis(11_000), Some((changed, end)), None));
-        assert_none!(velocity.observe(Timestamp::from_millis(12_000), None, None));
-        assert_none!(velocity.observe(Timestamp::from_millis(13_000), Some((changed, end)), None));
+        assert_none!(velocity.observe(Duration::from_millis(11_000), Some((changed, end)), None));
+        assert_none!(velocity.observe(Duration::from_millis(12_000), None, None));
+        assert_none!(velocity.observe(Duration::from_millis(13_000), Some((changed, end)), None));
     }
 
     #[test]
@@ -96,12 +95,12 @@ mod tests {
         let position = Some((SourceId::InternalGps, LatLon::from_degrees(50., 6.)));
         let reported = Velocity::from_track(Angle::ZERO, Speed::from_meters_per_second(40.));
         let (_, current) =
-            assert_some!(velocity.observe(Timestamp::from_millis(1000), position, Some(reported)));
+            assert_some!(velocity.observe(Duration::from_millis(1000), position, Some(reported)));
         assert_eq!(current.north, reported.north);
-        assert_none!(velocity.observe(Timestamp::from_millis(1000), position, None));
-        assert_none!(velocity.observe(Timestamp::from_millis(500), position, None));
+        assert_none!(velocity.observe(Duration::from_millis(1000), position, None));
+        assert_none!(velocity.observe(Duration::from_millis(500), position, None));
         let (_, derived) =
-            assert_some!(velocity.observe(Timestamp::from_millis(2000), position, None));
+            assert_some!(velocity.observe(Duration::from_millis(2000), position, None));
         assert_eq!(derived.north, Speed::ZERO);
     }
 }

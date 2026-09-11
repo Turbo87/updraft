@@ -145,7 +145,7 @@ fn replaces_a_target_and_resets_its_stale_state() {
     let mut changes = TrafficChanges::default();
     let original = target(1);
     let id = original.id;
-    state.observe(original, Timestamp::from_millis(0), &mut changes);
+    state.observe(original, Timestamp::from_millis(0), None, &mut changes);
     let stale = state.expire(Timestamp::from_millis(5_000));
     assert!(stale.upserts[&id].stale);
 
@@ -155,7 +155,8 @@ fn replaces_a_target_and_resets_its_stale_state() {
     replacement.traffic_type = TrafficType::TowPlane;
     replacement.track = None;
     replacement.alarm_level = TrafficAlarmLevel::Urgent;
-    state.observe(replacement, Timestamp::from_millis(6_000), &mut changes);
+    let at = Timestamp::from_millis(6_000);
+    state.observe(replacement, at, None, &mut changes);
 
     assert_eq!(changes.upserts[&id], replacement);
     assert!(!changes.upserts[&id].stale);
@@ -166,7 +167,7 @@ fn keeps_a_target_fresh_before_the_stale_boundary() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     let target = target(1);
-    state.observe(target, Timestamp::from_millis(0), &mut changes);
+    state.observe(target, Timestamp::from_millis(0), None, &mut changes);
 
     let expired = state.expire(Timestamp::from_millis(4_999));
 
@@ -182,11 +183,12 @@ fn identical_observation_refreshes_the_stale_deadline_without_an_upsert() {
     state.observe(
         target,
         Timestamp::from_millis(0),
+        None,
         &mut TrafficChanges::default(),
     );
 
     let mut changes = TrafficChanges::default();
-    state.observe(target, Timestamp::from_millis(1_000), &mut changes);
+    state.observe(target, Timestamp::from_millis(1_000), None, &mut changes);
 
     assert!(changes.upserts.is_empty());
     assert!(changes.removed.is_empty());
@@ -201,7 +203,7 @@ fn marks_and_removes_targets_at_exact_boundaries() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     let target = target(1);
-    state.observe(target, Timestamp::from_millis(0), &mut changes);
+    state.observe(target, Timestamp::from_millis(0), None, &mut changes);
     assert!(!changes.upserts[&target.id].stale);
 
     let stale = state.expire(Timestamp::from_millis(5_000));
@@ -231,7 +233,7 @@ fn removal_wins_when_the_first_tick_crosses_both_boundaries() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     let target = target(1);
-    state.observe(target, Timestamp::from_millis(0), &mut changes);
+    state.observe(target, Timestamp::from_millis(0), None, &mut changes);
 
     let expired = state.expire(Timestamp::from_millis(30_000));
 
@@ -247,7 +249,7 @@ fn orders_snapshots_and_deltas_by_target_id() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     for value in [3, 1, 2] {
-        state.observe(target(value), Timestamp::from_millis(0), &mut changes);
+        state.observe(target(value), Timestamp::from_millis(0), None, &mut changes);
     }
 
     let snapshot_ids = state

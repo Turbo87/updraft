@@ -73,7 +73,7 @@ fn replay_preserves_flarm_cycle_references_across_batches_and_fragments() {
     );
     approx::assert_abs_diff_eq!(
         origin.distance(first).as_meters(),
-        102.8888888889,
+        22.8888888889,
         epsilon = 1e-6
     );
 }

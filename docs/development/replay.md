@@ -69,8 +69,11 @@ sentences share the preceding GPS event's delivery time. The core identifies
 FLARM traffic cycles from sentence contents and order, so the experimental
 position correction also works with these replay batches. Replay does not need
 a two-second scheduling shift for this correction. Altitude projection uses
-the interval between GGA timestamps, so playback speed does not change the
-calculated climb rate.
+the interval between GGA timestamps. Target projection uses the cycle timestamp
+and latest GPS timestamp. Corrected target altitude samples also use GPS
+intervals for climb averages, so playback speed does not change those averages.
+Report age still uses delivery time. GPS-only display updates do not add vario
+samples or keep a target fresh.
 
 The recording does not preserve exact arrival times within a GPS interval.
 Replay cannot restore those times. This limitation remains relevant to report

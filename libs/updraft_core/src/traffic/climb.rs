@@ -10,6 +10,8 @@ use updraft_units::Length;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TrafficMotion {
+    /// Same-device GPS time, unwrapped across midnight, for corrected altitude samples.
+    pub gps_time: Option<Duration>,
     pub velocity: Option<Velocity>,
     pub wind: Option<Velocity>,
     pub position: Option<(SourceId, LatLon)>,
@@ -18,6 +20,8 @@ pub struct TrafficMotion {
 #[derive(Debug, Default)]
 pub struct TrafficClimb {
     previous: Option<(Timestamp, (ExternalDeviceId, SourceId))>,
+    sample_time: Option<Duration>,
+    uses_gps_time: bool,
     energy: EnergyClimb,
     velocity: TrafficVelocity,
     window: ClimbWindow,
@@ -39,19 +43,38 @@ impl TrafficClimb {
         altitude: Length,
         motion: TrafficMotion,
     ) -> Option<ClimbEstimates> {
+        let time = motion.gps_time.unwrap_or(at.since_start());
+        let gps_time = motion.gps_time.is_some();
         if let Some((previous, previous_source)) = self.previous {
-            if at <= previous {
+            if at < previous {
                 return self.estimates;
             }
-            if self.expired(at) || previous_source != source {
+            let same_clock = self.uses_gps_time == gps_time;
+            if same_clock
+                && !self.expired(at)
+                && self
+                    .sample_time
+                    .is_some_and(|sample| time == sample || (!gps_time && time < sample))
+            {
+                return self.estimates;
+            }
+            if self.expired(at)
+                || previous_source != source
+                || !same_clock
+                || self.sample_time.is_some_and(|sample| {
+                    time < sample || time.saturating_sub(sample) > Duration::from_secs(60)
+                })
+            {
                 *self = Self::default();
             }
         }
         self.previous = Some((at, source));
-        let velocity = self.velocity.observe(at, motion.position, motion.velocity);
-        let (time, altitude) =
-            self.energy
-                .observe(at.since_start(), altitude, velocity, motion.wind)?;
+        self.sample_time = Some(time);
+        self.uses_gps_time = gps_time;
+        let velocity = self
+            .velocity
+            .observe(time, motion.position, motion.velocity);
+        let (time, altitude) = self.energy.observe(time, altitude, velocity, motion.wind)?;
         self.window.observe(time, altitude);
         let smoothed_20s = self.smoothed.observe(time, altitude);
         self.estimates = self.ema.observe(time, altitude).and_then(|normalized_ema| {
@@ -70,6 +93,37 @@ impl TrafficClimb {
 mod tests {
     use super::*;
     use claims::{assert_none, assert_some, assert_some_eq};
+
+    #[test]
+    fn gps_sample_clock_ignores_duplicates_and_resets_on_rewind_or_clock_change() {
+        let source = (ExternalDeviceId(1), SourceId::InternalGps);
+        let mut climb = TrafficClimb::default();
+        let mut observe = |received, sample: Option<u64>, height| {
+            climb.observe(
+                source,
+                Timestamp::from_millis(received),
+                Length::from_meters(height),
+                TrafficMotion {
+                    gps_time: sample.map(Duration::from_millis),
+                    ..TrafficMotion::default()
+                },
+            )
+        };
+        assert_none!(observe(0, Some(1_000), 100.));
+        let estimates = assert_some!(observe(100, Some(2_000), 102.));
+        assert_eq!(
+            estimates.average_20s,
+            updraft_units::Speed::from_meters_per_second(2.)
+        );
+        assert_some_eq!(observe(200, Some(2_000), 900.), estimates);
+        assert_none!(observe(300, Some(1_000), 100.));
+        assert_some_eq!(observe(400, Some(2_000), 102.), estimates);
+        assert_none!(observe(500, None, 104.));
+        assert_some_eq!(observe(1_500, None, 106.), estimates);
+        assert_none!(observe(1_600, Some(2_000), 102.));
+        assert_some!(observe(1_700, Some(62_000), 222.));
+        assert_none!(observe(1_800, Some(122_001), 342.));
+    }
 
     #[test]
     fn compensates_reported_velocity_and_resets_with_the_altitude_source() {

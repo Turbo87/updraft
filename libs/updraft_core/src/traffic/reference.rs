@@ -21,6 +21,14 @@ pub struct FlarmReference {
 }
 
 impl FlarmReference {
+    pub fn epoch(&self) -> Option<i64> {
+        self.epoch
+    }
+
+    pub fn prediction_epoch(&self) -> Option<i64> {
+        Some(self.cycle? + 2_000)
+    }
+
     pub fn observe(&mut self, message: &Message, at: Timestamp) {
         if self.updated_at.is_some_and(|previous| {
             at < previous || at.saturating_since(previous) >= Duration::from_secs(3)

@@ -404,5 +404,17 @@
   "infobox_wind_speed": "Wind speed",
   "infobox_wind_direction": "Wind direction",
   "infobox_zoom": "Zoom",
-  "flight_view_instruments": "Flight instruments"
+  "flight_view_instruments": "Flight instruments",
+  "climb_ema_label": "Normalized EMA (10 s)",
+  "climb_20s_label": "20 s average",
+  "climb_compensation_label": "Energy compensation",
+  "climb_compensation_enabled": "Enabled",
+  "climb_compensation_disabled": "Disabled",
+  "climb_compensation_description": "Uses estimated airspeed when available. Applies to all climb methods.",
+  "climb_compensation_change_failed": "Could not change energy compensation.",
+  "climb_smoothed_20s_label": "Smoothed 20 s average",
+  "climb_30s_label": "30 s average",
+  "vario_settings_heading": "Vario",
+  "climb_average_label": "Climb averaging",
+  "climb_average_change_failed": "Could not change the climb method."
 }

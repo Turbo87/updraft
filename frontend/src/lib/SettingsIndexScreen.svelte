@@ -62,6 +62,14 @@
     </Card>
     <Card>
       <ListRow
+        href="/settings/vario"
+        icon="i-mdi-airplane-marker"
+        label={m.vario_settings_heading()}
+        size="large"
+      />
+    </Card>
+    <Card>
+      <ListRow
         href="/settings/devices"
         icon="i-mdi-lan-connect"
         label={m.external_devices_heading()}

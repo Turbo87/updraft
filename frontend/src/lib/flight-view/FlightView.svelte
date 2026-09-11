@@ -2,6 +2,7 @@
   import type { UpdraftClient } from '$lib/client';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
+  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -18,6 +19,7 @@
   import InfoboxDock from './infobox/InfoboxDock.svelte';
 
   type Props = {
+    climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
     airspace: AirspaceStatus;
     basemapGeneration?: number;
@@ -31,6 +33,7 @@
   };
 
   let {
+    climbAverageMethod = 'smoothed20s',
     client,
     airspace,
     basemapGeneration,
@@ -57,6 +60,7 @@
 <section class="flight-view" aria-label={m.flight_view()}>
   <div class="map">
     <Map
+      {climbAverageMethod}
       {client}
       {airspace}
       {basemapGeneration}

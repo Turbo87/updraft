@@ -12,6 +12,8 @@ describe('SettingsStore', () => {
         locale: 'de',
         polar: 'LS 8-18',
         arrivalReserve: 200,
+        climbAverageMethod: 'normalizedEma',
+        energyCompensation: true,
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
       },
     });
@@ -20,6 +22,8 @@ describe('SettingsStore', () => {
       locale: 'de',
       polar: 'LS 8-18',
       arrivalReserve: 200,
+      climbAverageMethod: 'normalizedEma',
+      energyCompensation: true,
       units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
     });
   });
@@ -43,6 +47,8 @@ describe('SettingsStore', () => {
       locale: null,
       polar: 'LS 8',
       arrivalReserve: 200,
+      climbAverageMethod: 'smoothed20s',
+      energyCompensation: true,
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     });
   });

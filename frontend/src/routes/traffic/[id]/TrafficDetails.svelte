@@ -15,7 +15,7 @@
   import ResponsiveCard from '$lib/ResponsiveCard.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import StatusPill from '$lib/StatusPill.svelte';
-  import { convertAltitude, convertDistance } from '$lib/units';
+  import { convertAltitude, convertDistance, convertVerticalSpeed } from '$lib/units';
   import ValueTile from '$lib/ValueTile.svelte';
   import {
     formatTrafficAlarmLevel,
@@ -115,6 +115,18 @@
 
   function formatAltitude(meters: number): string {
     return `${convertAltitude(meters, units.altitude).toFixed(0)} ${units.altitude}`;
+  }
+
+  function formatClimb(metersPerSecond: number | undefined): string {
+    if (metersPerSecond === undefined) return '—';
+    let digits = units.verticalSpeed === 'ft/min' ? 0 : 1;
+    let value = new Intl.NumberFormat(locale, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+      signDisplay: 'exceptZero',
+      useGrouping: false,
+    }).format(convertVerticalSpeed(metersPerSecond, units.verticalSpeed));
+    return `${value} ${units.verticalSpeed}`;
   }
 
   function formatRelativeAltitude(target: PublishedTrafficTarget): string {
@@ -240,6 +252,14 @@
               </span>
             </dd>
           </div>
+          {#each [{ label: m.climb_20s_label(), value: target.climb?.average20s }, { label: m.climb_30s_label(), value: target.climb?.average30s }, { label: m.climb_ema_label(), value: target.climb?.normalizedEma }, { label: m.climb_smoothed_20s_label(), value: target.climb?.smoothed20s }] as estimate (estimate.label)}
+            <div>
+              <dt>{estimate.label}</dt>
+              <dd class="climb numeric" class:stale={valueStale || estimate.value === undefined}>
+                {formatClimb(estimate.value)}
+              </dd>
+            </div>
+          {/each}
           <div>
             <dt>{m.track_label()}</dt>
             <dd class="numeric">
@@ -346,7 +366,8 @@
     color: var(--color-success-text);
   }
 
-  .relative-altitude.stale {
+  .relative-altitude.stale,
+  .climb.stale {
     color: var(--color-value-stale);
   }
 </style>

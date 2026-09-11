@@ -251,6 +251,8 @@ mod tests {
         let file = SettingsFile::new(&config_dir);
         let snapshot = SettingsSnapshot {
             settings: Settings {
+                climb_average_method: updraft_core::ClimbAverageMethod::Average30s,
+                energy_compensation: false,
                 locale: Some(Locale::De),
                 polar: assert_ok!(updraft_core::PolarId::try_from("LS 8-18".to_owned())),
                 arrival_reserve: assert_ok!(updraft_core::ArrivalReserve::try_from(304.8)),

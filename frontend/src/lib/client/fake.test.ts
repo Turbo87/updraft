@@ -129,6 +129,8 @@ describe('FakeClient', () => {
         locale: null,
         polar: 'LS 8',
         arrivalReserve: 304.8,
+        climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -151,6 +153,8 @@ describe('FakeClient', () => {
         locale: null,
         polar: 'LS 8-18',
         arrivalReserve: 200,
+        climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -207,6 +211,8 @@ describe('FakeClient', () => {
         locale: 'de',
         polar: 'LS 8',
         arrivalReserve: 200,
+        climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -245,6 +251,8 @@ describe('FakeClient', () => {
         polar: 'LS 8',
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
         arrivalReserve: 200,
+        climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
       },
     });
   });
@@ -594,4 +602,35 @@ it('delivers download snapshots until each subscription closes', async () => {
   await other.close();
   client.emitEnrouteDownloads(status);
   expect(second).toHaveBeenCalledTimes(2);
+});
+
+it('publishes only changed climb settings', async () => {
+  let client = new FakeClient();
+  let onTopic = vi.fn();
+  client.subscribe(onTopic);
+  onTopic.mockClear();
+  await client.setClimbAverageMethod('smoothed20s');
+  expect(onTopic).not.toHaveBeenCalled();
+  await client.setClimbAverageMethod('average30s');
+  expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+    topic: 'settings',
+    value: expect.objectContaining({ climbAverageMethod: 'average30s' }),
+  });
+});
+
+it('publishes only changed energy compensation settings', async () => {
+  let client = new FakeClient();
+  let onTopic = vi.fn();
+  client.subscribe(onTopic);
+  onTopic.mockClear();
+  await client.setEnergyCompensation(true);
+  expect(onTopic).not.toHaveBeenCalled();
+  for (let enabled of [false, true]) {
+    await client.setEnergyCompensation(enabled);
+    expect(onTopic).toHaveBeenLastCalledWith({
+      topic: 'settings',
+      value: expect.objectContaining({ energyCompensation: enabled }),
+    });
+  }
+  expect(onTopic).toHaveBeenCalledTimes(2);
 });

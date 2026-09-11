@@ -186,6 +186,7 @@ mod tests {
 
     fn published_target(id_type: TrafficTargetIdType) -> PublishedTrafficTarget {
         TrafficTarget {
+            climb: None,
             id: TrafficTargetId {
                 id_type,
                 value: 0xABC123,
@@ -305,6 +306,8 @@ mod tests {
         {
           "topic": "settings",
           "value": {
+            "energyCompensation": true,
+            "climbAverageMethod": "smoothed20s",
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

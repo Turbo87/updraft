@@ -113,6 +113,16 @@ pub struct SetArrivalReserve {
     pub reserve: crate::ArrivalReserve,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetEnergyCompensation {
+    pub enabled: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetClimbAverageMethod {
+    pub method: crate::ClimbAverageMethod,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SetMacCready {
     pub mac_cready: crate::MacCready,
@@ -219,6 +229,8 @@ impl private::Sealed for SetLocale {}
 impl private::Sealed for SetUnits {}
 impl private::Sealed for SetPolar {}
 impl private::Sealed for SetArrivalReserve {}
+impl private::Sealed for SetClimbAverageMethod {}
+impl private::Sealed for SetEnergyCompensation {}
 impl private::Sealed for SetMacCready {}
 impl private::Sealed for SetBugs {}
 impl private::Sealed for SetBallast {}

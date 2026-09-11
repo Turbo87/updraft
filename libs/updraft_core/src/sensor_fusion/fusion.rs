@@ -344,6 +344,13 @@ impl SensorFusion {
         }
     }
 
+    pub fn current_wind(&self) -> Option<Wind> {
+        match self.wind {
+            SignalState::Current(wind) => Some(wind),
+            _ => None,
+        }
+    }
+
     pub fn instruments(&self) -> Option<DerivedInstruments> {
         let raw_vertical_speed = self
             .raw_vertical_speed

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
 
@@ -34,6 +36,7 @@
 
   const FOLLOW_DURATION_MS = 300;
   type Props = {
+    climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
     airspace: AirspaceStatus;
     basemapGeneration?: number;
@@ -50,6 +53,7 @@
   };
 
   let {
+    climbAverageMethod = 'smoothed20s',
     client,
     airspace,
     basemapGeneration = 0,
@@ -175,7 +179,13 @@
       <Terrain />
     {/if}
     {#if spritesLoaded}
-      <Traffic {traffic} altitudeUnit={units.altitude} {showHitAreas} />
+      <Traffic
+        {climbAverageMethod}
+        {traffic}
+        altitudeUnit={units.altitude}
+        verticalSpeedUnit={units.verticalSpeed}
+        {showHitAreas}
+      />
       {#if position}
         <Ownship {position} trackDegrees={gps?.trackDegrees ?? null} />
       {/if}

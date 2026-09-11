@@ -3,6 +3,8 @@ source: libs/updraft_core/src/core_tests/settings.rs
 expression: snapshot
 ---
 {
+  "energyCompensation": true,
+  "climbAverageMethod": "smoothed20s",
   "locale": "de",
   "polar": "LS 8",
   "arrivalReserve": 200.0,

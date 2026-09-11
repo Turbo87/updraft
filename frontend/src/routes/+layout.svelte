@@ -186,6 +186,7 @@
     {mapState}
     {traffic}
     units={settings.current.units}
+    climbAverageMethod={settings.current.climbAverageMethod}
     {testMode}
   />
   {#if page.url.pathname !== '/'}

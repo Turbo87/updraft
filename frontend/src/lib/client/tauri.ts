@@ -1,3 +1,4 @@
+import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
@@ -307,6 +308,14 @@ export class TauriClient implements UpdraftClient {
 
   setPolar(polar: PolarId): Promise<void> {
     return invoke('set_polar', { polar });
+  }
+
+  setEnergyCompensation(enabled: boolean): Promise<void> {
+    return invoke('set_energy_compensation', { enabled });
+  }
+
+  setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
+    return invoke('set_climb_average_method', { method });
   }
 
   setArrivalReserve(reserve: number): Promise<void> {

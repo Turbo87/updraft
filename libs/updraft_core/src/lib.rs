@@ -7,6 +7,7 @@ mod airspace;
 mod arrival_reserve;
 #[cfg(feature = "ts")]
 pub mod bindings;
+mod climb;
 mod connection;
 mod connection_diagnostics;
 mod core;
@@ -32,6 +33,7 @@ pub use airspace::{
     AirspaceState, AirspaceStatus,
 };
 pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
+pub use climb::ClimbEstimates;
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };
@@ -51,13 +53,14 @@ pub use input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, GetGlideSnapshot, GetWaypointCatalog, GetWaypointSnapshot, Input,
     InternalGps, ReorderExternalDevices, ReplaceAirspaceCatalog, ReplaceFlarmnetDatabase,
-    ReplaceWaypointCatalog, SetArrivalReserve, SetBallast, SetBugs, SetExternalDeviceEnabled,
-    SetLocale, SetMacCready, SetPolar, SetUnits, Start, TerrainElevation, Tick, Update,
+    ReplaceWaypointCatalog, SetArrivalReserve, SetBallast, SetBugs, SetClimbAverageMethod,
+    SetEnergyCompensation, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits,
+    Start, TerrainElevation, Tick, Update,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{
-    AltitudeUnit, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit, UnitSettings,
-    VerticalSpeedUnit,
+    AltitudeUnit, ClimbAverageMethod, DistanceUnit, Locale, Settings, SettingsSnapshot, SpeedUnit,
+    UnitSettings, VerticalSpeedUnit,
 };
 pub use time::Timestamp;
 pub use topic::{

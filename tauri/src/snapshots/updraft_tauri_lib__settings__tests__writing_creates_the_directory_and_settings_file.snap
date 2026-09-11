@@ -3,6 +3,8 @@ source: tauri/src/settings.rs
 expression: contents
 ---
 {
+  "energyCompensation": false,
+  "climbAverageMethod": "average30s",
   "locale": "de",
   "polar": "LS 8-18",
   "arrivalReserve": 304.8,

@@ -1,3 +1,4 @@
+import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { Locale } from '$lib/protocol/generated/Locale';
@@ -124,6 +125,8 @@ export interface UpdraftClient {
   getPolars(): Promise<PolarId[]>;
   setPolar(polar: PolarId): Promise<void>;
   setArrivalReserve(reserve: number): Promise<void>;
+  setClimbAverageMethod(method: ClimbAverageMethod): Promise<void>;
+  setEnergyCompensation(enabled: boolean): Promise<void>;
   setMacCready(macCready: number): Promise<void>;
   setBugs(bugs: number): Promise<void>;
   setBallast(ballast: number): Promise<void>;

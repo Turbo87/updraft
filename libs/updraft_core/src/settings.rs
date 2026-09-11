@@ -75,7 +75,22 @@ pub struct UnitSettings {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
+pub enum ClimbAverageMethod {
+    #[default]
+    Smoothed20s,
+    NormalizedEma,
+    Average20s,
+    Average30s,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default = "energy_compensation_default")]
+    pub energy_compensation: bool,
+    #[serde(default)]
+    pub climb_average_method: ClimbAverageMethod,
     pub locale: Option<Locale>,
     #[serde(default)]
     pub polar: PolarId,
@@ -83,6 +98,23 @@ pub struct Settings {
     pub arrival_reserve: ArrivalReserve,
     #[serde(default)]
     pub units: UnitSettings,
+}
+
+fn energy_compensation_default() -> bool {
+    true
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            energy_compensation: energy_compensation_default(),
+            climb_average_method: ClimbAverageMethod::default(),
+            locale: None,
+            polar: PolarId::default(),
+            arrival_reserve: ArrivalReserve::default(),
+            units: UnitSettings::default(),
+        }
+    }
 }
 
 impl Settings {

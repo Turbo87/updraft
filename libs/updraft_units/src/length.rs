@@ -60,6 +60,14 @@ impl Length {
 impl_quantity_ops!(Length);
 impl_debug_with_unit!(Length, " m");
 
+impl std::ops::Div<std::time::Duration> for Length {
+    type Output = crate::Speed;
+
+    fn div(self, duration: std::time::Duration) -> Self::Output {
+        crate::Speed::from_meters_per_second(self.0 / duration.as_secs_f64())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,6 +100,13 @@ mod tests {
         c += b;
         c -= Length::from_meters(25.);
         assert_eq!(c, Length::from_meters(125.));
+    }
+
+    #[test]
+    fn divides_length_by_elapsed_time() {
+        let distance = Length::from_meters(12.);
+        let elapsed = std::time::Duration::from_secs(3);
+        assert_eq!(distance / elapsed, crate::Speed::from_meters_per_second(4.));
     }
 
     #[test]

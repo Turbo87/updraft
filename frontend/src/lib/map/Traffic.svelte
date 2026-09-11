@@ -5,6 +5,8 @@
     SymbolLayerSpecification,
   } from 'maplibre-gl';
   import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
+  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+  import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
   import { onMount } from 'svelte';
@@ -80,9 +82,21 @@
     'icon-halo-width': ['interpolate', ['linear'], ['zoom'], 4, 0, 8, ['case', IF_STALE, 0.5, 1.5]],
   };
 
-  type Props = { traffic: TrafficStore; altitudeUnit: AltitudeUnit; showHitAreas: boolean };
+  type Props = {
+    climbAverageMethod?: ClimbAverageMethod;
+    traffic: TrafficStore;
+    altitudeUnit: AltitudeUnit;
+    verticalSpeedUnit: VerticalSpeedUnit;
+    showHitAreas: boolean;
+  };
 
-  let { traffic, altitudeUnit, showHitAreas }: Props = $props();
+  let {
+    traffic,
+    altitudeUnit,
+    verticalSpeedUnit,
+    showHitAreas,
+    climbAverageMethod = 'smoothed20s',
+  }: Props = $props();
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
@@ -90,10 +104,19 @@
   $effect(() => {
     let activeSource = source;
     let activeAltitudeUnit = altitudeUnit;
+    let activeVerticalSpeedUnit = verticalSpeedUnit;
+    let activeMethod = climbAverageMethod;
     if (!activeSource) return;
 
     updateQueue = updateQueue.then(() =>
-      activeSource.setData(trafficFeatureCollection(traffic.current.values(), activeAltitudeUnit)),
+      activeSource.setData(
+        trafficFeatureCollection(
+          traffic.current.values(),
+          activeAltitudeUnit,
+          activeVerticalSpeedUnit,
+          activeMethod,
+        ),
+      ),
     );
   });
 
@@ -103,7 +126,14 @@
       if (!activeSource) return;
 
       updateQueue = updateQueue.then(() =>
-        applyTrafficSourceUpdate(activeSource, update, currentTargets, altitudeUnit),
+        applyTrafficSourceUpdate(
+          activeSource,
+          update,
+          currentTargets,
+          altitudeUnit,
+          verticalSpeedUnit,
+          climbAverageMethod,
+        ),
       );
     }),
   );
@@ -113,7 +143,7 @@
   id="traffic"
   maxzoom={24}
   promoteId="id"
-  data={trafficFeatureCollection([], 'm')}
+  data={trafficFeatureCollection([], 'm', 'm/s')}
   bind:source
 >
   <CircleLayer

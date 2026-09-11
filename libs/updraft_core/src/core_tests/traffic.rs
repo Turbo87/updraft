@@ -349,3 +349,185 @@ fn flarmnet_enriches_report_and_expiry_deltas() {
     assert_eq!(stale.flarmnet, reported.flarmnet);
     assert!(stale.stale);
 }
+
+#[test]
+fn climb_uses_altitude_changes_and_rejects_stale_ownship_altitude() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, GGA), at(0));
+    core.apply(Bytes::new(device, PFLAA_A), at(0));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(device, PFLAA_A_REPLACEMENT), at(1_000));
+    let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+    assert_eq!(climb.average_20s, Speed::from_meters_per_second(50.0));
+    assert_eq!(climb.average_30s, Speed::from_meters_per_second(50.0));
+    assert_eq!(climb.normalized_ema, Speed::from_meters_per_second(50.0));
+    insta::assert_json_snapshot!(climb);
+    core.apply(Bytes::new(device, PFLAA_A), at(3_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(device, GGA), at(5_000));
+    core.apply(Bytes::new(device, PFLAA_A), at(5_000));
+    assert_eq!(
+        assert_some!(traffic_snapshot(&core)[0].climb).average_20s,
+        Speed::ZERO
+    );
+}
+
+#[test]
+fn climb_history_survives_target_removal_and_expires_after_sixty_seconds() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, GGA), at(0));
+    core.apply(Bytes::new(device, PFLAA_A), at(0));
+    core.apply(Tick, at(30_000));
+    assert!(traffic_snapshot(&core).is_empty());
+    core.apply(Tick, at(60_000));
+    core.apply(Bytes::new(device, GGA), at(60_000));
+    core.apply(Bytes::new(device, PFLAA_A_REPLACEMENT), at(60_000));
+    let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+    assert_abs_diff_eq!(
+        climb.average_20s,
+        Speed::from_meters_per_second(50.0) / 60.0,
+        epsilon = 1e-12
+    );
+    core.apply(Tick, at(120_001));
+    core.apply(Bytes::new(device, GGA), at(120_001));
+    core.apply(Bytes::new(device, PFLAA_A), at(120_001));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+}
+
+#[test]
+fn climb_resets_when_reporting_device_or_fallback_altitude_source_changes() {
+    let mut core = Core::new(SettingsSnapshot {
+        settings: Settings::default(),
+        external_devices: (4353..4356)
+            .map(|port| device_config(true, ConnectionSpec::tcp("127.0.0.1", port)))
+            .collect(),
+    });
+    let first = device_id(&core, 0);
+    let second = device_id(&core, 1);
+    let reporter = device_id(&core, 2);
+    core.apply(Bytes::new(first, GGA), at(0));
+    core.apply(Bytes::new(reporter, PFLAA_A), at(0));
+    core.apply(Bytes::new(reporter, PFLAA_A_REPLACEMENT), at(1_000));
+    assert_some!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(reporter, PFLAA_A), at(3_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(second, GGA_SECOND_DEVICE), at(4_000));
+    core.apply(Bytes::new(reporter, PFLAA_A), at(4_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(reporter, PFLAA_A_REPLACEMENT), at(5_000));
+    assert_some!(traffic_snapshot(&core)[0].climb);
+    core.apply(Bytes::new(second, PFLAA_A), at(6_000));
+    assert_none!(traffic_snapshot(&core)[0].climb);
+}
+
+fn core_with_traffic_wind() -> (Core, ExternalDeviceId) {
+    let (mut core, device) = core_with_external_device();
+    for second in 0..60 {
+        let navigation = format!(
+            "$GPRMC,120000.00,A,5049.38,N,00611.16,E,64.7948,{},010126,,,A\r\n$LXWP0,Y,100,,,,,,,,,,\r\n",
+            second * 6
+        );
+        core.apply(Bytes::new(device, navigation.as_bytes()), at(second * 1000));
+    }
+    assert_some!(core.sensor_fusion.current_wind());
+    (core, device)
+}
+
+#[test]
+fn traffic_refreshes_wind_before_using_reports_in_a_navigation_batch() {
+    let (mut core, device) = core_with_traffic_wind();
+    core.apply(Bytes::new(device, GGA), at(59_000));
+    core.apply(Bytes::new(device, PFLAA_A), at(59_000));
+    let batch = [GGA, PFLAA_A_REPLACEMENT].concat();
+    core.apply(Bytes::new(device, batch), at(70_000));
+    assert_none!(core.sensor_fusion.current_wind());
+    let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+    assert_abs_diff_eq!(
+        climb.average_20s,
+        Speed::from_meters_per_second(50. / 11.),
+        epsilon = 1e-12
+    );
+}
+
+#[test]
+fn derived_traffic_velocity_accounts_for_ownship_motion_when_either_field_is_missing() {
+    use updraft_geo::LatLon;
+    use updraft_units::{Angle, Length};
+    for fields in [",0,25", "90,0,"] {
+        let (mut core, device) = core_with_traffic_wind();
+        let origin = LatLon::from_degrees(50.823, 6.186);
+        for (millis, ownship_north, relative_north) in
+            [(60_000, 0., 1000), (62_000, 60., 940), (64_000, 60., 980)]
+        {
+            let timestamp = at(millis);
+            let position = origin.destination(Angle::ZERO, Length::from_meters(ownship_north));
+            let gps = &mut assert_some!(core.external_devices.get_mut(device)).gps;
+            gps.position = Some(Timed::new(position, timestamp));
+            gps.altitude = Some(Timed::new(
+                MslAltitude::new(Length::from_meters(200.)),
+                timestamp,
+            ));
+            assert_some!(gps.track.as_mut()).ingested_at = timestamp;
+            assert_some!(gps.ground_speed.as_mut()).ingested_at = timestamp;
+            let report = format!("$PFLAA,0,{relative_north},0,50,1,ABC123,{fields},0,1,0\r\n");
+            core.apply(Bytes::new(device, report.as_bytes()), timestamp);
+            assert_some!(core.sensor_fusion.current_wind());
+        }
+        let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+        let wind = assert_some!(core.sensor_fusion.current_wind());
+        let wind_north = -wind.speed.as_meters_per_second() * wind.direction.cos();
+        let expected =
+            Speed::from_meters_per_second((400. - 40. * wind_north) / (2. * 9.80665) / 3.);
+        assert_abs_diff_eq!(climb.average_20s, expected, epsilon = 1e-6);
+    }
+}
+
+#[test]
+fn energy_compensation_switch_resets_all_estimates_and_uses_raw_height_when_disabled() {
+    use crate::SetEnergyCompensation;
+    let (mut core, device) = core_with_traffic_wind();
+    for (index, enabled) in [true, false, true].into_iter().enumerate() {
+        let millis = 60_000 + index as u64 * 2_000;
+        let effects = core
+            .apply(SetEnergyCompensation { enabled }, at(millis))
+            .effects;
+        if index > 0 {
+            assert_none!(traffic_snapshot(&core)[0].climb);
+            assert_matches!(&effects[2], Effect::Emit(Topic::Traffic(TrafficUpdate::Delta(delta))) if delta.upserts.len() == 1 && delta.upserts[0].climb.is_none());
+        }
+        for (offset, speed) in [(0, 40), (1_000, 30)] {
+            let timestamp = at(millis + offset);
+            let gps = &mut assert_some!(core.external_devices.get_mut(device)).gps;
+            assert_some!(gps.track.as_mut()).ingested_at = timestamp;
+            assert_some!(gps.ground_speed.as_mut()).ingested_at = timestamp;
+            let report = format!("$PFLAA,0,1000,0,50,1,ABC123,0,0,{speed},0,1,0\r\n");
+            core.apply(
+                Bytes::new(device, [GGA, report.as_bytes()].concat()),
+                timestamp,
+            );
+            assert_some!(core.sensor_fusion.current_wind());
+            if offset == 0 {
+                assert_none!(traffic_snapshot(&core)[0].climb);
+            }
+        }
+        let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+        for estimate in [
+            climb.average_20s,
+            climb.average_30s,
+            climb.normalized_ema,
+            climb.smoothed_20s,
+        ] {
+            if enabled {
+                claims::assert_lt!(estimate, Speed::ZERO);
+            } else {
+                assert_eq!(estimate, Speed::ZERO);
+            }
+        }
+        assert!(
+            core.apply(SetEnergyCompensation { enabled }, at(millis + 1_001))
+                .effects
+                .is_empty()
+        );
+        assert_some_eq!(traffic_snapshot(&core)[0].climb, climb);
+    }
+}

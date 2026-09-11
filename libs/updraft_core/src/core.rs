@@ -1,3 +1,4 @@
+use crate::climb::Velocity;
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
@@ -5,8 +6,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
-    SetBugs, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick,
-    Update,
+    SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled, SetLocale,
+    SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -16,7 +17,9 @@ use crate::sensor_fusion::{FusionInputs, SensorFusion};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
-use crate::traffic::{TrafficChanges, TrafficState, TrafficUpdate, target_from_pflaa};
+use crate::traffic::{
+    TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, target_from_pflaa,
+};
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
 use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
 use std::sync::Arc;
@@ -253,25 +256,59 @@ impl Core {
                 device.true_airspeed = Some(Timed::new(true_airspeed, at));
             }
             Message::Pflaa(pflaa) => {
+                self.reevaluate_flight_data(at);
                 let Some(device) = self.external_devices.get(device_id) else {
                     return;
                 };
                 let same_device = device.gps;
-                let displayed = self.displayed_gps();
-                let Some(position) = same_device
+                let Some((position, position_source)) = same_device
                     .position
-                    .map(|position| position.value)
-                    .or(displayed.map(|gps| gps.position))
+                    .map(|position| (position, SourceId::External(device_id)))
+                    .or_else(|| {
+                        let selected = self.gps.selected()?;
+                        Some((
+                            Timed::new(selected.value.position, selected.ingested_at),
+                            selected.source,
+                        ))
+                    })
                 else {
                     return;
                 };
-                let altitude = same_device
+                let altitude_reference = same_device
                     .altitude
-                    .map(|altitude| altitude.value)
-                    .or(displayed.and_then(|gps| gps.altitude_msl.map(|altitude| altitude.value)));
-                let Some(target) = target_from_pflaa(&pflaa, position, altitude) else {
+                    .map(|altitude| (altitude, SourceId::External(device_id)))
+                    .or_else(|| {
+                        let selected = self.gps.selected()?;
+                        Some((selected.value.altitude_msl?, selected.source))
+                    });
+                let altitude = altitude_reference.map(|(altitude, _)| altitude.value);
+                let Some(mut target) = target_from_pflaa(&pflaa, position.value, altitude) else {
                     return;
                 };
+                let altitude_source = altitude_reference
+                    .filter(|(altitude, _)| altitude.fresh(at).is_some())
+                    .map(|(_, source)| (device_id, source));
+                let velocity = pflaa
+                    .track
+                    .zip(pflaa.ground_speed)
+                    .map(|(track, speed)| Velocity::from_track(track, speed));
+                let wind = self
+                    .sensor_fusion
+                    .current_wind()
+                    .filter(|_| {
+                        self.settings.energy_compensation
+                            && crate::traffic::within_wind_range(&pflaa)
+                    })
+                    .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
+                let motion = TrafficMotion {
+                    velocity,
+                    wind,
+                    position: position
+                        .fresh(at)
+                        .map(|_| (position_source, target.position)),
+                };
+                self.traffic
+                    .update_climb(&mut target, altitude_source, at, motion);
                 self.traffic.observe(target, at, traffic_changes);
             }
             _ => {}
@@ -382,10 +419,6 @@ impl Core {
         if selected_source_was_reset && matches!(self.gps, DomainState::LastKnown(_)) {
             self.gps = DomainState::Unavailable;
         }
-    }
-
-    fn displayed_gps(&self) -> Option<GpsSnapshot> {
-        self.gps.selected().map(|selected| selected.value)
     }
 
     fn instruments(&self) -> Instruments {
@@ -548,6 +581,40 @@ impl Input for SetArrivalReserve {
             return Update::empty();
         }
         core.settings.arrival_reserve = self.reserve;
+        Update::effects(vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ])
+    }
+}
+
+impl Input for SetEnergyCompensation {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.energy_compensation == self.enabled {
+            return Update::empty();
+        }
+        core.settings.energy_compensation = self.enabled;
+        let mut effects = vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ];
+        if let Some(delta) = core.traffic.reset_climb().into_delta(&core.flarmnet) {
+            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
+        }
+        Update::effects(effects)
+    }
+}
+
+impl Input for SetClimbAverageMethod {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.climb_average_method == self.method {
+            return Update::empty();
+        }
+        core.settings.climb_average_method = self.method;
         Update::effects(vec![
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),

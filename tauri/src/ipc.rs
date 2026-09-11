@@ -286,6 +286,28 @@ pub async fn set_mac_cready(
 }
 
 #[tauri::command]
+pub async fn set_energy_compensation(
+    enabled: bool,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetEnergyCompensation { enabled })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
+pub async fn set_climb_average_method(
+    method: updraft_core::ClimbAverageMethod,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetClimbAverageMethod { method })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_arrival_reserve(
     reserve: updraft_core::ArrivalReserve,
     handle: tauri::State<'_, DriverHandle>,
@@ -450,6 +472,8 @@ mod tests {
                 set_bugs,
                 set_ballast,
                 set_arrival_reserve,
+                set_climb_average_method,
+                set_energy_compensation,
                 set_polar,
                 add_external_device,
                 delete_external_device,
@@ -588,6 +612,36 @@ mod tests {
             .expect("the bonded-device result should deserialize");
 
         assert_eq!(response, json!({ "status": "unsupported" }));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn energy_compensation_command_accepts_only_booleans() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for enabled in [true, false] {
+            let input = request("set_energy_compensation", json!({ "enabled": enabled }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for enabled in [json!(null), json!(1), json!("true")] {
+            let input = request("set_energy_compensation", json!({ "enabled": enabled }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn climb_average_method_command_accepts_only_known_methods() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for method in ["normalizedEma", "average20s", "average30s", "smoothed20s"] {
+            let input = request("set_climb_average_method", json!({ "method": method }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        let input = request("set_climb_average_method", json!({ "method": "unknown" }));
+        claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -5,6 +5,8 @@ const EMPTY: Settings = {
   locale: null,
   polar: 'LS 8',
   arrivalReserve: 200,
+  climbAverageMethod: 'smoothed20s',
+  energyCompensation: true,
   units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
 };
 

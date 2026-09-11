@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { formatInfoboxValue } from './value';
 
 describe('formatInfoboxValue', () => {
-  it('formats speed, signed climb, compass direction and zoom', () => {
+  it('formats speed, signed climb and compass direction', () => {
     expect(formatInfoboxValue({ kind: 'speed', metersPerSecond: 30, unit: 'km/h' }, 'en')).toEqual({
       text: '108',
       unit: 'km/h',
@@ -18,7 +18,6 @@ describe('formatInfoboxValue', () => {
       text: '0',
       unit: '°',
     });
-    expect(formatInfoboxValue({ kind: 'zoom', level: 11.126 }, 'de')).toEqual({ text: '11,13' });
   });
 
   it.each([

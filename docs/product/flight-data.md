@@ -90,7 +90,8 @@ becomes current again.
 The instruments topic retains each previous vertical-speed value with
 `stale: true` while its input is stale or a new series waits for its second
 sample. The debug overlay displays all three values with the configured
-vertical-speed unit. There is no pilot-facing vario display yet.
+vertical-speed unit. The Flight View displays the energy-compensated value as
+Vario.
 
 ## Average vario
 
@@ -106,7 +107,8 @@ available or unavailable. The transition does not add an energy-height offset.
 
 An altitude source change, reset, or gap longer than 30 seconds starts a new
 average series. The instruments topic retains the previous value with
-`stale: true` until the new series has two samples.
+`stale: true` until the new series has two samples. The Flight View displays
+this value as Avg. vario.
 
 ## Netto and relative vario
 

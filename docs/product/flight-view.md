@@ -37,13 +37,14 @@ update keeps those camera values and changes only the center.
 
 The Flight View reserves space for ten read-only infoboxes. Their order is
 Altitude, AGL, Ground speed, TAS, Bank angle, Vario, Netto, Wind speed, Wind
-direction, and Zoom. Altitude uses the derived MSL altitude. AGL uses the
-published height above terrain. TAS follows the fallback order in
+direction, and Average vario. Altitude uses the derived MSL altitude. AGL uses
+the published height above terrain. TAS follows the fallback order in
 [Flight data](flight-data.md#true-airspeed).
 
 Portrait uses five columns and two rows below the map. Landscape uses two
 columns and five rows on the right. Both layouts fill row by row. The map stays
-mounted and resizes into the remaining space. Zoom follows the live map camera.
+mounted and resizes into the remaining space. Average vario uses the 20-second
+value from [Flight data](flight-data.md#average-vario).
 Tapping a cell has no action. Field replacement and page switching are not
 implemented.
 
@@ -51,7 +52,7 @@ Altitude and speed values use whole numbers in the selected units. Vario and
 Netto show one decimal, or whole numbers for ft/min, with a plus sign for
 positive values. Wind direction uses whole degrees from 0 through 359. Bank
 angle shows the unsigned magnitude with a left or right chevron. An angle that
-rounds to zero shows both chevrons. Zoom shows two decimals without a unit.
+rounds to zero shows both chevrons. Average vario uses the vario format.
 Formatting follows the selected locale.
 
 Stale values retain their units and use the stale-value color. Missing values

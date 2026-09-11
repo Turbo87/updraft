@@ -31,7 +31,6 @@ describe('flightInfoboxes', () => {
         derived: { ...EMPTY_DERIVED_INSTRUMENTS, airspeed },
       },
       units,
-      11,
     );
     expect(fields.find((field) => field.id === 'tas')).toEqual({
       id: 'tas',
@@ -58,12 +57,12 @@ describe('flightInfoboxes', () => {
           altitude: { altitudeMslMeters: 1245, stale: false },
           bank: { angleDegrees: -12, stale: false },
           vario: { metersPerSecond: 1.8, stale: true },
+          averageVario: { metersPerSecond: 1.4, stale: true },
           netto: { metersPerSecond: 2.5, stale: false },
           wind: { directionDegrees: 248, speedMetersPerSecond: 5, stale: true },
         },
       },
       { altitude: 'ft', speed: 'kt', distance: 'nm', verticalSpeed: 'ft/min' },
-      11.25,
     );
     expect(fields.map((field) => field.id)).toEqual([
       'altitude',
@@ -75,7 +74,7 @@ describe('flightInfoboxes', () => {
       'netto',
       'wind-speed',
       'wind-direction',
-      'zoom',
+      'average-vario',
     ]);
     expect(fields).toMatchInlineSnapshot(`
       [
@@ -168,12 +167,13 @@ describe('flightInfoboxes', () => {
           },
         },
         {
-          "id": "zoom",
-          "label": "Zoom",
-          "stale": false,
+          "id": "average-vario",
+          "label": "Avg. vario",
+          "stale": true,
           "value": {
-            "kind": "zoom",
-            "level": 11.25,
+            "kind": "vertical-speed",
+            "metersPerSecond": 1.4,
+            "unit": "ft/min",
           },
         },
       ]
@@ -181,7 +181,7 @@ describe('flightInfoboxes', () => {
   });
 
   it('keeps all slots when instruments are unavailable', () => {
-    let fields = flightInfoboxes(EMPTY_INSTRUMENTS, units, 8.5);
+    let fields = flightInfoboxes(EMPTY_INSTRUMENTS, units);
     expect(fields).toHaveLength(10);
     expect(fields).toMatchInlineSnapshot(`
       [
@@ -274,12 +274,13 @@ describe('flightInfoboxes', () => {
           },
         },
         {
-          "id": "zoom",
-          "label": "Zoom",
+          "id": "average-vario",
+          "label": "Avg. vario",
           "stale": false,
           "value": {
-            "kind": "zoom",
-            "level": 8.5,
+            "kind": "vertical-speed",
+            "metersPerSecond": null,
+            "unit": "m/s",
           },
         },
       ]

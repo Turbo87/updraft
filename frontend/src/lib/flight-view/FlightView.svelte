@@ -46,7 +46,7 @@
     testMode = false,
   }: Props = $props();
 
-  const infoboxes = $derived(flightInfoboxes(instruments, units, mapState.zoom));
+  const infoboxes = $derived(flightInfoboxes(instruments, units));
 
   function openNearbyRoute(position: LatLon) {
     let path = resolve('/nearby/[latitude]/[longitude]', {

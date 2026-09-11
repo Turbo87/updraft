@@ -1,4 +1,5 @@
-use super::common::{FlarmAlarmLevel, FlarmId, bool_field, parse_hex};
+use super::common::{FlarmAlarmLevel, FlarmId, bool_field, bool_to_field, parse_hex};
+use crate::encode::{EncodeError, SentenceEncoder, degrees_field, optional_field};
 use crate::field::FieldsIter;
 use updraft_units::{Angle, Length};
 
@@ -60,6 +61,36 @@ impl Pflau {
     }
 }
 
+impl TryFrom<&Pflau> for Vec<u8> {
+    type Error = EncodeError;
+
+    fn try_from(pflau: &Pflau) -> Result<Self, Self::Error> {
+        let mut sentence = SentenceEncoder::new("PFLAU");
+        sentence.field(&optional_field(pflau.rx_count));
+        sentence.field(bool_to_field(pflau.tx_ok));
+        sentence.field(&pflau.gps_status.to_nmea_field());
+        sentence.field(bool_to_field(pflau.power_ok));
+        sentence.field(&pflau.alarm_level.to_nmea_field());
+        sentence.field(&degrees_field(pflau.relative_bearing));
+        sentence.field(&pflau.alarm_type.to_nmea_field());
+        sentence.field(&optional_field(
+            pflau.relative_vertical.map(Length::as_meters),
+        ));
+        sentence.field(&optional_field(
+            pflau.relative_distance.map(Length::as_meters),
+        ));
+        sentence.field(
+            &pflau
+                .id
+                .as_ref()
+                .map(FlarmId::to_nmea_field)
+                .transpose()?
+                .unwrap_or_default(),
+        );
+        Ok(sentence.finish())
+    }
+}
+
 /// The GPS status reported in a `PFLAU` sentence. Without a fix (`NoFix`)
 /// the device cannot generate warnings.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -81,6 +112,15 @@ impl PflauGpsStatus {
             b"1" => Self::OnGround,
             b"2" => Self::Airborne,
             field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
+        }
+    }
+
+    fn to_nmea_field(self) -> String {
+        match self {
+            Self::NoFix => "0".to_owned(),
+            Self::OnGround => "1".to_owned(),
+            Self::Airborne => "2".to_owned(),
+            Self::Other(value) => value.to_string(),
         }
     }
 }
@@ -117,12 +157,76 @@ impl PflauAlarmType {
             },
         }
     }
+
+    fn to_nmea_field(self) -> String {
+        match self {
+            Self::None => "0".to_owned(),
+            Self::Aircraft => "2".to_owned(),
+            Self::Obstacle => "3".to_owned(),
+            Self::TrafficAdvisory => "4".to_owned(),
+            Self::AlertZone(zone) => format!("{zone:X}"),
+            Self::Other(value) => format!("{value:X}"),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some_eq};
+    use crate::{Message, Step, parse};
+    use claims::{assert_none, assert_ok, assert_some_eq};
+
+    fn encode_pflau_sentence(pflau: &Pflau) -> String {
+        let sentence = assert_ok!(Vec::<u8>::try_from(pflau));
+        let sentence = assert_ok!(String::from_utf8(sentence));
+        assert!(sentence.ends_with("\r\n"));
+        sentence
+    }
+
+    fn parse_pflau_sentence(sentence: &[u8]) -> Pflau {
+        let mut input = sentence;
+        match parse(&mut input) {
+            Step::Frame(Message::Pflau(pflau)) => pflau,
+            step => panic!("expected encoded PFLAU frame, got {step:?}"),
+        }
+    }
+
+    #[test]
+    fn encodes_a_priority_intruder() {
+        let sentence = b"$PFLAU,3,1,2,1,2,-30,2,-32,755,DD8F12*07\r\n";
+        let pflau = parse_pflau_sentence(sentence);
+        assert_eq!(encode_pflau_sentence(&pflau).as_bytes(), sentence);
+    }
+
+    #[test]
+    fn encodes_a_quiet_heartbeat() {
+        let pflau = Pflau {
+            rx_count: Some(2),
+            tx_ok: Some(true),
+            gps_status: PflauGpsStatus::OnGround,
+            power_ok: Some(true),
+            alarm_level: FlarmAlarmLevel::None,
+            relative_bearing: None,
+            alarm_type: PflauAlarmType::None,
+            relative_vertical: None,
+            relative_distance: None,
+            id: None,
+        };
+
+        insta::assert_snapshot!(encode_pflau_sentence(&pflau));
+        assert_eq!(
+            parse_pflau_sentence(encode_pflau_sentence(&pflau).as_bytes()),
+            pflau
+        );
+    }
+
+    #[test]
+    fn encodes_alert_zone_types_in_hexadecimal() {
+        let sentence = b"$PFLAU,1,1,2,1,1,0,41,0,0,*49\r\n";
+        let pflau = parse_pflau_sentence(sentence);
+        assert_eq!(pflau.alarm_type, PflauAlarmType::AlertZone(0x41));
+        assert_eq!(encode_pflau_sentence(&pflau).as_bytes(), sentence);
+    }
 
     #[test]
     fn parses_a_priority_intruder() {

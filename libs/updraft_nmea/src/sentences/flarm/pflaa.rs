@@ -1,4 +1,5 @@
-use super::common::{FlarmAlarmLevel, FlarmId, bool_field, parse_hex};
+use super::common::{FlarmAlarmLevel, FlarmId, bool_field, bool_to_field, parse_hex};
+use crate::encode::{EncodeError, SentenceEncoder, degrees_field, optional_field};
 use crate::field::FieldsIter;
 use updraft_units::{Angle, Length, Speed};
 
@@ -75,6 +76,52 @@ impl Pflaa {
     }
 }
 
+impl TryFrom<&Pflaa> for Vec<u8> {
+    type Error = EncodeError;
+
+    /// The version 8 and 9 trailing fields are written only when one of
+    /// them is set, so a version 7 target keeps its shorter form.
+    fn try_from(pflaa: &Pflaa) -> Result<Self, Self::Error> {
+        let mut sentence = SentenceEncoder::new("PFLAA");
+        sentence.field(&pflaa.alarm_level.to_nmea_field());
+        sentence.field(&optional_field(pflaa.relative_north.map(Length::as_meters)));
+        sentence.field(&optional_field(pflaa.relative_east.map(Length::as_meters)));
+        sentence.field(&optional_field(
+            pflaa.relative_vertical.map(Length::as_meters),
+        ));
+        sentence.field(&optional_field(
+            pflaa.id_type.map(FlarmIdType::to_nmea_field),
+        ));
+        sentence.field(
+            &pflaa
+                .id
+                .as_ref()
+                .map(FlarmId::to_nmea_field)
+                .transpose()?
+                .unwrap_or_default(),
+        );
+        sentence.field(&degrees_field(pflaa.track));
+        sentence.field(&optional_field(pflaa.turn_rate));
+        sentence.field(&optional_field(
+            pflaa.ground_speed.map(Speed::as_meters_per_second),
+        ));
+        sentence.field(&optional_field(
+            pflaa.climb_rate.map(Speed::as_meters_per_second),
+        ));
+        sentence.field(&pflaa.aircraft_type.to_nmea_field());
+
+        if pflaa.no_track.is_some() || pflaa.source.is_some() || pflaa.rssi.is_some() {
+            sentence.field(bool_to_field(pflaa.no_track));
+            sentence.field(&optional_field(
+                pflaa.source.map(FlarmSource::to_nmea_field),
+            ));
+            sentence.field(&optional_field(pflaa.rssi));
+        }
+
+        Ok(sentence.finish())
+    }
+}
+
 /// How the ID of a `PFLAA` target is to be interpreted.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FlarmIdType {
@@ -95,6 +142,15 @@ impl FlarmIdType {
             b"1" => Some(Self::Icao),
             b"2" => Some(Self::Flarm),
             field => btoi::btou(field).ok().map(Self::Other),
+        }
+    }
+
+    fn to_nmea_field(self) -> String {
+        match self {
+            Self::Random => "0".to_owned(),
+            Self::Icao => "1".to_owned(),
+            Self::Flarm => "2".to_owned(),
+            Self::Other(value) => value.to_string(),
         }
     }
 }
@@ -155,6 +211,26 @@ impl FlarmAircraftType {
             field => parse_hex(field).map(Self::Other).unwrap_or_default(),
         }
     }
+
+    fn to_nmea_field(self) -> String {
+        match self {
+            Self::Unknown => "A".to_owned(),
+            Self::Glider => "1".to_owned(),
+            Self::TowPlane => "2".to_owned(),
+            Self::Helicopter => "3".to_owned(),
+            Self::Skydiver => "4".to_owned(),
+            Self::DropPlane => "5".to_owned(),
+            Self::HangGlider => "6".to_owned(),
+            Self::Paraglider => "7".to_owned(),
+            Self::PistonAircraft => "8".to_owned(),
+            Self::JetAircraft => "9".to_owned(),
+            Self::Balloon => "B".to_owned(),
+            Self::Airship => "C".to_owned(),
+            Self::Uav => "D".to_owned(),
+            Self::StaticObstacle => "F".to_owned(),
+            Self::Other(value) => format!("{value:X}"),
+        }
+    }
 }
 
 /// The receiver a `PFLAA` target was picked up by. When a target is
@@ -186,12 +262,79 @@ impl FlarmSource {
             field => btoi::btou(field).ok().map(Self::Other),
         }
     }
+
+    fn to_nmea_field(self) -> String {
+        match self {
+            Self::Flarm => "0".to_owned(),
+            Self::AdsB => "1".to_owned(),
+            Self::AdsR => "3".to_owned(),
+            Self::TisB => "4".to_owned(),
+            Self::ModeS => "6".to_owned(),
+            Self::Other(value) => value.to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some, assert_some_eq};
+    use crate::{Message, Step, parse};
+    use claims::{assert_none, assert_ok, assert_some, assert_some_eq};
+
+    fn encode_pflaa_sentence(pflaa: &Pflaa) -> String {
+        let sentence = assert_ok!(Vec::<u8>::try_from(pflaa));
+        let sentence = assert_ok!(String::from_utf8(sentence));
+        assert!(sentence.ends_with("\r\n"));
+        sentence
+    }
+
+    fn parse_pflaa_sentence(sentence: &[u8]) -> Pflaa {
+        let mut input = sentence;
+        match parse(&mut input) {
+            Step::Frame(Message::Pflaa(pflaa)) => pflaa,
+            step => panic!("expected encoded PFLAA frame, got {step:?}"),
+        }
+    }
+
+    #[test]
+    fn encodes_a_traffic_target_with_a_callsign() {
+        let pflaa = Pflaa {
+            alarm_level: FlarmAlarmLevel::None,
+            relative_north: Some(Length::from_meters(-1234.0)),
+            relative_east: Some(Length::from_meters(1234.0)),
+            relative_vertical: Some(Length::from_meters(220.0)),
+            id_type: Some(FlarmIdType::Flarm),
+            id: FlarmId::parse(b"DD8F12!AB"),
+            track: Some(Angle::from_degrees(180.0)),
+            turn_rate: None,
+            ground_speed: Some(Speed::from_meters_per_second(30.0)),
+            climb_rate: Some(Speed::from_meters_per_second(-1.4)),
+            aircraft_type: FlarmAircraftType::Glider,
+            no_track: None,
+            source: None,
+            rssi: None,
+        };
+
+        insta::assert_snapshot!(encode_pflaa_sentence(&pflaa));
+        assert_eq!(
+            parse_pflaa_sentence(encode_pflaa_sentence(&pflaa).as_bytes()),
+            pflaa
+        );
+    }
+
+    #[test]
+    fn encodes_the_version_9_trailing_fields() {
+        let sentence = b"$PFLAA,0,1206,504,182,1,DDA85C,240,,49,2.5,9,0,1,-58.5*4A\r\n";
+        let pflaa = parse_pflaa_sentence(sentence);
+        assert_eq!(encode_pflaa_sentence(&pflaa).as_bytes(), sentence);
+    }
+
+    #[test]
+    fn encodes_a_non_directional_target() {
+        let sentence = b"$PFLAA,0,1852,,-163,,,,,,,A*10\r\n";
+        let pflaa = parse_pflaa_sentence(sentence);
+        assert_eq!(encode_pflaa_sentence(&pflaa).as_bytes(), sentence);
+    }
 
     #[test]
     fn parses_a_traffic_target() {

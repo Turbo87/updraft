@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/flarm/pflau.rs
+expression: encode_pflau_sentence(&pflau)
+---
+$PFLAU,2,1,1,1,0,,0,,,*4D

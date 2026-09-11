@@ -3,6 +3,7 @@
 use crate::Talker;
 use thiserror::Error;
 use updraft_geo::LatLon;
+use updraft_units::Angle;
 
 /// An NMEA field cannot be represented in a sentence.
 #[derive(Clone, Copy, Debug, Error, PartialEq, Eq)]
@@ -75,6 +76,16 @@ pub fn optional_field<T: ToString>(value: Option<T>) -> String {
     value.map_or_else(String::new, |value| value.to_string())
 }
 
+/// An angle in degrees, rounded to a microdegree so a value that went
+/// through radians comes back as the number a device would send.
+pub fn degrees_field(angle: Option<Angle>) -> String {
+    let Some(angle) = angle else {
+        return String::new();
+    };
+    let degrees = (angle.as_degrees() * 1_000_000.0).round() / 1_000_000.0;
+    degrees.to_string()
+}
+
 pub fn position_fields(position: Option<LatLon>) -> [String; 4] {
     let Some(position) = position else {
         return Default::default();
@@ -113,6 +124,14 @@ fn coordinate_field(degrees: f64, degree_width: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rounds_degrees_that_went_through_radians() {
+        assert_eq!(degrees_field(Some(Angle::from_degrees(240.0))), "240");
+        assert_eq!(degrees_field(Some(Angle::from_degrees(-30.0))), "-30");
+        assert_eq!(degrees_field(Some(Angle::from_degrees(12.5))), "12.5");
+        assert_eq!(degrees_field(None), "");
+    }
 
     #[test]
     fn carries_rounded_coordinate_minutes_into_degrees() {

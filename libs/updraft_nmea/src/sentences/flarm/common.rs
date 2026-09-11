@@ -1,5 +1,6 @@
 //! Types and field helpers shared across the FLARM sentence family.
 
+use crate::encode::EncodeError;
 use crate::field::FieldsIter;
 
 /// The collision-alarm level assessed by FLARM, shared by `PFLAU` and
@@ -28,6 +29,16 @@ impl FlarmAlarmLevel {
             b"2" => Self::Important,
             b"3" => Self::Urgent,
             field => btoi::btou(field).ok().map(Self::Other).unwrap_or_default(),
+        }
+    }
+
+    pub(super) fn to_nmea_field(self) -> String {
+        match self {
+            Self::None => "0".to_owned(),
+            Self::Low => "1".to_owned(),
+            Self::Important => "2".to_owned(),
+            Self::Urgent => "3".to_owned(),
+            Self::Other(value) => value.to_string(),
         }
     }
 }
@@ -61,6 +72,24 @@ impl FlarmId {
 
         Some(Self { address, callsign })
     }
+
+    /// The wire form: six hex digits, then `!` and the callsign when one
+    /// is set. A callsign that cannot be an NMEA field is an error.
+    pub(super) fn to_nmea_field(&self) -> Result<String, EncodeError> {
+        let mut field = format!("{:06X}", self.address);
+        if let Some(callsign) = &self.callsign {
+            if !callsign.is_ascii()
+                || callsign
+                    .bytes()
+                    .any(|byte| matches!(byte, b',' | b'*' | b'!' | b'\r' | b'\n'))
+            {
+                return Err(EncodeError::InvalidField("callsign"));
+            }
+            field.push('!');
+            field.push_str(callsign);
+        }
+        Ok(field)
+    }
 }
 
 /// Renders in the wire form (`FlarmId(39103C!FJLKN)`): a decimal address
@@ -84,6 +113,15 @@ pub(super) fn bool_field(fields: &mut FieldsIter<'_>) -> Option<bool> {
     }
 }
 
+/// The wire form of a FLARM `0`/`1` status field, empty when absent.
+pub(super) fn bool_to_field(value: Option<bool>) -> &'static str {
+    match value {
+        Some(true) => "1",
+        Some(false) => "0",
+        None => "",
+    }
+}
+
 /// A hexadecimal field: FLARM sends alarm and aircraft types in hex.
 pub(super) fn parse_hex(field: &[u8]) -> Option<u8> {
     btoi::btou_radix(field, 16).ok()
@@ -92,7 +130,7 @@ pub(super) fn parse_hex(field: &[u8]) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some, assert_some_eq};
+    use claims::{assert_err, assert_none, assert_ok_eq, assert_some, assert_some_eq};
 
     #[test]
     fn parses_flarm_ids() {
@@ -138,6 +176,21 @@ mod tests {
         );
         assert_eq!(FlarmAlarmLevel::from_field(b"3"), FlarmAlarmLevel::Urgent);
         assert_eq!(FlarmAlarmLevel::from_field(b"4"), FlarmAlarmLevel::Other(4));
+    }
+
+    #[test]
+    fn encodes_ids_in_wire_form() {
+        let id = assert_some!(FlarmId::parse(b"39103C!FJLKN"));
+        assert_ok_eq!(id.to_nmea_field(), "39103C!FJLKN");
+
+        let id = assert_some!(FlarmId::parse(b"000FA3"));
+        assert_ok_eq!(id.to_nmea_field(), "000FA3");
+
+        let id = FlarmId {
+            address: 0x39103C,
+            callsign: Some("A,B".into()),
+        };
+        assert_err!(id.to_nmea_field());
     }
 
     #[test]

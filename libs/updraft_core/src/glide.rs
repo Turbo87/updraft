@@ -158,6 +158,7 @@ mod tests {
             wind: None,
             raw_vertical_speed: None,
             vertical_speed: None,
+            average_vario: None,
             vario: None,
             airspeed: None,
             heading: None,

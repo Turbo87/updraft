@@ -417,6 +417,8 @@ fn stale_airspeed_stales_netto_independently() {
 fn stale_pressure_altitude_stales_netto_independently() {
     let (mut fusion, air_speed, pressure_altitude) = fusion_with_current_netto();
 
+    let average = assert_some!(assert_some!(fusion.instruments()).average_vario);
+    assert!(!average.stale);
     let current = assert_some!(assert_some!(fusion.instruments()).netto);
     assert!(!current.stale);
     let relative = assert_some!(assert_some!(fusion.instruments()).relative_vario);
@@ -428,6 +430,9 @@ fn stale_pressure_altitude_stales_netto_independently() {
         pressure_altitude: DomainState::LastKnown(pressure_altitude),
     });
 
+    let retained = assert_some!(assert_some!(fusion.instruments()).average_vario);
+    assert_eq!(retained.meters_per_second, average.meters_per_second);
+    assert!(retained.stale);
     let retained = assert_some!(assert_some!(fusion.instruments()).netto);
     assert_eq!(retained.meters_per_second, current.meters_per_second);
     assert!(retained.stale);

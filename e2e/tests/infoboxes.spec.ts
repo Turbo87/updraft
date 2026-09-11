@@ -20,6 +20,7 @@ test('updates infoboxes from instruments, units and map zoom', async ({ page }) 
           rawVerticalSpeed: null,
           verticalSpeed: null,
           vario: null,
+          averageVario: null,
           wind: null,
           airspeed: null,
           heading: null,

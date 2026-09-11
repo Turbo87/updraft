@@ -7,6 +7,7 @@ export const EMPTY_DERIVED_INSTRUMENTS: DerivedInstruments = {
   rawVerticalSpeed: null,
   verticalSpeed: null,
   vario: null,
+  averageVario: null,
   wind: null,
   airspeed: null,
   heading: null,

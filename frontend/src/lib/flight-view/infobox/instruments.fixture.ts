@@ -21,6 +21,7 @@ export const INFOBOX_INSTRUMENTS: Instruments = {
     wind: { directionDegrees: 248, speedMetersPerSecond: 5, stale: true },
     rawVerticalSpeed: null,
     verticalSpeed: null,
+    averageVario: null,
     airspeed: null,
     heading: null,
     relativeVario: null,

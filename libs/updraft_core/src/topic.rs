@@ -83,6 +83,7 @@ pub struct DerivedInstruments {
     pub raw_vertical_speed: Option<SpeedInstrument>,
     pub vertical_speed: Option<SpeedInstrument>,
     pub vario: Option<SpeedInstrument>,
+    pub average_vario: Option<SpeedInstrument>,
     pub wind: Option<DerivedWindInstruments>,
     pub airspeed: Option<SpeedInstrument>,
     pub heading: Option<DerivedHeadingInstruments>,
@@ -245,6 +246,10 @@ mod tests {
                 vario: Some(SpeedInstrument {
                     meters_per_second: 1.5,
                     stale: true,
+                }),
+                average_vario: Some(SpeedInstrument {
+                    meters_per_second: 1.4,
+                    stale: false,
                 }),
                 wind: Some(DerivedWindInstruments {
                     direction_degrees: 240.0,

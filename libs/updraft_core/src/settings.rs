@@ -87,6 +87,8 @@ pub enum ClimbAverageMethod {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default = "flarm_position_correction_default")]
+    pub flarm_position_correction: bool,
     #[serde(default = "energy_compensation_default")]
     pub energy_compensation: bool,
     #[serde(default)]
@@ -100,6 +102,10 @@ pub struct Settings {
     pub units: UnitSettings,
 }
 
+fn flarm_position_correction_default() -> bool {
+    true
+}
+
 fn energy_compensation_default() -> bool {
     true
 }
@@ -108,6 +114,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             energy_compensation: energy_compensation_default(),
+            flarm_position_correction: flarm_position_correction_default(),
             climb_average_method: ClimbAverageMethod::default(),
             locale: None,
             polar: PolarId::default(),

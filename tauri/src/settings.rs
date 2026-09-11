@@ -251,6 +251,7 @@ mod tests {
         let file = SettingsFile::new(&config_dir);
         let snapshot = SettingsSnapshot {
             settings: Settings {
+                flarm_position_correction: false,
                 climb_average_method: updraft_core::ClimbAverageMethod::Average30s,
                 energy_compensation: false,
                 locale: Some(Locale::De),

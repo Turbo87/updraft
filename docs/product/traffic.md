@@ -14,6 +14,41 @@ positions. The core converts the relative position with an ownship position.
 It first uses a position from the same external device. It falls back to the
 currently displayed GPS position.
 
+The experimental FLARM position correction defaults to enabled. The Traffic
+settings page can disable it for devices that use a different reference model.
+The setting is stored across restarts. Missing stored values enable it.
+
+With correction enabled, the core identifies one-second traffic cycles from
+RMC/GGA timestamps and PFLAU/PGRMZ order. Traffic before the next cycle marker
+uses the preceding cycle's RMC fix, even if a newer GPS sentence has arrived.
+The core projects that fix two seconds along its reported ground track and
+speed before adding the relative traffic position. The altitude correction uses
+the cycle's GGA height and its change from the preceding GGA fix. It projects
+that height two seconds before adding the relative traffic height. Both fixes
+must be fresh and one to three seconds apart in GPS time. Missing altitude
+history uses the existing GPS-altitude fallback. The correction affects target
+altitude and climb calculations. It does not shift ownship, pressure altitude,
+or reception time.
+
+Each device retains the active traffic references and the latest RMC and GGA
+fixes. New GPS fixes leave the active reference unchanged until the traffic
+cycle advances.
+Correction requires an exact cycle match and a reference received less than
+three seconds ago. A missing fix, missing velocity, or unidentified cycle uses
+the existing position fallback.
+Zero ground speed needs no track. The correction applies to FLARM-source
+reports and older reports without a source field. Other reported sources retain
+the existing calculation.
+
+Device runtime resets, connection changes, backward GPS time changes, and stale
+input gaps clear the reference history. Midnight retains continuity. Changing
+the setting affects subsequent reports and resets climb histories so a position
+or altitude jump cannot become a derived velocity or climb sample.
+
+This model comes from one recording. It remains experimental until other
+devices have been checked. Its predicted positions do not establish exact
+sentence transmission times.
+
 The target MSL altitude is available only when the report contains relative
 vertical distance and an ownship MSL altitude is available. The core first uses
 same-device altitude and then the displayed GPS altitude.

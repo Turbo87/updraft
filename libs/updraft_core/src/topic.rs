@@ -311,6 +311,7 @@ mod tests {
         {
           "topic": "settings",
           "value": {
+            "flarmPositionCorrection": true,
             "energyCompensation": true,
             "climbAverageMethod": "smoothed20s",
             "locale": "de",

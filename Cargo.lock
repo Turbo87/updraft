@@ -5842,6 +5842,7 @@ dependencies = [
  "tracing",
  "tracing-indicatif",
  "tracing-subscriber",
+ "updraft_core",
  "updraft_egm96",
  "updraft_geo",
  "updraft_nmea",

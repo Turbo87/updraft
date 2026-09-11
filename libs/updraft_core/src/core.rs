@@ -6,8 +6,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
-    SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled, SetLocale,
-    SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled,
+    SetFlarmPositionCorrection, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -25,7 +25,7 @@ use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
 use std::sync::Arc;
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_flarmnet::FlarmnetDatabase;
-use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
+use updraft_nmea::{FlarmSource, GgaFixQuality, Message, PositioningMode, RmcStatus};
 use updraft_units::{MslAltitude, PressureAltitude, Speed};
 
 /// The deterministic application core.
@@ -187,6 +187,9 @@ impl Core {
         at: Timestamp,
         traffic_changes: &mut TrafficChanges,
     ) {
+        if let Some(device) = self.external_devices.get_mut(device_id) {
+            device.flarm_reference.observe(&message, at);
+        }
         match message {
             Message::Rmc(rmc)
                 if rmc.status == RmcStatus::Active
@@ -274,8 +277,18 @@ impl Core {
                 else {
                     return;
                 };
-                let altitude_reference = same_device
-                    .altitude
+                let correct_reference = self.settings.flarm_position_correction
+                    && matches!(pflaa.source, None | Some(FlarmSource::Flarm));
+                let position = if correct_reference {
+                    device.flarm_reference.position(at).unwrap_or(position)
+                } else {
+                    position
+                };
+                let corrected_altitude = correct_reference
+                    .then(|| device.flarm_reference.altitude(at))
+                    .flatten();
+                let altitude_reference = corrected_altitude
+                    .or(same_device.altitude)
                     .map(|altitude| (altitude, SourceId::External(device_id)))
                     .or_else(|| {
                         let selected = self.gps.selected()?;
@@ -518,6 +531,7 @@ impl Input for ConnectionChanged {
         if !device.config.enabled {
             return Update::empty();
         }
+        device.flarm_reference = Default::default();
         device
             .diagnostics
             .changed(self.device_id, &device.config.spec, self.state);
@@ -585,6 +599,25 @@ impl Input for SetArrivalReserve {
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
         ])
+    }
+}
+
+impl Input for SetFlarmPositionCorrection {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.flarm_position_correction == self.enabled {
+            return Update::empty();
+        }
+        core.settings.flarm_position_correction = self.enabled;
+        let mut effects = vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ];
+        if let Some(delta) = core.traffic.reset_climb().into_delta(&core.flarmnet) {
+            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
+        }
+        Update::effects(effects)
     }
 }
 

@@ -4,6 +4,7 @@ use crate::connection_diagnostics::ConnectionDiagnostics;
 use crate::decoder::Decoder;
 use crate::ownship::GpsCandidate;
 use crate::ownship::Timed;
+use crate::traffic::reference::FlarmReference;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use updraft_units::{PressureAltitude, Speed};
@@ -33,6 +34,7 @@ pub struct ExternalDevice {
     pub decoder: Decoder,
     pub diagnostics: ConnectionDiagnostics,
     pub gps: GpsCandidate,
+    pub flarm_reference: FlarmReference,
     pub pressure_altitude: Option<Timed<PressureAltitude>>,
     pub true_airspeed: Option<Timed<Speed>>,
 }
@@ -42,6 +44,7 @@ impl ExternalDevice {
         self.decoder = Decoder::default();
         self.diagnostics = ConnectionDiagnostics::default();
         self.gps = GpsCandidate::default();
+        self.flarm_reference = FlarmReference::default();
         self.pressure_altitude = None;
         self.true_airspeed = None;
     }
@@ -83,6 +86,7 @@ impl ExternalDevices {
                 decoder: Decoder::default(),
                 diagnostics: ConnectionDiagnostics::default(),
                 gps: GpsCandidate::default(),
+                flarm_reference: FlarmReference::default(),
                 pressure_altitude: None,
                 true_airspeed: None,
             });
@@ -117,6 +121,7 @@ impl ExternalDevices {
             decoder: Decoder::default(),
             diagnostics: ConnectionDiagnostics::default(),
             gps: GpsCandidate::default(),
+            flarm_reference: FlarmReference::default(),
             pressure_altitude: None,
             true_airspeed: None,
         });

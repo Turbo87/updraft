@@ -112,6 +112,7 @@ describe('TrafficStore', () => {
         arrivalReserve: 200,
         climbAverageMethod: 'normalizedEma',
         energyCompensation: true,
+        flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });

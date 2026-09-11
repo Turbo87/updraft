@@ -1,4 +1,5 @@
 mod climb;
+pub mod reference;
 mod velocity;
 
 use crate::ExternalDeviceId;

@@ -14,6 +14,7 @@ current settings topic and sends typed commands for changes.
 - `/settings/units`
 - `/settings/glide`
 - `/settings/vario`
+- `/settings/traffic`
 - `/settings/flight-controls`
 - `/settings/data`
 - `/settings/devices`
@@ -132,6 +133,14 @@ Energy compensation is a separate shared setting. It defaults to enabled and
 applies to all four methods. Disabled compensation uses altitude changes only.
 Changing the setting clears existing climb estimates and restarts their histories.
 The Vario page offers enabled and disabled options with command error feedback.
+
+## Traffic correction
+
+The Traffic page offers enabled and disabled options for experimental FLARM
+position correction. It defaults to enabled and is saved across restarts.
+Existing settings files enable it when the field is absent. A pending command
+disables the control. Failure restores the published value and shows an error.
+See [Traffic](traffic.md) for the reference model and fallback behavior.
 
 ## Installed data
 

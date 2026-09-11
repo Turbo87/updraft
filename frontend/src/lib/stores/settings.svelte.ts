@@ -7,6 +7,7 @@ const EMPTY: Settings = {
   arrivalReserve: 200,
   climbAverageMethod: 'smoothed20s',
   energyCompensation: true,
+  flarmPositionCorrection: true,
   units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
 };
 

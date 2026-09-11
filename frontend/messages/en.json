@@ -416,5 +416,11 @@
   "climb_30s_label": "30 s average",
   "vario_settings_heading": "Vario",
   "climb_average_label": "Climb averaging",
-  "climb_average_change_failed": "Could not change the climb method."
+  "climb_average_change_failed": "Could not change the climb method.",
+  "traffic_settings_heading": "Traffic",
+  "flarm_correction_label": "FLARM position correction",
+  "flarm_correction_description": "Experimental correction for FLARM traffic positions and altitudes. Disable it if traffic positions or altitudes become less accurate with your device.",
+  "flarm_correction_enabled": "Enabled",
+  "flarm_correction_disabled": "Disabled",
+  "flarm_correction_change_failed": "Could not change FLARM position correction."
 }

@@ -1,0 +1,5 @@
+---
+source: libs/updraft_nmea/src/sentences/lx/lxwp2.rs
+expression: encode_lxwp2_sentence(&complete_lxwp2())
+---
+$LXWP2,1.5,1.11,13,2.96,-3.03,1.35,45*02

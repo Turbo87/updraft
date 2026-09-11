@@ -1,3 +1,4 @@
+use crate::encode::{EncodeError, SentenceEncoder, optional_field};
 use crate::field::FieldsIter;
 use updraft_units::Speed;
 
@@ -43,10 +44,81 @@ impl Lxwp2 {
     }
 }
 
+impl TryFrom<&Lxwp2> for Vec<u8> {
+    type Error = EncodeError;
+
+    fn try_from(lxwp2: &Lxwp2) -> Result<Self, Self::Error> {
+        let mut sentence = SentenceEncoder::new("LXWP2");
+        sentence.field(&optional_field(
+            lxwp2.mac_cready.map(Speed::as_meters_per_second),
+        ));
+        sentence.field(&optional_field(lxwp2.ballast));
+        sentence.field(&optional_field(lxwp2.bugs));
+        sentence.field(&optional_field(lxwp2.polar_a));
+        sentence.field(&optional_field(lxwp2.polar_b));
+        sentence.field(&optional_field(lxwp2.polar_c));
+        sentence.field(&optional_field(lxwp2.volume));
+        Ok(sentence.finish())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claims::{assert_none, assert_some_eq};
+    use crate::{Message, Step, parse};
+    use claims::{assert_none, assert_ok, assert_some_eq};
+
+    fn complete_lxwp2() -> Lxwp2 {
+        Lxwp2 {
+            mac_cready: Some(Speed::from_meters_per_second(1.5)),
+            ballast: Some(1.11),
+            bugs: Some(13.0),
+            polar_a: Some(2.96),
+            polar_b: Some(-3.03),
+            polar_c: Some(1.35),
+            volume: Some(45.0),
+        }
+    }
+
+    fn encode_lxwp2_sentence(lxwp2: &Lxwp2) -> String {
+        let sentence = assert_ok!(Vec::<u8>::try_from(lxwp2));
+        let sentence = assert_ok!(String::from_utf8(sentence));
+        assert!(sentence.ends_with("\r\n"));
+        sentence
+    }
+
+    #[test]
+    fn encodes_complete_lxwp2_sentence() {
+        insta::assert_snapshot!(encode_lxwp2_sentence(&complete_lxwp2()));
+    }
+
+    #[test]
+    fn encodes_mac_cready_only_lxwp2_sentence() {
+        let lxwp2 = Lxwp2 {
+            mac_cready: Some(Speed::from_meters_per_second(0.5)),
+            ballast: None,
+            bugs: None,
+            polar_a: None,
+            polar_b: None,
+            polar_c: None,
+            volume: None,
+        };
+
+        insta::assert_snapshot!(encode_lxwp2_sentence(&lxwp2));
+    }
+
+    #[test]
+    fn parses_encoded_lxwp2_sentence() {
+        let expected = complete_lxwp2();
+        let sentence = assert_ok!(Vec::<u8>::try_from(&expected));
+        let mut input = sentence.as_slice();
+        let actual = match parse(&mut input) {
+            Step::Frame(Message::Lxwp2(lxwp2)) => lxwp2,
+            step => panic!("expected encoded LXWP2 frame, got {step:?}"),
+        };
+
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn parses_settings_with_a_polar_and_volume() {

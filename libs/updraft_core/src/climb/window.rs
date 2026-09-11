@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::time::Duration;
 use updraft_units::{Length, Speed};
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct ClimbWindow {
     samples: VecDeque<(Duration, Length)>,
 }

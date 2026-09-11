@@ -90,7 +90,25 @@ becomes current again.
 The instruments topic retains each previous vertical-speed value with
 `stale: true` while its input is stale or a new series waits for its second
 sample. The debug overlay displays all three values with the configured
-vertical-speed unit. There is no pilot-facing vario display yet.
+vertical-speed unit. The Flight View displays the energy-compensated value as
+Vario.
+
+## Average vario
+
+The core calculates average vario from the selected altitude series. It uses
+the height change during the previous 20 seconds. It interpolates the height at
+the start of the window. During startup, it uses all available history after
+the first two samples.
+
+When current TAS is available at both ends of an altitude interval, the height
+change includes the airspeed energy term `v²/2g`. Otherwise, the interval uses
+only the altitude change. The average keeps its history when TAS becomes
+available or unavailable. The transition does not add an energy-height offset.
+
+An altitude source change, reset, or gap longer than 30 seconds starts a new
+average series. The instruments topic retains the previous value with
+`stale: true` until the new series has two samples. The Flight View displays
+this value as Avg. vario.
 
 ## Netto and relative vario
 

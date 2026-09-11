@@ -11,13 +11,9 @@ export type InfoboxField = {
   stale: boolean;
 };
 
-export function flightInfoboxes(
-  instruments: Instruments,
-  units: UnitSettings,
-  zoom: number,
-): InfoboxField[] {
+export function flightInfoboxes(instruments: Instruments, units: UnitSettings): InfoboxField[] {
   let { gps, altitudeAgl, derived } = instruments;
-  let { altitude, bank, vario, netto, wind } = derived ?? {};
+  let { altitude, bank, vario, averageVario, netto, wind } = derived ?? {};
   let direct = instruments.trueAirspeed;
   let estimated = derived?.airspeed;
   let tas =
@@ -101,6 +97,15 @@ export function flightInfoboxes(
       stale: wind?.stale ?? false,
       value: { kind: 'direction', degrees: wind?.directionDegrees ?? null },
     },
-    { id: 'zoom', label: m.infobox_zoom(), stale: false, value: { kind: 'zoom', level: zoom } },
+    {
+      id: 'average-vario',
+      label: m.infobox_average_vario(),
+      stale: averageVario?.stale ?? false,
+      value: {
+        kind: 'vertical-speed',
+        metersPerSecond: averageVario?.metersPerSecond ?? null,
+        unit: units.verticalSpeed,
+      },
+    },
   ];
 }

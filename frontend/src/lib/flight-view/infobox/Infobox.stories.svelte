@@ -35,7 +35,13 @@
   name="Wind direction"
   args={{ label: 'Wind direction', value: { kind: 'direction', degrees: 248 } }}
 />
-<Story name="Zoom" args={{ label: 'Zoom', value: { kind: 'zoom', level: 11.25 } }} />
+<Story
+  name="Average vario"
+  args={{
+    label: 'Avg. vario',
+    value: { kind: 'vertical-speed', metersPerSecond: 1.4, unit: 'm/s' },
+  }}
+/>
 <Story
   name="Stale"
   args={{ label: 'TAS', value: { kind: 'speed', metersPerSecond: 30, unit: 'kt' }, stale: true }}

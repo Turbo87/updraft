@@ -5,6 +5,7 @@ use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::smoothing::smoothing_weight;
 use super::vario::Vario;
 use super::wind::{Wind, WindFilter};
+use crate::climb::ClimbWindow;
 use std::time::Duration;
 use updraft_geo::LatLon;
 use updraft_polar::{GlidePolar, isa_density_ratio};
@@ -44,6 +45,7 @@ pub struct Estimate {
     /// Smoothed vertical speed. Positive means climbing.
     pub vertical_speed: Option<Speed>,
     pub vario: Option<Speed>,
+    pub average_vario: Option<Speed>,
     pub wind: Option<Wind>,
     pub air_speed: Option<Speed>,
     pub heading: Option<Angle>,
@@ -52,6 +54,46 @@ pub struct Estimate {
     pub netto: Option<Speed>,
     /// Netto minus density-corrected straight-flight minimum sink. Positive means climbing.
     pub relative_vario: Option<Speed>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct AverageVario {
+    previous: Option<(Length, Option<Length>)>,
+    height: Length,
+    window: ClimbWindow,
+}
+
+impl AverageVario {
+    fn reset_energy(&mut self) {
+        if let Some((altitude, _)) = self.previous {
+            self.previous = Some((altitude, None));
+        }
+    }
+
+    fn observe(
+        &mut self,
+        time: Duration,
+        altitude: Length,
+        energy: Option<Length>,
+        rebase: Length,
+        continuous_altitude: bool,
+    ) {
+        if !continuous_altitude {
+            *self = Self::default();
+        }
+        if let Some((previous_altitude, previous_energy)) = self.previous {
+            self.height += altitude - (previous_altitude + rebase);
+            if let Some((previous, current)) = previous_energy.zip(energy) {
+                self.height += current - previous;
+            }
+        }
+        self.previous = Some((altitude, energy));
+        self.window.observe(time, self.height);
+    }
+
+    fn value(&self) -> Option<Speed> {
+        self.window.average(Duration::from_secs(20))
+    }
 }
 
 /// Derives flight values from timestamped physical measurements.
@@ -65,6 +107,7 @@ pub struct Estimator {
     pressure_altitude_current: bool,
     vario: Vario,
     uncompensated: Vario,
+    average_vario: AverageVario,
     measured_air_speed: Option<AirSpeedSample>,
     inferred_air_speed: InferredAirspeed,
     vario_available: bool,
@@ -102,6 +145,7 @@ impl Estimator {
             pressure_altitude_current: false,
             vario: Vario::default(),
             uncompensated: Vario::default(),
+            average_vario: AverageVario::default(),
             measured_air_speed: None,
             inferred_air_speed: InferredAirspeed::default(),
             vario_available: false,
@@ -294,6 +338,7 @@ impl Estimator {
         self.vario = Vario::default();
         self.vario_available = false;
         self.previous_energy = None;
+        self.average_vario.reset_energy();
     }
 
     fn air_speed_at(&self, now: Duration) -> Option<Speed> {
@@ -370,21 +415,31 @@ impl Estimator {
         }
         let air_speed = self.air_speed_at(time);
         self.vario_available = air_speed.is_some();
-        let energy = air_speed.map_or(Length::ZERO, |speed| {
+        let energy = air_speed.map(|speed| {
             let speed = speed.as_meters_per_second();
             Length::from_meters(speed * speed / (2. * GRAVITY))
         });
-        let compensation = match (self.previous_energy, air_speed.is_some()) {
-            (None, true) => energy,
-            (Some(previous), false) => -previous,
+        let compensation = match (self.previous_energy, energy) {
+            (None, Some(current)) => current,
+            (Some(previous), None) => -previous,
             _ => Length::ZERO,
         };
         let fusion = self.altitude.take_step();
-        self.previous_energy = air_speed.map(|_| energy);
-        let compensated =
-            self.vario
-                .advance(time, altitude + energy, fusion + compensation, domain);
+        self.previous_energy = energy;
+        let compensated = self.vario.advance(
+            time,
+            altitude + energy.unwrap_or_default(),
+            fusion + compensation,
+            domain,
+        );
         let uncompensated = self.uncompensated.advance(time, altitude, fusion, domain);
+        self.average_vario.observe(
+            time,
+            altitude,
+            energy,
+            fusion,
+            self.uncompensated.value().is_some(),
+        );
         debug_assert_eq!(compensated, acceptance);
         debug_assert_eq!(uncompensated, acceptance);
         acceptance
@@ -396,6 +451,7 @@ impl Estimator {
         self.pressure_altitude_current = false;
         self.vario = Vario::default();
         self.uncompensated = Vario::default();
+        self.average_vario = AverageVario::default();
         self.previous_energy = None;
         self.gnss_time = None;
         self.referenced_altitude = None;
@@ -421,6 +477,7 @@ impl Estimator {
         } else {
             None
         };
+        let average_vario = self.average_vario.value();
         let wind = self.wind.vector().map(|(east, north)| {
             let east = east.as_meters_per_second();
             let north = north.as_meters_per_second();
@@ -446,6 +503,7 @@ impl Estimator {
             raw_vertical_speed,
             vertical_speed,
             vario,
+            average_vario,
             wind,
             air_speed,
             heading: self.heading(),
@@ -622,7 +680,9 @@ mod tests {
         );
 
         assert_some!(at_boundary.estimate().raw_vertical_speed);
+        assert_some!(at_boundary.estimate().average_vario);
         assert_none!(above_boundary.estimate().raw_vertical_speed);
+        assert_none!(above_boundary.estimate().average_vario);
     }
 
     #[test]
@@ -763,12 +823,14 @@ mod tests {
     #[test]
     fn pull_up_trades_airspeed_for_altitude_without_a_climb() {
         let estimate = pull_up(true).estimate();
+        let average_vario = assert_some!(estimate.average_vario);
         let vario = assert_some!(estimate.vario);
         let raw_vertical_speed = assert_some!(estimate.raw_vertical_speed);
         let vertical_speed = assert_some!(estimate.vertical_speed);
         let expected_raw = Speed::from_meters_per_second(0.484);
         let expected_smoothed = Speed::from_meters_per_second(0.508);
 
+        assert_abs_diff_eq!(average_vario, Speed::ZERO, epsilon = 0.01);
         assert_abs_diff_eq!(vario, Speed::ZERO, epsilon = 0.01);
         assert_abs_diff_eq!(raw_vertical_speed, expected_raw, epsilon = 0.01);
         assert_abs_diff_eq!(vertical_speed, expected_smoothed, epsilon = 0.01);
@@ -777,14 +839,68 @@ mod tests {
     #[test]
     fn pull_up_without_airspeed_has_no_vario_estimate() {
         let estimate = pull_up(false).estimate();
+        let average_vario = assert_some!(estimate.average_vario);
         let raw_vertical_speed = assert_some!(estimate.raw_vertical_speed);
         let vertical_speed = assert_some!(estimate.vertical_speed);
         let expected_raw = Speed::from_meters_per_second(0.484);
         let expected_smoothed = Speed::from_meters_per_second(0.508);
+        let speed = |second: f64| (120. - second) / 3.6;
+        let height = |second: f64| (33.333_f64.powi(2) - speed(second).powi(2)) / (2. * GRAVITY);
+        let expected_average = Speed::from_meters_per_second((height(59.) - height(39.)) / 20.);
 
         assert_none!(estimate.vario);
+        assert_abs_diff_eq!(average_vario, expected_average, epsilon = 0.01);
         assert_abs_diff_eq!(raw_vertical_speed, expected_raw, epsilon = 0.01);
         assert_abs_diff_eq!(vertical_speed, expected_smoothed, epsilon = 0.01);
+    }
+
+    #[test]
+    fn average_vario_keeps_history_when_airspeed_becomes_unavailable() {
+        let mut estimator = Estimator::new();
+        let fast = Speed::from_meters_per_second(50.);
+        let slow = Speed::from_meters_per_second(40.);
+        add_air_speed(&mut estimator, Duration::ZERO, fast);
+        assert_eq!(
+            estimator.pressure_altitude(Duration::ZERO, meters(1_000.)),
+            Accepted
+        );
+
+        let energy_gain = (50_f64.powi(2) - 40_f64.powi(2)) / (2. * GRAVITY);
+        add_air_speed(&mut estimator, Duration::from_secs(10), slow);
+        assert_eq!(
+            estimator.pressure_altitude(Duration::from_secs(10), meters(1_000. + energy_gain)),
+            Accepted
+        );
+        assert_abs_diff_eq!(
+            assert_some!(estimator.estimate().average_vario),
+            Speed::ZERO,
+            epsilon = 0.01
+        );
+
+        estimator.clear_air_speed();
+        assert_eq!(
+            estimator.pressure_altitude(Duration::from_secs(20), meters(1_020. + energy_gain)),
+            Accepted
+        );
+        assert_abs_diff_eq!(
+            assert_some!(estimator.estimate().average_vario),
+            Speed::from_meters_per_second(1.),
+            epsilon = 0.01
+        );
+    }
+
+    #[test]
+    fn altitude_reset_restarts_average_vario() {
+        let mut estimator = climb(2., 21);
+        assert_some!(estimator.estimate().average_vario);
+
+        estimator.reset_altitude();
+        assert_eq!(
+            estimator.pressure_altitude(Duration::from_secs(30), meters(2_000.)),
+            Accepted
+        );
+
+        assert_none!(estimator.estimate().average_vario);
     }
 
     #[test]
@@ -949,6 +1065,7 @@ mod tests {
         }
 
         let mut worst = 0f64;
+        let mut worst_average = 0f64;
         for second in 60..90u64 {
             let time = Duration::from_secs(second);
             assert_eq!(
@@ -958,9 +1075,12 @@ mod tests {
             assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
             let vertical_speed = assert_some!(estimator.estimate().raw_vertical_speed);
             worst = worst.max(vertical_speed.as_meters_per_second().abs());
+            let average_vario = assert_some!(estimator.estimate().average_vario);
+            worst_average = worst_average.max(average_vario.as_meters_per_second().abs());
         }
 
         assert_lt!(worst, 0.01, "reading reached {worst} m/s");
+        assert_lt!(worst_average, 0.01, "average reached {worst_average} m/s");
     }
 
     #[test]

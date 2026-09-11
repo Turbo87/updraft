@@ -39,6 +39,7 @@ pub struct SensorFusion {
     raw_vertical_speed: SignalState<Speed>,
     vertical_speed: SignalState<Speed>,
     vario: SignalState<Speed>,
+    average_vario: SignalState<Speed>,
     wind: SignalState<Wind>,
     derived_air_speed: SignalState<Speed>,
     heading: SignalState<Angle>,
@@ -271,6 +272,7 @@ impl SensorFusion {
         self.raw_vertical_speed.mark_stale();
         self.vertical_speed.mark_stale();
         self.vario.mark_stale();
+        self.average_vario.mark_stale();
         self.netto.mark_stale();
         self.relative_vario.mark_stale();
         self.altitude.mark_stale();
@@ -290,6 +292,11 @@ impl SensorFusion {
             self.vario.update(vario);
         } else {
             self.vario.mark_stale();
+        }
+        if let Some(average_vario) = estimate.average_vario {
+            self.average_vario.update(average_vario);
+        } else {
+            self.average_vario.mark_stale();
         }
         if let Some(altitude) = estimate.altitude {
             self.altitude.update(altitude);
@@ -373,6 +380,13 @@ impl SensorFusion {
                 meters_per_second: vertical_speed.as_meters_per_second(),
                 stale,
             });
+        let average_vario = self
+            .average_vario
+            .value_with_stale()
+            .map(|(vertical_speed, stale)| SpeedInstrument {
+                meters_per_second: vertical_speed.as_meters_per_second(),
+                stale,
+            });
         let wind = self
             .wind
             .value_with_stale()
@@ -428,6 +442,7 @@ impl SensorFusion {
         let available = raw_vertical_speed.is_some()
             || vertical_speed.is_some()
             || vario.is_some()
+            || average_vario.is_some()
             || wind.is_some()
             || airspeed.is_some()
             || heading.is_some()
@@ -439,6 +454,7 @@ impl SensorFusion {
             raw_vertical_speed,
             vertical_speed,
             vario,
+            average_vario,
             wind,
             airspeed,
             heading,
@@ -498,6 +514,7 @@ mod tests {
         assert!(!assert_some!(current.raw_vertical_speed).stale);
         assert!(!assert_some!(current.vertical_speed).stale);
         assert!(!assert_some!(current.vario).stale);
+        assert!(!assert_some!(current.average_vario).stale);
 
         let stale_speed = DomainState::LastKnown(speed);
         fusion.update(inputs(stale_speed, second_altitude));
@@ -506,6 +523,7 @@ mod tests {
         assert!(!assert_some!(stale.raw_vertical_speed).stale);
         assert!(!assert_some!(stale.vertical_speed).stale);
         assert!(assert_some!(stale.vario).stale);
+        assert!(!assert_some!(stale.average_vario).stale);
     }
 
     #[test]
@@ -529,6 +547,9 @@ mod tests {
         let stale = assert_some!(assert_some!(fusion.instruments()).vario);
         assert_eq!(stale.meters_per_second, 0.);
         assert!(stale.stale);
+        let average = assert_some!(assert_some!(fusion.instruments()).average_vario);
+        assert_eq!(average.meters_per_second, 0.);
+        assert!(!average.stale);
 
         let fourth_altitude = DomainState::Current(selected(altitude, 3_000));
         fusion.update(inputs(second_speed, fourth_altitude));

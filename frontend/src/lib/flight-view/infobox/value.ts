@@ -7,8 +7,7 @@ export type InfoboxValue =
   | { kind: 'speed'; metersPerSecond: number | null; unit: SpeedUnit }
   | { kind: 'vertical-speed'; metersPerSecond: number | null; unit: VerticalSpeedUnit }
   | { kind: 'direction'; degrees: number | null }
-  | { kind: 'relative-angle'; degrees: number | null }
-  | { kind: 'zoom'; level: number };
+  | { kind: 'relative-angle'; degrees: number | null };
 
 export type InfoboxPresentation = {
   text: string;
@@ -20,8 +19,7 @@ export function formatInfoboxValue(value: InfoboxValue, locale: string): Infobox
   let converted = convertValue(value);
   if (converted === null) return { text: '–' };
 
-  let fractionDigits =
-    value.kind === 'zoom' ? 2 : value.kind === 'vertical-speed' && value.unit !== 'ft/min' ? 1 : 0;
+  let fractionDigits = value.kind === 'vertical-speed' && value.unit !== 'ft/min' ? 1 : 0;
   let text = new Intl.NumberFormat(locale, {
     maximumFractionDigits: fractionDigits,
     minimumFractionDigits: fractionDigits,
@@ -30,8 +28,6 @@ export function formatInfoboxValue(value: InfoboxValue, locale: string): Infobox
   }).format(converted);
 
   switch (value.kind) {
-    case 'zoom':
-      return { text };
     case 'relative-angle':
       return {
         text,
@@ -61,7 +57,5 @@ function convertValue(value: InfoboxValue): number | null {
       return value.degrees === null ? null : ((Math.round(value.degrees) % 360) + 360) % 360;
     case 'relative-angle':
       return value.degrees === null ? null : Math.round(Math.abs(value.degrees));
-    case 'zoom':
-      return value.level;
   }
 }

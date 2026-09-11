@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 
 type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClient };
 
-test('updates infoboxes from instruments, units and map zoom', async ({ page }) => {
+test('updates infoboxes from instruments and units', async ({ page }) => {
   await page.goto('/?testMode=1');
   let dock = page.getByRole('region', { name: 'Flight instruments' });
   await expect(dock.getByRole('group')).toHaveCount(10);
@@ -20,6 +20,7 @@ test('updates infoboxes from instruments, units and map zoom', async ({ page }) 
           rawVerticalSpeed: null,
           verticalSpeed: null,
           vario: null,
+          averageVario: { metersPerSecond: 1.4, stale: false },
           wind: null,
           airspeed: null,
           heading: null,
@@ -30,10 +31,11 @@ test('updates infoboxes from instruments, units and map zoom', async ({ page }) 
         },
       },
     });
-    app!.mapState.map!.jumpTo({ zoom: 11.25 });
   });
   await expect(dock.getByRole('group', { name: 'Altitude', exact: true })).toContainText('3048');
-  await expect(dock.getByRole('group', { name: 'Zoom', exact: true })).toContainText('11.25');
+  let averageVario = dock.getByRole('group', { name: 'Avg. vario', exact: true });
+  await expect(averageVario.locator('.value')).toHaveText('+1.4');
+  await expect(averageVario.locator('.unit-label')).toHaveText('m/s');
   await page.evaluate(() => {
     let { __updraftApp: app, __updraftFake: fake } = window as TestWindow;
     fake!.emit({

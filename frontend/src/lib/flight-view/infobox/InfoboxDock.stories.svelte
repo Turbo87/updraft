@@ -25,12 +25,12 @@
 
 <Story
   name="Current and stale"
-  args={{ infoboxes: flightInfoboxes(INFOBOX_INSTRUMENTS, units, 11.25) }}
+  args={{ infoboxes: flightInfoboxes(INFOBOX_INSTRUMENTS, units) }}
   {template}
 />
 <Story
   name="Unavailable"
-  args={{ infoboxes: flightInfoboxes(EMPTY_INSTRUMENTS, units, 11) }}
+  args={{ infoboxes: flightInfoboxes(EMPTY_INSTRUMENTS, units) }}
   {template}
 />
 

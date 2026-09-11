@@ -306,6 +306,7 @@ mod tests {
         {
           "topic": "settings",
           "value": {
+            "energyCompensation": true,
             "climbAverageMethod": "smoothed20s",
             "locale": "de",
             "polar": "LS 8",

@@ -310,6 +310,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_polar', { polar });
   }
 
+  setEnergyCompensation(enabled: boolean): Promise<void> {
+    return invoke('set_energy_compensation', { enabled });
+  }
+
   setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
     return invoke('set_climb_average_method', { method });
   }

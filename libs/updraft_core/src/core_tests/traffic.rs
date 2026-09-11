@@ -481,3 +481,53 @@ fn derived_traffic_velocity_accounts_for_ownship_motion_when_either_field_is_mis
         assert_abs_diff_eq!(climb.average_20s, expected, epsilon = 1e-6);
     }
 }
+
+#[test]
+fn energy_compensation_switch_resets_all_estimates_and_uses_raw_height_when_disabled() {
+    use crate::SetEnergyCompensation;
+    let (mut core, device) = core_with_traffic_wind();
+    for (index, enabled) in [true, false, true].into_iter().enumerate() {
+        let millis = 60_000 + index as u64 * 2_000;
+        let effects = core
+            .apply(SetEnergyCompensation { enabled }, at(millis))
+            .effects;
+        if index > 0 {
+            assert_none!(traffic_snapshot(&core)[0].climb);
+            assert_matches!(&effects[2], Effect::Emit(Topic::Traffic(TrafficUpdate::Delta(delta))) if delta.upserts.len() == 1 && delta.upserts[0].climb.is_none());
+        }
+        for (offset, speed) in [(0, 40), (1_000, 30)] {
+            let timestamp = at(millis + offset);
+            let gps = &mut assert_some!(core.external_devices.get_mut(device)).gps;
+            assert_some!(gps.track.as_mut()).ingested_at = timestamp;
+            assert_some!(gps.ground_speed.as_mut()).ingested_at = timestamp;
+            let report = format!("$PFLAA,0,1000,0,50,1,ABC123,0,0,{speed},0,1,0\r\n");
+            core.apply(
+                Bytes::new(device, [GGA, report.as_bytes()].concat()),
+                timestamp,
+            );
+            assert_some!(core.sensor_fusion.current_wind());
+            if offset == 0 {
+                assert_none!(traffic_snapshot(&core)[0].climb);
+            }
+        }
+        let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+        for estimate in [
+            climb.average_20s,
+            climb.average_30s,
+            climb.normalized_ema,
+            climb.smoothed_20s,
+        ] {
+            if enabled {
+                claims::assert_lt!(estimate, Speed::ZERO);
+            } else {
+                assert_eq!(estimate, Speed::ZERO);
+            }
+        }
+        assert!(
+            core.apply(SetEnergyCompensation { enabled }, at(millis + 1_001))
+                .effects
+                .is_empty()
+        );
+        assert_some_eq!(traffic_snapshot(&core)[0].climb, climb);
+    }
+}

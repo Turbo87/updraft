@@ -228,6 +228,17 @@ impl TrafficState {
         changes
     }
 
+    pub fn reset_climb(&mut self) -> TrafficChanges {
+        self.climbs.clear();
+        let mut changes = TrafficChanges::default();
+        for stored in self.targets.values_mut() {
+            if stored.target.climb.take().is_some() {
+                changes.upsert(stored.target);
+            }
+        }
+        changes
+    }
+
     pub fn snapshot(&self) -> Vec<TrafficTarget> {
         self.targets.values().map(|stored| stored.target).collect()
     }

@@ -128,6 +128,11 @@ with four radio options. A pending command disables the control. A failed comman
 restores the authoritative setting and shows an error. The setting is shared with
 future ownship climb display.
 
+Energy compensation is a separate shared setting. It defaults to enabled and
+applies to all four methods. Disabled compensation uses altitude changes only.
+Changing the setting clears existing climb estimates and restarts their histories.
+The Vario page offers enabled and disabled options with command error feedback.
+
 ## Installed data
 
 The Data page lists imported files in Airspace and Waypoints groups and installed

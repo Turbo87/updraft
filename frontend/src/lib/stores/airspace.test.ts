@@ -51,6 +51,7 @@ describe('AirspaceStore', () => {
         polar: 'LS 8',
         arrivalReserve: 200,
         climbAverageMethod: 'normalizedEma',
+        energyCompensation: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });

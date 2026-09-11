@@ -130,6 +130,7 @@ describe('FakeClient', () => {
         polar: 'LS 8',
         arrivalReserve: 304.8,
         climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -153,6 +154,7 @@ describe('FakeClient', () => {
         polar: 'LS 8-18',
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -210,6 +212,7 @@ describe('FakeClient', () => {
         polar: 'LS 8',
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -249,6 +252,7 @@ describe('FakeClient', () => {
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
+        energyCompensation: true,
       },
     });
   });
@@ -612,4 +616,21 @@ it('publishes only changed climb settings', async () => {
     topic: 'settings',
     value: expect.objectContaining({ climbAverageMethod: 'average30s' }),
   });
+});
+
+it('publishes only changed energy compensation settings', async () => {
+  let client = new FakeClient();
+  let onTopic = vi.fn();
+  client.subscribe(onTopic);
+  onTopic.mockClear();
+  await client.setEnergyCompensation(true);
+  expect(onTopic).not.toHaveBeenCalled();
+  for (let enabled of [false, true]) {
+    await client.setEnergyCompensation(enabled);
+    expect(onTopic).toHaveBeenLastCalledWith({
+      topic: 'settings',
+      value: expect.objectContaining({ energyCompensation: enabled }),
+    });
+  }
+  expect(onTopic).toHaveBeenCalledTimes(2);
 });

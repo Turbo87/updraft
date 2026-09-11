@@ -81,6 +81,7 @@ export class FakeClient implements UpdraftClient {
     polar: 'LS 8',
     arrivalReserve: 200,
     climbAverageMethod: 'smoothed20s',
+    energyCompensation: true,
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 
@@ -398,6 +399,12 @@ export class FakeClient implements UpdraftClient {
     if (!(await this.getPolars()).includes(polar)) throw new Error('Unknown polar');
     if (this.#settings.polar === polar) return;
     this.#settings = { ...this.#settings, polar };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setEnergyCompensation(enabled: boolean): Promise<void> {
+    if (this.#settings.energyCompensation === enabled) return;
+    this.#settings = { ...this.#settings, energyCompensation: enabled };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

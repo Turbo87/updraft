@@ -5,4 +5,4 @@ import type { Locale } from "./Locale";
 import type { PolarId } from "./PolarId";
 import type { UnitSettings } from "./UnitSettings";
 
-export type Settings = { climbAverageMethod: ClimbAverageMethod, locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };
+export type Settings = { energyCompensation: boolean, climbAverageMethod: ClimbAverageMethod, locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };

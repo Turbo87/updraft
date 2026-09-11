@@ -362,3 +362,44 @@ fn climb_average_method_defaults_and_persists_changes() {
         );
     }
 }
+
+#[test]
+fn energy_compensation_defaults_to_enabled() {
+    for settings in [
+        Settings::default(),
+        claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#)),
+    ] {
+        let json = claims::assert_ok!(serde_json::to_value(settings));
+        assert_eq!(json["energyCompensation"], serde_json::json!(true));
+    }
+}
+
+#[test]
+fn energy_compensation_persists_both_modes_and_ignores_noop_changes() {
+    use crate::SetEnergyCompensation;
+    let mut core = Core::new(SettingsSnapshot::default());
+    for enabled in [false, true] {
+        let expected = Settings {
+            energy_compensation: enabled,
+            ..Settings::default()
+        };
+        assert_eq!(
+            core.apply(SetEnergyCompensation { enabled }, at(0)).effects,
+            vec![
+                Effect::emit(expected.as_topic()),
+                Effect::persist_settings(SettingsSnapshot {
+                    settings: expected,
+                    ..SettingsSnapshot::default()
+                }),
+            ]
+        );
+        assert!(
+            core.apply(SetEnergyCompensation { enabled }, at(0))
+                .effects
+                .is_empty()
+        );
+        let json = claims::assert_ok!(serde_json::to_string(&core.settings_snapshot()));
+        let restored = Core::new(claims::assert_ok!(serde_json::from_str(&json)));
+        assert_eq!(restored.settings, expected);
+    }
+}

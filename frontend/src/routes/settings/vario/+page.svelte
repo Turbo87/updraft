@@ -14,6 +14,8 @@
 >
   <VarioSettings
     method={settings.current.climbAverageMethod}
+    energyCompensation={settings.current.energyCompensation}
+    setEnergyCompensation={(enabled) => client.setEnergyCompensation(enabled)}
     setMethod={(method) => client.setClimbAverageMethod(method)}
   />
 </ScreenScaffold>

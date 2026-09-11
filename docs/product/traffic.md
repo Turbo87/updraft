@@ -66,7 +66,8 @@ The core ignores the reported FLARM climb rate.
 All estimates use target MSL altitude. Ownship altitude must satisfy the existing
 three-second freshness rule before it can supply an estimator sample.
 
-When FLARM provides ground speed and track, the core estimates target airspeed
+When energy compensation is enabled and FLARM provides ground speed and track,
+the core estimates target airspeed
 by subtracting current ownship wind from the target ground-velocity vector.
 It adds the airspeed energy-height change to the altitude change before averaging.
 This estimates total-energy climb without a target polar or sink-rate correction.

@@ -126,6 +126,7 @@ export interface UpdraftClient {
   setPolar(polar: PolarId): Promise<void>;
   setArrivalReserve(reserve: number): Promise<void>;
   setClimbAverageMethod(method: ClimbAverageMethod): Promise<void>;
+  setEnergyCompensation(enabled: boolean): Promise<void>;
   setMacCready(macCready: number): Promise<void>;
   setBugs(bugs: number): Promise<void>;
   setBallast(ballast: number): Promise<void>;

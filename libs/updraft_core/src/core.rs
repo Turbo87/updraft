@@ -6,8 +6,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
-    SetBugs, SetClimbAverageMethod, SetExternalDeviceEnabled, SetLocale, SetMacCready, SetPolar,
-    SetUnits, Start, Tick, Update,
+    SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled, SetLocale,
+    SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -295,7 +295,10 @@ impl Core {
                 let wind = self
                     .sensor_fusion
                     .current_wind()
-                    .filter(|_| crate::traffic::within_wind_range(&pflaa))
+                    .filter(|_| {
+                        self.settings.energy_compensation
+                            && crate::traffic::within_wind_range(&pflaa)
+                    })
                     .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
                 let motion = TrafficMotion {
                     velocity,
@@ -582,6 +585,25 @@ impl Input for SetArrivalReserve {
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
         ])
+    }
+}
+
+impl Input for SetEnergyCompensation {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.energy_compensation == self.enabled {
+            return Update::empty();
+        }
+        core.settings.energy_compensation = self.enabled;
+        let mut effects = vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ];
+        if let Some(delta) = core.traffic.reset_climb().into_delta(&core.flarmnet) {
+            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
+        }
+        Update::effects(effects)
     }
 }
 

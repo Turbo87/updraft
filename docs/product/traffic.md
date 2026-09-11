@@ -108,6 +108,8 @@ a baseline. A subsequent sample produces the first estimates.
 
 The map shows the selected climb estimate and defaults to the smoothed 20-second average.
 The Vario settings page selects the shared climb averaging method.
+Map climb labels appear only for unknown traffic, gliders, hang gliders, and
+paragliders. Other traffic types retain their name and altitude labels.
 
 ## Topic updates
 

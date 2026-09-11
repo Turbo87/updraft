@@ -313,3 +313,30 @@ it('switches the displayed method using estimates already on the target', () => 
     '200 m\n+3.0 m/s',
   );
 });
+
+it.each([
+  ['unknown', true],
+  ['glider', true],
+  ['hangGlider', true],
+  ['paraglider', true],
+  ['towPlane', false],
+  ['helicopter', false],
+  ['skydiver', false],
+  ['dropPlane', false],
+  ['pistonAircraft', false],
+  ['jetAircraft', false],
+  ['balloon', false],
+  ['airship', false],
+  ['uav', false],
+  ['staticObstacle', false],
+] as const)('filters map climb labels for %s traffic', (trafficType, showClimb) => {
+  let aircraft = target('flarm:000123', {
+    trafficType,
+    climb: { average20s: 2, average30s: 2, normalizedEma: 2, smoothed20s: 2 },
+  });
+  for (let method of ['average20s', 'average30s', 'normalizedEma', 'smoothed20s'] as const) {
+    expect(trafficFeature(aircraft, 'm', 'm/s', method).properties.label).toBe(
+      showClimb ? '200 m\n+2.0 m/s' : '200 m',
+    );
+  }
+});

@@ -36,9 +36,12 @@ export function trafficFeature(
       ? null
       : `${Math.round(convertAltitude(altitude, altitudeUnit))} ${altitudeUnit}`;
   let name = target.flarmnet?.callSign || target.flarmnet?.registration;
+  let thermalTraffic = ['unknown', 'glider', 'hangGlider', 'paraglider'].includes(
+    target.trafficType,
+  );
   let climb = target.climb?.[method];
   let climbValue =
-    !target.stale && climb !== undefined
+    thermalTraffic && !target.stale && climb !== undefined
       ? convertVerticalSpeed(climb, verticalSpeedUnit).toFixed(
           verticalSpeedUnit === 'ft/min' ? 0 : 1,
         )

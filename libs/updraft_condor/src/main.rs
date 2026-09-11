@@ -10,6 +10,8 @@ mod nmea_input;
 mod server;
 mod spectate;
 mod spectate_watch;
+mod udp;
+mod udp_input;
 
 use crate::config::{CompetitionNumber, Config};
 use anyhow::{Context as _, Result};
@@ -18,7 +20,7 @@ use clap::Parser;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, UdpSocket};
 use tokio::sync::broadcast;
 use tracing::info;
 use tracing_subscriber::filter::LevelFilter;
@@ -72,14 +74,19 @@ async fn serve(settings: &Settings) -> Result<()> {
     let config = &settings.config;
     let output = bind(config.output_listen).await?;
     let nmea_input = bind(config.nmea_listen).await?;
+    let udp_input = UdpSocket::bind(config.udp_listen)
+        .await
+        .with_context(|| format!("failed to listen on UDP {}", config.udp_listen))?;
     let (sender, _) = broadcast::channel::<Bytes>(BROADCAST_CAPACITY);
     let own_fix: nmea::SharedOwnFix = Arc::new(Mutex::new(None));
     info!("listening for Updraft on {}", config.output_listen);
     info!("listening for Condor NMEA on {}", config.nmea_listen);
+    info!("listening for Condor UDP on {}", config.udp_listen);
 
     tokio::select! {
         result = server::run(output, sender.clone()) => result?,
         result = nmea_input::run(nmea_input, own_fix.clone(), sender.clone()) => result?,
+        result = udp_input::run(udp_input, sender.clone()) => result?,
         result = spectate_watch::run(
             spectate_watch::spectate_path(&settings.condor_folder),
             settings.competition_number.clone(),

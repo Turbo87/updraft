@@ -117,71 +117,6 @@ fn flarm_reference_does_not_cross_devices_or_reconnects() {
 }
 
 #[test]
-fn flarm_reference_resets_on_backward_gps_time() {
-    let (mut core, device) = core_with_external_device();
-    core.apply(
-        Bytes::new(device, [FIX, CYCLE, NEXT_FIX, CYCLE].concat()),
-        at(0),
-    );
-    core.apply(Bytes::new(device, [FIX, TARGET].concat()), at(1));
-    assert_position(&core, LatLon::from_degrees(50.0, 8.0));
-}
-
-#[test]
-fn flarm_reference_crosses_midnight_and_handles_missing_markers() {
-    let (mut core, device) = core_with_external_device();
-    let before = assert_ok!(std::str::from_utf8(FIX)).replace("120000", "235959");
-    let after = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", "000000");
-    core.apply(
-        Bytes::new(device, [before.as_bytes(), CYCLE, TARGET].concat()),
-        at(0),
-    );
-
-    core.apply(
-        Bytes::new(device, [after.as_bytes(), TARGET].concat()),
-        at(1_000),
-    );
-    let recovered = position(&core);
-    // Repeated reports recover consecutive missing markers across midnight.
-    let later = after.replace("000000,A", "000001,A");
-    core.apply(
-        Bytes::new(device, [later.as_bytes(), TARGET].concat()),
-        at(2_000),
-    );
-    let expected = LatLon::from_degrees(50.0, 8.0 + 0.1 / 60.0).destination(
-        Angle::from_degrees(0.0),
-        Length::from_meters(100.0 * 1852.0 / 3600.0 * 2.0),
-    );
-    assert_position(&core, expected);
-    assert_eq!(position(&core), recovered);
-}
-
-#[test]
-fn flarm_reference_discards_invalid_gps_before_traffic() {
-    for invalid in [
-        b"$GPRMC,,A,5000,N,00800,E,100,90,050826,,,A\r\n".as_slice(),
-        b"$GPGGA,120000,5000,N,00800,E,0,08,1,100,M,0,M,,\r\n",
-    ] {
-        let (mut core, device) = core_with_external_device();
-        core.apply(
-            Bytes::new(device, [FIX, CYCLE, invalid, TARGET].concat()),
-            at(0),
-        );
-        assert_position(&core, LatLon::from_degrees(50., 8.));
-    }
-}
-
-#[test]
-fn flarm_reference_uses_a_stationary_cycle_fix_without_track() {
-    let (mut core, device) = core_with_external_device();
-    let stationary = b"$GPRMC,120000,A,5000,N,00800,E,0,,050826,,,A\r\n";
-    let gga = b"$GPGGA,120000,5000,N,00800,E,1,08,1,100,M,0,M,,\r\n";
-    let input = [stationary.as_slice(), gga, CYCLE, NEXT_FIX, TARGET].concat();
-    core.apply(Bytes::new(device, input), at(0));
-    assert_position(&core, LatLon::from_degrees(50., 8.));
-}
-
-#[test]
 fn flarm_reference_keeps_the_active_fix_until_the_cycle_changes() {
     let (mut core, device) = core_with_external_device();
     core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
@@ -273,25 +208,6 @@ fn flarm_altitude_falls_back_without_a_usable_history() {
     );
     core.apply(Bytes::new(device, TARGET), at(3_000));
     assert_eq!(altitude(&core), 103.);
-}
-
-#[test]
-fn flarm_altitude_handles_sink_duplicates_and_midnight() {
-    let (mut core, device) = core_with_external_device();
-    let before = gga("235958", 110.);
-    let current = gga("000000", 104.);
-    let fix = assert_ok!(std::str::from_utf8(FIX)).replace("120000", "000000");
-    let input = [
-        before.as_slice(),
-        fix.as_bytes(),
-        &current,
-        CYCLE,
-        &current,
-        TARGET,
-    ]
-    .concat();
-    core.apply(Bytes::new(device, input), at(0));
-    assert_eq!(altitude(&core), 98.);
 }
 
 #[test]
@@ -580,15 +496,4 @@ fn repeated_target_after_gps_recovers_a_missing_cycle_marker() {
     // A marker arriving after the inferred boundary must not advance another cycle.
     core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_100));
     assert_position(&core, expected);
-}
-
-#[test]
-fn duplicate_reports_without_gps_progress_do_not_advance_the_cycle() {
-    let (mut core, device) = core_with_external_device();
-    core.apply(
-        Bytes::new(device, [FIX, CYCLE, TARGET, TARGET].concat()),
-        at(0),
-    );
-    let reference = &assert_some!(core.external_devices.get(device)).flarm_reference;
-    assert_some_eq!(reference.prediction_epoch(), 43_202_000);
 }

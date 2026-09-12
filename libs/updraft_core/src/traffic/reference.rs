@@ -211,3 +211,113 @@ impl FlarmReference {
         self.cycle_position?.fresh(at)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use claims::{assert_none, assert_some, assert_some_eq};
+    use updraft_nmea::{Step, parse};
+    use updraft_units::Angle;
+
+    const FIX: &str = "$GPRMC,120000,A,5000,N,00800,E,100,90,050826,,,A\r\n";
+    const NEXT_FIX: &str = "$GPRMC,120001,A,5000,N,00800.1,E,100,0,050826,,,A\r\n";
+    const CYCLE: &str = "$PFLAU,1,1,2,1,0,,0,,,\r\n$PGRMZ,1000,f,3\r\n";
+    const TARGET: &str = "$PFLAA,0,0,0,0,1,ABC123,90,0,0,0,1,0,0\r\n";
+
+    fn observe(reference: &mut FlarmReference, sentences: &[&str], millis: u64) {
+        for sentence in sentences {
+            let mut input = sentence.as_bytes();
+            loop {
+                match parse(&mut input) {
+                    Step::Frame(message) => {
+                        reference.observe(&message, Timestamp::from_millis(millis))
+                    }
+                    Step::Incomplete if input.is_empty() => break,
+                    other => panic!("invalid reference fixture: {other:?}"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn backward_gps_time_discards_the_cycle_reference() {
+        let mut reference = FlarmReference::default();
+        observe(&mut reference, &[FIX, CYCLE, NEXT_FIX, CYCLE], 0);
+        assert_some!(reference.position(Timestamp::from_millis(0)));
+        observe(&mut reference, &[FIX, TARGET], 1);
+        assert_some_eq!(reference.epoch(), 43_200_000);
+        assert_none!(reference.prediction_epoch());
+        assert_none!(reference.position(Timestamp::from_millis(1)));
+    }
+
+    #[test]
+    fn repeated_targets_recover_missing_markers_across_midnight() {
+        let mut reference = FlarmReference::default();
+        let before = FIX.replace("120000", "235959");
+        let after = NEXT_FIX.replace("120001", "000000");
+        observe(&mut reference, &[&before, CYCLE, TARGET], 0);
+        observe(&mut reference, &[&after, TARGET], 1_000);
+        let recovered = assert_some!(reference.position(Timestamp::from_millis(1_000))).value;
+        assert_some_eq!(reference.epoch(), 86_400_000);
+        assert_some_eq!(reference.prediction_epoch(), 86_402_000);
+        let later = after.replace("000000,A", "000001,A");
+        observe(&mut reference, &[&later, TARGET], 2_000);
+        let expected = LatLon::from_degrees(50., 8. + 0.1 / 60.)
+            .destination(Angle::ZERO, Length::from_meters(100. * 1852. / 3600. * 2.));
+        let position = assert_some!(reference.position(Timestamp::from_millis(2_000))).value;
+        approx::assert_abs_diff_eq!(position.distance(expected).as_meters(), 0., epsilon = 1e-6);
+        assert_eq!(position, recovered);
+        assert_some_eq!(reference.prediction_epoch(), 86_403_000);
+    }
+
+    #[test]
+    fn invalid_gps_discards_the_cycle_reference() {
+        for invalid in [
+            "$GPRMC,,A,5000,N,00800,E,100,90,050826,,,A\r\n",
+            "$GPGGA,120000,5000,N,00800,E,0,08,1,100,M,0,M,,\r\n",
+        ] {
+            let mut reference = FlarmReference::default();
+            observe(&mut reference, &[FIX, CYCLE], 0);
+            assert_some!(reference.position(Timestamp::from_millis(0)));
+            observe(&mut reference, &[invalid, TARGET], 0);
+            assert_none!(reference.position(Timestamp::from_millis(0)));
+            assert_none!(reference.prediction_epoch());
+        }
+    }
+
+    #[test]
+    fn a_stationary_cycle_fix_needs_no_track() {
+        let mut reference = FlarmReference::default();
+        let stationary = "$GPRMC,120000,A,5000,N,00800,E,0,,050826,,,A\r\n";
+        let height = "$GPGGA,120000,5000,N,00800,E,1,08,1,100,M,0,M,,\r\n";
+        observe(
+            &mut reference,
+            &[stationary, height, CYCLE, NEXT_FIX, TARGET],
+            0,
+        );
+        let position = assert_some!(reference.position(Timestamp::from_millis(0))).value;
+        assert_eq!(position, LatLon::from_degrees(50., 8.));
+    }
+
+    #[test]
+    fn altitude_projection_handles_sink_duplicates_and_midnight() {
+        let mut reference = FlarmReference::default();
+        let before = "$GPGGA,235958,5000,N,00800,E,1,08,1,110,M,0,M,,\r\n";
+        let current = "$GPGGA,000000,5000,N,00800,E,1,08,1,104,M,0,M,,\r\n";
+        let fix = FIX.replace("120000", "000000");
+        observe(
+            &mut reference,
+            &[before, &fix, current, CYCLE, current, TARGET],
+            0,
+        );
+        let altitude = assert_some!(reference.altitude(Timestamp::from_millis(0))).value;
+        assert_eq!(altitude, MslAltitude::new(Length::from_meters(98.)));
+    }
+
+    #[test]
+    fn duplicate_reports_without_gps_progress_do_not_advance_the_cycle() {
+        let mut reference = FlarmReference::default();
+        observe(&mut reference, &[FIX, CYCLE, TARGET, TARGET], 0);
+        assert_some_eq!(reference.prediction_epoch(), 43_202_000);
+    }
+}

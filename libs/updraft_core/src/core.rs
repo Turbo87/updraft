@@ -353,6 +353,9 @@ impl Core {
                 };
                 self.traffic
                     .update_climb(&mut target, altitude_source, at, motion);
+                if corrected_position.is_some() {
+                    self.traffic.update_track(&mut target, at);
+                }
                 self.traffic.observe(target, at, traffic_changes);
             }
             _ => {}

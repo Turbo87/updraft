@@ -1,7 +1,7 @@
 use super::super::*;
 use super::support::*;
 use approx::assert_abs_diff_eq;
-use claims::{assert_ok, assert_some};
+use claims::{assert_ok, assert_some, assert_some_eq};
 use updraft_geo::LatLon;
 use updraft_units::{Angle, Length};
 
@@ -465,4 +465,38 @@ fn flarm_target_holds_between_reports_and_requires_motion_for_correction() {
     );
     assert_position(&core, LatLon::from_degrees(50., 8.));
     assert_eq!(altitude(&core), 207.);
+}
+
+#[test]
+fn flarm_display_track_follows_adjusted_position_steps() {
+    for enabled in [true, false] {
+        let (mut core, device) = core_with_external_device();
+        core.apply(SetFlarmPositionCorrection { enabled }, at(0));
+        core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+        assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, 90.);
+        let previous = position(&core);
+        let north = b"$PFLAA,0,40,0,0,1,ABC123,90,0,0,0,1,0,0\r\n";
+        core.apply(Bytes::new(device, north), at(1_000));
+        let expected = if enabled {
+            previous.bearing(position(&core)).as_degrees()
+        } else {
+            90.
+        };
+        assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, expected);
+        let held = traffic_snapshot(&core);
+        core.apply(Bytes::new(device, NEXT_FIX), at(2_000));
+        assert_eq!(traffic_snapshot(&core), held);
+    }
+}
+
+#[test]
+fn flarm_display_track_uses_reported_track_for_small_steps_and_old_positions() {
+    for (north, elapsed) in [(0, 1_000), (1, 1_000), (40, 5_000)] {
+        let (mut core, device) = core_with_external_device();
+        core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+        let target = format!("$PFLAA,0,{north},0,0,1,ABC123,90,0,0,0,1,0,0\r\n");
+        let input = [FIX, CYCLE, target.as_bytes()].concat();
+        core.apply(Bytes::new(device, input), at(elapsed));
+        assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, 90.);
+    }
 }

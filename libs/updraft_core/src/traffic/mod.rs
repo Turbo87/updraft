@@ -162,6 +162,20 @@ pub struct TrafficChanges {
 }
 
 impl TrafficState {
+    pub fn update_track(&self, target: &mut TrafficTarget, at: Timestamp) {
+        let Some(previous) = self.targets.get(&target.id) else {
+            return;
+        };
+        if at < previous.observed_at || at.saturating_since(previous.observed_at) >= STALE_AFTER {
+            return;
+        }
+        let (distance, bearing) = previous.target.position.distance_bearing(target.position);
+        // Small position steps give an unstable bearing at FLARM's meter resolution.
+        if distance >= Length::from_meters(5.) {
+            target.track = Some(bearing);
+        }
+    }
+
     pub fn update_climb(
         &mut self,
         target: &mut TrafficTarget,

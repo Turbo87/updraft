@@ -191,6 +191,13 @@ Symbols use aircraft-type icons. Directional targets rotate with the map track.
 Balloons and targets without track use fixed symbols. Icon size changes with map
 zoom.
 
+With FLARM position correction enabled and available, the displayed track follows
+the bearing from the previous position to the new adjusted position. Steps shorter
+than 5 meters and report gaps of 5 seconds or more use the reported track instead.
+The first report also uses the reported track. Position and track change only when
+a new position report arrives. This display calculation does not change the
+reported velocity used for position correction or energy compensation.
+
 FLARM alarm level controls symbol color. Stale targets use reduced opacity. The
 label appears from zoom level 7 and uses the configured altitude unit. The first
 line shows callsign, with registration as the fallback. The second line shows

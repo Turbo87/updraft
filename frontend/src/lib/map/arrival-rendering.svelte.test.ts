@@ -130,6 +130,7 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
         },
       ]
     `);
+    let unitsIdle = map.once('idle');
     await component.rerender({ units: { ...units, altitude: 'ft' } });
     expect(subscribe).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
@@ -148,7 +149,7 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
         arrivalMarginMeters: -0.1,
       }),
     ).toBe('Just below\n+0ft');
-    await map.once('idle');
+    await unitsIdle;
     map._fadeDuration = 300;
     // Placement opacity and anchor availability control visibility before the shader fade.
     let textOpacities = new Set<number>();

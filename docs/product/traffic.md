@@ -107,7 +107,7 @@ state. Tick inputs apply stale and removal transitions.
 ## Climb estimates
 
 The core publishes a normalized EMA with a 10-second time constant and 20-second
-and 30-second climb averages. A fourth estimate smooths height with a 7.5-second
+and 30-second climb averages. A fourth estimate smooths height with a 5-second
 time constant, then calculates a 20-second window average. Its first sample seeds
 the height filter. It keeps separate filtered height history.
 The reported FLARM climb rate only aligns target altitude in time. The core

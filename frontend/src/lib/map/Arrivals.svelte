@@ -7,6 +7,8 @@
 
   import WaypointLayers from './WaypointLayers.svelte';
 
+  const VIEWPORT_UPDATE_INTERVAL_MS = 100;
+
   type Props = {
     client: UpdraftClient;
     map: Map;
@@ -45,12 +47,22 @@
         console.error('Arrival subscription failed', error);
       },
     );
+    let viewportTimer: ReturnType<typeof setTimeout> | undefined;
     function updateViewport() {
+      clearTimeout(viewportTimer);
+      viewportTimer = undefined;
       void subscription.updateViewport(bounds()).catch((error: unknown) => {
         console.error('Failed to update arrival viewport', error);
       });
     }
-    currentMap.on('move', updateViewport);
+    function scheduleViewportUpdate() {
+      viewportTimer ??= setTimeout(updateViewport, VIEWPORT_UPDATE_INTERVAL_MS);
+    }
+    function finishViewportUpdate() {
+      if (viewportTimer !== undefined) updateViewport();
+    }
+    currentMap.on('move', scheduleViewportUpdate);
+    currentMap.on('moveend', finishViewportUpdate);
     function sourceLoaded(event: MapEventType['sourcedata']) {
       if (!active || !data) return;
       if (event.sourceId === 'arrivals' && event.sourceDataType === 'content') reportReady(true);
@@ -58,7 +70,9 @@
     currentMap.on('sourcedata', sourceLoaded);
     return () => {
       active = false;
-      currentMap.off('move', updateViewport);
+      clearTimeout(viewportTimer);
+      currentMap.off('move', scheduleViewportUpdate);
+      currentMap.off('moveend', finishViewportUpdate);
       currentMap.off('sourcedata', sourceLoaded);
       reportReady(false);
       void subscription.close().catch((error: unknown) => {

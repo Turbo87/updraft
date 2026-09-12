@@ -18,17 +18,15 @@ use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{
-    TrafficChanges, TrafficMotion, TrafficPositionReference, TrafficState, TrafficUpdate,
-    align_target, target_from_pflaa,
+    FlarmCorrection, TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, target_from_pflaa,
 };
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
 use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
 use std::sync::Arc;
-use std::time::Duration;
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_flarmnet::FlarmnetDatabase;
-use updraft_nmea::{FlarmSource, GgaFixQuality, Message, PositioningMode, RmcStatus};
-use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
+use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
+use updraft_units::{MslAltitude, PressureAltitude, Speed};
 
 /// The deterministic application core.
 ///
@@ -279,30 +277,16 @@ impl Core {
                 else {
                     return;
                 };
-                let correct_reference = self.settings.flarm_position_correction
-                    && matches!(pflaa.source, None | Some(FlarmSource::Flarm));
-                let horizontal_motion = pflaa.ground_speed.and_then(|speed| {
-                    let track = if speed == Speed::ZERO {
-                        Some(Angle::ZERO)
-                    } else {
-                        pflaa.track
-                    }?;
-                    (speed.as_meters_per_second().is_finite()
-                        && speed >= Speed::ZERO
-                        && track.as_radians().is_finite())
-                    .then_some((track, speed))
-                });
-                let climb = pflaa
-                    .climb_rate
-                    .filter(|v| v.as_meters_per_second().is_finite());
-                let corrected_position = (correct_reference && horizontal_motion.is_some())
-                    .then(|| device.flarm_reference.position(at))
-                    .flatten();
-                let position = corrected_position.unwrap_or(position);
-                let corrected_altitude = correct_reference
-                    .then(|| climb.and(device.flarm_reference.altitude(at)))
-                    .flatten();
-                let altitude_reference = corrected_altitude
+                let correction = FlarmCorrection::new(
+                    &pflaa,
+                    device_id,
+                    &device.flarm_reference,
+                    self.settings.flarm_position_correction,
+                    at,
+                );
+                let position = correction.position.unwrap_or(position);
+                let altitude_reference = correction
+                    .altitude
                     .or(same_device.altitude)
                     .map(|altitude| (altitude, SourceId::External(device_id)))
                     .or_else(|| {
@@ -313,19 +297,7 @@ impl Core {
                 let Some(mut target) = target_from_pflaa(&pflaa, position.value, altitude) else {
                     return;
                 };
-                if let Some((prediction, epoch)) = device
-                    .flarm_reference
-                    .prediction_epoch()
-                    .zip(device.flarm_reference.epoch())
-                {
-                    let seconds = (epoch - prediction) as f64 / 1_000.;
-                    align_target(
-                        &mut target,
-                        seconds,
-                        corrected_position.and(horizontal_motion),
-                        corrected_altitude.and(climb),
-                    );
-                }
+                correction.align(&mut target);
                 let altitude_source = altitude_reference
                     .filter(|(altitude, _)| altitude.fresh(at).is_some())
                     .map(|(_, source)| (device_id, source));
@@ -342,10 +314,7 @@ impl Core {
                     })
                     .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
                 let motion = TrafficMotion {
-                    gps_time: corrected_altitude
-                        .and(device.flarm_reference.epoch())
-                        .and_then(|epoch| u64::try_from(epoch).ok())
-                        .map(Duration::from_millis),
+                    gps_time: correction.altitude_time,
                     velocity,
                     wind,
                     position: position
@@ -354,11 +323,8 @@ impl Core {
                 };
                 self.traffic
                     .update_climb(&mut target, altitude_source, at, motion);
-                let reference = correct_reference.then_some(TrafficPositionReference {
-                    source: device_id,
-                    epoch: corrected_position.and(device.flarm_reference.epoch()),
-                });
-                self.traffic.observe(target, at, reference, traffic_changes);
+                self.traffic
+                    .observe(target, at, correction.position_reference, traffic_changes);
             }
             _ => {}
         }

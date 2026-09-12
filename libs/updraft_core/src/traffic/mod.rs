@@ -1,5 +1,5 @@
 mod climb;
-mod projection;
+mod correction;
 pub mod reference;
 mod velocity;
 
@@ -10,7 +10,7 @@ use crate::time::Timestamp;
 use crate::topic::LatLon;
 use climb::TrafficClimb;
 pub use climb::TrafficMotion;
-pub use projection::align_target;
+pub use correction::FlarmCorrection;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -152,12 +152,33 @@ struct StoredTrafficTarget {
     position_observed_at: Timestamp,
 }
 
-/// Correction source and aligned GPS epoch. A missing epoch means that the
-/// source temporarily lacks the reference or motion needed for correction.
+/// Whether this report can use the experimental FLARM position correction.
 #[derive(Clone, Copy, Debug)]
-pub struct TrafficPositionReference {
-    pub source: ExternalDeviceId,
-    pub epoch: Option<i64>,
+pub enum TrafficPositionReference {
+    Uncorrected,
+    Unavailable {
+        source: ExternalDeviceId,
+    },
+    Aligned {
+        source: ExternalDeviceId,
+        epoch: i64,
+    },
+}
+
+impl TrafficPositionReference {
+    fn source(self) -> Option<ExternalDeviceId> {
+        match self {
+            Self::Uncorrected => None,
+            Self::Unavailable { source } | Self::Aligned { source, .. } => Some(source),
+        }
+    }
+
+    fn epoch(self) -> Option<i64> {
+        match self {
+            Self::Aligned { epoch, .. } => Some(epoch),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -209,25 +230,27 @@ impl TrafficState {
         &mut self,
         mut target: TrafficTarget,
         at: Timestamp,
-        reference: Option<TrafficPositionReference>,
+        reference: TrafficPositionReference,
         changes: &mut TrafficChanges,
     ) {
-        let mut position_epoch = reference.and_then(|r| r.epoch.map(|epoch| (r.source, epoch)));
+        let mut position_epoch = reference.source().zip(reference.epoch());
         let mut position_observed_at = at;
-        if let Some(reference) = reference
+        if let Some(source) = reference.source()
             && let Some(previous) = self.targets.get(&target.id)
             && let Some((previous_source, previous_epoch)) = previous.position_epoch
-            && reference.source == previous_source
+            && source == previous_source
             && at >= previous.observed_at
         {
-            let hold_missing_reference = reference.epoch.is_none()
+            let hold_missing_reference = reference.epoch().is_none()
                 && at.saturating_since(previous.position_observed_at) < REFERENCE_HOLD;
-            if reference.epoch == Some(previous_epoch) || hold_missing_reference {
+            if reference.epoch() == Some(previous_epoch) || hold_missing_reference {
                 target.position = previous.target.position;
                 target.track = previous.target.track;
                 position_epoch = previous.position_epoch;
                 position_observed_at = previous.position_observed_at;
-            } else if reference.epoch.is_some_and(|epoch| epoch > previous_epoch)
+            } else if reference
+                .epoch()
+                .is_some_and(|epoch| epoch > previous_epoch)
                 && at.saturating_since(previous.observed_at) < STALE_AFTER
             {
                 let (distance, bearing) =

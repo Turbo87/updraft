@@ -1,4 +1,4 @@
-import type { GeoJSONSourceSpecification, Map as MapLibreMap } from 'maplibre-gl';
+import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap } from 'maplibre-gl';
 import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 
 import { afterEach, expect, it, vi } from 'vitest';
@@ -447,4 +447,59 @@ it('returns to follow mode without a position and follows the next position', as
     expect(map.getLayer('ownship-symbol')).toBeUndefined();
     expect(map.getSource('ownship')).toBeUndefined();
   });
+});
+
+it('updates the camera and ownship only when their values change', async () => {
+  let mapState = new MapState();
+  let view = await render(MapComponent, {
+    instruments: positionInstruments,
+    mapState,
+    traffic: new TrafficStore(),
+    units,
+    airspace: { generation: 0, sources: [] },
+    testMode: true,
+  });
+  await vi.waitFor(() => {
+    expect(mapState.map?.getSource('ownship')).toBeDefined();
+  });
+  let map = mapState.map!;
+  let source = map.getSource('ownship') as GeoJSONSource;
+  await new Promise<void>((resolve) => map.once('idle', () => resolve()));
+  let camera = vi.spyOn(map, 'easeTo');
+  let ownship = vi.spyOn(source, 'setData');
+
+  let updated = structuredClone(positionInstruments);
+  updated.gps.altitudeMeters += 10;
+  await view.rerender({ instruments: updated });
+  expect(camera).not.toHaveBeenCalled();
+  expect(ownship).not.toHaveBeenCalled();
+
+  updated = structuredClone(updated);
+  updated.gps.trackDegrees = 180;
+  await view.rerender({ instruments: updated });
+  expect(camera).not.toHaveBeenCalled();
+  expect(ownship).toHaveBeenCalledTimes(1);
+  expect(ownship.mock.lastCall?.[0]).toMatchObject({ properties: { track: 180 } });
+
+  for (let coordinate of ['latitudeDegrees', 'longitudeDegrees'] as const) {
+    camera.mockClear();
+    ownship.mockClear();
+    updated = structuredClone(updated);
+    updated.gps.position[coordinate] += 0.01;
+    await view.rerender({ instruments: updated });
+    let center = [updated.gps.position.longitudeDegrees, updated.gps.position.latitudeDegrees];
+    expect(camera).toHaveBeenCalledExactlyOnceWith({ center, duration: 0 });
+    expect(ownship).toHaveBeenCalledTimes(1);
+    expect(ownship.mock.lastCall?.[0]).toMatchObject({ geometry: { coordinates: center } });
+  }
+
+  camera.mockClear();
+  ownship.mockClear();
+  map.fire('dragstart');
+  map.jumpTo({ center: [7, 51] });
+  await view.rerender({ instruments: structuredClone(updated) });
+  expect(camera).not.toHaveBeenCalled();
+  expect(ownship).not.toHaveBeenCalled();
+  await page.getByRole('button', { name: 'Return to position' }).click();
+  expect(camera).toHaveBeenCalledTimes(1);
 });

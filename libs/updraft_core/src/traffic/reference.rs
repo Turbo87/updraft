@@ -72,8 +72,8 @@ impl FlarmReference {
                     if !track.as_radians().is_finite() {
                         return;
                     }
-                    position
-                        .destination(track, Length::from_meters(PREDICTION.as_secs_f64() * speed))
+                    let distance = Length::from_meters(PREDICTION.as_secs_f64() * speed);
+                    position.destination(track, distance)
                 };
                 let reference = Timed::new(projected, at);
                 self.latest_projected_position = Some((epoch, reference));
@@ -137,18 +137,17 @@ impl FlarmReference {
         {
             return;
         }
-        let projected = self
-            .latest_gps_altitude
-            .and_then(|(previous_epoch, previous)| {
-                let elapsed = epoch - previous_epoch;
-                if !(1_000..=3_000).contains(&elapsed) || previous.fresh(at).is_none() {
-                    return None;
-                }
-                let change = altitude.into_inner() - previous.value.into_inner();
-                let projected = altitude.into_inner()
-                    + change * (PREDICTION.as_millis() as f64 / elapsed as f64);
-                Some(Timed::new(MslAltitude::new(projected), at))
-            });
+        let previous = self.latest_gps_altitude;
+        let projected = previous.and_then(|(previous_epoch, previous)| {
+            let elapsed = epoch - previous_epoch;
+            if !(1_000..=3_000).contains(&elapsed) || previous.fresh(at).is_none() {
+                return None;
+            }
+            let change = altitude.into_inner() - previous.value.into_inner();
+            let projected =
+                altitude.into_inner() + change * (PREDICTION.as_millis() as f64 / elapsed as f64);
+            Some(Timed::new(MslAltitude::new(projected), at))
+        });
         self.latest_projected_altitude = projected;
         self.latest_gps_altitude = Some((epoch, Timed::new(altitude, at)));
         if self.cycle == Some(epoch) {

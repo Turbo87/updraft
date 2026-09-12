@@ -111,6 +111,7 @@ impl TrafficClimb {
 mod tests {
     use super::*;
     use claims::{assert_none, assert_some, assert_some_eq};
+    use updraft_units::Speed;
 
     #[test]
     fn gps_sample_clock_ignores_duplicates_and_resets_on_rewind_or_clock_change() {
@@ -129,10 +130,7 @@ mod tests {
         };
         assert_none!(observe(0, Some(1_000), 100.));
         let estimates = assert_some!(observe(100, Some(2_000), 102.));
-        assert_eq!(
-            estimates.average_20s,
-            updraft_units::Speed::from_meters_per_second(2.)
-        );
+        assert_eq!(estimates.average_20s, Speed::from_meters_per_second(2.));
         assert_some_eq!(observe(200, Some(2_000), 900.), estimates);
         assert_none!(observe(300, Some(1_000), 100.));
         assert_some_eq!(observe(400, Some(2_000), 102.), estimates);

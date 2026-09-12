@@ -1,9 +1,10 @@
 use crate::replay::Replay;
-use claims::assert_ok;
+use claims::{assert_ok, assert_some_eq};
 use updraft_core::{
-    Bytes, Core, ExternalDeviceConfig, ExternalDeviceId, SettingsSnapshot, Timestamp, Topic,
-    TrafficUpdate,
+    Bytes, ConnectionSpec, Core, ExternalDeviceConfig, ExternalDeviceId, SettingsSnapshot,
+    Timestamp, Topic, TrafficUpdate,
 };
+use updraft_geo::LatLon;
 
 #[test]
 fn replay_preserves_flarm_cycle_references_across_batches_and_fragments() {
@@ -38,7 +39,7 @@ fn replay_preserves_flarm_cycle_references_across_batches_and_fragments() {
         let mut core = Core::new(SettingsSnapshot {
             external_devices: vec![ExternalDeviceConfig {
                 enabled: true,
-                spec: updraft_core::ConnectionSpec::tcp("localhost", 4353),
+                spec: ConnectionSpec::tcp("localhost", 4353),
             }],
             ..SettingsSnapshot::default()
         });
@@ -62,12 +63,12 @@ fn replay_preserves_flarm_cycle_references_across_batches_and_fragments() {
     };
     let batched = run(usize::MAX, 1);
     assert_ne!(batched[0].0, batched[1].0);
-    claims::assert_some_eq!(batched[0].1, 100.);
-    claims::assert_some_eq!(batched[1].1, 109.);
+    assert_some_eq!(batched[0].1, 100.);
+    assert_some_eq!(batched[1].1, 109.);
     assert_eq!(run(1, 1), batched);
     assert_eq!(run(7, 10), batched);
-    let origin = updraft_geo::LatLon::from_degrees(50., 8.);
-    let first = updraft_geo::LatLon::from_degrees(
+    let origin = LatLon::from_degrees(50., 8.);
+    let first = LatLon::from_degrees(
         batched[0].0.latitude_degrees,
         batched[0].0.longitude_degrees,
     );

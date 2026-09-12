@@ -1,5 +1,7 @@
 use super::super::*;
 use super::support::*;
+use crate::connection::ConnectionState;
+use crate::traffic::TrafficAlarmLevel;
 use approx::assert_abs_diff_eq;
 use claims::{assert_ok, assert_some, assert_some_eq};
 use updraft_geo::LatLon;
@@ -92,7 +94,6 @@ fn flarm_reference_falls_back_without_a_usable_cycle_fix() {
 
 #[test]
 fn flarm_reference_does_not_cross_devices_or_reconnects() {
-    use crate::connection::ConnectionState;
     let (mut core, first, second) = core_with_two_external_devices();
     core.apply(Bytes::new(first, [FIX, CYCLE].concat()), at(0));
     core.apply(
@@ -250,7 +251,7 @@ fn flarm_altitude_clears_history_on_invalid_fixes_and_does_not_cross_devices() {
     core.apply(
         ConnectionChanged {
             device_id: first,
-            state: crate::connection::ConnectionState::Disconnected,
+            state: ConnectionState::Disconnected,
         },
         at(3),
     );
@@ -376,7 +377,7 @@ fn flarm_target_holds_on_invalid_time_and_connection_reset() {
             core.apply(
                 ConnectionChanged {
                     device_id: device,
-                    state: crate::connection::ConnectionState::Disconnected,
+                    state: ConnectionState::Disconnected,
                 },
                 at(100),
             );
@@ -454,11 +455,9 @@ fn flarm_keeps_first_position_per_gps_epoch_but_refreshes_alarm_and_age() {
     let revised = b"$PFLAA,3,40,0,0,1,ABC123,180,0,0,0,1,0,0\r\n";
     core.apply(Bytes::new(device, [CYCLE, revised].concat()), at(1_000));
     assert_eq!(position(&core), first);
-    assert_eq!(traffic_snapshot(&core)[0].track_degrees, track);
-    assert_eq!(
-        traffic_snapshot(&core)[0].alarm_level,
-        crate::traffic::TrafficAlarmLevel::Urgent
-    );
+    let target = &traffic_snapshot(&core)[0];
+    assert_eq!(target.track_degrees, track);
+    assert_eq!(target.alarm_level, TrafficAlarmLevel::Urgent);
     core.apply(Tick, at(5_000));
     assert!(!traffic_snapshot(&core)[0].stale);
     core.apply(Tick, at(6_000));
@@ -474,11 +473,9 @@ fn flarm_holds_corrected_position_when_a_cycle_has_no_gps_fix() {
     let alarm = b"$PFLAA,3,40,0,0,1,ABC123,180,0,0,0,1,0,0\r\n";
     core.apply(Bytes::new(device, [CYCLE, alarm].concat()), at(1_000));
     assert_eq!(position(&core), first);
-    assert_eq!(traffic_snapshot(&core)[0].track_degrees, track);
-    assert_eq!(
-        traffic_snapshot(&core)[0].alarm_level,
-        crate::traffic::TrafficAlarmLevel::Urgent
-    );
+    let target = &traffic_snapshot(&core)[0];
+    assert_eq!(target.track_degrees, track);
+    assert_eq!(target.alarm_level, TrafficAlarmLevel::Urgent);
     core.apply(Bytes::new(device, [NEXT_FIX, alarm].concat()), at(2_000));
     assert_ne!(position(&core), first);
 }

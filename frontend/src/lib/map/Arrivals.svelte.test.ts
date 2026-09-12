@@ -2,6 +2,7 @@ import type { GeoJSONSource } from 'maplibre-gl';
 import type { UpdraftClient } from '$lib/client';
 
 import { tick } from 'svelte';
+import { LngLatBounds } from 'maplibre-gl';
 import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
@@ -71,7 +72,40 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
     map.jumpTo({ center: [179, 50], zoom: 5 });
     expect(move).toHaveBeenLastCalledWith(map.getBounds().toArray().flat());
     expect(map.getSource('arrivals')).toBe(source);
-    await component.rerender({ waypoints: { ...waypoints, generation: 2 } });
+    move.mockClear();
+    let bounds = vi.spyOn(map, 'getBounds');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      bounds.mockReturnValue(new LngLatBounds([6, 50], [7, 51]));
+      map.fire('move');
+      vi.advanceTimersByTime(50);
+      bounds.mockReturnValue(new LngLatBounds([7, 51], [8, 52]));
+      map.fire('move');
+      vi.advanceTimersByTime(49);
+      expect(move).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(move).toHaveBeenCalledExactlyOnceWith([7, 51, 8, 52]);
+
+      move.mockClear();
+      bounds.mockReturnValue(new LngLatBounds([8, 52], [9, 53]));
+      map.fire('move');
+      vi.advanceTimersByTime(25);
+      map.fire('moveend');
+      expect(move).toHaveBeenCalledExactlyOnceWith([8, 52, 9, 53]);
+      vi.advanceTimersByTime(100);
+      map.fire('moveend');
+      expect(move).toHaveBeenCalledTimes(1);
+
+      move.mockClear();
+      map.fire('move');
+      bounds.mockRestore();
+      await component.rerender({ waypoints: { ...waypoints, generation: 2 } });
+      vi.advanceTimersByTime(100);
+      expect(move).not.toHaveBeenCalled();
+    } finally {
+      bounds.mockRestore();
+      vi.useRealTimers();
+    }
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
     expect(close).toHaveBeenCalledTimes(1);
     expect(map.getSource('arrivals')).toBeUndefined();

@@ -14,6 +14,7 @@
   import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
 
+  import { untrack } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { MapLibre } from 'svelte-maplibre-gl';
 
@@ -73,8 +74,16 @@
   let showHitAreas = $state(false);
   let arrivalsReady = $state(false);
   const map = $derived(mapState.map);
+  const followMode = $derived(mapState.followMode);
+  const followDuration = $derived(testMode ? 0 : FOLLOW_DURATION_MS);
   const gps = $derived(instruments.gps);
-  const position = $derived(gps?.position ?? null);
+  const latitudeDegrees = $derived(gps?.position.latitudeDegrees);
+  const longitudeDegrees = $derived(gps?.position.longitudeDegrees);
+  const position = $derived(
+    latitudeDegrees === undefined || longitudeDegrees === undefined
+      ? null
+      : { latitudeDegrees, longitudeDegrees },
+  );
   const mapStyle = $derived(getBasemapStyle(testMode, window.location.origin));
   const inlineAirspaceData = $derived(
     testMode ? (testAirspaceData ?? (window as TestWindow).__updraftTestAirspaceData) : undefined,
@@ -129,12 +138,11 @@
   }
 
   $effect(() => {
-    if (!map || !mapState.followMode || !position) return;
+    if (!map || !followMode || !position) return;
 
-    map.easeTo({
-      center: positionCoordinates(position),
-      duration: testMode ? 0 : FOLLOW_DURATION_MS,
-    });
+    let center = positionCoordinates(position);
+    let duration = followDuration;
+    untrack(() => map.easeTo({ center, duration }));
   });
 
   function enterManualMode() {

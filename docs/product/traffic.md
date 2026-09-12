@@ -28,6 +28,15 @@ that height two seconds before adding the relative traffic height. Both fixes
 must be fresh and one to three seconds apart in GPS time. Missing altitude
 history uses the existing GPS-altitude fallback.
 
+If a cycle marker is missing, a repeated target can identify the next cycle.
+The target must have reported a position while GPS time matched the active
+cycle. Its next position report advances the cycle if GPS time has advanced by
+exactly one second. The core switches both position and altitude references.
+A first report from another target still uses the preceding cycle. Repeated
+reports without GPS progress do not advance the cycle. This inference adds no
+delay and does not revise reports accepted before the repeated target arrives.
+It is based on recording evidence and remains part of the experimental setting.
+
 The decoded target is a prediction for two seconds after the cycle timestamp.
 The core uses the target's reported ground velocity and climb rate to move it
 back to the latest same-device GPS timestamp. A report before the next GPS fix

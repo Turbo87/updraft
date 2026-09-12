@@ -31,7 +31,11 @@ fn flarm_reference_uses_the_cycle_fix_on_both_sides_of_the_next_gps() {
         Angle::from_degrees(90.0),
         Length::from_meters(100.0 * 1852.0 / 3600.0 * 2.0),
     );
-    core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+    let first = assert_ok!(std::str::from_utf8(TARGET)).replace("ABC123", "ABC124");
+    core.apply(
+        Bytes::new(device, [FIX, CYCLE, first.as_bytes()].concat()),
+        at(0),
+    );
     assert_position(&core, expected);
     core.apply(Bytes::new(device, [NEXT_FIX, TARGET].concat()), at(1_000));
     assert_position(&core, expected);
@@ -132,13 +136,13 @@ fn flarm_reference_crosses_midnight_and_handles_missing_markers() {
         Bytes::new(device, [before.as_bytes(), CYCLE, TARGET].concat()),
         at(0),
     );
-    let previous = position(&core);
+
     core.apply(
         Bytes::new(device, [after.as_bytes(), TARGET].concat()),
         at(1_000),
     );
-    assert_eq!(position(&core), previous);
-    // With both markers missing, the next GPS bounds the cycle to its predecessor.
+    let recovered = position(&core);
+    // Repeated reports recover consecutive missing markers across midnight.
     let later = after.replace("000000,A", "000001,A");
     core.apply(
         Bytes::new(device, [later.as_bytes(), TARGET].concat()),
@@ -149,6 +153,7 @@ fn flarm_reference_crosses_midnight_and_handles_missing_markers() {
         Length::from_meters(100.0 * 1852.0 / 3600.0 * 2.0),
     );
     assert_position(&core, expected);
+    assert_eq!(position(&core), recovered);
 }
 
 #[test]
@@ -194,12 +199,12 @@ fn flarm_reference_keeps_the_active_fix_until_the_cycle_changes() {
         Angle::from_degrees(0.),
         Length::from_meters(100. * 1852. / 3600. * 2.),
     );
-    assert_eq!(position(&core), active);
+    assert_position(&core, expected);
     core.apply(
         Bytes::new(device, [incomplete.as_bytes(), TARGET].concat()),
         at(1_003),
     );
-    assert_eq!(position(&core), active);
+    assert_position(&core, expected);
     let later = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", "120002");
     core.apply(
         Bytes::new(device, [NEXT_FIX, later.as_bytes(), TARGET].concat()),
@@ -229,13 +234,13 @@ fn flarm_altitude_uses_the_cycle_height_and_changes_only_when_enabled() {
         Bytes::new(device, [NEXT_FIX, &next, TARGET].concat()),
         at(1_000),
     );
-    assert_eq!(altitude(&core), 109.);
+    assert_eq!(altitude(&core), 118.);
     core.apply(SetFlarmPositionCorrection { enabled: false }, at(1_001));
     core.apply(Bytes::new(device, TARGET), at(1_002));
     assert_eq!(altitude(&core), 108.);
     core.apply(SetFlarmPositionCorrection { enabled: true }, at(1_003));
     core.apply(Bytes::new(device, TARGET), at(1_004));
-    assert_eq!(altitude(&core), 109.);
+    assert_eq!(altitude(&core), 118.);
     core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_005));
     assert_eq!(altitude(&core), 118.);
 }
@@ -357,12 +362,19 @@ fn flarm_target_moves_only_when_a_new_position_report_arrives() {
         |east| prediction.destination(Angle::from_degrees(90.), Length::from_meters(east));
     assert_position(&core, expected(-80.));
     assert_eq!(altitude(&core), 201.);
-    core.apply(Bytes::new(device, NEXT_FIX), at(1_000));
+    let next_height = gga("120001", 106.);
+    core.apply(
+        Bytes::new(device, [NEXT_FIX, &next_height].concat()),
+        at(1_000),
+    );
     assert_position(&core, expected(-80.));
     assert_eq!(altitude(&core), 201.);
     core.apply(Bytes::new(device, moving), at(1_000));
-    assert_position(&core, expected(-40.));
-    assert_eq!(altitude(&core), 205.);
+    let updated = LatLon::from_degrees(50., 8. + 0.1 / 60.)
+        .destination(Angle::ZERO, Length::from_meters(102.8888888889))
+        .destination(Angle::from_degrees(90.), Length::from_meters(-80.));
+    assert_position(&core, updated);
+    assert_eq!(altitude(&core), 204.);
     let climb = traffic_snapshot(&core)[0].climb;
     for seconds in 2..=5 {
         let fix =
@@ -373,8 +385,8 @@ fn flarm_target_moves_only_when_a_new_position_report_arrives() {
             at(seconds * 1_000),
         );
     }
-    assert_position(&core, expected(-40.));
-    assert_eq!(altitude(&core), 205.);
+    assert_position(&core, updated);
+    assert_eq!(altitude(&core), 204.);
     assert_eq!(traffic_snapshot(&core)[0].climb, climb);
     core.apply(Tick, at(6_000));
     assert!(traffic_snapshot(&core)[0].stale);
@@ -553,4 +565,30 @@ fn flarm_holds_corrected_position_when_a_cycle_has_no_gps_fix() {
     );
     core.apply(Bytes::new(device, [NEXT_FIX, alarm].concat()), at(2_000));
     assert_ne!(position(&core), first);
+}
+
+#[test]
+fn repeated_target_after_gps_recovers_a_missing_cycle_marker() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+    let prior = position(&core);
+    core.apply(Bytes::new(device, [NEXT_FIX, TARGET].concat()), at(1_000));
+    let expected = LatLon::from_degrees(50., 8. + 0.1 / 60.)
+        .destination(Angle::ZERO, Length::from_meters(100. * 1852. / 3600. * 2.));
+    assert_position(&core, expected);
+    assert_ne!(position(&core), prior);
+    // A marker arriving after the inferred boundary must not advance another cycle.
+    core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_100));
+    assert_position(&core, expected);
+}
+
+#[test]
+fn duplicate_reports_without_gps_progress_do_not_advance_the_cycle() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(
+        Bytes::new(device, [FIX, CYCLE, TARGET, TARGET].concat()),
+        at(0),
+    );
+    let reference = &assert_some!(core.external_devices.get(device)).flarm_reference;
+    assert_some_eq!(reference.prediction_epoch(), 43_202_000);
 }

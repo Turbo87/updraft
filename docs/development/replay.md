@@ -77,6 +77,9 @@ add vario samples. A target holds its position until the next traffic report.
 
 The recording does not preserve exact arrival times within a GPS interval.
 Replay cannot restore those times. This limitation remains relevant to report
-age and reception-based calculations, but does not prevent selection of the
-correct traffic-cycle GPS reference. Replay skips begin with the available
-sentences and use the normal fallback until a usable reference exists.
+age and reception-based calculations. Missing cycle markers also make reference
+selection uncertain. The core can infer a new cycle when a target repeats after
+one second of GPS progress. This uses sentence order and adds no replay delay.
+Reports before that repeated target retain their original reference.
+Replay skips begin with the available sentences and use the normal fallback
+until a usable reference exists.

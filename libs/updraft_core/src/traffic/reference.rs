@@ -1,8 +1,10 @@
+use super::TrafficTargetId;
 use crate::ownship::Timed;
 use crate::time::Timestamp;
+use std::collections::BTreeSet;
 use std::time::Duration;
 use updraft_geo::LatLon;
-use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus, Time};
+use updraft_nmea::{FlarmSource, GgaFixQuality, Message, PositioningMode, RmcStatus, Time};
 use updraft_units::{Length, MslAltitude};
 
 /// Same-device GPS references for the experimental one-second FLARM cycle model.
@@ -12,6 +14,7 @@ pub struct FlarmReference {
     cycle: Option<i64>,
     cycle_gps: Option<i64>,
     pending_status: bool,
+    cycle_targets: BTreeSet<TrafficTargetId>,
     latest_fix: Option<(i64, Timed<LatLon>)>,
     active_reference: Option<Timed<LatLon>>,
     latest_altitude: Option<(i64, Timed<MslAltitude>)>,
@@ -90,6 +93,26 @@ impl FlarmReference {
                     self.active_altitude = None;
                 }
             }
+            Message::Pflaa(pflaa)
+                if matches!(pflaa.source, None | Some(FlarmSource::Flarm))
+                    && pflaa.relative_north.is_some()
+                    && pflaa.relative_east.is_some() =>
+            {
+                let Some((id_type, id)) = pflaa.id_type.zip(pflaa.id.as_ref()) else {
+                    return;
+                };
+                let id = TrafficTargetId::new(id_type.into(), id.address);
+                if let Some((cycle, epoch)) = self.cycle.zip(self.epoch)
+                    && epoch == cycle + 1_000
+                    && self.cycle_targets.contains(&id)
+                {
+                    // Infer a new cycle from a repeated target when its marker is missing.
+                    self.select_cycle(epoch);
+                }
+                if self.cycle == self.epoch && self.active_reference.is_some() {
+                    self.cycle_targets.insert(id);
+                }
+            }
             Message::Pflau(_) => {
                 self.start_cycle();
                 self.pending_status = true;
@@ -141,7 +164,7 @@ impl FlarmReference {
             }
         }
         self.epoch = Some(epoch);
-        // Traffic before the next marker still belongs to the preceding cycle.
+        // GPS progress alone does not establish the next traffic cycle.
         if let Some(cycle) = self.cycle {
             self.select_cycle(cycle.max(epoch - 1_000));
         }
@@ -160,6 +183,7 @@ impl FlarmReference {
 
     fn select_cycle(&mut self, cycle: i64) {
         if self.cycle != Some(cycle) {
+            self.cycle_targets.clear();
             self.active_reference = self
                 .latest_fix
                 .filter(|(epoch, _)| *epoch == cycle)

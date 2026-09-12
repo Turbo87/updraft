@@ -372,7 +372,10 @@ fn advancing_position_epoch_uses_the_last_accepted_position() {
     state.observe(
         original,
         Timestamp::from_millis(0),
-        Some((source, 10)),
+        Some(TrafficPositionReference {
+            source,
+            epoch: Some(10),
+        }),
         &mut changes,
     );
     let mut revision = original;
@@ -382,7 +385,10 @@ fn advancing_position_epoch_uses_the_last_accepted_position() {
     state.observe(
         revision,
         Timestamp::from_millis(100),
-        Some((source, 10)),
+        Some(TrafficPositionReference {
+            source,
+            epoch: Some(10),
+        }),
         &mut changes,
     );
     let mut next = original;
@@ -392,7 +398,10 @@ fn advancing_position_epoch_uses_the_last_accepted_position() {
     state.observe(
         next,
         Timestamp::from_millis(1_000),
-        Some((source, 11)),
+        Some(TrafficPositionReference {
+            source,
+            epoch: Some(11),
+        }),
         &mut changes,
     );
     assert_eq!(state.snapshot()[0].position, next.position);
@@ -412,23 +421,41 @@ fn position_epochs_do_not_cross_clock_source_or_expiry_resets() {
         state.observe(
             original,
             Timestamp::from_millis(0),
-            Some((source, 10)),
+            Some(TrafficPositionReference {
+                source,
+                epoch: Some(10),
+            }),
             &mut changes,
         );
         let epoch = match reset {
-            "rewind" => Some((source, 9)),
-            "source" => Some((ExternalDeviceId(2), 10)),
+            "rewind" => Some(TrafficPositionReference {
+                source,
+                epoch: Some(9),
+            }),
+            "source" => Some(TrafficPositionReference {
+                source: ExternalDeviceId(2),
+                epoch: Some(10),
+            }),
             "connection" => {
                 state.reset_position_epochs(Some(source));
-                Some((source, 10))
+                Some(TrafficPositionReference {
+                    source,
+                    epoch: Some(10),
+                })
             }
             "setting" => {
                 state.reset_position_epochs(None);
-                Some((source, 10))
+                Some(TrafficPositionReference {
+                    source,
+                    epoch: Some(10),
+                })
             }
             _ => {
                 state.expire(Timestamp::from_millis(30_000));
-                Some((source, 10))
+                Some(TrafficPositionReference {
+                    source,
+                    epoch: Some(10),
+                })
             }
         };
         let mut next = original;
@@ -438,4 +465,31 @@ fn position_epochs_do_not_cross_clock_source_or_expiry_resets() {
         state.observe(next, Timestamp::from_millis(31_000), epoch, &mut changes);
         assert_eq!(state.snapshot(), vec![next]);
     }
+}
+
+#[test]
+fn missing_reference_reports_do_not_extend_the_position_hold() {
+    let mut state = TrafficState::default();
+    let mut changes = TrafficChanges::default();
+    let original = target(1);
+    let source = ExternalDeviceId(1);
+    let reference = Some(TrafficPositionReference {
+        source,
+        epoch: Some(10),
+    });
+    state.observe(original, Timestamp::from_millis(0), reference, &mut changes);
+    let mut next = original;
+    next.position = original
+        .position
+        .destination(Angle::ZERO, Length::from_meters(100.));
+    let missing = Some(TrafficPositionReference {
+        source,
+        epoch: None,
+    });
+    for millis in [1_000, 1_999] {
+        state.observe(next, Timestamp::from_millis(millis), missing, &mut changes);
+        assert_eq!(state.snapshot()[0].position, original.position);
+    }
+    state.observe(next, Timestamp::from_millis(2_000), missing, &mut changes);
+    assert_eq!(state.snapshot()[0].position, next.position);
 }

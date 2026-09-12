@@ -188,18 +188,24 @@ fn flarm_reference_keeps_the_active_fix_until_the_cycle_changes() {
     );
     assert_eq!(position(&core), active);
     core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_001));
-    assert_position(&core, LatLon::from_degrees(50., 8. + 0.1 / 60.));
+    assert_eq!(position(&core), active);
     core.apply(Bytes::new(device, [NEXT_FIX, TARGET].concat()), at(1_002));
     let expected = LatLon::from_degrees(50., 8. + 0.1 / 60.).destination(
         Angle::from_degrees(0.),
         Length::from_meters(100. * 1852. / 3600. * 2.),
     );
-    assert_position(&core, expected);
+    assert_eq!(position(&core), active);
     core.apply(
         Bytes::new(device, [incomplete.as_bytes(), TARGET].concat()),
         at(1_003),
     );
-    assert_position(&core, LatLon::from_degrees(50., 8. + 0.1 / 60.));
+    assert_eq!(position(&core), active);
+    let later = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", "120002");
+    core.apply(
+        Bytes::new(device, [NEXT_FIX, later.as_bytes(), TARGET].concat()),
+        at(2_000),
+    );
+    assert_position(&core, expected);
 }
 
 fn altitude(core: &Core) -> f64 {
@@ -529,4 +535,22 @@ fn flarm_keeps_first_position_per_gps_epoch_but_refreshes_alarm_and_age() {
     assert!(!traffic_snapshot(&core)[0].stale);
     core.apply(Tick, at(6_000));
     assert!(traffic_snapshot(&core)[0].stale);
+}
+
+#[test]
+fn flarm_holds_corrected_position_when_a_cycle_has_no_gps_fix() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+    let first = position(&core);
+    let track = traffic_snapshot(&core)[0].track_degrees;
+    let alarm = b"$PFLAA,3,40,0,0,1,ABC123,180,0,0,0,1,0,0\r\n";
+    core.apply(Bytes::new(device, [CYCLE, alarm].concat()), at(1_000));
+    assert_eq!(position(&core), first);
+    assert_eq!(traffic_snapshot(&core)[0].track_degrees, track);
+    assert_eq!(
+        traffic_snapshot(&core)[0].alarm_level,
+        crate::traffic::TrafficAlarmLevel::Urgent
+    );
+    core.apply(Bytes::new(device, [NEXT_FIX, alarm].concat()), at(2_000));
+    assert_ne!(position(&core), first);
 }

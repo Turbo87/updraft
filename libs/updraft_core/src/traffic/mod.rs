@@ -20,6 +20,7 @@ use updraft_geo::LatLon as GeoLatLon;
 use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmIdType, Pflaa};
 use updraft_units::{Angle, Length, MslAltitude};
 
+const REFERENCE_HOLD: Duration = Duration::from_secs(2);
 const STALE_AFTER: Duration = Duration::from_secs(5);
 const REMOVE_AFTER: Duration = Duration::from_secs(30);
 
@@ -148,6 +149,15 @@ struct StoredTrafficTarget {
     target: TrafficTarget,
     observed_at: Timestamp,
     position_epoch: Option<(ExternalDeviceId, i64)>,
+    position_observed_at: Timestamp,
+}
+
+/// Correction source and aligned GPS epoch. A missing epoch means that the
+/// source temporarily lacks the reference or motion needed for correction.
+#[derive(Clone, Copy, Debug)]
+pub struct TrafficPositionReference {
+    pub source: ExternalDeviceId,
+    pub epoch: Option<i64>,
 }
 
 #[derive(Debug, Default)]
@@ -199,19 +209,25 @@ impl TrafficState {
         &mut self,
         mut target: TrafficTarget,
         at: Timestamp,
-        position_epoch: Option<(ExternalDeviceId, i64)>,
+        reference: Option<TrafficPositionReference>,
         changes: &mut TrafficChanges,
     ) {
-        if let Some((source, epoch)) = position_epoch
+        let mut position_epoch = reference.and_then(|r| r.epoch.map(|epoch| (r.source, epoch)));
+        let mut position_observed_at = at;
+        if let Some(reference) = reference
             && let Some(previous) = self.targets.get(&target.id)
             && let Some((previous_source, previous_epoch)) = previous.position_epoch
-            && source == previous_source
+            && reference.source == previous_source
             && at >= previous.observed_at
         {
-            if epoch == previous_epoch {
+            let hold_missing_reference = reference.epoch.is_none()
+                && at.saturating_since(previous.position_observed_at) < REFERENCE_HOLD;
+            if reference.epoch == Some(previous_epoch) || hold_missing_reference {
                 target.position = previous.target.position;
                 target.track = previous.target.track;
-            } else if epoch > previous_epoch
+                position_epoch = previous.position_epoch;
+                position_observed_at = previous.position_observed_at;
+            } else if reference.epoch.is_some_and(|epoch| epoch > previous_epoch)
                 && at.saturating_since(previous.observed_at) < STALE_AFTER
             {
                 let (distance, bearing) =
@@ -233,6 +249,7 @@ impl TrafficState {
                 target,
                 observed_at: at,
                 position_epoch,
+                position_observed_at,
             },
         );
         if changed {

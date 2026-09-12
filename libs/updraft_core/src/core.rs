@@ -18,7 +18,8 @@ use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{
-    TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, align_target, target_from_pflaa,
+    TrafficChanges, TrafficMotion, TrafficPositionReference, TrafficState, TrafficUpdate,
+    align_target, target_from_pflaa,
 };
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
 use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
@@ -353,11 +354,11 @@ impl Core {
                 };
                 self.traffic
                     .update_climb(&mut target, altitude_source, at, motion);
-                let position_epoch = corrected_position
-                    .and(device.flarm_reference.epoch())
-                    .map(|epoch| (device_id, epoch));
-                self.traffic
-                    .observe(target, at, position_epoch, traffic_changes);
+                let reference = correct_reference.then_some(TrafficPositionReference {
+                    source: device_id,
+                    epoch: corrected_position.and(device.flarm_reference.epoch()),
+                });
+                self.traffic.observe(target, at, reference, traffic_changes);
             }
             _ => {}
         }

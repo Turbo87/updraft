@@ -205,8 +205,18 @@ correction setting start a new position sequence. Expired targets lose their
 position history.
 
 This policy adds no buffering and no movement between reports. It does not change
-reported velocity, altitude correction, or energy compensation. With correction
-disabled or unavailable, reports update positions normally.
+reported velocity, altitude correction, or energy compensation.
+
+If a corrected target temporarily loses its ownship reference or required motion
+fields, the core holds its horizontal position and track. Reports still update
+freshness, alarms, and other target data. The hold ends when correction recovers
+or the accepted position reaches two seconds of age. Reports without a usable
+reference do not extend this limit. After the limit, reports use fallback
+coordinates. Recovery can produce a catch-up step after the held interval.
+
+Targets without a prior corrected position use fallback coordinates immediately.
+Disabling correction or changing the source also permits immediate updates.
+The hold does not cross connection or position-history resets.
 
 A future 30-second traffic trace must append only accepted positions at advancing
 GPS timestamps. Same-timestamp reports must not append or replace trace points.

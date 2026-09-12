@@ -1,4 +1,4 @@
-use serde_json::json;
+use serde::Serialize;
 use updraft_core::{GlideSnapshot, WaypointSource};
 use updraft_geo::BoundingBox;
 
@@ -23,12 +23,7 @@ impl ArrivalResource {
                 "{}:{}:{}",
                 arrivals.generation, entry.source_index, entry.waypoint_index
             );
-            let mut properties = json!({"name": point.name, "kind": point.kind as u8});
-            properties["catalogGeneration"] = json!(arrivals.generation);
-            if let Some(direction) = point.runway_direction {
-                properties["runwayDirection"] = json!(direction);
-            }
-            if let Some(arrival) = entry.arrival {
+            let arrival = entry.arrival.map(|arrival| {
                 let margin = arrival.margin.as_meters();
                 let status = if margin >= 0. {
                     "reachable"
@@ -37,21 +32,77 @@ impl ArrivalResource {
                 } else {
                     "unreachable"
                 };
-                properties["arrivalMarginMeters"] = json!(margin);
-                properties["arrivalStale"] = json!(arrival.stale);
-                properties["arrivalStatus"] = json!(status);
-            }
-            features.push(json!({
-                "type": "Feature", "id": id, "properties": properties,
-                "geometry": {"type": "Point", "coordinates": point.position.to_geojson_coordinate()},
-            }));
+                Arrival {
+                    arrival_margin_meters: margin,
+                    arrival_stale: arrival.stale,
+                    arrival_status: status,
+                }
+            });
+            features.push(Feature {
+                geometry: Geometry {
+                    coordinates: point.position.to_geojson_coordinate(),
+                    r#type: "Point",
+                },
+                id,
+                properties: Properties {
+                    arrival,
+                    catalog_generation: arrivals.generation,
+                    kind: point.kind as u8,
+                    name: &point.name,
+                    runway_direction: point.runway_direction,
+                },
+                r#type: "Feature",
+            });
         }
-        let geojson = json!({"type": "FeatureCollection", "features": features});
+        let geojson = FeatureCollection {
+            features,
+            r#type: "FeatureCollection",
+        };
         Ok(Self {
             generation: arrivals.generation,
             body: serde_json::to_vec(&geojson)?,
         })
     }
+}
+
+#[derive(Serialize)]
+struct FeatureCollection<'a> {
+    features: Vec<Feature<'a>>,
+    r#type: &'static str,
+}
+
+#[derive(Serialize)]
+struct Feature<'a> {
+    geometry: Geometry,
+    id: String,
+    properties: Properties<'a>,
+    r#type: &'static str,
+}
+
+#[derive(Serialize)]
+struct Geometry {
+    coordinates: [f64; 2],
+    r#type: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Properties<'a> {
+    #[serde(flatten)]
+    arrival: Option<Arrival>,
+    catalog_generation: u64,
+    kind: u8,
+    name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    runway_direction: Option<u16>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Arrival {
+    arrival_margin_meters: f64,
+    arrival_stale: bool,
+    arrival_status: &'static str,
 }
 
 #[cfg(test)]

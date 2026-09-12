@@ -10,7 +10,7 @@ use crate::time::Timestamp;
 use crate::topic::LatLon;
 use climb::TrafficClimb;
 pub use climb::TrafficMotion;
-pub use projection::TrafficProjection;
+pub use projection::align_target;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -147,7 +147,6 @@ pub struct TrafficTarget {
 struct StoredTrafficTarget {
     target: TrafficTarget,
     observed_at: Timestamp,
-    projection: Option<TrafficProjection>,
 }
 
 #[derive(Debug, Default)]
@@ -190,7 +189,6 @@ impl TrafficState {
         &mut self,
         mut target: TrafficTarget,
         at: Timestamp,
-        projection: Option<TrafficProjection>,
         changes: &mut TrafficChanges,
     ) {
         target.stale = false;
@@ -203,44 +201,10 @@ impl TrafficState {
             StoredTrafficTarget {
                 target,
                 observed_at: at,
-                projection,
             },
         );
         if changed {
             changes.upsert(target);
-        }
-    }
-
-    pub fn clear_projections(&mut self, device_id: Option<ExternalDeviceId>) {
-        for stored in self.targets.values_mut() {
-            if device_id.is_none_or(|id| stored.projection.is_some_and(|p| p.device_id == id)) {
-                stored.projection = None;
-            }
-        }
-    }
-
-    pub fn project(
-        &mut self,
-        device_id: ExternalDeviceId,
-        epoch: i64,
-        at: Timestamp,
-        changes: &mut TrafficChanges,
-    ) {
-        for stored in self.targets.values_mut() {
-            let Some(projection) = stored.projection else {
-                continue;
-            };
-            if projection.device_id != device_id
-                || at < stored.observed_at
-                || at.saturating_since(stored.observed_at) >= STALE_AFTER
-            {
-                continue;
-            }
-            let previous = stored.target;
-            projection.apply(&mut stored.target, epoch);
-            if stored.target != previous {
-                changes.upsert(stored.target);
-            }
         }
     }
 

@@ -329,7 +329,7 @@ fn flarm_altitude_clears_history_on_invalid_fixes_and_does_not_cross_devices() {
 }
 
 #[test]
-fn flarm_target_matches_gps_time_and_moves_only_while_fresh() {
+fn flarm_target_moves_only_when_a_new_position_report_arrives() {
     let (mut core, device) = core_with_external_device();
     let moving = b"$PFLAA,0,0,0,100,1,ABC123,90,0,40,4,1,0,0\r\n";
     let before = gga("115959", 100.);
@@ -346,20 +346,27 @@ fn flarm_target_matches_gps_time_and_moves_only_while_fresh() {
     assert_position(&core, expected(-80.));
     assert_eq!(altitude(&core), 201.);
     core.apply(Bytes::new(device, NEXT_FIX), at(1_000));
+    assert_position(&core, expected(-80.));
+    assert_eq!(altitude(&core), 201.);
+    core.apply(Bytes::new(device, moving), at(1_000));
     assert_position(&core, expected(-40.));
     assert_eq!(altitude(&core), 205.);
     let climb = traffic_snapshot(&core)[0].climb;
     for seconds in 2..=5 {
         let fix =
             assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", &format!("12000{seconds}"));
-        core.apply(Bytes::new(device, fix.as_bytes()), at(seconds * 1_000));
+        let height = gga(&format!("12000{seconds}"), 100. + seconds as f64);
+        core.apply(
+            Bytes::new(device, [fix.as_bytes(), &height].concat()),
+            at(seconds * 1_000),
+        );
     }
-    assert_position(&core, expected(80.));
-    assert_eq!(altitude(&core), 217.);
+    assert_position(&core, expected(-40.));
+    assert_eq!(altitude(&core), 205.);
     assert_eq!(traffic_snapshot(&core)[0].climb, climb);
-    core.apply(Tick, at(5_000));
+    core.apply(Tick, at(6_000));
     assert!(traffic_snapshot(&core)[0].stale);
-    core.apply(Tick, at(30_000));
+    core.apply(Tick, at(31_000));
     assert!(traffic_snapshot(&core).is_empty());
 }
 
@@ -412,7 +419,7 @@ fn flarm_climb_uses_gps_intervals_and_gps_only_updates_preserve_estimates() {
 }
 
 #[test]
-fn flarm_projection_stops_on_invalid_time_and_connection_reset() {
+fn flarm_target_holds_on_invalid_time_and_connection_reset() {
     let moving = b"$PFLAA,0,0,0,0,1,ABC123,90,0,40,0,1,0,0\r\n";
     let rewind = assert_ok!(std::str::from_utf8(FIX)).replace("120000", "115959");
     for reset in [
@@ -440,7 +447,7 @@ fn flarm_projection_stops_on_invalid_time_and_connection_reset() {
 }
 
 #[test]
-fn flarm_projection_uses_only_its_receivers_clock_and_requires_target_motion() {
+fn flarm_target_holds_between_reports_and_requires_motion_for_correction() {
     let (mut core, first, second) = core_with_two_external_devices();
     let moving = b"$PFLAA,0,0,0,0,1,ABC123,90,0,40,0,1,0,0\r\n";
     core.apply(Bytes::new(first, [FIX, CYCLE, moving].concat()), at(0));
@@ -448,7 +455,7 @@ fn flarm_projection_uses_only_its_receivers_clock_and_requires_target_motion() {
     core.apply(Bytes::new(second, NEXT_FIX), at(500));
     assert_eq!(position(&core), held);
     core.apply(Bytes::new(first, NEXT_FIX), at(1_000));
-    assert_ne!(position(&core), held);
+    assert_eq!(position(&core), held);
     let no_motion = b"$PFLAA,0,0,0,100,1,ABC123,,0,,,1,0,0\r\n";
     let current = gga("120001", 103.);
     let next = gga("120002", 107.);

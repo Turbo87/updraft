@@ -72,8 +72,8 @@ a two-second scheduling shift for this correction. Altitude projection uses
 the interval between GGA timestamps. Target projection uses the cycle timestamp
 and latest GPS timestamp. Corrected target altitude samples also use GPS
 intervals for climb averages, so playback speed does not change those averages.
-Report age still uses delivery time. GPS-only display updates do not add vario
-samples or keep a target fresh.
+Report age still uses delivery time. GPS-only updates do not move targets or
+add vario samples. A target holds its position until the next traffic report.
 
 The recording does not preserve exact arrival times within a GPS interval.
 Replay cannot restore those times. This limitation remains relevant to report

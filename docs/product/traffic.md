@@ -36,11 +36,10 @@ Horizontal correction requires target speed and track. Zero target speed needs
 no track. Vertical correction requires the target climb rate. Missing motion
 uses the original fallback for that component.
 
-Later same-device GPS fixes project each fresh target from its retained
-prediction. These display updates do not add climb samples or refresh report
-age. Projection stops when the report reaches five seconds of age. GPS offsets
-outside two seconds before to five seconds after the prediction are ignored.
-The correction does not shift ownship, pressure altitude, or reception time.
+A target's position and altitude change only when a new traffic-position report
+arrives. GPS fixes update the reference for later reports. They do not move
+stored targets or add climb samples. The correction does not shift ownship,
+pressure altitude, or reception time.
 
 Each device retains the active traffic references and the latest RMC and GGA
 fixes. New GPS fixes leave the active reference unchanged until the traffic
@@ -53,7 +52,7 @@ reports and older reports without a source field. Other reported sources retain
 the existing calculation.
 
 Device runtime resets, connection changes, backward GPS time changes, and stale
-input gaps clear the reference history and retained target projections.
+input gaps clear the reference history.
 Midnight retains continuity. A setting change affects subsequent reports and
 resets climb histories. This prevents a position or altitude jump from becoming
 a derived velocity or climb sample.

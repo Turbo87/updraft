@@ -18,8 +18,7 @@ use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{
-    TrafficChanges, TrafficMotion, TrafficProjection, TrafficState, TrafficUpdate,
-    target_from_pflaa,
+    TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, align_target, target_from_pflaa,
 };
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
 use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
@@ -190,21 +189,7 @@ impl Core {
         traffic_changes: &mut TrafficChanges,
     ) {
         if let Some(device) = self.external_devices.get_mut(device_id) {
-            let previous = device.flarm_reference.epoch();
             device.flarm_reference.observe(&message, at);
-            let epoch = device.flarm_reference.epoch();
-            if epoch.is_none()
-                || previous
-                    .zip(epoch)
-                    .is_some_and(|(a, b)| !(0..=3_000).contains(&(b - a)))
-            {
-                self.traffic.clear_projections(Some(device_id));
-            } else if self.settings.flarm_position_correction
-                && matches!(message, Message::Rmc(_) | Message::Gga(_))
-                && let Some(epoch) = epoch
-            {
-                self.traffic.project(device_id, epoch, at, traffic_changes);
-            }
         }
         match message {
             Message::Rmc(rmc)
@@ -327,20 +312,18 @@ impl Core {
                 let Some(mut target) = target_from_pflaa(&pflaa, position.value, altitude) else {
                     return;
                 };
-                let projection = device
+                if let Some((prediction, epoch)) = device
                     .flarm_reference
                     .prediction_epoch()
-                    .filter(|_| corrected_position.is_some() || corrected_altitude.is_some())
-                    .map(|epoch| TrafficProjection {
-                        device_id,
-                        epoch,
-                        horizontal: corrected_position
-                            .and(horizontal_motion)
-                            .map(|(track, speed)| (target.position, track, speed)),
-                        vertical: corrected_altitude.and(target.altitude_msl).zip(climb),
-                    });
-                if let Some((projection, epoch)) = projection.zip(device.flarm_reference.epoch()) {
-                    projection.apply(&mut target, epoch);
+                    .zip(device.flarm_reference.epoch())
+                {
+                    let seconds = (epoch - prediction) as f64 / 1_000.;
+                    align_target(
+                        &mut target,
+                        seconds,
+                        corrected_position.and(horizontal_motion),
+                        corrected_altitude.and(climb),
+                    );
                 }
                 let altitude_source = altitude_reference
                     .filter(|(altitude, _)| altitude.fresh(at).is_some())
@@ -370,8 +353,7 @@ impl Core {
                 };
                 self.traffic
                     .update_climb(&mut target, altitude_source, at, motion);
-                self.traffic
-                    .observe(target, at, projection, traffic_changes);
+                self.traffic.observe(target, at, traffic_changes);
             }
             _ => {}
         }
@@ -581,7 +563,6 @@ impl Input for ConnectionChanged {
             return Update::empty();
         }
         device.flarm_reference = Default::default();
-        core.traffic.clear_projections(Some(self.device_id));
         device
             .diagnostics
             .changed(self.device_id, &device.config.spec, self.state);
@@ -660,7 +641,6 @@ impl Input for SetFlarmPositionCorrection {
             return Update::empty();
         }
         core.settings.flarm_position_correction = self.enabled;
-        core.traffic.clear_projections(None);
         let mut effects = vec![
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
@@ -800,7 +780,6 @@ impl Input for DeleteExternalDevice {
                 device_id: self.device_id,
             }));
         };
-        core.traffic.clear_projections(Some(self.device_id));
         let mut effects = Vec::new();
         if device.config.enabled {
             effects.push(Effect::close(self.device_id));
@@ -858,7 +837,6 @@ impl Input for EditExternalDevice {
         let enabled = device.config.enabled;
         device.config.spec = self.spec.clone();
         device.reset_runtime();
-        core.traffic.clear_projections(Some(self.device_id));
 
         let mut effects = Vec::new();
         if enabled {
@@ -894,7 +872,6 @@ impl Input for SetExternalDeviceEnabled {
         }
         device.config.enabled = self.enabled;
         device.reset_runtime();
-        core.traffic.clear_projections(Some(self.device_id));
         let spec = device.config.spec.clone();
 
         let mut effects = if self.enabled {

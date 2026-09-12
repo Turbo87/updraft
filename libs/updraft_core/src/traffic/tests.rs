@@ -145,7 +145,7 @@ fn replaces_a_target_and_resets_its_stale_state() {
     let mut changes = TrafficChanges::default();
     let original = target(1);
     let id = original.id;
-    state.observe(original, Timestamp::from_millis(0), &mut changes);
+    state.observe(original, Timestamp::from_millis(0), None, &mut changes);
     let stale = state.expire(Timestamp::from_millis(5_000));
     assert!(stale.upserts[&id].stale);
 
@@ -156,7 +156,7 @@ fn replaces_a_target_and_resets_its_stale_state() {
     replacement.track = None;
     replacement.alarm_level = TrafficAlarmLevel::Urgent;
     let at = Timestamp::from_millis(6_000);
-    state.observe(replacement, at, &mut changes);
+    state.observe(replacement, at, None, &mut changes);
 
     assert_eq!(changes.upserts[&id], replacement);
     assert!(!changes.upserts[&id].stale);
@@ -167,7 +167,7 @@ fn keeps_a_target_fresh_before_the_stale_boundary() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     let target = target(1);
-    state.observe(target, Timestamp::from_millis(0), &mut changes);
+    state.observe(target, Timestamp::from_millis(0), None, &mut changes);
 
     let expired = state.expire(Timestamp::from_millis(4_999));
 
@@ -183,11 +183,12 @@ fn identical_observation_refreshes_the_stale_deadline_without_an_upsert() {
     state.observe(
         target,
         Timestamp::from_millis(0),
+        None,
         &mut TrafficChanges::default(),
     );
 
     let mut changes = TrafficChanges::default();
-    state.observe(target, Timestamp::from_millis(1_000), &mut changes);
+    state.observe(target, Timestamp::from_millis(1_000), None, &mut changes);
 
     assert!(changes.upserts.is_empty());
     assert!(changes.removed.is_empty());
@@ -202,7 +203,7 @@ fn marks_and_removes_targets_at_exact_boundaries() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     let target = target(1);
-    state.observe(target, Timestamp::from_millis(0), &mut changes);
+    state.observe(target, Timestamp::from_millis(0), None, &mut changes);
     assert!(!changes.upserts[&target.id].stale);
 
     let stale = state.expire(Timestamp::from_millis(5_000));
@@ -232,7 +233,7 @@ fn removal_wins_when_the_first_tick_crosses_both_boundaries() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     let target = target(1);
-    state.observe(target, Timestamp::from_millis(0), &mut changes);
+    state.observe(target, Timestamp::from_millis(0), None, &mut changes);
 
     let expired = state.expire(Timestamp::from_millis(30_000));
 
@@ -248,7 +249,7 @@ fn orders_snapshots_and_deltas_by_target_id() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     for value in [3, 1, 2] {
-        state.observe(target(value), Timestamp::from_millis(0), &mut changes);
+        state.observe(target(value), Timestamp::from_millis(0), None, &mut changes);
     }
 
     let snapshot_ids = state
@@ -360,4 +361,81 @@ fn wind_compensation_requires_nearby_targets_with_known_geometry() {
     report.relative_east = Some(Length::ZERO);
     report.relative_vertical = None;
     assert!(!within_wind_range(&report));
+}
+
+#[test]
+fn advancing_position_epoch_uses_the_last_accepted_position() {
+    let mut state = TrafficState::default();
+    let mut changes = TrafficChanges::default();
+    let original = target(1);
+    let source = ExternalDeviceId(1);
+    state.observe(
+        original,
+        Timestamp::from_millis(0),
+        Some((source, 10)),
+        &mut changes,
+    );
+    let mut revision = original;
+    revision.position = original
+        .position
+        .destination(Angle::from_degrees(90.), Length::from_meters(40.));
+    state.observe(
+        revision,
+        Timestamp::from_millis(100),
+        Some((source, 10)),
+        &mut changes,
+    );
+    let mut next = original;
+    next.position = original
+        .position
+        .destination(Angle::ZERO, Length::from_meters(40.));
+    state.observe(
+        next,
+        Timestamp::from_millis(1_000),
+        Some((source, 11)),
+        &mut changes,
+    );
+    assert_eq!(state.snapshot()[0].position, next.position);
+    assert_some_eq!(
+        state.snapshot()[0].track,
+        original.position.bearing(next.position)
+    );
+}
+
+#[test]
+fn position_epochs_do_not_cross_clock_source_or_expiry_resets() {
+    for reset in ["rewind", "source", "connection", "setting", "expiry"] {
+        let mut state = TrafficState::default();
+        let mut changes = TrafficChanges::default();
+        let original = target(1);
+        let source = ExternalDeviceId(1);
+        state.observe(
+            original,
+            Timestamp::from_millis(0),
+            Some((source, 10)),
+            &mut changes,
+        );
+        let epoch = match reset {
+            "rewind" => Some((source, 9)),
+            "source" => Some((ExternalDeviceId(2), 10)),
+            "connection" => {
+                state.reset_position_epochs(Some(source));
+                Some((source, 10))
+            }
+            "setting" => {
+                state.reset_position_epochs(None);
+                Some((source, 10))
+            }
+            _ => {
+                state.expire(Timestamp::from_millis(30_000));
+                Some((source, 10))
+            }
+        };
+        let mut next = original;
+        next.position = original
+            .position
+            .destination(Angle::ZERO, Length::from_meters(40.));
+        state.observe(next, Timestamp::from_millis(31_000), epoch, &mut changes);
+        assert_eq!(state.snapshot(), vec![next]);
+    }
 }

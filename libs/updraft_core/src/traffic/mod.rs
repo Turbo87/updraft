@@ -147,6 +147,7 @@ pub struct TrafficTarget {
 struct StoredTrafficTarget {
     target: TrafficTarget,
     observed_at: Timestamp,
+    position_epoch: Option<(ExternalDeviceId, i64)>,
 }
 
 #[derive(Debug, Default)]
@@ -162,17 +163,12 @@ pub struct TrafficChanges {
 }
 
 impl TrafficState {
-    pub fn update_track(&self, target: &mut TrafficTarget, at: Timestamp) {
-        let Some(previous) = self.targets.get(&target.id) else {
-            return;
-        };
-        if at < previous.observed_at || at.saturating_since(previous.observed_at) >= STALE_AFTER {
-            return;
-        }
-        let (distance, bearing) = previous.target.position.distance_bearing(target.position);
-        // Small position steps give an unstable bearing at FLARM's meter resolution.
-        if distance >= Length::from_meters(5.) {
-            target.track = Some(bearing);
+    pub fn reset_position_epochs(&mut self, device_id: Option<ExternalDeviceId>) {
+        for stored in self.targets.values_mut() {
+            let source = stored.position_epoch.map(|(source, _)| source);
+            if device_id.is_none() || device_id == source {
+                stored.position_epoch = None;
+            }
         }
     }
 
@@ -203,8 +199,29 @@ impl TrafficState {
         &mut self,
         mut target: TrafficTarget,
         at: Timestamp,
+        position_epoch: Option<(ExternalDeviceId, i64)>,
         changes: &mut TrafficChanges,
     ) {
+        if let Some((source, epoch)) = position_epoch
+            && let Some(previous) = self.targets.get(&target.id)
+            && let Some((previous_source, previous_epoch)) = previous.position_epoch
+            && source == previous_source
+            && at >= previous.observed_at
+        {
+            if epoch == previous_epoch {
+                target.position = previous.target.position;
+                target.track = previous.target.track;
+            } else if epoch > previous_epoch
+                && at.saturating_since(previous.observed_at) < STALE_AFTER
+            {
+                let (distance, bearing) =
+                    previous.target.position.distance_bearing(target.position);
+                // Small steps give an unstable bearing at FLARM's meter resolution.
+                if distance >= Length::from_meters(5.) {
+                    target.track = Some(bearing);
+                }
+            }
+        }
         target.stale = false;
         let changed = self
             .targets
@@ -215,6 +232,7 @@ impl TrafficState {
             StoredTrafficTarget {
                 target,
                 observed_at: at,
+                position_epoch,
             },
         );
         if changed {

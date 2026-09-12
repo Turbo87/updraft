@@ -353,10 +353,11 @@ impl Core {
                 };
                 self.traffic
                     .update_climb(&mut target, altitude_source, at, motion);
-                if corrected_position.is_some() {
-                    self.traffic.update_track(&mut target, at);
-                }
-                self.traffic.observe(target, at, traffic_changes);
+                let position_epoch = corrected_position
+                    .and(device.flarm_reference.epoch())
+                    .map(|epoch| (device_id, epoch));
+                self.traffic
+                    .observe(target, at, position_epoch, traffic_changes);
             }
             _ => {}
         }
@@ -566,6 +567,7 @@ impl Input for ConnectionChanged {
             return Update::empty();
         }
         device.flarm_reference = Default::default();
+        core.traffic.reset_position_epochs(Some(self.device_id));
         device
             .diagnostics
             .changed(self.device_id, &device.config.spec, self.state);
@@ -644,6 +646,7 @@ impl Input for SetFlarmPositionCorrection {
             return Update::empty();
         }
         core.settings.flarm_position_correction = self.enabled;
+        core.traffic.reset_position_epochs(None);
         let mut effects = vec![
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
@@ -840,6 +843,7 @@ impl Input for EditExternalDevice {
         let enabled = device.config.enabled;
         device.config.spec = self.spec.clone();
         device.reset_runtime();
+        core.traffic.reset_position_epochs(Some(self.device_id));
 
         let mut effects = Vec::new();
         if enabled {
@@ -875,6 +879,7 @@ impl Input for SetExternalDeviceEnabled {
         }
         device.config.enabled = self.enabled;
         device.reset_runtime();
+        core.traffic.reset_position_epochs(Some(self.device_id));
         let spec = device.config.spec.clone();
 
         let mut effects = if self.enabled {

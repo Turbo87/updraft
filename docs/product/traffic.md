@@ -191,12 +191,27 @@ Symbols use aircraft-type icons. Directional targets rotate with the map track.
 Balloons and targets without track use fixed symbols. Icon size changes with map
 zoom.
 
-With FLARM position correction enabled and available, the displayed track follows
-the bearing from the previous position to the new adjusted position. Steps shorter
-than 5 meters and report gaps of 5 seconds or more use the reported track instead.
-The first report also uses the reported track. Position and track change only when
-a new position report arrives. This display calculation does not change the
-reported velocity used for position correction or energy compensation.
+With FLARM position correction enabled and available, the core accepts the first
+horizontal position for each target GPS timestamp immediately. Later reports for
+the same timestamp retain that position and track. They still update report age,
+alarm level, and other target data. This prevents position revisions at one time
+from appearing as flight movement. Some discarded revisions can be more accurate.
+
+The displayed track follows the bearing between accepted positions at advancing
+GPS timestamps. Steps shorter than 5 meters and report gaps of 5 seconds or more
+use the reported track instead. The first accepted report also uses reported
+track. Clock rewinds, source changes, connection resets, and changes to the
+correction setting start a new position sequence. Expired targets lose their
+position history.
+
+This policy adds no buffering and no movement between reports. It does not change
+reported velocity, altitude correction, or energy compensation. With correction
+disabled or unavailable, reports update positions normally.
+
+A future 30-second traffic trace must append only accepted positions at advancing
+GPS timestamps. Same-timestamp reports must not append or replace trace points.
+Metadata updates must not create trace points. Reception gaps remain gaps in the
+observations and must not be filled with synthetic positions.
 
 FLARM alarm level controls symbol color. Stale targets use reduced opacity. The
 label appears from zoom level 7 and uses the configured altitude unit. The first

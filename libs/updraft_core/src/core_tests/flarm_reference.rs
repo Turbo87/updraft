@@ -36,6 +36,12 @@ fn flarm_reference_uses_the_cycle_fix_on_both_sides_of_the_next_gps() {
     core.apply(Bytes::new(device, [NEXT_FIX, TARGET].concat()), at(1_000));
     assert_position(&core, expected);
     core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_000));
+    assert_position(&core, expected);
+    let later = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", "120002");
+    core.apply(
+        Bytes::new(device, [later.as_bytes(), TARGET].concat()),
+        at(2_000),
+    );
     let expected = LatLon::from_degrees(50.0, 8.0 + 0.1 / 60.0).destination(
         Angle::from_degrees(0.0),
         Length::from_meters(100.0 * 1852.0 / 3600.0 * 2.0),
@@ -476,7 +482,7 @@ fn flarm_display_track_follows_adjusted_position_steps() {
         assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, 90.);
         let previous = position(&core);
         let north = b"$PFLAA,0,40,0,0,1,ABC123,90,0,0,0,1,0,0\r\n";
-        core.apply(Bytes::new(device, north), at(1_000));
+        core.apply(Bytes::new(device, [NEXT_FIX, north].concat()), at(1_000));
         let expected = if enabled {
             previous.bearing(position(&core)).as_degrees()
         } else {
@@ -495,8 +501,32 @@ fn flarm_display_track_uses_reported_track_for_small_steps_and_old_positions() {
         let (mut core, device) = core_with_external_device();
         core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
         let target = format!("$PFLAA,0,{north},0,0,1,ABC123,90,0,0,0,1,0,0\r\n");
-        let input = [FIX, CYCLE, target.as_bytes()].concat();
+        let next = assert_ok!(std::str::from_utf8(FIX)).replace("120000", "120001");
+        let input = [next.as_bytes(), CYCLE, target.as_bytes()].concat();
         core.apply(Bytes::new(device, input), at(elapsed));
         assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, 90.);
     }
+}
+
+#[test]
+fn flarm_keeps_first_position_per_gps_epoch_but_refreshes_alarm_and_age() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(
+        Bytes::new(device, [FIX, CYCLE, NEXT_FIX, TARGET].concat()),
+        at(0),
+    );
+    let first = position(&core);
+    let track = traffic_snapshot(&core)[0].track_degrees;
+    let revised = b"$PFLAA,3,40,0,0,1,ABC123,180,0,0,0,1,0,0\r\n";
+    core.apply(Bytes::new(device, [CYCLE, revised].concat()), at(1_000));
+    assert_eq!(position(&core), first);
+    assert_eq!(traffic_snapshot(&core)[0].track_degrees, track);
+    assert_eq!(
+        traffic_snapshot(&core)[0].alarm_level,
+        crate::traffic::TrafficAlarmLevel::Urgent
+    );
+    core.apply(Tick, at(5_000));
+    assert!(!traffic_snapshot(&core)[0].stale);
+    core.apply(Tick, at(6_000));
+    assert!(traffic_snapshot(&core)[0].stale);
 }

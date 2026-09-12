@@ -17,11 +17,23 @@ pub struct TrafficMotion {
     pub position: Option<(SourceId, LatLon)>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SampleClock {
+    Gps,
+    Reception,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SampleTiming {
+    received_at: Timestamp,
+    source: (ExternalDeviceId, SourceId),
+    time: Duration,
+    clock: SampleClock,
+}
+
 #[derive(Debug, Default)]
 pub struct TrafficClimb {
-    previous: Option<(Timestamp, (ExternalDeviceId, SourceId))>,
-    sample_time: Option<Duration>,
-    uses_gps_time: bool,
+    previous: Option<SampleTiming>,
     energy: EnergyClimb,
     velocity: TrafficVelocity,
     window: ClimbWindow,
@@ -32,8 +44,9 @@ pub struct TrafficClimb {
 
 impl TrafficClimb {
     pub fn expired(&self, at: Timestamp) -> bool {
-        self.previous
-            .is_none_or(|(previous, _)| at.saturating_since(previous) > Duration::from_secs(60))
+        self.previous.is_none_or(|previous| {
+            at.saturating_since(previous.received_at) > Duration::from_secs(60)
+        })
     }
 
     pub fn observe(
@@ -44,33 +57,38 @@ impl TrafficClimb {
         motion: TrafficMotion,
     ) -> Option<ClimbEstimates> {
         let time = motion.gps_time.unwrap_or(at.since_start());
-        let gps_time = motion.gps_time.is_some();
-        if let Some((previous, previous_source)) = self.previous {
-            if at < previous {
+        let clock = if motion.gps_time.is_some() {
+            SampleClock::Gps
+        } else {
+            SampleClock::Reception
+        };
+        if let Some(previous) = self.previous {
+            if at < previous.received_at {
                 return self.estimates;
             }
-            let same_clock = self.uses_gps_time == gps_time;
+            let same_clock = previous.clock == clock;
             if same_clock
                 && !self.expired(at)
-                && self
-                    .sample_time
-                    .is_some_and(|sample| time == sample || (!gps_time && time < sample))
+                && (time == previous.time
+                    || (clock == SampleClock::Reception && time < previous.time))
             {
                 return self.estimates;
             }
             if self.expired(at)
-                || previous_source != source
+                || previous.source != source
                 || !same_clock
-                || self.sample_time.is_some_and(|sample| {
-                    time < sample || time.saturating_sub(sample) > Duration::from_secs(60)
-                })
+                || time < previous.time
+                || time.saturating_sub(previous.time) > Duration::from_secs(60)
             {
                 *self = Self::default();
             }
         }
-        self.previous = Some((at, source));
-        self.sample_time = Some(time);
-        self.uses_gps_time = gps_time;
+        self.previous = Some(SampleTiming {
+            received_at: at,
+            source,
+            time,
+            clock,
+        });
         let velocity = self
             .velocity
             .observe(time, motion.position, motion.velocity);

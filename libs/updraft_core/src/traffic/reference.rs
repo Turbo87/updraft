@@ -7,6 +7,8 @@ use updraft_geo::LatLon;
 use updraft_nmea::{FlarmSource, GgaFixQuality, Message, PositioningMode, RmcStatus, Time};
 use updraft_units::{Length, MslAltitude};
 
+const PREDICTION: Duration = Duration::from_secs(2);
+
 /// Same-device GPS references for the experimental one-second FLARM cycle model.
 #[derive(Debug, Default)]
 pub struct FlarmReference {
@@ -15,11 +17,11 @@ pub struct FlarmReference {
     cycle_gps: Option<i64>,
     pending_status: bool,
     cycle_targets: BTreeSet<TrafficTargetId>,
-    latest_fix: Option<(i64, Timed<LatLon>)>,
-    active_reference: Option<Timed<LatLon>>,
-    latest_altitude: Option<(i64, Timed<MslAltitude>)>,
-    projected_altitude: Option<Timed<MslAltitude>>,
-    active_altitude: Option<Timed<MslAltitude>>,
+    latest_projected_position: Option<(i64, Timed<LatLon>)>,
+    cycle_position: Option<Timed<LatLon>>,
+    latest_gps_altitude: Option<(i64, Timed<MslAltitude>)>,
+    latest_projected_altitude: Option<Timed<MslAltitude>>,
+    cycle_altitude: Option<Timed<MslAltitude>>,
     updated_at: Option<Timestamp>,
 }
 
@@ -29,7 +31,7 @@ impl FlarmReference {
     }
 
     pub fn prediction_epoch(&self) -> Option<i64> {
-        Some(self.cycle? + 2_000)
+        Some(self.cycle? + PREDICTION.as_millis() as i64)
     }
 
     pub fn observe(&mut self, message: &Message, at: Timestamp) {
@@ -50,9 +52,9 @@ impl FlarmReference {
                     return;
                 };
                 let epoch = self.observe_time(time);
-                self.latest_fix = None;
+                self.latest_projected_position = None;
                 if self.cycle == Some(epoch) {
-                    self.active_reference = None;
+                    self.cycle_position = None;
                 }
                 let Some((position, speed)) = rmc.position.zip(rmc.speed_over_ground) else {
                     return;
@@ -70,12 +72,13 @@ impl FlarmReference {
                     if !track.as_radians().is_finite() {
                         return;
                     }
-                    position.destination(track, Length::from_meters(2.0 * speed))
+                    position
+                        .destination(track, Length::from_meters(PREDICTION.as_secs_f64() * speed))
                 };
                 let reference = Timed::new(projected, at);
-                self.latest_fix = Some((epoch, reference));
+                self.latest_projected_position = Some((epoch, reference));
                 if self.cycle == Some(epoch) {
-                    self.active_reference = Some(reference);
+                    self.cycle_position = Some(reference);
                 }
             }
             Message::Gga(gga) => {
@@ -88,9 +91,9 @@ impl FlarmReference {
                 if let Some((epoch, altitude)) = epoch.zip(altitude) {
                     self.observe_altitude(epoch, MslAltitude::new(altitude), at);
                 } else {
-                    self.latest_altitude = None;
-                    self.projected_altitude = None;
-                    self.active_altitude = None;
+                    self.latest_gps_altitude = None;
+                    self.latest_projected_altitude = None;
+                    self.cycle_altitude = None;
                 }
             }
             Message::Pflaa(pflaa)
@@ -109,7 +112,7 @@ impl FlarmReference {
                     // Infer a new cycle from a repeated target when its marker is missing.
                     self.select_cycle(epoch);
                 }
-                if self.cycle == self.epoch && self.active_reference.is_some() {
+                if self.cycle == self.epoch && self.cycle_position.is_some() {
                     self.cycle_targets.insert(id);
                 }
             }
@@ -128,24 +131,28 @@ impl FlarmReference {
     }
 
     fn observe_altitude(&mut self, epoch: i64, altitude: MslAltitude, at: Timestamp) {
-        if let Some((previous_epoch, previous)) = self.latest_altitude
+        if let Some((previous_epoch, previous)) = self.latest_gps_altitude
             && epoch == previous_epoch
             && altitude == previous.value
         {
             return;
         }
-        self.projected_altitude = self.latest_altitude.and_then(|(previous_epoch, previous)| {
-            let elapsed = epoch - previous_epoch;
-            if !(1_000..=3_000).contains(&elapsed) || previous.fresh(at).is_none() {
-                return None;
-            }
-            let change = altitude.into_inner() - previous.value.into_inner();
-            let projected = altitude.into_inner() + change * (2_000. / elapsed as f64);
-            Some(Timed::new(MslAltitude::new(projected), at))
-        });
-        self.latest_altitude = Some((epoch, Timed::new(altitude, at)));
+        let projected = self
+            .latest_gps_altitude
+            .and_then(|(previous_epoch, previous)| {
+                let elapsed = epoch - previous_epoch;
+                if !(1_000..=3_000).contains(&elapsed) || previous.fresh(at).is_none() {
+                    return None;
+                }
+                let change = altitude.into_inner() - previous.value.into_inner();
+                let projected = altitude.into_inner()
+                    + change * (PREDICTION.as_millis() as f64 / elapsed as f64);
+                Some(Timed::new(MslAltitude::new(projected), at))
+            });
+        self.latest_projected_altitude = projected;
+        self.latest_gps_altitude = Some((epoch, Timed::new(altitude, at)));
         if self.cycle == Some(epoch) {
-            self.active_altitude = self.projected_altitude;
+            self.cycle_altitude = self.latest_projected_altitude;
         }
     }
 
@@ -184,23 +191,23 @@ impl FlarmReference {
     fn select_cycle(&mut self, cycle: i64) {
         if self.cycle != Some(cycle) {
             self.cycle_targets.clear();
-            self.active_reference = self
-                .latest_fix
+            self.cycle_position = self
+                .latest_projected_position
                 .filter(|(epoch, _)| *epoch == cycle)
                 .map(|(_, reference)| reference);
-            self.active_altitude = self
-                .latest_altitude
+            self.cycle_altitude = self
+                .latest_gps_altitude
                 .filter(|(epoch, _)| *epoch == cycle)
-                .and(self.projected_altitude);
+                .and(self.latest_projected_altitude);
             self.cycle = Some(cycle);
         }
     }
 
     pub fn altitude(&self, at: Timestamp) -> Option<Timed<MslAltitude>> {
-        self.active_altitude?.fresh(at)
+        self.cycle_altitude?.fresh(at)
     }
 
     pub fn position(&self, at: Timestamp) -> Option<Timed<LatLon>> {
-        self.active_reference?.fresh(at)
+        self.cycle_position?.fresh(at)
     }
 }

@@ -1,0 +1,496 @@
+use super::super::*;
+use super::support::*;
+use crate::connection::ConnectionState;
+use crate::traffic::TrafficAlarmLevel;
+use approx::assert_abs_diff_eq;
+use claims::{assert_ok, assert_some, assert_some_eq};
+use updraft_geo::LatLon;
+use updraft_units::{Angle, Length};
+
+const FIX: &[u8] = b"$GPRMC,120000,A,5000.000,N,00800.000,E,100,90,050826,,,A\r\n";
+const NEXT_FIX: &[u8] = b"$GPRMC,120001,A,5000.000,N,00800.100,E,100,0,050826,,,A\r\n";
+const CYCLE: &[u8] = b"$PFLAU,1,1,2,1,0,,0,,,\r\n$PGRMZ,1000,f,3\r\n";
+const TARGET: &[u8] = b"$PFLAA,0,0,0,0,1,ABC123,90,0,0,0,1,0,0\r\n";
+
+fn position(core: &Core) -> LatLon {
+    let target = traffic_snapshot(core).remove(0);
+    LatLon::from_degrees(
+        target.position.latitude_degrees,
+        target.position.longitude_degrees,
+    )
+}
+
+fn assert_position(core: &Core, expected: LatLon) {
+    let error = position(core).distance(expected).as_meters();
+    assert_abs_diff_eq!(error, 0.0, epsilon = 1e-6);
+}
+
+#[test]
+fn flarm_reference_uses_the_cycle_fix_on_both_sides_of_the_next_gps() {
+    let (mut core, device) = core_with_external_device();
+    let origin = LatLon::from_degrees(50.0, 8.0);
+    let expected = origin.destination(
+        Angle::from_degrees(90.0),
+        Length::from_meters(100.0 * 1852.0 / 3600.0 * 2.0),
+    );
+    let first = assert_ok!(std::str::from_utf8(TARGET)).replace("ABC123", "ABC124");
+    core.apply(
+        Bytes::new(device, [FIX, CYCLE, first.as_bytes()].concat()),
+        at(0),
+    );
+    assert_position(&core, expected);
+    core.apply(Bytes::new(device, [NEXT_FIX, TARGET].concat()), at(1_000));
+    assert_position(&core, expected);
+    core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_000));
+    assert_position(&core, expected);
+    let later = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", "120002");
+    core.apply(
+        Bytes::new(device, [later.as_bytes(), TARGET].concat()),
+        at(2_000),
+    );
+    let expected = LatLon::from_degrees(50.0, 8.0 + 0.1 / 60.0).destination(
+        Angle::from_degrees(0.0),
+        Length::from_meters(100.0 * 1852.0 / 3600.0 * 2.0),
+    );
+    assert_position(&core, expected);
+}
+
+#[test]
+fn flarm_reference_setting_changes_the_next_report() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+    let corrected = position(&core);
+    core.apply(SetFlarmPositionCorrection { enabled: false }, at(1));
+    core.apply(Bytes::new(device, TARGET), at(2));
+    assert_position(&core, LatLon::from_degrees(50.0, 8.0));
+    core.apply(SetFlarmPositionCorrection { enabled: true }, at(3));
+    core.apply(Bytes::new(device, TARGET), at(4));
+    assert_eq!(position(&core), corrected);
+}
+
+#[test]
+fn flarm_reference_falls_back_without_a_usable_cycle_fix() {
+    let origin = LatLon::from_degrees(50.0, 8.0);
+    for input in [
+        [FIX, TARGET].concat(),
+        [FIX, CYCLE, b"$PGRMZ,1000,f,3\r\n", TARGET].concat(),
+        [
+            b"$GPRMC,120000,A,5000.000,N,00800.000,E,100,,050826,,,A\r\n",
+            CYCLE,
+            TARGET,
+        ]
+        .concat(),
+        [FIX, CYCLE, b"$PFLAA,0,0,0,0,1,ABC123,90,0,40,0,1,0,1\r\n"].concat(),
+    ] {
+        let (mut core, device) = core_with_external_device();
+        core.apply(Bytes::new(device, input), at(0));
+        assert_position(&core, origin);
+    }
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, [FIX, CYCLE].concat()), at(0));
+    core.apply(Bytes::new(device, TARGET), at(3_000));
+    assert_position(&core, origin);
+}
+
+#[test]
+fn flarm_reference_does_not_cross_devices_or_reconnects() {
+    let (mut core, first, second) = core_with_two_external_devices();
+    core.apply(Bytes::new(first, [FIX, CYCLE].concat()), at(0));
+    core.apply(
+        Bytes::new(second, [NEXT_FIX, CYCLE, TARGET].concat()),
+        at(1_000),
+    );
+    core.apply(Bytes::new(first, TARGET), at(1_001));
+    let expected = LatLon::from_degrees(50.0, 8.0).destination(
+        Angle::from_degrees(90.0),
+        Length::from_meters(100.0 * 1852.0 / 3600.0 * 2.0),
+    );
+    assert_position(&core, expected);
+    core.apply(
+        ConnectionChanged {
+            device_id: first,
+            state: ConnectionState::Disconnected,
+        },
+        at(1_002),
+    );
+    core.apply(Bytes::new(first, [FIX, TARGET].concat()), at(1_003));
+    assert_position(&core, LatLon::from_degrees(50.0, 8.0));
+}
+
+#[test]
+fn flarm_reference_keeps_the_active_fix_until_the_cycle_changes() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+    let active = position(&core);
+    let incomplete = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace(",100,0,", ",100,,");
+    core.apply(
+        Bytes::new(device, [incomplete.as_bytes(), TARGET].concat()),
+        at(1_000),
+    );
+    assert_eq!(position(&core), active);
+    core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_001));
+    assert_eq!(position(&core), active);
+    core.apply(Bytes::new(device, [NEXT_FIX, TARGET].concat()), at(1_002));
+    let expected = LatLon::from_degrees(50., 8. + 0.1 / 60.).destination(
+        Angle::from_degrees(0.),
+        Length::from_meters(100. * 1852. / 3600. * 2.),
+    );
+    assert_position(&core, expected);
+    core.apply(
+        Bytes::new(device, [incomplete.as_bytes(), TARGET].concat()),
+        at(1_003),
+    );
+    assert_position(&core, expected);
+    let later = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", "120002");
+    core.apply(
+        Bytes::new(device, [NEXT_FIX, later.as_bytes(), TARGET].concat()),
+        at(2_000),
+    );
+    assert_position(&core, expected);
+}
+
+fn altitude(core: &Core) -> f64 {
+    assert_some!(traffic_snapshot(core).remove(0).altitude_msl_meters)
+}
+
+fn gga(time: &str, height: f64) -> Vec<u8> {
+    format!("$GPGGA,{time},5000,N,00800,E,1,08,1,{height},M,0,M,,\r\n").into_bytes()
+}
+
+#[test]
+fn flarm_altitude_uses_the_cycle_height_and_changes_only_when_enabled() {
+    let (mut core, device) = core_with_external_device();
+    let before = gga("115959", 100.);
+    let current = gga("120000", 103.);
+    let next = gga("120001", 108.);
+    let input = [before.as_slice(), FIX, &current, CYCLE, TARGET].concat();
+    core.apply(Bytes::new(device, input), at(0));
+    assert_eq!(altitude(&core), 109.);
+    core.apply(
+        Bytes::new(device, [NEXT_FIX, &next, TARGET].concat()),
+        at(1_000),
+    );
+    assert_eq!(altitude(&core), 118.);
+    core.apply(SetFlarmPositionCorrection { enabled: false }, at(1_001));
+    core.apply(Bytes::new(device, TARGET), at(1_002));
+    assert_eq!(altitude(&core), 108.);
+    core.apply(SetFlarmPositionCorrection { enabled: true }, at(1_003));
+    core.apply(Bytes::new(device, TARGET), at(1_004));
+    assert_eq!(altitude(&core), 118.);
+    core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_005));
+    assert_eq!(altitude(&core), 118.);
+}
+
+#[test]
+fn flarm_altitude_falls_back_without_a_usable_history() {
+    let before = gga("115959", 100.);
+    let current = gga("120000", 103.);
+    for input in [
+        [FIX, &current, CYCLE, TARGET].concat(),
+        [before.as_slice(), FIX, &current, TARGET].concat(),
+        [gga("115955", 100.).as_slice(), FIX, &current, CYCLE, TARGET].concat(),
+        [
+            before.as_slice(),
+            FIX,
+            &current,
+            CYCLE,
+            b"$PFLAA,0,0,0,0,1,ABC123,90,0,40,0,1,0,1\r\n",
+        ]
+        .concat(),
+    ] {
+        let (mut core, device) = core_with_external_device();
+        core.apply(Bytes::new(device, input), at(0));
+        assert_eq!(altitude(&core), 103.);
+    }
+    let (mut core, device) = core_with_external_device();
+    core.apply(
+        Bytes::new(device, [before.as_slice(), FIX, &current, CYCLE].concat()),
+        at(0),
+    );
+    core.apply(Bytes::new(device, TARGET), at(3_000));
+    assert_eq!(altitude(&core), 103.);
+}
+
+#[test]
+fn flarm_altitude_clears_history_on_invalid_fixes_and_does_not_cross_devices() {
+    let before = gga("115959", 100.);
+    let current = gga("120000", 103.);
+    for invalid in [
+        "$GPGGA,120000,5000,N,00800,E,1,08,1,,M,0,M,,\r\n",
+        "$GPGGA,,5000,N,00800,E,1,08,1,103,M,0,M,,\r\n",
+        "$GPGGA,120000,5000,N,00800,E,0,08,1,103,M,0,M,,\r\n",
+        "$GPGGA,115958,5000,N,00800,E,1,08,1,103,M,0,M,,\r\n",
+    ] {
+        let (mut core, device) = core_with_external_device();
+        let input = [
+            before.as_slice(),
+            FIX,
+            &current,
+            CYCLE,
+            invalid.as_bytes(),
+            &current,
+            CYCLE,
+            TARGET,
+        ]
+        .concat();
+        core.apply(Bytes::new(device, input), at(0));
+        assert_eq!(altitude(&core), 103.);
+    }
+    let (mut core, first, second) = core_with_two_external_devices();
+    core.apply(
+        Bytes::new(first, [before.as_slice(), FIX, &current, CYCLE].concat()),
+        at(0),
+    );
+    core.apply(
+        Bytes::new(second, [FIX, &current, CYCLE, TARGET].concat()),
+        at(1),
+    );
+    assert_eq!(altitude(&core), 103.);
+    core.apply(Bytes::new(first, TARGET), at(2));
+    assert_eq!(altitude(&core), 109.);
+    core.apply(
+        ConnectionChanged {
+            device_id: first,
+            state: ConnectionState::Disconnected,
+        },
+        at(3),
+    );
+    core.apply(
+        Bytes::new(first, [FIX, &current, CYCLE, TARGET].concat()),
+        at(4),
+    );
+    assert_eq!(altitude(&core), 103.);
+}
+
+#[test]
+fn flarm_target_moves_only_when_a_new_position_report_arrives() {
+    let (mut core, device) = core_with_external_device();
+    let moving = b"$PFLAA,0,0,0,100,1,ABC123,90,0,40,4,1,0,0\r\n";
+    let before = gga("115959", 100.);
+    let current = gga("120000", 103.);
+    let input = [before.as_slice(), FIX, &current, CYCLE, moving].concat();
+    core.apply(Bytes::new(device, input), at(0));
+    let origin = LatLon::from_degrees(50., 8.);
+    let prediction = origin.destination(
+        Angle::from_degrees(90.),
+        Length::from_meters(102.8888888889),
+    );
+    let expected =
+        |east| prediction.destination(Angle::from_degrees(90.), Length::from_meters(east));
+    assert_position(&core, expected(-80.));
+    assert_eq!(altitude(&core), 201.);
+    let next_height = gga("120001", 106.);
+    core.apply(
+        Bytes::new(device, [NEXT_FIX, &next_height].concat()),
+        at(1_000),
+    );
+    assert_position(&core, expected(-80.));
+    assert_eq!(altitude(&core), 201.);
+    core.apply(Bytes::new(device, moving), at(1_000));
+    let updated = LatLon::from_degrees(50., 8. + 0.1 / 60.)
+        .destination(Angle::ZERO, Length::from_meters(102.8888888889))
+        .destination(Angle::from_degrees(90.), Length::from_meters(-80.));
+    assert_position(&core, updated);
+    assert_eq!(altitude(&core), 204.);
+    let climb = traffic_snapshot(&core)[0].climb;
+    for seconds in 2..=5 {
+        let fix =
+            assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", &format!("12000{seconds}"));
+        let height = gga(&format!("12000{seconds}"), 100. + seconds as f64);
+        core.apply(
+            Bytes::new(device, [fix.as_bytes(), &height].concat()),
+            at(seconds * 1_000),
+        );
+    }
+    assert_position(&core, updated);
+    assert_eq!(altitude(&core), 204.);
+    assert_eq!(traffic_snapshot(&core)[0].climb, climb);
+    core.apply(Tick, at(6_000));
+    assert!(traffic_snapshot(&core)[0].stale);
+    core.apply(Tick, at(31_000));
+    assert!(traffic_snapshot(&core).is_empty());
+}
+
+#[test]
+fn flarm_target_alignment_uses_one_second_after_the_next_gps_and_stops_when_disabled() {
+    let (mut core, device) = core_with_external_device();
+    let moving = b"$PFLAA,0,0,0,0,1,ABC123,90,0,40,0,1,0,0\r\n";
+    core.apply(
+        Bytes::new(device, [FIX, CYCLE, NEXT_FIX, moving].concat()),
+        at(0),
+    );
+    let origin = LatLon::from_degrees(50., 8.);
+    let prediction = origin.destination(
+        Angle::from_degrees(90.),
+        Length::from_meters(102.8888888889),
+    );
+    let expected = prediction.destination(Angle::from_degrees(90.), Length::from_meters(-40.));
+    assert_position(&core, expected);
+    core.apply(SetFlarmPositionCorrection { enabled: false }, at(1));
+    let held = position(&core);
+    let later = assert_ok!(std::str::from_utf8(NEXT_FIX)).replace("120001", "120002");
+    core.apply(Bytes::new(device, later.as_bytes()), at(1_000));
+    assert_eq!(position(&core), held);
+    core.apply(Bytes::new(device, moving), at(1_001));
+    assert_position(&core, LatLon::from_degrees(50., 8. + 0.1 / 60.));
+}
+
+#[test]
+fn flarm_climb_uses_gps_intervals_and_gps_only_updates_preserve_estimates() {
+    fn run(scale: u64) -> (Core, ExternalDeviceId) {
+        let (mut core, device) = core_with_external_device();
+        core.apply(Bytes::new(device, gga("115959", 98.)), at(0));
+        for second in 0..=35 {
+            let time = format!("1200{second:02}");
+            let fix = assert_ok!(std::str::from_utf8(FIX)).replace("120000", &time);
+            let height = gga(&time, 100. + 2. * second as f64);
+            let target = b"$PFLAA,0,0,0,100,1,ABC123,90,0,40,2,1,0,0\r\n";
+            let input = [fix.as_bytes(), &height, CYCLE, target].concat();
+            core.apply(Bytes::new(device, input), at(second * 1_000 / scale));
+        }
+        (core, device)
+    }
+    let (mut core, device) = run(1);
+    let climb = assert_some!(traffic_snapshot(&core)[0].climb);
+    assert_eq!(climb.average_20s, Speed::from_meters_per_second(2.));
+    assert_eq!(assert_some!(traffic_snapshot(&run(10).0)[0].climb), climb);
+    let fix = assert_ok!(std::str::from_utf8(FIX)).replace("120000", "120036");
+    core.apply(Bytes::new(device, fix.as_bytes()), at(36_000));
+    assert_eq!(assert_some!(traffic_snapshot(&core)[0].climb), climb);
+}
+
+#[test]
+fn flarm_target_holds_on_invalid_time_and_connection_reset() {
+    let moving = b"$PFLAA,0,0,0,0,1,ABC123,90,0,40,0,1,0,0\r\n";
+    let rewind = assert_ok!(std::str::from_utf8(FIX)).replace("120000", "115959");
+    for reset in [
+        Some(rewind.as_bytes()),
+        Some(b"$GPRMC,,V,,,,,,,050826\r\n".as_slice()),
+        None,
+    ] {
+        let (mut core, device) = core_with_external_device();
+        core.apply(Bytes::new(device, [FIX, CYCLE, moving].concat()), at(0));
+        let held = position(&core);
+        if let Some(reset) = reset {
+            core.apply(Bytes::new(device, reset), at(100));
+        } else {
+            core.apply(
+                ConnectionChanged {
+                    device_id: device,
+                    state: ConnectionState::Disconnected,
+                },
+                at(100),
+            );
+        }
+        core.apply(Bytes::new(device, NEXT_FIX), at(1_000));
+        assert_eq!(position(&core), held);
+    }
+}
+
+#[test]
+fn flarm_target_holds_between_reports_and_requires_motion_for_correction() {
+    let (mut core, first, second) = core_with_two_external_devices();
+    let moving = b"$PFLAA,0,0,0,0,1,ABC123,90,0,40,0,1,0,0\r\n";
+    core.apply(Bytes::new(first, [FIX, CYCLE, moving].concat()), at(0));
+    let held = position(&core);
+    core.apply(Bytes::new(second, NEXT_FIX), at(500));
+    assert_eq!(position(&core), held);
+    core.apply(Bytes::new(first, NEXT_FIX), at(1_000));
+    assert_eq!(position(&core), held);
+    let no_motion = b"$PFLAA,0,0,0,100,1,ABC123,,0,,,1,0,0\r\n";
+    let current = gga("120001", 103.);
+    let next = gga("120002", 107.);
+    core.apply(
+        Bytes::new(first, [&current[..], &next, CYCLE, no_motion].concat()),
+        at(2_000),
+    );
+    assert_position(&core, LatLon::from_degrees(50., 8.));
+    assert_eq!(altitude(&core), 207.);
+}
+
+#[test]
+fn flarm_display_track_follows_adjusted_position_steps() {
+    for enabled in [true, false] {
+        let (mut core, device) = core_with_external_device();
+        core.apply(SetFlarmPositionCorrection { enabled }, at(0));
+        core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+        assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, 90.);
+        let previous = position(&core);
+        let north = b"$PFLAA,0,40,0,0,1,ABC123,90,0,0,0,1,0,0\r\n";
+        core.apply(Bytes::new(device, [NEXT_FIX, north].concat()), at(1_000));
+        let expected = if enabled {
+            previous.bearing(position(&core)).as_degrees()
+        } else {
+            90.
+        };
+        assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, expected);
+        let held = traffic_snapshot(&core);
+        core.apply(Bytes::new(device, NEXT_FIX), at(2_000));
+        assert_eq!(traffic_snapshot(&core), held);
+    }
+}
+
+#[test]
+fn flarm_display_track_uses_reported_track_for_small_steps_and_old_positions() {
+    for (north, elapsed) in [(0, 1_000), (1, 1_000), (40, 5_000)] {
+        let (mut core, device) = core_with_external_device();
+        core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+        let target = format!("$PFLAA,0,{north},0,0,1,ABC123,90,0,0,0,1,0,0\r\n");
+        let next = assert_ok!(std::str::from_utf8(FIX)).replace("120000", "120001");
+        let input = [next.as_bytes(), CYCLE, target.as_bytes()].concat();
+        core.apply(Bytes::new(device, input), at(elapsed));
+        assert_some_eq!(traffic_snapshot(&core)[0].track_degrees, 90.);
+    }
+}
+
+#[test]
+fn flarm_keeps_first_position_per_gps_epoch_but_refreshes_alarm_and_age() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(
+        Bytes::new(device, [FIX, CYCLE, NEXT_FIX, TARGET].concat()),
+        at(0),
+    );
+    let first = position(&core);
+    let track = traffic_snapshot(&core)[0].track_degrees;
+    let revised = b"$PFLAA,3,40,0,0,1,ABC123,180,0,0,0,1,0,0\r\n";
+    core.apply(Bytes::new(device, [CYCLE, revised].concat()), at(1_000));
+    assert_eq!(position(&core), first);
+    let target = &traffic_snapshot(&core)[0];
+    assert_eq!(target.track_degrees, track);
+    assert_eq!(target.alarm_level, TrafficAlarmLevel::Urgent);
+    core.apply(Tick, at(5_000));
+    assert!(!traffic_snapshot(&core)[0].stale);
+    core.apply(Tick, at(6_000));
+    assert!(traffic_snapshot(&core)[0].stale);
+}
+
+#[test]
+fn flarm_holds_corrected_position_when_a_cycle_has_no_gps_fix() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+    let first = position(&core);
+    let track = traffic_snapshot(&core)[0].track_degrees;
+    let alarm = b"$PFLAA,3,40,0,0,1,ABC123,180,0,0,0,1,0,0\r\n";
+    core.apply(Bytes::new(device, [CYCLE, alarm].concat()), at(1_000));
+    assert_eq!(position(&core), first);
+    let target = &traffic_snapshot(&core)[0];
+    assert_eq!(target.track_degrees, track);
+    assert_eq!(target.alarm_level, TrafficAlarmLevel::Urgent);
+    core.apply(Bytes::new(device, [NEXT_FIX, alarm].concat()), at(2_000));
+    assert_ne!(position(&core), first);
+}
+
+#[test]
+fn repeated_target_after_gps_recovers_a_missing_cycle_marker() {
+    let (mut core, device) = core_with_external_device();
+    core.apply(Bytes::new(device, [FIX, CYCLE, TARGET].concat()), at(0));
+    let prior = position(&core);
+    core.apply(Bytes::new(device, [NEXT_FIX, TARGET].concat()), at(1_000));
+    let expected = LatLon::from_degrees(50., 8. + 0.1 / 60.)
+        .destination(Angle::ZERO, Length::from_meters(100. * 1852. / 3600. * 2.));
+    assert_position(&core, expected);
+    assert_ne!(position(&core), prior);
+    // A marker arriving after the inferred boundary must not advance another cycle.
+    core.apply(Bytes::new(device, [CYCLE, TARGET].concat()), at(1_100));
+    assert_position(&core, expected);
+}

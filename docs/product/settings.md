@@ -14,6 +14,7 @@ current settings topic and sends typed commands for changes.
 - `/settings/units`
 - `/settings/glide`
 - `/settings/vario`
+- `/settings/traffic`
 - `/settings/flight-controls`
 - `/settings/data`
 - `/settings/devices`
@@ -120,7 +121,7 @@ Polar and reserve changes request new waypoint arrival calculations.
 ## Climb averaging
 
 The persisted climb averaging method defaults to a smoothed 20-second average.
-This method smooths height with a 7.5-second time constant before averaging.
+This method smooths height with a 5-second time constant before averaging.
 The alternatives are normalized EMA with a 10-second time constant and
 20-second and 30-second averages. Missing stored values use the default. The map updates its labels when the setting changes,
 using estimates already collected by the core. The Vario page selects the method
@@ -132,6 +133,14 @@ Energy compensation is a separate shared setting. It defaults to enabled and
 applies to all four methods. Disabled compensation uses altitude changes only.
 Changing the setting clears existing climb estimates and restarts their histories.
 The Vario page offers enabled and disabled options with command error feedback.
+
+## Traffic correction
+
+The Traffic page offers enabled and disabled options for experimental FLARM
+position correction. It defaults to enabled and is saved across restarts.
+Existing settings files enable it when the field is absent. A pending command
+disables the control. Failure restores the published value and shows an error.
+See [Traffic](traffic.md) for the reference model and fallback behavior.
 
 ## Installed data
 

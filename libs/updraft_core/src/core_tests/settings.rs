@@ -403,3 +403,43 @@ fn energy_compensation_persists_both_modes_and_ignores_noop_changes() {
         assert_eq!(restored.settings, expected);
     }
 }
+
+#[test]
+fn flarm_position_correction_defaults_on_for_existing_settings() {
+    for settings in [
+        Settings::default(),
+        claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#)),
+    ] {
+        let json = claims::assert_ok!(serde_json::to_value(settings));
+        assert_eq!(json["flarmPositionCorrection"], serde_json::json!(true));
+    }
+}
+
+#[test]
+fn flarm_position_correction_persists_both_modes_and_ignores_noop_changes() {
+    use crate::SetFlarmPositionCorrection;
+    let mut core = Core::new(SettingsSnapshot::default());
+    for enabled in [false, true] {
+        let expected = Settings {
+            flarm_position_correction: enabled,
+            ..Settings::default()
+        };
+        let command = SetFlarmPositionCorrection { enabled };
+        let effects = core.apply(command, at(0)).effects;
+        assert_eq!(
+            effects,
+            vec![
+                Effect::emit(expected.as_topic()),
+                Effect::persist_settings(SettingsSnapshot {
+                    settings: expected,
+                    ..SettingsSnapshot::default()
+                }),
+            ]
+        );
+        let effects = core.apply(command, at(0)).effects;
+        assert!(effects.is_empty());
+        let json = claims::assert_ok!(serde_json::to_string(&core.settings_snapshot()));
+        let restored = Core::new(claims::assert_ok!(serde_json::from_str(&json)));
+        assert_eq!(restored.settings, expected);
+    }
+}

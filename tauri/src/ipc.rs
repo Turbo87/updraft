@@ -297,6 +297,17 @@ pub async fn set_energy_compensation(
 }
 
 #[tauri::command]
+pub async fn set_flarm_position_correction(
+    enabled: bool,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::SetFlarmPositionCorrection { enabled })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_climb_average_method(
     method: updraft_core::ClimbAverageMethod,
     handle: tauri::State<'_, DriverHandle>,
@@ -474,6 +485,7 @@ mod tests {
                 set_arrival_reserve,
                 set_climb_average_method,
                 set_energy_compensation,
+                set_flarm_position_correction,
                 set_polar,
                 add_external_device,
                 delete_external_device,
@@ -626,6 +638,23 @@ mod tests {
         }
         for enabled in [json!(null), json!(1), json!("true")] {
             let input = request("set_energy_compensation", json!({ "enabled": enabled }));
+            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn flarm_position_correction_command_accepts_only_booleans() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        let command = "set_flarm_position_correction";
+        for enabled in [true, false] {
+            let input = request(command, json!({ "enabled": enabled }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        for enabled in [json!(null), json!(1), json!("true")] {
+            let input = request(command, json!({ "enabled": enabled }));
             claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
         }
     }

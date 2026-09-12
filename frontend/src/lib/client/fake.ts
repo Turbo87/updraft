@@ -82,6 +82,7 @@ export class FakeClient implements UpdraftClient {
     arrivalReserve: 200,
     climbAverageMethod: 'smoothed20s',
     energyCompensation: true,
+    flarmPositionCorrection: true,
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 
@@ -405,6 +406,12 @@ export class FakeClient implements UpdraftClient {
   async setEnergyCompensation(enabled: boolean): Promise<void> {
     if (this.#settings.energyCompensation === enabled) return;
     this.#settings = { ...this.#settings, energyCompensation: enabled };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setFlarmPositionCorrection(enabled: boolean): Promise<void> {
+    if (this.#settings.flarmPositionCorrection === enabled) return;
+    this.#settings = { ...this.#settings, flarmPositionCorrection: enabled };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

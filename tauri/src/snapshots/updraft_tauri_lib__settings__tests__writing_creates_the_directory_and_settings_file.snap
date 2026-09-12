@@ -3,6 +3,7 @@ source: tauri/src/settings.rs
 expression: contents
 ---
 {
+  "flarmPositionCorrection": false,
   "energyCompensation": false,
   "climbAverageMethod": "average30s",
   "locale": "de",

@@ -1,4 +1,6 @@
 mod climb;
+mod correction;
+pub mod reference;
 mod velocity;
 
 use crate::ExternalDeviceId;
@@ -8,6 +10,7 @@ use crate::time::Timestamp;
 use crate::topic::LatLon;
 use climb::TrafficClimb;
 pub use climb::TrafficMotion;
+pub use correction::FlarmCorrection;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -17,6 +20,7 @@ use updraft_geo::LatLon as GeoLatLon;
 use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmIdType, Pflaa};
 use updraft_units::{Angle, Length, MslAltitude};
 
+const REFERENCE_HOLD: Duration = Duration::from_secs(2);
 const STALE_AFTER: Duration = Duration::from_secs(5);
 const REMOVE_AFTER: Duration = Duration::from_secs(30);
 
@@ -144,6 +148,37 @@ pub struct TrafficTarget {
 struct StoredTrafficTarget {
     target: TrafficTarget,
     observed_at: Timestamp,
+    position_epoch: Option<(ExternalDeviceId, i64)>,
+    position_observed_at: Timestamp,
+}
+
+/// Whether this report can use the experimental FLARM position correction.
+#[derive(Clone, Copy, Debug)]
+pub enum TrafficPositionReference {
+    Uncorrected,
+    Unavailable {
+        source: ExternalDeviceId,
+    },
+    Aligned {
+        source: ExternalDeviceId,
+        epoch: i64,
+    },
+}
+
+impl TrafficPositionReference {
+    fn source(self) -> Option<ExternalDeviceId> {
+        match self {
+            Self::Uncorrected => None,
+            Self::Unavailable { source } | Self::Aligned { source, .. } => Some(source),
+        }
+    }
+
+    fn epoch(self) -> Option<i64> {
+        match self {
+            Self::Aligned { epoch, .. } => Some(epoch),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -159,6 +194,15 @@ pub struct TrafficChanges {
 }
 
 impl TrafficState {
+    pub fn reset_position_epochs(&mut self, device_id: Option<ExternalDeviceId>) {
+        for stored in self.targets.values_mut() {
+            let source = stored.position_epoch.map(|(source, _)| source);
+            if device_id.is_none() || device_id == source {
+                stored.position_epoch = None;
+            }
+        }
+    }
+
     pub fn update_climb(
         &mut self,
         target: &mut TrafficTarget,
@@ -186,8 +230,37 @@ impl TrafficState {
         &mut self,
         mut target: TrafficTarget,
         at: Timestamp,
+        reference: TrafficPositionReference,
         changes: &mut TrafficChanges,
     ) {
+        let mut position_epoch = reference.source().zip(reference.epoch());
+        let mut position_observed_at = at;
+        if let Some(source) = reference.source()
+            && let Some(previous) = self.targets.get(&target.id)
+            && let Some((previous_source, previous_epoch)) = previous.position_epoch
+            && source == previous_source
+            && at >= previous.observed_at
+        {
+            let hold_missing_reference = reference.epoch().is_none()
+                && at.saturating_since(previous.position_observed_at) < REFERENCE_HOLD;
+            if reference.epoch() == Some(previous_epoch) || hold_missing_reference {
+                target.position = previous.target.position;
+                target.track = previous.target.track;
+                position_epoch = previous.position_epoch;
+                position_observed_at = previous.position_observed_at;
+            } else if reference
+                .epoch()
+                .is_some_and(|epoch| epoch > previous_epoch)
+                && at.saturating_since(previous.observed_at) < STALE_AFTER
+            {
+                let (distance, bearing) =
+                    previous.target.position.distance_bearing(target.position);
+                // Small steps give an unstable bearing at FLARM's meter resolution.
+                if distance >= Length::from_meters(5.) {
+                    target.track = Some(bearing);
+                }
+            }
+        }
         target.stale = false;
         let changed = self
             .targets
@@ -198,6 +271,8 @@ impl TrafficState {
             StoredTrafficTarget {
                 target,
                 observed_at: at,
+                position_epoch,
+                position_observed_at,
             },
         );
         if changed {

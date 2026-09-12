@@ -1,5 +1,7 @@
 mod replay;
 mod server;
+#[cfg(test)]
+mod traffic_test;
 
 use crate::replay::Replay;
 use anyhow::{Context as _, Result};

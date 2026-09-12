@@ -310,6 +310,10 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_polar', { polar });
   }
 
+  setFlarmPositionCorrection(enabled: boolean): Promise<void> {
+    return invoke('set_flarm_position_correction', { enabled });
+  }
+
   setEnergyCompensation(enabled: boolean): Promise<void> {
     return invoke('set_energy_compensation', { enabled });
   }

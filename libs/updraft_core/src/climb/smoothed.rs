@@ -14,7 +14,7 @@ impl SmoothedClimbWindow {
             if time <= at {
                 return None;
             }
-            let weight = -(-(time - at).div_duration_f64(Duration::from_millis(7_500))).exp_m1();
+            let weight = -(-(time - at).div_duration_f64(Duration::from_secs(5))).exp_m1();
             previous + (altitude - previous) * weight
         } else {
             altitude
@@ -36,7 +36,7 @@ mod tests {
         let mut climb = SmoothedClimbWindow::default();
         assert_none!(climb.observe(Duration::ZERO, Length::from_meters(100.0)));
         let first = assert_some!(climb.observe(Duration::from_secs(5), Length::from_meters(130.0)));
-        let height5 = 100.0 + 30.0 * (1.0 - (-5.0_f64 / 7.5).exp());
+        let height5 = 100.0 + 30.0 * (1.0 - (-5.0_f64 / 5.0).exp());
         assert_abs_diff_eq!(
             first.as_meters_per_second(),
             (height5 - 100.0) / 5.0,
@@ -46,7 +46,7 @@ mod tests {
         assert_none!(climb.observe(Duration::from_secs(4), Length::from_meters(900.0)));
         let second =
             assert_some!(climb.observe(Duration::from_secs(23), Length::from_meters(90.0)));
-        let height23 = height5 + (90.0 - height5) * (1.0 - (-18.0_f64 / 7.5).exp());
+        let height23 = height5 + (90.0 - height5) * (1.0 - (-18.0_f64 / 5.0).exp());
         let baseline = 100.0 + (height5 - 100.0) * 3.0 / 5.0;
         assert_abs_diff_eq!(
             second.as_meters_per_second(),

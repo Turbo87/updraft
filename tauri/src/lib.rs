@@ -127,6 +127,7 @@ pub fn run() {
             ipc::set_arrival_reserve,
             ipc::set_climb_average_method,
             ipc::set_energy_compensation,
+            ipc::set_flarm_position_correction,
             ipc::set_polar,
             ipc::add_external_device,
             ipc::delete_external_device,

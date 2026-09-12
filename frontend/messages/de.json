@@ -416,5 +416,11 @@
   "climb_30s_label": "30-s-Mittelwert",
   "vario_settings_heading": "Vario",
   "climb_average_label": "Mittelwert für das Steigen",
-  "climb_average_change_failed": "Die Methode für das Steigen konnte nicht geändert werden."
+  "climb_average_change_failed": "Die Methode für das Steigen konnte nicht geändert werden.",
+  "traffic_settings_heading": "Verkehr",
+  "flarm_correction_label": "FLARM-Positionskorrektur",
+  "flarm_correction_description": "Experimentelle Korrektur der FLARM-Verkehrspositionen und -höhen. Deaktivieren, wenn die Verkehrspositionen oder -höhen mit deinem Gerät ungenauer werden.",
+  "flarm_correction_enabled": "Aktiviert",
+  "flarm_correction_disabled": "Deaktiviert",
+  "flarm_correction_change_failed": "Die FLARM-Positionskorrektur konnte nicht geändert werden."
 }

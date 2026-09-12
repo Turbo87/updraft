@@ -61,3 +61,25 @@ updates the RMC date across midnight when the IGC input supplies a date.
 The tool does not control Updraft, seek after startup, change playback speed,
 record device input, or provide a user interface. It does not implement the
 planned simulator or user-facing flight replay features.
+
+## FLARM position correction
+
+NMEA replay preserves the raw sentence order and GPS timestamps. Untimed
+sentences share the preceding GPS event's delivery time. The core identifies
+FLARM traffic cycles from sentence contents and order, so the experimental
+position correction also works with these replay batches. Replay does not need
+a two-second scheduling shift for this correction. Altitude projection uses
+the interval between GGA timestamps. Target projection uses the cycle timestamp
+and latest GPS timestamp. Corrected target altitude samples also use GPS
+intervals for climb averages, so playback speed does not change those averages.
+Report age still uses delivery time. GPS-only updates do not move targets or
+add vario samples. A target holds its position until the next traffic report.
+
+The recording does not preserve exact arrival times within a GPS interval.
+Replay cannot restore those times. This limitation remains relevant to report
+age and reception-based calculations. Missing cycle markers also make reference
+selection uncertain. The core can infer a new cycle when a target repeats after
+one second of GPS progress. This uses sentence order and adds no replay delay.
+Reports before that repeated target retain their original reference.
+Replay skips begin with the available sentences and use the normal fallback
+until a usable reference exists.

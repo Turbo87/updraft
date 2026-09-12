@@ -131,6 +131,7 @@ describe('FakeClient', () => {
         arrivalReserve: 304.8,
         climbAverageMethod: 'smoothed20s',
         energyCompensation: true,
+        flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -155,6 +156,7 @@ describe('FakeClient', () => {
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
         energyCompensation: true,
+        flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -213,6 +215,7 @@ describe('FakeClient', () => {
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
         energyCompensation: true,
+        flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
       },
     });
@@ -253,6 +256,7 @@ describe('FakeClient', () => {
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
         energyCompensation: true,
+        flarmPositionCorrection: true,
       },
     });
   });
@@ -630,6 +634,23 @@ it('publishes only changed energy compensation settings', async () => {
     expect(onTopic).toHaveBeenLastCalledWith({
       topic: 'settings',
       value: expect.objectContaining({ energyCompensation: enabled }),
+    });
+  }
+  expect(onTopic).toHaveBeenCalledTimes(2);
+});
+
+it('publishes only changed FLARM position correction settings', async () => {
+  let client = new FakeClient();
+  let onTopic = vi.fn();
+  client.subscribe(onTopic);
+  onTopic.mockClear();
+  await client.setFlarmPositionCorrection(true);
+  expect(onTopic).not.toHaveBeenCalled();
+  for (let enabled of [false, true]) {
+    await client.setFlarmPositionCorrection(enabled);
+    expect(onTopic).toHaveBeenLastCalledWith({
+      topic: 'settings',
+      value: expect.objectContaining({ flarmPositionCorrection: enabled }),
     });
   }
   expect(onTopic).toHaveBeenCalledTimes(2);

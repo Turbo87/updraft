@@ -14,6 +14,7 @@ describe('SettingsStore', () => {
         arrivalReserve: 200,
         climbAverageMethod: 'normalizedEma',
         energyCompensation: true,
+        flarmPositionCorrection: true,
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
       },
     });
@@ -24,6 +25,7 @@ describe('SettingsStore', () => {
       arrivalReserve: 200,
       climbAverageMethod: 'normalizedEma',
       energyCompensation: true,
+      flarmPositionCorrection: true,
       units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
     });
   });
@@ -49,6 +51,7 @@ describe('SettingsStore', () => {
       arrivalReserve: 200,
       climbAverageMethod: 'smoothed20s',
       energyCompensation: true,
+      flarmPositionCorrection: true,
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     });
   });

@@ -6,8 +6,8 @@ use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
-    SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled, SetLocale,
-    SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled,
+    SetFlarmPositionCorrection, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -18,7 +18,7 @@ use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{
-    TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, target_from_pflaa,
+    FlarmCorrection, TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, target_from_pflaa,
 };
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
 use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
@@ -187,6 +187,9 @@ impl Core {
         at: Timestamp,
         traffic_changes: &mut TrafficChanges,
     ) {
+        if let Some(device) = self.external_devices.get_mut(device_id) {
+            device.flarm_reference.observe(&message, at);
+        }
         match message {
             Message::Rmc(rmc)
                 if rmc.status == RmcStatus::Active
@@ -274,8 +277,17 @@ impl Core {
                 else {
                     return;
                 };
-                let altitude_reference = same_device
+                let correction = FlarmCorrection::new(
+                    &pflaa,
+                    device_id,
+                    &device.flarm_reference,
+                    self.settings.flarm_position_correction,
+                    at,
+                );
+                let position = correction.position.unwrap_or(position);
+                let altitude_reference = correction
                     .altitude
+                    .or(same_device.altitude)
                     .map(|altitude| (altitude, SourceId::External(device_id)))
                     .or_else(|| {
                         let selected = self.gps.selected()?;
@@ -285,6 +297,7 @@ impl Core {
                 let Some(mut target) = target_from_pflaa(&pflaa, position.value, altitude) else {
                     return;
                 };
+                correction.align(&mut target);
                 let altitude_source = altitude_reference
                     .filter(|(altitude, _)| altitude.fresh(at).is_some())
                     .map(|(_, source)| (device_id, source));
@@ -301,6 +314,7 @@ impl Core {
                     })
                     .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
                 let motion = TrafficMotion {
+                    gps_time: correction.altitude_time,
                     velocity,
                     wind,
                     position: position
@@ -309,7 +323,8 @@ impl Core {
                 };
                 self.traffic
                     .update_climb(&mut target, altitude_source, at, motion);
-                self.traffic.observe(target, at, traffic_changes);
+                self.traffic
+                    .observe(target, at, correction.position_reference, traffic_changes);
             }
             _ => {}
         }
@@ -518,6 +533,8 @@ impl Input for ConnectionChanged {
         if !device.config.enabled {
             return Update::empty();
         }
+        device.flarm_reference = Default::default();
+        core.traffic.reset_position_epochs(Some(self.device_id));
         device
             .diagnostics
             .changed(self.device_id, &device.config.spec, self.state);
@@ -585,6 +602,26 @@ impl Input for SetArrivalReserve {
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
         ])
+    }
+}
+
+impl Input for SetFlarmPositionCorrection {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.flarm_position_correction == self.enabled {
+            return Update::empty();
+        }
+        core.settings.flarm_position_correction = self.enabled;
+        core.traffic.reset_position_epochs(None);
+        let mut effects = vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ];
+        if let Some(delta) = core.traffic.reset_climb().into_delta(&core.flarmnet) {
+            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
+        }
+        Update::effects(effects)
     }
 }
 
@@ -773,6 +810,7 @@ impl Input for EditExternalDevice {
         let enabled = device.config.enabled;
         device.config.spec = self.spec.clone();
         device.reset_runtime();
+        core.traffic.reset_position_epochs(Some(self.device_id));
 
         let mut effects = Vec::new();
         if enabled {
@@ -808,6 +846,7 @@ impl Input for SetExternalDeviceEnabled {
         }
         device.config.enabled = self.enabled;
         device.reset_runtime();
+        core.traffic.reset_position_epochs(Some(self.device_id));
         let spec = device.config.spec.clone();
 
         let mut effects = if self.enabled {

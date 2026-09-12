@@ -14,23 +14,108 @@ positions. The core converts the relative position with an ownship position.
 It first uses a position from the same external device. It falls back to the
 currently displayed GPS position.
 
-The target MSL altitude is available only when the report contains relative
-vertical distance and an ownship MSL altitude is available. The core first uses
-same-device altitude and then the displayed GPS altitude.
-
-Each accepted report replaces the complete stored target with the same
-identity. A target stores:
-
-- typed FLARM identity
-- absolute position
-- optional MSL altitude
-- aircraft type
-- optional track
-- FLARM alarm level
-- freshness state
+The target MSL altitude requires relative vertical distance and an ownship MSL
+altitude. The core first uses same-device altitude and then displayed GPS
+altitude. Correction can replace these position and altitude references as
+specified below.
 
 Traffic is a merged domain. It does not use flight-data source selection. Two
 devices that report the same typed identity update the same target.
+
+A target stores its typed identity, absolute position, optional MSL altitude,
+aircraft type, optional track, FLARM alarm level, and freshness state. Reports
+update this data subject to the horizontal position acceptance rules below.
+
+## FLARM correction
+
+The experimental FLARM position correction defaults to enabled. The Traffic
+settings page can disable it for devices that use a different reference model.
+The setting is stored across restarts. Missing stored values enable it.
+Correction applies to FLARM-source reports and older reports without a source
+field. Other reported sources use the uncorrected calculation.
+
+With correction enabled, the core identifies one-second traffic cycles from
+RMC/GGA timestamps and PFLAU/PGRMZ order. Traffic before the next cycle marker
+uses the preceding cycle's RMC fix, even if a newer GPS sentence has arrived.
+The core projects that fix two seconds along its reported ground track and
+speed before adding the relative traffic position.
+
+Altitude correction uses the cycle's GGA height and its change from the
+preceding GGA fix. Both GGA fixes must be fresh and one to three seconds apart
+in GPS time. The core projects that height two seconds before adding the
+relative traffic height.
+
+If a cycle marker is missing, a repeated target can identify the next cycle.
+The target must have reported a position while GPS time matched the active
+cycle. Its next position report advances the cycle if GPS time has advanced by
+exactly one second. The core switches both position and altitude references.
+A first report from another target still uses the preceding cycle. Repeated
+reports without GPS progress do not advance the cycle. This inference adds no
+delay and does not revise reports accepted before the repeated target arrives.
+
+The decoded target is a prediction for two seconds after the cycle timestamp.
+The core uses the target's reported ground velocity and climb rate to move it
+back to the latest same-device GPS timestamp. A report before the next GPS fix
+moves back two seconds. A report after that fix moves back one second.
+Horizontal correction requires target speed and track. Zero target speed needs
+no track. Vertical correction requires the target climb rate.
+
+Each device retains the latest projected position, raw and projected GPS
+altitudes, and active-cycle references. New GPS fixes leave the active references
+unchanged until the traffic cycle advances. Correction requires an exact cycle
+match and a reference received less than three seconds ago.
+
+Horizontal and altitude correction are independent. Missing altitude history or
+climb rate uses the uncorrected altitude calculation. Missing horizontal
+references or motion fields use the hold and fallback rules below. Disabling
+correction permits the uncorrected calculation for both components.
+
+Device runtime resets, connection changes, backward GPS time changes, and stale
+input gaps clear the reference history. Midnight retains continuity. A setting
+change affects subsequent reports and resets climb histories. The correction
+does not shift ownship, pressure altitude, or reception time.
+
+This model comes from one recording. It remains experimental until other
+devices have been checked. Its predicted positions do not establish exact
+sentence transmission times.
+
+## Position acceptance
+
+A target's position and altitude change only when a new traffic-position report
+arrives. GPS fixes update the reference for later reports. They do not move
+stored targets or add climb samples.
+
+With FLARM position correction enabled and available, the core accepts the first
+horizontal position for each target GPS timestamp immediately. Later reports for
+the same timestamp retain that position and track. They still update report age,
+alarm level, and other target data. This prevents position revisions at one time
+from appearing as flight movement. Some discarded revisions can be more accurate.
+
+The displayed track follows the bearing between accepted positions at advancing
+GPS timestamps. Steps shorter than 5 meters and report gaps of 5 seconds or more
+use the reported track instead. The first accepted report also uses reported
+track. Clock rewinds, source changes, connection resets, and changes to the
+correction setting start a new position sequence. Expired targets lose their
+position history.
+
+This policy adds no buffering and no movement between reports. It does not change
+reported velocity, altitude correction, or energy compensation.
+
+If a corrected target temporarily loses its ownship reference or required motion
+fields, the core holds its horizontal position and track. Reports still update
+freshness, alarms, and other target data. The hold ends when correction recovers
+or the accepted position reaches two seconds of age. Reports without a usable
+reference do not extend this limit. After the limit, reports use fallback
+coordinates. Recovery can produce a catch-up step after the held interval.
+
+Targets without a prior corrected position use fallback coordinates immediately.
+Disabling correction or changing the source also permits immediate updates.
+The hold does not cross connection or position-history resets.
+
+A future 30-second traffic trace must append only accepted positions at advancing
+GPS timestamps. Same-timestamp reports must not append or replace trace points.
+Metadata updates must not create trace points. Reception gaps remain gaps in the
+observations and must not be filled with synthetic positions.
 
 ## Identity
 
@@ -59,12 +144,19 @@ state. Tick inputs apply stale and removal transitions.
 ## Climb estimates
 
 The core publishes a normalized EMA with a 10-second time constant and 20-second
-and 30-second climb averages. A fourth estimate smooths height with a 7.5-second
+and 30-second climb averages. A fourth estimate smooths height with a 5-second
 time constant, then calculates a 20-second window average. Its first sample seeds
 the height filter. It keeps separate filtered height history.
-The core ignores the reported FLARM climb rate.
+The reported FLARM climb rate only aligns target altitude in time. The core
+derives climb estimates from the aligned altitude samples.
 All estimates use target MSL altitude. Ownship altitude must satisfy the existing
 three-second freshness rule before it can supply an estimator sample.
+
+Corrected altitude samples use GPS intervals for the averages and filters.
+Reception time still controls history expiry and target freshness. Changing
+between GPS and reception intervals resets the estimator. Backward GPS time or
+a sample gap longer than 60 seconds also resets it. Repeated sample times do
+not add another measurement.
 
 When energy compensation is enabled and FLARM provides ground speed and track,
 the core estimates target airspeed

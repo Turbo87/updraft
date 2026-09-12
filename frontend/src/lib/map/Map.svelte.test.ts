@@ -464,7 +464,7 @@ it('updates the camera and ownship only when their values change', async () => {
   });
   let map = mapState.map!;
   let source = map.getSource('ownship') as GeoJSONSource;
-  await new Promise<void>((resolve) => map.once('idle', () => resolve()));
+  await vi.waitFor(() => expect(map.loaded()).toBe(true));
   let camera = vi.spyOn(map, 'easeTo');
   let ownship = vi.spyOn(source, 'setData');
 

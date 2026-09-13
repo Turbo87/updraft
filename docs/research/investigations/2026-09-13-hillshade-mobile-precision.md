@@ -58,12 +58,70 @@ The evidence ruled out:
 - the `hillshadePrepare` pass, which declares `highp` and uses `texelFetch`
 - map rotation or pitch, which the flight view does not apply
 
+## Origin of the precision qualifier
+
+The `mediump` default is not a hillshade decision. Mapbox GL JS declared
+`precision mediump float` in the shared fragment prelude before 2017, when the
+shaders targeted WebGL 1. GLSL ES 1.00 makes `highp` optional in fragment
+shaders, so `mediump` was the portable default. MapLibre kept the prelude
+unchanged in the GLSL ES 3.00 migration of May 2023 (pull request 2599), which
+made `highp` mandatory in fragment shaders and removed the portability reason.
+
+The hillshade shaders arrived with Mapbox pull request 5286 in December 2017.
+Its author added `precision highp float` to `hillshade_prepare` to fix a
+rendering failure on Android, because elevation decoding needs more than 16-bit
+mantissa. The draw shader `hillshade` received no qualifier and inherited the
+prelude default. The pull request contains no discussion of texture coordinate
+precision or overzoom precision.
+
+MapLibre later added `highp` to specific shaders when precision defects
+appeared: `fill_pattern` and `line_pattern` in pull request 416 (2021, pattern
+misalignment when overzoomed on OpenGL ES devices), `color_relief` in pull
+request 5925 (2025, elevation decoding), and `atmosphere` in pull request 6939.
+Pull request 416 limited the change to two shaders to "limit the impact to
+memory consumption and performance", without measurements. Issue 579 raised the
+WebGL 1 compatibility concern for `highp` and closed as stale. MapLibre Native
+uses the same `mediump` prelude and the same unqualified `hillshade` fragment
+shader.
+
+The evidence shows an inherited default that nobody revisited for this shader,
+not a deliberate performance choice.
+
+## Cost of `highp`
+
+Vendor guidance gives the upper bound. Qualcomm states that Adreno executes
+16-bit arithmetic at twice the rate of 32-bit and with half the register
+footprint. Arm states that Mali interpolates 16-bit varyings at twice the rate
+of 32-bit varyings and stores twice as many 16-bit values per register.
+
+The `hillshade` draw pass runs once per screen pixel per rendered frame. Its
+fragment shader performs one texture fetch, one `textureSize` query, about ten
+arithmetic operations for the coordinate and the latitude scale, and for the
+Igor method about twenty arithmetic operations plus `cos`, `atan`, `atan2`,
+`sqrt`, and `mod`. Transcendental functions run in dedicated units whose rate
+does not double at 16 bits. A whole-shader `highp` therefore at most doubles
+the arithmetic part of a shader that is dominated by the texture fetch and the
+transcendental functions.
+
+On the Galaxy S23 the pass covers about 2.5 million fragments per frame. At an
+arithmetic throughput above one teraflop, the extra 32-bit work stays below
+0.1 ms per frame, which is under 1% of a 16.7 ms frame. MapLibre renders only
+when the map changes, so the cost applies to moving frames only.
+
+A narrower change avoids even that cost. Declaring `in highp vec2 v_pos` and
+computing `texturePos` as `highp` fixes the texture coordinate and leaves the
+shading arithmetic at `mediump`. MapLibre already uses this pattern for the
+`v_uv` texture coordinate in the `line_gradient` fragment shaders. The
+interpolation of one 32-bit varying and five 32-bit operations per fragment is
+not measurable.
+
 ## Mitigation assessment
 
-The fix belongs in MapLibre. The `hillshade` fragment shader needs
-`precision highp float` under `GL_ES`, as `colorRelief` already has. Moving the
-coordinate mapping into the vertex shader is not sufficient, because the
-fragment shader still receives the varying at `mediump`.
+The fix belongs in MapLibre. The `hillshade` fragment shader needs the texture
+coordinate at `highp`, either through `precision highp float` under `GL_ES` as
+`colorRelief` has, or through a `highp` qualifier on `v_pos` and `texturePos`.
+Moving the coordinate mapping into the vertex shader is not sufficient, because
+the fragment shader still receives the varying at `mediump`.
 
 Updraft cannot change the shader without patching MapLibre. Overzoom of the
 zoom-10 Enroute terrain remains the normal case for the flight view, so the

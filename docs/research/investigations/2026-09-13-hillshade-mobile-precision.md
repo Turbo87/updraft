@@ -123,16 +123,18 @@ coordinate at `highp`, either through `precision highp float` under `GL_ES` as
 Moving the coordinate mapping into the vertex shader is not sufficient, because
 the fragment shader still receives the varying at `mediump`.
 
-Updraft cannot change the shader without patching MapLibre. Overzoom of the
-zoom-10 Enroute terrain remains the normal case for the flight view, so the
-bands will stay visible until MapLibre ships the precision change.
+Updraft applies the narrow change as a pnpm patch to `maplibre-gl` 6.9.0 in
+`patches/maplibre-gl@6.9.0.patch`. A nightly APK with this patch showed smooth
+hillshade at the same view on the Galaxy S23. The patch stays until MapLibre
+ships the precision change.
 
 ## Limits
 
-The phone artifacts were reproduced by emulation, not on the device. The
-emulation rounded values with `packHalf2x16`, which models IEEE half floats.
-A GPU driver can use a different internal precision for `mediump`, so the exact
-band width on a device can differ from the emulation.
+The phone artifacts were reproduced by emulation. The emulation rounded values
+with `packHalf2x16`, which models IEEE half floats. A GPU driver can use a
+different internal precision for `mediump`, so the exact band width on a device
+can differ from the emulation. The device check confirmed the fix on one Adreno
+GPU only.
 
 The investigation used MapLibre GL JS 6.9.0 at commit `65ec44b`. Recheck the
 shader precision before applying these findings to a different MapLibre

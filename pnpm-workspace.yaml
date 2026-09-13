@@ -3,3 +3,5 @@ packages:
   - frontend
 allowBuilds:
   esbuild: true
+patchedDependencies:
+  maplibre-gl@6.9.0: patches/maplibre-gl@6.9.0.patch

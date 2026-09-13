@@ -1,6 +1,9 @@
 name: Nightly Android APK
 
 on:
+  push:
+    branches:
+      - claude/maplibre-hillshade-artifacts-f67rfl
   schedule:
     # Run each day at 02:17 UTC.
     # GitHub recommends avoiding the start of an hour to reduce scheduling delays.

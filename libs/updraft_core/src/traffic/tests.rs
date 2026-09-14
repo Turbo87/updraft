@@ -210,6 +210,34 @@ fn identical_observation_refreshes_the_stale_deadline_without_an_upsert() {
 }
 
 #[test]
+fn an_older_observation_does_not_replace_or_refresh_a_target() {
+    let mut state = TrafficState::default();
+    let current = target(1);
+    state.observe(
+        current,
+        Timestamp::from_millis(2_000),
+        Uncorrected,
+        &mut TrafficChanges::default(),
+    );
+
+    let mut older = current;
+    older.position = GeoLatLon::from_degrees(51.0, 7.0);
+    let mut changes = TrafficChanges::default();
+    state.observe(
+        older,
+        Timestamp::from_millis(1_000),
+        Uncorrected,
+        &mut changes,
+    );
+
+    assert_eq!(state.snapshot(), vec![current]);
+    assert!(changes.upserts.is_empty());
+    assert!(changes.removed.is_empty());
+    let stale = state.expire(Timestamp::from_millis(7_000));
+    assert!(stale.upserts[&current.id].stale);
+}
+
+#[test]
 fn marks_and_removes_targets_at_exact_boundaries() {
     let mut state = TrafficState::default();
     let mut changes = TrafficChanges::default();

@@ -233,6 +233,13 @@ impl TrafficState {
         reference: TrafficPositionReference,
         changes: &mut TrafficChanges,
     ) {
+        if self
+            .targets
+            .get(&target.id)
+            .is_some_and(|previous| at < previous.observed_at)
+        {
+            return;
+        }
         let mut position_epoch = reference.source().zip(reference.epoch());
         let mut position_observed_at = at;
         if let Some(source) = reference.source()

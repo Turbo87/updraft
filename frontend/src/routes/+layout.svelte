@@ -10,6 +10,7 @@
 
   import { setAppContext } from '$lib/app-context';
   import favicon from '$lib/assets/favicon.svg';
+  import { BrowserBackend } from '$lib/client/browser-backend';
   import { FakeClient } from '$lib/client/fake';
   import { TauriClient } from '$lib/client/tauri';
   import FlightView from '$lib/flight-view/FlightView.svelte';
@@ -31,7 +32,7 @@
 
   type TestWindow = Window & {
     __updraftApp?: AppContext;
-    __updraftFake?: FakeClient;
+    __updraftBackend?: BrowserBackend;
   };
 
   type Props = {
@@ -53,6 +54,8 @@
   const glidePerformance = new GlidePerformanceStore();
   const traffic = new TrafficStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
+  const browserBackend = testMode ? new BrowserBackend() : undefined;
+  browserBackend?.install();
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
   const dataActivation = new DataActivation(client, airspace, waypoints, basemaps, terrain);
@@ -77,11 +80,11 @@
 
   onMount(() => enrouteCatalog.watchUpdates(client, basemaps, terrain));
 
-  // Only test mode exposes application state and the fake client to browser automation.
+  // Only test mode exposes application state and the browser backend to automation.
   if (testMode) {
     let testWindow = window as TestWindow;
     testWindow.__updraftApp = appContext;
-    if (client instanceof FakeClient) testWindow.__updraftFake = client;
+    if (browserBackend) testWindow.__updraftBackend = browserBackend;
   }
 
   onMount(() => {

@@ -1,12 +1,12 @@
 import type { Route } from '@playwright/test';
 import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import type { BrowserBackend } from '$lib/client/browser-backend';
 
 import { expect, test } from '@playwright/test';
 
 type TestWindow = Window & {
   __updraftApp?: AppContext;
-  __updraftFake?: FakeClient;
+  __updraftBackend?: BrowserBackend;
   __TAURI_INTERNALS__?: { convertFileSrc: (path: string) => string };
 };
 
@@ -44,10 +44,9 @@ test('activation and removal refresh tiles without moving the map', async ({ pag
     let map = app.mapState.map!;
     app.mapState.followMode = false;
     map.jumpTo({ center: [0, 0], zoom: 6, bearing: 12, pitch: 20 });
-    (window as TestWindow).__TAURI_INTERNALS__ = {
-      convertFileSrc: (path) => `${location.origin}/__test/${path}`,
-    };
-    (window as TestWindow).__updraftFake!.emitBasemaps({
+    (window as TestWindow).__TAURI_INTERNALS__!.convertFileSrc = (path) =>
+      `${location.origin}/__test/${path}`;
+    (window as TestWindow).__updraftBackend!.emitBasemaps({
       generation: 0,
       sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
     });

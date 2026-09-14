@@ -1,9 +1,9 @@
 import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import type { BrowserBackend } from '$lib/client/browser-backend';
 
 import { expect, test } from '@playwright/test';
 
-type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClient };
+type TestWindow = Window & { __updraftApp?: AppContext; __updraftBackend?: BrowserBackend };
 
 test('keeps live catalog state across settings navigation', async ({ page }) => {
   await page.goto('/settings/data?testMode=1');
@@ -24,7 +24,7 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
   };
   await page.evaluate(
     (cached) =>
-      (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
+      (window as TestWindow).__updraftBackend!.emitEnrouteCatalog({
         cached,
         refreshing: true,
         error: false,
@@ -34,7 +34,7 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
   await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
   await page.evaluate(
     (cached) =>
-      (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
+      (window as TestWindow).__updraftBackend!.emitEnrouteCatalog({
         cached,
         refreshing: false,
         error: true,
@@ -55,15 +55,15 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
 test('selects a country update, handles failure, and returns to the library', async ({ page }) => {
   await page.goto('/settings?testMode=1');
   await page.getByRole('link', { name: 'Data', exact: true }).click();
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
     let app = (window as TestWindow).__updraftApp!;
     app.client.selectDataFile = async () => {
       throw new Error('Unexpected file picker');
     };
-    let fake = (window as TestWindow).__updraftFake!;
+    let backend = (window as TestWindow).__updraftBackend!;
     let path = 'Europe/Malta.mbtiles';
-    fake.emitBasemaps({
+    backend.emitBasemaps({
       generation: 1,
       sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
     });
@@ -72,9 +72,9 @@ test('selects a country update, handles failure, and returns to the library', as
     app.client.downloadEnrouteFiles = async (paths) => {
       if (paths.length !== 1 || paths[0] !== path) throw new Error('Unexpected download selection');
       if (attempts++ === 0) throw new Error('Submission failed');
-      fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
+      backend.emitEnrouteDownloads([{ path, type: 'queued' }]);
     };
-    (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
+    (window as TestWindow).__updraftBackend!.emitEnrouteCatalog({
       cached: {
         entries: [
           {
@@ -123,7 +123,7 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
     .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp?.enrouteDownloads?.current))
     .toEqual([]);
   await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+    (window as TestWindow).__updraftBackend!.emitEnrouteDownloads([
       {
         path: 'Europe/Malta.mbtiles',
         type: 'downloading',
@@ -150,7 +150,7 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
   ).toBeVisible();
   await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
   await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+    (window as TestWindow).__updraftBackend!.emitEnrouteDownloads([
       { path: 'Europe/Malta.mbtiles', type: 'failed' },
     ]);
   });
@@ -167,7 +167,7 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
   await expect(
     page.getByRole('button', { name: 'Retry download: Malta', exact: true }),
   ).toBeVisible();
-  await page.evaluate(() => (window as TestWindow).__updraftFake!.emitEnrouteDownloads([]));
+  await page.evaluate(() => (window as TestWindow).__updraftBackend!.emitEnrouteDownloads([]));
   await expect
     .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))
     .toEqual([]);
@@ -175,11 +175,11 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
 
 test('queues France while Germany continues downloading', async ({ page }) => {
   await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
-    let fake = (window as TestWindow).__updraftFake!;
+    let backend = (window as TestWindow).__updraftBackend!;
     let client = (window as TestWindow).__updraftApp!.client;
-    fake.emitEnrouteCatalog({
+    backend.emitEnrouteCatalog({
       cached: {
         checkedAt: 0,
         entries: ['Germany', 'France'].map((name) => ({
@@ -199,7 +199,7 @@ test('queues France while Germany continues downloading', async ({ page }) => {
         !['Europe/Germany.mbtiles', 'Europe/France.mbtiles'].includes(paths[0])
       )
         throw new Error('Unexpected download selection');
-      fake.emitEnrouteDownloads([
+      backend.emitEnrouteDownloads([
         {
           path: 'Europe/Germany.mbtiles',
           type: 'downloading',
@@ -222,7 +222,7 @@ test('queues France while Germany continues downloading', async ({ page }) => {
   let checkbox = page.getByRole('checkbox', { name: 'France', exact: true });
   await checkbox.check();
   await page.evaluate(() =>
-    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+    (window as TestWindow).__updraftBackend!.emitEnrouteDownloads([
       {
         path: 'Europe/Germany.mbtiles',
         type: 'downloading',
@@ -246,21 +246,21 @@ test('carries startup update results through file replacement and settings navig
   page,
 }) => {
   await page.goto('/settings?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
-    let fake = (window as TestWindow).__updraftFake!;
+    let backend = (window as TestWindow).__updraftBackend!;
     let path = 'Europe/France.mbtiles';
-    fake.getEnrouteBasemapUpdates = async () => [path];
-    fake.getBasemapFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
+    backend.getEnrouteBasemapUpdates = async () => [path];
+    backend.getBasemapFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
     (window as TestWindow).__updraftApp!.client.downloadEnrouteFiles = async (paths) => {
       if (paths.length !== 1 || paths[0] !== path) throw new Error('Unexpected update selection');
-      fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
+      backend.emitEnrouteDownloads([{ path, type: 'queued' }]);
     };
-    fake.emitBasemaps({
+    backend.emitBasemaps({
       generation: 1,
       sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
     });
-    fake.emitEnrouteCatalog({
+    backend.emitEnrouteCatalog({
       cached: {
         checkedAt: 1000,
         entries: [
@@ -286,17 +286,17 @@ test('carries startup update results through file replacement and settings navig
   await dialog.getByRole('button', { name: 'Update', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Update', exact: true })).toBeDisabled();
   await page.evaluate(() => {
-    let fake = (window as TestWindow).__updraftFake!;
-    fake.getEnrouteBasemapUpdates = async () => [];
-    fake.getBasemapFileDetails = async () => ({
+    let backend = (window as TestWindow).__updraftBackend!;
+    backend.getEnrouteBasemapUpdates = async () => [];
+    backend.getBasemapFileDetails = async () => ({
       size: 2_000_000,
       modifiedAt: Date.UTC(2026, 8, 8),
     });
-    fake.emitBasemaps({
+    backend.emitBasemaps({
       generation: 2,
       sources: [{ sourceName: 'enroute/Europe/France.mbtiles', type: 'disabled' }],
     });
-    fake.emitEnrouteDownloads([]);
+    backend.emitEnrouteDownloads([]);
   });
   await expect(dialog.getByText('2 MB', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
@@ -312,10 +312,10 @@ test('selects both formats and keeps terrain updates disabled across navigation'
   page,
 }) => {
   await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
     let app = (window as TestWindow).__updraftApp!;
-    let fake = (window as TestWindow).__updraftFake!;
+    let backend = (window as TestWindow).__updraftBackend!;
     let paths = ['Europe/France.mbtiles', 'Europe/France.terrain'];
     app.client.getBasemapFileDetails = app.client.getTerrainFileDetails = async () => ({
       size: 2_000_000,
@@ -324,12 +324,12 @@ test('selects both formats and keeps terrain updates disabled across navigation'
     app.client.downloadEnrouteFiles = async (selection) => {
       if (JSON.stringify(selection) !== JSON.stringify(paths))
         throw new Error('Unexpected selection');
-      fake.emitEnrouteDownloads([
+      backend.emitEnrouteDownloads([
         { path: paths[0], type: 'downloading', downloaded: 1, total: 2_000_000 },
         { path: paths[1], type: 'queued' },
       ]);
     };
-    fake.emitEnrouteCatalog({
+    backend.emitEnrouteCatalog({
       cached: {
         checkedAt: 0,
         entries: paths.map((path) => ({
@@ -364,23 +364,23 @@ test('selects both formats and keeps terrain updates disabled across navigation'
   ).toBeVisible();
   await page.evaluate(() => {
     let app = (window as TestWindow).__updraftApp!;
-    let fake = (window as TestWindow).__updraftFake!;
+    let backend = (window as TestWindow).__updraftBackend!;
     let path = 'Europe/France.terrain';
     app.client.getEnrouteTerrainUpdates = async () => [path];
-    fake.emitBasemaps({
+    backend.emitBasemaps({
       generation: 1,
       sources: [{ sourceName: 'enroute/Europe/France.mbtiles', type: 'active' }],
     });
-    fake.emitTerrain({
+    backend.emitTerrain({
       generation: 1,
       sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
     });
-    fake.emitEnrouteDownloads([]);
+    backend.emitEnrouteDownloads([]);
     app.client.downloadEnrouteFiles = async (selection) => {
       if (JSON.stringify(selection) !== JSON.stringify([path]))
         throw new Error('Unexpected update');
       app.client.getEnrouteTerrainUpdates = async () => [];
-      fake.emitTerrain({
+      backend.emitTerrain({
         generation: 2,
         sources: [{ sourceName: `enroute/${path}`, type: 'disabled' }],
       });
@@ -406,20 +406,20 @@ test('selects both formats and keeps terrain updates disabled across navigation'
 
 test('returns to the library when terrain finishes before queue delivery', async ({ page }) => {
   await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
     let app = (window as TestWindow).__updraftApp!;
-    let fake = (window as TestWindow).__updraftFake!;
+    let backend = (window as TestWindow).__updraftBackend!;
     let path = 'Europe/Malta.terrain';
     app.client.getTerrainFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
     app.client.downloadEnrouteFiles = async (paths) => {
       if (JSON.stringify(paths) !== JSON.stringify([path])) throw new Error('Unexpected selection');
-      fake.emitTerrain({
+      backend.emitTerrain({
         generation: 1,
         sources: [{ sourceName: `enroute/${path}`, type: 'active' }],
       });
     };
-    fake.emitEnrouteCatalog({
+    backend.emitEnrouteCatalog({
       cached: {
         checkedAt: 0,
         entries: [

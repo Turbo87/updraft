@@ -1,9 +1,9 @@
 import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import type { BrowserBackend } from '$lib/client/browser-backend';
 
 import { expect, test } from '@playwright/test';
 
-type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClient };
+type TestWindow = Window & { __updraftApp?: AppContext; __updraftBackend?: BrowserBackend };
 
 test('updates infoboxes from instruments and units', async ({ page }) => {
   await page.goto('/?testMode=1');
@@ -11,8 +11,8 @@ test('updates infoboxes from instruments and units', async ({ page }) => {
   await expect(dock.getByRole('group')).toHaveCount(10);
   await expect(dock.getByRole('group', { name: 'Altitude', exact: true })).toContainText('–');
   await page.evaluate(() => {
-    let { __updraftApp: app, __updraftFake: fake } = window as TestWindow;
-    fake!.emit({
+    let { __updraftApp: app, __updraftBackend: backend } = window as TestWindow;
+    backend!.emit({
       topic: 'instruments',
       value: {
         ...app!.instruments.current,
@@ -37,8 +37,8 @@ test('updates infoboxes from instruments and units', async ({ page }) => {
   await expect(averageVario.locator('.value')).toHaveText('+1.4');
   await expect(averageVario.locator('.unit-label')).toHaveText('m/s');
   await page.evaluate(() => {
-    let { __updraftApp: app, __updraftFake: fake } = window as TestWindow;
-    fake!.emit({
+    let { __updraftApp: app, __updraftBackend: backend } = window as TestWindow;
+    backend!.emit({
       topic: 'settings',
       value: {
         ...app!.settings.current,
@@ -80,10 +80,10 @@ for (let scenario of [
     }) => {
       await page.setViewportSize({ width: scenario.width, height: scenario.height });
       await page.goto('/?testMode=1');
-      await page.waitForFunction(() => '__updraftFake' in window);
+      await page.waitForFunction(() => '__updraftBackend' in window);
       await page.evaluate((locale) => {
-        let { __updraftApp: app, __updraftFake: fake } = window as TestWindow;
-        fake!.emit({ topic: 'settings', value: { ...app!.settings.current, locale } });
+        let { __updraftApp: app, __updraftBackend: backend } = window as TestWindow;
+        backend!.emit({ topic: 'settings', value: { ...app!.settings.current, locale } });
       }, locale);
       await page.locator('html').evaluate((root, insets) => {
         for (let edge of ['top', 'right', 'bottom', 'left'] as const)

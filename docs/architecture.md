@@ -70,7 +70,8 @@ connection attempts, cancellation, retries, and platform APIs.
 ## Frontend protocol
 
 The frontend uses one `UpdraftClient` interface. The production implementation
-uses concrete Tauri commands. Browser tests and Storybook use a fake client.
+uses concrete Tauri commands. Browser tests use that implementation with a
+backend behind mocked Tauri IPC. Storybook uses a fake client.
 Components do not import a client implementation directly.
 
 Commands report completion or return a typed response. Shared state changes
@@ -215,7 +216,7 @@ Tests run at the layer that owns the behavior:
 - Tauri tests cover the driver, command deserialization, storage, resources,
   and transport adapters.
 - Frontend unit tests cover stores, formatting, components, and MapLibre data.
-- Playwright tests cover complete frontend paths through the browser fake.
+- Playwright tests cover complete frontend paths through mocked Tauri IPC.
 - Physical verification covers Android lifecycle and hardware behavior that
   automated tests cannot establish.
 

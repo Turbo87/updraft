@@ -1,5 +1,5 @@
 import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import type { BrowserBackend } from '$lib/client/browser-backend';
 
 import { expect, test } from '@playwright/test';
 
@@ -7,7 +7,7 @@ import { waypointsFixture } from '../../frontend/src/lib/map/waypoint.fixture';
 
 type TestWindow = Window & {
   __updraftApp?: AppContext;
-  __updraftFake?: FakeClient;
+  __updraftBackend?: BrowserBackend;
   __updraftTestWaypointData?: typeof waypointsFixture;
 };
 
@@ -28,9 +28,9 @@ for (let notes of ['Notes', '']) {
       },
     );
     await page.goto('/?testMode=1');
-    await page.waitForFunction(() => '__updraftFake' in window);
+    await page.waitForFunction(() => '__updraftBackend' in window);
     await page.evaluate(() => {
-      (window as TestWindow).__updraftFake!.emit({
+      (window as TestWindow).__updraftBackend!.emit({
         topic: 'waypoints',
         value: {
           generation: 1,
@@ -68,7 +68,7 @@ for (let notes of ['Notes', '']) {
     await expect(page.getByText('123.500 MHz')).toBeVisible();
     await expect(page.getByText('090°')).toBeVisible();
     await page.evaluate(async () => {
-      await (window as TestWindow).__updraftFake!.removeWaypoints('local.cup');
+      await (window as TestWindow).__updraftBackend!.removeWaypoints('local.cup');
     });
     await expect(page.getByText('This waypoint is no longer available.')).toBeVisible();
     await page.goBack();
@@ -91,9 +91,9 @@ test('retries a failed waypoint resource with a new request', async ({ page }) =
     Object.assign(window, { __updraftTestWaypointData: '/waypoint-resource.geojson' });
   });
   await page.goto('/waypoints/1:0:0?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emit({
+    (window as TestWindow).__updraftBackend!.emit({
       topic: 'waypoints',
       value: {
         generation: 1,
@@ -139,7 +139,7 @@ for (let initialPath of ['/', '/nearby/50.823/6.186']) {
         if ('sourceId' in event && event.sourceId === 'waypoints')
           document.body.dataset.waypointFailed = 'true';
       });
-      (window as TestWindow).__updraftFake!.emit({
+      (window as TestWindow).__updraftBackend!.emit({
         topic: 'waypoints',
         value: {
           generation: 1,

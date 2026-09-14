@@ -1,20 +1,20 @@
 import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import type { BrowserBackend } from '$lib/client/browser-backend';
 
 import { expect, test } from '@playwright/test';
 
 import { AIRSPACE_BROWSER_FIXTURE } from '../../frontend/src/lib/map/airspace.fixture';
 
-type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClient };
+type TestWindow = Window & { __updraftApp?: AppContext; __updraftBackend?: BrowserBackend };
 
 test('imports two airspace files, replaces one, and removes only the confirmed file', async ({
   page,
 }) => {
   await page.goto('/settings?testMode=1');
   await page.getByRole('link', { name: 'Data', exact: true }).click();
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
-    let client = (window as TestWindow).__updraftFake!;
+    let client = (window as TestWindow).__updraftBackend!;
     let commands = (window as TestWindow).__updraftApp!.client;
     let imports = ['a.txt', 'b.txt', 'a.txt', 'a.txt'];
     let sources = new Map<string, number>();
@@ -87,9 +87,9 @@ test('keeps duplicate airspaces separate and invalidates details after any sourc
     Object.assign(window, { __updraftTestAirspaceData: data });
   }, data);
   await page.goto('/nearby/50.82/6.175?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emit({
+    (window as TestWindow).__updraftBackend!.emit({
       topic: 'airspace',
       value: {
         generation: 1,
@@ -111,7 +111,7 @@ test('keeps duplicate airspaces separate and invalidates details after any sourc
     page.getByRole('heading', { level: 1, name: feature.properties.name }),
   ).toBeVisible();
   await page.evaluate(async () => {
-    await (window as TestWindow).__updraftFake!.removeAirspace('a.txt');
+    await (window as TestWindow).__updraftBackend!.removeAirspace('a.txt');
   });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 });

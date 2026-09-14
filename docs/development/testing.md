@@ -56,13 +56,15 @@ or end-to-end behavior test.
 
 ## End-to-end tests
 
-The Playwright suite builds and serves the frontend in browser mode. The root
-layout selects `FakeClient` outside Tauri. `?testMode=1` exposes the fake client
-and application state to tests and disables map transition duration.
+The Playwright suite builds and serves the frontend in browser mode. Test mode
+puts the browser backend behind mocked Tauri IPC. The application uses
+`TauriClient`, as it does in production. `?testMode=1` exposes the browser
+backend and application state to tests. It also disables map transition duration.
 
 These tests verify complete frontend flows, including settings routes, live
-topic updates, MapLibre layers, follow mode, and map inspection. They do not run
-the Rust core, Tauri commands, or Android plugins.
+topic updates, MapLibre layers, follow mode, and map inspection. They verify the
+production client command names, arguments, and channels. They do not run the
+Rust core, Tauri command handlers, or Android plugins.
 
 Run them with:
 

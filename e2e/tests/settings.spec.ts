@@ -14,7 +14,7 @@ type TestWindow = Window & {
   __quitCalls?: number;
   __releaseActivation?: () => void;
   __updraftApp?: AppContext;
-  __updraftFake?: {
+  __updraftBackend?: {
     emit: (topic: unknown) => void;
     emitBasemaps: (status: BasemapStatus) => void;
     emitTerrain: (status: TerrainStatus) => void;
@@ -26,7 +26,7 @@ type TestWindow = Window & {
 test.describe('with an unsupported browser language', () => {
   test.use({ locale: 'es-ES' });
 
-  test('falls back to English and changes settings through the backend-shaped fake', async ({
+  test('falls back to English and changes settings through the Tauri IPC backend', async ({
     page,
   }) => {
     await page.goto('/?testMode=1');
@@ -135,11 +135,11 @@ test('uses the screen scaffold when an external device is not found', async ({ p
 
 test('confirms before quitting through the client from the settings menu', async ({ page }) => {
   await page.goto('/settings?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
     let testWindow = window as TestWindow;
-    let client = testWindow.__updraftFake;
-    if (!client) throw new Error('the fake client should be available');
+    let client = testWindow.__updraftBackend;
+    if (!client) throw new Error('the backend client should be available');
     client.quit = async () => {
       testWindow.__quitCalls = (testWindow.__quitCalls ?? 0) + 1;
     };
@@ -236,7 +236,7 @@ test('propagates airspace status and invokes data selection through the client',
   page,
 }) => {
   await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await page.waitForFunction(() => '__updraftBackend' in window);
   await page.evaluate(() => {
     let testWindow = window as TestWindow;
     let client = testWindow.__updraftApp!.client;
@@ -253,7 +253,7 @@ test('propagates airspace status and invokes data selection through the client',
   await page.getByRole('button', { name: 'Back to data', exact: true }).click();
 
   await page.evaluate(() => {
-    (window as TestWindow).__updraftFake?.emit({
+    (window as TestWindow).__updraftBackend?.emit({
       topic: 'airspace',
       value: {
         generation: 1,
@@ -328,7 +328,7 @@ test('the Data library handles live statuses, file details, and removal', async 
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await page.reload();
   await page.evaluate(() => {
-    let client = (window as TestWindow).__updraftFake!;
+    let client = (window as TestWindow).__updraftBackend!;
     client.emit({
       topic: 'airspace',
       value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] },
@@ -352,7 +352,7 @@ test('the Data library handles live statuses, file details, and removal', async 
   await expect(dialog).toBeVisible();
   await page.evaluate(() => {
     let testWindow = window as TestWindow;
-    let client = testWindow.__updraftFake!;
+    let client = testWindow.__updraftBackend!;
     let original = client.setWaypointsEnabled.bind(client);
     let gate = new Promise<void>((resolve) => {
       testWindow.__releaseActivation = resolve;
@@ -405,7 +405,7 @@ test('the Data library imports through the client and shows published parsing er
     let selected = { selectionId: '1', sourceName: 'broken.cup', dataType: 'waypoints' as const };
     client.selectDataFile = async () => selected;
     client.importDataFile = async () => {
-      testWindow.__updraftFake!.emit({
+      testWindow.__updraftBackend!.emit({
         topic: 'waypoints',
         value: {
           generation: 1,
@@ -436,7 +436,7 @@ for (let [width, height, theme] of [
     await page.goto('/?testMode=1');
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.evaluate(() => {
-      (window as TestWindow).__updraftFake!.emitBasemaps({
+      (window as TestWindow).__updraftBackend!.emitBasemaps({
         generation: 0,
         sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
       });
@@ -451,7 +451,7 @@ for (let [width, height, theme] of [
     await page.getByRole('button', { name: /^local\b/ }).click();
     await expect(page.getByRole('switch', { name: 'Enabled' })).toBeChecked();
     await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitBasemaps({
+      (window as TestWindow).__updraftBackend!.emitBasemaps({
         generation: 1,
         sources: [{ sourceName: 'local.mbtiles', type: 'disabled' }],
       }),
@@ -461,7 +461,7 @@ for (let [width, height, theme] of [
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();
     await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitBasemaps({
+      (window as TestWindow).__updraftBackend!.emitBasemaps({
         generation: 2,
         sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
       }),
@@ -487,9 +487,9 @@ for (let [width, height, theme] of [
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ colorScheme: theme });
     await page.goto('/?testMode=1');
-    await expect.poll(() => page.evaluate(() => !!(window as TestWindow).__updraftFake)).toBe(true);
+    await expect.poll(() => page.evaluate(() => !!(window as TestWindow).__updraftBackend)).toBe(true);
     await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitTerrain({
+      (window as TestWindow).__updraftBackend!.emitTerrain({
         generation: 0,
         sources: [{ sourceName: 'local.terrain', type: 'active' }],
       }),
@@ -500,7 +500,7 @@ for (let [width, height, theme] of [
     let dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('switch')).toBeChecked();
     await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitTerrain({
+      (window as TestWindow).__updraftBackend!.emitTerrain({
         generation: 1,
         sources: [{ sourceName: 'local.terrain', type: 'disabled' }],
       }),
@@ -510,7 +510,7 @@ for (let [width, height, theme] of [
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();
     await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitTerrain({
+      (window as TestWindow).__updraftBackend!.emitTerrain({
         generation: 2,
         sources: [{ sourceName: 'local.terrain', type: 'unavailable' }],
       }),

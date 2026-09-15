@@ -8,6 +8,7 @@ than a current design statement. They do not define current product behavior.
 - [Waypoint and arrival-altitude display on MapLibre](2026-08-19-waypoint-arrival-display.md)
 - [Device barometers and vario response](2026-08-29-device-barometer-response.md)
 - [Altitude references and atmospheric inputs](2026-08-31-altitude-references.md)
+- [Cut-off water areas in Enroute basemaps](2026-09-15-basemap-missing-ocean.md)
 
 Keep the conclusion, decisive evidence, eliminated causes, and limits. Remove
 temporary commands, repeated observations, and host-specific identifiers when

@@ -1,0 +1,67 @@
+From b6110b1bdfd4b9a900b8cc22ea1546a62fbecb9f Mon Sep 17 00:00:00 2001
+From: Tobias Bieniek <tobias@bieniek.cloud>
+Date: Tue, 15 Sep 2026 07:45:22 +0000
+Subject: [PATCH 2/2] Keep ocean-only tiles beyond the country buffer
+
+---
+ scripts/vector_tile.py | 30 ++++++++++++++++++++++++++++--
+ 1 file changed, 28 insertions(+), 2 deletions(-)
+
+diff --git a/scripts/vector_tile.py b/scripts/vector_tile.py
+index 5ed776d..7572cb0 100755
+--- a/scripts/vector_tile.py
++++ b/scripts/vector_tile.py
+@@ -351,22 +351,48 @@ def optimizeVectorTiles(filename):
+     conn.close()
+ 
+ 
++def isOceanTile(blob):
++    """
++    This method returns True if a tile contains only ocean polygons.
++
++    :param blob: gzip-compressed vector tile data
++    """
++
++    tile = vector_tile_pb2.Tile()
++    tile.ParseFromString(gzip.decompress(blob))
++    for layer in tile.layers:
++        if layer.name != 'water':
++            return False
++        for feature in layer.features:
++            tags = dict(zip(feature.tags[0::2], feature.tags[1::2]))
++            classIndex = layer.keys.index('class') if 'class' in layer.keys else -1
++            if classIndex not in tags or layer.values[tags[classIndex]].string_value != 'ocean':
++                return False
++    return True
++
++
+ def removeForeignTiles(filename, country, minLon, minLat, maxLon, maxLat):
+     """
+     This method removes all tiles that do not intersect the country or bounding box.
++    Tiles inside the bounding box that contain only ocean are kept. They are
++    small, and they prevent gaps in the sea more than 20 km from the coast.
+     It sets the map bounds and center to the bounding box.
+     """
+ 
+     dbConnection = sqlite3.connect(filename)
+     cursor = dbConnection.cursor()
+ 
+-    tileList = [(z,x,2**z-1-y) for (z,x,y) in cursor.execute('SELECT zoom_level, tile_column, tile_row FROM tiles')]
+-    tilesToDelete = set(foreignTiles(tileList, country))
++    tiles = {(z,x,2**z-1-y): blob for (z,x,y,blob) in cursor.execute('SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles')}
++    tileList = list(tiles)
++    tilesToDelete = set()
+     region = Polygon([(minLon,minLat), (maxLon,minLat), (maxLon,maxLat), (minLon,maxLat)])
+     for (z,x,y) in tileList:
+         tile = Polygon([num2lonlat(x,y,z), num2lonlat(x+1,y,z), num2lonlat(x+1,y+1,z), num2lonlat(x,y+1,z)])
+         if not region.intersects(tile):
+             tilesToDelete.add((z,x,y))
++    for (z,x,y) in foreignTiles(tileList, country):
++        if not isOceanTile(tiles[(z,x,y)]):
++            tilesToDelete.add((z,x,y))
+ 
+     for (z,x,y) in tilesToDelete:
+         cursor.execute('DELETE FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?', (z,x,2**z-1-y))
+-- 
+2.43.0
+

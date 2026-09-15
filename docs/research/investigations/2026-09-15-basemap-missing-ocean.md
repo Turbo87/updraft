@@ -57,7 +57,11 @@ Updraft does not cause the defect. The client renders the tiles it receives.
 
 ## Candidate fixes
 
-All candidates were tested with the local Sardinia build.
+All candidates were tested with the local Sardinia build. The tested patches
+for fixes 1 to 3 are in
+[2026-09-15-basemap-missing-ocean](2026-09-15-basemap-missing-ocean/). The
+`enrouteserver-*` patches apply to `enrouteServer` commit `5783f95`. The
+`tilemaker-*` patch applies to tilemaker 3.2.0.
 
 1. `enrouteServer`: check that every tilemaker layer `source` exists before
    tilemaker runs, and stop with an error that names the missing files. The

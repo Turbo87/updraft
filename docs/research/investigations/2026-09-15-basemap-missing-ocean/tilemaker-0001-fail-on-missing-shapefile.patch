@@ -1,0 +1,25 @@
+From dde58db96bcd8191e77fd1dd8b17688a86c7fc28 Mon Sep 17 00:00:00 2001
+From: Tobias Bieniek <tobias@bieniek.cloud>
+Date: Tue, 15 Sep 2026 07:45:23 +0000
+Subject: [PATCH] Fail when a shapefile source cannot be opened
+
+---
+ src/shp_processor.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/shp_processor.cpp b/src/shp_processor.cpp
+index 4cae117..01a577b 100644
+--- a/src/shp_processor.cpp
++++ b/src/shp_processor.cpp
+@@ -137,7 +137,7 @@ void ShpProcessor::read(class LayerDef &layer, uint layerNum)
+ 	ShpHandlePtr shp(SHPOpen(filename.c_str(), "rb"));
+ 	DbfHandlePtr dbf(DBFOpen(filename.c_str(), "rb"));
+ 	if(shp == nullptr || dbf == nullptr)
+-		return;
++		throw std::runtime_error("Couldn't open shapefile " + filename + " for layer " + layer.name);
+ 	int numEntities=0, shpType=0;
+ 	double adfMinBound[4], adfMaxBound[4];
+ 	SHPGetInfo(shp.get(), &numEntities, &shpType, adfMinBound, adfMaxBound);
+-- 
+2.43.0
+

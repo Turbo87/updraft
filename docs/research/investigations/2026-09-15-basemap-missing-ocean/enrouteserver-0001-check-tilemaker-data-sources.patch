@@ -1,0 +1,73 @@
+From 9217660b45e7eb3a5099d048b75d00e5fa619c9d Mon Sep 17 00:00:00 2001
+From: Tobias Bieniek <tobias@bieniek.cloud>
+Date: Tue, 15 Sep 2026 07:44:51 +0000
+Subject: [PATCH 1/2] Check tilemaker data sources before map generation
+
+---
+ scripts/vector_tile.py | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/scripts/vector_tile.py b/scripts/vector_tile.py
+index ac3508c..5ed776d 100755
+--- a/scripts/vector_tile.py
++++ b/scripts/vector_tile.py
+@@ -9,6 +9,7 @@ https://github.com/mapbox/vector-tile-spec/tree/master/2.1
+ """
+ 
+ import geopandas
++import json
+ import math
+ import gzip
+ import os
+@@ -383,6 +384,40 @@ def removeForeignTiles(filename, country, minLon, minLat, maxLon, maxLat):
+     dbConnection.close()
+ 
+ 
++def checkTilemakerSources(configFileName):
++    """Checks that every external data source in a tilemaker configuration exists
++
++    Tilemaker skips a layer whose shapefile source cannot be opened. It does
++    not report an error and generates the map without ocean, urban area,
++    glacier, and ice shelf polygons. This method raises an exception before
++    tilemaker runs, so that the missing data is not deployed.
++
++    :param configFileName: Name of the tilemaker configuration file
++
++    :raises FileNotFoundError: A layer source does not exist
++    """
++
++    with open(configFileName) as configFile:
++        config = json.load(configFile)
++    missing = []
++    for layerName, layer in config['layers'].items():
++        source = layer.get('source')
++        if source is None:
++            continue
++        if source.endswith('.shp'):
++            # Shapelib needs the geometry and the attribute file
++            required = [source, source[:-4]+'.dbf']
++        else:
++            required = [source]
++        for fileName in required:
++            if not os.path.isfile(fileName):
++                missing.append('{} (layer {})'.format(fileName, layerName))
++    if missing:
++        raise FileNotFoundError(
++            'Tilemaker data sources are missing. Run downloadData.sh first.\n  '
++            + '\n  '.join(missing))
++
++
+ def pbf2mbtiles(pbfFileName, minLon, minLat, maxLon, maxLat, mbtilesFileBaseName, country):
+     """Converts openstreetmap PBF file into mbtiles
+ 
+@@ -449,6 +484,7 @@ def pbf2mbtiles(pbfFileName, minLon, minLat, maxLon, maxLat, mbtilesFileBaseName
+     )
+ 
+     print('Run tilemaker')
++    checkTilemakerSources("tilemaker/config.json")
+     subprocess.run(
+         ["tilemaker",
+         "--config", "tilemaker/config.json",
+-- 
+2.43.0
+

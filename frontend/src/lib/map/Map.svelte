@@ -152,7 +152,7 @@
     mapState.followMode = false;
   }
 
-  function handleRotateStart(event: MapEventType['rotatestart']) {
+  function handleMoveStart(event: MapEventType['movestart']) {
     if (event.originalEvent) enterManualMode();
   }
 
@@ -185,8 +185,7 @@
     onsourcedata={handleSourceData}
     onerror={handleSourceError}
     onclick={inspectMapPosition}
-    ondragstart={enterManualMode}
-    onrotatestart={handleRotateStart}
+    onmovestart={handleMoveStart}
     onload={() => {
       spritesLoaded = true;
     }}

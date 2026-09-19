@@ -409,7 +409,7 @@ it('returns to follow mode without a position and follows the next position', as
   });
   let initialCenter = map.getCenter().toArray();
 
-  map.fire('dragstart');
+  map.fire('movestart', { originalEvent: new MouseEvent('mousedown') });
   expect(mapState.followMode).toBe(false);
   let returnButton = page.getByRole('button', { name: 'Return to position' });
   await expect.element(returnButton).toBeVisible();
@@ -501,7 +501,7 @@ it('updates the camera and ownship only when their values change', async () => {
 
   camera.mockClear();
   ownship.mockClear();
-  map.fire('dragstart');
+  map.fire('movestart', { originalEvent: new MouseEvent('mousedown') });
   map.jumpTo({ center: [7, 51] });
   await view.rerender({ instruments: structuredClone(updated) });
   expect(camera).not.toHaveBeenCalled();
@@ -510,7 +510,7 @@ it('updates the camera and ownship only when their values change', async () => {
   expect(camera).toHaveBeenCalledTimes(1);
 });
 
-it('stops following before a user rotates the map', async () => {
+it('stops following before a user changes the map camera', async () => {
   let mapState = new MapState();
   let view = await render(MapComponent, {
     hillshadeDirection: 'fixed',
@@ -525,10 +525,14 @@ it('stops following before a user rotates the map', async () => {
   let map = mapState.map!;
   let camera = vi.spyOn(map, 'easeTo');
 
-  map.fire('rotatestart');
+  map.fire('movestart');
   expect(mapState.followMode).toBe(true);
-  map.fire('rotatestart', { originalEvent: new MouseEvent('mousedown') });
-  expect(mapState.followMode).toBe(false);
+
+  for (let originalEvent of [new MouseEvent('mousedown'), new TouchEvent('touchstart')]) {
+    mapState.followMode = true;
+    map.fire('movestart', { originalEvent });
+    expect(mapState.followMode).toBe(false);
+  }
 
   camera.mockClear();
   let updated = structuredClone(positionInstruments);

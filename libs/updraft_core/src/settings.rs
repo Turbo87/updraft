@@ -90,6 +90,7 @@ pub enum HillshadeDirection {
     #[default]
     Fixed,
     Wind,
+    Sun,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]

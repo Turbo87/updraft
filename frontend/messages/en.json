@@ -196,6 +196,7 @@
   "hillshade_direction_label": "Hillshade direction",
   "hillshade_direction_fixed": "Fixed",
   "hillshade_direction_wind": "Wind direction",
+  "hillshade_direction_sun": "Sun direction",
   "hillshade_direction_change_failed": "Could not change the hillshade direction.",
   "glide_heading": "Glide",
   "flight_controls_heading": "Flight controls",

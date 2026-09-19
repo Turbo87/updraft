@@ -369,7 +369,11 @@ fn hillshade_direction_defaults_and_persists_changes() {
     let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
     assert_eq!(settings.hillshade_direction, HillshadeDirection::Fixed);
     let mut core = Core::new(SettingsSnapshot::default());
-    for direction in [HillshadeDirection::Wind, HillshadeDirection::Fixed] {
+    for direction in [
+        HillshadeDirection::Wind,
+        HillshadeDirection::Sun,
+        HillshadeDirection::Fixed,
+    ] {
         let expected = Settings {
             hillshade_direction: direction,
             ..Settings::default()

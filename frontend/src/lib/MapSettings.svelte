@@ -15,6 +15,7 @@
   let options = $derived([
     { value: 'fixed', label: m.hillshade_direction_fixed() },
     { value: 'wind', label: m.hillshade_direction_wind() },
+    { value: 'sun', label: m.hillshade_direction_sun() },
   ] satisfies ReadonlyArray<{ value: HillshadeDirection; label: string }>);
 
   async function select(direction: HillshadeDirection) {

@@ -1,6 +1,7 @@
 import type { Map } from 'maplibre-gl';
 import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
 import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
+import type { SolarPositionInstruments } from '$lib/protocol/generated/SolarPositionInstruments';
 
 import { convertFileSrc } from '@tauri-apps/api/core';
 
@@ -9,19 +10,37 @@ type HillshadeLighting = {
   'hillshade-illumination-direction': number;
 };
 
+type HillshadeInputs = {
+  wind?: DerivedWindInstruments | null;
+  solarPosition?: SolarPositionInstruments | null;
+};
+
 export function hillshadeLighting(
   direction: HillshadeDirection,
-  wind?: DerivedWindInstruments | null,
+  { wind, solarPosition }: HillshadeInputs = {},
 ): HillshadeLighting {
-  if (direction === 'wind' && wind) {
-    return {
-      'hillshade-illumination-anchor': 'map',
-      'hillshade-illumination-direction': wind.directionDegrees,
-    };
+  switch (direction) {
+    case 'fixed':
+      return fixedLighting();
+    case 'wind':
+      return wind ? mapLighting(wind.directionDegrees) : fixedLighting();
+    case 'sun':
+      return solarPosition ? mapLighting(solarPosition.azimuthDegrees) : fixedLighting();
   }
+  direction satisfies never;
+}
+
+function fixedLighting(): HillshadeLighting {
   return {
     'hillshade-illumination-anchor': 'viewport',
     'hillshade-illumination-direction': 335,
+  };
+}
+
+function mapLighting(direction: number): HillshadeLighting {
+  return {
+    'hillshade-illumination-anchor': 'map',
+    'hillshade-illumination-direction': direction,
   };
 }
 

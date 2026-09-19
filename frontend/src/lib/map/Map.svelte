@@ -192,7 +192,11 @@
     }}
   >
     {#if !testMode}
-      <Terrain {hillshadeDirection} wind={instruments.derived?.wind} />
+      <Terrain
+        {hillshadeDirection}
+        wind={instruments.derived?.wind ?? null}
+        solarPosition={instruments.solarPosition}
+      />
     {/if}
     {#if spritesLoaded}
       <Traffic

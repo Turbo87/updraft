@@ -196,6 +196,7 @@
   "hillshade_direction_label": "Schummerungsrichtung",
   "hillshade_direction_fixed": "Fest",
   "hillshade_direction_wind": "Windrichtung",
+  "hillshade_direction_sun": "Sonnenrichtung",
   "hillshade_direction_change_failed": "Die Schummerungsrichtung konnte nicht geändert werden.",
   "glide_heading": "Gleitflug",
   "flight_controls_heading": "Flugparameter",

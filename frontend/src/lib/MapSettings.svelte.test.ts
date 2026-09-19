@@ -9,7 +9,9 @@ it('selects a hillshade direction and restores the authoritative value after fai
   let screen = await render(MapSettings, { direction: 'fixed', setDirection });
   let fixed = page.getByRole('radio', { name: 'Fixed' });
   let wind = page.getByRole('radio', { name: 'Wind direction' });
+  let sun = page.getByRole('radio', { name: 'Sun direction' });
   await expect.element(fixed).toBeChecked();
+  await expect.element(sun).not.toBeChecked();
 
   await wind.click();
 

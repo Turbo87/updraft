@@ -106,8 +106,9 @@ converts and formats values with the active unit settings.
 The Map page selects the hillshade lighting direction. Fixed is the default. It
 uses MapLibre's conventional viewport-relative direction of 335 degrees. Wind
 direction uses the reported meteorological direction as a map-relative light
-source. It continues to use stale wind data. It uses the fixed direction when
-wind data is unavailable.
+source. Sun direction uses the calculated solar azimuth at the ownship position
+as a map-relative light source. Wind and sun modes continue to use stale data.
+They use the fixed direction when their selected data is unavailable.
 
 The selection is saved across restarts. A settings file without this field uses
 the fixed default. A pending command disables the control. Failure restores the

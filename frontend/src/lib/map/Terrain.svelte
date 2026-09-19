@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
-  import type { HillshadeDirection } from './terrain-style';
+  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { ColorReliefLayer, HillshadeLayer, RasterDEMTileSource } from 'svelte-maplibre-gl';
@@ -8,11 +8,11 @@
   import { hillshadeLighting } from './terrain-style';
 
   type Props = {
-    hillshadeDirection?: HillshadeDirection;
+    hillshadeDirection: HillshadeDirection;
     wind?: DerivedWindInstruments | null;
   };
 
-  let { hillshadeDirection = 'fixed', wind }: Props = $props();
+  let { hillshadeDirection, wind }: Props = $props();
 
   const terrainUrl = convertFileSrc('terrain/0', 'updraft');
   const lighting = $derived(hillshadeLighting(hillshadeDirection, wind));

@@ -7,7 +7,8 @@ use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
     SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled,
-    SetFlarmPositionCorrection, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    SetFlarmPositionCorrection, SetHillshadeDirection, SetLocale, SetMacCready, SetPolar, SetUnits,
+    Start, Tick, Update,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -652,6 +653,21 @@ impl Input for SetClimbAverageMethod {
             return Update::empty();
         }
         core.settings.climb_average_method = self.method;
+        Update::effects(vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ])
+    }
+}
+
+impl Input for SetHillshadeDirection {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.hillshade_direction == self.direction {
+            return Update::empty();
+        }
+        core.settings.hillshade_direction = self.direction;
         Update::effects(vec![
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),

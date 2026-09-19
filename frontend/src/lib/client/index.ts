@@ -1,6 +1,7 @@
 import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
+import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
@@ -126,6 +127,7 @@ export interface UpdraftClient {
   setPolar(polar: PolarId): Promise<void>;
   setArrivalReserve(reserve: number): Promise<void>;
   setClimbAverageMethod(method: ClimbAverageMethod): Promise<void>;
+  setHillshadeDirection(direction: HillshadeDirection): Promise<void>;
   setEnergyCompensation(enabled: boolean): Promise<void>;
   setFlarmPositionCorrection(enabled: boolean): Promise<void>;
   setMacCready(macCready: number): Promise<void>;

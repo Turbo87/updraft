@@ -1,9 +1,8 @@
 import type { Map } from 'maplibre-gl';
 import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
+import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-
-export type HillshadeDirection = 'fixed' | 'wind';
 
 type HillshadeLighting = {
   'hillshade-illumination-anchor': 'map' | 'viewport';

@@ -183,6 +183,7 @@
     terrainGeneration={terrain.current?.generation ?? 0}
     waypoints={waypoints.current}
     instruments={instruments.current}
+    hillshadeDirection={settings.current.hillshadeDirection}
     {mapState}
     {traffic}
     units={settings.current.units}

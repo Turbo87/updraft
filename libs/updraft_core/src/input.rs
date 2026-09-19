@@ -128,6 +128,11 @@ pub struct SetClimbAverageMethod {
     pub method: crate::ClimbAverageMethod,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetHillshadeDirection {
+    pub direction: crate::HillshadeDirection,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SetMacCready {
     pub mac_cready: crate::MacCready,
@@ -235,6 +240,7 @@ impl private::Sealed for SetUnits {}
 impl private::Sealed for SetPolar {}
 impl private::Sealed for SetArrivalReserve {}
 impl private::Sealed for SetClimbAverageMethod {}
+impl private::Sealed for SetHillshadeDirection {}
 impl private::Sealed for SetEnergyCompensation {}
 impl private::Sealed for SetFlarmPositionCorrection {}
 impl private::Sealed for SetMacCready {}

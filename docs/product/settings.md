@@ -12,6 +12,7 @@ current settings topic and sends typed commands for changes.
 
 - `/settings/language`
 - `/settings/units`
+- `/settings/map`
 - `/settings/glide`
 - `/settings/vario`
 - `/settings/traffic`
@@ -49,10 +50,10 @@ new waypoint arrival calculations.
 
 ## Ownership and updates
 
-The core owns the active locale, display units, glide polar, arrival reserve,
-and external-device configuration. The `Settings` topic contains the active
-locale, units, polar, and arrival reserve. The `ExternalDevices` topic publishes
-the separate device projection.
+The core owns the active locale, display units, hillshade direction, glide
+polar, arrival reserve, and external-device configuration. The `Settings` topic
+contains the active locale, units, hillshade direction, polar, and arrival
+reserve. The `ExternalDevices` topic publishes the separate device projection.
 
 The frontend can show an optimistic control value while a command is pending.
 The next topic remains authoritative. A rejected command clears the optimistic
@@ -64,8 +65,8 @@ topic and requests persistence of the complete snapshot.
 ## Persistence
 
 The Tauri shell stores `settings.json` in the application configuration
-directory. The file contains the locale, unit selections, glide polar, arrival
-reserve, and external-device configuration.
+directory. The file contains the locale, unit selections, hillshade direction,
+glide polar, arrival reserve, and external-device configuration.
 
 A missing file loads defaults and remains absent until a setting changes. A
 malformed or unreadable file produces a warning and loads defaults. Updraft
@@ -99,6 +100,18 @@ Unit settings are independent selections for:
 
 The core and protocol retain canonical SI values. Frontend presentation code
 converts and formats values with the active unit settings.
+
+## Map settings
+
+The Map page selects the hillshade lighting direction. Fixed is the default. It
+uses MapLibre's conventional viewport-relative direction of 335 degrees. Wind
+direction uses the reported meteorological direction as a map-relative light
+source. It continues to use stale wind data. It uses the fixed direction when
+wind data is unavailable.
+
+The selection is saved across restarts. A settings file without this field uses
+the fixed default. A pending command disables the control. Failure restores the
+published value and shows an error.
 
 ## Glide settings
 

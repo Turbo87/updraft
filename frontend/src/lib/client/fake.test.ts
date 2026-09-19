@@ -130,6 +130,7 @@ describe('FakeClient', () => {
         polar: 'LS 8',
         arrivalReserve: 304.8,
         climbAverageMethod: 'smoothed20s',
+        hillshadeDirection: 'fixed',
         energyCompensation: true,
         flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
@@ -155,6 +156,7 @@ describe('FakeClient', () => {
         polar: 'LS 8-18',
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
+        hillshadeDirection: 'fixed',
         energyCompensation: true,
         flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
@@ -214,6 +216,7 @@ describe('FakeClient', () => {
         polar: 'LS 8',
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
+        hillshadeDirection: 'fixed',
         energyCompensation: true,
         flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
@@ -255,6 +258,7 @@ describe('FakeClient', () => {
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
         arrivalReserve: 200,
         climbAverageMethod: 'smoothed20s',
+        hillshadeDirection: 'fixed',
         energyCompensation: true,
         flarmPositionCorrection: true,
       },
@@ -619,6 +623,20 @@ it('publishes only changed climb settings', async () => {
   expect(onTopic).toHaveBeenCalledExactlyOnceWith({
     topic: 'settings',
     value: expect.objectContaining({ climbAverageMethod: 'average30s' }),
+  });
+});
+
+it('publishes only changed hillshade direction settings', async () => {
+  let client = new FakeClient();
+  let onTopic = vi.fn();
+  client.subscribe(onTopic);
+  onTopic.mockClear();
+  await client.setHillshadeDirection('fixed');
+  expect(onTopic).not.toHaveBeenCalled();
+  await client.setHillshadeDirection('wind');
+  expect(onTopic).toHaveBeenCalledExactlyOnceWith({
+    topic: 'settings',
+    value: expect.objectContaining({ hillshadeDirection: 'wind' }),
   });
 });
 

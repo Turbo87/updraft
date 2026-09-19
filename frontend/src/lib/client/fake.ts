@@ -3,6 +3,7 @@ import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMet
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
+import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
@@ -83,6 +84,7 @@ export class FakeClient implements UpdraftClient {
     climbAverageMethod: 'smoothed20s',
     energyCompensation: true,
     flarmPositionCorrection: true,
+    hillshadeDirection: 'fixed',
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 
@@ -418,6 +420,12 @@ export class FakeClient implements UpdraftClient {
   async setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
     if (this.#settings.climbAverageMethod === method) return;
     this.#settings = { ...this.#settings, climbAverageMethod: method };
+    this.emit({ topic: 'settings', value: this.#settings });
+  }
+
+  async setHillshadeDirection(direction: HillshadeDirection): Promise<void> {
+    if (this.#settings.hillshadeDirection === direction) return;
+    this.#settings = { ...this.#settings, hillshadeDirection: direction };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

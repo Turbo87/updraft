@@ -28,6 +28,7 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
     verticalSpeed: 'm/s' as const,
   };
   let component = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     client,
     mapState,
     units,

@@ -8,9 +8,10 @@ use tauri_plugin_updraft::{BondedBluetoothDevices, UpdraftMobileExt};
 use tokio::sync::Mutex;
 use updraft_core::{
     AddExternalDevice, AirspaceCatalog, ConnectionSpec, DeleteExternalDevice, EditExternalDevice,
-    ExternalDeviceId, GetAirspaceSnapshot, InvalidExternalDeviceOrder, ReorderExternalDevices,
-    ReplaceAirspaceCatalog, SetExternalDeviceEnabled, SetLocale, SetPolar, SetUnits, Topic,
-    UnitSettings, UnknownExternalDevice,
+    ExternalDeviceId, GetAirspaceSnapshot, HillshadeDirection, InvalidExternalDeviceOrder,
+    ReorderExternalDevices, ReplaceAirspaceCatalog, SetExternalDeviceEnabled,
+    SetHillshadeDirection, SetLocale, SetPolar, SetUnits, Topic, UnitSettings,
+    UnknownExternalDevice,
 };
 
 pub struct AirspaceCommandState {
@@ -319,6 +320,17 @@ pub async fn set_climb_average_method(
 }
 
 #[tauri::command]
+pub async fn set_hillshade_direction(
+    direction: HillshadeDirection,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(SetHillshadeDirection { direction })
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+#[tauri::command]
 pub async fn set_arrival_reserve(
     reserve: updraft_core::ArrivalReserve,
     handle: tauri::State<'_, DriverHandle>,
@@ -484,6 +496,7 @@ mod tests {
                 set_ballast,
                 set_arrival_reserve,
                 set_climb_average_method,
+                set_hillshade_direction,
                 set_energy_compensation,
                 set_flarm_position_correction,
                 set_polar,
@@ -670,6 +683,20 @@ mod tests {
             claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
         }
         let input = request("set_climb_average_method", json!({ "method": "unknown" }));
+        claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn hillshade_direction_command_accepts_only_known_directions() {
+        let app = app();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("the IPC test webview should build");
+        for direction in ["fixed", "wind"] {
+            let input = request("set_hillshade_direction", json!({ "direction": direction }));
+            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+        }
+        let input = request("set_hillshade_direction", json!({ "direction": "unknown" }));
         claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
     }
 

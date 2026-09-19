@@ -1,6 +1,7 @@
 import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
+import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
@@ -320,6 +321,10 @@ export class TauriClient implements UpdraftClient {
 
   setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
     return invoke('set_climb_average_method', { method });
+  }
+
+  setHillshadeDirection(direction: HillshadeDirection): Promise<void> {
+    return invoke('set_hillshade_direction', { direction });
   }
 
   setArrivalReserve(reserve: number): Promise<void> {

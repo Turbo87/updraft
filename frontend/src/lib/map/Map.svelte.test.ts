@@ -53,6 +53,7 @@ async function renderMap(
 ): Promise<MapLibreMap> {
   let mapState = new MapState();
   await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments,
     mapState,
     traffic,
@@ -355,6 +356,7 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
 it('publishes the map and camera values through the shared map state', async () => {
   let mapState = new MapState();
   await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments,
     traffic: new TrafficStore(),
     units,
@@ -387,6 +389,7 @@ it('returns to follow mode without a position and follows the next position', as
   let mapState = new MapState();
   let traffic = new TrafficStore();
   let view = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments,
     mapState,
     traffic,
@@ -452,6 +455,7 @@ it('returns to follow mode without a position and follows the next position', as
 it('updates the camera and ownship only when their values change', async () => {
   let mapState = new MapState();
   let view = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments: positionInstruments,
     mapState,
     traffic: new TrafficStore(),

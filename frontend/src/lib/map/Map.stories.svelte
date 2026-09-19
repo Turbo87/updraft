@@ -111,6 +111,7 @@
   const { Story } = defineMeta({
     title: 'Map/Map',
     component: Map,
+    args: { hillshadeDirection: 'fixed' },
     parameters: { layout: 'fullscreen' },
   });
 

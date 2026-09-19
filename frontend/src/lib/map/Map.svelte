@@ -8,6 +8,7 @@
   import type { UpdraftClient } from '$lib/client';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
+  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -45,6 +46,7 @@
     waypoints?: WaypointStatus;
     testWaypointData?: GeoJSONSourceSpecification['data'];
     instruments: Instruments;
+    hillshadeDirection: HillshadeDirection;
     mapState: MapState;
     traffic: TrafficStore;
     units: UnitSettings;
@@ -60,6 +62,7 @@
     basemapGeneration = 0,
     terrainGeneration = 0,
     instruments,
+    hillshadeDirection,
     mapState,
     traffic,
     units,
@@ -184,7 +187,7 @@
     }}
   >
     {#if !testMode}
-      <Terrain />
+      <Terrain {hillshadeDirection} wind={instruments.derived?.wind} />
     {/if}
     {#if spritesLoaded}
       <Traffic

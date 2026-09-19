@@ -10,6 +10,7 @@ import { waypointsFixture } from './waypoint.fixture';
 it('renders waypoint types and removes the source when all files are removed', async () => {
   let mapState = new MapState();
   let component = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     mapState,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },

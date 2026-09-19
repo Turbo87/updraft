@@ -3,6 +3,7 @@
   import type { MapState } from '$lib/map-state.svelte';
   import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
   import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -26,6 +27,7 @@
     terrainGeneration?: number;
     waypoints?: WaypointStatus;
     instruments: Instruments;
+    hillshadeDirection: HillshadeDirection;
     mapState: MapState;
     traffic: TrafficStore;
     units: UnitSettings;
@@ -40,6 +42,7 @@
     terrainGeneration,
     waypoints,
     instruments,
+    hillshadeDirection,
     mapState,
     traffic,
     units,
@@ -67,6 +70,7 @@
       {terrainGeneration}
       {waypoints}
       {instruments}
+      {hillshadeDirection}
       {mapState}
       {traffic}
       {units}

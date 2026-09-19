@@ -131,7 +131,7 @@ documents for accepted behavior.
 
 - [x] **terrain-downloads** — manage Enroute terrain through the country catalog and shared download queue, with installed metadata, manual updates, cancellation, and recovery. Physical Android background and screen-lock validation remains pending. _(needs: basemap-downloads, terrain-hillshade)_
 
-- [x] **terrain-hillshade** — display offline Enroute terrain with Igor hillshade and installed source attribution. _(needs: offline-basemap-serving)_
+- [x] **terrain-hillshade** — display offline Enroute terrain with Igor hillshade, selectable fixed or wind-relative lighting, and installed source attribution. _(needs: offline-basemap-serving)_
 - [x] **terrain-colours** — show elevation colours beneath land cover from the same offline terrain source. _(needs: terrain-hillshade)_
 - [ ] **dem** — `libs/updraft_dem`: DEM tile format, elevation lookup, download manifest format. _(needs: geo)_
 - [ ] **agl-terrain** — AGL computation in core. _(needs: dem)_

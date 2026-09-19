@@ -180,6 +180,7 @@
   "traffic_id_label": "ID",
   "traffic_type_label": "Typ",
   "traffic_target_heading": "Ziel",
+  "identity_heading": "Identität",
   "position_label": "Position",
   "track_label": "Kurs",
   "alarm_level_label": "Warnstufe",

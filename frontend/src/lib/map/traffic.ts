@@ -35,7 +35,11 @@ export function trafficFeature(
     altitude === null
       ? null
       : `${Math.round(convertAltitude(altitude, altitudeUnit))} ${altitudeUnit}`;
-  let name = target.flarmnet?.callSign || target.flarmnet?.registration;
+  let name =
+    target.broadcastIdentity?.callsign ||
+    target.broadcastIdentity?.registration ||
+    target.flarmnet?.callSign ||
+    target.flarmnet?.registration;
   let thermalTraffic = ['unknown', 'glider', 'hangGlider', 'paraglider'].includes(
     target.trafficType,
   );

@@ -94,6 +94,15 @@ pub fn finite_f64(field: &[u8]) -> Option<f64> {
     value.is_finite().then_some(value)
 }
 
+pub(crate) fn hex_digit(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        _ => None,
+    }
+}
+
 /// Converts an NMEA `[d]ddmm.mmmm` magnitude plus a hemisphere letter into
 /// signed decimal degrees.
 fn coordinate(value: &[u8], hemisphere: &[u8]) -> Option<f64> {

@@ -1,7 +1,7 @@
 //! Calculates solar position and daily solar events.
 
 use std::{error::Error, f64::consts::PI, fmt};
-use time::{OffsetDateTime, UtcOffset};
+use time::{Date, Duration, OffsetDateTime, UtcOffset};
 use updraft_geo::LatLon;
 use updraft_units::Angle;
 
@@ -41,6 +41,76 @@ impl fmt::Display for InvalidLocation {
 
 impl Error for InvalidLocation {}
 
+/// An error from calculating a complete set of daily solar events.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SolarEventsError {
+    /// The coordinate is not valid.
+    InvalidLocation,
+    /// An event falls outside the supported date-time range.
+    DateOutOfRange,
+}
+
+impl fmt::Display for SolarEventsError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidLocation => InvalidLocation.fmt(formatter),
+            Self::DateOutOfRange => {
+                formatter.write_str("a solar event is outside the supported date-time range")
+            }
+        }
+    }
+}
+
+impl Error for SolarEventsError {}
+
+/// An event at a specified solar elevation, or the reason it does not occur.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SolarEvent {
+    /// The sun crosses the specified elevation at this UTC instant.
+    Occurs(OffsetDateTime),
+    /// The sun remains above the specified elevation.
+    AlwaysAbove,
+    /// The sun remains below the specified elevation.
+    AlwaysBelow,
+}
+
+/// Solar noon and the daylight and civil-twilight events for one date.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SolarEvents {
+    solar_noon: OffsetDateTime,
+    sunrise: SolarEvent,
+    sunset: SolarEvent,
+    civil_dawn: SolarEvent,
+    civil_dusk: SolarEvent,
+}
+
+impl SolarEvents {
+    /// Returns the local solar transit as a UTC instant.
+    pub const fn solar_noon(self) -> OffsetDateTime {
+        self.solar_noon
+    }
+
+    /// Returns the apparent sunrise event at -0.833 degrees elevation.
+    pub const fn sunrise(self) -> SolarEvent {
+        self.sunrise
+    }
+
+    /// Returns the apparent sunset event at -0.833 degrees elevation.
+    pub const fn sunset(self) -> SolarEvent {
+        self.sunset
+    }
+
+    /// Returns the civil dawn event at -6 degrees elevation.
+    pub const fn civil_dawn(self) -> SolarEvent {
+        self.civil_dawn
+    }
+
+    /// Returns the civil dusk event at -6 degrees elevation.
+    pub const fn civil_dusk(self) -> SolarEvent {
+        self.civil_dusk
+    }
+}
+
 /// Calculates the sun's apparent azimuth and geometric elevation.
 ///
 /// The calculation uses UTC and the NOAA solar equations. It does not apply
@@ -79,6 +149,34 @@ pub fn solar_position(
     Ok(SolarPosition {
         azimuth: Angle::from_degrees(azimuth),
         elevation: Angle::from_radians(elevation),
+    })
+}
+
+/// Calculates solar noon, sunrise, sunset, civil dawn, and civil dusk.
+///
+/// The date selects the solar transit for that date at the specified
+/// longitude. Event times are UTC instants and can fall on an adjacent UTC
+/// date. Sunrise and sunset use -0.833 degrees elevation. Civil twilight uses
+/// -6 degrees elevation.
+pub fn solar_events(location: LatLon, date: Date) -> Result<SolarEvents, SolarEventsError> {
+    let latitude = location.latitude().as_degrees();
+    let longitude = location.longitude().as_degrees();
+    validate_location(latitude, longitude).map_err(|_| SolarEventsError::InvalidLocation)?;
+
+    let midnight = date.midnight().assume_utc();
+    let julian_day = julian_day(midnight);
+    let solar_noon_minutes = solar_noon_minutes(julian_day, longitude);
+    let solar_noon = instant_at_minutes(midnight, solar_noon_minutes)?;
+    let (sunrise, sunset) = solar_crossings(julian_day, midnight, latitude, longitude, -0.833)?;
+    let (civil_dawn, civil_dusk) =
+        solar_crossings(julian_day, midnight, latitude, longitude, -6.0)?;
+
+    Ok(SolarEvents {
+        solar_noon,
+        sunrise,
+        sunset,
+        civil_dawn,
+        civil_dusk,
     })
 }
 
@@ -125,6 +223,95 @@ fn solar_coordinates(julian_day: f64) -> SolarCoordinates {
         declination_radians: declination,
         equation_of_time_minutes: equation_of_time,
     }
+}
+
+fn solar_noon_minutes(julian_day: f64, longitude: f64) -> f64 {
+    let mut minutes = 720.0 - 4.0 * longitude;
+    for _ in 0..2 {
+        let coordinates = solar_coordinates(julian_day + minutes / 1_440.0);
+        minutes = 720.0 - 4.0 * longitude - coordinates.equation_of_time_minutes;
+    }
+    minutes
+}
+
+fn solar_crossings(
+    julian_day: f64,
+    midnight: OffsetDateTime,
+    latitude: f64,
+    longitude: f64,
+    elevation: f64,
+) -> Result<(SolarEvent, SolarEvent), SolarEventsError> {
+    Ok((
+        solar_event(
+            julian_day,
+            midnight,
+            latitude,
+            longitude,
+            elevation,
+            CrossingDirection::Morning,
+        )?,
+        solar_event(
+            julian_day,
+            midnight,
+            latitude,
+            longitude,
+            elevation,
+            CrossingDirection::Evening,
+        )?,
+    ))
+}
+
+fn solar_event(
+    julian_day: f64,
+    midnight: OffsetDateTime,
+    latitude: f64,
+    longitude: f64,
+    elevation: f64,
+    direction: CrossingDirection,
+) -> Result<SolarEvent, SolarEventsError> {
+    let mut minutes = solar_noon_minutes(julian_day, longitude);
+    for _ in 0..2 {
+        let coordinates = solar_coordinates(julian_day + minutes / 1_440.0);
+        let hour_angle = match hour_angle(latitude, coordinates.declination_radians, elevation) {
+            Ok(hour_angle) => hour_angle,
+            Err(event) => return Ok(event),
+        };
+        let signed_hour_angle = match direction {
+            CrossingDirection::Morning => hour_angle,
+            CrossingDirection::Evening => -hour_angle,
+        };
+        minutes =
+            720.0 - 4.0 * (longitude + signed_hour_angle) - coordinates.equation_of_time_minutes;
+    }
+    Ok(SolarEvent::Occurs(instant_at_minutes(midnight, minutes)?))
+}
+
+#[derive(Clone, Copy)]
+enum CrossingDirection {
+    Morning,
+    Evening,
+}
+
+fn hour_angle(latitude: f64, declination: f64, elevation: f64) -> Result<f64, SolarEvent> {
+    let latitude = latitude.to_radians();
+    let cosine = (elevation.to_radians().sin() - latitude.sin() * declination.sin())
+        / (latitude.cos() * declination.cos());
+    if cosine > 1.0 {
+        Err(SolarEvent::AlwaysBelow)
+    } else if cosine < -1.0 {
+        Err(SolarEvent::AlwaysAbove)
+    } else {
+        Ok(cosine.acos().to_degrees())
+    }
+}
+
+fn instant_at_minutes(
+    midnight: OffsetDateTime,
+    minutes: f64,
+) -> Result<OffsetDateTime, SolarEventsError> {
+    midnight
+        .checked_add(Duration::seconds_f64(minutes * 60.0))
+        .ok_or(SolarEventsError::DateOutOfRange)
 }
 
 fn julian_day(instant: OffsetDateTime) -> f64 {

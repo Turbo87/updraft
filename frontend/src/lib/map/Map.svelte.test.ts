@@ -507,3 +507,30 @@ it('updates the camera and ownship only when their values change', async () => {
   await page.getByRole('button', { name: 'Return to position' }).click();
   expect(camera).toHaveBeenCalledTimes(1);
 });
+
+it('stops following before a user rotates the map', async () => {
+  let mapState = new MapState();
+  let view = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
+    instruments: positionInstruments,
+    mapState,
+    traffic: new TrafficStore(),
+    units,
+    airspace: { generation: 0, sources: [] },
+    testMode: true,
+  });
+  await vi.waitFor(() => expect(mapState.map?.loaded()).toBe(true));
+  let map = mapState.map!;
+  let camera = vi.spyOn(map, 'easeTo');
+
+  map.fire('rotatestart');
+  expect(mapState.followMode).toBe(true);
+  map.fire('rotatestart', { originalEvent: new MouseEvent('mousedown') });
+  expect(mapState.followMode).toBe(false);
+
+  camera.mockClear();
+  let updated = structuredClone(positionInstruments);
+  updated.gps.position.latitudeDegrees += 0.01;
+  await view.rerender({ instruments: updated });
+  expect(camera).not.toHaveBeenCalled();
+});

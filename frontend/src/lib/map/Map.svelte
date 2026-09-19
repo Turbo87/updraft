@@ -152,6 +152,10 @@
     mapState.followMode = false;
   }
 
+  function handleRotateStart(event: MapEventType['rotatestart']) {
+    if (event.originalEvent) enterManualMode();
+  }
+
   function resumeFollowing() {
     map?.stop();
     mapState.followMode = true;
@@ -182,6 +186,7 @@
     onerror={handleSourceError}
     onclick={inspectMapPosition}
     ondragstart={enterManualMode}
+    onrotatestart={handleRotateStart}
     onload={() => {
       spritesLoaded = true;
     }}

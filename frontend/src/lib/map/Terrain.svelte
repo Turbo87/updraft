@@ -1,8 +1,23 @@
 <script lang="ts">
+  import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
+  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
+  import type { SolarPositionInstruments } from '$lib/protocol/generated/SolarPositionInstruments';
+
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { ColorReliefLayer, HillshadeLayer, RasterDEMTileSource } from 'svelte-maplibre-gl';
 
+  import { hillshadeLighting } from './terrain-style';
+
+  type Props = {
+    hillshadeDirection: HillshadeDirection;
+    wind: DerivedWindInstruments | null;
+    solarPosition: SolarPositionInstruments | null;
+  };
+
+  let { hillshadeDirection, wind, solarPosition }: Props = $props();
+
   const terrainUrl = convertFileSrc('terrain/0', 'updraft');
+  const lighting = $derived(hillshadeLighting(hillshadeDirection, { wind, solarPosition }));
 </script>
 
 <RasterDEMTileSource
@@ -50,6 +65,7 @@
     id="terrain-hillshade"
     beforeId="waterway"
     paint={{
+      ...lighting,
       'hillshade-method': 'igor',
       'hillshade-shadow-color': 'rgba(0, 0, 0, 0.65)',
     }}

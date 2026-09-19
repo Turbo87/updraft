@@ -13,6 +13,7 @@ export const INFOBOX_INSTRUMENTS: Instruments = {
   trueAirspeed: { metersPerSecond: 30, stale: false },
   terrainElevation: { meters: 465, stale: false },
   altitudeAgl: { meters: 780, stale: false },
+  solarPosition: null,
   derived: {
     altitude: { altitudeMslMeters: 1245, stale: false },
     bank: { angleDegrees: 12, stale: false },

@@ -54,6 +54,14 @@
     </Card>
     <Card>
       <ListRow
+        href="/settings/map"
+        icon="i-mdi-map-outline"
+        label={m.map_settings_heading()}
+        size="large"
+      />
+    </Card>
+    <Card>
+      <ListRow
         href="/settings/glide"
         icon="i-mdi-airplane"
         label={m.glide_heading()}

@@ -61,6 +61,7 @@ describe('ExternalDevicesStore', () => {
         polar: 'LS 8',
         arrivalReserve: 200,
         climbAverageMethod: 'normalizedEma',
+        hillshadeDirection: 'fixed',
         energyCompensation: true,
         flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

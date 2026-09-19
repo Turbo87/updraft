@@ -6,6 +6,7 @@ expression: snapshot
   "flarmPositionCorrection": true,
   "energyCompensation": true,
   "climbAverageMethod": "smoothed20s",
+  "hillshadeDirection": "fixed",
   "locale": "de",
   "polar": "LS 8",
   "arrivalReserve": 200.0,

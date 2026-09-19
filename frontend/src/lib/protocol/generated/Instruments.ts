@@ -2,9 +2,10 @@
 import type { AltitudeInstrument } from "./AltitudeInstrument";
 import type { DerivedInstruments } from "./DerivedInstruments";
 import type { GpsInstruments } from "./GpsInstruments";
+import type { SolarPositionInstruments } from "./SolarPositionInstruments";
 import type { SpeedInstrument } from "./SpeedInstrument";
 
 /**
  * Fast-changing instrument values grouped by source-selection domain.
  */
-export type Instruments = { gps: GpsInstruments | null, pressureAltitude: AltitudeInstrument | null, trueAirspeed: SpeedInstrument | null, derived: DerivedInstruments | null, terrainElevation: AltitudeInstrument | null, altitudeAgl: AltitudeInstrument | null, };
+export type Instruments = { gps: GpsInstruments | null, pressureAltitude: AltitudeInstrument | null, trueAirspeed: SpeedInstrument | null, derived: DerivedInstruments | null, terrainElevation: AltitudeInstrument | null, altitudeAgl: AltitudeInstrument | null, solarPosition: SolarPositionInstruments | null, };

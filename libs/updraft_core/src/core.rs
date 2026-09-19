@@ -7,7 +7,8 @@ use crate::input::{
     AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
     GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
     SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled,
-    SetFlarmPositionCorrection, SetLocale, SetMacCready, SetPolar, SetUnits, Start, Tick, Update,
+    SetFlarmPositionCorrection, SetHillshadeDirection, SetLocale, SetMacCready, SetPolar, SetUnits,
+    Start, Tick, Update, UtcTick,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -49,6 +50,8 @@ pub struct Core {
     traffic: TrafficState,
     flarmnet: Arc<FlarmnetDatabase>,
     terrain_elevation: Option<(crate::LatLon, f64)>,
+    device_utc: Option<Timed<UtcInstant>>,
+    solar_position: Option<crate::SolarPositionInstruments>,
 }
 
 impl Core {
@@ -80,6 +83,8 @@ impl Core {
             traffic: TrafficState::default(),
             flarmnet: Arc::default(),
             terrain_elevation: None,
+            device_utc: None,
+            solar_position: None,
         }
     }
 
@@ -331,10 +336,45 @@ impl Core {
     }
 
     fn reevaluate_flight_data(&mut self, at: Timestamp) {
+        let previous_gps = self.gps;
         self.select_gps(at);
         self.select_pressure_altitude(at);
         self.select_true_airspeed(at);
         self.update_sensor_fusion();
+        if self.gps != previous_gps {
+            self.update_solar_position(at);
+        }
+    }
+
+    fn update_solar_position(&mut self, at: Timestamp) {
+        let Some(selected) = self.gps.selected() else {
+            self.solar_position = None;
+            return;
+        };
+        let gps_utc = selected.value.fix_time.and_then(|time| match time.value {
+            crate::FixTime::UtcInstant(utc) => Some(Timed::new(utc, time.ingested_at)),
+            crate::FixTime::UtcTimeOfDay(_) => None,
+        });
+        let Some(utc) = gps_utc.or(self.device_utc) else {
+            self.solar_position = None;
+            return;
+        };
+        let unix_seconds = utc
+            .value
+            .saturating_add(at.saturating_since(utc.ingested_at))
+            .unix_milliseconds()
+            .div_euclid(1_000);
+        let Some(instant) = time::OffsetDateTime::from_unix_timestamp(unix_seconds).ok() else {
+            self.solar_position = None;
+            return;
+        };
+        self.solar_position = updraft_sun::solar_position(selected.value.position, instant)
+            .ok()
+            .map(|position| crate::SolarPositionInstruments {
+                azimuth_degrees: position.azimuth().as_degrees(),
+                elevation_degrees: position.elevation().as_degrees(),
+                stale: matches!(self.gps, DomainState::LastKnown(_)),
+            });
     }
 
     fn update_sensor_fusion(&mut self) {
@@ -434,6 +474,7 @@ impl Core {
         if selected_source_was_reset && matches!(self.gps, DomainState::LastKnown(_)) {
             self.gps = DomainState::Unavailable;
         }
+        self.update_solar_position(at);
     }
 
     fn instruments(&self) -> Instruments {
@@ -460,6 +501,7 @@ impl Core {
             derived,
             terrain_elevation,
             altitude_agl,
+            solar_position: self.solar_position,
         }
     }
 }
@@ -499,20 +541,38 @@ impl Input for Tick {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
-        let before = core.instruments();
-        core.reevaluate_flight_data(at);
-        let after = core.instruments();
-
-        let mut effects = Vec::new();
-        if after != before {
-            effects.push(Effect::emit(after.as_topic()));
-        }
-        let changes = core.traffic.expire(at);
-        if let Some(delta) = changes.into_delta(&core.flarmnet) {
-            effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
-        }
-        Update::effects(effects)
+        apply_tick(core, at, None)
     }
+}
+
+impl Input for UtcTick {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        apply_tick(core, at, Some(self.utc))
+    }
+}
+
+fn apply_tick(core: &mut Core, at: Timestamp, utc: Option<UtcInstant>) -> Update<()> {
+    let before = core.instruments();
+    if let Some(utc) = utc {
+        core.device_utc = Some(Timed::new(utc, at));
+    }
+    core.reevaluate_flight_data(at);
+    if utc.is_some() {
+        core.update_solar_position(at);
+    }
+    let after = core.instruments();
+
+    let mut effects = Vec::new();
+    if after != before {
+        effects.push(Effect::emit(after.as_topic()));
+    }
+    let changes = core.traffic.expire(at);
+    if let Some(delta) = changes.into_delta(&core.flarmnet) {
+        effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
+    }
+    Update::effects(effects)
 }
 
 impl Input for Bytes {
@@ -652,6 +712,21 @@ impl Input for SetClimbAverageMethod {
             return Update::empty();
         }
         core.settings.climb_average_method = self.method;
+        Update::effects(vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ])
+    }
+}
+
+impl Input for SetHillshadeDirection {
+    type Response = ();
+
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if core.settings.hillshade_direction == self.direction {
+            return Update::empty();
+        }
+        core.settings.hillshade_direction = self.direction;
         Update::effects(vec![
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),

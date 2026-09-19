@@ -16,6 +16,7 @@ const instruments = {
   trueAirspeed: null,
   terrainElevation: null,
   altitudeAgl: null,
+  solarPosition: null,
   derived: null,
 };
 
@@ -32,6 +33,7 @@ const positionInstruments = {
   trueAirspeed: null,
   terrainElevation: null,
   altitudeAgl: null,
+  solarPosition: null,
   derived: null,
 };
 
@@ -53,6 +55,7 @@ async function renderMap(
 ): Promise<MapLibreMap> {
   let mapState = new MapState();
   await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments,
     mapState,
     traffic,
@@ -355,6 +358,7 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
 it('publishes the map and camera values through the shared map state', async () => {
   let mapState = new MapState();
   await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments,
     traffic: new TrafficStore(),
     units,
@@ -387,6 +391,7 @@ it('returns to follow mode without a position and follows the next position', as
   let mapState = new MapState();
   let traffic = new TrafficStore();
   let view = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments,
     mapState,
     traffic,
@@ -404,7 +409,7 @@ it('returns to follow mode without a position and follows the next position', as
   });
   let initialCenter = map.getCenter().toArray();
 
-  map.fire('dragstart');
+  map.fire('movestart', { originalEvent: new MouseEvent('mousedown') });
   expect(mapState.followMode).toBe(false);
   let returnButton = page.getByRole('button', { name: 'Return to position' });
   await expect.element(returnButton).toBeVisible();
@@ -452,6 +457,7 @@ it('returns to follow mode without a position and follows the next position', as
 it('updates the camera and ownship only when their values change', async () => {
   let mapState = new MapState();
   let view = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     instruments: positionInstruments,
     mapState,
     traffic: new TrafficStore(),
@@ -495,11 +501,42 @@ it('updates the camera and ownship only when their values change', async () => {
 
   camera.mockClear();
   ownship.mockClear();
-  map.fire('dragstart');
+  map.fire('movestart', { originalEvent: new MouseEvent('mousedown') });
   map.jumpTo({ center: [7, 51] });
   await view.rerender({ instruments: structuredClone(updated) });
   expect(camera).not.toHaveBeenCalled();
   expect(ownship).not.toHaveBeenCalled();
   await page.getByRole('button', { name: 'Return to position' }).click();
   expect(camera).toHaveBeenCalledTimes(1);
+});
+
+it('stops following before a user changes the map camera', async () => {
+  let mapState = new MapState();
+  let view = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
+    instruments: positionInstruments,
+    mapState,
+    traffic: new TrafficStore(),
+    units,
+    airspace: { generation: 0, sources: [] },
+    testMode: true,
+  });
+  await vi.waitFor(() => expect(mapState.map?.loaded()).toBe(true));
+  let map = mapState.map!;
+  let camera = vi.spyOn(map, 'easeTo');
+
+  map.fire('movestart');
+  expect(mapState.followMode).toBe(true);
+
+  for (let originalEvent of [new MouseEvent('mousedown'), new TouchEvent('touchstart')]) {
+    mapState.followMode = true;
+    map.fire('movestart', { originalEvent });
+    expect(mapState.followMode).toBe(false);
+  }
+
+  camera.mockClear();
+  let updated = structuredClone(positionInstruments);
+  updated.gps.position.latitudeDegrees += 0.01;
+  await view.rerender({ instruments: updated });
+  expect(camera).not.toHaveBeenCalled();
 });

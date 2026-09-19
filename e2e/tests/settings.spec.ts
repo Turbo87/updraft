@@ -289,6 +289,16 @@ test('keeps the arrival reserve when revisiting settings', async ({ page }) => {
   await expect(reserve).toHaveValue('350');
 });
 
+test('keeps the sun hillshade direction when revisiting map settings', async ({ page }) => {
+  await page.goto('/settings/map?testMode=1');
+  let sun = page.getByRole('radio', { name: 'Sun direction' });
+  await sun.click();
+  await expect(sun).toBeChecked();
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Map', exact: true }).click();
+  await expect(sun).toBeChecked();
+});
+
 test('keeps MC during navigation and resets it on restart', async ({ page }) => {
   await page.goto('/settings?testMode=1');
   await expect(page.getByRole('spinbutton')).toHaveCount(0);

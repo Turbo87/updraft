@@ -75,6 +75,16 @@ pub struct SpeedInstrument {
     pub stale: bool,
 }
 
+/// The sun's position at ownship with the ownship location freshness.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct SolarPositionInstruments {
+    pub azimuth_degrees: f64,
+    pub elevation_degrees: f64,
+    pub stale: bool,
+}
+
 /// Values that the sensor-fusion estimate derives from selected sensor data.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -142,6 +152,7 @@ pub struct Instruments {
     pub derived: Option<Box<DerivedInstruments>>,
     pub terrain_elevation: Option<AltitudeInstrument>,
     pub altitude_agl: Option<AltitudeInstrument>,
+    pub solar_position: Option<SolarPositionInstruments>,
 }
 
 impl Instruments {
@@ -205,6 +216,11 @@ mod tests {
     #[test]
     fn topic_serializes_to_tagged_camel_case_json() {
         let topic = Instruments {
+            solar_position: Some(SolarPositionInstruments {
+                azimuth_degrees: 194.3,
+                elevation_degrees: 39.9,
+                stale: false,
+            }),
             terrain_elevation: Some(AltitudeInstrument {
                 meters: 100.0,
                 stale: false,
@@ -314,6 +330,7 @@ mod tests {
             "flarmPositionCorrection": true,
             "energyCompensation": true,
             "climbAverageMethod": "smoothed20s",
+            "hillshadeDirection": "fixed",
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

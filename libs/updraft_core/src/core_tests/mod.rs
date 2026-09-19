@@ -4,6 +4,7 @@ mod flarm_reference;
 mod ownship;
 mod pressure_altitude;
 mod settings;
+mod solar;
 mod support;
 mod terrain;
 mod traffic;

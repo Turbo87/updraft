@@ -4,10 +4,13 @@ Status: Current behavior
 
 Updraft shows hillshade and elevation colours automatically from offline
 Enroute `.terrain` files.
-The map uses the Igor method with MapLibre's default intensity and viewport
-lighting. Shadows use black at 65% opacity. The hillshade sits before the
-basemap's `waterway` layer. Terrain does not change the camera pitch or enable
-a 3D surface.
+The map uses the Igor method with MapLibre's default intensity. The default
+light source uses the conventional viewport-relative direction of 335 degrees.
+The Map settings can instead use the reported meteorological wind direction as
+a map-relative light source. Stale wind remains usable. Missing wind falls back
+to the fixed direction. Shadows use black at 65% opacity. The hillshade sits
+before the basemap's `waterway` layer. Terrain does not change the camera pitch
+or enable a 3D surface.
 
 Elevation colours sit before the basemap's `water` layer, beneath land cover.
 The colour ramp uses 50% opacity and interpolates linearly between elevation

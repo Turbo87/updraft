@@ -55,6 +55,11 @@ anchors the selected GPS snapshot.
 Android GNSS supplies a complete UTC instant and ellipsoid altitude. The core
 uses EGM96 to convert ellipsoid altitude to mean-sea-level altitude.
 
+The core calculates the solar position for the selected ownship position. It
+prefers a complete UTC instant from the selected GPS source. It uses the device
+UTC instant when the GPS source has no date. Monotonic elapsed time advances
+both UTC sources between reports.
+
 ## Pressure altitude
 
 The current core accepts pressure altitude from a valid `$PGRMZ` value. Each
@@ -143,9 +148,9 @@ a dash. The infobox retains the selected value's freshness state.
 ## Frontend projection
 
 The `Instruments` topic contains optional GPS, pressure-altitude, true-airspeed,
-and derived objects. The derived object contains optional raw, smoothed, and
-energy-compensated vertical speeds, netto, and relative vario. The topic does
-not publish source identity.
+solar-position, and derived objects. The derived object contains optional raw,
+smoothed, and energy-compensated vertical speeds, netto, and relative vario.
+The topic does not publish source identity.
 
 Canonical values cross the protocol in decimal degrees, metres, metres per
 second, and milliseconds. Frontend code applies display units and locale

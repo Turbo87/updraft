@@ -8,6 +8,7 @@ const EMPTY: Settings = {
   climbAverageMethod: 'smoothed20s',
   energyCompensation: true,
   flarmPositionCorrection: true,
+  hillshadeDirection: 'fixed',
   units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
 };
 

@@ -21,6 +21,7 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
     sources: [{ type: 'active' as const, sourceName: 'local.cup', waypointCount: 3, warnings: [] }],
   };
   let component = await render(MapComponent, {
+    hillshadeDirection: 'fixed',
     client,
     mapState,
     waypoints,
@@ -32,6 +33,7 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

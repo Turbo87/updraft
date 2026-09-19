@@ -81,6 +81,11 @@ expression: topic
     "altitudeAgl": {
       "meters": 200.0,
       "stale": false
+    },
+    "solarPosition": {
+      "azimuthDegrees": 194.3,
+      "elevationDegrees": 39.9,
+      "stale": false
     }
   }
 }

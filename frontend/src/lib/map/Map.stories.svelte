@@ -33,6 +33,7 @@
     trueAirspeed: null,
     terrainElevation: null,
     altitudeAgl: null,
+    solarPosition: null,
     derived: null,
   } satisfies Instruments;
 
@@ -111,6 +112,7 @@
   const { Story } = defineMeta({
     title: 'Map/Map',
     component: Map,
+    args: { hillshadeDirection: 'fixed' },
     parameters: { layout: 'fullscreen' },
   });
 
@@ -133,6 +135,7 @@
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
     mapState: new MapState(),
@@ -193,6 +196,7 @@
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
     units,

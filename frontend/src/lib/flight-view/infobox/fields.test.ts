@@ -52,6 +52,7 @@ describe('flightInfoboxes', () => {
           stale: true,
         },
         altitudeAgl: { meters: 780, stale: true },
+        solarPosition: null,
         derived: {
           ...EMPTY_DERIVED_INSTRUMENTS,
           altitude: { altitudeMslMeters: 1245, stale: false },

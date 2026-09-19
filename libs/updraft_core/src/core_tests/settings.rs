@@ -364,6 +364,40 @@ fn climb_average_method_defaults_and_persists_changes() {
 }
 
 #[test]
+fn hillshade_direction_defaults_and_persists_changes() {
+    use crate::{HillshadeDirection, SetHillshadeDirection};
+    let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
+    assert_eq!(settings.hillshade_direction, HillshadeDirection::Fixed);
+    let mut core = Core::new(SettingsSnapshot::default());
+    for direction in [
+        HillshadeDirection::Wind,
+        HillshadeDirection::Sun,
+        HillshadeDirection::Fixed,
+    ] {
+        let expected = Settings {
+            hillshade_direction: direction,
+            ..Settings::default()
+        };
+        assert_eq!(
+            core.apply(SetHillshadeDirection { direction }, at(0))
+                .effects,
+            vec![
+                Effect::emit(expected.as_topic()),
+                Effect::persist_settings(SettingsSnapshot {
+                    settings: expected,
+                    ..SettingsSnapshot::default()
+                }),
+            ]
+        );
+        assert!(
+            core.apply(SetHillshadeDirection { direction }, at(1))
+                .effects
+                .is_empty()
+        );
+    }
+}
+
+#[test]
 fn energy_compensation_defaults_to_enabled() {
     for settings in [
         Settings::default(),

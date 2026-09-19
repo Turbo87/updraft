@@ -44,6 +44,7 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
       "climbAverageMethod": "smoothed20s",
       "energyCompensation": true,
       "flarmPositionCorrection": true,
+      "hillshadeDirection": "fixed",
       "locale": null,
       "polar": "LS 8",
       "units": {

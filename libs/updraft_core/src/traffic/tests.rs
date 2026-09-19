@@ -320,6 +320,7 @@ fn orders_snapshots_and_deltas_by_target_id() {
 
 #[test]
 fn projects_ordered_and_mutually_exclusive_traffic_deltas() {
+    let state = TrafficState::default();
     let mut changes = TrafficChanges::default();
     changes.upsert(target(3));
     changes.upsert(target(1));
@@ -328,7 +329,7 @@ fn projects_ordered_and_mutually_exclusive_traffic_deltas() {
     changes.upsert(target(2));
     changes.remove(target(4).id);
 
-    let delta = assert_some!(changes.into_delta(&FlarmnetDatabase::default()));
+    let delta = assert_some!(state.published_delta(changes, &FlarmnetDatabase::default()));
     let upsert_ids = delta
         .upserts
         .into_iter()
@@ -373,15 +374,15 @@ fn flarmnet_matches_only_flarm_and_icao_addresses() {
     for id_type in [TrafficTargetIdType::Flarm, TrafficTargetIdType::Icao] {
         let mut target = target(0xABC123);
         target.id.id_type = id_type;
-        let record = assert_some!(target.publish(&database).flarmnet);
+        let record = assert_some!(target.publish(&database, None).flarmnet);
         assert_eq!(record.call_sign, "EL");
     }
     for id_type in [TrafficTargetIdType::Random, TrafficTargetIdType::Other(4)] {
         let mut target = target(0xABC123);
         target.id.id_type = id_type;
-        assert_none!(target.publish(&database).flarmnet);
+        assert_none!(target.publish(&database, None).flarmnet);
     }
-    assert_none!(target(1).publish(&database).flarmnet);
+    assert_none!(target(1).publish(&database, None).flarmnet);
 }
 
 #[test]

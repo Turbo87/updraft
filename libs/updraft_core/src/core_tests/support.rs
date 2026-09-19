@@ -30,9 +30,14 @@ pub const INVALID_GGA: &[u8] =
     b"$GPGGA,120000.00,5100.00,N,00700.00,E,0,08,0.9,300.0,M,0.0,M,,\r\n";
 pub const ALTITUDE_ONLY_GGA: &[u8] = b"$GPGGA,120000.00,,,,,1,08,0.9,250.0,M,0.0,M,,\r\n";
 pub const PFLAA_A: &[u8] = b"$PFLAA,0,1000,200,50,1,ABC123,90,0,25,0,1,0\r\n";
+pub const PFLAA_A_NO_TRACK: &[u8] = b"$PFLAA,0,1000,200,50,1,ABC123,90,0,25,0,1,1\r\n";
 pub const PFLAA_B: &[u8] = b"$PFLAA,1,-500,300,-20,2,DEF456,225,0,30,0,6,0\r\n";
 pub const PFLAA_A_REPLACEMENT: &[u8] = b"$PFLAA,2,2000,400,100,1,ABC123,180,0,30,0,1,0\r\n";
 pub const PFLAA_A_MISSING_EAST: &[u8] = b"$PFLAA,3,2000,,100,1,ABC123,180,0,30,0,1,0\r\n";
+pub const PFLAM_A_REGISTRATION: &[u8] = b"$PFLAM,U,1,ABC123,AREG,442D54455354\r\n";
+pub const PFLAM_A_PILOT_NAME: &[u8] = b"$PFLAM,U,1,ABC123,PNAME,416461204C6F76656C616365\r\n";
+pub const PFLAM_A_AIRCRAFT_TYPE: &[u8] = b"$PFLAM,U,1,ABC123,ATYPE,415357203237\r\n";
+pub const PFLAM_A_CALLSIGN: &[u8] = b"$PFLAM,U,1,ABC123,ACALL,58595A\r\n";
 pub const TRACE_TIMESTAMP_FILTER: (&str, &str) =
     (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", "[TIME]");
 

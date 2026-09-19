@@ -19,7 +19,8 @@ use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
 use crate::topic::{Instruments, Topic};
 use crate::traffic::{
-    FlarmCorrection, TrafficChanges, TrafficMotion, TrafficState, TrafficUpdate, target_from_pflaa,
+    FlarmCorrection, TrafficChanges, TrafficMotion, TrafficState, TrafficTargetId, TrafficUpdate,
+    target_from_pflaa,
 };
 use crate::{AirspaceSnapshot, AirspaceState, ReplaceAirspaceCatalog};
 use crate::{GlidePerformance, ReplaceFlarmnetDatabase};
@@ -144,7 +145,10 @@ impl Core {
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }
-        if let Some(delta) = traffic_changes.into_delta(&self.flarmnet) {
+        if let Some(delta) = self
+            .traffic
+            .published_delta(traffic_changes, &self.flarmnet)
+        {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
         }
 
@@ -330,6 +334,11 @@ impl Core {
                     .update_climb(&mut target, altitude_source, at, motion);
                 self.traffic
                     .observe(target, at, correction.position_reference, traffic_changes);
+            }
+            Message::Pflam(pflam) => {
+                let id = TrafficTargetId::new(pflam.id_type.into(), pflam.id.address);
+                self.traffic
+                    .observe_broadcast_identity(id, pflam.identity, traffic_changes);
             }
             _ => {}
         }
@@ -569,7 +578,7 @@ fn apply_tick(core: &mut Core, at: Timestamp, utc: Option<UtcInstant>) -> Update
         effects.push(Effect::emit(after.as_topic()));
     }
     let changes = core.traffic.expire(at);
-    if let Some(delta) = changes.into_delta(&core.flarmnet) {
+    if let Some(delta) = core.traffic.published_delta(changes, &core.flarmnet) {
         effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
     }
     Update::effects(effects)
@@ -678,7 +687,8 @@ impl Input for SetFlarmPositionCorrection {
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
         ];
-        if let Some(delta) = core.traffic.reset_climb().into_delta(&core.flarmnet) {
+        let changes = core.traffic.reset_climb();
+        if let Some(delta) = core.traffic.published_delta(changes, &core.flarmnet) {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
         }
         Update::effects(effects)
@@ -697,7 +707,8 @@ impl Input for SetEnergyCompensation {
             Effect::emit(core.settings.as_topic()),
             Effect::persist_settings(core.settings_snapshot()),
         ];
-        if let Some(delta) = core.traffic.reset_climb().into_delta(&core.flarmnet) {
+        let changes = core.traffic.reset_climb();
+        if let Some(delta) = core.traffic.published_delta(changes, &core.flarmnet) {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
         }
         Update::effects(effects)

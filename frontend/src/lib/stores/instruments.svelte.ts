@@ -28,6 +28,7 @@ export const EMPTY_INSTRUMENTS: Instruments = {
   trueAirspeed: null,
   terrainElevation: null,
   altitudeAgl: null,
+  solarPosition: null,
   derived: null,
 };
 

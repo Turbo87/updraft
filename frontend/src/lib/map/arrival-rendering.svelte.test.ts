@@ -40,6 +40,7 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
     waypoints: {

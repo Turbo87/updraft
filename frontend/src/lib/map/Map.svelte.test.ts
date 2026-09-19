@@ -16,6 +16,7 @@ const instruments = {
   trueAirspeed: null,
   terrainElevation: null,
   altitudeAgl: null,
+  solarPosition: null,
   derived: null,
 };
 
@@ -32,6 +33,7 @@ const positionInstruments = {
   trueAirspeed: null,
   terrainElevation: null,
   altitudeAgl: null,
+  solarPosition: null,
   derived: null,
 };
 

@@ -56,7 +56,7 @@ pub use input::{
     ReplaceWaypointCatalog, SetArrivalReserve, SetBallast, SetBugs, SetClimbAverageMethod,
     SetEnergyCompensation, SetExternalDeviceEnabled, SetFlarmPositionCorrection,
     SetHillshadeDirection, SetLocale, SetMacCready, SetPolar, SetUnits, Start, TerrainElevation,
-    Tick, Update,
+    Tick, Update, UtcTick,
 };
 pub use polar::{PolarId, UnknownPolar};
 pub use settings::{
@@ -67,7 +67,7 @@ pub use time::Timestamp;
 pub use topic::{
     AltitudeInstrument, DerivedAltitudeInstruments, DerivedBankInstruments,
     DerivedHeadingInstruments, DerivedInstruments, FixTime as PublishedFixTime, GpsInstruments,
-    Instruments, LatLon, SpeedInstrument, Topic,
+    Instruments, LatLon, SolarPositionInstruments, SpeedInstrument, Topic,
 };
 pub use traffic::{
     PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,

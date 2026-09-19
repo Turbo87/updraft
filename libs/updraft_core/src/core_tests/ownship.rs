@@ -307,7 +307,7 @@ fn disconnected_gps_source_remains_selected_until_it_is_stale() {
 }
 
 #[test]
-fn equal_internal_fallback_changes_source_without_an_instruments_effect() {
+fn equal_internal_fallback_publishes_the_changed_solar_time_source() {
     let (mut core, device_id) = core_with_external_device();
     core.apply(Bytes::new(device_id, RMC), at(0));
     let external = core
@@ -331,7 +331,7 @@ fn equal_internal_fallback_changes_source_without_an_instruments_effect() {
     assert_eq!(selected.source, SourceId::External(device_id));
 
     let effects = core.apply(Tick, at(3_000)).effects;
-    assert!(effects.is_empty());
+    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
     let DomainState::Current(selected) = core.gps else {
         panic!("the internal fallback should become current");
     };

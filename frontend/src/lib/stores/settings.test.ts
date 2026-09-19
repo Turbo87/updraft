@@ -43,6 +43,7 @@ describe('SettingsStore', () => {
         trueAirspeed: null,
         terrainElevation: null,
         altitudeAgl: null,
+        solarPosition: null,
         derived: null,
       },
     });

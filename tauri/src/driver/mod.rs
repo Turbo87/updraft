@@ -4,8 +4,8 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 use updraft_core::{
-    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot, Tick,
-    Timestamp, Topic, Update,
+    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot,
+    Timestamp, Topic, Update, UtcInstant, UtcTick,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is
@@ -188,13 +188,25 @@ impl Driver {
             let mut ticker = tokio::time::interval(tick_interval);
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-            state.apply(updraft_core::Start, Timestamp::from_millis(0));
+            let at = Timestamp::from_millis(0);
+            state.apply(
+                UtcTick::new(UtcInstant::from_offset_date_time(
+                    time::OffsetDateTime::now_utc(),
+                )),
+                at,
+            );
+            state.apply(updraft_core::Start, at);
 
             loop {
                 let message = tokio::select! {
                     _ = ticker.tick() => {
                         let at = Timestamp::from_millis(started.elapsed().as_millis() as u64);
-                        state.apply(Tick, at);
+                        state.apply(
+                            UtcTick::new(UtcInstant::from_offset_date_time(
+                                time::OffsetDateTime::now_utc(),
+                            )),
+                            at,
+                        );
                         continue;
                     }
                     received = receiver.recv() => match received {

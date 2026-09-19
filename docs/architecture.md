@@ -36,8 +36,10 @@ Effects request external work. The current effects publish a topic, open or
 close a transport, or persist settings. The shell matches effects exhaustively.
 Pure calculations stay in the core.
 
-The shell sends a `Tick` input at a fixed interval. Scenario tests supply exact
-timestamps. Core behavior does not depend on wall-clock time or test sleeps.
+The shell sends a `UtcTick` input with the current UTC instant at a fixed
+interval. The core advances complete GPS UTC values with the supplied monotonic
+timestamp. Scenario tests supply exact time values. The core does not read a
+clock or depend on test sleeps.
 
 ## Driver and shell
 

@@ -33,6 +33,7 @@
     trueAirspeed: null,
     terrainElevation: null,
     altitudeAgl: null,
+    solarPosition: null,
     derived: null,
   } satisfies Instruments;
 
@@ -134,6 +135,7 @@
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
     mapState: new MapState(),
@@ -194,6 +196,7 @@
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
     units,

@@ -53,6 +53,17 @@ pub struct Start;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Tick;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UtcTick {
+    pub utc: crate::UtcInstant,
+}
+
+impl UtcTick {
+    pub const fn new(utc: crate::UtcInstant) -> Self {
+        Self { utc }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bytes {
     pub device_id: ExternalDeviceId,
@@ -232,6 +243,7 @@ impl SetExternalDeviceEnabled {
 impl private::Sealed for Start {}
 impl private::Sealed for GetAirspaceSnapshot {}
 impl private::Sealed for Tick {}
+impl private::Sealed for UtcTick {}
 impl private::Sealed for Bytes {}
 impl private::Sealed for ConnectionChanged {}
 impl private::Sealed for InternalGps {}

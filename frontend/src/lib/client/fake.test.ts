@@ -53,6 +53,7 @@ function instruments(trackDegrees: number): Topic {
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
   };

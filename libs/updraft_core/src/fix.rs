@@ -12,6 +12,12 @@ impl UtcInstant {
         Self(unix_milliseconds)
     }
 
+    /// Creates an instant from an offset date-time.
+    pub fn from_offset_date_time(value: time::OffsetDateTime) -> Self {
+        let milliseconds = value.unix_timestamp_nanos().div_euclid(1_000_000);
+        Self(i64::try_from(milliseconds).expect("an OffsetDateTime fits in Unix milliseconds"))
+    }
+
     /// Converts a valid NMEA date and time to a UTC instant.
     pub fn from_nmea_date_time(date: NmeaDate, time: NmeaTime) -> Option<Self> {
         let month = time::Month::try_from(date.month).ok()?;
@@ -31,6 +37,12 @@ impl UtcInstant {
     /// Returns Unix epoch milliseconds.
     pub const fn unix_milliseconds(self) -> i64 {
         self.0
+    }
+
+    /// Advances the instant by monotonic elapsed time.
+    pub fn saturating_add(self, duration: std::time::Duration) -> Self {
+        let milliseconds = i64::try_from(duration.as_millis()).unwrap_or(i64::MAX);
+        Self(self.0.saturating_add(milliseconds))
     }
 }
 

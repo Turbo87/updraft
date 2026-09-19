@@ -21,6 +21,7 @@
     trueAirspeed: { metersPerSecond: 50, stale: false },
     terrainElevation: { meters: 100, stale: false },
     altitudeAgl: { meters: 110, stale: false },
+    solarPosition: null,
     derived: {
       ...EMPTY_DERIVED_INSTRUMENTS,
       altitude: { altitudeMslMeters: 210, stale: false },
@@ -40,6 +41,7 @@
     trueAirspeed: { metersPerSecond: 50, stale: true },
     terrainElevation: { meters: 200, stale: true },
     altitudeAgl: { meters: -10, stale: true },
+    solarPosition: null,
     derived: {
       ...EMPTY_DERIVED_INSTRUMENTS,
       altitude: { altitudeMslMeters: 190, stale: true },

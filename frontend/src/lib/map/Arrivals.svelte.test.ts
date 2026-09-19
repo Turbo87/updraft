@@ -33,6 +33,7 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
       trueAirspeed: null,
       terrainElevation: null,
       altitudeAgl: null,
+      solarPosition: null,
       derived: null,
     },
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

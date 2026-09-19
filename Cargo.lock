@@ -5890,6 +5890,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "updraft_sun"
+version = "0.0.0"
+dependencies = [
+ "approx 0.6.0-rc2",
+ "claims",
+ "time",
+ "updraft_geo",
+ "updraft_units",
+]
+
+[[package]]
 name = "updraft_tauri"
 version = "0.0.0"
 dependencies = [

@@ -2,6 +2,7 @@
 //! at a time, resynchronizing past noise.
 
 use crate::Message;
+use crate::field::hex_digit;
 use crate::sentences;
 
 /// Bytes a single sentence may span before the parser stops looking for a
@@ -152,15 +153,6 @@ fn xor(body: &[u8]) -> u8 {
     body.iter().fold(0, |checksum, &byte| checksum ^ byte)
 }
 
-fn hex_digit(byte: u8) -> Option<u8> {
-    match byte {
-        b'0'..=b'9' => Some(byte - b'0'),
-        b'A'..=b'F' => Some(byte - b'A' + 10),
-        b'a'..=b'f' => Some(byte - b'a' + 10),
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -215,6 +207,12 @@ mod tests {
     fn parses_pflaa() {
         let s = b"$PFLAA,0,-1540,-1020,-1126,1,39103C!FJLKN,93,0,33,4.9,8*63\r\n";
         insta::assert_debug_snapshot!(parse_one(s));
+    }
+
+    #[test]
+    fn parses_pflam_broadcast_identity() {
+        let s = b"$PFLAM,U,2,DD8F12,AREG,442D4B58595A\r\n";
+        assert_matches!(parse_one(s), Step::Frame(Message::Pflam(_)));
     }
 
     #[test]

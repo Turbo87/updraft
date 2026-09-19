@@ -258,7 +258,7 @@ describe('applyTrafficSourceUpdate', () => {
   });
 });
 
-describe('FlarmNet traffic labels', () => {
+describe('traffic identity labels', () => {
   it.each([
     ['EL', 'D-TEST', 200, 'EL\n200 m'],
     ['', 'D-TEST', 200, 'D-TEST\n200 m'],
@@ -284,6 +284,25 @@ describe('FlarmNet traffic labels', () => {
       expect(trafficFeature(traffic, 'm', 'm/s').properties.label).toBe(expected);
     },
   );
+
+  it('prefers broadcast callsign and registration over FlarmNet', () => {
+    let traffic = target('flarm:ABC123', {
+      broadcastIdentity: { callsign: 'LIVE', registration: 'D-LIVE' },
+      flarmnet: {
+        flarmId: 'ABC123',
+        callSign: 'DB',
+        registration: 'D-DATA',
+        planeType: '',
+        pilotName: '',
+        airfield: '',
+        frequency: '',
+      },
+    });
+
+    expect(trafficFeature(traffic, 'm', 'm/s').properties.label).toBe('LIVE\n200 m');
+    traffic.broadcastIdentity = { registration: 'D-LIVE' };
+    expect(trafficFeature(traffic, 'm', 'm/s').properties.label).toBe('D-LIVE\n200 m');
+  });
 });
 
 it('adds positive smoothed climb by default in the selected vertical-speed unit', () => {

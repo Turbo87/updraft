@@ -12,12 +12,13 @@ use climb::TrafficClimb;
 pub use climb::TrafficMotion;
 pub use correction::FlarmCorrection;
 use serde::Serialize;
+use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::time::Duration;
 use updraft_flarmnet::{FlarmnetDatabase, FlarmnetRecord};
 use updraft_geo::LatLon as GeoLatLon;
-use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmIdType, Pflaa};
+use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmIdType, Pflaa, PflamIdentity};
 use updraft_units::{Angle, Length, MslAltitude};
 
 const REFERENCE_HOLD: Duration = Duration::from_secs(2);
@@ -185,6 +186,7 @@ impl TrafficPositionReference {
 pub struct TrafficState {
     targets: BTreeMap<TrafficTargetId, StoredTrafficTarget>,
     climbs: BTreeMap<TrafficTargetId, TrafficClimb>,
+    broadcast_identities: BTreeMap<TrafficTargetId, FlarmBroadcastIdentity>,
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -194,6 +196,27 @@ pub struct TrafficChanges {
 }
 
 impl TrafficState {
+    pub fn observe_broadcast_identity(
+        &mut self,
+        id: TrafficTargetId,
+        identity: PflamIdentity,
+        changes: &mut TrafficChanges,
+    ) {
+        let changed = match self.broadcast_identities.entry(id) {
+            Entry::Occupied(mut entry) => entry.get_mut().update(identity),
+            Entry::Vacant(entry) => {
+                let Some(identity) = FlarmBroadcastIdentity::new(identity) else {
+                    return;
+                };
+                entry.insert(identity);
+                true
+            }
+        };
+        if changed && let Some(stored) = self.targets.get(&id) {
+            changes.upsert(stored.target);
+        }
+    }
+
     pub fn reset_position_epochs(&mut self, device_id: Option<ExternalDeviceId>) {
         for stored in self.targets.values_mut() {
             let source = stored.position_epoch.map(|(source, _)| source);
@@ -328,8 +351,35 @@ impl TrafficState {
     pub fn published_targets(&self, database: &FlarmnetDatabase) -> Vec<PublishedTrafficTarget> {
         self.targets
             .values()
-            .map(|stored| stored.target.publish(database))
+            .map(|stored| {
+                stored
+                    .target
+                    .publish(database, self.broadcast_identities.get(&stored.target.id))
+            })
             .collect()
+    }
+
+    pub fn published_delta(
+        &self,
+        changes: TrafficChanges,
+        database: &FlarmnetDatabase,
+    ) -> Option<TrafficDelta> {
+        if changes.upserts.is_empty() && changes.removed.is_empty() {
+            return None;
+        }
+
+        Some(TrafficDelta {
+            upserts: changes
+                .upserts
+                .into_values()
+                .map(|target| target.publish(database, self.broadcast_identities.get(&target.id)))
+                .collect(),
+            removed: changes
+                .removed
+                .into_iter()
+                .map(|id| id.to_string())
+                .collect(),
+        })
     }
 }
 
@@ -343,20 +393,50 @@ impl TrafficChanges {
         self.upserts.remove(&id);
         self.removed.insert(id);
     }
+}
 
-    pub fn into_delta(self, database: &FlarmnetDatabase) -> Option<TrafficDelta> {
-        if self.upserts.is_empty() && self.removed.is_empty() {
-            None
-        } else {
-            Some(TrafficDelta {
-                upserts: self
-                    .upserts
-                    .into_values()
-                    .map(|target| target.publish(database))
-                    .collect(),
-                removed: self.removed.into_iter().map(|id| id.to_string()).collect(),
-            })
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct FlarmBroadcastIdentity {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub registration: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub pilot_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub aircraft_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub callsign: Option<String>,
+}
+
+impl FlarmBroadcastIdentity {
+    fn new(identity: PflamIdentity) -> Option<Self> {
+        let mut result = Self {
+            registration: None,
+            pilot_name: None,
+            aircraft_type: None,
+            callsign: None,
+        };
+        result.update(identity).then_some(result)
+    }
+
+    fn update(&mut self, identity: PflamIdentity) -> bool {
+        let (field, value) = match identity {
+            PflamIdentity::Registration(value) => (&mut self.registration, value),
+            PflamIdentity::PilotName(value) => (&mut self.pilot_name, value),
+            PflamIdentity::AircraftType(value) => (&mut self.aircraft_type, value),
+            PflamIdentity::Callsign(value) => (&mut self.callsign, value),
+            _ => return false,
+        };
+        if field.as_deref() == Some(&value) {
+            return false;
         }
+        *field = Some(value.into());
+        true
     }
 }
 
@@ -364,6 +444,9 @@ impl TrafficChanges {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct PublishedTrafficTarget {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub broadcast_identity: Option<FlarmBroadcastIdentity>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional))]
     pub flarmnet: Option<FlarmnetRecord>,
@@ -398,6 +481,7 @@ pub enum TrafficUpdate {
 impl From<TrafficTarget> for PublishedTrafficTarget {
     fn from(target: TrafficTarget) -> Self {
         Self {
+            broadcast_identity: None,
             flarmnet: None,
             id: target.id.to_string(),
             position: LatLon {
@@ -417,13 +501,18 @@ impl From<TrafficTarget> for PublishedTrafficTarget {
 }
 
 impl TrafficTarget {
-    fn publish(self, database: &FlarmnetDatabase) -> PublishedTrafficTarget {
+    fn publish(
+        self,
+        database: &FlarmnetDatabase,
+        broadcast_identity: Option<&FlarmBroadcastIdentity>,
+    ) -> PublishedTrafficTarget {
         let id = self.id;
         let flarmnet = match id.id_type {
             TrafficTargetIdType::Flarm | TrafficTargetIdType::Icao => database.lookup(id.value),
             TrafficTargetIdType::Random | TrafficTargetIdType::Other(_) => None,
         };
         PublishedTrafficTarget {
+            broadcast_identity: broadcast_identity.cloned(),
             flarmnet: flarmnet.cloned(),
             ..self.into()
         }

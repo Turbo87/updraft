@@ -10,8 +10,8 @@ mod openvario;
 pub use cambridge::{CaiG, CaiSetting, CaiW, Pcaid};
 pub use flarm::{
     FlarmAircraftType, FlarmAlarmLevel, FlarmId, FlarmIdType, FlarmSource, Pflaa, Pflac,
-    PflacQueryType, Pflal, PflalConfiguration, PflalContent, PflalOwnId, PflalPower, Pflau,
-    PflauAlarmType, PflauGpsStatus, Pflav,
+    PflacQueryType, Pflal, PflalConfiguration, PflalContent, PflalOwnId, PflalPower, Pflam,
+    PflamIdentity, Pflau, PflauAlarmType, PflauGpsStatus, Pflav,
 };
 pub use garmin::{Pgrmz, PgrmzFixDimension};
 pub use gnss::{
@@ -43,6 +43,11 @@ pub fn parse_sentence(sentence: &[u8]) -> Message {
         b"$PFLAL" => {
             return Pflal::parse(fields)
                 .map(Message::Pflal)
+                .unwrap_or_else(|| Message::Unknown(Unknown::from_bytes(sentence)));
+        }
+        b"$PFLAM" => {
+            return Pflam::parse(fields)
+                .map(Message::Pflam)
                 .unwrap_or_else(|| Message::Unknown(Unknown::from_bytes(sentence)));
         }
         b"$PFLAV" => {

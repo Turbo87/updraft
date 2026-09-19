@@ -51,17 +51,19 @@
     retainedTarget ? retainedTarget.target.stale || !retainedTarget.available : true,
   );
 
-  let flarmnetFields = $derived.by(() => {
-    let record = retainedTarget?.target.flarmnet;
-    if (!record) return [];
+  let identityFields = $derived.by(() => {
+    let target = retainedTarget?.target;
+    if (!target) return [];
+    let broadcast = target.broadcastIdentity;
+    let record = target.flarmnet;
     return [
-      [m.callsign_label(), record.callSign],
-      [m.registration_label(), record.registration],
-      [m.aircraft_model_label(), record.planeType],
-      [m.pilot_label(), record.pilotName],
-      [m.airfield_label(), record.airfield],
-      [m.frequency_label(), record.frequency],
-      [m.flarm_id_label(), record.flarmId],
+      [m.callsign_label(), broadcast?.callsign || record?.callSign],
+      [m.registration_label(), broadcast?.registration || record?.registration],
+      [m.aircraft_model_label(), broadcast?.aircraftType || record?.planeType],
+      [m.pilot_label(), broadcast?.pilotName || record?.pilotName],
+      [m.airfield_label(), record?.airfield],
+      [m.frequency_label(), record?.frequency],
+      [m.flarm_id_label(), record?.flarmId],
     ];
   });
 
@@ -213,12 +215,12 @@
       </ResponsiveCard>
     </section>
 
-    {#if target.flarmnet}
-      <section aria-labelledby="flarmnet-heading">
-        <h2 id="flarmnet-heading">FlarmNet</h2>
+    {#if target.broadcastIdentity || target.flarmnet}
+      <section aria-labelledby="identity-heading">
+        <h2 id="identity-heading">{m.identity_heading()}</h2>
         <ResponsiveCard>
           <dl>
-            {#each flarmnetFields as [label, value] (label)}
+            {#each identityFields as [label, value] (label)}
               {#if value}
                 <div>
                   <dt>{label}</dt>

@@ -72,7 +72,7 @@ it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (wid
   }
 });
 
-it('shows available FlarmNet fields and follows database replacements', async () => {
+it('shows available identity fields and follows database replacements', async () => {
   let traffic = new TrafficStore();
   let target = {
     id: 'flarm:ABC123',
@@ -105,7 +105,7 @@ it('shows available FlarmNet fields and follows database replacements', async ()
     traffic,
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   });
-  let region = page.getByRole('region', { name: 'FlarmNet' });
+  let region = page.getByRole('region', { name: 'Identity' });
   await expect.element(region).toBeVisible();
   let rows = [...region.element().querySelectorAll('dl > div')].map((row) => [
     row.querySelector('dt')!.textContent,
@@ -141,6 +141,55 @@ it('shows available FlarmNet fields and follows database replacements', async ()
   await expect.element(region.getByText('D-TEST', { exact: true })).toBeVisible();
   traffic.apply({ topic: 'traffic', value: { type: 'snapshot', value: [target] } });
   await expect.element(region).not.toBeInTheDocument();
+});
+
+it('prefers broadcast identity fields and uses FlarmNet for missing fields', async () => {
+  let traffic = new TrafficStore();
+  let target = {
+    id: 'flarm:ABC123',
+    position: { latitudeDegrees: 50.82, longitudeDegrees: 6.24 },
+    altitudeMslMeters: 1180,
+    trafficType: 'glider' as const,
+    trackDegrees: 241,
+    alarmLevel: 'none' as const,
+    stale: false,
+    broadcastIdentity: { callsign: 'LIVE', aircraftType: 'ASW 27' },
+    flarmnet: {
+      flarmId: 'ABC123',
+      callSign: 'DB',
+      registration: 'D-TEST',
+      planeType: 'AS 33',
+      pilotName: 'Example Pilot',
+      airfield: 'Example Airfield',
+      frequency: '123.450',
+    },
+  };
+  traffic.apply({ topic: 'traffic', value: { type: 'snapshot', value: [target] } });
+
+  await render(TrafficDetails, {
+    backLabel: 'Back',
+    id: target.id,
+    locale: 'en',
+    onBack: () => {},
+    instruments: new InstrumentsStore(),
+    traffic,
+    units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+  });
+
+  let region = page.getByRole('region', { name: 'Identity' });
+  let rows = [...region.element().querySelectorAll('dl > div')].map((row) => [
+    row.querySelector('dt')!.textContent,
+    row.querySelector('dd')!.textContent,
+  ]);
+  expect(Object.fromEntries(rows)).toMatchObject({
+    Callsign: 'LIVE',
+    Registration: 'D-TEST',
+    'Aircraft model': 'ASW 27',
+    Pilot: 'Example Pilot',
+    Airfield: 'Example Airfield',
+    Frequency: '123.450',
+    'FLARM ID': 'ABC123',
+  });
 });
 
 it('shows all signed climb estimates and updates their units and availability', async () => {

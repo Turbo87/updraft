@@ -7,6 +7,10 @@ converts relative reports to absolute targets, stores them by identity, and
 publishes traffic updates. The frontend renders those targets on the map and in
 inspection routes.
 
+Updraft also accepts periodic `$PFLAM,U` identity messages when a device sends
+them. It does not enable FLARM Messaging or change device settings. Missing
+messages do not produce warnings or diagnostics.
+
 ## Observation
 
 A usable report requires a target identity and relative north and east
@@ -25,6 +29,12 @@ devices that report the same typed identity update the same target.
 A target stores its typed identity, absolute position, optional MSL altitude,
 aircraft type, optional track, FLARM alarm level, and freshness state. Reports
 update this data subject to the horizontal position acceptance rules below.
+
+The core caches registration, pilot name, aircraft type, and callsign from
+periodic FLARM Messaging sentences. It attaches cached identity to a matching
+target, including a target with `no_track` set. An identity update publishes an
+active target again without changing its report age. The cache lasts for the
+current application session.
 
 ## FLARM correction
 
@@ -223,7 +233,8 @@ while leaving the map source partially updated.
 
 MapLibre uses one GeoJSON point per target. The feature contains the typed ID,
 aircraft type, FLARM alarm level, stale state, optional track, and formatted MSL
-altitude, with callsign or registration above it.
+altitude, with callsign or registration above it. Broadcast identity has
+priority. United FlarmNet supplies missing values.
 
 Symbols use aircraft-type icons. Directional targets rotate with the map track.
 Balloons and targets without track use fixed symbols. Icon size changes with map
@@ -251,9 +262,10 @@ A removed target remains in that mounted result as unavailable. A later update
 for the same ID restores it. `/traffic/[id]` supports direct visits and the same
 live or unavailable behavior.
 
-Traffic details also show callsign, registration, aircraft model, pilot, airfield,
-frequency, and FLARM ID from the matching database record. Empty fields are hidden.
-The database aircraft model is separate from the reported aircraft category.
+Traffic details show callsign, registration, aircraft model, and pilot from
+broadcast identity when available. United FlarmNet supplies missing values and
+adds airfield, frequency, and FLARM ID. Empty fields are hidden. The identity
+aircraft model is separate from the reported aircraft category.
 
 Traffic details show all four climb estimates in the selected vertical-speed
 unit, independent of the map method setting. Details include positive, zero,

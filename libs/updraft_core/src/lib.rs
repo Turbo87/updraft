@@ -70,9 +70,9 @@ pub use topic::{
     Instruments, LatLon, SolarPositionInstruments, SpeedInstrument, Topic,
 };
 pub use traffic::{
-    PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges, TrafficDelta, TrafficState,
-    TrafficTarget, TrafficTargetId, TrafficTargetIdType, TrafficType, TrafficUpdate,
-    target_from_pflaa,
+    FlarmBroadcastIdentity, PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges,
+    TrafficDelta, TrafficState, TrafficTarget, TrafficTargetId, TrafficTargetIdType, TrafficType,
+    TrafficUpdate, target_from_pflaa,
 };
 pub use waypoints::{
     WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSnapshot, WaypointSource,

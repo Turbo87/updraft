@@ -351,6 +351,52 @@ fn flarmnet_enriches_report_and_expiry_deltas() {
 }
 
 #[test]
+fn periodic_identity_enriches_a_later_no_track_report() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(0));
+
+    let identity = [
+        PFLAM_A_REGISTRATION,
+        PFLAM_A_PILOT_NAME,
+        PFLAM_A_AIRCRAFT_TYPE,
+        PFLAM_A_CALLSIGN,
+    ]
+    .concat();
+    assert!(
+        core.apply(Bytes::new(device_id, identity), at(1))
+            .effects
+            .is_empty()
+    );
+
+    let report = core.apply(Bytes::new(device_id, PFLAA_A_NO_TRACK), at(2));
+    let target = &traffic_delta(&report.effects).upserts[0];
+    let identity = assert_some!(&target.broadcast_identity);
+    assert_some_eq!(&identity.registration, "D-TEST");
+    assert_some_eq!(&identity.pilot_name, "Ada Lovelace");
+    assert_some_eq!(&identity.aircraft_type, "ASW 27");
+    assert_some_eq!(&identity.callsign, "XYZ");
+}
+
+#[test]
+fn periodic_identity_updates_a_target_without_refreshing_report_age() {
+    let (mut core, device_id) = core_with_external_device();
+    core.apply(Bytes::new(device_id, RMC), at(0));
+    core.apply(Bytes::new(device_id, PFLAA_A), at(0));
+
+    let update = core.apply(Bytes::new(device_id, PFLAM_A_CALLSIGN), at(4_999));
+    let target = &traffic_delta(&update.effects).upserts[0];
+    assert_some_eq!(&assert_some!(&target.broadcast_identity).callsign, "XYZ");
+
+    let expiry = core.apply(Tick, at(5_000));
+    assert!(traffic_delta(&expiry.effects).upserts[0].stale);
+    assert!(
+        core.apply(Bytes::new(device_id, PFLAM_A_CALLSIGN), at(5_001))
+            .effects
+            .is_empty()
+    );
+}
+
+#[test]
 fn climb_uses_altitude_changes_and_rejects_stale_ownship_altitude() {
     let (mut core, device) = core_with_external_device();
     core.apply(Bytes::new(device, GGA), at(0));

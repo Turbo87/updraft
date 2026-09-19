@@ -1,6 +1,30 @@
 import type { Map } from 'maplibre-gl';
+import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
 
 import { convertFileSrc } from '@tauri-apps/api/core';
+
+export type HillshadeDirection = 'fixed' | 'wind';
+
+type HillshadeLighting = {
+  'hillshade-illumination-anchor': 'map' | 'viewport';
+  'hillshade-illumination-direction': number;
+};
+
+export function hillshadeLighting(
+  direction: HillshadeDirection,
+  wind?: DerivedWindInstruments | null,
+): HillshadeLighting {
+  if (direction === 'wind' && wind) {
+    return {
+      'hillshade-illumination-anchor': 'map',
+      'hillshade-illumination-direction': wind.directionDegrees,
+    };
+  }
+  return {
+    'hillshade-illumination-anchor': 'viewport',
+    'hillshade-illumination-direction': 335,
+  };
+}
 
 export function refreshTerrain(map: Map, generation: number): void {
   let style = map.getStyle();

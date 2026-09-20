@@ -1,13 +1,14 @@
 //! Checks physical estimator properties against a recorded flight.
 
 use claims::{assert_ge, assert_le};
-use igc::records::{Extendable, Extension, Record};
+use igc::records::Record;
 use std::time::Duration;
 use updraft_geo::LatLon;
 use updraft_polar::{GlidePolar, POLAR_STORE};
-use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude, Speed};
+use updraft_units::{Angle, EllipsoidAltitude, Length, PressureAltitude};
 
 use super::estimator::{Estimate, Estimator, Fix};
+use super::recording_support::{extension, hundredths_kmh, seconds};
 use super::sample::SampleAcceptance::Accepted;
 
 const RECORDING: &str = include_str!("../../../../testdata/weglide_1141558.igc");
@@ -181,25 +182,4 @@ fn polar() -> GlidePolar {
         .find(|entry| entry.name == GLIDER_TYPE)
         .expect("the built-in store has the recording's glider type")
         .glide_polar()
-}
-
-fn seconds(time: &igc::util::Time) -> Duration {
-    let seconds = u64::from(time.hours) * 3600 + u64::from(time.minutes) * 60;
-    Duration::from_secs(seconds + u64::from(time.seconds))
-}
-
-fn hundredths_kmh(value: f64) -> Speed {
-    Speed::from_kilometers_per_hour(value / 100.)
-}
-
-fn extension(record: &impl Extendable, extensions: &[Extension<'_>], mnemonic: &str) -> f64 {
-    let extension = extensions
-        .iter()
-        .find(|extension| extension.mnemonic == mnemonic)
-        .unwrap_or_else(|| panic!("the recording defines the {mnemonic} extension"));
-    record
-        .get_extension(extension)
-        .expect("the record is long enough for its defined extensions")
-        .parse()
-        .unwrap_or_else(|_| panic!("the {mnemonic} extension holds a number"))
 }

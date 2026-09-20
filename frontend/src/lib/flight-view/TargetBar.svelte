@@ -121,6 +121,7 @@
   }
   small.report-age {
     display: inline;
+    margin-left: var(--space-1);
     font: inherit;
     font-size: smaller;
   }

@@ -151,7 +151,7 @@ pub fn run() {
             let catalog_path = app.path().app_data_dir()?.join("enroute-catalog.json");
             let catalog = Arc::new(enroute::catalog::CatalogService::load(catalog_path));
             app.manage(enroute::catalog::commands::CatalogSubscriptions::new(
-                &catalog,
+                catalog.subscribe(),
             ));
             app.manage(catalog.clone());
             tauri::async_runtime::spawn(async move { catalog.refresh().await });

@@ -13,6 +13,7 @@ pub mod download;
 pub mod queue;
 mod regions;
 pub mod storage;
+mod subscriptions;
 
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

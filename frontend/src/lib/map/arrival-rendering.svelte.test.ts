@@ -5,10 +5,9 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
 import { FakeClient } from '$lib/client/fake';
-import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
-import { TrafficStore } from '$lib/stores/traffic.svelte';
 import { arrivalFixture } from './arrival.fixture';
+import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
 
 function evaluate(layer: StyleLayer, type: 'layout' | 'paint', name: string, properties: object) {
@@ -29,18 +28,13 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
     verticalSpeed: 'm/s' as const,
   };
   let component = await render(MapComponent, {
-    hillshadeDirection: 'fixed',
+    ...mapProps(mapState),
     client,
-    mapState,
     units,
-    traffic: new TrafficStore(),
-    airspace: { generation: 0, sources: [] },
-    instruments: instrumentsFixture(),
     waypoints: {
       generation: 1,
       sources: [{ type: 'active', sourceName: 'fields.cup', waypointCount: 6, warnings: [] }],
     },
-    testMode: true,
     testWaypointData: { type: 'FeatureCollection', features: [] },
   });
   component.container.style.height = '300px';

@@ -73,9 +73,7 @@ fn bytes_are_decoded_by_their_configured_device() {
 
     let input = Bytes::new(tcp_device_id, &RMC[24..]);
     let effects = core.apply(input, at(2)).effects;
-    let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
-        panic!("the completed sentence should emit instruments");
-    };
+    let instruments = single_instruments_emission(&effects);
     let position = instruments.gps.expect("RMC data").position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 6.186, epsilon = 1e-3);

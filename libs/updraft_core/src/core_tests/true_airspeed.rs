@@ -1,6 +1,5 @@
 use super::super::*;
 use super::support::*;
-use crate::ownship::Selected;
 use approx::assert_abs_diff_eq;
 use claims::{assert_ok, assert_some};
 use std::assert_matches;
@@ -32,20 +31,13 @@ fn pressure_altitude_with_airspeed(altitude: Length, true_airspeed: Speed) -> Ve
     bytes
 }
 
-fn current_true_airspeed(core: &Core) -> Selected<Speed> {
-    let DomainState::Current(selected) = core.true_airspeed else {
-        panic!("true airspeed should be current");
-    };
-    selected
-}
-
 #[test]
 fn lxwp0_selects_true_airspeed_without_using_other_fields() {
     let (mut core, device_id) = core_with_external_device();
 
     core.apply(Bytes::new(device_id, LXWP0_FIRST), at(0));
 
-    let selected = current_true_airspeed(&core);
+    let selected = current_selection(core.true_airspeed);
     assert_eq!(selected.source, SourceId::External(device_id));
     assert_eq!(selected.value, Speed::from_kilometers_per_hour(180.0));
     assert_eq!(selected.ingested_at, at(0));
@@ -88,7 +80,7 @@ fn changed_true_airspeed_at_same_timestamp_keeps_the_first_value() {
 
     core.apply(Bytes::new(device_id, LXWP0_SECOND), at(0));
 
-    let selected = current_true_airspeed(&core);
+    let selected = current_selection(core.true_airspeed);
     assert_eq!(selected.value, Speed::from_kilometers_per_hour(180.));
 }
 
@@ -141,13 +133,11 @@ fn gps_pressure_altitude_and_true_airspeed_select_independent_sources() {
     core.apply(Bytes::new(first, RMC), at(0));
     core.apply(Bytes::new(second, LXWP0_SECOND), at(1));
 
-    let DomainState::Current(gps) = core.gps else {
-        panic!("GPS should be current");
-    };
+    let gps = current_selection(core.gps);
     assert_eq!(gps.source, SourceId::External(first));
     assert_matches!(core.pressure_altitude, DomainState::Unavailable);
     assert_eq!(
-        current_true_airspeed(&core).source,
+        current_selection(core.true_airspeed).source,
         SourceId::External(second)
     );
 }
@@ -173,19 +163,19 @@ fn true_airspeed_follows_source_priority_fallback_and_reset() {
     core.apply(Bytes::new(second, LXWP0_SECOND), at(1_000));
 
     assert_eq!(
-        current_true_airspeed(&core).source,
+        current_selection(core.true_airspeed).source,
         SourceId::External(first)
     );
 
     core.apply(Tick, at(3_000));
     assert_eq!(
-        current_true_airspeed(&core).source,
+        current_selection(core.true_airspeed).source,
         SourceId::External(second)
     );
 
     core.apply(ReorderExternalDevices::new(vec![first, second]), at(3_001));
     assert_eq!(
-        current_true_airspeed(&core).source,
+        current_selection(core.true_airspeed).source,
         SourceId::External(second)
     );
 

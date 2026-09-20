@@ -2,6 +2,7 @@ import type { Topic } from '$lib/protocol/generated/Topic';
 
 import { describe, expect, it } from 'vitest';
 
+import { settingsFixture } from '$lib/settings.fixture';
 import { ExternalDevicesStore } from './external-devices.svelte';
 
 describe('ExternalDevicesStore', () => {
@@ -56,16 +57,7 @@ describe('ExternalDevicesStore', () => {
     let store = new ExternalDevicesStore();
     let topic: Topic = {
       topic: 'settings',
-      value: {
-        locale: null,
-        polar: 'LS 8',
-        arrivalReserve: 200,
-        climbAverageMethod: 'normalizedEma',
-        hillshadeDirection: 'fixed',
-        energyCompensation: true,
-        flarmPositionCorrection: true,
-        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-      },
+      value: settingsFixture({ climbAverageMethod: 'normalizedEma' }),
     };
 
     store.apply(topic);

@@ -6,6 +6,7 @@ import type { EnrouteCatalogStatus, EnrouteDownloadStatus } from './index';
 import { describe, expect, it, vi } from 'vitest';
 
 import { instrumentsFixture } from '$lib/instruments.fixture';
+import { settingsFixture } from '$lib/settings.fixture';
 import { FakeClient } from './fake';
 
 type ExternalDevicesTopic = Extract<Topic, { topic: 'externalDevices' }>;
@@ -21,6 +22,19 @@ it('delivers prepared arrival resources until the subscription closes', async ()
   client.emitArrivals(update);
   expect(listener).toHaveBeenCalledTimes(1);
 });
+
+function collectTopics(client: FakeClient): Topic[] {
+  let topics: Topic[] = [];
+  client.subscribe((topic) => topics.push(topic));
+  return topics;
+}
+
+function observeTopicChanges(client: FakeClient) {
+  let onTopic = vi.fn<(topic: Topic) => void>();
+  client.subscribe(onTopic);
+  onTopic.mockClear();
+  return onTopic;
+}
 
 function externalDeviceTopics(topics: Topic[]): ExternalDevicesTopic[] {
   return topics.filter((topic): topic is ExternalDevicesTopic => topic.topic === 'externalDevices');
@@ -59,9 +73,7 @@ describe('FakeClient', () => {
     let client = new FakeClient();
     await client.setMacCready(1.5);
     await client.setBugs(10);
-    let onTopic = vi.fn();
-    client.subscribe(onTopic);
-    onTopic.mockClear();
+    let onTopic = observeTopicChanges(client);
     for (let value of [-1, NaN, Infinity]) {
       await expect(client.setBallast(value)).rejects.toThrow('Ballast');
     }
@@ -76,9 +88,7 @@ describe('FakeClient', () => {
   it('validates bugs and retains MC when publishing a change', async () => {
     let client = new FakeClient();
     await client.setMacCready(1.5);
-    let onTopic = vi.fn();
-    client.subscribe(onTopic);
-    onTopic.mockClear();
+    let onTopic = observeTopicChanges(client);
     for (let value of [-1, 100, NaN, Infinity]) {
       await expect(client.setBugs(value)).rejects.toThrow('Bugs');
     }
@@ -93,9 +103,7 @@ describe('FakeClient', () => {
 
   it('validates MC and publishes only changed flight controls', async () => {
     let client = new FakeClient();
-    let onTopic = vi.fn();
-    client.subscribe(onTopic);
-    onTopic.mockClear();
+    let onTopic = observeTopicChanges(client);
     for (let value of [-1, NaN, Infinity]) {
       await expect(client.setMacCready(value)).rejects.toThrow('MacCready');
     }
@@ -110,9 +118,7 @@ describe('FakeClient', () => {
 
   it('validates reserve changes and publishes only changed settings', async () => {
     let client = new FakeClient();
-    let onTopic = vi.fn();
-    client.subscribe(onTopic);
-    onTopic.mockClear();
+    let onTopic = observeTopicChanges(client);
     for (let reserve of [-1, NaN, Infinity]) {
       await expect(client.setArrivalReserve(reserve)).rejects.toThrow('Arrival reserve');
     }
@@ -121,24 +127,13 @@ describe('FakeClient', () => {
     await client.setArrivalReserve(304.8);
     expect(onTopic).toHaveBeenCalledExactlyOnceWith({
       topic: 'settings',
-      value: {
-        locale: null,
-        polar: 'LS 8',
-        arrivalReserve: 304.8,
-        climbAverageMethod: 'smoothed20s',
-        hillshadeDirection: 'fixed',
-        energyCompensation: true,
-        flarmPositionCorrection: true,
-        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-      },
+      value: settingsFixture({ arrivalReserve: 304.8 }),
     });
   });
 
   it('validates polar changes and publishes only changed settings', async () => {
     let client = new FakeClient();
-    let onTopic = vi.fn();
-    client.subscribe(onTopic);
-    onTopic.mockClear();
+    let onTopic = observeTopicChanges(client);
 
     await expect(client.getPolars()).resolves.toEqual(['LS 8', 'LS 8-18']);
     await expect(client.setPolar('Unknown glider')).rejects.toThrow('Unknown polar');
@@ -147,16 +142,7 @@ describe('FakeClient', () => {
     await client.setPolar('LS 8-18');
     expect(onTopic).toHaveBeenCalledExactlyOnceWith({
       topic: 'settings',
-      value: {
-        locale: null,
-        polar: 'LS 8-18',
-        arrivalReserve: 200,
-        climbAverageMethod: 'smoothed20s',
-        hillshadeDirection: 'fixed',
-        energyCompensation: true,
-        flarmPositionCorrection: true,
-        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-      },
+      value: settingsFixture({ polar: 'LS 8-18' }),
     });
   });
 
@@ -168,10 +154,8 @@ describe('FakeClient', () => {
 
   it('delivers emitted topics to a subscriber', () => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
     client.emit(instruments(270));
 
     expect(received).toEqual([instruments(270)]);
@@ -191,40 +175,27 @@ describe('FakeClient', () => {
 
   it('delivers onboarding topics when a subscriber connects', () => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-
-    client.subscribe((topic) => received.push(topic));
+    let received = collectTopics(client);
 
     expect(received).toMatchSnapshot();
   });
 
   it('publishes an explicit locale through the settings topic', async () => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
+    let received = collectTopics(client);
 
     await client.setLocale('de');
 
     expect(received.at(-1)).toEqual({
       topic: 'settings',
-      value: {
-        locale: 'de',
-        polar: 'LS 8',
-        arrivalReserve: 200,
-        climbAverageMethod: 'smoothed20s',
-        hillshadeDirection: 'fixed',
-        energyCompensation: true,
-        flarmPositionCorrection: true,
-        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-      },
+      value: settingsFixture({ locale: 'de' }),
     });
   });
 
   it('does not republish the active explicit locale', async () => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
 
     await client.setLocale('de');
     await client.setLocale('de');
@@ -234,10 +205,9 @@ describe('FakeClient', () => {
 
   it('publishes complete unit selections through the settings topic', async () => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
+    let received = collectTopics(client);
     await client.setLocale('de');
-    received = [];
+    received.length = 0;
 
     await client.setUnits({
       altitude: 'ft',
@@ -248,24 +218,17 @@ describe('FakeClient', () => {
 
     expect(received.at(-1)).toEqual({
       topic: 'settings',
-      value: {
+      value: settingsFixture({
         locale: 'de',
-        polar: 'LS 8',
         units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
-        arrivalReserve: 200,
-        climbAverageMethod: 'smoothed20s',
-        hillshadeDirection: 'fixed',
-        energyCompensation: true,
-        flarmPositionCorrection: true,
-      },
+      }),
     });
   });
 
   it('does not republish equal unit selections', async () => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
 
     await client.setUnits({
       altitude: 'm',
@@ -279,9 +242,8 @@ describe('FakeClient', () => {
 
   it('allocates device IDs and publishes complete authoritative topics', async () => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
 
     let tcpId = await client.addExternalDevice({ type: 'tcp', host: '127.0.0.1', port: 4353 });
     let bluetoothId = await client.addExternalDevice({
@@ -303,9 +265,8 @@ describe('FakeClient', () => {
 
   it('edits a device without changing its ID, enabled state, or position', async () => {
     let client = new FakeClient({ externalDevices: configuredDevices() });
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
 
     await client.editExternalDevice(4, {
       type: 'bluetooth',
@@ -317,9 +278,8 @@ describe('FakeClient', () => {
 
   it('publishes enable, disable, and delete changes', async () => {
     let client = new FakeClient({ externalDevices: configuredDevices() });
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
 
     await client.setExternalDeviceEnabled(4, false);
     await client.setExternalDeviceEnabled(7, true);
@@ -330,9 +290,8 @@ describe('FakeClient', () => {
 
   it('does not publish identical edits or enabled states', async () => {
     let client = new FakeClient({ externalDevices: configuredDevices() });
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
 
     await client.editExternalDevice(4, { type: 'tcp', host: '127.0.0.1', port: 4353 });
     await client.setExternalDeviceEnabled(4, true);
@@ -343,9 +302,8 @@ describe('FakeClient', () => {
   it('rejects unknown device IDs without changing authoritative state', async () => {
     let devices = configuredDevices();
     let client = new FakeClient({ externalDevices: devices });
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
-    received = [];
+    let received = collectTopics(client);
+    received.length = 0;
 
     await expect(
       client.editExternalDevice(99, { type: 'tcp', host: '192.0.2.1', port: 10110 }),
@@ -381,8 +339,7 @@ describe('FakeClient', () => {
 
 it('removes only the selected fake waypoint source', async () => {
   let client = new FakeClient();
-  let received: Topic[] = [];
-  client.subscribe((topic) => received.push(topic));
+  let received = collectTopics(client);
   client.emit({
     topic: 'waypoints',
     value: {
@@ -407,8 +364,7 @@ it('removes only the selected fake waypoint source', async () => {
 
 it('removes only the named airspace source and advances its generation', async () => {
   let client = new FakeClient();
-  let topics: Topic[] = [];
-  client.subscribe((topic) => topics.push(topic));
+  let topics = collectTopics(client);
   client.emit({
     topic: 'airspace',
     value: {
@@ -430,8 +386,7 @@ it.each(['airspace', 'waypoints'] as const)(
   'toggles %s fixtures without losing diagnostics',
   async (kind) => {
     let client = new FakeClient();
-    let received: Topic[] = [];
-    client.subscribe((topic) => received.push(topic));
+    let received = collectTopics(client);
     let initial: Topic =
       kind === 'airspace'
         ? {
@@ -610,9 +565,7 @@ it('delivers download snapshots until each subscription closes', async () => {
 
 it('publishes only changed climb settings', async () => {
   let client = new FakeClient();
-  let onTopic = vi.fn();
-  client.subscribe(onTopic);
-  onTopic.mockClear();
+  let onTopic = observeTopicChanges(client);
   await client.setClimbAverageMethod('smoothed20s');
   expect(onTopic).not.toHaveBeenCalled();
   await client.setClimbAverageMethod('average30s');
@@ -624,9 +577,7 @@ it('publishes only changed climb settings', async () => {
 
 it('publishes only changed hillshade direction settings', async () => {
   let client = new FakeClient();
-  let onTopic = vi.fn();
-  client.subscribe(onTopic);
-  onTopic.mockClear();
+  let onTopic = observeTopicChanges(client);
   await client.setHillshadeDirection('fixed');
   expect(onTopic).not.toHaveBeenCalled();
   await client.setHillshadeDirection('wind');
@@ -638,9 +589,7 @@ it('publishes only changed hillshade direction settings', async () => {
 
 it('publishes only changed energy compensation settings', async () => {
   let client = new FakeClient();
-  let onTopic = vi.fn();
-  client.subscribe(onTopic);
-  onTopic.mockClear();
+  let onTopic = observeTopicChanges(client);
   await client.setEnergyCompensation(true);
   expect(onTopic).not.toHaveBeenCalled();
   for (let enabled of [false, true]) {
@@ -655,9 +604,7 @@ it('publishes only changed energy compensation settings', async () => {
 
 it('publishes only changed FLARM position correction settings', async () => {
   let client = new FakeClient();
-  let onTopic = vi.fn();
-  client.subscribe(onTopic);
-  onTopic.mockClear();
+  let onTopic = observeTopicChanges(client);
   await client.setFlarmPositionCorrection(true);
   expect(onTopic).not.toHaveBeenCalled();
   for (let enabled of [false, true]) {

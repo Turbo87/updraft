@@ -92,6 +92,8 @@ map preserves its camera and follow state.
 The target bar reserves space above the map when a primary target is active.
 Waypoint details, map inspection, and traffic details can select a target.
 See [Goto navigation](navigation.md) for target lifetime and guidance rules.
+[Pinned targets](pinned-targets.md) appear below the primary target in a
+scrollable panel. They remain independent of primary navigation.
 
 ## Excluded behavior
 

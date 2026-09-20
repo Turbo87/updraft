@@ -67,6 +67,7 @@ is not restored, and the shell logs the load failure.
 
 ## Later work
 
-Tracked waypoints, competition tasks, record flights, casual flight goals,
+[Pinned targets](pinned-targets.md) provide independent target monitoring.
+Competition tasks, record flights, casual flight goals,
 and emergency behavior require separate scope and design work. They are
 not part of goto navigation.

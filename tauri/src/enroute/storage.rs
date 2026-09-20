@@ -44,6 +44,26 @@ pub fn installed_files(directory: &Path) -> Result<BTreeMap<String, PathBuf>> {
         .collect())
 }
 
+pub fn persist_enabled(marker: &Path, enabled: bool) -> std::io::Result<()> {
+    if enabled {
+        match fs::remove_file(marker) {
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            result => result,
+        }
+    } else {
+        match fs::File::create_new(marker) {
+            Ok(_) => Ok(()),
+            Err(error)
+                if error.kind() == ErrorKind::AlreadyExists
+                    && fs::symlink_metadata(marker)?.is_file() =>
+            {
+                Ok(())
+            }
+            Err(error) => Err(error),
+        }
+    }
+}
+
 pub fn available_updates<T>(
     directory: &Path,
     files: &BTreeMap<String, T>,

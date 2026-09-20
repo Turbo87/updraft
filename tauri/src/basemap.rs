@@ -93,12 +93,8 @@ impl Basemaps {
             .get_mut(name)
             .context("Basemap file is not installed")?;
         let marker = path.with_extension("mbtiles.disabled");
+        crate::enroute::storage::persist_enabled(&marker, enabled)?;
         if enabled {
-            match fs::remove_file(&marker) {
-                Ok(()) => {}
-                Err(error) if error.kind() == ErrorKind::NotFound => {}
-                Err(error) => return Err(error.into()),
-            }
             *source = match open_basemap(&path) {
                 Ok(connection) => BasemapSource::Active(connection),
                 Err(error) => {
@@ -107,13 +103,6 @@ impl Basemaps {
                 }
             };
         } else {
-            match fs::File::create_new(&marker) {
-                Ok(_) => {}
-                Err(error)
-                    if error.kind() == ErrorKind::AlreadyExists
-                        && fs::symlink_metadata(&marker)?.is_file() => {}
-                Err(error) => return Err(error.into()),
-            }
             *source = BasemapSource::Disabled;
         }
         self.generation += 1;
@@ -129,11 +118,7 @@ impl Basemaps {
         );
         if !self.files.contains_key(name) {
             let marker = path.with_extension("mbtiles.disabled");
-            match fs::remove_file(marker) {
-                Ok(()) => {}
-                Err(error) if error.kind() == ErrorKind::NotFound => {}
-                Err(error) => return Err(error.into()),
-            }
+            crate::enroute::storage::persist_enabled(&marker, true)?;
         }
         let previous = self.files.remove(name);
         let installed = previous.is_some();

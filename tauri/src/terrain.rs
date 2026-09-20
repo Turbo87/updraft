@@ -119,21 +119,7 @@ impl Terrain {
         );
         let path = self.directory.join(name);
         let marker = path.with_extension("terrain.disabled");
-        if enabled {
-            match fs::remove_file(&marker) {
-                Ok(_) => {}
-                Err(error) if error.kind() == ErrorKind::NotFound => {}
-                Err(error) => return Err(error.into()),
-            }
-        } else {
-            match fs::File::create_new(&marker) {
-                Ok(_) => {}
-                Err(error)
-                    if error.kind() == ErrorKind::AlreadyExists
-                        && fs::symlink_metadata(&marker)?.is_file() => {}
-                Err(error) => return Err(error.into()),
-            }
-        }
+        crate::enroute::storage::persist_enabled(&marker, enabled)?;
         self.recheck(|id, source| {
             if id == name {
                 enabled
@@ -152,11 +138,7 @@ impl Terrain {
         );
         if !self.files.contains_key(name) {
             let marker = path.with_extension("terrain.disabled");
-            match fs::remove_file(marker) {
-                Ok(()) => {}
-                Err(error) if error.kind() == ErrorKind::NotFound => {}
-                Err(error) => return Err(error.into()),
-            }
+            crate::enroute::storage::persist_enabled(&marker, true)?;
         }
         let previous = self.files.remove(name);
         let installed = previous.is_some();

@@ -9,10 +9,10 @@ use tauri::Manager;
 fn initial_delivery_failure_does_not_register_a_channel() {
     let directory = tempfile::tempdir().unwrap();
     let service = CatalogService::load(directory.path().join("catalog.json"));
-    let subscriptions = CatalogSubscriptions::new(&service);
+    let subscriptions = CatalogSubscriptions::new(service.subscribe());
     let channel = Channel::new(|_| Err(std::io::Error::other("closed").into()));
     assert_err!(subscriptions.subscribe(channel));
-    assert!(subscriptions.channels.lock().unwrap().is_empty());
+    assert!(subscriptions.is_empty());
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn catalog_subscription_serializes_metadata_through_ipc() {
     let timestamp = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1234);
     assert_ok!(file.set_times(FileTimes::new().set_modified(timestamp)));
     let service = CatalogService::load(path);
-    let subscriptions = CatalogSubscriptions::new(&service);
+    let subscriptions = CatalogSubscriptions::new(service.subscribe());
     let (sender, messages) = std::sync::mpsc::channel::<Value>();
     let app = tauri::test::mock_builder()
         .manage(subscriptions)
@@ -63,13 +63,7 @@ fn catalog_subscription_serializes_metadata_through_ipc() {
             json!({"channelId":42})
         ));
     }
-    assert!(
-        app.state::<CatalogSubscriptions>()
-            .channels
-            .lock()
-            .unwrap()
-            .is_empty()
-    );
+    assert!(app.state::<CatalogSubscriptions>().is_empty());
 }
 
 #[test]

@@ -10,7 +10,7 @@ fn failed_initial_delivery_does_not_register_a_subscriber() {
     let state = DownloadCommands::default();
     let channel = Channel::new(|_| Err(std::io::Error::other("closed channel").into()));
     assert_err!(state.subscribe(channel));
-    assert!(state.subscribers.lock().unwrap().is_empty());
+    assert!(state.subscribers.is_empty());
 }
 
 #[tokio::test]
@@ -105,6 +105,53 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
     let outcome = DownloadOutcome::Installed;
     assert!(!queue.lock().unwrap().finish(&attempt, outcome));
     let state = app.state::<DownloadCommands>();
-    assert!(state.subscribers.lock().unwrap().is_empty());
+    assert!(state.subscribers.is_empty());
     assert_err!(messages.try_recv());
+}
+
+#[test]
+fn initial_delivery_precedes_a_concurrent_update() {
+    use std::sync::{
+        Barrier,
+        atomic::{AtomicBool, Ordering},
+    };
+    use std::time::Duration;
+    let state = Arc::new(DownloadCommands::default());
+    let entry = assert_ok!(crate::enroute::parse_catalog(
+        br#"{"maps":[{"path":"Europe/Germany.mbtiles","size":10,"time":"20260908"}]}"#
+    ))
+    .remove(0);
+    let release = Arc::new(Barrier::new(2));
+    let first = AtomicBool::new(true);
+    let (sent, received) = std::sync::mpsc::channel();
+    let initial_release = release.clone();
+    let channel = Channel::new(move |body| {
+        sent.send(body.deserialize::<Value>().unwrap()).unwrap();
+        if first.swap(false, Ordering::SeqCst) {
+            initial_release.wait();
+        }
+        Ok(())
+    });
+    let subscriber = {
+        let state = state.clone();
+        std::thread::spawn(move || assert_ok!(state.subscribe(channel)))
+    };
+    let initial = assert_ok!(received.recv_timeout(Duration::from_secs(2)));
+    assert_eq!(initial, json!([]));
+    assert_err!(state.queue.try_lock().map(|_| ()));
+    let ready = Arc::new(Barrier::new(2));
+    let publisher = {
+        let state = state.clone();
+        let ready = ready.clone();
+        std::thread::spawn(move || {
+            ready.wait();
+            state.queue.lock().unwrap().enqueue(entry);
+        })
+    };
+    ready.wait();
+    release.wait();
+    assert_ok!(subscriber.join());
+    assert_ok!(publisher.join());
+    let update = assert_ok!(received.recv_timeout(Duration::from_secs(2)));
+    assert_eq!(update[0]["path"], "Europe/Germany.mbtiles");
 }

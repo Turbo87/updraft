@@ -23,7 +23,7 @@ impl AirspaceStorage {
         })?;
         let mut catalog = AirspaceCatalog::default();
         for (name, path) in sources {
-            let source = if self.disabled_path(&name).try_exists()? {
+            let source = if self.files.is_disabled(&name)? {
                 AirspaceSource::Disabled
             } else {
                 load_airspace(&path)
@@ -40,37 +40,22 @@ impl AirspaceStorage {
         name: &str,
     ) -> io::Result<Result<Arc<AirspaceDataset>, AirspaceLoadError>> {
         self.files.replace(name, bytes)?;
-        self.persist_enabled(name, true)?;
+        self.files.persist_enabled(name, true)?;
         Ok(parse_airspace(bytes))
     }
 
     pub fn remove(&self, name: &str) -> io::Result<()> {
         self.files.remove(name)?;
-        self.persist_enabled(name, true)
+        self.files.persist_enabled(name, true)
     }
 
     pub fn set_enabled(&self, name: &str, enabled: bool) -> io::Result<AirspaceSource> {
-        self.persist_enabled(name, enabled)?;
+        self.files.persist_enabled(name, enabled)?;
         Ok(if enabled {
             load_airspace(&self.files.path(name))
         } else {
             AirspaceSource::Disabled
         })
-    }
-
-    fn disabled_path(&self, name: &str) -> PathBuf {
-        self.files.path(name).with_extension("disabled")
-    }
-
-    fn persist_enabled(&self, name: &str, enabled: bool) -> io::Result<()> {
-        let path = self.disabled_path(name);
-        if !enabled {
-            return std::fs::File::create(path)?.sync_all();
-        }
-        match std::fs::remove_file(path) {
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-            result => result,
-        }
     }
 }
 

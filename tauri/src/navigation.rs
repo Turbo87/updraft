@@ -43,16 +43,8 @@ impl NavigationFile {
             .map_err(|error| error.to_string())?
             .map_err(str::to_owned)?;
         let path = self.path.clone();
-        let result = tauri::async_runtime::spawn_blocking(move || -> std::io::Result<()> {
-            let directory = path.parent().expect("navigation file has a directory");
-            std::fs::create_dir_all(directory)?;
-            let mut temporary = NamedTempFile::new_in(directory)?;
-            serde_json::to_writer(&mut temporary, &target)?;
-            writeln!(temporary)?;
-            temporary.persist(path).map_err(|error| error.error)?;
-            Ok(())
-        })
-        .await;
+        let result =
+            tauri::async_runtime::spawn_blocking(move || save_target_file(path, &target)).await;
         match result {
             Ok(Ok(())) => Ok(true),
             error => {
@@ -61,6 +53,16 @@ impl NavigationFile {
             }
         }
     }
+}
+
+pub fn save_target_file(path: PathBuf, value: &impl serde::Serialize) -> std::io::Result<()> {
+    let directory = path.parent().expect("target file has a directory");
+    std::fs::create_dir_all(directory)?;
+    let mut temporary = NamedTempFile::new_in(directory)?;
+    serde_json::to_writer(&mut temporary, value)?;
+    writeln!(temporary)?;
+    temporary.persist(path).map_err(|error| error.error)?;
+    Ok(())
 }
 
 #[cfg(test)]

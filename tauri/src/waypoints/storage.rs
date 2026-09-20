@@ -19,7 +19,7 @@ impl WaypointStorage {
     pub fn load(&self) -> io::Result<WaypointCatalog> {
         let mut catalog = WaypointCatalog::default();
         for (name, path) in self.files.entries(|_, error| Err(error))? {
-            let source = if self.disabled_path(&name).try_exists()? {
+            let source = if self.files.is_disabled(&name)? {
                 WaypointSource::Disabled
             } else {
                 load_waypoints(&path)
@@ -36,37 +36,22 @@ impl WaypointStorage {
         bytes: &[u8],
     ) -> io::Result<Result<Arc<WaypointDataset>, WaypointLoadError>> {
         self.files.replace(name, bytes)?;
-        self.persist_enabled(name, true)?;
+        self.files.persist_enabled(name, true)?;
         Ok(parse_waypoints(bytes))
     }
 
     pub fn remove(&self, name: &str) -> io::Result<()> {
         self.files.remove(name)?;
-        self.persist_enabled(name, true)
+        self.files.persist_enabled(name, true)
     }
 
     pub fn set_enabled(&self, name: &str, enabled: bool) -> io::Result<WaypointSource> {
-        self.persist_enabled(name, enabled)?;
+        self.files.persist_enabled(name, enabled)?;
         Ok(if enabled {
             load_waypoints(&self.files.path(name))
         } else {
             WaypointSource::Disabled
         })
-    }
-
-    fn disabled_path(&self, name: &str) -> PathBuf {
-        self.files.path(name).with_extension("disabled")
-    }
-
-    fn persist_enabled(&self, name: &str, enabled: bool) -> io::Result<()> {
-        let path = self.disabled_path(name);
-        if !enabled {
-            return std::fs::File::create(path)?.sync_all();
-        }
-        match std::fs::remove_file(path) {
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-            result => result,
-        }
     }
 }
 

@@ -29,6 +29,25 @@ impl SourceFiles {
         path
     }
 
+    fn disabled_path(&self, name: &str) -> PathBuf {
+        self.path(name).with_extension("disabled")
+    }
+
+    pub fn is_disabled(&self, name: &str) -> io::Result<bool> {
+        self.disabled_path(name).try_exists()
+    }
+
+    pub fn persist_enabled(&self, name: &str, enabled: bool) -> io::Result<()> {
+        let path = self.disabled_path(name);
+        if !enabled {
+            return std::fs::File::create(path)?.sync_all();
+        }
+        match std::fs::remove_file(path) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+            result => result,
+        }
+    }
+
     /// Lists decoded source names and paths without parsing their contents.
     ///
     /// The caller decides whether an unreadable subtree can be skipped.

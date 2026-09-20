@@ -90,13 +90,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   subscribeBasemaps(onUpdate: (status: BasemapStatus) => void): BasemapSubscription {
-    onUpdate(this.#basemaps);
-    this.#basemapListeners.add(onUpdate);
-    return {
-      close: async () => {
-        this.#basemapListeners.delete(onUpdate);
-      },
-    };
+    return subscribeStatus(this.#basemaps, this.#basemapListeners, onUpdate);
   }
 
   emitBasemaps(status: BasemapStatus): void {
@@ -107,13 +101,7 @@ export class FakeClient implements UpdraftClient {
   subscribeEnrouteCatalog(
     onUpdate: (status: EnrouteCatalogStatus) => void,
   ): EnrouteCatalogSubscription {
-    onUpdate(this.#enrouteCatalog);
-    this.#enrouteCatalogListeners.add(onUpdate);
-    return {
-      close: async () => {
-        this.#enrouteCatalogListeners.delete(onUpdate);
-      },
-    };
+    return subscribeStatus(this.#enrouteCatalog, this.#enrouteCatalogListeners, onUpdate);
   }
 
   emitEnrouteCatalog(status: EnrouteCatalogStatus): void {
@@ -124,13 +112,7 @@ export class FakeClient implements UpdraftClient {
   subscribeEnrouteDownloads(
     onUpdate: (status: EnrouteDownloadStatus[]) => void,
   ): EnrouteDownloadSubscription {
-    onUpdate(this.#enrouteDownloads);
-    this.#enrouteDownloadsListeners.add(onUpdate);
-    return {
-      close: async () => {
-        this.#enrouteDownloadsListeners.delete(onUpdate);
-      },
-    };
+    return subscribeStatus(this.#enrouteDownloads, this.#enrouteDownloadsListeners, onUpdate);
   }
 
   emitEnrouteDownloads(status: EnrouteDownloadStatus[]): void {
@@ -164,13 +146,7 @@ export class FakeClient implements UpdraftClient {
   async refreshEnrouteCatalog(): Promise<void> {}
 
   subscribeTerrain(onUpdate: (status: TerrainStatus) => void): TerrainSubscription {
-    onUpdate(this.#terrain);
-    this.#terrainListeners.add(onUpdate);
-    return {
-      close: async () => {
-        this.#terrainListeners.delete(onUpdate);
-      },
-    };
+    return subscribeStatus(this.#terrain, this.#terrainListeners, onUpdate);
   }
 
   emitTerrain(status: TerrainStatus): void {
@@ -508,4 +484,18 @@ function setSourceEnabled<T extends { sourceName: string }>(
       })
     : { type: 'disabled' as const, sourceName };
   return sources.map((source) => (source.sourceName === sourceName ? replacement : source));
+}
+
+function subscribeStatus<T>(
+  status: T,
+  listeners: Set<(status: T) => void>,
+  onUpdate: (status: T) => void,
+): { close(): Promise<void> } {
+  onUpdate(status);
+  listeners.add(onUpdate);
+  return {
+    close: async () => {
+      listeners.delete(onUpdate);
+    },
+  };
 }

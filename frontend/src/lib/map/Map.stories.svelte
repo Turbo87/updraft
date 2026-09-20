@@ -1,13 +1,13 @@
 <script module lang="ts">
   import type { GeoJSONSource } from 'maplibre-gl';
   import type { ComponentProps } from 'svelte';
-  import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { expect, waitFor } from 'storybook/test';
 
   import { FakeClient } from '$lib/client/fake';
+  import { instrumentsFixture } from '$lib/instruments.fixture';
   import { MapState } from '$lib/map-state.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
   import { trafficTarget } from '$lib/traffic.fixture';
@@ -18,7 +18,7 @@
   const arrivalMap = new MapState();
   const arrivalClient = new FakeClient();
 
-  const instruments = {
+  const instruments = instrumentsFixture({
     gps: {
       position: {
         latitudeDegrees: 50.823,
@@ -30,13 +30,7 @@
       fixTime: null,
       stale: false,
     },
-    pressureAltitude: null,
-    trueAirspeed: null,
-    terrainElevation: null,
-    altitudeAgl: null,
-    solarPosition: null,
-    derived: null,
-  } satisfies Instruments;
+  });
 
   const units = {
     altitude: 'm',
@@ -115,15 +109,7 @@
   name="No position"
   args={{
     airspace: { generation: 0, sources: [] },
-    instruments: {
-      gps: null,
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    instruments: instrumentsFixture(),
     mapState: new MapState(),
     traffic,
     units,
@@ -176,15 +162,7 @@
     mapState: arrivalMap,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: {
-      gps: null,
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    instruments: instrumentsFixture(),
     units,
     testMode: true,
     testWaypointData: arrivalFixture,

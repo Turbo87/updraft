@@ -5,6 +5,7 @@ import type { EnrouteCatalogStatus, EnrouteDownloadStatus } from './index';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { FakeClient } from './fake';
 
 type ExternalDevicesTopic = Extract<Topic, { topic: 'externalDevices' }>;
@@ -40,7 +41,7 @@ function configuredDevices(): PublishedExternalDevice[] {
 function instruments(trackDegrees: number): Topic {
   return {
     topic: 'instruments',
-    value: {
+    value: instrumentsFixture({
       gps: {
         position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
         altitudeMeters: null,
@@ -49,13 +50,7 @@ function instruments(trackDegrees: number): Topic {
         fixTime: null,
         stale: false,
       },
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    }),
   };
 }
 

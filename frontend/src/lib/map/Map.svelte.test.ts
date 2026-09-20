@@ -5,23 +5,17 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import { trafficTarget } from '$lib/traffic.fixture';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import MapComponent from './Map.svelte';
 
-const instruments = {
-  gps: null,
-  pressureAltitude: null,
-  trueAirspeed: null,
-  terrainElevation: null,
-  altitudeAgl: null,
-  solarPosition: null,
-  derived: null,
-};
+const instruments = instrumentsFixture();
 
 const positionInstruments = {
+  ...instrumentsFixture(),
   gps: {
     position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
     altitudeMeters: 410,
@@ -30,12 +24,6 @@ const positionInstruments = {
     fixTime: null,
     stale: true,
   },
-  pressureAltitude: null,
-  trueAirspeed: null,
-  terrainElevation: null,
-  altitudeAgl: null,
-  solarPosition: null,
-  derived: null,
 };
 
 const units = {

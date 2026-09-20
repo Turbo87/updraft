@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { SettingsStore } from './settings.svelte';
 
 describe('SettingsStore', () => {
@@ -46,15 +47,7 @@ describe('SettingsStore', () => {
 
     store.apply({
       topic: 'instruments',
-      value: {
-        gps: null,
-        pressureAltitude: null,
-        trueAirspeed: null,
-        terrainElevation: null,
-        altitudeAgl: null,
-        solarPosition: null,
-        derived: null,
-      },
+      value: instrumentsFixture(),
     });
 
     expect(store.current).toEqual({

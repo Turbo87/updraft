@@ -7,6 +7,7 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { fn } from 'storybook/test';
 
+  import { instrumentsFixture } from '$lib/instruments.fixture';
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
   import { trafficTarget } from '$lib/traffic.fixture';
@@ -46,15 +47,7 @@
     let instruments = new InstrumentsStore();
     instruments.apply({
       topic: 'instruments',
-      value: {
-        gps,
-        pressureAltitude: null,
-        trueAirspeed: null,
-        terrainElevation: null,
-        altitudeAgl: null,
-        solarPosition: null,
-        derived: null,
-      },
+      value: instrumentsFixture({ gps }),
     });
     return instruments;
   }

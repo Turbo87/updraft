@@ -36,87 +36,31 @@ export class TauriClient implements UpdraftClient {
     onUpdate: (status: BasemapStatus) => void,
     onError: (error: unknown) => void,
   ): BasemapSubscription {
-    let channel = new Channel<BasemapStatus>();
-    channel.onmessage = onUpdate;
-    let closed = false;
-    let closing: Promise<void> | undefined;
-    let ready = invoke('subscribe_basemaps', { channel }).then(
-      () => true,
-      (error: unknown) => {
-        channel.onmessage = () => {};
-        if (!closed) onError(error);
-        return false;
-      },
-    );
-    return {
-      close() {
-        if (closing) return closing;
-        closed = true;
-        channel.onmessage = () => {};
-        closing = ready.then(async (registered) => {
-          if (registered) await invoke('unsubscribe_basemaps', { channelId: channel.id });
-        });
-        return closing;
-      },
-    };
+    return subscribeStatus('subscribe_basemaps', 'unsubscribe_basemaps', onUpdate, onError);
   }
 
   subscribeEnrouteCatalog(
     onUpdate: (status: EnrouteCatalogStatus) => void,
     onError: (error: unknown) => void,
   ): EnrouteCatalogSubscription {
-    let channel = new Channel<EnrouteCatalogStatus>();
-    channel.onmessage = onUpdate;
-    let closed = false;
-    let closing: Promise<void> | undefined;
-    let ready = invoke('subscribe_enroute_catalog', { channel }).then(
-      () => true,
-      (error: unknown) => {
-        channel.onmessage = () => {};
-        if (!closed) onError(error);
-        return false;
-      },
+    return subscribeStatus(
+      'subscribe_enroute_catalog',
+      'unsubscribe_enroute_catalog',
+      onUpdate,
+      onError,
     );
-    return {
-      close() {
-        if (closing) return closing;
-        closed = true;
-        channel.onmessage = () => {};
-        closing = ready.then(async (registered) => {
-          if (registered) await invoke('unsubscribe_enroute_catalog', { channelId: channel.id });
-        });
-        return closing;
-      },
-    };
   }
 
   subscribeEnrouteDownloads(
     onUpdate: (status: EnrouteDownloadStatus[]) => void,
     onError: (error: unknown) => void,
   ): EnrouteDownloadSubscription {
-    let channel = new Channel<EnrouteDownloadStatus[]>();
-    channel.onmessage = onUpdate;
-    let closed = false;
-    let closing: Promise<void> | undefined;
-    let ready = invoke('subscribe_enroute_downloads', { channel }).then(
-      () => true,
-      (error: unknown) => {
-        channel.onmessage = () => {};
-        if (!closed) onError(error);
-        return false;
-      },
+    return subscribeStatus(
+      'subscribe_enroute_downloads',
+      'unsubscribe_enroute_downloads',
+      onUpdate,
+      onError,
     );
-    return {
-      close() {
-        if (closing) return closing;
-        closed = true;
-        channel.onmessage = () => {};
-        closing = ready.then(async (registered) => {
-          if (registered) await invoke('unsubscribe_enroute_downloads', { channelId: channel.id });
-        });
-        return closing;
-      },
-    };
   }
 
   downloadEnrouteFiles(paths: string[]): Promise<void> {
@@ -151,29 +95,7 @@ export class TauriClient implements UpdraftClient {
     onUpdate: (status: TerrainStatus) => void,
     onError: (error: unknown) => void,
   ): TerrainSubscription {
-    let channel = new Channel<TerrainStatus>();
-    channel.onmessage = onUpdate;
-    let closed = false;
-    let closing: Promise<void> | undefined;
-    let ready = invoke('subscribe_terrain', { channel }).then(
-      () => true,
-      (error: unknown) => {
-        channel.onmessage = () => {};
-        if (!closed) onError(error);
-        return false;
-      },
-    );
-    return {
-      close() {
-        if (closing) return closing;
-        closed = true;
-        channel.onmessage = () => {};
-        closing = ready.then(async (registered) => {
-          if (registered) await invoke('unsubscribe_terrain', { channelId: channel.id });
-        });
-        return closing;
-      },
-    };
+    return subscribeStatus('subscribe_terrain', 'unsubscribe_terrain', onUpdate, onError);
   }
 
   subscribeArrivals(
@@ -359,4 +281,35 @@ export class TauriClient implements UpdraftClient {
       channel.onmessage = () => {};
     };
   }
+}
+
+function subscribeStatus<T>(
+  subscribe: string,
+  unsubscribe: string,
+  onUpdate: (status: T) => void,
+  onError: (error: unknown) => void,
+): { close(): Promise<void> } {
+  let channel = new Channel<T>();
+  channel.onmessage = onUpdate;
+  let closed = false;
+  let closing: Promise<void> | undefined;
+  let ready = invoke(subscribe, { channel }).then(
+    () => true,
+    (error: unknown) => {
+      channel.onmessage = () => {};
+      if (!closed) onError(error);
+      return false;
+    },
+  );
+  return {
+    close() {
+      if (closing) return closing;
+      closed = true;
+      channel.onmessage = () => {};
+      closing = ready.then(async (registered) => {
+        if (registered) await invoke(unsubscribe, { channelId: channel.id });
+      });
+      return closing;
+    },
+  };
 }

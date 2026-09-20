@@ -7,6 +7,7 @@
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { Navigation as NavigationState } from '$lib/protocol/generated/Navigation';
+  import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -19,9 +20,11 @@
   import { m } from '$lib/paraglide/messages.js';
   import { flightInfoboxes } from './infobox/fields';
   import InfoboxDock from './infobox/InfoboxDock.svelte';
+  import PinnedTargets from './PinnedTargets.svelte';
   import TargetBar from './TargetBar.svelte';
 
   type Props = {
+    pins?: PinnedTarget[];
     navigation?: NavigationState | null;
     climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
@@ -39,6 +42,7 @@
 
   let {
     navigation = null,
+    pins = [],
     climbAverageMethod = 'smoothed20s',
     client,
     airspace,
@@ -67,7 +71,8 @@
 <section class="flight-view" aria-label={m.flight_view()}>
   <div class="main">
     {#if navigation}<TargetBar {navigation} {units} />{/if}
-    <div class="map" class:has-target={navigation !== null}>
+    <PinnedTargets {pins} {units} hasPrimary={navigation !== null} />
+    <div class="map" class:has-target={navigation !== null || pins.some((pin) => !pin.primary)}>
       <Map
         {navigation}
         {climbAverageMethod}

@@ -9,6 +9,7 @@
   import NearbyResultsScreen from '$lib/NearbyResultsScreen.svelte';
   import { m } from '$lib/paraglide/messages.js';
   import { getLocale } from '$lib/paraglide/runtime.js';
+  import PinTargetButton from '$lib/PinTargetButton.svelte';
   import ResponsiveCard from '$lib/ResponsiveCard.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import { convertDistance } from '$lib/units';
@@ -119,8 +120,11 @@
     {/if}
   {/snippet}
 
-  {#snippet actions()}<Button loading={busy} onclick={navigate}>{m.navigation_here()}</Button
-    >{/snippet}
+  {#snippet actions()}<Button loading={busy} onclick={navigate}>{m.navigation_here()}</Button>
+    {#if selectedPosition}<PinTargetButton
+        target={{ type: 'mapPosition', ...selectedPosition }}
+      />{/if}
+  {/snippet}
   <NearbyResultsScreen
     {actions}
     {error}

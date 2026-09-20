@@ -442,7 +442,13 @@
   "navigation_here": "Navigate here",
   "navigation_map_position": "Map position",
   "navigation_waiting": "Waiting for traffic",
-  "navigation_report_age": "Last report {seconds}s ago",
   "navigation_relative_altitude": "Relative altitude",
-  "navigation_traffic": "Navigate to traffic"
+  "navigation_traffic": "Navigate to traffic",
+  "pins_heading": "Pinned targets",
+  "pins_pin": "Pin target",
+  "pins_unpin": "Unpin target",
+  "pins_save_failed": "The pin change was not saved. Previous pins can return after restart. Retry to save the change.",
+  "pins_missing": "This target is no longer pinned.",
+  "pins_navigate": "Navigate to target",
+  "pins_details": "Pinned target details"
 }

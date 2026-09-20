@@ -2,6 +2,8 @@ import { expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../../app.css';
+
 import { defaultSettings } from '$lib/settings';
 import { waypointNavigation } from './navigation.fixture';
 import TargetBar from './TargetBar.svelte';
@@ -57,7 +59,41 @@ it('shows waiting traffic without guidance, then the retained report age and rel
     },
   });
   await expect.element(page.getByText('Waiting for traffic')).not.toBeInTheDocument();
-  await expect.element(page.getByText('Last report 35s ago')).toBeVisible();
+  await expect.element(page.getByText('(35s)')).toBeVisible();
   await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('-50 m');
   await expect.element(page.getByLabelText('Relative altitude')).toHaveClass('stale');
 });
+
+it.each([false, true])(
+  'floors report age to one unit in the callsign row (compact: %s)',
+  async (compact) => {
+    let navigation = {
+      target: { type: 'traffic' as const, id: 'icao:ABC123' },
+      position: null,
+      guidance: null,
+      arrival: null,
+      traffic: { name: 'ABC', ageSeconds: 30, stale: true, relativeAltitude: null },
+    };
+    let screen = await render(TargetBar, { navigation, compact, units: defaultSettings().units });
+    for (let [seconds, suffix] of [
+      [30, '(30s)'],
+      [59.9, '(59s)'],
+      [60, '(1m)'],
+      [119.9, '(1m)'],
+      [3599.9, '(59m)'],
+      [3600, '(1h)'],
+      [7199.9, '(1h)'],
+    ] as const) {
+      await screen.rerender({
+        navigation: { ...navigation, traffic: { ...navigation.traffic, ageSeconds: seconds } },
+      });
+      await expect.element(page.getByText(suffix, { exact: true })).toBeVisible();
+      expect(document.querySelector('strong')?.textContent?.trim()).toBe(`ABC ${suffix}`);
+    }
+    let title = document.querySelector('strong')!;
+    let age = title.querySelector('small')!;
+    expect(parseFloat(getComputedStyle(age).fontSize)).toBeLessThan(
+      parseFloat(getComputedStyle(title).fontSize),
+    );
+  },
+);

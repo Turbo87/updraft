@@ -20,6 +20,7 @@ mod glide_performance;
 mod input;
 mod navigation;
 mod ownship;
+mod pinned_targets;
 mod polar;
 mod sensor_fusion;
 mod settings;
@@ -83,3 +84,8 @@ pub use waypoints::{
 pub use input::NavigationElevation;
 pub use input::SetNavigationTarget;
 pub use navigation::{Navigation, NavigationGuidance, NavigationTarget};
+
+pub use input::{PinTarget, RestorePinnedTargets, UnpinTarget};
+pub use pinned_targets::{PinnedTarget, SavedPinnedTarget};
+
+pub use input::PinnedTargetElevation;

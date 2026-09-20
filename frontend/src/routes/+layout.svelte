@@ -182,6 +182,7 @@
 <div class="app">
   <FlightView
     navigation={navigation.current}
+    pins={navigation.pins}
     {client}
     airspace={airspace.current}
     basemapGeneration={basemaps.current?.generation ?? 0}

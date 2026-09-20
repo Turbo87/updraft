@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FeatureCollection, Point } from 'geojson';
   import type { GeoJSONSource, Map, MapEventType } from 'maplibre-gl';
+  import type { Snippet } from 'svelte';
   import type { MapState } from '$lib/map-state.svelte';
   import type { AltitudeUnit } from '$lib/units';
   import type { WaypointFeature, WaypointProperties } from '$lib/waypoints';
@@ -17,6 +18,7 @@
     altitudeUnit: AltitudeUnit;
     sourceStatus: MapState['waypointSourceStatus'];
     onBack: () => void;
+    pinAction?: Snippet<[WaypointFeature]>;
     onNavigate?: (waypoint: WaypointFeature) => void;
     error?: boolean;
   };
@@ -29,6 +31,7 @@
     sourceStatus,
     onBack,
     onNavigate,
+    pinAction,
     error = false,
   }: Props = $props();
   type State =
@@ -94,6 +97,7 @@
 
 {#if queryState.type === 'ready'}
   <WaypointDetails
+    {pinAction}
     {error}
     waypoint={queryState.waypoint}
     {altitudeUnit}

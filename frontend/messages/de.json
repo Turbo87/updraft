@@ -442,7 +442,13 @@
   "navigation_here": "Hierhin navigieren",
   "navigation_map_position": "Kartenposition",
   "navigation_waiting": "Warte auf Verkehr",
-  "navigation_report_age": "Letzter Bericht vor {seconds}s",
   "navigation_relative_altitude": "Relative Höhe",
-  "navigation_traffic": "Verkehr anfliegen"
+  "navigation_traffic": "Verkehr anfliegen",
+  "pins_heading": "Angeheftete Ziele",
+  "pins_pin": "Ziel anheften",
+  "pins_unpin": "Ziel lösen",
+  "pins_save_failed": "Die Änderung wurde nicht gespeichert. Nach einem Neustart können vorherige Ziele zurückkehren. Versuche es erneut.",
+  "pins_missing": "Dieses Ziel ist nicht mehr angeheftet.",
+  "pins_navigate": "Zum Ziel navigieren",
+  "pins_details": "Details zum angehefteten Ziel"
 }

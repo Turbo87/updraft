@@ -1112,6 +1112,15 @@ fn elevation_discards_cached_tiles_when_inventory_changes() {
 
 #[tokio::test]
 async fn navigation_uses_offline_elevation_and_clears_arrival_when_terrain_is_disabled() {
+    target_elevation_follows_terrain_activation(false).await;
+}
+
+#[tokio::test]
+async fn pinned_map_uses_offline_elevation_and_clears_arrival_when_terrain_is_disabled() {
+    target_elevation_follows_terrain_activation(true).await;
+}
+
+async fn target_elevation_follows_terrain_activation(pinned: bool) {
     use std::time::Duration;
     use updraft_core::{Fix, InternalGps, NavigationTarget, SetNavigationTarget, Topic};
     let directory = assert_ok!(tempfile::tempdir());
@@ -1150,12 +1159,24 @@ async fn navigation_uses_offline_elevation_and_clears_arrival_when_terrain_is_di
             })))
             .await
     ));
+    if pinned {
+        assert_ok!(assert_ok!(
+            driver
+                .handle
+                .send(updraft_core::PinTarget(NavigationTarget::MapPosition {
+                    latitude_degrees: 40.,
+                    longitude_degrees: 6.,
+                }))
+                .await
+        ));
+    }
     let (sender, mut results) = tokio::sync::mpsc::unbounded_channel();
-    driver.handle.subscribe(Box::new(move |topic| {
-        if let Topic::Navigation(Some(navigation)) = topic {
-            return sender.send(navigation.clone()).is_ok();
-        }
-        true
+    driver.handle.subscribe(Box::new(move |topic| match topic {
+        Topic::Navigation(Some(navigation)) if !pinned => sender.send(navigation.clone()).is_ok(),
+        Topic::PinnedTargets(pins) if pinned => pins
+            .iter()
+            .all(|pin| sender.send(pin.navigation.clone()).is_ok()),
+        _ => true,
     }));
     let worker = tokio::spawn(watch_elevation(terrain.clone(), driver.handle.clone()));
     let arrival = assert_ok!(

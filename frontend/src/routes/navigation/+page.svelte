@@ -6,6 +6,7 @@
   import Button from '$lib/Button.svelte';
   import { navigationLabel } from '$lib/navigation';
   import { m } from '$lib/paraglide/messages';
+  import PinTargetButton from '$lib/PinTargetButton.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
 
   const { client, navigation } = getAppContext();
@@ -41,5 +42,7 @@
     {:else}<p>{m.navigation_waiting()}</p>{/if}
   {:else}<p>{m.navigation_none()}</p>{/if}
   {#if error}<p role="alert">{m.navigation_failed()}</p>{/if}
-  {#snippet actions()}<Button loading={busy} onclick={stop}>{m.navigation_stop()}</Button>{/snippet}
+  {#snippet actions()}<Button loading={busy} onclick={stop}>{m.navigation_stop()}</Button>
+    {#if navigation.current}<PinTargetButton target={navigation.current.target} />{/if}
+  {/snippet}
 </ScreenScaffold>

@@ -29,6 +29,21 @@ pub enum NavigationTarget {
 }
 
 impl NavigationTarget {
+    pub fn matches(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Traffic { id }, Self::Traffic { id: other }) => return id == other,
+            (Self::Waypoint { name, .. }, Self::Waypoint { name: other, .. }) if name == other => {}
+            (Self::MapPosition { .. }, Self::MapPosition { .. }) => {}
+            _ => return false,
+        }
+        let Some((a, b)) = self.position().zip(other.position()) else {
+            return false;
+        };
+        let longitude = (a.longitude_degrees - b.longitude_degrees).abs();
+        (a.latitude_degrees - b.latitude_degrees).abs() <= 0.0001
+            && longitude.min(360. - longitude) <= 0.0001
+    }
+
     pub fn position(&self) -> Option<LatLon> {
         match *self {
             Self::Traffic { .. } => None,

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Pathname } from '$app/types';
   import type { Navigation } from '$lib/protocol/generated/Navigation';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
@@ -9,23 +10,49 @@
   import { getLocale } from '$lib/paraglide/runtime';
   import { convertAltitude, convertDistance } from '$lib/units';
 
-  type Props = { navigation: Navigation; units: UnitSettings };
-  let { navigation, units }: Props = $props();
+  type Props = {
+    navigation: Navigation;
+    units: UnitSettings;
+    href?: Pathname;
+    label?: string;
+    compact?: boolean;
+  };
+  let {
+    navigation,
+    units,
+    href = '/navigation',
+    label = m.navigation_details(),
+    compact = false,
+  }: Props = $props();
   const guidance = $derived(navigation.guidance);
   const relative = $derived(guidance?.relativeBearingDegrees);
   const altitude = $derived(
     new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0, signDisplay: 'always' }),
   );
   const number = $derived(new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 1 }));
+
+  function formatReportAge(seconds: number): string {
+    if (seconds >= 3600) return `${Math.floor(seconds / 3600)}h`;
+    if (seconds >= 60) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds)}s`;
+  }
 </script>
 
-<a href={resolve('/navigation')} aria-label={m.navigation_details()} class:stale={guidance?.stale}>
+<a href={resolve(href)} aria-label={label} class:compact class:stale={guidance?.stale}>
+  {#if compact}<span
+      aria-hidden="true"
+      class={navigation.target.type === 'traffic'
+        ? 'i-mdi-airplane'
+        : navigation.target.type === 'waypoint'
+          ? 'i-mdi-map-marker-outline'
+          : 'i-mdi-rhombus-outline'}
+    ></span>{/if}
   <strong
     >{navigationLabel(navigation)}
     {#if navigation.target.type === 'traffic'}
       {#if !navigation.traffic}<small>{m.navigation_waiting()}</small>
-      {:else if navigation.traffic.stale}<small
-          >{m.navigation_report_age({ seconds: navigation.traffic.ageSeconds })}</small
+      {:else if navigation.traffic.stale}<small class="report-age"
+          >({formatReportAge(navigation.traffic.ageSeconds)})</small
         >{/if}
     {/if}
   </strong>
@@ -72,6 +99,15 @@
     text-decoration: none;
     min-height: 3rem;
   }
+  a.compact {
+    padding-top: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.875rem;
+    gap: var(--space-2);
+  }
+  a.compact > span:first-child {
+    flex-shrink: 0;
+  }
   strong {
     flex: 1;
     min-width: 0;
@@ -82,6 +118,12 @@
   small {
     display: block;
     font: var(--text-row-label);
+  }
+  small.report-age {
+    display: inline;
+    margin-left: var(--space-1);
+    font: inherit;
+    font-size: smaller;
   }
   span {
     white-space: nowrap;

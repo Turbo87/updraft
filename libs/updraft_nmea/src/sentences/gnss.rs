@@ -360,13 +360,14 @@ impl GsaFixType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::encode::encode_sentence;
     use crate::{Message, Step, parse};
     use approx::assert_abs_diff_eq;
     use claims::{assert_err_eq, assert_none, assert_ok, assert_some, assert_some_eq};
 
     #[test]
     fn encodes_complete_gga_sentence() {
-        insta::assert_snapshot!(encode_gga_sentence(&complete_gga()));
+        insta::assert_snapshot!(encode_sentence(&complete_gga()));
     }
 
     #[test]
@@ -384,7 +385,7 @@ mod tests {
             dgps_station: None,
         };
 
-        insta::assert_snapshot!(encode_gga_sentence(&gga));
+        insta::assert_snapshot!(encode_sentence(&gga));
     }
 
     #[test]
@@ -416,7 +417,7 @@ mod tests {
 
     #[test]
     fn encodes_complete_rmc_sentence() {
-        insta::assert_snapshot!(encode_rmc_sentence(&complete_rmc()));
+        insta::assert_snapshot!(encode_sentence(&complete_rmc()));
     }
 
     #[test]
@@ -424,7 +425,7 @@ mod tests {
         let mut rmc = complete_rmc();
         rmc.date = None;
 
-        insta::assert_snapshot!(encode_rmc_sentence(&rmc));
+        insta::assert_snapshot!(encode_sentence(&rmc));
     }
 
     #[test]
@@ -526,20 +527,6 @@ mod tests {
             dgps_age: Some(1.5),
             dgps_station: Some(23),
         }
-    }
-
-    fn encode_gga_sentence(gga: &Gga) -> String {
-        let sentence = assert_ok!(Vec::<u8>::try_from(gga));
-        let sentence = assert_ok!(String::from_utf8(sentence));
-        assert!(sentence.ends_with("\r\n"));
-        sentence
-    }
-
-    fn encode_rmc_sentence(rmc: &Rmc) -> String {
-        let sentence = assert_ok!(Vec::<u8>::try_from(rmc));
-        let sentence = assert_ok!(String::from_utf8(sentence));
-        assert!(sentence.ends_with("\r\n"));
-        sentence
     }
 
     #[test]

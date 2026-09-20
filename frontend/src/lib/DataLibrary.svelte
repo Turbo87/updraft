@@ -17,6 +17,7 @@
 
   import Button from './Button.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
+  import { formatDataSize } from './data-size';
   import DataCatalog from './DataCatalog.svelte';
   import DataCountry from './DataCountry.svelte';
   import DataUpdateCheckFailure from './DataUpdateCheckFailure.svelte';
@@ -359,26 +360,17 @@
       displayName(a, type).localeCompare(displayName(b, type), getLocale()),
     );
   }
-  function size(bytes: number) {
-    return new Intl.NumberFormat(getLocale(), {
-      style: 'unit',
-      unit: 'megabyte',
-      maximumFractionDigits: 1,
-    })
-      .format(bytes / 1_000_000)
-      .replaceAll(' ', '\u00a0');
-  }
   function downloadStatus(download: EnrouteDownloadStatus): string {
     if (download.type === 'failed') return m.data_download_failed();
     if (download.type === 'downloading')
-      return `${m.data_downloading()} · ${m.data_download_progress({ done: size(download.downloaded), total: size(download.total) })}`;
+      return `${m.data_downloading()} · ${m.data_download_progress({ done: formatDataSize(download.downloaded), total: formatDataSize(download.total) })}`;
     let entry = catalog?.cached?.entries.find((entry) => entry.path === download.path);
     if (!entry) return m.data_queued();
     let date = new Intl.DateTimeFormat(getLocale(), {
       dateStyle: 'medium',
       timeZone: 'UTC',
     }).format(new Date(entry.publicationDate));
-    return `${m.data_queued()} · ${date} · ${size(entry.size)}`;
+    return `${m.data_queued()} · ${date} · ${formatDataSize(entry.size)}`;
   }
   async function downloadAction(download: EnrouteDownloadStatus) {
     downloadActionError = '';
@@ -474,7 +466,7 @@
           disabled={!idleUpdates.length || downloads === null || downloadError}
           onclick={() => startUpdates(idleUpdates.map((entry) => entry.path))}
           >{m.data_update_all({
-            size: size(idleUpdates.reduce((total, entry) => total + entry.size, 0)),
+            size: formatDataSize(idleUpdates.reduce((total, entry) => total + entry.size, 0)),
           })}</Button
         >
       {:else}
@@ -593,7 +585,7 @@
                             title={m.data_downloaded_at()}
                             aria-label={`${m.data_downloaded_at()}: ${date}`}>{date}</time
                           >
-                          · {size(details.size)}
+                          · {formatDataSize(details.size)}
                         {:else if details === null}
                           {m.data_file_details_failed()}
                         {:else}{m.data_file_details_loading()}{/if}
@@ -623,7 +615,9 @@
                         >{m.data_update_available()} · {new Intl.DateTimeFormat(getLocale(), {
                           dateStyle: 'medium',
                           timeZone: 'UTC',
-                        }).format(new Date(update.publicationDate))} · {size(update.size)}</span
+                        }).format(new Date(update.publicationDate))} · {formatDataSize(
+                          update.size,
+                        )}</span
                       >
                     {/if}
                     {#if source && activation.hasError(group.type, source.sourceName)}<span
@@ -728,7 +722,7 @@
             {#if fileDetails}
               <div>
                 <dt>{m.data_file_size()}</dt>
-                <dd>{size(fileDetails.size)}</dd>
+                <dd>{formatDataSize(fileDetails.size)}</dd>
               </div>
               <div>
                 <dt>{m.data_downloaded_at()}</dt>

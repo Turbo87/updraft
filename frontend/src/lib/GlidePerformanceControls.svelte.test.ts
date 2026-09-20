@@ -1,8 +1,22 @@
+import type { ComponentProps } from 'svelte';
+
 import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
 import GlidePerformanceControls from './GlidePerformanceControls.svelte';
+
+function controlProps() {
+  return {
+    macCready: 0,
+    unit: 'm/s',
+    bugs: 0,
+    ballast: 0,
+    setMacCready: vi.fn(),
+    setBugs: vi.fn(),
+    setBallast: vi.fn(),
+  } satisfies ComponentProps<typeof GlidePerformanceControls>;
+}
 
 it.each([
   ['MC (m/s)', 'macCready'],
@@ -12,12 +26,9 @@ it.each([
   let pending = Promise.withResolvers<void>();
   let save = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(undefined);
   let view = await render(GlidePerformanceControls, {
-    macCready: 0,
-    unit: 'm/s',
-    bugs: 0,
+    ...controlProps(),
     setMacCready: save,
     setBugs: save,
-    ballast: 0,
     setBallast: save,
   });
   let input = page.getByRole('spinbutton', { name, exact: true });
@@ -42,13 +53,8 @@ it.each([
 it('rejects invalid bugs and restores the current value after a failed command', async () => {
   let setBugs = vi.fn().mockRejectedValue(new Error('driver stopped'));
   render(GlidePerformanceControls, {
-    macCready: 0,
-    unit: 'm/s',
-    setMacCready: vi.fn(),
-    bugs: 0,
+    ...controlProps(),
     setBugs,
-    ballast: 0,
-    setBallast: vi.fn(),
   });
   let input = page.getByRole('spinbutton', { name: 'Bugs (%)', exact: true });
   for (let value of ['', '-1', '100']) {
@@ -74,13 +80,9 @@ it.each([
 ] as const)('converts MC from %s to meters per second', async (unit, value, expected) => {
   let setMacCready = vi.fn();
   render(GlidePerformanceControls, {
-    macCready: 0,
+    ...controlProps(),
     unit,
     setMacCready,
-    bugs: 0,
-    setBugs: vi.fn(),
-    ballast: 0,
-    setBallast: vi.fn(),
   });
   let input = page.getByRole('spinbutton', { name: `MC (${unit})` });
   await input.fill(value);
@@ -91,13 +93,9 @@ it.each([
 it('rejects empty and negative MC and recovers from a failed command', async () => {
   let setMacCready = vi.fn().mockRejectedValue(new Error('driver stopped'));
   render(GlidePerformanceControls, {
+    ...controlProps(),
     macCready: 1.5,
-    unit: 'm/s',
     setMacCready,
-    bugs: 0,
-    setBugs: vi.fn(),
-    ballast: 0,
-    setBallast: vi.fn(),
   });
   let input = page.getByRole('spinbutton', { name: 'MC (m/s)' });
   for (let value of ['', '-1']) {
@@ -119,11 +117,7 @@ it('rejects empty and negative MC and recovers from a failed command', async () 
 it('rejects invalid ballast and restores the current litres after a failed command', async () => {
   let setBallast = vi.fn().mockRejectedValue(new Error('driver stopped'));
   render(GlidePerformanceControls, {
-    macCready: 0,
-    unit: 'm/s',
-    setMacCready: vi.fn(),
-    bugs: 0,
-    setBugs: vi.fn(),
+    ...controlProps(),
     ballast: 100,
     setBallast,
   });

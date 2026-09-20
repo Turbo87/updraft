@@ -10,6 +10,7 @@ import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import { trafficTarget } from '$lib/traffic.fixture';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
+import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
 
 const instruments = instrumentsFixture();
@@ -44,13 +45,11 @@ async function renderMap(
 ): Promise<MapLibreMap> {
   let mapState = new MapState();
   await render(MapComponent, {
-    hillshadeDirection: 'fixed',
+    ...mapProps(mapState),
     instruments,
-    mapState,
     traffic,
     units,
     airspace,
-    testMode: true,
     testAirspaceData,
   });
 
@@ -343,13 +342,9 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
 it('publishes the map and camera values through the shared map state', async () => {
   let mapState = new MapState();
   await render(MapComponent, {
-    hillshadeDirection: 'fixed',
+    ...mapProps(mapState),
     instruments,
-    traffic: new TrafficStore(),
     units,
-    airspace: { generation: 0, sources: [] },
-    mapState,
-    testMode: true,
   });
   await vi.waitFor(() => {
     expect(mapState.map).toBeDefined();
@@ -376,13 +371,10 @@ it('returns to follow mode without a position and follows the next position', as
   let mapState = new MapState();
   let traffic = new TrafficStore();
   let view = await render(MapComponent, {
-    hillshadeDirection: 'fixed',
+    ...mapProps(mapState),
     instruments,
-    mapState,
     traffic,
     units,
-    airspace: { generation: 0, sources: [] },
-    testMode: true,
   });
   await vi.waitFor(() => {
     expect(mapState.map).toBeDefined();
@@ -442,13 +434,9 @@ it('returns to follow mode without a position and follows the next position', as
 it('updates the camera and ownship only when their values change', async () => {
   let mapState = new MapState();
   let view = await render(MapComponent, {
-    hillshadeDirection: 'fixed',
+    ...mapProps(mapState),
     instruments: positionInstruments,
-    mapState,
-    traffic: new TrafficStore(),
     units,
-    airspace: { generation: 0, sources: [] },
-    testMode: true,
   });
   await vi.waitFor(() => {
     expect(mapState.map?.getSource('ownship')).toBeDefined();
@@ -498,13 +486,9 @@ it('updates the camera and ownship only when their values change', async () => {
 it('stops following before a user changes the map camera', async () => {
   let mapState = new MapState();
   let view = await render(MapComponent, {
-    hillshadeDirection: 'fixed',
+    ...mapProps(mapState),
     instruments: positionInstruments,
-    mapState,
-    traffic: new TrafficStore(),
     units,
-    airspace: { generation: 0, sources: [] },
-    testMode: true,
   });
   await vi.waitFor(() => expect(mapState.map?.loaded()).toBe(true));
   let map = mapState.map!;

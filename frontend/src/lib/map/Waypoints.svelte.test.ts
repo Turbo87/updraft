@@ -2,21 +2,15 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
-import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
-import { TrafficStore } from '$lib/stores/traffic.svelte';
+import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
 import { waypointsFixture } from './waypoint.fixture';
 
 it('renders waypoint types and removes the source when all files are removed', async () => {
   let mapState = new MapState();
   let component = await render(MapComponent, {
-    hillshadeDirection: 'fixed',
-    mapState,
-    traffic: new TrafficStore(),
-    airspace: { generation: 0, sources: [] },
-    instruments: instrumentsFixture(),
-    units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
+    ...mapProps(mapState),
     waypoints: {
       generation: 1,
       sources: [
@@ -28,7 +22,6 @@ it('renders waypoint types and removes the source when all files are removed', a
         },
       ],
     },
-    testMode: true,
     testWaypointData: waypointsFixture,
   });
   await vi.waitFor(() => {

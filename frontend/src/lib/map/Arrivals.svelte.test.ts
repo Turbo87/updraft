@@ -7,9 +7,8 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
 import { FakeClient } from '$lib/client/fake';
-import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
-import { TrafficStore } from '$lib/stores/traffic.svelte';
+import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
 import { waypointsFixture } from './waypoint.fixture';
 
@@ -22,15 +21,9 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
     sources: [{ type: 'active' as const, sourceName: 'local.cup', waypointCount: 3, warnings: [] }],
   };
   let component = await render(MapComponent, {
-    hillshadeDirection: 'fixed',
+    ...mapProps(mapState),
     client,
-    mapState,
     waypoints,
-    traffic: new TrafficStore(),
-    airspace: { generation: 0, sources: [] },
-    instruments: instrumentsFixture(),
-    units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-    testMode: true,
     testWaypointData: { type: 'FeatureCollection', features: [] },
   });
   await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(1));

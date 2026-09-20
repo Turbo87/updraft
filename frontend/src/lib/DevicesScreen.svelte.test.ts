@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'svelte';
+
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
@@ -5,6 +7,15 @@ import { page } from 'vitest/browser';
 import '../app.css';
 
 import DevicesScreen from './DevicesScreen.svelte';
+
+function deviceScreenProps() {
+  return {
+    devices: [],
+    initialized: true,
+    bondedBluetoothDevices: { status: 'unsupported' },
+    onEnabledChange: async () => {},
+  } satisfies ComponentProps<typeof DevicesScreen>;
+}
 
 describe('DevicesScreen.svelte', () => {
   it.each([
@@ -25,13 +36,12 @@ describe('DevicesScreen.svelte', () => {
         root.style.setProperty('--safe-area-left', '24px');
         root.style.setProperty('--safe-area-right', '12px');
         render(DevicesScreen, {
+          ...deviceScreenProps(),
           devices: [
             { deviceId: 1, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
             { deviceId: 2, enabled: false, type: 'tcp', host: '192.0.2.2', port: 4353 },
           ],
           initialized,
-          bondedBluetoothDevices: { status: 'unsupported' },
-          onEnabledChange: async () => {},
         });
         let cards = initialized
           ? page
@@ -77,10 +87,8 @@ describe('DevicesScreen.svelte', () => {
 
   it('waits for the first external-device topic before showing the list state', async () => {
     render(DevicesScreen, {
-      devices: [],
+      ...deviceScreenProps(),
       initialized: false,
-      bondedBluetoothDevices: { status: 'unsupported' },
-      onEnabledChange: async () => {},
     });
 
     await expect.element(page.getByText('Loading external devices…')).toBeInTheDocument();
@@ -88,12 +96,7 @@ describe('DevicesScreen.svelte', () => {
   });
 
   it('shows an empty state without creating a default device', async () => {
-    render(DevicesScreen, {
-      devices: [],
-      initialized: true,
-      bondedBluetoothDevices: { status: 'unsupported' },
-      onEnabledChange: async () => {},
-    });
+    render(DevicesScreen, deviceScreenProps());
 
     await expect
       .element(page.getByRole('heading', { name: 'External devices', exact: true }))
@@ -107,12 +110,7 @@ describe('DevicesScreen.svelte', () => {
   });
 
   it('links back to the Settings screen', async () => {
-    render(DevicesScreen, {
-      devices: [],
-      initialized: true,
-      bondedBluetoothDevices: { status: 'unsupported' },
-      onEnabledChange: async () => {},
-    });
+    render(DevicesScreen, deviceScreenProps());
 
     await expect
       .element(page.getByRole('link', { name: 'Back to settings' }))
@@ -121,6 +119,7 @@ describe('DevicesScreen.svelte', () => {
 
   it('links to device creation and configured-device editing', async () => {
     render(DevicesScreen, {
+      ...deviceScreenProps(),
       devices: [
         { deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
         {
@@ -130,9 +129,6 @@ describe('DevicesScreen.svelte', () => {
           address: '00:11:22:33:44:55',
         },
       ],
-      initialized: true,
-      bondedBluetoothDevices: { status: 'unsupported' },
-      onEnabledChange: async () => {},
     });
 
     await expect
@@ -148,6 +144,7 @@ describe('DevicesScreen.svelte', () => {
 
   it('summarizes TCP and Bluetooth devices without showing the standard SPP UUID', async () => {
     render(DevicesScreen, {
+      ...deviceScreenProps(),
       devices: [
         { deviceId: 1, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
         {
@@ -164,12 +161,10 @@ describe('DevicesScreen.svelte', () => {
           serviceUuid: '12345678-1234-1234-1234-123456789abc',
         },
       ],
-      initialized: true,
       bondedBluetoothDevices: {
         status: 'available',
         devices: [{ address: '00:11:22:33:44:55', name: 'Flight recorder' }],
       },
-      onEnabledChange: async () => {},
     });
 
     await expect.element(page.getByText('TCP', { exact: true })).toBeInTheDocument();
@@ -187,6 +182,7 @@ describe('DevicesScreen.svelte', () => {
 
   it('shows the published enabled state for each device', async () => {
     render(DevicesScreen, {
+      ...deviceScreenProps(),
       devices: [
         { deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
         {
@@ -196,9 +192,6 @@ describe('DevicesScreen.svelte', () => {
           address: '00:11:22:33:44:55',
         },
       ],
-      initialized: true,
-      bondedBluetoothDevices: { status: 'unsupported' },
-      onEnabledChange: async () => {},
     });
 
     let rows = page.getByRole('listitem');
@@ -218,9 +211,8 @@ describe('DevicesScreen.svelte', () => {
       port: 4353,
     };
     let view = await render(DevicesScreen, {
+      ...deviceScreenProps(),
       devices: [device],
-      initialized: true,
-      bondedBluetoothDevices: { status: 'unsupported' },
       onEnabledChange,
     });
 
@@ -249,12 +241,11 @@ describe('DevicesScreen.svelte', () => {
     });
     let onEnabledChange = vi.fn(() => pendingChange);
     render(DevicesScreen, {
+      ...deviceScreenProps(),
       devices: [
         { deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 },
         { deviceId: 7, enabled: false, type: 'tcp', host: '192.0.2.2', port: 4353 },
       ],
-      initialized: true,
-      bondedBluetoothDevices: { status: 'unsupported' },
       onEnabledChange,
     });
 
@@ -273,9 +264,8 @@ describe('DevicesScreen.svelte', () => {
       throw new Error('driver stopped');
     });
     render(DevicesScreen, {
+      ...deviceScreenProps(),
       devices: [{ deviceId: 4, enabled: true, type: 'tcp', host: '192.0.2.1', port: 4353 }],
-      initialized: true,
-      bondedBluetoothDevices: { status: 'unsupported' },
       onEnabledChange,
     });
 

@@ -453,13 +453,13 @@ impl Replay {
                     };
                     has_fix = true;
 
-                    let timestamp = timeline.schedule_timestamp(time);
-                    if timestamp.first_timestamp_regression {
-                        warnings.push(format!("IGC line {line_number}: timestamp moved backward"));
-                    }
-                    if timestamp.crossed_midnight {
-                        current_date = current_date.map(next_date);
-                    }
+                    let timestamp = schedule_igc_timestamp(
+                        &mut timeline,
+                        time,
+                        &mut current_date,
+                        line_number,
+                        &mut warnings,
+                    );
 
                     current_igc_event_builder(
                         &mut events,
@@ -511,13 +511,13 @@ impl Replay {
                         continue;
                     };
 
-                    let timestamp = timeline.schedule_timestamp(time);
-                    if timestamp.first_timestamp_regression {
-                        warnings.push(format!("IGC line {line_number}: timestamp moved backward"));
-                    }
-                    if timestamp.crossed_midnight {
-                        current_date = current_date.map(next_date);
-                    }
+                    let timestamp = schedule_igc_timestamp(
+                        &mut timeline,
+                        time,
+                        &mut current_date,
+                        line_number,
+                        &mut warnings,
+                    );
 
                     current_igc_event_builder(
                         &mut events,
@@ -623,6 +623,23 @@ impl Replay {
             first_pass = false;
         }
     }
+}
+
+fn schedule_igc_timestamp(
+    timeline: &mut ReplayTimeline,
+    time: Time,
+    current_date: &mut Option<Date>,
+    line_number: usize,
+    warnings: &mut Vec<String>,
+) -> TimelinePoint {
+    let timestamp = timeline.schedule_timestamp(time);
+    if timestamp.first_timestamp_regression {
+        warnings.push(format!("IGC line {line_number}: timestamp moved backward"));
+    }
+    if timestamp.crossed_midnight {
+        *current_date = current_date.map(next_date);
+    }
+    timestamp
 }
 
 fn current_igc_event_builder<'a>(
@@ -1178,6 +1195,37 @@ mod tests {
             );
             assert_some_eq!(first_rmc(&replay.events()[1]).date, expected_date);
         }
+    }
+
+    #[test]
+    fn wind_records_advance_the_igc_date_at_midnight() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFDTE311223\n\
+             J010810WDI\n\
+             B2359595200000N00700000EA0304801000\n\
+             K000000271\n\
+             B0000015200000N00700000EA0304801000\n"
+        ));
+        assert_eq!(event_times(&replay), [0, 1, 2].map(Duration::from_secs));
+        assert_some_eq!(first_rmc(&replay.events()[2]).date, Date::new(2024, 1, 1));
+        assert!(replay.warnings().is_empty());
+    }
+
+    #[test]
+    fn ignored_wind_records_do_not_advance_the_igc_date() {
+        let replay = assert_ok!(Replay::from_igc(
+            "HFDTE311223\n\
+             B2359595200000N00700000EA0304801000\n\
+             K000000271\n\
+             B2359585200000N00700000EA0304801000\n"
+        ));
+        assert_eq!(event_times(&replay), [Duration::ZERO]);
+        let dates: Vec<_> = rmc_messages(&replay.events()[0])
+            .into_iter()
+            .map(|rmc| rmc.date)
+            .collect();
+        assert_eq!(dates, [Some(Date::new(2023, 12, 31)); 2]);
+        assert_eq!(replay.warnings(), ["IGC line 4: timestamp moved backward"]);
     }
 
     #[test]

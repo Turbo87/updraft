@@ -218,12 +218,12 @@ pub fn run() {
                 }
                 Err(error) => tracing::warn!(%error, "Could not load task"),
             }
-            app.manage(task_file);
+
             let navigation_file = navigation::NavigationFile::new(app.path().app_config_dir()?);
             match navigation_file.load() {
                 Ok(target) => {
                     tauri::async_runtime::block_on(
-                        handle.send(updraft_core::SetNavigationTarget(target)),
+                        handle.send(updraft_core::RestoreNavigationTarget(target)),
                     )??;
                 }
                 Err(error) => tracing::warn!(%error, "Could not restore navigation target"),
@@ -238,6 +238,8 @@ pub fn run() {
                 }
                 Err(error) => tracing::warn!(%error, "Could not load recent targets"),
             }
+            task_file.start(handle.clone(), navigation_file.clone());
+            app.manage(task_file);
             app.manage(navigation_file);
             let pins_file = pinned_targets::PinnedTargetsFile::new(app.path().app_config_dir()?);
             let restored = pins_file

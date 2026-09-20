@@ -142,8 +142,10 @@
       >{waypoint.properties.name}</Button
     >
   {/each}
-  {#if error || notSaved}<p role="alert">{m.task_failed()}</p>{/if}
-  {#if notSaved}<Button onclick={save} loading={busy}>{m.retry()}</Button>{/if}
+  {#if error || notSaved || navigation.taskSaveFailed}<p role="alert">{m.task_failed()}</p>{/if}
+  {#if notSaved || navigation.taskSaveFailed}<Button onclick={save} loading={busy}
+      >{m.retry()}</Button
+    >{/if}
   {#snippet actions()}
     {#if task.points.length >= 2}<NavigateButton target={{ type: 'task' }} />{/if}
     {#if task.points.length}<PinTargetButton target={{ type: 'task' }} />{/if}

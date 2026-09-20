@@ -421,6 +421,7 @@ export class FakeClient implements UpdraftClient {
     onTopic({ topic: 'navigation', value: this.#navigation });
     onTopic({ topic: 'recentTargets', value: this.#recents });
     onTopic({ topic: 'task', value: this.#task });
+    onTopic({ topic: 'taskSaveFailed', value: false });
     onTopic({ topic: 'pinnedTargets', value: this.#pins });
     onTopic({ topic: 'settings', value: this.#settings });
     onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });

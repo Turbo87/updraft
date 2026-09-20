@@ -85,7 +85,7 @@ fn topics_include_settings_and_external_devices() {
     });
 
     let topics = core.topics();
-    assert_eq!(topics.len(), 11);
+    assert_eq!(topics.len(), 12);
     assert_eq!(topics[0], Topic::Instruments(Instruments::default()));
     assert_eq!(topics[1], Topic::Settings(settings));
     let Topic::ExternalDevices(devices) = &topics[2] else {
@@ -126,6 +126,7 @@ fn setting_locale_updates_the_topic_and_requests_persistence() {
             Topic::PinnedTargets(Vec::new()),
             Topic::RecentTargets(Vec::new()),
             Topic::Task(Default::default()),
+            Topic::TaskSaveFailed(false),
             Topic::GlidePerformance(GlidePerformance::default()),
         ]
     );
@@ -181,6 +182,7 @@ fn setting_units_updates_the_topic_and_requests_persistence() {
             Topic::PinnedTargets(Vec::new()),
             Topic::RecentTargets(Vec::new()),
             Topic::Task(Default::default()),
+            Topic::TaskSaveFailed(false),
             Topic::GlidePerformance(GlidePerformance::default()),
         ]
     );

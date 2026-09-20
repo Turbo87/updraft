@@ -27,6 +27,7 @@
   type Props = {
     pins?: PinnedTarget[];
     task?: Task;
+    taskSaveFailed?: boolean;
     navigation?: NavigationState | null;
     climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
@@ -44,6 +45,7 @@
 
   let {
     task,
+    taskSaveFailed = false,
     navigation = null,
     pins = [],
     climbAverageMethod = 'smoothed20s',
@@ -73,6 +75,7 @@
 
 <section class="flight-view" aria-label={m.flight_view()}>
   <div class="main">
+    {#if taskSaveFailed}<p role="alert"><a href={resolve('/task')}>{m.task_failed()}</a></p>{/if}
     {#if navigation}<TargetBar {navigation} {units} />{/if}
     <PinnedTargets {pins} {units} hasPrimary={navigation !== null} />
     <div class="map" class:has-target={navigation !== null || pins.some((pin) => !pin.primary)}>

@@ -45,6 +45,7 @@ pub struct Core {
     recent_targets: Vec<crate::NavigationTarget>,
     task: crate::task::TaskState,
     task_fix: Option<(SourceId, Timestamp)>,
+    task_save_failed: bool,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -82,6 +83,7 @@ impl Core {
             recent_targets: Vec::new(),
             task: Default::default(),
             task_fix: None,
+            task_save_failed: false,
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -184,6 +186,7 @@ impl Core {
             Topic::PinnedTargets(self.pinned_targets()),
             Topic::RecentTargets(self.recent_targets.clone()),
             Topic::Task(self.task.snapshot()),
+            Topic::TaskSaveFailed(self.task_save_failed),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -1306,6 +1309,30 @@ impl Core {
             && self.navigation_target == Some(crate::NavigationTarget::Task)
         {
             self.navigation_target = None;
+        }
+    }
+}
+
+impl Input for crate::RestoreNavigationTarget {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let target = if self.0 == Some(crate::NavigationTarget::Task)
+            && core.task.snapshot().status != crate::TaskStatus::Running
+        {
+            None
+        } else {
+            self.0
+        };
+        crate::SetNavigationTarget(target).apply_to(core, at)
+    }
+}
+impl Input for crate::SetTaskSaveFailed {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        core.task_save_failed = self.0;
+        Update {
+            response: (),
+            effects: vec![Effect::Emit(Topic::TaskSaveFailed(self.0))],
         }
     }
 }

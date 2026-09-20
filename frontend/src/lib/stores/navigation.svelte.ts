@@ -14,10 +14,12 @@ export class NavigationStore {
     finish: null,
     restartAllowed: false,
   });
+  taskSaveFailed = $state(false);
   recents = $state.raw<NavigationTarget[]>([]);
   pins = $state.raw<PinnedTarget[]>([]);
   current = $state.raw<Navigation | null>(null);
   apply(topic: Topic): void {
+    if (topic.topic === 'taskSaveFailed') this.taskSaveFailed = topic.value;
     if (topic.topic === 'task') this.task = topic.value;
     if (topic.topic === 'recentTargets') this.recents = topic.value;
     if (topic.topic === 'pinnedTargets') this.pins = topic.value;

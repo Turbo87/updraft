@@ -178,6 +178,7 @@ pub enum Topic {
     Navigation(Option<crate::Navigation>),
     PinnedTargets(Vec<crate::PinnedTarget>),
     Task(crate::Task),
+    TaskSaveFailed(bool),
     RecentTargets(Vec<crate::NavigationTarget>),
     Instruments(Instruments),
     Settings(Settings),

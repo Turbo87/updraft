@@ -354,3 +354,10 @@ impl private::Sealed for RestoreTask {}
 #[derive(Debug)]
 pub struct GetNavigationTarget;
 impl private::Sealed for GetNavigationTarget {}
+
+#[derive(Debug)]
+pub struct RestoreNavigationTarget(pub Option<crate::NavigationTarget>);
+impl private::Sealed for RestoreNavigationTarget {}
+#[derive(Debug)]
+pub struct SetTaskSaveFailed(pub bool);
+impl private::Sealed for SetTaskSaveFailed {}

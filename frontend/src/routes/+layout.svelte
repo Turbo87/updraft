@@ -181,6 +181,7 @@
 
 <div class="app">
   <FlightView
+    taskSaveFailed={navigation.taskSaveFailed}
     task={navigation.task}
     navigation={navigation.current}
     pins={navigation.pins}

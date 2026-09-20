@@ -96,3 +96,5 @@ pub use input::{ChangeTask, GetTask, RestoreTask};
 pub use task::{Task, TaskCommand, TaskPoint, TaskStatus, TaskTime};
 
 pub use input::GetNavigationTarget;
+
+pub use input::{RestoreNavigationTarget, SetTaskSaveFailed};

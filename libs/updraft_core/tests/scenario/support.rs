@@ -13,6 +13,7 @@ pub fn describe(effect: &Effect) -> String {
     }
 
     match effect {
+        Effect::Emit(Topic::TaskSaveFailed(failed)) => format!("task save failed {failed}"),
         Effect::Emit(Topic::Task(task)) => format!("task {task:?}"),
         Effect::Emit(Topic::RecentTargets(targets)) => format!("recent targets {targets:?}"),
         Effect::Emit(Topic::PinnedTargets(pins)) => format!("emit pinned targets {pins:?}"),

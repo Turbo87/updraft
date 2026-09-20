@@ -268,3 +268,83 @@ fn restoring_progress_and_selecting_after_completion_do_not_infer_crossings() {
     assert_eq!(resumed.finish, None);
     assert_eq!(resumed.status, TaskStatus::Running);
 }
+
+#[test]
+fn restoring_a_navigation_reference_does_not_resume_a_stopped_task() {
+    let mut core = route();
+    assert_ok!(
+        core.apply(ChangeTask(TaskCommand::Stop), Timestamp::default())
+            .response
+    );
+    assert_ok!(
+        core.apply(
+            updraft_core::RestoreNavigationTarget(Some(NavigationTarget::Task)),
+            Timestamp::default()
+        )
+        .response
+    );
+    assert_eq!(
+        core.apply(GetTask, Timestamp::default()).response.status,
+        TaskStatus::Stopped
+    );
+    claims::assert_none!(
+        core.apply(updraft_core::GetNavigationTarget, Timestamp::default())
+            .response
+    );
+}
+
+#[test]
+fn live_edits_keep_point_identity_and_deletion_selects_a_neighbor_without_finishing() {
+    let mut core = route();
+    let at = Timestamp::default();
+    assert_ok!(
+        core.apply(ChangeTask(TaskCommand::Select { id: 1 }), at)
+            .response
+    );
+    assert_ok!(
+        core.apply(ChangeTask(TaskCommand::Move { id: 1, index: 2 }), at)
+            .response
+    );
+    assert_eq!(core.apply(GetTask, at).response.current, Some(1));
+    assert_ok!(
+        core.apply(ChangeTask(TaskCommand::Remove { id: 1 }), at)
+            .response
+    );
+    let task = core.apply(GetTask, at).response;
+    assert_eq!(task.current, Some(2));
+    assert_eq!(task.status, TaskStatus::Running);
+    assert_eq!(task.finish, None);
+    assert_err!(
+        core.apply(ChangeTask(TaskCommand::Remove { id: 2 }), at)
+            .response
+    );
+    assert_eq!(core.apply(GetTask, at).response, task);
+}
+
+#[test]
+fn skipping_closes_the_restart_window_and_finish_clears_only_task_guidance() {
+    let mut core = route();
+    let at = Timestamp::default();
+    assert_ok!(
+        core.apply(ChangeTask(TaskCommand::Select { id: 2 }), at)
+            .response
+    );
+    fix(&mut core, 0., 1000);
+    fix(&mut core, 0.006, 2000);
+    assert_eq!(
+        core.apply(GetTask, Timestamp::from_millis(2000))
+            .response
+            .start,
+        None
+    );
+    fix(&mut core, 0.04, 3000);
+    let task = core.apply(GetTask, Timestamp::from_millis(3000)).response;
+    assert_eq!(task.status, TaskStatus::Completed);
+    claims::assert_none!(
+        core.apply(
+            updraft_core::GetNavigationTarget,
+            Timestamp::from_millis(3000)
+        )
+        .response
+    );
+}

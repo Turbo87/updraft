@@ -5,11 +5,12 @@ use std::path::PathBuf;
 use tempfile::NamedTempFile;
 use updraft_core::{NavigationTarget, SetNavigationTarget};
 
+#[derive(Clone)]
 pub struct NavigationFile {
     path: PathBuf,
     recents: PathBuf,
-    history_changes: tokio::sync::Mutex<()>,
-    changes: tokio::sync::Mutex<()>,
+    history_changes: std::sync::Arc<tokio::sync::Mutex<()>>,
+    changes: std::sync::Arc<tokio::sync::Mutex<()>>,
 }
 
 impl NavigationFile {
@@ -18,7 +19,7 @@ impl NavigationFile {
             path: directory.join("navigation.json"),
             recents: directory.join("recent-targets.json"),
             history_changes: Default::default(),
-            changes: tokio::sync::Mutex::new(()),
+            changes: Default::default(),
         }
     }
 

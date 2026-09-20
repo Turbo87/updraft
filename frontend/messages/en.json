@@ -440,5 +440,9 @@
   "navigation_details": "Target details",
   "navigation_arrival": "Arrival margin",
   "navigation_here": "Navigate here",
-  "navigation_map_position": "Map position"
+  "navigation_map_position": "Map position",
+  "navigation_waiting": "Waiting for traffic",
+  "navigation_report_age": "Last report {seconds}s ago",
+  "navigation_relative_altitude": "Relative altitude",
+  "navigation_traffic": "Navigate to traffic"
 }

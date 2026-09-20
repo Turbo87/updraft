@@ -63,12 +63,16 @@ export class FakeClient implements UpdraftClient {
     this.#navigation = target
       ? {
           target,
-          position: {
-            latitudeDegrees: target.latitudeDegrees,
-            longitudeDegrees: target.longitudeDegrees,
-          },
+          position:
+            target.type === 'traffic'
+              ? null
+              : {
+                  latitudeDegrees: target.latitudeDegrees,
+                  longitudeDegrees: target.longitudeDegrees,
+                },
           guidance: null,
           arrival: null,
+          traffic: null,
         }
       : null;
     this.emit({ topic: 'navigation', value: this.#navigation });

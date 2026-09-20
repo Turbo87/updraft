@@ -15,6 +15,7 @@ it('shows relative bearing and distance, then true bearing when track is unavail
       elevationMeters: 100,
     },
     position: { latitudeDegrees: 50, longitudeDegrees: 6 },
+    traffic: null,
     arrival: { marginMeters: 250, stale: false },
     guidance: {
       distanceMeters: 12300,
@@ -39,4 +40,40 @@ it('shows relative bearing and distance, then true bearing when track is unavail
   });
   await expect.element(page.getByLabelText('True bearing')).toHaveTextContent('90° T');
   await expect.element(page.getByRole('link', { name: 'Target details' })).toHaveClass('stale');
+});
+
+it('shows waiting traffic without guidance, then the retained report age and relative altitude', async () => {
+  let navigation = {
+    target: { type: 'traffic' as const, id: 'icao:ABC123' },
+    position: null,
+    guidance: null,
+    arrival: null,
+    traffic: null,
+  };
+  let screen = await render(TargetBar, { navigation, units: defaultSettings().units });
+  await expect.element(page.getByText('Waiting for traffic')).toBeVisible();
+  await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('–');
+  await expect.element(page.getByLabelText('Arrival margin')).not.toBeInTheDocument();
+  await screen.rerender({
+    navigation: {
+      ...navigation,
+      position: { latitudeDegrees: 50, longitudeDegrees: 6 },
+      guidance: {
+        bearingDegrees: 90,
+        relativeBearingDegrees: null,
+        distanceMeters: 1000,
+        stale: true,
+      },
+      traffic: {
+        name: 'ABC',
+        ageSeconds: 35,
+        stale: true,
+        relativeAltitude: { meters: -50, stale: true },
+      },
+    },
+  });
+  await expect.element(page.getByText('Waiting for traffic')).not.toBeInTheDocument();
+  await expect.element(page.getByText('Last report 35s ago')).toBeVisible();
+  await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('-50 m');
+  await expect.element(page.getByLabelText('Relative altitude')).toHaveClass('stale');
 });

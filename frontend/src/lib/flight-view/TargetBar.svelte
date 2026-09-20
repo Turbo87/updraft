@@ -4,6 +4,7 @@
 
   import { resolve } from '$app/paths';
 
+  import { navigationLabel } from '$lib/navigation';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { convertAltitude, convertDistance } from '$lib/units';
@@ -20,10 +21,14 @@
 
 <a href={resolve('/navigation')} aria-label={m.navigation_details()} class:stale={guidance?.stale}>
   <strong
-    >{navigation.target.type === 'waypoint'
-      ? navigation.target.name
-      : m.navigation_map_position()}</strong
-  >
+    >{navigationLabel(navigation)}
+    {#if navigation.target.type === 'traffic'}
+      {#if !navigation.traffic}<small>{m.navigation_waiting()}</small>
+      {:else if navigation.traffic.stale}<small
+          >{m.navigation_report_age({ seconds: navigation.traffic.ageSeconds })}</small
+        >{/if}
+    {/if}
+  </strong>
   <span aria-label={relative == null ? m.navigation_true() : m.navigation_relative()}>
     {#if guidance}
       {#if relative == null}{Math.round(guidance.bearingDegrees) % 360}° T
@@ -36,11 +41,22 @@
       ? `${number.format(convertDistance(guidance.distanceMeters, units.distance))} ${units.distance}`
       : '–'}</span
   >
-  <span aria-label={m.navigation_arrival()} class:stale={navigation.arrival?.stale}>
-    {navigation.arrival
-      ? `${altitude.format(convertAltitude(navigation.arrival.marginMeters, units.altitude))} ${units.altitude}`
-      : '–'}
-  </span>
+  {#if navigation.target.type === 'traffic'}
+    <span
+      aria-label={m.navigation_relative_altitude()}
+      class:stale={navigation.traffic?.relativeAltitude?.stale}
+    >
+      {navigation.traffic?.relativeAltitude
+        ? `${altitude.format(convertAltitude(navigation.traffic.relativeAltitude.meters, units.altitude))} ${units.altitude}`
+        : '–'}
+    </span>
+  {:else}
+    <span aria-label={m.navigation_arrival()} class:stale={navigation.arrival?.stale}>
+      {navigation.arrival
+        ? `${altitude.format(convertAltitude(navigation.arrival.marginMeters, units.altitude))} ${units.altitude}`
+        : '–'}
+    </span>
+  {/if}
 </a>
 
 <style>
@@ -62,6 +78,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  small {
+    display: block;
+    font: var(--text-row-label);
   }
   span {
     white-space: nowrap;

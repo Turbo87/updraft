@@ -223,7 +223,7 @@
         {/if}
       {/if}
     {/if}
-    {#if navigation}<Navigation position={navigation.position} ownship={position} />{/if}
+    {#if navigation?.position}<Navigation position={navigation.position} ownship={position} />{/if}
   </MapLibre>
   {#if !mapState.followMode}
     <ReturnToPositionButton onClick={resumeFollowing} />

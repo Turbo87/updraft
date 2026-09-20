@@ -570,6 +570,34 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn navigation_persists_only_the_traffic_id() {
+        let app = app();
+        assert_eq!(
+            claims::assert_ok!(invoke_airspace_args(
+                &app,
+                "set_navigation_target",
+                json!({"target": {"type":"traffic", "id":"icao:ABC123"}})
+            )),
+            json!(true)
+        );
+        let directory = app.state::<tempfile::TempDir>();
+        let saved = claims::assert_ok!(std::fs::read_to_string(
+            directory.path().join("navigation.json")
+        ));
+        insta::assert_snapshot!(saved, @r#"{"type":"traffic","id":"icao:ABC123"}"#);
+        let file = app.state::<crate::navigation::NavigationFile>();
+        std::assert_matches!(
+            claims::assert_ok!(file.load()),
+            Some(updraft_core::NavigationTarget::Traffic { .. })
+        );
+        claims::assert_err!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": {"type":"traffic", "id":"invalid"}})
+        ));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     #[tracing_test::traced_test]
     async fn navigation_reports_storage_failure_but_keeps_the_target() {
         let app = app();

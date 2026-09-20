@@ -13,6 +13,7 @@
       elevationMeters: 100,
     },
     position: { latitudeDegrees: 50, longitudeDegrees: 6 },
+    traffic: null,
     arrival: { marginMeters: 250, stale: false },
     guidance: {
       distanceMeters: 12300,

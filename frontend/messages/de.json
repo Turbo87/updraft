@@ -440,5 +440,9 @@
   "navigation_details": "Zieldetails",
   "navigation_arrival": "Ankunftsreserve",
   "navigation_here": "Hierhin navigieren",
-  "navigation_map_position": "Kartenposition"
+  "navigation_map_position": "Kartenposition",
+  "navigation_waiting": "Warte auf Verkehr",
+  "navigation_report_age": "Letzter Bericht vor {seconds}s",
+  "navigation_relative_altitude": "Relative Höhe",
+  "navigation_traffic": "Verkehr anfliegen"
 }

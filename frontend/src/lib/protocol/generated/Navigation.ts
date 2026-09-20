@@ -3,5 +3,6 @@ import type { LatLon } from "./LatLon";
 import type { NavigationArrival } from "./NavigationArrival";
 import type { NavigationGuidance } from "./NavigationGuidance";
 import type { NavigationTarget } from "./NavigationTarget";
+import type { NavigationTraffic } from "./NavigationTraffic";
 
-export type Navigation = { target: NavigationTarget, position: LatLon, guidance: NavigationGuidance | null, arrival: NavigationArrival | null, };
+export type Navigation = { target: NavigationTarget, position: LatLon | null, guidance: NavigationGuidance | null, arrival: NavigationArrival | null, traffic: NavigationTraffic | null, };

@@ -44,6 +44,7 @@ async fn watch_position(
                 Some(navigation.as_ref().and_then(|navigation| {
                     matches!(navigation.target, NavigationTarget::MapPosition { .. })
                         .then_some(navigation.position)
+                        .flatten()
                 }))
             }
             _ => None,

@@ -39,6 +39,8 @@ use updraft_units::{MslAltitude, PressureAltitude, Speed};
 pub struct Core {
     navigation_target: Option<crate::NavigationTarget>,
     navigation_elevation: Option<f64>,
+    navigation_report: Option<(crate::PublishedTrafficTarget, Timestamp)>,
+    navigation_at: Timestamp,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -74,6 +76,8 @@ impl Core {
         Self {
             navigation_target: None,
             navigation_elevation: None,
+            navigation_report: None,
+            navigation_at: Timestamp::default(),
             settings,
             glide_performance,
             external_devices: ExternalDevices::from_device_configs(external_devices),
@@ -100,6 +104,12 @@ impl Core {
     pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
         let before = self.navigation();
         let mut update = input.apply_to(self, at);
+        self.navigation_at = self.navigation_at.max(at);
+        if let Some(crate::NavigationTarget::Traffic { id }) = self.navigation_target
+            && let Some(report) = self.traffic.navigation_observation(id, &self.flarmnet)
+        {
+            self.navigation_report = Some(report);
+        }
         let after = self.navigation();
         if before != after {
             update.effects.push(Effect::Emit(Topic::Navigation(after)));
@@ -1031,7 +1041,13 @@ impl Core {
 
     fn navigation(&self) -> Option<crate::Navigation> {
         self.navigation_target.clone().map(|target| {
-            crate::Navigation::new(target, &self.glide_snapshot(), self.navigation_elevation)
+            crate::Navigation::new(
+                target,
+                &self.glide_snapshot(),
+                self.navigation_elevation,
+                self.navigation_report.as_ref(),
+                self.navigation_at,
+            )
         })
     }
 }
@@ -1046,6 +1062,7 @@ impl Input for crate::SetNavigationTarget {
         }
         if core.navigation_target != self.0 {
             core.navigation_elevation = None;
+            core.navigation_report = None;
         }
         core.navigation_target = self.0;
         Update::empty().with_response(Ok(()))
@@ -1060,7 +1077,7 @@ impl Input for crate::NavigationElevation {
     type Response = ();
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
         if let Some(target @ crate::NavigationTarget::MapPosition { .. }) = &core.navigation_target
-            && target.position() == self.position
+            && target.position() == Some(self.position)
         {
             core.navigation_elevation = self.meters.filter(|meters| meters.is_finite());
         }

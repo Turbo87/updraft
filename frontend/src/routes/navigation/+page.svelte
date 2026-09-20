@@ -4,6 +4,7 @@
 
   import { getAppContext } from '$lib/app-context';
   import Button from '$lib/Button.svelte';
+  import { navigationLabel } from '$lib/navigation';
   import { m } from '$lib/paraglide/messages';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
 
@@ -30,16 +31,14 @@
 
 <ScreenScaffold title={m.navigation_heading()} backHref="/" backLabel={m.flight_view()}>
   {#if navigation.current}
-    <h2>
-      {navigation.current.target.type === 'waypoint'
-        ? navigation.current.target.name
-        : m.navigation_map_position()}
-    </h2>
-    <p>
-      {navigation.current.position.latitudeDegrees.toFixed(5)}°, {navigation.current.position.longitudeDegrees.toFixed(
-        5,
-      )}°
-    </p>
+    <h2>{navigationLabel(navigation.current)}</h2>
+    {#if navigation.current.position}
+      <p>
+        {navigation.current.position.latitudeDegrees.toFixed(5)}°, {navigation.current.position.longitudeDegrees.toFixed(
+          5,
+        )}°
+      </p>
+    {:else}<p>{m.navigation_waiting()}</p>{/if}
   {:else}<p>{m.navigation_none()}</p>{/if}
   {#if error}<p role="alert">{m.navigation_failed()}</p>{/if}
   {#snippet actions()}<Button loading={busy} onclick={stop}>{m.navigation_stop()}</Button>{/snippet}

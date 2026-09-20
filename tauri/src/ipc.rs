@@ -463,6 +463,7 @@ mod tests {
         FileBytesPicker, FileBytesPickerError, FileBytesPickerFuture, FileBytesPickerState,
         PickedFileBytes,
     };
+    use crate::test_support::request;
     use crate::waypoints::{commands::WaypointCommandState, storage::WaypointStorage};
     use serde_json::{Value, json};
     use std::time::Duration;
@@ -509,18 +510,6 @@ mod tests {
             ])
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .expect("the IPC test app should build")
-    }
-
-    fn request(command: &str, body: Value) -> tauri::webview::InvokeRequest {
-        tauri::webview::InvokeRequest {
-            cmd: command.to_owned(),
-            callback: tauri::ipc::CallbackFn(0),
-            error: tauri::ipc::CallbackFn(1),
-            url: "tauri://localhost".parse().expect("valid test URL"),
-            body: tauri::ipc::InvokeBody::Json(body),
-            headers: Default::default(),
-            invoke_key: tauri::test::INVOKE_KEY.to_owned(),
-        }
     }
 
     fn driver(airspace: AirspaceState) -> DriverHandle {

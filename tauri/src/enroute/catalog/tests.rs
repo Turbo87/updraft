@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_support::request;
 use claims::{assert_err, assert_ok};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -169,15 +170,7 @@ async fn retry_command_reports_success_and_failure_through_ipc() {
         let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
             .build()
             .unwrap();
-        let request = tauri::webview::InvokeRequest {
-            cmd: "refresh_enroute_catalog".into(),
-            callback: tauri::ipc::CallbackFn(0),
-            error: tauri::ipc::CallbackFn(1),
-            url: "tauri://localhost".parse().unwrap(),
-            body: tauri::ipc::InvokeBody::Json(json!({})),
-            headers: Default::default(),
-            invoke_key: tauri::test::INVOKE_KEY.into(),
-        };
+        let request = request("refresh_enroute_catalog", json!({}));
         let response = tauri::test::get_ipc_response(&window, request)
             .map(|response| response.deserialize::<Value>().unwrap());
         if status == 200 {

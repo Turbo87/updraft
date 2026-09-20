@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_support::request;
 use claims::{assert_err, assert_ok};
 use serde_json::{Value, json};
 use std::fs::{self, FileTimes, OpenOptions};
@@ -42,15 +43,7 @@ fn catalog_subscription_serializes_metadata_through_ipc() {
         .build()
         .unwrap();
     let invoke = |command: &str, body| {
-        let request = tauri::webview::InvokeRequest {
-            cmd: command.into(),
-            callback: tauri::ipc::CallbackFn(0),
-            error: tauri::ipc::CallbackFn(1),
-            url: "tauri://localhost".parse().unwrap(),
-            body: tauri::ipc::InvokeBody::Json(body),
-            headers: Default::default(),
-            invoke_key: tauri::test::INVOKE_KEY.into(),
-        };
+        let request = request(command, body);
         tauri::test::get_ipc_response(&window, request).map(|r| r.deserialize::<Value>().unwrap())
     };
     assert_ok!(invoke(
@@ -117,15 +110,7 @@ fn available_updates_use_cached_catalog_and_report_read_failures_through_ipc() {
             .build()
             .unwrap();
         let invoke = || {
-            let request = tauri::webview::InvokeRequest {
-                cmd: command.into(),
-                callback: tauri::ipc::CallbackFn(0),
-                error: tauri::ipc::CallbackFn(1),
-                url: "tauri://localhost".parse().unwrap(),
-                body: tauri::ipc::InvokeBody::Json(json!({})),
-                headers: Default::default(),
-                invoke_key: tauri::test::INVOKE_KEY.into(),
-            };
+            let request = request(command, json!({}));
             tauri::test::get_ipc_response(&window, request)
                 .map(|r| r.deserialize::<Value>().unwrap())
         };

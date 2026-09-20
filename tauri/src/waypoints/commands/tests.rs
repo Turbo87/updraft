@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_support::request;
 use crate::{
     airspace_storage::AirspaceStorage,
     data_import::{self, DataImportState},
@@ -73,15 +74,7 @@ fn invoke(app: &tauri::App<MockRuntime>, command: &str, body: Value) -> Result<V
             .build()
             .unwrap()
     });
-    let request = tauri::webview::InvokeRequest {
-        cmd: command.into(),
-        callback: tauri::ipc::CallbackFn(0),
-        error: tauri::ipc::CallbackFn(1),
-        url: "tauri://localhost".parse().unwrap(),
-        body: tauri::ipc::InvokeBody::Json(body),
-        headers: Default::default(),
-        invoke_key: tauri::test::INVOKE_KEY.into(),
-    };
+    let request = request(command, body);
     tauri::test::get_ipc_response(&window, request).map(|response| response.deserialize().unwrap())
 }
 

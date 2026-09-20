@@ -18,6 +18,8 @@ mod ipc;
 mod settings;
 mod source_files;
 mod terrain;
+#[cfg(test)]
+mod test_support;
 // A session only exists on Android. `test` keeps the adapter, and the tests
 // that pin the wire contract it implements, compiling on the host.
 #[cfg(any(target_os = "android", test))]

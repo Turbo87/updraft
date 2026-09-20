@@ -3,6 +3,7 @@ use crate::enroute::{
     commands::DownloadCommands, parse_catalog, queue::DownloadState,
     storage::remove_partial_downloads,
 };
+use crate::test_support::request;
 use claims::{assert_err, assert_ok, assert_some};
 use flate2::{Compression, write::GzEncoder};
 use rusqlite::Connection;
@@ -441,15 +442,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         .build()
         .unwrap();
     let invoke = |command: &str, body| {
-        let request = tauri::webview::InvokeRequest {
-            cmd: command.into(),
-            callback: tauri::ipc::CallbackFn(0),
-            error: tauri::ipc::CallbackFn(1),
-            url: "tauri://localhost".parse().unwrap(),
-            body: tauri::ipc::InvokeBody::Json(body),
-            headers: Default::default(),
-            invoke_key: tauri::test::INVOKE_KEY.into(),
-        };
+        let request = request(command, body);
         tauri::test::get_ipc_response(&window, request)
             .map(|response| response.deserialize::<Value>().unwrap())
     };

@@ -155,6 +155,7 @@ pub fn unsubscribe_basemaps(channel_id: u32, state: tauri::State<'_, Arc<Mutex<B
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::request;
     use claims::assert_err;
 
     #[test]
@@ -191,15 +192,7 @@ mod tests {
             .build()
             .unwrap();
         let invoke = |name: &str| {
-            let request = tauri::webview::InvokeRequest {
-                cmd: "get_basemap_file_details".into(),
-                callback: tauri::ipc::CallbackFn(0),
-                error: tauri::ipc::CallbackFn(1),
-                url: "tauri://localhost".parse().unwrap(),
-                body: tauri::ipc::InvokeBody::Json(json!({"sourceName": name})),
-                headers: Default::default(),
-                invoke_key: tauri::test::INVOKE_KEY.into(),
-            };
+            let request = request("get_basemap_file_details", json!({"sourceName": name}));
             tauri::test::get_ipc_response(&window, request)
                 .map(|r| r.deserialize::<Value>().unwrap())
         };

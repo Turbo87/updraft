@@ -173,6 +173,7 @@ pub async fn arrival_resource_response<R: tauri::Runtime>(
 mod tests {
     use super::*;
     use crate::driver::tests::spawn;
+    use crate::test_support::request;
     use claims::{assert_err, assert_ok, assert_some};
     use serde_json::{Value, json};
     use std::time::Duration;
@@ -184,15 +185,7 @@ mod tests {
         command: &str,
         body: Value,
     ) -> Result<Value, Value> {
-        let request = tauri::webview::InvokeRequest {
-            cmd: command.into(),
-            callback: tauri::ipc::CallbackFn(0),
-            error: tauri::ipc::CallbackFn(1),
-            url: "tauri://localhost".parse().unwrap(),
-            body: tauri::ipc::InvokeBody::Json(body),
-            headers: Default::default(),
-            invoke_key: tauri::test::INVOKE_KEY.into(),
-        };
+        let request = request(command, body);
         tauri::test::get_ipc_response(window, request).map(|body| body.deserialize().unwrap())
     }
 

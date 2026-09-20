@@ -1,7 +1,24 @@
+import type { Topic } from '$lib/protocol/generated/Topic';
+
 import { expect } from '@playwright/test';
 
 import { waypointsFixture } from '../../frontend/src/lib/map/waypoint.fixture';
 import { test } from './app';
+
+const waypointTopic: Extract<Topic, { topic: 'waypoints' }> = {
+  topic: 'waypoints',
+  value: {
+    generation: 1,
+    sources: [
+      {
+        type: 'active',
+        sourceName: 'local.cup',
+        waypointCount: 3,
+        warnings: [],
+      },
+    ],
+  },
+};
 
 for (let notes of ['Notes', '']) {
   test(`opens map waypoints and invalidates details after removal (notes: ${notes})`, async ({
@@ -21,20 +38,7 @@ for (let notes of ['Notes', '']) {
       },
     );
     await app.open('/');
-    await app.emit({
-      topic: 'waypoints',
-      value: {
-        generation: 1,
-        sources: [
-          {
-            type: 'active',
-            sourceName: 'local.cup',
-            waypointCount: 3,
-            warnings: [],
-          },
-        ],
-      },
-    });
+    await app.emit(waypointTopic);
     await page.waitForFunction(() => {
       let map = window.__updraftApp!.mapState.map;
       return map?.getLayer('waypoint-hit') && map.isSourceLoaded('waypoints');
@@ -92,20 +96,7 @@ test('retries a failed waypoint resource with a new request', async ({ page, app
     Object.assign(window, { __updraftTestWaypointData: '/waypoint-resource.geojson' });
   });
   await app.open('/waypoints/1:0:0');
-  await app.emit({
-    topic: 'waypoints',
-    value: {
-      generation: 1,
-      sources: [
-        {
-          type: 'active',
-          sourceName: 'local.cup',
-          waypointCount: 3,
-          warnings: [],
-        },
-      ],
-    },
-  });
+  await app.emit(waypointTopic);
   await expect(page.getByText('Could not load waypoints.')).toBeVisible();
   let failedRequests = requests;
   available = true;
@@ -132,27 +123,14 @@ for (let initialPath of ['/', '/nearby/50.823/6.186']) {
     });
     await app.open(initialPath);
     await page.waitForFunction(() => window.__updraftApp?.mapState.map);
-    await page.evaluate(() => {
+    await page.evaluate((topic) => {
       let app = window.__updraftApp!;
       app.mapState.map!.on('error', (event) => {
         if ('sourceId' in event && event.sourceId === 'waypoints')
           document.body.dataset.waypointFailed = 'true';
       });
-      window.__updraftFake!.emit({
-        topic: 'waypoints',
-        value: {
-          generation: 1,
-          sources: [
-            {
-              type: 'active',
-              sourceName: 'local.cup',
-              waypointCount: 3,
-              warnings: [],
-            },
-          ],
-        },
-      });
-    });
+      window.__updraftFake!.emit(topic);
+    }, waypointTopic);
     await expect(page.locator('body')).toHaveAttribute('data-waypoint-failed', 'true');
     if (initialPath === '/') {
       await page.evaluate(() => {

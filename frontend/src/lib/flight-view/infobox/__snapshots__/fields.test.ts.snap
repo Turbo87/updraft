@@ -1,0 +1,207 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`flightInfoboxes > keeps all slots when instruments are unavailable 1`] = `
+[
+  {
+    "id": "altitude",
+    "label": "Altitude",
+    "stale": false,
+    "value": {
+      "kind": "altitude",
+      "meters": null,
+      "unit": "m",
+    },
+  },
+  {
+    "id": "agl",
+    "label": "AGL",
+    "stale": false,
+    "value": {
+      "kind": "altitude",
+      "meters": null,
+      "unit": "m",
+    },
+  },
+  {
+    "id": "ground-speed",
+    "label": "Ground speed",
+    "stale": false,
+    "value": {
+      "kind": "speed",
+      "metersPerSecond": null,
+      "unit": "km/h",
+    },
+  },
+  {
+    "id": "tas",
+    "label": "TAS",
+    "stale": false,
+    "value": {
+      "kind": "speed",
+      "metersPerSecond": null,
+      "unit": "km/h",
+    },
+  },
+  {
+    "id": "bank",
+    "label": "Bank angle",
+    "stale": false,
+    "value": {
+      "degrees": null,
+      "kind": "relative-angle",
+    },
+  },
+  {
+    "id": "vario",
+    "label": "Vario",
+    "stale": false,
+    "value": {
+      "kind": "vertical-speed",
+      "metersPerSecond": null,
+      "unit": "m/s",
+    },
+  },
+  {
+    "id": "netto",
+    "label": "Netto",
+    "stale": false,
+    "value": {
+      "kind": "vertical-speed",
+      "metersPerSecond": null,
+      "unit": "m/s",
+    },
+  },
+  {
+    "id": "wind-speed",
+    "label": "Wind speed",
+    "stale": false,
+    "value": {
+      "kind": "speed",
+      "metersPerSecond": null,
+      "unit": "km/h",
+    },
+  },
+  {
+    "id": "wind-direction",
+    "label": "Wind direction",
+    "stale": false,
+    "value": {
+      "degrees": null,
+      "kind": "direction",
+    },
+  },
+  {
+    "id": "average-vario",
+    "label": "Avg. vario",
+    "stale": false,
+    "value": {
+      "kind": "vertical-speed",
+      "metersPerSecond": null,
+      "unit": "m/s",
+    },
+  },
+]
+`;
+
+exports[`flightInfoboxes > maps the requested quantities, freshness and units in dock order 1`] = `
+[
+  {
+    "id": "altitude",
+    "label": "Altitude",
+    "stale": false,
+    "value": {
+      "kind": "altitude",
+      "meters": 1245,
+      "unit": "ft",
+    },
+  },
+  {
+    "id": "agl",
+    "label": "AGL",
+    "stale": true,
+    "value": {
+      "kind": "altitude",
+      "meters": 780,
+      "unit": "ft",
+    },
+  },
+  {
+    "id": "ground-speed",
+    "label": "Ground speed",
+    "stale": true,
+    "value": {
+      "kind": "speed",
+      "metersPerSecond": 31,
+      "unit": "kt",
+    },
+  },
+  {
+    "id": "tas",
+    "label": "TAS",
+    "stale": false,
+    "value": {
+      "kind": "speed",
+      "metersPerSecond": null,
+      "unit": "kt",
+    },
+  },
+  {
+    "id": "bank",
+    "label": "Bank angle",
+    "stale": false,
+    "value": {
+      "degrees": -12,
+      "kind": "relative-angle",
+    },
+  },
+  {
+    "id": "vario",
+    "label": "Vario",
+    "stale": true,
+    "value": {
+      "kind": "vertical-speed",
+      "metersPerSecond": 1.8,
+      "unit": "ft/min",
+    },
+  },
+  {
+    "id": "netto",
+    "label": "Netto",
+    "stale": false,
+    "value": {
+      "kind": "vertical-speed",
+      "metersPerSecond": 2.5,
+      "unit": "ft/min",
+    },
+  },
+  {
+    "id": "wind-speed",
+    "label": "Wind speed",
+    "stale": true,
+    "value": {
+      "kind": "speed",
+      "metersPerSecond": 5,
+      "unit": "kt",
+    },
+  },
+  {
+    "id": "wind-direction",
+    "label": "Wind direction",
+    "stale": true,
+    "value": {
+      "degrees": 248,
+      "kind": "direction",
+    },
+  },
+  {
+    "id": "average-vario",
+    "label": "Avg. vario",
+    "stale": true,
+    "value": {
+      "kind": "vertical-speed",
+      "metersPerSecond": 1.4,
+      "unit": "ft/min",
+    },
+  },
+]
+`;

@@ -3,10 +3,8 @@ import type { Topic } from '$lib/protocol/generated/Topic';
 
 import { defaultSettings } from '$lib/settings';
 
-const EMPTY = defaultSettings();
-
 export class SettingsStore {
-  current = $state.raw<Settings>(EMPTY);
+  current = $state.raw<Settings>(defaultSettings());
 
   apply(topic: Topic): void {
     if (topic.topic !== 'settings') return;

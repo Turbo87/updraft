@@ -63,6 +63,9 @@ export default defineConfig({
     projects: [
       {
         extends: './vite.config.ts',
+        optimizeDeps: {
+          include: ['@tauri-apps/api/mocks'],
+        },
         test: {
           name: 'client',
           browser: {

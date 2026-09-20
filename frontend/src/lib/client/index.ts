@@ -70,6 +70,10 @@ export type SelectedDataFile = {
  * shared frontend state.
  */
 export interface UpdraftClient {
+  /** Adds a pin. Returns false if the live change could not be saved. */
+  pinTarget(target: NavigationTarget): Promise<boolean>;
+  /** Removes a pin. Returns false if the live change could not be saved. */
+  unpinTarget(id: number): Promise<boolean>;
   /** Applies the target. Returns false if persistence fails. */
   setNavigationTarget(target: NavigationTarget | null): Promise<boolean>;
   /** Delivers the initial inventory and later changes. Reports registration failures through onError. */

@@ -7,6 +7,7 @@ import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirect
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Navigation } from '$lib/protocol/generated/Navigation';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
+import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Topic } from '$lib/protocol/generated/Topic';
@@ -31,6 +32,7 @@ import type {
   UpdraftClient,
 } from './index';
 
+import { targetsMatch } from '$lib/navigation-target';
 import { defaultSettings } from '$lib/settings';
 
 /** Initial platform and external-device state for browser development. */
@@ -58,6 +60,44 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #pins: PinnedTarget[] = [];
+  #nextPinId = 0;
+  async pinTarget(target: NavigationTarget): Promise<boolean> {
+    if (!this.#pins.some((pin) => targetsMatch(pin.navigation.target, target))) {
+      this.#pins.push({
+        id: this.#nextPinId++,
+        primary: false,
+        navigation: {
+          target,
+          position:
+            target.type === 'traffic'
+              ? null
+              : {
+                  latitudeDegrees: target.latitudeDegrees,
+                  longitudeDegrees: target.longitudeDegrees,
+                },
+          guidance: null,
+          arrival: null,
+          traffic: null,
+        },
+      });
+    }
+    this.#publishPins();
+    return true;
+  }
+  async unpinTarget(id: number): Promise<boolean> {
+    this.#pins = this.#pins.filter((pin) => pin.id !== id);
+    this.#publishPins();
+    return true;
+  }
+  #publishPins(): void {
+    this.#pins = this.#pins.map((pin) => ({
+      ...pin,
+      primary:
+        this.#navigation !== null && targetsMatch(pin.navigation.target, this.#navigation.target),
+    }));
+    this.emit({ topic: 'pinnedTargets', value: this.#pins });
+  }
   #navigation: Navigation | null = null;
   async setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
     this.#navigation = target
@@ -76,6 +116,7 @@ export class FakeClient implements UpdraftClient {
         }
       : null;
     this.emit({ topic: 'navigation', value: this.#navigation });
+    this.#publishPins();
     return true;
   }
 
@@ -301,6 +342,7 @@ export class FakeClient implements UpdraftClient {
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'navigation', value: this.#navigation });
+    onTopic({ topic: 'pinnedTargets', value: this.#pins });
     onTopic({ topic: 'settings', value: this.#settings });
     onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });

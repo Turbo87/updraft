@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { Locale } from '$lib/protocol/generated/Locale';
   import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
   import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
@@ -35,6 +36,7 @@
     onBack: (event: MouseEvent) => void;
     traffic: TrafficStore;
     units: UnitSettings;
+    pinAction?: Snippet;
     onNavigate?: () => void;
     navigationError?: boolean;
     navigating?: boolean;
@@ -49,6 +51,7 @@
     traffic,
     units,
     onNavigate,
+    pinAction,
     navigationError = false,
     navigating = false,
   }: Props = $props();
@@ -171,7 +174,9 @@
 
 {#snippet navigationAction()}<Button onclick={onNavigate} loading={navigating}
     >{m.navigation_traffic()}</Button
-  >{/snippet}
+  >
+  {@render pinAction?.()}
+{/snippet}
 <ScreenScaffold
   {backLabel}
   {onBack}

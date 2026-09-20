@@ -6,7 +6,9 @@
   import { page } from '$app/state';
 
   import { getAppContext } from '$lib/app-context';
+  import { waypointTarget } from '$lib/navigation-target';
   import { m } from '$lib/paraglide/messages.js';
+  import PinTargetButton from '$lib/PinTargetButton.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
   import WaypointLookup from './WaypointLookup.svelte';
 
@@ -15,13 +17,7 @@
   async function navigate(waypoint: WaypointFeature) {
     error = false;
     try {
-      let saved = await client.setNavigationTarget({
-        type: 'waypoint',
-        name: waypoint.properties.name,
-        latitudeDegrees: waypoint.geometry.coordinates[1],
-        longitudeDegrees: waypoint.geometry.coordinates[0],
-        elevationMeters: waypoint.properties.elevationMeters,
-      });
+      let saved = await client.setNavigationTarget(waypointTarget(waypoint));
       if (!saved) {
         error = true;
         return;
@@ -45,6 +41,7 @@
     generation={waypoints.current.generation}
     altitudeUnit={settings.current.units.altitude}
     onNavigate={navigate}
+    {pinAction}
     onBack={goBack}
   />
 {:else}
@@ -52,3 +49,7 @@
     <p>{waypoints.initialized ? m.waypoint_not_found() : m.waypoint_loading()}</p>
   </ScreenScaffold>
 {/if}
+
+{#snippet pinAction(waypoint: WaypointFeature)}<PinTargetButton
+    target={waypointTarget(waypoint)}
+  />{/snippet}

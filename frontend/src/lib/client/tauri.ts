@@ -33,6 +33,12 @@ type ArrivalNotification =
 
 /** Invokes the concrete Tauri commands that form the frontend shell boundary. */
 export class TauriClient implements UpdraftClient {
+  pinTarget(target: NavigationTarget): Promise<boolean> {
+    return invoke('pin_target', { target });
+  }
+  unpinTarget(id: number): Promise<boolean> {
+    return invoke('unpin_target', { id });
+  }
   setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
     return invoke('set_navigation_target', { target });
   }

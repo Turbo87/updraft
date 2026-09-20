@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { AltitudeUnit } from './units';
   import type { WaypointFeature } from './waypoints';
 
@@ -11,16 +12,18 @@
     waypoint: WaypointFeature;
     altitudeUnit: AltitudeUnit;
     onBack: () => void;
+    pinAction?: Snippet<[WaypointFeature]>;
     onNavigate?: () => void;
     error?: boolean;
   };
 
-  let { waypoint, altitudeUnit, onBack, onNavigate, error = false }: Props = $props();
+  let { waypoint, altitudeUnit, onBack, onNavigate, pinAction, error = false }: Props = $props();
   const properties = $derived(waypoint.properties);
 </script>
 
-{#snippet navigationAction()}<Button onclick={onNavigate}>{m.navigation_waypoint()}</Button
-  >{/snippet}
+{#snippet navigationAction()}<Button onclick={onNavigate}>{m.navigation_waypoint()}</Button>
+  {@render pinAction?.(waypoint)}
+{/snippet}
 
 <ScreenScaffold
   title={properties.name}

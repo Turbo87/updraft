@@ -7,14 +7,11 @@ import '../../../app.css';
 import { InstrumentsStore } from '$lib/stores/instruments.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import { trafficTarget } from '$lib/traffic.fixture';
+import { withViewport } from '$lib/viewport.fixture';
 import TrafficDetails from './TrafficDetails.svelte';
 
 it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (width) => {
-  let oldWidth = window.innerWidth;
-  let oldHeight = window.innerHeight;
-  let root = document.documentElement;
-  let previousStyle = root.getAttribute('style');
-  try {
+  await withViewport(async (root) => {
     await page.viewport(width, 600);
     root.style.setProperty('--safe-area-left', '24px');
     root.style.setProperty('--safe-area-right', '12px');
@@ -62,11 +59,7 @@ it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (wid
       sectionBounds.right,
     ]);
     expect(sectionBounds.top - summaryBounds.bottom).toBe(24);
-  } finally {
-    if (previousStyle === null) root.removeAttribute('style');
-    else root.setAttribute('style', previousStyle);
-    await page.viewport(oldWidth, oldHeight);
-  }
+  });
 });
 
 it('shows available identity fields and follows database replacements', async () => {

@@ -4,6 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../app.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import ConfirmDialog from './ConfirmDialog.svelte';
 
 const props = {
@@ -131,16 +132,13 @@ describe('ConfirmDialog.svelte', () => {
 });
 
 it('keeps long filenames inside a short viewport', async () => {
-  let previous = { width: window.innerWidth, height: window.innerHeight };
-  await page.viewport(320, 320);
-  try {
+  await withViewport(async () => {
+    await page.viewport(320, 320);
     await render(ConfirmDialog, { ...props, description: `Replace ${'a'.repeat(250)}.cup?` });
     let dialog = page.getByRole('alertdialog').element();
     expect(dialog.scrollWidth).toBe(dialog.clientWidth);
     let bounds = dialog.getBoundingClientRect();
     expect(bounds.top).toBeGreaterThanOrEqual(0);
     expect(bounds.bottom).toBeLessThanOrEqual(320);
-  } finally {
-    await page.viewport(previous.width, previous.height);
-  }
+  });
 });

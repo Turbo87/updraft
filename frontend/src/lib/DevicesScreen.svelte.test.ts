@@ -4,6 +4,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import DevicesScreen from './DevicesScreen.svelte';
 
 describe('DevicesScreen.svelte', () => {
@@ -16,11 +17,7 @@ describe('DevicesScreen.svelte', () => {
   ] as const)(
     'lays out responsive device cards at width %s when initialized is %s',
     async (width, initialized) => {
-      let oldWidth = window.innerWidth;
-      let oldHeight = window.innerHeight;
-      let root = document.documentElement;
-      let previousStyle = root.getAttribute('style');
-      try {
+      await withViewport(async (root) => {
         await page.viewport(width, 600);
         root.style.setProperty('--safe-area-left', '24px');
         root.style.setProperty('--safe-area-right', '12px');
@@ -67,11 +64,7 @@ describe('DevicesScreen.svelte', () => {
         expect(cards[1].getBoundingClientRect().top - cards[0].getBoundingClientRect().bottom).toBe(
           12,
         );
-      } finally {
-        if (previousStyle === null) root.removeAttribute('style');
-        else root.setAttribute('style', previousStyle);
-        await page.viewport(oldWidth, oldHeight);
-      }
+      });
     },
   );
 

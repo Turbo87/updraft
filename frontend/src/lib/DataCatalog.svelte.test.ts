@@ -7,6 +7,7 @@ import { page, userEvent } from 'vitest/browser';
 import '../app.css';
 import 'virtual:uno.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import DataCatalog from './DataCatalog.svelte';
 import { applyLocaleSetting } from './i18n.svelte';
 
@@ -129,9 +130,8 @@ it('replaces the loading state when a cached catalog arrives', async () => {
 });
 
 it.each([413, 915])('keeps country targets and import usable at %ipx', async (width) => {
-  let previous = { width: window.innerWidth, height: window.innerHeight };
-  await page.viewport(width, 600);
-  try {
+  await withViewport(async () => {
+    await page.viewport(width, 600);
     let options = props();
     await render(DataCatalog, options);
     let scaffold = document.querySelector<HTMLElement>('.screen-scaffold')!;
@@ -155,9 +155,7 @@ it.each([413, 915])('keeps country targets and import usable at %ipx', async (wi
     );
     expect(visibleActions).toHaveLength(1);
     expect(visibleActions[0].closest(width === 413 ? 'footer' : 'header')).not.toBeNull();
-  } finally {
-    await page.viewport(previous.width, previous.height);
-  }
+  });
 });
 
 it('reports a failed Retry command and allows another attempt', async () => {

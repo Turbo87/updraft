@@ -5,6 +5,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import Card from './Card.svelte';
 import ResponsiveCard from './ResponsiveCard.svelte';
 import ScreenScaffold from './ScreenScaffold.svelte';
@@ -24,11 +25,7 @@ describe('Card', () => {
   });
 
   it('reaches screen edges while preserving row safe areas', async () => {
-    let oldWidth = window.innerWidth;
-    let oldHeight = window.innerHeight;
-    let root = document.documentElement;
-    let previousStyle = root.getAttribute('style');
-    try {
+    await withViewport(async (root) => {
       await page.viewport(413, 600);
       root.style.setProperty('--safe-area-left', '24px');
       root.style.setProperty('--safe-area-right', '12px');
@@ -58,19 +55,13 @@ describe('Card', () => {
         getComputedStyle(element).paddingLeft,
         getComputedStyle(element).paddingRight,
       ]).toEqual(['44px', '28px']);
-    } finally {
-      if (previousStyle === null) root.removeAttribute('style');
-      else root.setAttribute('style', previousStyle);
-      await page.viewport(oldWidth, oldHeight);
-    }
+    });
   });
 
   it.each([413, 543, 544, 545, 915])(
     'uses responsive edges at viewport width %s',
     async (width) => {
-      let oldWidth = window.innerWidth;
-      let oldHeight = window.innerHeight;
-      try {
+      await withViewport(async () => {
         await page.viewport(width, 600);
         render(ResponsiveCard, {
           children,
@@ -81,9 +72,7 @@ describe('Card', () => {
         expect([style.marginLeft, style.marginRight, style.borderRadius]).toEqual(
           width <= 544 ? ['-27px', '-31px', '0px'] : ['0px', '0px', '12px'],
         );
-      } finally {
-        await page.viewport(oldWidth, oldHeight);
-      }
+      });
     },
   );
 });

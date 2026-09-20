@@ -4,6 +4,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import AboutScreen from './AboutScreen.svelte';
 
 const BUILD_TIMESTAMP = '2026-08-12T07:14:22.000Z';
@@ -50,11 +51,7 @@ it('shows an unknown version and omits empty data credits', async () => {
 });
 
 it.each([413, 544, 915])('lays out About cards at viewport width %s', async (width) => {
-  let oldWidth = window.innerWidth;
-  let oldHeight = window.innerHeight;
-  let root = document.documentElement;
-  let previousStyle = root.getAttribute('style');
-  try {
+  await withViewport(async (root) => {
     await page.viewport(width, 600);
     root.style.setProperty('--safe-area-left', '24px');
     root.style.setProperty('--safe-area-right', '12px');
@@ -93,9 +90,5 @@ it.each([413, 544, 915])('lays out About cards at viewport width %s', async (wid
     );
     expect(getComputedStyle(licence).paddingLeft).toBe(width <= 544 ? '44px' : '20px');
     expect(getComputedStyle(licence).paddingRight).toBe(width <= 544 ? '32px' : '20px');
-  } finally {
-    if (previousStyle === null) root.removeAttribute('style');
-    else root.setAttribute('style', previousStyle);
-    await page.viewport(oldWidth, oldHeight);
-  }
+  });
 });

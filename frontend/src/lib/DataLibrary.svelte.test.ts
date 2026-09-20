@@ -6,6 +6,7 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../app.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import { FakeClient } from './client/fake';
 import DataLibrary from './DataLibrary.svelte';
 import { applyLocaleSetting } from './i18n.svelte';
@@ -312,8 +313,7 @@ it('groups and sorts sources without changing the input order', async () => {
 });
 
 it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', async (width) => {
-  let previous = { width: window.innerWidth, height: window.innerHeight };
-  try {
+  await withViewport(async () => {
     await page.viewport(width, 600);
     await render(DataLibrary, {
       ...libraryProps(),
@@ -337,9 +337,7 @@ it.each([413, 544, 915])('keeps rows inside the responsive card at width %s', as
     await expect
       .element(page.getByRole('link', { name: 'Back to settings' }))
       .toHaveAttribute('href', '/settings');
-  } finally {
-    await page.viewport(previous.width, previous.height);
-  }
+  });
 });
 
 it('confirms a same-name replacement and discards cancellation', async () => {
@@ -420,9 +418,8 @@ it('discards a picker result when the library has been closed', async () => {
 });
 
 it('moves Add data from the footer to the header above 544px', async () => {
-  let previous = { width: window.innerWidth, height: window.innerHeight };
   await render(DataLibrary, libraryProps());
-  try {
+  await withViewport(async () => {
     for (let width of [413, 544, 545, 915]) {
       await page.viewport(width, 600);
       let add = page.getByRole('button', { name: 'Add data' });
@@ -430,9 +427,7 @@ it('moves Add data from the footer to the header above 544px', async () => {
       expect(add.element().closest(width > 544 ? 'header' : 'footer')).not.toBeNull();
       expect(add.element().getBoundingClientRect().height).toBe(width > 544 ? 48 : 56);
     }
-  } finally {
-    await page.viewport(previous.width, previous.height);
-  }
+  });
 });
 
 it.each([

@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import { withViewport } from '$lib/viewport.fixture';
+
 import '../app.css';
 
 import NearbyAirspaces from '../routes/nearby/[latitude]/[longitude]/NearbyAirspaces.svelte';
@@ -38,11 +40,7 @@ describe('Nearby result cards', () => {
   ])(
     'keeps all Nearby supporting states responsive at %s px (loading: %s)',
     async (width, loading) => {
-      let oldWidth = window.innerWidth;
-      let oldHeight = window.innerHeight;
-      let root = document.documentElement;
-      let previousStyle = root.getAttribute('style');
-      try {
+      await withViewport(async (root) => {
         await page.viewport(width, 600);
         root.style.setProperty('--safe-area-left', '24px');
         root.style.setProperty('--safe-area-right', '12px');
@@ -87,18 +85,12 @@ describe('Nearby result cards', () => {
             getComputedStyle(message).paddingRight,
           ]).toEqual(width <= 544 ? ['44px', '32px'] : ['20px', '20px']);
         }
-      } finally {
-        if (previousStyle === null) root.removeAttribute('style');
-        else root.setAttribute('style', previousStyle);
-        await page.viewport(oldWidth, oldHeight);
-      }
+      });
     },
   );
 
   it.each([413, 915])('uses responsive surfaces around all three lists at %s px', async (width) => {
-    let oldWidth = window.innerWidth;
-    let oldHeight = window.innerHeight;
-    try {
+    await withViewport(async () => {
       await page.viewport(width, 600);
       let airspace = { current: { generation: 1, sources: [{ type: 'active' }] } } as AirspaceStore;
       await render(NearbyAirspaces, {
@@ -155,8 +147,6 @@ describe('Nearby result cards', () => {
         expect(getComputedStyle(link).outlineStyle).toBe('solid');
         expect(getComputedStyle(link).outlineOffset).toBe('-2px');
       }
-    } finally {
-      await page.viewport(oldWidth, oldHeight);
-    }
+    });
   });
 });

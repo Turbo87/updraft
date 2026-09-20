@@ -6,6 +6,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import ExternalDeviceForm from './ExternalDeviceForm.svelte';
 
 type ExternalDeviceFormProps = ComponentProps<typeof ExternalDeviceForm>;
@@ -27,11 +28,7 @@ describe('ExternalDeviceForm.svelte', () => {
   ])(
     'lays out bonded-device rows at width %s with safe areas %s/%s',
     async (width, left, right) => {
-      let oldWidth = window.innerWidth;
-      let oldHeight = window.innerHeight;
-      let root = document.documentElement;
-      let previousStyle = root.getAttribute('style');
-      try {
+      await withViewport(async (root) => {
         await page.viewport(width, 600);
         root.style.setProperty('--safe-area-left', `${left}px`);
         root.style.setProperty('--safe-area-right', `${right}px`);
@@ -57,11 +54,7 @@ describe('ExternalDeviceForm.svelte', () => {
         expect([getComputedStyle(row).paddingLeft, getComputedStyle(row).paddingRight]).toEqual(
           width <= 544 ? [`${20 + left}px`, `${20 + right}px`] : ['20px', '20px'],
         );
-      } finally {
-        if (previousStyle === null) root.removeAttribute('style');
-        else root.setAttribute('style', previousStyle);
-        await page.viewport(oldWidth, oldHeight);
-      }
+      });
     },
   );
 

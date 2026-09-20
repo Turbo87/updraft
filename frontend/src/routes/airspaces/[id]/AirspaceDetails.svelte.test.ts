@@ -7,6 +7,7 @@ import { page } from 'vitest/browser';
 import '../../../app.css';
 
 import { AIRSPACE_BROWSER_FIXTURE } from '$lib/map/airspace.fixture';
+import { withViewport } from '$lib/viewport.fixture';
 import AirspaceDetails from './AirspaceDetails.svelte';
 
 const map = {
@@ -17,11 +18,7 @@ const map = {
 } as unknown as Map;
 
 it.each([413, 544, 915])('lays out airspace detail cards at width %s', async (width) => {
-  let oldWidth = window.innerWidth;
-  let oldHeight = window.innerHeight;
-  let root = document.documentElement;
-  let previousStyle = root.getAttribute('style');
-  try {
+  await withViewport(async (root) => {
     await page.viewport(width, 600);
     root.style.setProperty('--safe-area-left', '24px');
     root.style.setProperty('--safe-area-right', '12px');
@@ -65,9 +62,5 @@ it.each([413, 544, 915])('lays out airspace detail cards at width %s', async (wi
       firstSection.left,
       firstSection.right,
     ]);
-  } finally {
-    if (previousStyle === null) root.removeAttribute('style');
-    else root.setAttribute('style', previousStyle);
-    await page.viewport(oldWidth, oldHeight);
-  }
+  });
 });

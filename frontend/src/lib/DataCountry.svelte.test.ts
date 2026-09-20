@@ -7,6 +7,7 @@ import { page, userEvent } from 'vitest/browser';
 import '../app.css';
 import 'virtual:uno.css';
 
+import { withViewport } from '$lib/viewport.fixture';
 import DataCountry from './DataCountry.svelte';
 
 const north = 'Europe/France/North.mbtiles';
@@ -161,9 +162,8 @@ it.each(['close', 'country'])(
 );
 
 it.each([413, 915])('keeps selection and the Download action usable at %ipx', async (width) => {
-  let previous = { width: window.innerWidth, height: window.innerHeight };
-  await page.viewport(width, 600);
-  try {
+  await withViewport(async () => {
+    await page.viewport(width, 600);
     await render(DataCountry, props());
     let checkbox = page.getByRole('checkbox', { name: 'North', exact: true });
     let input = checkbox.element() as HTMLInputElement;
@@ -177,9 +177,7 @@ it.each([413, 915])('keeps selection and the Download action usable at %ipx', as
     );
     expect(visibleActions).toHaveLength(1);
     expect(visibleActions[0].closest(width === 413 ? 'footer' : 'header')).not.toBeNull();
-  } finally {
-    await page.viewport(previous.width, previous.height);
-  }
+  });
 });
 
 it('shows unavailable downloads when the country leaves the catalog', async () => {

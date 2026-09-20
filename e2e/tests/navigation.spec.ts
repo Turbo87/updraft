@@ -150,3 +150,29 @@ test('selection rows open details and unpinning moves a target into recents', as
     'Home',
   );
 });
+
+test('recent details wait for restored history and keep the selected snapshot', async ({
+  page,
+  app,
+}) => {
+  await app.open('/navigation/recent/0');
+  await page.evaluate(async () => {
+    await window.__updraftFake!.setNavigationTarget({
+      type: 'waypoint',
+      name: 'Restored',
+      latitudeDegrees: 50,
+      longitudeDegrees: 6,
+      elevationMeters: 100,
+    });
+  });
+  await expect(page.getByRole('heading', { name: 'Restored', exact: true })).toBeVisible();
+  await page.evaluate(async () => {
+    await window.__updraftFake!.setNavigationTarget({ type: 'traffic', id: 'icao:ABC123' });
+  });
+  await expect(page.getByRole('heading', { name: 'Restored', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Navigation', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'icao:ABC123', exact: true })).toHaveAttribute(
+    'href',
+    '/traffic/icao:ABC123',
+  );
+});

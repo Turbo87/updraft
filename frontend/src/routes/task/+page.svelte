@@ -10,6 +10,7 @@
   import { navigationLabel } from '$lib/navigation';
   import { waypointTarget } from '$lib/navigation-target';
   import { m } from '$lib/paraglide/messages';
+  import { getLocale } from '$lib/paraglide/runtime';
   import PinTargetButton from '$lib/PinTargetButton.svelte';
   import ScreenScaffold from '$lib/ScreenScaffold.svelte';
 
@@ -28,7 +29,7 @@
     void retryCount;
     let active = true;
     available = [];
-    loadError = false;
+    loadError = mapState.waypointSourceStatus === 'failed';
     async function load() {
       let source = map?.getSource<GeoJSONSource>('waypoints');
       if (!source || !map?.isSourceLoaded('waypoints')) return;
@@ -40,10 +41,12 @@
       }
     }
     map?.on('sourcedata', load);
+    map?.on('styledata', load);
     void load();
     return () => {
       active = false;
       map?.off('sourcedata', load);
+      map?.off('styledata', load);
     };
   });
   const matches = $derived(
@@ -53,6 +56,12 @@
       )
       .slice(0, 30),
   );
+  function retryLoad() {
+    let source = mapState.map?.getSource<GeoJSONSource>('waypoints');
+    let data = source?.serialize().data;
+    if (source && data) void source.setData(data);
+    retryCount++;
+  }
   async function change(command: TaskCommand) {
     busy = true;
     error = false;
@@ -87,12 +96,16 @@
   {#if task.start}<p>
       {m.task_start()}: {task.start.unixMilliseconds === null
         ? '—'
-        : new Date(task.start.unixMilliseconds).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC
+        : new Date(task.start.unixMilliseconds).toLocaleTimeString(getLocale(), {
+            timeZone: 'UTC',
+          })} UTC
     </p>{/if}
   {#if task.finish}<p>
       {m.task_finish()}: {task.finish.unixMilliseconds === null
         ? '—'
-        : new Date(task.finish.unixMilliseconds).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC
+        : new Date(task.finish.unixMilliseconds).toLocaleTimeString(getLocale(), {
+            timeZone: 'UTC',
+          })} UTC
     </p>{/if}
   <ol>
     {#each task.points as point, index (point.id)}
@@ -133,7 +146,7 @@
   <h2>{m.task_add()}</h2>
   <label>{m.task_search()}<input type="search" bind:value={query} /></label>
   {#if loadError}<p role="alert">{m.waypoint_load_failed()}</p>
-    <Button onclick={() => retryCount++}>{m.retry()}</Button>{/if}
+    <Button onclick={retryLoad}>{m.retry()}</Button>{/if}
   {#each matches as waypoint (waypoint.properties.id)}
     <Button
       variant="secondary"

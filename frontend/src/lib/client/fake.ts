@@ -72,6 +72,7 @@ export class FakeClient implements UpdraftClient {
     restartAllowed: false,
   };
   async saveTask(): Promise<boolean> {
+    this.emit({ topic: 'taskSaveFailed', value: false });
     return true;
   }
   async changeTask(command: TaskCommand): Promise<boolean> {
@@ -85,7 +86,8 @@ export class FakeClient implements UpdraftClient {
         break;
       case 'move': {
         let index = task.points.findIndex((point) => point.id === command.id);
-        if (index < 0 || command.index >= task.points.length) throw new Error('Unknown task point');
+        if (index < 0 || command.index < 0 || command.index >= task.points.length)
+          throw new Error('Unknown task point');
         task.points.splice(command.index, 0, ...task.points.splice(index, 1));
         break;
       }

@@ -17,7 +17,15 @@
 </script>
 
 <div class="row">
-  <a href={resolve(href)}>{label}</a>
+  <a
+    href={resolve(
+      target.type === 'traffic'
+        ? `/traffic/${target.id}`
+        : target.type === 'mapPosition'
+          ? `/nearby/${target.latitudeDegrees}/${target.longitudeDegrees}`
+          : href,
+    )}>{label}</a
+  >
   <NavigateButton {target} iconOnly />
   <PinTargetButton {target} iconOnly onFailure={onPinFailure} />
 </div>

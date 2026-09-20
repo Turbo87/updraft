@@ -4,6 +4,7 @@ import { addProtocol, removeProtocol } from 'maplibre-gl';
 import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import Map from './Map.svelte';
@@ -112,15 +113,7 @@ it.each(['basemap', 'terrain-metadata', 'terrain-tiles', 'both'] as const)(
       traffic: new TrafficStore(),
       airspace: { generation: 0, sources: [] },
       hillshadeDirection: 'fixed',
-      instruments: {
-        gps: null,
-        pressureAltitude: null,
-        trueAirspeed: null,
-        terrainElevation: null,
-        altitudeAgl: null,
-        solarPosition: null,
-        derived: null,
-      },
+      instruments: instrumentsFixture(),
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     });
     await vi.waitFor(() => expect(mapState.map).toBeDefined());

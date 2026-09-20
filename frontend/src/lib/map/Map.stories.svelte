@@ -1,15 +1,16 @@
 <script module lang="ts">
   import type { GeoJSONSource } from 'maplibre-gl';
   import type { ComponentProps } from 'svelte';
-  import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { expect, waitFor } from 'storybook/test';
 
   import { FakeClient } from '$lib/client/fake';
+  import { instrumentsFixture } from '$lib/instruments.fixture';
   import { MapState } from '$lib/map-state.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
+  import { trafficTarget } from '$lib/traffic.fixture';
   import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
   import { arrivalFixture } from './arrival.fixture';
   import Map from './Map.svelte';
@@ -17,7 +18,7 @@
   const arrivalMap = new MapState();
   const arrivalClient = new FakeClient();
 
-  const instruments = {
+  const instruments = instrumentsFixture({
     gps: {
       position: {
         latitudeDegrees: 50.823,
@@ -29,13 +30,7 @@
       fixTime: null,
       stale: false,
     },
-    pressureAltitude: null,
-    trueAirspeed: null,
-    terrainElevation: null,
-    altitudeAgl: null,
-    solarPosition: null,
-    derived: null,
-  } satisfies Instruments;
+  });
 
   const units = {
     altitude: 'm',
@@ -51,60 +46,45 @@
     value: {
       type: 'snapshot',
       value: [
-        {
-          id: 'flarm:000001',
+        trafficTarget('flarm:000001', {
           position: { latitudeDegrees: 50.826, longitudeDegrees: 6.18 },
           altitudeMslMeters: 350,
-          trafficType: 'glider',
           trackDegrees: 45,
-          alarmLevel: 'none',
-          stale: false,
-        },
-        {
-          id: 'flarm:000002',
+        }),
+        trafficTarget('flarm:000002', {
           position: { latitudeDegrees: 50.819, longitudeDegrees: 6.19 },
           altitudeMslMeters: 280,
           trafficType: 'paraglider',
           trackDegrees: 225,
           alarmLevel: 'important',
-          stale: false,
-        },
-        {
-          id: 'flarm:000003',
+        }),
+        trafficTarget('flarm:000003', {
           position: { latitudeDegrees: 50.83, longitudeDegrees: 6.2 },
           altitudeMslMeters: 420,
           trafficType: 'balloon',
           trackDegrees: 90,
           alarmLevel: 'low',
-          stale: false,
-        },
-        {
-          id: 'flarm:000004',
+        }),
+        trafficTarget('flarm:000004', {
           position: { latitudeDegrees: 50.814, longitudeDegrees: 6.176 },
           altitudeMslMeters: 230,
           trafficType: 'pistonAircraft',
           trackDegrees: null,
-          alarmLevel: 'none',
-          stale: false,
-        },
-        {
-          id: 'flarm:000005',
+        }),
+        trafficTarget('flarm:000005', {
           position: { latitudeDegrees: 50.835, longitudeDegrees: 6.17 },
           altitudeMslMeters: 510,
           trafficType: 'helicopter',
           trackDegrees: 135,
           alarmLevel: 'urgent',
           stale: true,
-        },
-        {
-          id: 'flarm:000006',
+        }),
+        trafficTarget('flarm:000006', {
           position: { latitudeDegrees: 50.81, longitudeDegrees: 6.205 },
           altitudeMslMeters: null,
           trafficType: 'airship',
           trackDegrees: 315,
-          alarmLevel: 'none',
-          stale: false,
-        },
+        }),
       ],
     },
   });
@@ -129,15 +109,7 @@
   name="No position"
   args={{
     airspace: { generation: 0, sources: [] },
-    instruments: {
-      gps: null,
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    instruments: instrumentsFixture(),
     mapState: new MapState(),
     traffic,
     units,
@@ -190,15 +162,7 @@
     mapState: arrivalMap,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: {
-      gps: null,
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    instruments: instrumentsFixture(),
     units,
     testMode: true,
     testWaypointData: arrivalFixture,

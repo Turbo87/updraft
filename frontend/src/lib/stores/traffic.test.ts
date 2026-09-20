@@ -1,24 +1,7 @@
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-
 import { describe, expect, it, vi } from 'vitest';
 
+import { trafficTarget } from '$lib/traffic.fixture';
 import { TrafficStore } from './traffic.svelte';
-
-function target(
-  id: string,
-  overrides: Partial<PublishedTrafficTarget> = {},
-): PublishedTrafficTarget {
-  return {
-    id,
-    position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-    altitudeMslMeters: 200,
-    trafficType: 'glider',
-    trackDegrees: 270,
-    alarmLevel: 'none',
-    stale: false,
-    ...overrides,
-  };
-}
 
 describe('TrafficStore', () => {
   it('starts uninitialized without targets', () => {
@@ -31,8 +14,8 @@ describe('TrafficStore', () => {
   it('replaces all targets in the same map on a snapshot', () => {
     let store = new TrafficStore();
     let current = store.current;
-    let first = target('flarm:000001');
-    let second = target('flarm:000002');
+    let first = trafficTarget('flarm:000001');
+    let second = trafficTarget('flarm:000002');
 
     store.apply({ topic: 'traffic', value: { type: 'snapshot', value: [first] } });
 
@@ -46,8 +29,8 @@ describe('TrafficStore', () => {
 
   it('inserts a new target on a delta', () => {
     let store = new TrafficStore();
-    let first = target('flarm:000001');
-    let second = target('flarm:000002');
+    let first = trafficTarget('flarm:000001');
+    let second = trafficTarget('flarm:000002');
 
     store.apply({ topic: 'traffic', value: { type: 'snapshot', value: [first] } });
     store.apply({
@@ -65,8 +48,8 @@ describe('TrafficStore', () => {
 
   it('replaces a complete existing target on a delta', () => {
     let store = new TrafficStore();
-    let first = target('flarm:000001');
-    let replacement = target('flarm:000001', {
+    let first = trafficTarget('flarm:000001');
+    let replacement = trafficTarget('flarm:000001', {
       position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
       altitudeMslMeters: null,
       trackDegrees: null,
@@ -84,7 +67,7 @@ describe('TrafficStore', () => {
 
   it('applies all delta upserts before removals', () => {
     let store = new TrafficStore();
-    let removedAfterUpsert = target('flarm:000001');
+    let removedAfterUpsert = trafficTarget('flarm:000001');
 
     store.apply({
       topic: 'traffic',
@@ -125,7 +108,7 @@ describe('TrafficStore', () => {
   it('notifies subscribers after applying an update', () => {
     let store = new TrafficStore();
     let subscriber = vi.fn();
-    let update = { type: 'snapshot' as const, value: [target('flarm:000001')] };
+    let update = { type: 'snapshot' as const, value: [trafficTarget('flarm:000001')] };
     store.subscribe(subscriber);
 
     store.apply({ topic: 'traffic', value: update });
@@ -143,7 +126,7 @@ describe('TrafficStore', () => {
 
     store.apply({
       topic: 'traffic',
-      value: { type: 'snapshot', value: [target('flarm:000001')] },
+      value: { type: 'snapshot', value: [trafficTarget('flarm:000001')] },
     });
 
     expect(subscriber).not.toHaveBeenCalled();

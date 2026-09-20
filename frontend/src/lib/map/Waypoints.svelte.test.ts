@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import MapComponent from './Map.svelte';
@@ -14,15 +15,7 @@ it('renders waypoint types and removes the source when all files are removed', a
     mapState,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: {
-      gps: null,
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    instruments: instrumentsFixture(),
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     waypoints: {
       generation: 1,

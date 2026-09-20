@@ -1,7 +1,6 @@
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-
 import { expect, it } from 'vitest';
 
+import { trafficTarget } from '$lib/traffic.fixture';
 import {
   createRetainedTraffic,
   formatTrafficAlarmLevel,
@@ -10,25 +9,9 @@ import {
   refreshRetainedTraffic,
 } from './nearby-traffic';
 
-function target(
-  id: string,
-  overrides: Partial<PublishedTrafficTarget> = {},
-): PublishedTrafficTarget {
-  return {
-    id,
-    position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-    altitudeMslMeters: 200,
-    trafficType: 'glider',
-    trackDegrees: 270,
-    alarmLevel: 'none',
-    stale: false,
-    ...overrides,
-  };
-}
-
 it('keeps the selected traffic sequence, duplicates, and missing IDs', () => {
-  let first = target('flarm:000001');
-  let second = target('flarm:000002');
+  let first = trafficTarget('flarm:000001');
+  let second = trafficTarget('flarm:000002');
   let current = new Map([
     [first.id, first],
     [second.id, second],
@@ -50,8 +33,8 @@ it('keeps the selected traffic sequence, duplicates, and missing IDs', () => {
 });
 
 it('updates, retains, and recovers selected traffic without adding targets', () => {
-  let first = target('flarm:000001');
-  let second = target('flarm:000002');
+  let first = trafficTarget('flarm:000001');
+  let second = trafficTarget('flarm:000002');
   let retained = createRetainedTraffic(
     [first.id, second.id],
     new Map([
@@ -59,8 +42,8 @@ it('updates, retains, and recovers selected traffic without adding targets', () 
       [second.id, second],
     ]),
   );
-  let updated = target(first.id, { altitudeMslMeters: 300 });
-  let unrelated = target('flarm:000003');
+  let updated = trafficTarget(first.id, { altitudeMslMeters: 300 });
+  let unrelated = trafficTarget('flarm:000003');
 
   retained = refreshRetainedTraffic(
     retained,
@@ -77,7 +60,7 @@ it('updates, retains, and recovers selected traffic without adding targets', () 
     ['flarm:000002', 200, false],
   ]);
 
-  let recovered = target(second.id, { altitudeMslMeters: 400 });
+  let recovered = trafficTarget(second.id, { altitudeMslMeters: 400 });
   retained = refreshRetainedTraffic(
     retained,
     new Map([

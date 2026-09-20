@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { InstrumentsStore } from './instruments.svelte';
 
 describe('InstrumentsStore', () => {
@@ -8,7 +9,7 @@ describe('InstrumentsStore', () => {
 
     store.apply({
       topic: 'instruments',
-      value: {
+      value: instrumentsFixture({
         gps: {
           position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
           altitudeMeters: 200,
@@ -17,13 +18,7 @@ describe('InstrumentsStore', () => {
           fixTime: null,
           stale: false,
         },
-        pressureAltitude: null,
-        trueAirspeed: null,
-        terrainElevation: null,
-        altitudeAgl: null,
-        solarPosition: null,
-        derived: null,
-      },
+      }),
     });
 
     expect(store.current.gps?.trackDegrees).toBe(270);

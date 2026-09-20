@@ -7,6 +7,7 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
 import { FakeClient } from '$lib/client/fake';
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import MapComponent from './Map.svelte';
@@ -27,15 +28,7 @@ it('updates viewport arrivals and closes subscriptions on catalog changes and un
     waypoints,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: {
-      gps: null,
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    instruments: instrumentsFixture(),
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     testMode: true,
     testWaypointData: { type: 'FeatureCollection', features: [] },

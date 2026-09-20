@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
 import { FakeClient } from '$lib/client/fake';
+import { instrumentsFixture } from '$lib/instruments.fixture';
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
 import { arrivalFixture } from './arrival.fixture';
@@ -34,15 +35,7 @@ it('renders arrival labels, colors and catalog filters while retaining waypoint 
     units,
     traffic: new TrafficStore(),
     airspace: { generation: 0, sources: [] },
-    instruments: {
-      gps: null,
-      pressureAltitude: null,
-      trueAirspeed: null,
-      terrainElevation: null,
-      altitudeAgl: null,
-      solarPosition: null,
-      derived: null,
-    },
+    instruments: instrumentsFixture(),
     waypoints: {
       generation: 1,
       sources: [{ type: 'active', sourceName: 'fields.cup', waypointCount: 6, warnings: [] }],

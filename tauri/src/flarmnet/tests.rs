@@ -130,3 +130,24 @@ async fn resume_checks_the_deadline_without_forcing_an_early_download() {
     let overdue = RefreshSchedule::new(now - Duration::from_secs(60));
     assert_ok!(tokio::time::timeout(Duration::from_secs(1), overdue.wait(&wake)).await);
 }
+
+#[tokio::test]
+async fn download_size_limit_accepts_exactly_the_limit_and_preserves_cache_on_overflow() {
+    let directory = assert_ok!(tempfile::tempdir());
+    let mut service = FlarmnetService::new(directory.path().join("united.json"));
+    let mut bytes = NEW.to_vec();
+    bytes.resize(MAX_DATABASE_BYTES, b' ');
+    let (url, server_task) = server(bytes.clone(), 200).await;
+    service.url = url;
+    assert_ok!(service.refresh().await);
+    assert_ok!(server_task.await);
+    assert_eq!(assert_ok!(fs::read(&service.path)), bytes);
+    bytes.push(b' ');
+    let (url, server_task) = server(bytes.clone(), 200).await;
+    service.url = url;
+    let error = assert_err!(service.refresh().await);
+    assert_eq!(error.to_string(), "FlarmNet download exceeds size limit");
+    assert_ok!(server_task.await);
+    bytes.pop();
+    assert_eq!(assert_ok!(fs::read(&service.path)), bytes);
+}

@@ -137,15 +137,13 @@ impl CatalogService {
         let client = crate::http::client()
             .timeout(Duration::from_secs(30))
             .build()?;
-        let mut response = client.get(&self.url).send().await?.error_for_status()?;
-        let mut bytes = Vec::new();
-        while let Some(chunk) = response.chunk().await? {
-            ensure!(
-                bytes.len() + chunk.len() <= MAX_CATALOG_BYTES,
-                "Enroute catalog exceeds size limit"
-            );
-            bytes.extend_from_slice(&chunk);
-        }
+        let response = client.get(&self.url).send().await?.error_for_status()?;
+        let bytes = crate::http::read_bounded_body(
+            response,
+            MAX_CATALOG_BYTES,
+            "Enroute catalog exceeds size limit",
+        )
+        .await?;
         let entries = parse_catalog(&bytes)?;
         let directory = self
             .path

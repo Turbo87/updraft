@@ -205,3 +205,16 @@ async fn rejects_oversized_cache_and_response() {
     assert!(logs_contain("Could not read Enroute catalog cache"));
     assert!(logs_contain("Could not refresh Enroute catalog"));
 }
+
+#[tokio::test]
+async fn response_accepts_exactly_the_size_limit() {
+    let directory = assert_ok!(tempfile::tempdir());
+    let path = directory.path().join("catalog.json");
+    let mut service = CatalogService::load(path.clone());
+    let body = format!("{GERMANY}{}", " ".repeat(MAX_CATALOG_BYTES - GERMANY.len()));
+    let (url, server) = server(body.clone(), 200).await;
+    service.url = url;
+    assert_ok!(service.refresh().await);
+    assert_ok!(server.await);
+    assert_eq!(assert_ok!(fs::read_to_string(path)), body);
+}

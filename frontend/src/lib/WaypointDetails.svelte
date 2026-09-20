@@ -3,16 +3,32 @@
   import type { WaypointFeature } from './waypoints';
 
   import { m } from '$lib/paraglide/messages.js';
+  import Button from './Button.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import { convertAltitude } from './units';
 
-  type Props = { waypoint: WaypointFeature; altitudeUnit: AltitudeUnit; onBack: () => void };
+  type Props = {
+    waypoint: WaypointFeature;
+    altitudeUnit: AltitudeUnit;
+    onBack: () => void;
+    onNavigate?: () => void;
+    error?: boolean;
+  };
 
-  let { waypoint, altitudeUnit, onBack }: Props = $props();
+  let { waypoint, altitudeUnit, onBack, onNavigate, error = false }: Props = $props();
   const properties = $derived(waypoint.properties);
 </script>
 
-<ScreenScaffold title={properties.name} backLabel={m.waypoint_back()} {onBack}>
+{#snippet navigationAction()}<Button onclick={onNavigate}>{m.navigation_waypoint()}</Button
+  >{/snippet}
+
+<ScreenScaffold
+  title={properties.name}
+  backLabel={m.waypoint_back()}
+  {onBack}
+  actions={onNavigate ? navigationAction : undefined}
+>
+  {#if error}<p role="alert">{m.navigation_failed()}</p>{/if}
   <p>{m.waypoint_type_value({ kind: properties.kind })}</p>
   <dl>
     <dt>{m.waypoint_coordinates()}</dt>

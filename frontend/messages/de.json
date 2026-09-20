@@ -429,5 +429,13 @@
   "flarm_correction_description": "Experimentelle Korrektur der FLARM-Verkehrspositionen und -höhen. Deaktivieren, wenn die Verkehrspositionen oder -höhen mit deinem Gerät ungenauer werden.",
   "flarm_correction_enabled": "Aktiviert",
   "flarm_correction_disabled": "Deaktiviert",
-  "flarm_correction_change_failed": "Die FLARM-Positionskorrektur konnte nicht geändert werden."
+  "flarm_correction_change_failed": "Die FLARM-Positionskorrektur konnte nicht geändert werden.",
+  "navigation_waypoint": "Wegpunkt anfliegen",
+  "navigation_heading": "Navigation",
+  "navigation_stop": "Navigation beenden",
+  "navigation_failed": "Navigation konnte nicht geändert werden.",
+  "navigation_none": "Kein aktives Ziel",
+  "navigation_true": "Rechtweisende Peilung",
+  "navigation_relative": "Relative Peilung",
+  "navigation_details": "Zieldetails"
 }

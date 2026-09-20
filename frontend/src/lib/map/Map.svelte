@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+  import type { Navigation as NavigationState } from '$lib/protocol/generated/Navigation';
 
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
@@ -23,6 +24,7 @@
   import Arrivals from './Arrivals.svelte';
   import { BASEMAP_MIN_ZOOM, getBasemapStyle } from './basemap-style';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
+  import Navigation from './Navigation.svelte';
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
   import ReturnToPositionButton from './ReturnToPositionButton.svelte';
@@ -37,6 +39,7 @@
 
   const FOLLOW_DURATION_MS = 300;
   type Props = {
+    navigation?: NavigationState | null;
     climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
     airspace: AirspaceStatus;
@@ -55,6 +58,7 @@
   };
 
   let {
+    navigation = null,
     climbAverageMethod = 'smoothed20s',
     client,
     airspace,
@@ -219,6 +223,7 @@
         {/if}
       {/if}
     {/if}
+    {#if navigation}<Navigation position={navigation.position} ownship={position} />{/if}
   </MapLibre>
   {#if !mapState.followMode}
     <ReturnToPositionButton onClick={resumeFollowing} />

@@ -3,6 +3,7 @@ import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 import type { Locale } from '$lib/protocol/generated/Locale';
+import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -69,6 +70,7 @@ export type SelectedDataFile = {
  * shared frontend state.
  */
 export interface UpdraftClient {
+  setNavigationTarget(target: NavigationTarget | null): Promise<void>;
   /** Delivers the initial inventory and later changes. Reports registration failures through onError. */
   subscribeBasemaps(
     onUpdate: (status: BasemapStatus) => void,

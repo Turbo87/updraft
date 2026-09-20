@@ -6,6 +6,7 @@
 
   import { convertAltitude } from '$lib/units';
   import { waypointSymbols } from '$lib/waypoint-symbols';
+  import { LANDABLE_WAYPOINT_KINDS, WAYPOINT_KIND } from '$lib/waypoints';
   import { FONT_REGULAR } from './basemap-style';
   import {
     COLOR_AMBER_500,
@@ -26,19 +27,6 @@
 
   const LABEL_SIZE = 12;
   const LABEL_PADDING = 8;
-  const WAYPOINT_KIND = {
-    UNKNOWN: 0,
-    AIRFIELD_GRASS: 2,
-    OUTLANDING: 3,
-    GLIDING_AIRFIELD: 4,
-    AIRFIELD_SOLID: 5,
-  } as const;
-  const LANDABLE_KINDS = [
-    WAYPOINT_KIND.AIRFIELD_GRASS,
-    WAYPOINT_KIND.OUTLANDING,
-    WAYPOINT_KIND.GLIDING_AIRFIELD,
-    WAYPOINT_KIND.AIRFIELD_SOLID,
-  ];
   const iconImage: ExpressionSpecification = [
     'match',
     ['get', 'kind'],
@@ -50,12 +38,12 @@
   const selected: ExpressionSpecification = $derived([
     'all',
     filter,
-    showLandables ? true : ['!', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]]],
+    showLandables ? true : ['!', ['in', ['get', 'kind'], ['literal', LANDABLE_WAYPOINT_KINDS]]],
   ]);
   const visible: ExpressionSpecification = $derived([
     'all',
     selected,
-    ['any', ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]], ['>=', ['zoom'], 6]],
+    ['any', ['in', ['get', 'kind'], ['literal', LANDABLE_WAYPOINT_KINDS]], ['>=', ['zoom'], 6]],
   ]);
   const layout: NonNullable<SymbolLayerSpecification['layout']> = {
     'icon-image': iconImage,
@@ -76,7 +64,7 @@
           COLOR_RED_700,
           COLOR_VIOLET_700,
         ]
-      : ['match', ['get', 'kind'], LANDABLE_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
+      : ['match', ['get', 'kind'], LANDABLE_WAYPOINT_KINDS, COLOR_VIOLET_700, COLOR_SLATE_700],
   );
   const label: ExpressionSpecification = $derived(
     arrivalUnit
@@ -114,9 +102,9 @@
       ['linear'],
       ['zoom'],
       6,
-      ['match', ['get', 'kind'], LANDABLE_KINDS, size * 0.5, size * 0.3],
+      ['match', ['get', 'kind'], LANDABLE_WAYPOINT_KINDS, size * 0.5, size * 0.3],
       8,
-      ['match', ['get', 'kind'], LANDABLE_KINDS, size, size * 0.8],
+      ['match', ['get', 'kind'], LANDABLE_WAYPOINT_KINDS, size, size * 0.8],
     ];
   }
 </script>
@@ -128,7 +116,7 @@
   filter={[
     'all',
     selected,
-    ['in', ['get', 'kind'], ['literal', LANDABLE_KINDS]],
+    ['in', ['get', 'kind'], ['literal', LANDABLE_WAYPOINT_KINDS]],
     ['has', 'runwayDirection'],
   ]}
   layout={{
@@ -161,7 +149,7 @@
       : { 'text-variable-anchor': ['top', 'bottom'] }),
     // Fixed anchors do not include collision padding in the label position.
     'text-radial-offset': 0.5 + (arrivalUnit ? LABEL_PADDING / LABEL_SIZE : 0),
-    'symbol-sort-key': ['match', ['get', 'kind'], LANDABLE_KINDS, 0, 1],
+    'symbol-sort-key': ['match', ['get', 'kind'], LANDABLE_WAYPOINT_KINDS, 0, 1],
   }}
   paint={{ 'text-color': COLOR_SLATE_700, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }}
 />

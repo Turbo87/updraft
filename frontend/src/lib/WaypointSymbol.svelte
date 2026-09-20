@@ -1,12 +1,13 @@
 <script lang="ts">
   import runway from '../../../libs/updraft_sprites/sprites/runway.svg?url';
   import { waypointSymbols } from './waypoint-symbols';
+  import { LANDABLE_WAYPOINT_KINDS } from './waypoints';
 
   type Props = { kind: number; runwayDirection?: number };
 
   let { kind, runwayDirection }: Props = $props();
   let symbol = $derived(waypointSymbols[kind] ?? waypointSymbols[0]);
-  let landable = $derived([2, 3, 4, 5].includes(kind));
+  let landable = $derived(LANDABLE_WAYPOINT_KINDS.includes(kind));
 </script>
 
 <span class="waypoint-symbol" class:landable aria-hidden="true">

@@ -125,3 +125,35 @@ fn does_not_follow_file_directory_or_provider_symlinks() {
     assert_ok!(symlink(outside.path(), directory.path().join("enroute")));
     assert_err!(installed_files(directory.path()));
 }
+
+#[test]
+fn activation_markers_are_idempotent_without_replacing_existing_contents() {
+    let directory = assert_ok!(tempfile::tempdir());
+    let marker = directory.path().join("region.terrain.disabled");
+    assert_ok!(persist_enabled(&marker, true));
+    assert_ok!(persist_enabled(&marker, false));
+    assert_eq!(assert_ok!(fs::read(&marker)), b"");
+    assert_ok!(fs::write(&marker, b"marker"));
+    assert_ok!(persist_enabled(&marker, false));
+    assert_eq!(assert_ok!(fs::read(&marker)), b"marker");
+    assert_ok!(persist_enabled(&marker, true));
+    assert!(!marker.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn disabling_rejects_symlink_markers_and_enabling_removes_only_the_link() {
+    let directory = assert_ok!(tempfile::tempdir());
+    let marker = directory.path().join("region.mbtiles.disabled");
+    let target = directory.path().join("target");
+    assert_ok!(fs::write(&target, b"target"));
+    assert_ok!(std::os::unix::fs::symlink(&target, &marker));
+    assert_eq!(
+        assert_err!(persist_enabled(&marker, false)).kind(),
+        ErrorKind::AlreadyExists
+    );
+    assert_eq!(assert_ok!(fs::read(&target)), b"target");
+    assert_ok!(persist_enabled(&marker, true));
+    assert!(!marker.exists());
+    assert_eq!(assert_ok!(fs::read(&target)), b"target");
+}

@@ -9,8 +9,20 @@
   import { getLocale } from '$lib/paraglide/runtime';
   import { convertAltitude, convertDistance } from '$lib/units';
 
-  type Props = { navigation: Navigation; units: UnitSettings };
-  let { navigation, units }: Props = $props();
+  type Props = {
+    navigation: Navigation;
+    units: UnitSettings;
+    href?: string;
+    label?: string;
+    compact?: boolean;
+  };
+  let {
+    navigation,
+    units,
+    href = resolve('/navigation'),
+    label = m.navigation_details(),
+    compact = false,
+  }: Props = $props();
   const guidance = $derived(navigation.guidance);
   const relative = $derived(guidance?.relativeBearingDegrees);
   const altitude = $derived(
@@ -19,7 +31,15 @@
   const number = $derived(new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 1 }));
 </script>
 
-<a href={resolve('/navigation')} aria-label={m.navigation_details()} class:stale={guidance?.stale}>
+<a {href} aria-label={label} class:compact class:stale={guidance?.stale}>
+  {#if compact}<span
+      aria-hidden="true"
+      class={navigation.target.type === 'traffic'
+        ? 'i-mdi-airplane'
+        : navigation.target.type === 'waypoint'
+          ? 'i-mdi-map-marker-outline'
+          : 'i-mdi-rhombus-outline'}
+    ></span>{/if}
   <strong
     >{navigationLabel(navigation)}
     {#if navigation.target.type === 'traffic'}
@@ -71,6 +91,15 @@
     color: var(--color-text);
     text-decoration: none;
     min-height: 3rem;
+  }
+  a.compact {
+    padding-top: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.875rem;
+    gap: var(--space-2);
+  }
+  a.compact > span:first-child {
+    flex-shrink: 0;
   }
   strong {
     flex: 1;

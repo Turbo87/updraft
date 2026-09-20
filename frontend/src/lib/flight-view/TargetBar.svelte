@@ -121,6 +121,8 @@
   }
   small.report-age {
     display: inline;
+    font: inherit;
+    font-size: smaller;
   }
   span {
     white-space: nowrap;

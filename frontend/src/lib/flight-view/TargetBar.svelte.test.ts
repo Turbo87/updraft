@@ -2,6 +2,8 @@ import { expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
+import '../../app.css';
+
 import { defaultSettings } from '$lib/settings';
 import TargetBar from './TargetBar.svelte';
 
@@ -104,5 +106,10 @@ it.each([false, true])(
       await expect.element(page.getByText(suffix, { exact: true })).toBeVisible();
       expect(document.querySelector('strong')?.textContent?.trim()).toBe(`ABC ${suffix}`);
     }
+    let title = document.querySelector('strong')!;
+    let age = title.querySelector('small')!;
+    expect(parseFloat(getComputedStyle(age).fontSize)).toBeLessThan(
+      parseFloat(getComputedStyle(title).fontSize),
+    );
   },
 );

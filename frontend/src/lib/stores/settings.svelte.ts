@@ -1,16 +1,9 @@
 import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
 
-const EMPTY: Settings = {
-  locale: null,
-  polar: 'LS 8',
-  arrivalReserve: 200,
-  climbAverageMethod: 'smoothed20s',
-  energyCompensation: true,
-  flarmPositionCorrection: true,
-  hillshadeDirection: 'fixed',
-  units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-};
+import { defaultSettings } from '$lib/settings';
+
+const EMPTY = defaultSettings();
 
 export class SettingsStore {
   current = $state.raw<Settings>(EMPTY);

@@ -79,12 +79,13 @@ impl PlxvsMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::encode::encode_sentence;
     use crate::{Message, Step, parse};
     use claims::{assert_err_eq, assert_none, assert_ok, assert_some_eq};
 
     #[test]
     fn encodes_complete_plxvs_sentence() {
-        insta::assert_snapshot!(encode_plxvs_sentence(&complete_plxvs()));
+        insta::assert_snapshot!(encode_sentence(&complete_plxvs()));
     }
 
     #[test]
@@ -97,7 +98,7 @@ mod tests {
             flap_position: None,
         };
 
-        insta::assert_snapshot!(encode_plxvs_sentence(&plxvs));
+        insta::assert_snapshot!(encode_sentence(&plxvs));
     }
 
     #[test]
@@ -133,13 +134,6 @@ mod tests {
             igc_pressure_altitude: Some(Length::from_meters(1543.2)),
             flap_position: Some("L".into()),
         }
-    }
-
-    fn encode_plxvs_sentence(plxvs: &Plxvs) -> String {
-        let sentence = assert_ok!(Vec::<u8>::try_from(plxvs));
-        let sentence = assert_ok!(String::from_utf8(sentence));
-        assert!(sentence.ends_with("\r\n"));
-        sentence
     }
 
     #[test]

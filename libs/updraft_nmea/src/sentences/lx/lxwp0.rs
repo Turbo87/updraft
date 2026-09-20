@@ -89,12 +89,13 @@ fn yes_no(value: Option<&[u8]>) -> Option<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::encode::encode_sentence;
     use crate::{Message, Step, parse};
     use claims::{assert_none, assert_ok, assert_some_eq};
 
     #[test]
     fn encodes_complete_lxwp0_sentence() {
-        insta::assert_snapshot!(encode_lxwp0_sentence(&complete_lxwp0()));
+        insta::assert_snapshot!(encode_sentence(&complete_lxwp0()));
     }
 
     #[test]
@@ -109,7 +110,7 @@ mod tests {
             wind_speed: Some(Speed::from_kilometers_per_hour(23.1)),
         };
 
-        insta::assert_snapshot!(encode_lxwp0_sentence(&lxwp0));
+        insta::assert_snapshot!(encode_sentence(&lxwp0));
     }
 
     #[test]
@@ -136,13 +137,6 @@ mod tests {
             wind_direction: Some(Angle::from_degrees(174.0)),
             wind_speed: Some(Speed::from_kilometers_per_hour(10.1)),
         }
-    }
-
-    fn encode_lxwp0_sentence(lxwp0: &Lxwp0) -> String {
-        let sentence = assert_ok!(Vec::<u8>::try_from(lxwp0));
-        let sentence = assert_ok!(String::from_utf8(sentence));
-        assert!(sentence.ends_with("\r\n"));
-        sentence
     }
 
     #[test]

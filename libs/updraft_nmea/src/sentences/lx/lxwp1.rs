@@ -50,12 +50,13 @@ impl TryFrom<&Lxwp1> for Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::encode::encode_sentence;
     use crate::{Message, Step, parse};
     use claims::{assert_err_eq, assert_none, assert_ok, assert_some_eq};
 
     #[test]
     fn encodes_complete_lxwp1_sentence() {
-        insta::assert_snapshot!(encode_lxwp1_sentence(&complete_lxwp1()));
+        insta::assert_snapshot!(encode_sentence(&complete_lxwp1()));
     }
 
     #[test]
@@ -68,7 +69,7 @@ mod tests {
             license: None,
         };
 
-        insta::assert_snapshot!(encode_lxwp1_sentence(&lxwp1));
+        insta::assert_snapshot!(encode_sentence(&lxwp1));
     }
 
     #[test]
@@ -131,13 +132,6 @@ mod tests {
             hardware_version: Some("2.0".into()),
             license: Some("ABC123".into()),
         }
-    }
-
-    fn encode_lxwp1_sentence(lxwp1: &Lxwp1) -> String {
-        let sentence = assert_ok!(Vec::<u8>::try_from(lxwp1));
-        let sentence = assert_ok!(String::from_utf8(sentence));
-        assert!(sentence.ends_with("\r\n"));
-        sentence
     }
 
     #[test]

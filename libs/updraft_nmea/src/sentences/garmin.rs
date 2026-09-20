@@ -83,6 +83,7 @@ impl PgrmzFixDimension {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::encode::encode_sentence;
     use crate::{Message, Step, parse};
     use claims::{assert_ok, assert_some_eq};
 
@@ -93,7 +94,7 @@ mod tests {
             fix_dimension: PgrmzFixDimension::ThreeDimensional,
         };
 
-        insta::assert_snapshot!(encode_pgrmz_sentence(&pgrmz));
+        insta::assert_snapshot!(encode_sentence(&pgrmz));
     }
 
     #[test]
@@ -105,7 +106,7 @@ mod tests {
             PgrmzFixDimension::Other(9),
         ]
         .map(|fix_dimension| {
-            encode_pgrmz_sentence(&Pgrmz {
+            encode_sentence(&Pgrmz {
                 altitude: Some(Length::from_feet(4395.0)),
                 fix_dimension,
             })
@@ -130,13 +131,6 @@ mod tests {
         };
 
         assert_eq!(actual, expected);
-    }
-
-    fn encode_pgrmz_sentence(pgrmz: &Pgrmz) -> String {
-        let sentence = assert_ok!(Vec::<u8>::try_from(pgrmz));
-        let sentence = assert_ok!(String::from_utf8(sentence));
-        assert!(sentence.ends_with("\r\n"));
-        sentence
     }
 
     #[test]

@@ -111,6 +111,18 @@ fn coordinate_field(degrees: f64, degree_width: usize) -> String {
 }
 
 #[cfg(test)]
+#[track_caller]
+pub fn encode_sentence<T>(value: T) -> String
+where
+    Vec<u8>: TryFrom<T, Error = EncodeError>,
+{
+    let sentence = claims::assert_ok!(Vec::<u8>::try_from(value));
+    let sentence = claims::assert_ok!(String::from_utf8(sentence));
+    assert!(sentence.ends_with("\r\n"));
+    sentence
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

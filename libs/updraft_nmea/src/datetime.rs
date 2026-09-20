@@ -149,7 +149,9 @@ impl Date {
         let day = btoi::btou(field.get(0..2)?).ok()?;
         let month = btoi::btou(field.get(2..4)?).ok()?;
         let year = 2000 + btoi::btou::<u16>(field.get(4..6)?).ok()?;
-        ((1..=12).contains(&month) && (1..=days_in_month(year, month)).contains(&day))
+        let days_in_month = time::Month::try_from(month).ok()?.length(i32::from(year));
+        (1..=days_in_month)
+            .contains(&day)
             .then_some(Self { year, month, day })
     }
 
@@ -168,22 +170,6 @@ impl Date {
             self.year % 100
         ))
     }
-}
-
-/// The number of days in `month` of `year`, or `0` for a month outside
-/// `1..=12`.
-fn days_in_month(year: u16, month: u8) -> u8 {
-    match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 if is_leap_year(year) => 29,
-        2 => 28,
-        _ => 0,
-    }
-}
-
-fn is_leap_year(year: u16) -> bool {
-    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
 #[cfg(test)]

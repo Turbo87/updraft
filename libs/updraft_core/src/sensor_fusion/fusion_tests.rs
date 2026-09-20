@@ -219,15 +219,7 @@ fn rejected_airspeed_measurement_keeps_motion_estimates_stale() {
 #[test]
 fn inferred_airspeed_produces_vario_through_sensor_fusion() {
     let mut fusion = SensorFusion::default();
-    for second in 0..=70 {
-        let millis = second * 1_000;
-        let altitude = PressureAltitude::new(Length::from_meters(1_000. + second as f64));
-        fusion.update(FusionInputs {
-            gps: DomainState::Current(selected(millis, circling_gps(second))),
-            true_airspeed: DomainState::Unavailable,
-            pressure_altitude: DomainState::Current(selected(millis, altitude)),
-        });
-    }
+    fly_circling_climb(&mut fusion, 0..=70);
 
     let vario = assert_some!(assert_some!(fusion.instruments()).vario);
     assert!(!vario.stale);
@@ -243,15 +235,7 @@ fn inferred_airspeed_stays_current_between_gps_samples() {
         .glide_polar();
     fusion.set_polar(polar);
 
-    for second in 0..=70 {
-        let millis = second * 1_000;
-        let altitude = PressureAltitude::new(Length::from_meters(1_000. + second as f64));
-        fusion.update(FusionInputs {
-            gps: DomainState::Current(selected(millis, circling_gps(second))),
-            true_airspeed: DomainState::Unavailable,
-            pressure_altitude: DomainState::Current(selected(millis, altitude)),
-        });
-    }
+    fly_circling_climb(&mut fusion, 0..=70);
 
     let current = assert_some!(fusion.instruments());
     assert!(!assert_some!(current.airspeed).stale);
@@ -298,15 +282,7 @@ fn gnss_fix_uses_its_inferred_airspeed_for_vario() {
 #[test]
 fn stale_gps_stales_inferred_vario() {
     let mut fusion = SensorFusion::default();
-    for second in 0..=70 {
-        let millis = second * 1_000;
-        let altitude = PressureAltitude::new(Length::from_meters(1_000. + second as f64));
-        fusion.update(FusionInputs {
-            gps: DomainState::Current(selected(millis, circling_gps(second))),
-            true_airspeed: DomainState::Unavailable,
-            pressure_altitude: DomainState::Current(selected(millis, altitude)),
-        });
-    }
+    fly_circling_climb(&mut fusion, 0..=70);
 
     let current = assert_some!(assert_some!(fusion.instruments()).vario);
     assert!(!current.stale);
@@ -439,4 +415,16 @@ fn stale_pressure_altitude_stales_netto_independently() {
     let retained = assert_some!(assert_some!(fusion.instruments()).relative_vario);
     assert_eq!(retained.meters_per_second, relative.meters_per_second);
     assert!(retained.stale);
+}
+
+fn fly_circling_climb(fusion: &mut SensorFusion, seconds: std::ops::RangeInclusive<u64>) {
+    for second in seconds {
+        let millis = second * 1_000;
+        let altitude = PressureAltitude::new(Length::from_meters(1_000. + second as f64));
+        fusion.update(FusionInputs {
+            gps: DomainState::Current(selected(millis, circling_gps(second))),
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Current(selected(millis, altitude)),
+        });
+    }
 }

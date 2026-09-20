@@ -963,13 +963,8 @@ mod tests {
 
     #[test]
     fn new_airspeed_does_not_change_vertical_speed() {
-        let mut estimator = Estimator::new();
+        let mut estimator = climb(0., 60);
         let altitude = meters(1000.);
-        for second in 0..60u64 {
-            let time = Duration::from_secs(second);
-            let acceptance = estimator.pressure_altitude(time, altitude);
-            assert_eq!(acceptance, Accepted);
-        }
         let before = assert_some!(estimator.estimate().vertical_speed);
         let air_speed = Speed::from_kilometers_per_hour(120.);
         for second in 60..70u64 {
@@ -1056,13 +1051,7 @@ mod tests {
 
     #[test]
     fn establishing_the_gnss_offset_does_not_show_as_a_climb() {
-        let mut estimator = Estimator::new();
-        for second in 0..60u64 {
-            assert_eq!(
-                estimator.pressure_altitude(Duration::from_secs(second), meters(1000.)),
-                Accepted
-            );
-        }
+        let mut estimator = climb(0., 60);
 
         let mut worst = 0f64;
         let mut worst_average = 0f64;

@@ -4,25 +4,23 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagedFileDetails {
     size: u64,
-    /// File modification time in milliseconds since the Unix epoch.
-    modified_at: f64,
+    /// File modification time, serialized as milliseconds since the Unix epoch.
+    #[serde(serialize_with = "super::serialize_timestamp")]
+    modified_at: SystemTime,
 }
 
 impl ManagedFileDetails {
     pub fn read(path: &Path) -> Result<Self> {
         let metadata = fs::metadata(path)?;
-        let seconds = match metadata.modified()?.duration_since(std::time::UNIX_EPOCH) {
-            Ok(duration) => duration.as_secs_f64(),
-            Err(error) => -error.duration().as_secs_f64(),
-        };
         Ok(Self {
             size: metadata.len(),
-            modified_at: seconds * 1000.,
+            modified_at: metadata.modified()?,
         })
     }
 }

@@ -157,3 +157,18 @@ fn disabling_rejects_symlink_markers_and_enabling_removes_only_the_link() {
     assert!(!marker.exists());
     assert_eq!(assert_ok!(fs::read(&target)), b"target");
 }
+
+#[test]
+fn file_details_capture_the_modification_time_when_read() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, UNIX_EPOCH};
+    let directory = assert_ok!(tempfile::tempdir());
+    let path = directory.path().join("file");
+    let file = assert_ok!(fs::File::create(&path));
+    let timestamp = UNIX_EPOCH - Duration::from_micros(500);
+    assert_ok!(file.set_times(FileTimes::new().set_modified(timestamp)));
+    let details = assert_ok!(ManagedFileDetails::read(&path));
+    assert_ok!(file.set_times(FileTimes::new().set_modified(UNIX_EPOCH)));
+    let value = assert_ok!(serde_json::to_value(details));
+    assert_eq!(value["modifiedAt"], serde_json::json!(-0.5));
+}

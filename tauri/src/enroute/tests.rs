@@ -106,3 +106,21 @@ fn parses_terrain_and_basemap_entries_for_the_same_region() {
     let invalid = br#"{"maps":[{"path":"Europe/France.terrain","size":0,"time":"20260909"}]}"#;
     assert_err!(parse_catalog(invalid));
 }
+
+#[test]
+fn timestamps_preserve_signed_fractional_milliseconds() {
+    use std::time::{Duration, UNIX_EPOCH};
+    for (timestamp, expected) in [
+        (UNIX_EPOCH, 0.0),
+        (UNIX_EPOCH + Duration::from_micros(500), 0.5),
+        (UNIX_EPOCH - Duration::from_micros(500), -0.5),
+        (UNIX_EPOCH + Duration::from_millis(1250), 1250.0),
+        (UNIX_EPOCH - Duration::from_millis(1250), -1250.0),
+    ] {
+        let value = assert_ok!(serialize_timestamp(
+            &timestamp,
+            serde_json::value::Serializer
+        ));
+        assert_eq!(value, serde_json::json!(expected));
+    }
+}

@@ -37,6 +37,8 @@ must state whether its behavior is current or planned.
   elevation colours, and source attribution.
 - [Traffic](product/traffic.md) defines FLARM observation, identity, freshness,
   topic updates, map presentation, and details.
+- [Ordered tasks](product/tasks.md) defines route editing, progression, restarts,
+  and independent task guidance.
 - [Pinned targets](product/pinned-targets.md) defines independent pins, matching,
   guidance, and persistence.
 - [Goto navigation](product/navigation.md) defines primary targets, guidance,

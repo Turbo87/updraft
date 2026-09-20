@@ -2,7 +2,7 @@
 
 Status: Current behavior
 
-Pilots can pin waypoints, map positions, and traffic independently of the primary
+Pilots can pin waypoints, map positions, traffic, and the saved task independently of the primary
 navigation target. Target details provide pin and unpin actions. Pinning does
 not start navigation. Unpinning does not stop navigation.
 
@@ -17,6 +17,9 @@ Each row shows the target name and type, bearing, distance, and arrival margin
 for a fixed target or relative altitude for traffic. Calculations, units, missing
 inputs, and stale indications follow [goto navigation](navigation.md). Arrival
 margins do not establish terrain clearance or landing suitability.
+
+A task pin follows the current task point. Unpinning the task does not stop it
+or add it to recents. Unpinning other targets moves them to recent goto history.
 
 Selecting a row opens its details. **Navigate to target** makes it primary and
 keeps it pinned. **Unpin target** removes only the pin.

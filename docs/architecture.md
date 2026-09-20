@@ -42,8 +42,13 @@ It supplies offline
 terrain samples for map targets. Traffic targets retain their latest reports
 in memory after traffic-list expiry. Only traffic IDs are saved. Pins and the
 primary target use separate storage files.
-See [Goto navigation](product/navigation.md) and
-[Pinned targets](product/pinned-targets.md).
+The core also owns the saved ordered task and its progression. Primary navigation
+can refer to the task without copying its current waypoint. A shell worker saves
+automatic progress changes. Task restoration does not resume a stopped task or
+infer crossings across an interruption.
+
+See [Goto navigation](product/navigation.md),
+[Pinned targets](product/pinned-targets.md), and [Ordered tasks](product/tasks.md).
 
 The shell sends a `UtcTick` input with the current UTC instant at a fixed
 interval. The core advances complete GPS UTC values with the supplied monotonic

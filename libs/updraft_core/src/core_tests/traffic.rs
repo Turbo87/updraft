@@ -10,15 +10,7 @@ use updraft_flarmnet::FlarmnetDatabase;
 
 #[test]
 fn traffic_prefers_the_sending_devices_ownship_references() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Settings::default(),
-        external_devices: vec![
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
-        ],
-    });
-    let first_device_id = device_id(&core, 0);
-    let second_device_id = device_id(&core, 1);
+    let (mut core, first_device_id, second_device_id) = core_with_two_external_devices();
     core.apply(Bytes::new(first_device_id, RMC), at(0));
     core.apply(Bytes::new(first_device_id, GGA), at(1));
     core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(2));
@@ -39,15 +31,7 @@ fn traffic_prefers_the_sending_devices_ownship_references() {
 
 #[test]
 fn traffic_falls_back_to_displayed_ownship_references() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Settings::default(),
-        external_devices: vec![
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
-        ],
-    });
-    let first_device_id = device_id(&core, 0);
-    let second_device_id = device_id(&core, 1);
+    let (mut core, first_device_id, second_device_id) = core_with_two_external_devices();
     core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(0));
     core.apply(Bytes::new(second_device_id, GGA_SECOND_DEVICE), at(1));
 
@@ -66,15 +50,7 @@ fn traffic_falls_back_to_displayed_ownship_references() {
 
 #[test]
 fn traffic_selects_horizontal_and_vertical_references_independently() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Settings::default(),
-        external_devices: vec![
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
-        ],
-    });
-    let first_device_id = device_id(&core, 0);
-    let second_device_id = device_id(&core, 1);
+    let (mut core, first_device_id, second_device_id) = core_with_two_external_devices();
     core.apply(Bytes::new(first_device_id, RMC), at(0));
     core.apply(Bytes::new(first_device_id, GGA), at(1));
     core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(1));
@@ -177,15 +153,7 @@ fn one_bytes_input_publishes_only_the_final_upsert_for_each_target() {
 
 #[test]
 fn later_device_input_replaces_the_previous_target_with_the_same_id() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Settings::default(),
-        external_devices: vec![
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4353)),
-            device_config(true, ConnectionSpec::tcp("127.0.0.1", 4354)),
-        ],
-    });
-    let first_device_id = device_id(&core, 0);
-    let second_device_id = device_id(&core, 1);
+    let (mut core, first_device_id, second_device_id) = core_with_two_external_devices();
     core.apply(Bytes::new(first_device_id, RMC), at(0));
     core.apply(Bytes::new(second_device_id, RMC_SECOND_DEVICE), at(1));
     core.apply(Bytes::new(first_device_id, PFLAA_A), at(2));

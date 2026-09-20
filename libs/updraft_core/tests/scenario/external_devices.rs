@@ -1,6 +1,6 @@
 use super::support::{
-    EXTERNAL_DEVICE_ID_FILTER, core_with_external_device, core_with_two_external_devices,
-    external_device_ids, mutation_effects,
+    EXTERNAL_DEVICE_ID_FILTER, core_with_disabled_external_device, core_with_external_device,
+    core_with_two_external_devices, external_device_ids, mutation_effects,
 };
 use updraft_core::{
     AddExternalDevice, ConnectionSpec, Core, DeleteExternalDevice, EditExternalDevice, Effect,
@@ -85,14 +85,7 @@ fn delete_external_device_closes_an_enabled_device() {
 
 #[test]
 fn delete_external_device_does_not_close_a_disabled_device() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Default::default(),
-        external_devices: vec![ExternalDeviceConfig {
-            enabled: false,
-            spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-        }],
-    });
-    let device_id = external_device_ids(&core)[0];
+    let (mut core, device_id) = core_with_disabled_external_device();
 
     let input = DeleteExternalDevice::new(device_id);
     let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
@@ -116,19 +109,7 @@ fn delete_external_device_with_an_unknown_id_is_a_no_op() {
 
 #[test]
 fn reorder_external_devices_publishes_and_persists_the_new_order() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Default::default(),
-        external_devices: vec![
-            ExternalDeviceConfig {
-                enabled: true,
-                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-            },
-            ExternalDeviceConfig {
-                enabled: false,
-                spec: ConnectionSpec::bluetooth_spp("00:11:22:33:44:55"),
-            },
-        ],
-    });
+    let mut core = core_with_two_external_devices();
     let original = external_device_ids(&core);
     let order = vec![original[1], original[0]];
 
@@ -158,19 +139,7 @@ fn reorder_external_devices_publishes_and_persists_the_new_order() {
 
 #[test]
 fn reorder_external_devices_with_the_current_order_is_a_no_op() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Default::default(),
-        external_devices: vec![
-            ExternalDeviceConfig {
-                enabled: true,
-                spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-            },
-            ExternalDeviceConfig {
-                enabled: false,
-                spec: ConnectionSpec::bluetooth_spp("00:11:22:33:44:55"),
-            },
-        ],
-    });
+    let mut core = core_with_two_external_devices();
     let order = external_device_ids(&core);
 
     let input = ReorderExternalDevices::new(order);
@@ -221,23 +190,7 @@ fn edit_external_device_restarts_an_enabled_device_with_the_same_id() {
     let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
     assert_eq!(response, Ok(()));
 
-    let [
-        Effect::CloseConnection {
-            device_id: closed_id,
-        },
-        Effect::OpenConnection {
-            device_id: opened_id,
-            ..
-        },
-        Effect::Emit(Topic::ExternalDevices(devices)),
-        Effect::PersistSettings(_),
-    ] = effects.as_slice()
-    else {
-        panic!("editing an enabled device should close, open, publish, and persist");
-    };
-    assert_eq!(*closed_id, device_id);
-    assert_eq!(*opened_id, device_id);
-    assert_eq!(devices[0].device_id, device_id);
+    assert_device_restarted(&effects, device_id);
 
     insta::with_settings!({ filters => vec![EXTERNAL_DEVICE_ID_FILTER] }, {
         insta::assert_snapshot!(mutation_effects(&effects));
@@ -256,23 +209,7 @@ fn edit_external_device_switches_between_transport_types() {
         response,
     } = tcp_core.apply(input, Timestamp::from_millis(0));
     assert_eq!(response, Ok(()));
-    let [
-        Effect::CloseConnection {
-            device_id: tcp_closed_id,
-        },
-        Effect::OpenConnection {
-            device_id: bluetooth_opened_id,
-            ..
-        },
-        Effect::Emit(Topic::ExternalDevices(bluetooth_devices)),
-        Effect::PersistSettings(_),
-    ] = tcp_to_bluetooth.as_slice()
-    else {
-        panic!("TCP-to-Bluetooth edit should close, open, publish, and persist");
-    };
-    assert_eq!(*tcp_closed_id, tcp_device_id);
-    assert_eq!(*bluetooth_opened_id, tcp_device_id);
-    assert_eq!(bluetooth_devices[0].device_id, tcp_device_id);
+    assert_device_restarted(&tcp_to_bluetooth, tcp_device_id);
 
     let mut bluetooth_core = Core::new(SettingsSnapshot {
         settings: Default::default(),
@@ -289,23 +226,7 @@ fn edit_external_device_switches_between_transport_types() {
         response,
     } = bluetooth_core.apply(input, Timestamp::from_millis(0));
     assert_eq!(response, Ok(()));
-    let [
-        Effect::CloseConnection {
-            device_id: bluetooth_closed_id,
-        },
-        Effect::OpenConnection {
-            device_id: tcp_opened_id,
-            ..
-        },
-        Effect::Emit(Topic::ExternalDevices(tcp_devices)),
-        Effect::PersistSettings(_),
-    ] = bluetooth_to_tcp.as_slice()
-    else {
-        panic!("Bluetooth-to-TCP edit should close, open, publish, and persist");
-    };
-    assert_eq!(*bluetooth_closed_id, bluetooth_device_id);
-    assert_eq!(*tcp_opened_id, bluetooth_device_id);
-    assert_eq!(tcp_devices[0].device_id, bluetooth_device_id);
+    assert_device_restarted(&bluetooth_to_tcp, bluetooth_device_id);
 
     insta::with_settings!({ filters => vec![EXTERNAL_DEVICE_ID_FILTER] }, {
         insta::assert_snapshot!(
@@ -321,14 +242,7 @@ fn edit_external_device_switches_between_transport_types() {
 
 #[test]
 fn edit_external_device_updates_a_disabled_device_without_transport_effects() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Default::default(),
-        external_devices: vec![ExternalDeviceConfig {
-            enabled: false,
-            spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-        }],
-    });
-    let device_id = external_device_ids(&core)[0];
+    let (mut core, device_id) = core_with_disabled_external_device();
 
     let input = EditExternalDevice::new(device_id, ConnectionSpec::tcp("192.0.2.1", 10110));
     let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
@@ -387,14 +301,7 @@ fn set_external_device_enabled_disables_an_enabled_device() {
 
 #[test]
 fn set_external_device_enabled_enables_a_disabled_device() {
-    let mut core = Core::new(SettingsSnapshot {
-        settings: Default::default(),
-        external_devices: vec![ExternalDeviceConfig {
-            enabled: false,
-            spec: ConnectionSpec::tcp("127.0.0.1", 4353),
-        }],
-    });
-    let device_id = external_device_ids(&core)[0];
+    let (mut core, device_id) = core_with_disabled_external_device();
 
     let input = SetExternalDeviceEnabled::enabled(device_id);
     let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
@@ -438,4 +345,25 @@ fn set_external_device_enabled_with_an_unknown_id_is_a_no_op() {
     let Update { effects, response } = core.apply(input, Timestamp::from_millis(0));
     assert_eq!(response, Err(UnknownExternalDevice { device_id: unknown }));
     assert!(effects.is_empty());
+}
+
+#[track_caller]
+fn assert_device_restarted(effects: &[Effect], expected_id: ExternalDeviceId) {
+    let [
+        Effect::CloseConnection {
+            device_id: closed_id,
+        },
+        Effect::OpenConnection {
+            device_id: opened_id,
+            ..
+        },
+        Effect::Emit(Topic::ExternalDevices(devices)),
+        Effect::PersistSettings(_),
+    ] = effects
+    else {
+        panic!("editing an enabled device should close, open, publish, and persist: {effects:?}");
+    };
+    assert_eq!(*closed_id, expected_id);
+    assert_eq!(*opened_id, expected_id);
+    assert_eq!(devices[0].device_id, expected_id);
 }

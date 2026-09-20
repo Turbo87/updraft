@@ -100,3 +100,15 @@ pub fn external_device_ids(core: &Core) -> Vec<ExternalDeviceId> {
 pub fn mutation_effects(effects: &[Effect]) -> String {
     effects.iter().map(describe).collect::<Vec<_>>().join("\n")
 }
+
+pub fn core_with_disabled_external_device() -> (Core, ExternalDeviceId) {
+    let core = Core::new(SettingsSnapshot {
+        settings: Default::default(),
+        external_devices: vec![ExternalDeviceConfig {
+            enabled: false,
+            spec: ConnectionSpec::tcp("127.0.0.1", 4353),
+        }],
+    });
+    let device_id = external_device_ids(&core)[0];
+    (core, device_id)
+}

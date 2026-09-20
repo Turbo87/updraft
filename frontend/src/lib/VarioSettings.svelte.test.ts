@@ -59,3 +59,38 @@ it('restores compensation after failure and accepts both modes', async () => {
   await expect.element(enabled).toBeChecked();
   expect(setEnergyCompensation).toHaveBeenLastCalledWith(true);
 });
+
+it('keeps method and compensation saves independent', async () => {
+  let method = Promise.withResolvers<void>();
+  let compensation = Promise.withResolvers<void>();
+  let screen = await render(VarioSettings, {
+    method: 'smoothed20s',
+    setMethod: () => method.promise,
+    energyCompensation: true,
+    setEnergyCompensation: () => compensation.promise,
+  });
+  let average = page.getByRole('radio', { name: '20 s average', exact: true });
+  let disabled = page.getByRole('radio', { name: 'Disabled', exact: true });
+  await average.click();
+  await expect.element(average).toBeChecked();
+  await expect.element(average).toBeDisabled();
+  await expect.element(disabled).toBeEnabled();
+  await disabled.click();
+  await expect.element(disabled).toBeChecked();
+  await expect.element(disabled).toBeDisabled();
+  method.reject(new Error('driver stopped'));
+  await expect.element(page.getByRole('radio', { name: 'Smoothed 20 s average' })).toBeChecked();
+  await expect.element(average).toBeEnabled();
+  await expect.element(disabled).toBeChecked();
+  await expect.element(disabled).toBeDisabled();
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not change the climb method.');
+  await screen.rerender({ energyCompensation: false });
+  compensation.resolve();
+  await expect.element(disabled).toBeEnabled();
+  await expect.element(disabled).toBeChecked();
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not change the climb method.');
+});

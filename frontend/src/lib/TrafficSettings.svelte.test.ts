@@ -29,3 +29,16 @@ it('restores correction after failure and accepts both modes', async () => {
   await expect.element(enabled).toBeChecked();
   expect(setEnabled).toHaveBeenLastCalledWith(true);
 });
+
+it('keeps a pending disabled choice selected until its command settles', async () => {
+  let completion = Promise.withResolvers<void>();
+  await render(TrafficSettings, { enabled: true, setEnabled: () => completion.promise });
+  let enabled = page.getByRole('radio', { name: /^Enabled/ });
+  let disabled = page.getByRole('radio', { name: 'Disabled', exact: true });
+  await disabled.click();
+  await expect.element(disabled).toBeChecked();
+  await expect.element(enabled).toBeDisabled();
+  completion.resolve();
+  await expect.element(enabled).toBeChecked();
+  await expect.element(disabled).toBeEnabled();
+});

@@ -453,6 +453,18 @@ pub fn subscribe(channel: Channel<Topic>, handle: tauri::State<'_, DriverHandle>
     }));
 }
 
+#[tauri::command]
+pub async fn set_navigation_target(
+    target: Option<updraft_core::NavigationTarget>,
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), String> {
+    handle
+        .send(updraft_core::SetNavigationTarget(target))
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(str::to_owned)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -486,6 +498,7 @@ mod tests {
                 set_locale,
                 set_units,
                 get_polars,
+                set_navigation_target,
                 set_mac_cready,
                 set_bugs,
                 set_ballast,
@@ -504,6 +517,30 @@ mod tests {
             ])
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .expect("the IPC test app should build")
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn navigation_target_uses_ipc_deserialization() {
+        let app = app();
+        claims::assert_ok!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": {
+                "type": "waypoint", "name": "Home", "latitudeDegrees": 50., "longitudeDegrees": 6., "elevationMeters": 100.
+            }})
+        ));
+        claims::assert_err!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": {
+                "type": "waypoint", "name": "Home", "latitudeDegrees": 95., "longitudeDegrees": 6., "elevationMeters": 100.
+            }})
+        ));
+        claims::assert_ok!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": null})
+        ));
     }
 
     fn driver(airspace: AirspaceState) -> DriverHandle {

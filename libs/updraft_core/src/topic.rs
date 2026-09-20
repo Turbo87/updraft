@@ -175,6 +175,7 @@ impl Instruments {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(tag = "topic", content = "value", rename_all = "camelCase")]
 pub enum Topic {
+    Navigation(Option<crate::Navigation>),
     Instruments(Instruments),
     Settings(Settings),
     ExternalDevices(Vec<PublishedExternalDevice>),

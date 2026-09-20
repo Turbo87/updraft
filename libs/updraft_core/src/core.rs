@@ -37,6 +37,7 @@ use updraft_units::{MslAltitude, PressureAltitude, Speed};
 /// with no runtime, sleeps or wall clock.
 #[derive(Debug)]
 pub struct Core {
+    navigation_target: Option<crate::NavigationTarget>,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -70,6 +71,7 @@ impl Core {
         let mut sensor_fusion = SensorFusion::default();
         sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
+            navigation_target: None,
             settings,
             glide_performance,
             external_devices: ExternalDevices::from_device_configs(external_devices),
@@ -94,7 +96,13 @@ impl Core {
     /// `at` is supplied by the shell rather than read, which is what keeps
     /// the core deterministic.
     pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
-        input.apply_to(self, at)
+        let before = self.navigation();
+        let mut update = input.apply_to(self, at);
+        let after = self.navigation();
+        if before != after {
+            update.effects.push(Effect::Emit(Topic::Navigation(after)));
+        }
+        update
     }
 
     /// The current value of every topic, for a client that has just
@@ -108,6 +116,7 @@ impl Core {
             Topic::Airspace(self.airspace.status()),
             Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
             Topic::Traffic(TrafficUpdate::Snapshot(traffic)),
+            Topic::Navigation(self.navigation()),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -1010,6 +1019,27 @@ impl Input for ReplaceFlarmnetDatabase {
         }
         let topic = Topic::Traffic(TrafficUpdate::Snapshot(after));
         Update::effects(vec![Effect::emit(topic)])
+    }
+}
+
+impl Core {
+    fn navigation(&self) -> Option<crate::Navigation> {
+        self.navigation_target
+            .clone()
+            .map(|target| crate::Navigation::new(target, self.gps.published()))
+    }
+}
+
+impl Input for crate::SetNavigationTarget {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        if let Some(target) = &self.0
+            && let Err(error) = target.validate()
+        {
+            return Update::empty().with_response(Err(error));
+        }
+        core.navigation_target = self.0;
+        Update::empty().with_response(Ok(()))
     }
 }
 

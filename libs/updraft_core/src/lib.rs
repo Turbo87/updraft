@@ -18,6 +18,7 @@ mod fix;
 mod glide;
 mod glide_performance;
 mod input;
+mod navigation;
 mod ownship;
 mod polar;
 mod sensor_fusion;
@@ -78,3 +79,6 @@ pub use waypoints::{
     WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSnapshot, WaypointSource,
     WaypointSourceStatus, WaypointStatus,
 };
+
+pub use input::SetNavigationTarget;
+pub use navigation::{Navigation, NavigationGuidance, NavigationTarget};

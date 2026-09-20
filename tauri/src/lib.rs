@@ -123,6 +123,7 @@ pub fn run() {
             ipc::set_locale,
             ipc::set_units,
             ipc::get_polars,
+            ipc::set_navigation_target,
             ipc::set_mac_cready,
             ipc::set_bugs,
             ipc::set_ballast,

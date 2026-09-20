@@ -767,13 +767,8 @@ fn extension_value<T: FromStr>(
 }
 
 fn next_date(date: Date) -> Date {
-    let days_in_month = match date.month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 if is_leap_year(date.year) => 29,
-        2 => 28,
-        _ => unreachable!("NMEA dates contain valid months"),
-    };
+    let month = time::Month::try_from(date.month).expect("NMEA dates contain valid months");
+    let days_in_month = month.length(i32::from(date.year));
 
     if date.day < days_in_month {
         Date::new(date.year, date.month, date.day + 1)
@@ -782,10 +777,6 @@ fn next_date(date: Date) -> Date {
     } else {
         Date::new(date.year + 1, 1, 1)
     }
-}
-
-fn is_leap_year(year: u16) -> bool {
-    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
 fn replay_span(duration: Duration, position: Duration) -> Span {

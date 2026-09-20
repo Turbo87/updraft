@@ -5844,6 +5844,7 @@ dependencies = [
  "memchr",
  "proptest",
  "thiserror 2.0.20",
+ "time",
  "updraft_geo",
  "updraft_units",
 ]
@@ -5870,6 +5871,7 @@ dependencies = [
  "indicatif",
  "insta",
  "thiserror 2.0.20",
+ "time",
  "tokio",
  "tracing",
  "tracing-indicatif",

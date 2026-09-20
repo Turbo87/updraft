@@ -96,7 +96,7 @@ documents for accepted behavior.
 - [x] **glide-settings** — persisted polar selection and arrival reserve, with session-only MacCready, bugs, and ballast controls. Safety MC remains outside the current version. See [Settings](product/settings.md). _(needs: polar, core-app, frontend-protocol)_
 - [ ] **wind-circling** — wind estimation from circling drift; wind vector in state, manual override command, wind display. _(needs: flight-modes)_
 - [ ] **wind-zigzag** — airspeed-based zigzag/EKF wind estimation, layered wind statistics, source blending. _(needs: wind-circling, lx-nmea)_
-- [ ] **final-glide** — selected-MC direct-glide calculations for landables are implemented, including wind, density, and arrival reserve. Arbitrary navigation targets and separate MC-0 results remain planned. _(needs: glide-settings, wind-circling)_
+- [ ] **final-glide** — selected-MC direct-glide calculations for landables are implemented, including wind, density, and arrival reserve. Waypoint and map goto targets also have direct arrival margins. Separate MC-0 results remain planned. _(needs: glide-settings, wind-circling)_
 - [ ] **speed-to-fly** — STF / speed command values, dolphin speed, auto MacCready modes. _(needs: glide-settings, vario-values)_
 - [ ] **infobox-values** — add tap panels and searchable quick replacement for the fixed flight-data fields. Replacement preserves the slot. _(needs: flight-data-fields)_
 - [ ] **thermal-assistant** — climb sampling around the circle, centering aid view, thermal profile (climb vs altitude band). _(needs: vario-values)_
@@ -117,7 +117,8 @@ documents for accepted behavior.
 - [ ] **dat-waypoints** — Cambridge DAT waypoint parser. _(needs: waypoint-db)_
 - [ ] **wpt-waypoints** — Winpilot/CompeGPS WPT waypoint parser. _(needs: waypoint-db)_
 - [x] **waypoints-on-map** — waypoint/landable symbology, labels, and zoom-dependent declutter. _(needs: waypoint-sources, frontend-map)_
-- [ ] **navigation-targets** — direct-to navigation with one focused target and zero or more additional targets representing waypoints or arbitrary map positions in one ordered sequence. Switching focus updates guidance, distance and ground-track-relative bearing, target-dependent infoboxes, and the course line without discarding the other targets. _(needs: waypoint-db, infobox-values)_
+- [x] **navigation-targets** — one primary waypoint, map-position, or traffic target, with select/stop commands, saved-target recovery, a target bar, and a course line. Fixed targets use direct arrival margins. Traffic uses relative altitude and retains stale guidance during the session. See [Goto navigation](product/navigation.md). _(needs: waypoint-db, infobox-values)_
+- [ ] **tracked-waypoints** — scope additional waypoints and their relationship to the primary target. _(needs: navigation-targets)_
 - [ ] **pinned-navigation-targets** — optional, unlimited target pins rendered in a content-sized area below the Situation Bar, ordered with the navigation sequence and sharing its target-list action. Focused targets appear only once. _(needs: navigation-targets)_
 - [x] **waypoint-details** — nearby map results and details with source, elevation, runway, frequency, and notes. _(needs: waypoints-on-map)_
 - [ ] **map-inspector-waypoints** — a point-first inspector that opens on every normal map tap, always shows distance and point actions beginning with **Navigate here**, and lists nearby waypoints and landables even for one result. Add fullscreen categorized result lists on phones and waypoint details such as elevation, runway, frequency, and notes. This establishes the extensible inspector result model. _(needs: waypoints-on-map, navigation-targets)_

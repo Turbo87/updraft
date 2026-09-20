@@ -36,6 +36,12 @@ Effects request external work. The current effects publish a topic, open or
 close a transport, or persist settings. The shell matches effects exhaustively.
 Pure calculations stay in the core.
 
+The core owns the selected goto target and emits navigation guidance. The
+shell saves target choices and restores them at startup. It supplies offline
+terrain samples for map targets. Traffic navigation retains one selected
+report in memory after traffic-list expiry. Only the traffic ID is saved.
+See [Goto navigation](product/navigation.md).
+
 The shell sends a `UtcTick` input with the current UTC instant at a fixed
 interval. The core advances complete GPS UTC values with the supplied monotonic
 timestamp. Scenario tests supply exact time values. The core does not read a

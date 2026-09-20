@@ -176,6 +176,7 @@ impl Instruments {
 #[serde(tag = "topic", content = "value", rename_all = "camelCase")]
 pub enum Topic {
     Navigation(Option<crate::Navigation>),
+    PinnedTargets(Vec<crate::PinnedTarget>),
     Instruments(Instruments),
     Settings(Settings),
     ExternalDevices(Vec<PublishedExternalDevice>),

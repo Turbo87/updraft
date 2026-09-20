@@ -41,6 +41,7 @@ pub struct Core {
     navigation_elevation: Option<f64>,
     navigation_report: Option<(crate::PublishedTrafficTarget, Timestamp)>,
     navigation_at: Timestamp,
+    pinned_targets: crate::pinned_targets::PinnedTargets,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -74,6 +75,7 @@ impl Core {
         let mut sensor_fusion = SensorFusion::default();
         sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
+            pinned_targets: Default::default(),
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -102,6 +104,7 @@ impl Core {
     /// `at` is supplied by the shell rather than read, which is what keeps
     /// the core deterministic.
     pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
+        let before_pins = self.pinned_targets();
         let before = self.navigation();
         let mut update = input.apply_to(self, at);
         self.navigation_at = self.navigation_at.max(at);
@@ -114,7 +117,21 @@ impl Core {
         if before != after {
             update.effects.push(Effect::Emit(Topic::Navigation(after)));
         }
+        let after_pins = self.pinned_targets();
+        if before_pins != after_pins {
+            update
+                .effects
+                .push(Effect::Emit(Topic::PinnedTargets(after_pins)));
+        }
         update
+    }
+
+    fn pinned_targets(&self) -> Vec<crate::PinnedTarget> {
+        self.pinned_targets.published(
+            &self.glide_snapshot(),
+            self.navigation_target.as_ref(),
+            self.navigation_at,
+        )
     }
 
     /// The current value of every topic, for a client that has just
@@ -129,6 +146,7 @@ impl Core {
             Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
             Topic::Traffic(TrafficUpdate::Snapshot(traffic)),
             Topic::Navigation(self.navigation()),
+            Topic::PinnedTargets(self.pinned_targets()),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -1082,5 +1100,26 @@ impl Input for crate::NavigationElevation {
             core.navigation_elevation = self.meters.filter(|meters| meters.is_finite());
         }
         Update::empty()
+    }
+}
+
+impl Input for crate::PinTarget {
+    type Response = Result<Vec<crate::SavedPinnedTarget>, &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.pinned_targets.pin(self.0))
+    }
+}
+
+impl Input for crate::UnpinTarget {
+    type Response = Result<Vec<crate::SavedPinnedTarget>, &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(Ok(core.pinned_targets.unpin(self.0)))
+    }
+}
+
+impl Input for crate::RestorePinnedTargets {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.pinned_targets.restore(self.0))
     }
 }

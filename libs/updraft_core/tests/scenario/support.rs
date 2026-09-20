@@ -13,6 +13,7 @@ pub fn describe(effect: &Effect) -> String {
     }
 
     match effect {
+        Effect::Emit(Topic::PinnedTargets(pins)) => format!("emit pinned targets {pins:?}"),
         Effect::Emit(Topic::Navigation(value)) => format!("navigation {value:?}"),
         Effect::Emit(Topic::Instruments(instruments)) => {
             let position = instruments.gps.map_or_else(

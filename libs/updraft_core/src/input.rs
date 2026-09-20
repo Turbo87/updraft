@@ -312,3 +312,15 @@ pub struct NavigationElevation {
     pub meters: Option<f64>,
 }
 impl private::Sealed for NavigationElevation {}
+
+#[derive(Clone, Debug)]
+pub struct PinTarget(pub crate::NavigationTarget);
+impl private::Sealed for PinTarget {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct UnpinTarget(pub u32);
+impl private::Sealed for UnpinTarget {}
+
+#[derive(Clone, Debug)]
+pub struct RestorePinnedTargets(pub Vec<crate::SavedPinnedTarget>);
+impl private::Sealed for RestorePinnedTargets {}

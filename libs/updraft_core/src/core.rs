@@ -355,6 +355,13 @@ impl Core {
         }
     }
 
+    fn reselect_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
+        self.select_gps_after_source_reset(source, at);
+        self.select_pressure_altitude_after_source_reset(source, at);
+        self.select_true_airspeed_after_source_reset(source, at);
+        self.update_sensor_fusion();
+    }
+
     fn update_solar_position(&mut self, at: Timestamp) {
         let Some(selected) = self.gps.selected() else {
             self.solar_position = None;
@@ -843,10 +850,7 @@ impl Input for DeleteExternalDevice {
         if device.config.enabled {
             effects.push(Effect::close(self.device_id));
         }
-        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
-        core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
-        core.select_true_airspeed_after_source_reset(SourceId::External(self.device_id), at);
-        core.update_sensor_fusion();
+        core.reselect_after_source_reset(SourceId::External(self.device_id), at);
         let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
@@ -903,10 +907,7 @@ impl Input for EditExternalDevice {
             effects.push(Effect::close(self.device_id));
             effects.push(Effect::open(self.device_id, self.spec));
         }
-        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
-        core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
-        core.select_true_airspeed_after_source_reset(SourceId::External(self.device_id), at);
-        core.update_sensor_fusion();
+        core.reselect_after_source_reset(SourceId::External(self.device_id), at);
         let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
@@ -940,10 +941,7 @@ impl Input for SetExternalDeviceEnabled {
         } else {
             vec![Effect::close(self.device_id)]
         };
-        core.select_gps_after_source_reset(SourceId::External(self.device_id), at);
-        core.select_pressure_altitude_after_source_reset(SourceId::External(self.device_id), at);
-        core.select_true_airspeed_after_source_reset(SourceId::External(self.device_id), at);
-        core.update_sensor_fusion();
+        core.reselect_after_source_reset(SourceId::External(self.device_id), at);
         let after = core.instruments();
         if after != before {
             effects.push(Effect::emit(after.as_topic()));

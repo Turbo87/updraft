@@ -2,7 +2,7 @@ use super::*;
 use crate::basemap::Basemaps;
 use crate::enroute::{CatalogEntry, Continent, commands::DownloadCommands, download::DownloadFile};
 use crate::enroute::{queue::DownloadState, storage::remove_partial_downloads};
-use crate::test_support::request;
+use crate::test_support::{capture_channels, invoke};
 use claims::{assert_err, assert_none, assert_ok, assert_some, assert_some_eq};
 use rusqlite::Connection;
 use tauri::http::header;
@@ -373,14 +373,9 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     let terrain = Arc::new(Mutex::new(assert_ok!(Terrain::load(directory.path()))));
     let messages = Arc::new(Mutex::new(Vec::<Value>::new()));
     let received = messages.clone();
-    let app = tauri::test::mock_builder()
+    let app = capture_channels(move |body| received.lock().unwrap().push(body))
         .manage(terrain.clone())
         .manage(DownloadCommands::default())
-        .channel_interceptor(move |_, _, _, body| {
-            let status = body.clone().deserialize().unwrap();
-            received.lock().unwrap().push(status);
-            true
-        })
         .invoke_handler(tauri::generate_handler![
             commands::subscribe_terrain,
             commands::unsubscribe_terrain,
@@ -389,14 +384,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
-    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-        .build()
-        .unwrap();
-    let invoke = |command: &str, body| {
-        let request = request(command, body);
-        tauri::test::get_ipc_response(&window, request)
-            .map(|response| response.deserialize::<Value>().unwrap())
-    };
+    let invoke = |command: &str, body| invoke(&app, command, body);
     for id in [42, 43] {
         let body = json!({"channel":format!("__CHANNEL__:{id}")});
         assert_eq!(assert_ok!(invoke("subscribe_terrain", body)), Value::Null);

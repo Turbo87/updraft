@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::request;
+use crate::test_support;
 use crate::{
     airspace_storage::AirspaceStorage,
     data_import::{self, DataImportState},
@@ -69,13 +69,7 @@ fn invoke(app: &tauri::App<MockRuntime>, command: &str, body: Value) -> Result<V
     } else {
         body
     };
-    let window = app.get_webview_window("main").unwrap_or_else(|| {
-        tauri::WebviewWindowBuilder::new(app, "main", Default::default())
-            .build()
-            .unwrap()
-    });
-    let request = request(command, body);
-    tauri::test::get_ipc_response(&window, request).map(|response| response.deserialize().unwrap())
+    test_support::invoke(app, command, body)
 }
 
 #[tokio::test(flavor = "multi_thread")]

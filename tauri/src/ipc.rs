@@ -463,11 +463,10 @@ mod tests {
         FileBytesPicker, FileBytesPickerError, FileBytesPickerFuture, FileBytesPickerState,
         PickedFileBytes,
     };
-    use crate::test_support::request;
+    use crate::test_support::{invoke, request};
     use crate::waypoints::{commands::WaypointCommandState, storage::WaypointStorage};
     use serde_json::{Value, json};
     use std::time::Duration;
-    use tauri::Manager;
     use tempfile::tempdir;
     use updraft_core::{AirspaceSource, AirspaceState, GetAirspaceSnapshot, SettingsSnapshot};
 
@@ -593,16 +592,7 @@ mod tests {
         } else {
             args
         };
-        let webview = app.get_webview_window("main").unwrap_or_else(|| {
-            tauri::WebviewWindowBuilder::new(app, "main", Default::default())
-                .build()
-                .expect("the airspace IPC test webview should build")
-        });
-        tauri::test::get_ipc_response(&webview, request(command, args)).map(|response| {
-            response
-                .deserialize::<Value>()
-                .expect("the airspace command response should deserialize")
-        })
+        invoke(app, command, args)
     }
 
     fn selected_file(display_name: &str, bytes: &[u8]) -> Option<PickedFileBytes> {
@@ -615,15 +605,9 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn bonded_bluetooth_devices_reports_unsupported_on_desktop() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
 
-        let request = request("bonded_bluetooth_devices", json!({}));
-        let response = tauri::test::get_ipc_response(&webview, request)
-            .expect("the bonded-device query should succeed")
-            .deserialize::<Value>()
-            .expect("the bonded-device result should deserialize");
+        let response = invoke(&app, "bonded_bluetooth_devices", json!({}))
+            .expect("the bonded-device query should succeed");
 
         assert_eq!(response, json!({ "status": "unsupported" }));
     }
@@ -631,125 +615,104 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn energy_compensation_command_accepts_only_booleans() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
+        let command = "set_energy_compensation";
         for enabled in [true, false] {
-            let input = request("set_energy_compensation", json!({ "enabled": enabled }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, command, json!({ "enabled": enabled }));
+            claims::assert_ok!(result);
         }
         for enabled in [json!(null), json!(1), json!("true")] {
-            let input = request("set_energy_compensation", json!({ "enabled": enabled }));
-            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, command, json!({ "enabled": enabled }));
+            claims::assert_err!(result);
         }
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn flarm_position_correction_command_accepts_only_booleans() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
         let command = "set_flarm_position_correction";
         for enabled in [true, false] {
-            let input = request(command, json!({ "enabled": enabled }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, command, json!({ "enabled": enabled }));
+            claims::assert_ok!(result);
         }
         for enabled in [json!(null), json!(1), json!("true")] {
-            let input = request(command, json!({ "enabled": enabled }));
-            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, command, json!({ "enabled": enabled }));
+            claims::assert_err!(result);
         }
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn climb_average_method_command_accepts_only_known_methods() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
+        let command = "set_climb_average_method";
         for method in ["normalizedEma", "average20s", "average30s", "smoothed20s"] {
-            let input = request("set_climb_average_method", json!({ "method": method }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, command, json!({ "method": method }));
+            claims::assert_ok!(result);
         }
-        let input = request("set_climb_average_method", json!({ "method": "unknown" }));
-        claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        let result = invoke(&app, command, json!({ "method": "unknown" }));
+        claims::assert_err!(result);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn hillshade_direction_command_accepts_only_known_directions() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
+        let command = "set_hillshade_direction";
         for direction in ["fixed", "wind"] {
-            let input = request("set_hillshade_direction", json!({ "direction": direction }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, command, json!({ "direction": direction }));
+            claims::assert_ok!(result);
         }
-        let input = request("set_hillshade_direction", json!({ "direction": "unknown" }));
-        claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+        let result = invoke(&app, command, json!({ "direction": "unknown" }));
+        claims::assert_err!(result);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn arrival_reserve_command_accepts_nonnegative_meters() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
         for reserve in [0.0, 200.0, 304.8] {
-            let input = request("set_arrival_reserve", json!({ "reserve": reserve }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_arrival_reserve", json!({ "reserve": reserve }));
+            claims::assert_ok!(result);
         }
         for reserve in [json!(-1), json!(null), json!("200")] {
-            let input = request("set_arrival_reserve", json!({ "reserve": reserve }));
-            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_arrival_reserve", json!({ "reserve": reserve }));
+            claims::assert_err!(result);
         }
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn maccready_command_validates_meters_per_second() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
         for mac_cready in [0.0, 1.5] {
-            let input = request("set_mac_cready", json!({ "macCready": mac_cready }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_mac_cready", json!({ "macCready": mac_cready }));
+            claims::assert_ok!(result);
         }
         for mac_cready in [json!(-1), json!(null), json!("1.5")] {
-            let input = request("set_mac_cready", json!({ "macCready": mac_cready }));
-            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_mac_cready", json!({ "macCready": mac_cready }));
+            claims::assert_err!(result);
         }
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn bugs_command_validates_performance_loss_percent() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
         for bugs in [0.0, 10.5, 99.9] {
-            let input = request("set_bugs", json!({ "bugs": bugs }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_bugs", json!({ "bugs": bugs }));
+            claims::assert_ok!(result);
         }
         for bugs in [json!(-1), json!(100), json!(null), json!("10")] {
-            let input = request("set_bugs", json!({ "bugs": bugs }));
-            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_bugs", json!({ "bugs": bugs }));
+            claims::assert_err!(result);
         }
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn ballast_command_validates_litres() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
         for ballast in [0.0, 100.5] {
-            let input = request("set_ballast", json!({ "ballast": ballast }));
-            claims::assert_ok!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_ballast", json!({ "ballast": ballast }));
+            claims::assert_ok!(result);
         }
         for ballast in [json!(-1), json!(null), json!("100")] {
-            let input = request("set_ballast", json!({ "ballast": ballast }));
-            claims::assert_err!(tauri::test::get_ipc_response(&webview, input));
+            let result = invoke(&app, "set_ballast", json!({ "ballast": ballast }));
+            claims::assert_err!(result);
         }
     }
 
@@ -775,9 +738,6 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn set_units_deserializes_complete_unit_settings() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
 
         let body = json!({
             "units": {
@@ -787,11 +747,8 @@ mod tests {
                 "verticalSpeed": "ft/min"
             }
         });
-        let request = request("set_units", body);
-        let response = tauri::test::get_ipc_response(&webview, request)
-            .expect("the unit selections should be accepted")
-            .deserialize::<Value>()
-            .expect("the empty command response should deserialize");
+        let response =
+            invoke(&app, "set_units", body).expect("the unit selections should be accepted");
 
         assert_eq!(response, Value::Null);
     }
@@ -799,18 +756,12 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn add_external_device_returns_the_allocated_tcp_device_id() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
 
         let body = json!({
             "spec": { "type": "tcp", "host": "127.0.0.1", "port": 4353 }
         });
-        let request = request("add_external_device", body);
-        let response = tauri::test::get_ipc_response(&webview, request)
-            .expect("the external device should be added")
-            .deserialize::<Value>()
-            .expect("the allocated device ID should deserialize");
+        let response =
+            invoke(&app, "add_external_device", body).expect("the external device should be added");
 
         assert_eq!(response, json!(1));
     }
@@ -818,13 +769,9 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn delete_external_device_serializes_an_unknown_device_id() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
 
         let body = json!({ "deviceId": 99 });
-        let request = request("delete_external_device", body);
-        let response = tauri::test::get_ipc_response(&webview, request)
+        let response = invoke(&app, "delete_external_device", body)
             .expect_err("an unknown device ID should be rejected");
 
         assert_eq!(
@@ -836,13 +783,9 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn reorder_external_devices_serializes_an_invalid_order() {
         let app = app();
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("the IPC test webview should build");
 
         let body = json!({ "order": [99] });
-        let request = request("reorder_external_devices", body);
-        let response = tauri::test::get_ipc_response(&webview, request)
+        let response = invoke(&app, "reorder_external_devices", body)
             .expect_err("an invalid order should be rejected");
 
         assert_eq!(response, json!({ "kind": "invalidExternalDeviceOrder" }));

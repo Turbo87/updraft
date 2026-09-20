@@ -173,21 +173,12 @@ pub async fn arrival_resource_response<R: tauri::Runtime>(
 mod tests {
     use super::*;
     use crate::driver::tests::spawn;
-    use crate::test_support::request;
+    use crate::test_support::invoke;
     use claims::{assert_err, assert_ok, assert_some};
     use serde_json::{Value, json};
     use std::time::Duration;
     use tauri::Manager;
     use updraft_core::SettingsSnapshot;
-
-    fn invoke(
-        window: &tauri::WebviewWindow<tauri::test::MockRuntime>,
-        command: &str,
-        body: Value,
-    ) -> Result<Value, Value> {
-        let request = request(command, body);
-        tauri::test::get_ipc_response(window, request).map(|body| body.deserialize().unwrap())
-    }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn viewport_validation_uses_the_ipc_boundary() {
@@ -206,9 +197,6 @@ mod tests {
                 stop_arrivals
             ])
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap();
-        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
             .unwrap();
         let (sender, receiver) = watch::channel(viewport([0., 0., 1., 1.]).unwrap());
         let (_, results) = watch::channel(None);
@@ -235,7 +223,7 @@ mod tests {
             (json!([-1e308, 0, 1e308, 1]), false),
         ] {
             let body = json!({"id":"test", "bounds":bounds});
-            let response = invoke(&window, "update_arrival_viewport", body);
+            let response = invoke(&app, "update_arrival_viewport", body);
             if valid {
                 assert_ok!(response);
                 let dateline = updraft_geo::LatLon::from_degrees(0., 180.);
@@ -245,15 +233,15 @@ mod tests {
             }
         }
         assert_eq!(receiver.borrow().longitude_span().as_degrees(), 360.);
-        assert_ok!(invoke(&window, "stop_arrivals", json!({"id":"test"})));
+        assert_ok!(invoke(&app, "stop_arrivals", json!({"id":"test"})));
         assert_eq!(streams.response("test").status(), StatusCode::NOT_FOUND);
         let body = json!({"id":"test", "bounds":[0,0,1,1]});
-        assert_err!(invoke(&window, "update_arrival_viewport", body));
+        assert_err!(invoke(&app, "update_arrival_viewport", body));
         let body = json!({"bounds":[0,0,1,1], "channel":"__CHANNEL__:42"});
-        let id = assert_ok!(invoke(&window, "start_arrivals", body));
+        let id = assert_ok!(invoke(&app, "start_arrivals", body));
         let id = assert_some!(id.as_str());
         assert!(streams.0.lock().unwrap().contains_key(id));
-        assert_ok!(invoke(&window, "stop_arrivals", json!({"id":id})));
+        assert_ok!(invoke(&app, "stop_arrivals", json!({"id":id})));
         driver.terminate().await;
     }
 

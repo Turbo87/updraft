@@ -3,7 +3,7 @@ use crate::enroute::{
     commands::DownloadCommands, parse_catalog, queue::DownloadState,
     storage::remove_partial_downloads,
 };
-use crate::test_support::request;
+use crate::test_support::{capture_channels, invoke};
 use claims::{assert_err, assert_ok, assert_some};
 use flate2::{Compression, write::GzEncoder};
 use rusqlite::Connection;
@@ -420,16 +420,9 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
     let received = messages.clone();
     let downloads = DownloadCommands::default();
     let queue = downloads.queue.clone();
-    let app = tauri::test::mock_builder()
+    let app = capture_channels(move |body| received.lock().unwrap().push(body))
         .manage(basemaps.clone())
         .manage(downloads)
-        .channel_interceptor(move |_, _, _, body| {
-            received
-                .lock()
-                .unwrap()
-                .push(body.clone().deserialize().unwrap());
-            true
-        })
         .invoke_handler(tauri::generate_handler![
             commands::subscribe_basemaps,
             commands::unsubscribe_basemaps,
@@ -438,14 +431,7 @@ fn subscription_sends_the_inventory_through_ipc_and_can_be_closed() {
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
-    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-        .build()
-        .unwrap();
-    let invoke = |command: &str, body| {
-        let request = request(command, body);
-        tauri::test::get_ipc_response(&window, request)
-            .map(|response| response.deserialize::<Value>().unwrap())
-    };
+    let invoke = |command: &str, body| invoke(&app, command, body);
     for id in [42, 43] {
         let body = json!({"channel":format!("__CHANNEL__:{id}")});
         assert_eq!(assert_ok!(invoke("subscribe_basemaps", body)), Value::Null);

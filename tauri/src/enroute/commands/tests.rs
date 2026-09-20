@@ -1,6 +1,6 @@
 use super::*;
 use crate::enroute::queue::DownloadOutcome;
-use crate::test_support::request;
+use crate::test_support::{capture_channels, invoke};
 use claims::{assert_err, assert_ok, assert_some};
 use serde_json::{Value, json};
 use tauri::Manager;
@@ -23,13 +23,9 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
     assert_ok!(std::fs::write(&cache, catalog));
     let catalog = Arc::new(super::super::catalog::CatalogService::load(cache));
     let (sender, mut messages) = tokio::sync::mpsc::unbounded_channel::<Value>();
-    let app = tauri::test::mock_builder()
+    let app = capture_channels(move |body| sender.send(body).unwrap())
         .manage(state)
         .manage(catalog)
-        .channel_interceptor(move |_, _, _, body| {
-            sender.send(body.clone().deserialize().unwrap()).unwrap();
-            true
-        })
         .invoke_handler(tauri::generate_handler![
             subscribe_enroute_downloads,
             unsubscribe_enroute_downloads,
@@ -38,14 +34,7 @@ async fn subscription_delivers_queue_changes_through_ipc_and_can_be_closed() {
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
-    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-        .build()
-        .unwrap();
-    let invoke = |command: &str, body| {
-        let request = request(command, body);
-        tauri::test::get_ipc_response(&window, request)
-            .map(|response| response.deserialize::<Value>().unwrap())
-    };
+    let invoke = |command: &str, body| invoke(&app, command, body);
     let subscribe = json!({"channel":"__CHANNEL__:42"});
     assert_eq!(
         assert_ok!(invoke("subscribe_enroute_downloads", subscribe)),

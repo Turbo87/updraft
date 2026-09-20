@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::request;
+use crate::test_support::{capture_channels, invoke};
 use claims::{assert_err, assert_ok};
 use serde_json::{Value, json};
 use std::fs::{self, FileTimes, OpenOptions};
@@ -27,25 +27,15 @@ fn catalog_subscription_serializes_metadata_through_ipc() {
     let service = CatalogService::load(path);
     let subscriptions = CatalogSubscriptions::new(service.subscribe());
     let (sender, messages) = std::sync::mpsc::channel::<Value>();
-    let app = tauri::test::mock_builder()
+    let app = capture_channels(move |body| sender.send(body).unwrap())
         .manage(subscriptions)
-        .channel_interceptor(move |_, _, _, body| {
-            sender.send(body.clone().deserialize().unwrap()).unwrap();
-            true
-        })
         .invoke_handler(tauri::generate_handler![
             subscribe_enroute_catalog,
             unsubscribe_enroute_catalog
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap();
-    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-        .build()
-        .unwrap();
-    let invoke = |command: &str, body| {
-        let request = request(command, body);
-        tauri::test::get_ipc_response(&window, request).map(|r| r.deserialize::<Value>().unwrap())
-    };
+    let invoke = |command: &str, body| invoke(&app, command, body);
     assert_ok!(invoke(
         "subscribe_enroute_catalog",
         json!({"channel":"__CHANNEL__:42"})
@@ -100,14 +90,7 @@ fn available_updates_use_cached_catalog_and_report_read_failures_through_ipc() {
             ])
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
-        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .unwrap();
-        let invoke = || {
-            let request = request(command, json!({}));
-            tauri::test::get_ipc_response(&window, request)
-                .map(|r| r.deserialize::<Value>().unwrap())
-        };
+        let invoke = || invoke(&app, command, json!({}));
         let updates = assert_ok!(invoke());
         assert_eq!(updates, json!([relative]));
         service.state.lock().unwrap().error = true;

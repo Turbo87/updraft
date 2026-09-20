@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::request;
+use crate::test_support::invoke;
 use claims::{assert_err, assert_ok};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -167,12 +167,7 @@ async fn retry_command_reports_success_and_failure_through_ipc() {
             .invoke_handler(tauri::generate_handler![refresh_enroute_catalog])
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
-        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .unwrap();
-        let request = request("refresh_enroute_catalog", json!({}));
-        let response = tauri::test::get_ipc_response(&window, request)
-            .map(|response| response.deserialize::<Value>().unwrap());
+        let response = invoke(&app, "refresh_enroute_catalog", json!({}));
         if status == 200 {
             assert_eq!(response, Ok(Value::Null));
         } else {

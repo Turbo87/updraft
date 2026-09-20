@@ -7,22 +7,9 @@ import { TerrainStore } from './terrain.svelte';
 import { WaypointsStore } from './waypoints.svelte';
 
 it('discards activation errors when a file is removed', async () => {
-  let airspace = new AirspaceStore();
-  let waypoints = new WaypointsStore();
+  let { activation, client, airspace } = activationFixture();
   airspace.current = { generation: 1, sources: [{ type: 'disabled', sourceName: 'local' }] };
-  let client = {
-    setAirspaceEnabled: vi.fn().mockRejectedValue(new Error('storage failed')),
-    setTerrainEnabled: vi.fn(),
-    setBasemapEnabled: vi.fn(),
-    setWaypointsEnabled: vi.fn(),
-  };
-  let activation = new DataActivation(
-    client,
-    airspace,
-    waypoints,
-    new BasemapsStore(),
-    new TerrainStore(),
-  );
+  client.setAirspaceEnabled.mockRejectedValue(new Error('storage failed'));
   activation.setEnabled('airspace', 'local', true);
   await vi.waitFor(() => expect(activation.pending).toBe(false));
   expect(activation.hasError('airspace', 'local')).toBe(true);
@@ -45,10 +32,7 @@ it('discards activation errors when a file is removed', async () => {
 it.each(['airspace', 'basemap', 'terrain'] as const)(
   'keeps the latest %s choice while replies arrive separately',
   async (type) => {
-    let airspace = new AirspaceStore();
-    let waypoints = new WaypointsStore();
-    let basemaps = new BasemapsStore();
-    let terrain = new TerrainStore();
+    let { activation, client, airspace, basemaps, terrain } = activationFixture();
     let store = type === 'airspace' ? airspace : type === 'basemap' ? basemaps : terrain;
     store.current = {
       generation: 1,
@@ -57,13 +41,9 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
     let first = Promise.withResolvers<void>();
     let second = Promise.withResolvers<void>();
     let setEnabled = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-    let client = {
-      setAirspaceEnabled: setEnabled,
-      setBasemapEnabled: setEnabled,
-      setTerrainEnabled: setEnabled,
-      setWaypointsEnabled: vi.fn(),
-    };
-    let activation = new DataActivation(client, airspace, waypoints, basemaps, terrain);
+    client.setAirspaceEnabled = setEnabled;
+    client.setBasemapEnabled = setEnabled;
+    client.setTerrainEnabled = setEnabled;
     activation.setEnabled(type, 'local', false);
     activation.setEnabled(type, 'local', true);
     expect(activation.isEnabled(type, store.current!.sources[0])).toBe(true);
@@ -104,23 +84,10 @@ it.each(['airspace', 'basemap', 'terrain'] as const)(
 );
 
 it('remembers a matching publication before the command reply', async () => {
-  let airspace = new AirspaceStore();
-  let waypoints = new WaypointsStore();
+  let { activation, client, airspace } = activationFixture();
   airspace.current = { generation: 1, sources: [{ type: 'disabled', sourceName: 'local' }] };
   let command = Promise.withResolvers<void>();
-  let client = {
-    setAirspaceEnabled: vi.fn().mockReturnValue(command.promise),
-    setTerrainEnabled: vi.fn(),
-    setBasemapEnabled: vi.fn(),
-    setWaypointsEnabled: vi.fn(),
-  };
-  let activation = new DataActivation(
-    client,
-    airspace,
-    waypoints,
-    new BasemapsStore(),
-    new TerrainStore(),
-  );
+  client.setAirspaceEnabled.mockReturnValue(command.promise);
   activation.setEnabled('airspace', 'local', true);
   let enabled = {
     topic: 'airspace' as const,
@@ -143,24 +110,12 @@ it('remembers a matching publication before the command reply', async () => {
 });
 
 it('serializes files, accepts parse failures as enabled, and ignores superseded failures', async () => {
-  let airspace = new AirspaceStore();
-  let waypoints = new WaypointsStore();
+  let { activation, client, airspace, waypoints } = activationFixture();
   airspace.current = { generation: 1, sources: [{ type: 'disabled', sourceName: 'local' }] };
   waypoints.current = { generation: 1, sources: [{ type: 'disabled', sourceName: 'local' }] };
   let first = Promise.withResolvers<void>();
-  let client = {
-    setAirspaceEnabled: vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue(undefined),
-    setTerrainEnabled: vi.fn(),
-    setBasemapEnabled: vi.fn(),
-    setWaypointsEnabled: vi.fn().mockResolvedValue(undefined),
-  };
-  let activation = new DataActivation(
-    client,
-    airspace,
-    waypoints,
-    new BasemapsStore(),
-    new TerrainStore(),
-  );
+  client.setAirspaceEnabled.mockReturnValueOnce(first.promise).mockResolvedValue(undefined);
+  client.setWaypointsEnabled.mockResolvedValue(undefined);
   activation.setEnabled('airspace', 'local', true);
   activation.setEnabled('waypoints', 'local', true);
   activation.setEnabled('airspace', 'local', false);
@@ -190,3 +145,18 @@ it('serializes files, accepts parse failures as enabled, and ignores superseded 
   expect(activation.hasError('waypoints', 'local')).toBe(false);
   expect(activation.isEnabled('waypoints', waypoints.current.sources[0])).toBe(true);
 });
+
+function activationFixture() {
+  let airspace = new AirspaceStore();
+  let waypoints = new WaypointsStore();
+  let basemaps = new BasemapsStore();
+  let terrain = new TerrainStore();
+  let client = {
+    setAirspaceEnabled: vi.fn<(sourceName: string, enabled: boolean) => Promise<void>>(),
+    setWaypointsEnabled: vi.fn<(sourceName: string, enabled: boolean) => Promise<void>>(),
+    setBasemapEnabled: vi.fn<(sourceName: string, enabled: boolean) => Promise<void>>(),
+    setTerrainEnabled: vi.fn<(sourceName: string, enabled: boolean) => Promise<void>>(),
+  };
+  let activation = new DataActivation(client, airspace, waypoints, basemaps, terrain);
+  return { activation, client, airspace, waypoints, basemaps, terrain };
+}

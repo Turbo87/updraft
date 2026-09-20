@@ -13,16 +13,15 @@ describe('hillshadeLighting()', () => {
     });
   });
 
-  it('lights terrain from the meteorological wind direction', () => {
-    let wind: DerivedWindInstruments = {
-      directionDegrees: 270,
-      speedMetersPerSecond: 5,
-      stale: false,
-    };
+  it.each([
+    [270, false],
+    [248, true],
+  ] as const)('uses wind direction %s with stale=%s', (directionDegrees, stale) => {
+    let wind: DerivedWindInstruments = { directionDegrees, speedMetersPerSecond: 5, stale };
 
     expect(hillshadeLighting('wind', { wind })).toEqual({
       'hillshade-illumination-anchor': 'map',
-      'hillshade-illumination-direction': 270,
+      'hillshade-illumination-direction': directionDegrees,
     });
   });
 
@@ -30,46 +29,22 @@ describe('hillshadeLighting()', () => {
     expect(hillshadeLighting('wind', { wind: null })).toEqual(hillshadeLighting('fixed'));
   });
 
-  it('uses stale wind direction', () => {
-    let wind: DerivedWindInstruments = {
-      directionDegrees: 248,
-      speedMetersPerSecond: 5,
-      stale: true,
-    };
+  it.each([
+    [194.3, 39.9, false],
+    [248, -4, true],
+  ] as const)(
+    'uses solar azimuth %s at elevation %s with stale=%s',
+    (azimuthDegrees, elevationDegrees, stale) => {
+      let solarPosition: SolarPositionInstruments = { azimuthDegrees, elevationDegrees, stale };
 
-    expect(hillshadeLighting('wind', { wind })).toEqual({
-      'hillshade-illumination-anchor': 'map',
-      'hillshade-illumination-direction': 248,
-    });
-  });
-
-  it('lights terrain from the solar azimuth', () => {
-    let solarPosition: SolarPositionInstruments = {
-      azimuthDegrees: 194.3,
-      elevationDegrees: 39.9,
-      stale: false,
-    };
-
-    expect(hillshadeLighting('sun', { solarPosition })).toEqual({
-      'hillshade-illumination-anchor': 'map',
-      'hillshade-illumination-direction': 194.3,
-    });
-  });
+      expect(hillshadeLighting('sun', { solarPosition })).toEqual({
+        'hillshade-illumination-anchor': 'map',
+        'hillshade-illumination-direction': azimuthDegrees,
+      });
+    },
+  );
 
   it('uses fixed lighting when the solar position is unavailable', () => {
     expect(hillshadeLighting('sun', { solarPosition: null })).toEqual(hillshadeLighting('fixed'));
-  });
-
-  it('uses a stale solar position', () => {
-    let solarPosition: SolarPositionInstruments = {
-      azimuthDegrees: 248,
-      elevationDegrees: -4,
-      stale: true,
-    };
-
-    expect(hillshadeLighting('sun', { solarPosition })).toEqual({
-      'hillshade-illumination-anchor': 'map',
-      'hillshade-illumination-direction': 248,
-    });
   });
 });

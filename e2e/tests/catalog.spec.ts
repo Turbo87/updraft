@@ -1,14 +1,11 @@
-import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import { expect } from '@playwright/test';
 
-import { expect, test } from '@playwright/test';
+import { test } from './app';
 
-type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClient };
-
-test('keeps live catalog state across settings navigation', async ({ page }) => {
-  await page.goto('/settings/data?testMode=1');
+test('keeps live catalog state across settings navigation', async ({ page, app }) => {
+  await app.open('/settings/data');
   await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp?.enrouteCatalog?.current))
+    .poll(() => page.evaluate(() => window.__updraftApp?.enrouteCatalog?.current))
     .toEqual({ cached: null, refreshing: false, error: false });
   let cached = {
     entries: [
@@ -24,7 +21,7 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
   };
   await page.evaluate(
     (cached) =>
-      (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
+      window.__updraftFake!.emitEnrouteCatalog({
         cached,
         refreshing: true,
         error: false,
@@ -34,7 +31,7 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
   await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
   await page.evaluate(
     (cached) =>
-      (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
+      window.__updraftFake!.emitEnrouteCatalog({
         cached,
         refreshing: false,
         error: true,
@@ -45,23 +42,25 @@ test('keeps live catalog state across settings navigation', async ({ page }) => 
   await expect
     .poll(() =>
       page.evaluate(() => {
-        let catalog = (window as TestWindow).__updraftApp!.enrouteCatalog;
+        let catalog = window.__updraftApp!.enrouteCatalog;
         return { current: catalog.current, error: catalog.error };
       }),
     )
     .toEqual({ current: { cached, refreshing: false, error: true }, error: false });
 });
 
-test('selects a country update, handles failure, and returns to the library', async ({ page }) => {
-  await page.goto('/settings?testMode=1');
+test('selects a country update, handles failure, and returns to the library', async ({
+  page,
+  app,
+}) => {
+  await app.open('/settings');
   await page.getByRole('link', { name: 'Data', exact: true }).click();
-  await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
-    let app = (window as TestWindow).__updraftApp!;
+    let app = window.__updraftApp!;
     app.client.selectDataFile = async () => {
       throw new Error('Unexpected file picker');
     };
-    let fake = (window as TestWindow).__updraftFake!;
+    let fake = window.__updraftFake!;
     let path = 'Europe/Malta.mbtiles';
     fake.emitBasemaps({
       generation: 1,
@@ -74,7 +73,7 @@ test('selects a country update, handles failure, and returns to the library', as
       if (attempts++ === 0) throw new Error('Submission failed');
       fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
     };
-    (window as TestWindow).__updraftFake!.emitEnrouteCatalog({
+    window.__updraftFake!.emitEnrouteCatalog({
       cached: {
         entries: [
           {
@@ -117,13 +116,13 @@ test('selects a country update, handles failure, and returns to the library', as
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
-test('keeps download snapshots across settings navigation', async ({ page }) => {
-  await page.goto('/settings/data?testMode=1');
+test('keeps download snapshots across settings navigation', async ({ page, app }) => {
+  await app.open('/settings/data');
   await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp?.enrouteDownloads?.current))
+    .poll(() => page.evaluate(() => window.__updraftApp?.enrouteDownloads?.current))
     .toEqual([]);
   await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+    window.__updraftFake!.emitEnrouteDownloads([
       {
         path: 'Europe/Malta.mbtiles',
         type: 'downloading',
@@ -134,7 +133,7 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
     ]);
   });
   await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))
+    .poll(() => page.evaluate(() => window.__updraftApp!.enrouteDownloads.current))
     .toEqual([
       {
         path: 'Europe/Malta.mbtiles',
@@ -150,15 +149,13 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
   ).toBeVisible();
   await page.getByRole('link', { name: 'Back to settings', exact: true }).click();
   await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
-      { path: 'Europe/Malta.mbtiles', type: 'failed' },
-    ]);
+    window.__updraftFake!.emitEnrouteDownloads([{ path: 'Europe/Malta.mbtiles', type: 'failed' }]);
   });
   await page.getByRole('link', { name: 'Data', exact: true }).click();
   await expect
     .poll(() =>
       page.evaluate(() => {
-        let downloads = (window as TestWindow).__updraftApp!.enrouteDownloads;
+        let downloads = window.__updraftApp!.enrouteDownloads;
         return { current: downloads.current, error: downloads.error };
       }),
     )
@@ -167,18 +164,17 @@ test('keeps download snapshots across settings navigation', async ({ page }) => 
   await expect(
     page.getByRole('button', { name: 'Retry download: Malta', exact: true }),
   ).toBeVisible();
-  await page.evaluate(() => (window as TestWindow).__updraftFake!.emitEnrouteDownloads([]));
+  await page.evaluate(() => window.__updraftFake!.emitEnrouteDownloads([]));
   await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.enrouteDownloads.current))
+    .poll(() => page.evaluate(() => window.__updraftApp!.enrouteDownloads.current))
     .toEqual([]);
 });
 
-test('queues France while Germany continues downloading', async ({ page }) => {
-  await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+test('queues France while Germany continues downloading', async ({ page, app }) => {
+  await app.open('/settings/data');
   await page.evaluate(() => {
-    let fake = (window as TestWindow).__updraftFake!;
-    let client = (window as TestWindow).__updraftApp!.client;
+    let fake = window.__updraftFake!;
+    let client = window.__updraftApp!.client;
     fake.emitEnrouteCatalog({
       cached: {
         checkedAt: 0,
@@ -222,7 +218,7 @@ test('queues France while Germany continues downloading', async ({ page }) => {
   let checkbox = page.getByRole('checkbox', { name: 'France', exact: true });
   await checkbox.check();
   await page.evaluate(() =>
-    (window as TestWindow).__updraftFake!.emitEnrouteDownloads([
+    window.__updraftFake!.emitEnrouteDownloads([
       {
         path: 'Europe/Germany.mbtiles',
         type: 'downloading',
@@ -244,15 +240,15 @@ test('queues France while Germany continues downloading', async ({ page }) => {
 
 test('carries startup update results through file replacement and settings navigation', async ({
   page,
+  app,
 }) => {
-  await page.goto('/settings?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await app.open('/settings');
   await page.evaluate(() => {
-    let fake = (window as TestWindow).__updraftFake!;
+    let fake = window.__updraftFake!;
     let path = 'Europe/France.mbtiles';
     fake.getEnrouteBasemapUpdates = async () => [path];
     fake.getBasemapFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
-    (window as TestWindow).__updraftApp!.client.downloadEnrouteFiles = async (paths) => {
+    window.__updraftApp!.client.downloadEnrouteFiles = async (paths) => {
       if (paths.length !== 1 || paths[0] !== path) throw new Error('Unexpected update selection');
       fake.emitEnrouteDownloads([{ path, type: 'queued' }]);
     };
@@ -286,7 +282,7 @@ test('carries startup update results through file replacement and settings navig
   await dialog.getByRole('button', { name: 'Update', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Update', exact: true })).toBeDisabled();
   await page.evaluate(() => {
-    let fake = (window as TestWindow).__updraftFake!;
+    let fake = window.__updraftFake!;
     fake.getEnrouteBasemapUpdates = async () => [];
     fake.getBasemapFileDetails = async () => ({
       size: 2_000_000,
@@ -310,12 +306,12 @@ test('carries startup update results through file replacement and settings navig
 
 test('selects both formats and keeps terrain updates disabled across navigation', async ({
   page,
+  app,
 }) => {
-  await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await app.open('/settings/data');
   await page.evaluate(() => {
-    let app = (window as TestWindow).__updraftApp!;
-    let fake = (window as TestWindow).__updraftFake!;
+    let app = window.__updraftApp!;
+    let fake = window.__updraftFake!;
     let paths = ['Europe/France.mbtiles', 'Europe/France.terrain'];
     app.client.getBasemapFileDetails = app.client.getTerrainFileDetails = async () => ({
       size: 2_000_000,
@@ -363,8 +359,8 @@ test('selects both formats and keeps terrain updates disabled across navigation'
     terrain.getByRole('button', { name: 'Cancel download: France', exact: true }),
   ).toBeVisible();
   await page.evaluate(() => {
-    let app = (window as TestWindow).__updraftApp!;
-    let fake = (window as TestWindow).__updraftFake!;
+    let app = window.__updraftApp!;
+    let fake = window.__updraftFake!;
     let path = 'Europe/France.terrain';
     app.client.getEnrouteTerrainUpdates = async () => [path];
     fake.emitBasemaps({
@@ -404,12 +400,14 @@ test('selects both formats and keeps terrain updates disabled across navigation'
   await expect(dialog.getByRole('switch')).not.toBeChecked();
 });
 
-test('returns to the library when terrain finishes before queue delivery', async ({ page }) => {
-  await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+test('returns to the library when terrain finishes before queue delivery', async ({
+  page,
+  app,
+}) => {
+  await app.open('/settings/data');
   await page.evaluate(() => {
-    let app = (window as TestWindow).__updraftApp!;
-    let fake = (window as TestWindow).__updraftFake!;
+    let app = window.__updraftApp!;
+    let fake = window.__updraftFake!;
     let path = 'Europe/Malta.terrain';
     app.client.getTerrainFileDetails = async () => ({ size: 1_000_000, modifiedAt: 0 });
     app.client.downloadEnrouteFiles = async (paths) => {

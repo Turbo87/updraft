@@ -1,23 +1,16 @@
-import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
-
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { waypointsFixture } from '../../frontend/src/lib/map/waypoint.fixture';
-
-type TestWindow = Window & {
-  __updraftApp?: AppContext;
-  __updraftFake?: FakeClient;
-  __updraftTestWaypointData?: typeof waypointsFixture;
-};
+import { test } from './app';
 
 for (let notes of ['Notes', '']) {
   test(`opens map waypoints and invalidates details after removal (notes: ${notes})`, async ({
     page,
+    app,
   }) => {
     await page.addInitScript(
       (data) => {
-        (window as TestWindow).__updraftTestWaypointData = data;
+        window.__updraftTestWaypointData = data;
       },
       {
         ...waypointsFixture,
@@ -27,30 +20,27 @@ for (let notes of ['Notes', '']) {
         })),
       },
     );
-    await page.goto('/?testMode=1');
-    await page.waitForFunction(() => '__updraftFake' in window);
-    await page.evaluate(() => {
-      (window as TestWindow).__updraftFake!.emit({
-        topic: 'waypoints',
-        value: {
-          generation: 1,
-          sources: [
-            {
-              type: 'active',
-              sourceName: 'local.cup',
-              waypointCount: 3,
-              warnings: [],
-            },
-          ],
-        },
-      });
+    await app.open('/');
+    await app.emit({
+      topic: 'waypoints',
+      value: {
+        generation: 1,
+        sources: [
+          {
+            type: 'active',
+            sourceName: 'local.cup',
+            waypointCount: 3,
+            warnings: [],
+          },
+        ],
+      },
     });
     await page.waitForFunction(() => {
-      let map = (window as TestWindow).__updraftApp!.mapState.map;
+      let map = window.__updraftApp!.mapState.map;
       return map?.getLayer('waypoint-hit') && map.isSourceLoaded('waypoints');
     });
     let point = await page.evaluate(() => {
-      let map = (window as TestWindow).__updraftApp!.mapState.map!;
+      let map = window.__updraftApp!.mapState.map!;
       let point = map.project([6.186, 50.823]);
       let bounds = map.getCanvas().getBoundingClientRect();
       return { x: bounds.x + point.x, y: bounds.y + point.y };
@@ -68,7 +58,7 @@ for (let notes of ['Notes', '']) {
     await expect(page.getByText('123.500 MHz')).toBeVisible();
     await expect(page.getByText('090°')).toBeVisible();
     await page.evaluate(async () => {
-      await (window as TestWindow).__updraftFake!.removeWaypoints('local.cup');
+      await window.__updraftFake!.removeWaypoints('local.cup');
     });
     await expect(page.getByText('This waypoint is no longer available.')).toBeVisible();
     await page.goBack();
@@ -76,7 +66,7 @@ for (let notes of ['Notes', '']) {
   });
 }
 
-test('retries a failed waypoint resource with a new request', async ({ page }) => {
+test('retries a failed waypoint resource with a new request', async ({ page, app }) => {
   let available = false;
   let requests = 0;
   await page.route('**/waypoint-resource.geojson', async (route) => {
@@ -90,23 +80,20 @@ test('retries a failed waypoint resource with a new request', async ({ page }) =
   await page.addInitScript(() => {
     Object.assign(window, { __updraftTestWaypointData: '/waypoint-resource.geojson' });
   });
-  await page.goto('/waypoints/1:0:0?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emit({
-      topic: 'waypoints',
-      value: {
-        generation: 1,
-        sources: [
-          {
-            type: 'active',
-            sourceName: 'local.cup',
-            waypointCount: 3,
-            warnings: [],
-          },
-        ],
-      },
-    });
+  await app.open('/waypoints/1:0:0');
+  await app.emit({
+    topic: 'waypoints',
+    value: {
+      generation: 1,
+      sources: [
+        {
+          type: 'active',
+          sourceName: 'local.cup',
+          waypointCount: 3,
+          warnings: [],
+        },
+      ],
+    },
   });
   await expect(page.getByText('Could not load waypoints.')).toBeVisible();
   let failedRequests = requests;
@@ -119,6 +106,7 @@ test('retries a failed waypoint resource with a new request', async ({ page }) =
 for (let initialPath of ['/', '/nearby/50.823/6.186']) {
   test(`retains waypoint source errors when opening Nearby from ${initialPath}`, async ({
     page,
+    app,
   }) => {
     let available = false;
     await page.route('**/waypoint-resource.geojson', async (route) => {
@@ -131,15 +119,15 @@ for (let initialPath of ['/', '/nearby/50.823/6.186']) {
     await page.addInitScript(() => {
       Object.assign(window, { __updraftTestWaypointData: '/waypoint-resource.geojson' });
     });
-    await page.goto(`${initialPath}?testMode=1`);
-    await page.waitForFunction(() => (window as TestWindow).__updraftApp?.mapState.map);
+    await app.open(initialPath);
+    await page.waitForFunction(() => window.__updraftApp?.mapState.map);
     await page.evaluate(() => {
-      let app = (window as TestWindow).__updraftApp!;
+      let app = window.__updraftApp!;
       app.mapState.map!.on('error', (event) => {
         if ('sourceId' in event && event.sourceId === 'waypoints')
           document.body.dataset.waypointFailed = 'true';
       });
-      (window as TestWindow).__updraftFake!.emit({
+      window.__updraftFake!.emit({
         topic: 'waypoints',
         value: {
           generation: 1,
@@ -164,11 +152,11 @@ for (let initialPath of ['/', '/nearby/50.823/6.186']) {
       });
     }
     let waypoints = page.getByRole('region', { name: 'Waypoints', exact: true });
-    await page.evaluate(() => (window as TestWindow).__updraftApp!.mapState.map!.fire('idle'));
+    await page.evaluate(() => window.__updraftApp!.mapState.map!.fire('idle'));
     await expect(waypoints.getByRole('alert')).toHaveText('Could not load waypoints.');
     available = true;
     await page.evaluate(async () => {
-      let source = (window as TestWindow).__updraftApp!.mapState.map!.getSource(
+      let source = window.__updraftApp!.mapState.map!.getSource(
         'waypoints',
       ) as import('maplibre-gl').GeoJSONSource;
       await source.setData('/waypoint-resource.geojson');

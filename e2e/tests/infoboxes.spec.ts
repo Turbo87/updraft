@@ -1,17 +1,14 @@
-import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import { expect } from '@playwright/test';
 
-import { expect, test } from '@playwright/test';
+import { test } from './app';
 
-type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClient };
-
-test('updates infoboxes from instruments and units', async ({ page }) => {
-  await page.goto('/?testMode=1');
+test('updates infoboxes from instruments and units', async ({ page, app }) => {
+  await app.open('/');
   let dock = page.getByRole('region', { name: 'Flight instruments' });
   await expect(dock.getByRole('group')).toHaveCount(10);
   await expect(dock.getByRole('group', { name: 'Altitude', exact: true })).toContainText('–');
   await page.evaluate(() => {
-    let { __updraftApp: app, __updraftFake: fake } = window as TestWindow;
+    let { __updraftApp: app, __updraftFake: fake } = window;
     fake!.emit({
       topic: 'instruments',
       value: {
@@ -37,7 +34,7 @@ test('updates infoboxes from instruments and units', async ({ page }) => {
   await expect(averageVario.locator('.value')).toHaveText('+1.4');
   await expect(averageVario.locator('.unit-label')).toHaveText('m/s');
   await page.evaluate(() => {
-    let { __updraftApp: app, __updraftFake: fake } = window as TestWindow;
+    let { __updraftApp: app, __updraftFake: fake } = window;
     fake!.emit({
       topic: 'settings',
       value: {
@@ -77,12 +74,12 @@ for (let scenario of [
   for (let locale of ['en', 'de'] as const) {
     test(`keeps infoboxes inside the safe area in ${scenario.name} (${locale})`, async ({
       page,
+      app,
     }) => {
       await page.setViewportSize({ width: scenario.width, height: scenario.height });
-      await page.goto('/?testMode=1');
-      await page.waitForFunction(() => '__updraftFake' in window);
+      await app.open('/');
       await page.evaluate((locale) => {
-        let { __updraftApp: app, __updraftFake: fake } = window as TestWindow;
+        let { __updraftApp: app, __updraftFake: fake } = window;
         fake!.emit({ topic: 'settings', value: { ...app!.settings.current, locale } });
       }, locale);
       await page.locator('html').evaluate((root, insets) => {

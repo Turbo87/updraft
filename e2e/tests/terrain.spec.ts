@@ -1,32 +1,23 @@
-import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
+import { expect } from '@playwright/test';
 
-import { expect, test } from '@playwright/test';
+import { test } from './app';
 
-type TestWindow = Window & {
-  __updraftApp?: AppContext;
-  __updraftFake?: FakeClient;
-};
-
-test('terrain activation and removal retain the other installed source', async ({ page }) => {
+test('terrain activation and removal retain the other installed source', async ({ page, app }) => {
   let errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => (window as TestWindow).__updraftFake);
-  await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emitTerrain({
-      generation: 0,
-      sources: [
-        { sourceName: 'local.terrain', type: 'active' },
-        { sourceName: 'remaining.terrain', type: 'active' },
-      ],
-    });
+  await app.open('/');
+  await app.emitTerrain({
+    generation: 0,
+    sources: [
+      { sourceName: 'local.terrain', type: 'active' },
+      { sourceName: 'remaining.terrain', type: 'active' },
+    ],
   });
   async function status() {
-    return page.evaluate(() => (window as TestWindow).__updraftApp!.terrain.current);
+    return page.evaluate(() => window.__updraftApp!.terrain.current);
   }
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
   await page.getByRole('link', { name: 'Data', exact: true }).click();

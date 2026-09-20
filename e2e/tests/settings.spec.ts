@@ -1,26 +1,17 @@
-import type { AppContext } from '$lib/app-context';
-import type { BasemapStatus, TerrainStatus } from '$lib/client';
-
 import { execFileSync } from 'node:child_process';
 
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+
+import { test } from './app';
 
 const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
   encoding: 'utf8',
 }).trim();
 
-type TestWindow = Window & {
+type SettingsWindow = Window & {
   __dataSelectionCalls?: number;
   __quitCalls?: number;
   __releaseActivation?: () => void;
-  __updraftApp?: AppContext;
-  __updraftFake?: {
-    emit: (topic: unknown) => void;
-    emitBasemaps: (status: BasemapStatus) => void;
-    emitTerrain: (status: TerrainStatus) => void;
-    setWaypointsEnabled: (name: string, enabled: boolean) => Promise<void>;
-    quit: () => Promise<void>;
-  };
 };
 
 test.describe('with an unsupported browser language', () => {
@@ -28,8 +19,9 @@ test.describe('with an unsupported browser language', () => {
 
   test('falls back to English and changes settings through the backend-shaped fake', async ({
     page,
+    app,
   }) => {
-    await page.goto('/?testMode=1');
+    await app.open('/');
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('link', { name: 'Language' }).click();
 
@@ -57,8 +49,8 @@ test.describe('with an unsupported browser language', () => {
   });
 });
 
-test('shows a menu with dedicated settings routes and top back links', async ({ page }) => {
-  await page.goto('/settings?testMode=1');
+test('shows a menu with dedicated settings routes and top back links', async ({ page, app }) => {
+  await app.open('/settings');
 
   await expect(page.getByRole('link', { name: 'Language English' })).toBeVisible();
   await expect(
@@ -92,38 +84,23 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
   }
 });
 
-test('uses the screen scaffold for language settings', async ({ page }) => {
-  await page.goto('/settings/language?testMode=1');
+for (let [name, route] of [
+  ['language settings', '/settings/language'],
+  ['unit settings', '/settings/units'],
+  ['the Data library', '/settings/data'],
+]) {
+  test(`uses the screen scaffold for ${name}`, async ({ page, app }) => {
+    await app.open(route);
+    let back = page.getByRole('link', { name: 'Back to settings' });
 
-  let back = page.getByRole('link', { name: 'Back to settings' });
+    await expect(back).toHaveAttribute('href', '/settings');
+    await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
+    await expect(page.getByRole('main')).not.toContainText('Back to settings');
+  });
+}
 
-  await expect(back).toHaveAttribute('href', '/settings');
-  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
-  await expect(page.getByRole('main')).not.toContainText('Back to settings');
-});
-
-test('uses the screen scaffold for unit settings', async ({ page }) => {
-  await page.goto('/settings/units?testMode=1');
-
-  let back = page.getByRole('link', { name: 'Back to settings' });
-
-  await expect(back).toHaveAttribute('href', '/settings');
-  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
-  await expect(page.getByRole('main')).not.toContainText('Back to settings');
-});
-
-test('uses the screen scaffold for the Data library', async ({ page }) => {
-  await page.goto('/settings/data?testMode=1');
-
-  let back = page.getByRole('link', { name: 'Back to settings' });
-
-  await expect(back).toHaveAttribute('href', '/settings');
-  await expect(back.locator('.i-mdi-arrow-left')).toBeVisible();
-  await expect(page.getByRole('main')).not.toContainText('Back to settings');
-});
-
-test('uses the screen scaffold when an external device is not found', async ({ page }) => {
-  await page.goto('/settings/devices/999?testMode=1');
+test('uses the screen scaffold when an external device is not found', async ({ page, app }) => {
+  await app.open('/settings/devices/999');
 
   let back = page.getByRole('link', { name: 'Back to external devices' });
 
@@ -133,11 +110,13 @@ test('uses the screen scaffold when an external device is not found', async ({ p
   await expect(page.getByRole('main')).not.toContainText('Back to external devices');
 });
 
-test('confirms before quitting through the client from the settings menu', async ({ page }) => {
-  await page.goto('/settings?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+test('confirms before quitting through the client from the settings menu', async ({
+  page,
+  app,
+}) => {
+  await app.open('/settings');
   await page.evaluate(() => {
-    let testWindow = window as TestWindow;
+    let testWindow = window as SettingsWindow;
     let client = testWindow.__updraftFake;
     if (!client) throw new Error('the fake client should be available');
     client.quit = async () => {
@@ -153,15 +132,15 @@ test('confirms before quitting through the client from the settings menu', async
 
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).not.toBeVisible();
-  await expect.poll(() => page.evaluate(() => (window as TestWindow).__quitCalls ?? 0)).toBe(0);
+  await expect.poll(() => page.evaluate(() => (window as SettingsWindow).__quitCalls ?? 0)).toBe(0);
 
   await page.getByRole('button', { name: 'Quit Updraft' }).click();
   await dialog.getByRole('button', { name: 'Quit Updraft' }).click();
-  await expect.poll(() => page.evaluate(() => (window as TestWindow).__quitCalls)).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as SettingsWindow).__quitCalls)).toBe(1);
 });
 
-test('shows source and build information on the About page', async ({ page }) => {
-  await page.goto('/settings/about?testMode=1');
+test('shows source and build information on the About page', async ({ page, app }) => {
+  await app.open('/settings/about');
 
   await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'GitHub repository' })).toHaveAttribute(
@@ -181,13 +160,11 @@ test('shows source and build information on the About page', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Licences' })).toBeVisible();
 });
 
-test('shows a snapshot of the current map source credits', async ({ page }) => {
-  await page.goto('/settings?testMode=1');
-  await page.waitForFunction(() =>
-    (window as TestWindow).__updraftApp?.mapState.map?.isStyleLoaded(),
-  );
+test('shows a snapshot of the current map source credits', async ({ page, app }) => {
+  await app.open('/settings');
+  await page.waitForFunction(() => window.__updraftApp?.mapState.map?.isStyleLoaded());
   await page.evaluate(() => {
-    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    let map = window.__updraftApp?.mapState.map;
     if (!map) throw new Error('Map is not available');
 
     map.addSource('about-page-test', {
@@ -210,8 +187,8 @@ test('shows a snapshot of the current map source credits', async ({ page }) => {
 test.describe('with a supported German browser language', () => {
   test.use({ locale: 'de-DE' });
 
-  test('uses German while the backend locale is unset', async ({ page }) => {
-    await page.goto('/settings/language?testMode=1');
+  test('uses German while the backend locale is unset', async ({ page, app }) => {
+    await app.open('/settings/language');
 
     await expect(page.getByRole('heading', { name: 'Sprache' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
@@ -234,11 +211,11 @@ test.describe('with a supported German browser language', () => {
 
 test('propagates airspace status and invokes data selection through the client', async ({
   page,
+  app,
 }) => {
-  await page.goto('/settings/data?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await app.open('/settings/data');
   await page.evaluate(() => {
-    let testWindow = window as TestWindow;
+    let testWindow = window as SettingsWindow;
     let client = testWindow.__updraftApp!.client;
     client.selectDataFile = async () => {
       testWindow.__dataSelectionCalls = (testWindow.__dataSelectionCalls ?? 0) + 1;
@@ -249,25 +226,25 @@ test('propagates airspace status and invokes data selection through the client',
   await expect(page.getByText('No data on this device')).toBeVisible();
   await page.getByRole('button', { name: 'Add data' }).click();
   await page.getByRole('button', { name: 'Import custom file…', exact: true }).click();
-  await expect.poll(() => page.evaluate(() => (window as TestWindow).__dataSelectionCalls)).toBe(1);
+  await expect
+    .poll(() => page.evaluate(() => (window as SettingsWindow).__dataSelectionCalls))
+    .toBe(1);
   await page.getByRole('button', { name: 'Back to data', exact: true }).click();
 
-  await page.evaluate(() => {
-    (window as TestWindow).__updraftFake?.emit({
-      topic: 'airspace',
-      value: {
-        generation: 1,
-        sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 }],
-      },
-    });
+  await app.emit({
+    topic: 'airspace',
+    value: {
+      generation: 1,
+      sources: [{ type: 'active', sourceName: 'rheinland.txt', airspaceCount: 42 }],
+    },
   });
 
   await expect(page.getByText('rheinland.txt')).toBeVisible();
   await expect(page.getByText('42 airspaces')).toBeVisible();
 });
 
-test('selects a glide polar and keeps it when revisiting settings', async ({ page }) => {
-  await page.goto('/settings?testMode=1');
+test('selects a glide polar and keeps it when revisiting settings', async ({ page, app }) => {
+  await app.open('/settings');
   await page.getByRole('link', { name: 'Glide', exact: true }).click();
   let polar = page.getByRole('combobox', { name: 'Polar', exact: true });
   await expect(polar).toHaveValue('LS 8');
@@ -278,8 +255,8 @@ test('selects a glide polar and keeps it when revisiting settings', async ({ pag
   await expect(polar).toHaveValue('LS 8-18');
 });
 
-test('keeps the arrival reserve when revisiting settings', async ({ page }) => {
-  await page.goto('/settings/glide?testMode=1');
+test('keeps the arrival reserve when revisiting settings', async ({ page, app }) => {
+  await app.open('/settings/glide');
   let reserve = page.getByRole('spinbutton', { name: 'Arrival reserve (m)' });
   await expect(reserve).toHaveValue('200');
   await reserve.fill('350');
@@ -289,8 +266,8 @@ test('keeps the arrival reserve when revisiting settings', async ({ page }) => {
   await expect(reserve).toHaveValue('350');
 });
 
-test('keeps the sun hillshade direction when revisiting map settings', async ({ page }) => {
-  await page.goto('/settings/map?testMode=1');
+test('keeps the sun hillshade direction when revisiting map settings', async ({ page, app }) => {
+  await app.open('/settings/map');
   let sun = page.getByRole('radio', { name: 'Sun direction' });
   await sun.click();
   await expect(sun).toBeChecked();
@@ -299,8 +276,8 @@ test('keeps the sun hillshade direction when revisiting map settings', async ({ 
   await expect(sun).toBeChecked();
 });
 
-test('keeps MC during navigation and resets it on restart', async ({ page }) => {
-  await page.goto('/settings?testMode=1');
+test('keeps MC during navigation and resets it on restart', async ({ page, app }) => {
+  await app.open('/settings');
   await expect(page.getByRole('spinbutton')).toHaveCount(0);
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   let mc = page.getByRole('spinbutton', { name: 'MC (m/s)' });
@@ -310,12 +287,15 @@ test('keeps MC during navigation and resets it on restart', async ({ page }) => 
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(mc).toHaveValue('1.5');
-  await page.goto('/settings/flight-controls?testMode=1');
+  await app.open('/settings/flight-controls');
   await expect(mc).toHaveValue('0.0');
 });
 
-test('keeps bugs and ballast during navigation and resets them on restart', async ({ page }) => {
-  await page.goto('/settings/flight-controls?testMode=1');
+test('keeps bugs and ballast during navigation and resets them on restart', async ({
+  page,
+  app,
+}) => {
+  await app.open('/settings/flight-controls');
   let bugs = page.getByRole('spinbutton', { name: 'Bugs (%)', exact: true });
   await expect(bugs).toHaveValue('0');
   await bugs.fill('10.5');
@@ -328,17 +308,17 @@ test('keeps bugs and ballast during navigation and resets them on restart', asyn
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(bugs).toHaveValue('10.5');
   await expect(ballast).toHaveValue('100.5');
-  await page.goto('/settings/flight-controls?testMode=1');
+  await app.open('/settings/flight-controls');
   await expect(bugs).toHaveValue('0');
   await expect(ballast).toHaveValue('0');
 });
 
-test('the Data library handles live statuses, file details, and removal', async ({ page }) => {
-  await page.goto('/settings/data?testMode=1');
+test('the Data library handles live statuses, file details, and removal', async ({ page, app }) => {
+  await app.open('/settings/data');
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await page.reload();
   await page.evaluate(() => {
-    let client = (window as TestWindow).__updraftFake!;
+    let client = window.__updraftFake!;
     client.emit({
       topic: 'airspace',
       value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] },
@@ -361,7 +341,7 @@ test('the Data library handles live statuses, file details, and removal', async 
   let dialog = page.getByRole('dialog', { name: 'local.cup' });
   await expect(dialog).toBeVisible();
   await page.evaluate(() => {
-    let testWindow = window as TestWindow;
+    let testWindow = window as SettingsWindow;
     let client = testWindow.__updraftFake!;
     let original = client.setWaypointsEnabled.bind(client);
     let gate = new Promise<void>((resolve) => {
@@ -379,7 +359,7 @@ test('the Data library handles live statuses, file details, and removal', async 
   await page.getByRole('link', { name: 'Data', exact: true }).click();
   await row.click();
   await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
-  await page.evaluate(() => (window as TestWindow).__releaseActivation!());
+  await page.evaluate(() => (window as SettingsWindow).__releaseActivation!());
   await expect(page.getByRole('button', { name: 'Remove from device' })).toBeEnabled();
   await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
   await expect(dialog.getByText('2', { exact: true })).toBeVisible();
@@ -406,11 +386,12 @@ test('the Data library handles live statuses, file details, and removal', async 
 
 test('the Data library imports through the client and shows published parsing errors', async ({
   page,
+  app,
 }) => {
-  await page.goto('/settings/data?testMode=1');
+  await app.open('/settings/data');
   await expect(page.getByRole('button', { name: 'Add data' })).toBeVisible();
   await page.evaluate(() => {
-    let testWindow = window as TestWindow;
+    let testWindow = window as SettingsWindow;
     let client = testWindow.__updraftApp!.client;
     let selected = { selectionId: '1', sourceName: 'broken.cup', dataType: 'waypoints' as const };
     client.selectDataFile = async () => selected;
@@ -440,19 +421,17 @@ for (let [width, height, theme] of [
   [413, 915, 'light'],
   [915, 413, 'dark'],
 ] as const) {
-  test(`shows live basemap inventory at ${width}x${height}`, async ({ page }, testInfo) => {
+  test(`shows live basemap inventory at ${width}x${height}`, async ({ page, app }, testInfo) => {
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ colorScheme: theme });
-    await page.goto('/?testMode=1');
+    await app.open('/');
     await page.getByRole('link', { name: 'Settings' }).click();
-    await page.evaluate(() => {
-      (window as TestWindow).__updraftFake!.emitBasemaps({
-        generation: 0,
-        sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
-      });
+    await app.emitBasemaps({
+      generation: 0,
+      sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
     });
     await expect
-      .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.basemaps?.current))
+      .poll(() => page.evaluate(() => window.__updraftApp!.basemaps?.current))
       .toEqual({
         generation: 0,
         sources: [{ sourceName: 'local.mbtiles', type: 'active' }],
@@ -460,24 +439,20 @@ for (let [width, height, theme] of [
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await page.getByRole('button', { name: /^local\b/ }).click();
     await expect(page.getByRole('switch', { name: 'Enabled' })).toBeChecked();
-    await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitBasemaps({
-        generation: 1,
-        sources: [{ sourceName: 'local.mbtiles', type: 'disabled' }],
-      }),
-    );
+    await app.emitBasemaps({
+      generation: 1,
+      sources: [{ sourceName: 'local.mbtiles', type: 'disabled' }],
+    });
     await expect(page.getByRole('switch', { name: 'Enabled' })).not.toBeChecked();
     await page.screenshot({ path: testInfo.outputPath('basemap-details.png') });
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();
-    await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitBasemaps({
-        generation: 2,
-        sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
-      }),
-    );
+    await app.emitBasemaps({
+      generation: 2,
+      sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
+    });
     await expect
-      .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp!.basemaps?.current))
+      .poll(() => page.evaluate(() => window.__updraftApp!.basemaps?.current))
       .toEqual({
         generation: 2,
         sources: [{ sourceName: 'local.mbtiles', type: 'unavailable' }],
@@ -493,38 +468,31 @@ for (let [width, height, theme] of [
   [413, 915, 'light'],
   [915, 413, 'dark'],
 ] as const) {
-  test(`shows live terrain inventory at ${width}x${height}`, async ({ page }, testInfo) => {
+  test(`shows live terrain inventory at ${width}x${height}`, async ({ page, app }, testInfo) => {
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ colorScheme: theme });
-    await page.goto('/?testMode=1');
-    await expect.poll(() => page.evaluate(() => !!(window as TestWindow).__updraftFake)).toBe(true);
-    await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitTerrain({
-        generation: 0,
-        sources: [{ sourceName: 'local.terrain', type: 'active' }],
-      }),
-    );
+    await app.open('/');
+    await app.emitTerrain({
+      generation: 0,
+      sources: [{ sourceName: 'local.terrain', type: 'active' }],
+    });
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await page.getByRole('button', { name: /^local / }).click();
     let dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('switch')).toBeChecked();
-    await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitTerrain({
-        generation: 1,
-        sources: [{ sourceName: 'local.terrain', type: 'disabled' }],
-      }),
-    );
+    await app.emitTerrain({
+      generation: 1,
+      sources: [{ sourceName: 'local.terrain', type: 'disabled' }],
+    });
     await expect(dialog.getByRole('switch')).not.toBeChecked();
     await page.screenshot({ path: testInfo.outputPath('terrain-details.png') });
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Settings' }).click();
-    await page.evaluate(() =>
-      (window as TestWindow).__updraftFake!.emitTerrain({
-        generation: 2,
-        sources: [{ sourceName: 'local.terrain', type: 'unavailable' }],
-      }),
-    );
+    await app.emitTerrain({
+      generation: 2,
+      sources: [{ sourceName: 'local.terrain', type: 'unavailable' }],
+    });
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await expect(page.getByRole('button', { name: /^local / })).toContainText(
       'Could not load the file.',

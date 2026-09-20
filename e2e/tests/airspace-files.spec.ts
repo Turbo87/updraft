@@ -1,21 +1,17 @@
-import type { AppContext } from '$lib/app-context';
-import type { FakeClient } from '$lib/client/fake';
-
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { AIRSPACE_BROWSER_FIXTURE } from '../../frontend/src/lib/map/airspace.fixture';
-
-type TestWindow = Window & { __updraftApp?: AppContext; __updraftFake?: FakeClient };
+import { test } from './app';
 
 test('imports two airspace files, replaces one, and removes only the confirmed file', async ({
   page,
+  app,
 }) => {
-  await page.goto('/settings?testMode=1');
+  await app.open('/settings');
   await page.getByRole('link', { name: 'Data', exact: true }).click();
-  await page.waitForFunction(() => '__updraftFake' in window);
   await page.evaluate(() => {
-    let client = (window as TestWindow).__updraftFake!;
-    let commands = (window as TestWindow).__updraftApp!.client;
+    let client = window.__updraftFake!;
+    let commands = window.__updraftApp!.client;
     let imports = ['a.txt', 'b.txt', 'a.txt', 'a.txt'];
     let sources = new Map<string, number>();
     let generation = 0;
@@ -73,6 +69,7 @@ test('imports two airspace files, replaces one, and removes only the confirmed f
 
 test('keeps duplicate airspaces separate and invalidates details after any source change', async ({
   page,
+  app,
 }) => {
   let feature = AIRSPACE_BROWSER_FIXTURE.features[0];
   let data = {
@@ -86,20 +83,17 @@ test('keeps duplicate airspaces separate and invalidates details after any sourc
   await page.addInitScript((data) => {
     Object.assign(window, { __updraftTestAirspaceData: data });
   }, data);
-  await page.goto('/nearby/50.82/6.175?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await page.evaluate(() => {
-    (window as TestWindow).__updraftFake!.emit({
-      topic: 'airspace',
-      value: {
-        generation: 1,
-        sources: ['a.txt', 'b.txt'].map((sourceName) => ({
-          type: 'active',
-          sourceName,
-          airspaceCount: 1,
-        })),
-      },
-    });
+  await app.open('/nearby/50.82/6.175');
+  await app.emit({
+    topic: 'airspace',
+    value: {
+      generation: 1,
+      sources: ['a.txt', 'b.txt'].map((sourceName) => ({
+        type: 'active',
+        sourceName,
+        airspaceCount: 1,
+      })),
+    },
   });
   let links = page.getByRole('region', { name: 'Airspaces', exact: true }).getByRole('link');
   await expect(links).toHaveCount(2);
@@ -111,7 +105,7 @@ test('keeps duplicate airspaces separate and invalidates details after any sourc
     page.getByRole('heading', { level: 1, name: feature.properties.name }),
   ).toBeVisible();
   await page.evaluate(async () => {
-    await (window as TestWindow).__updraftFake!.removeAirspace('a.txt');
+    await window.__updraftFake!.removeAirspace('a.txt');
   });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 });

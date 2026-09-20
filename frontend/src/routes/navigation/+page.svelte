@@ -14,7 +14,11 @@
     busy = true;
     error = false;
     try {
-      await client.setNavigationTarget(null);
+      let saved = await client.setNavigationTarget(null);
+      if (!saved) {
+        error = true;
+        return;
+      }
       await goto(resolve('/'));
     } catch {
       error = true;

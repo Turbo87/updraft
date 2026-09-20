@@ -433,7 +433,7 @@
   "navigation_waypoint": "Navigate to waypoint",
   "navigation_heading": "Navigation",
   "navigation_stop": "Stop navigation",
-  "navigation_failed": "Could not change navigation.",
+  "navigation_failed": "Navigation may have changed, but the choice could not be saved. A previous target can return after restart. Try again.",
   "navigation_none": "No active target",
   "navigation_true": "True bearing",
   "navigation_relative": "Relative bearing",

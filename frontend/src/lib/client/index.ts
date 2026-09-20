@@ -70,7 +70,8 @@ export type SelectedDataFile = {
  * shared frontend state.
  */
 export interface UpdraftClient {
-  setNavigationTarget(target: NavigationTarget | null): Promise<void>;
+  /** Applies the target. Returns false if persistence fails. */
+  setNavigationTarget(target: NavigationTarget | null): Promise<boolean>;
   /** Delivers the initial inventory and later changes. Reports registration failures through onError. */
   subscribeBasemaps(
     onUpdate: (status: BasemapStatus) => void,

@@ -15,13 +15,17 @@
   async function navigate(waypoint: WaypointFeature) {
     error = false;
     try {
-      await client.setNavigationTarget({
+      let saved = await client.setNavigationTarget({
         type: 'waypoint',
         name: waypoint.properties.name,
         latitudeDegrees: waypoint.geometry.coordinates[1],
         longitudeDegrees: waypoint.geometry.coordinates[0],
         elevationMeters: waypoint.properties.elevationMeters,
       });
+      if (!saved) {
+        error = true;
+        return;
+      }
       await goto(resolve('/'));
     } catch {
       error = true;

@@ -59,7 +59,7 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
   #navigation: Navigation | null = null;
-  async setNavigationTarget(target: NavigationTarget | null): Promise<void> {
+  async setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
     this.#navigation = target
       ? {
           target,
@@ -71,6 +71,7 @@ export class FakeClient implements UpdraftClient {
         }
       : null;
     this.emit({ topic: 'navigation', value: this.#navigation });
+    return true;
   }
 
   #basemaps: BasemapStatus = { generation: 0, sources: [] };

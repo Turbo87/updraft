@@ -433,7 +433,7 @@
   "navigation_waypoint": "Wegpunkt anfliegen",
   "navigation_heading": "Navigation",
   "navigation_stop": "Navigation beenden",
-  "navigation_failed": "Navigation konnte nicht geändert werden.",
+  "navigation_failed": "Die Navigation wurde möglicherweise geändert, aber die Auswahl konnte nicht gespeichert werden. Nach einem Neustart kann ein vorheriges Ziel wieder erscheinen. Bitte erneut versuchen.",
   "navigation_none": "Kein aktives Ziel",
   "navigation_true": "Rechtweisende Peilung",
   "navigation_relative": "Relative Peilung",

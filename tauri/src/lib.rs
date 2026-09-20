@@ -15,6 +15,7 @@ mod file_picker;
 mod flarmnet;
 mod http;
 mod ipc;
+mod navigation;
 mod settings;
 mod source_files;
 mod terrain;
@@ -199,6 +200,17 @@ pub fn run() {
                     std::time::Duration::from_millis(100),
                 )
             };
+
+            let navigation_file = navigation::NavigationFile::new(app.path().app_config_dir()?);
+            match navigation_file.load() {
+                Ok(target) => {
+                    tauri::async_runtime::block_on(
+                        handle.send(updraft_core::SetNavigationTarget(target)),
+                    )??;
+                }
+                Err(error) => tracing::warn!(%error, "Could not restore navigation target"),
+            }
+            app.manage(navigation_file);
 
             #[cfg(target_os = "android")]
             let fixes = session::fix_channel(handle.clone());

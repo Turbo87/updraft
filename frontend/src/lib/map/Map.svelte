@@ -21,12 +21,11 @@
 
   import Airspace from './Airspace.svelte';
   import Arrivals from './Arrivals.svelte';
-  import { BASEMAP_MIN_ZOOM, getBasemapStyle, refreshBasemap } from './basemap-style';
+  import { BASEMAP_MIN_ZOOM, getBasemapStyle } from './basemap-style';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
   import ReturnToPositionButton from './ReturnToPositionButton.svelte';
-  import { refreshTerrain } from './terrain-style';
   import Terrain from './Terrain.svelte';
   import Traffic from './Traffic.svelte';
   import Waypoints from './Waypoints.svelte';
@@ -87,7 +86,7 @@
       ? null
       : { latitudeDegrees, longitudeDegrees },
   );
-  const mapStyle = $derived(getBasemapStyle(testMode, window.location.origin));
+  const mapStyle = $derived(getBasemapStyle(testMode, window.location.origin, basemapGeneration));
   const inlineAirspaceData = $derived(
     testMode ? (testAirspaceData ?? (window as TestWindow).__updraftTestAirspaceData) : undefined,
   );
@@ -107,14 +106,6 @@
         : `${convertFileSrc('waypoints.geojson', 'updraft')}?v=${waypoints.generation}`
       : null,
   );
-
-  $effect(() => {
-    if (map && spritesLoaded) refreshBasemap(map, basemapGeneration);
-  });
-
-  $effect(() => {
-    if (map && spritesLoaded) refreshTerrain(map, terrainGeneration);
-  });
 
   $effect(() => {
     void waypointData;
@@ -191,11 +182,15 @@
     }}
   >
     {#if !testMode}
-      <Terrain
-        {hillshadeDirection}
-        wind={instruments.derived?.wind ?? null}
-        solarPosition={instruments.solarPosition}
-      />
+      <!-- A URL change does not cancel pending DEM tile requests. -->
+      {#key terrainGeneration}
+        <Terrain
+          generation={terrainGeneration}
+          {hillshadeDirection}
+          wind={instruments.derived?.wind ?? null}
+          solarPosition={instruments.solarPosition}
+        />
+      {/key}
     {/if}
     {#if spritesLoaded}
       <Traffic

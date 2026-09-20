@@ -9,22 +9,19 @@
   import { hillshadeLighting } from './terrain-style';
 
   type Props = {
+    generation: number;
     hillshadeDirection: HillshadeDirection;
     wind: DerivedWindInstruments | null;
     solarPosition: SolarPositionInstruments | null;
   };
 
-  let { hillshadeDirection, wind, solarPosition }: Props = $props();
+  let { generation, hillshadeDirection, wind, solarPosition }: Props = $props();
 
-  const terrainUrl = convertFileSrc('terrain/0', 'updraft');
+  const terrainUrl = $derived(convertFileSrc(`terrain/${generation}`, 'updraft'));
   const lighting = $derived(hillshadeLighting(hillshadeDirection, { wind, solarPosition }));
 </script>
 
-<RasterDEMTileSource
-  id="terrain"
-  tiles={[`${terrainUrl}/{z}/{x}/{y}.webp`]}
-  url={`${terrainUrl}/metadata.json`}
->
+<RasterDEMTileSource id="terrain" url={`${terrainUrl}/metadata.json`}>
   <ColorReliefLayer
     id="terrain-color-relief"
     beforeId="water"

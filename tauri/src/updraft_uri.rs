@@ -60,3 +60,50 @@ fn not_found_response() -> Response<Vec<u8>> {
         .body(Vec::new())
         .expect("the fixed not-found response should be valid")
 }
+
+pub fn tile_coordinates(path: &str) -> Option<[u32; 3]> {
+    let mut parts = path.split('/');
+    let z = parts.next()?.parse().ok()?;
+    let x = parts.next()?.parse().ok()?;
+    let y = parts.next()?.parse().ok()?;
+    let size = 1_u32.checked_shl(z)?;
+    (parts.next().is_none() && x < size && y < size).then_some([z, x, y])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tile_coordinate_boundaries() {
+        for (path, expected) in [
+            ("0/0/0", [0, 0, 0]),
+            ("31/2147483647/2147483647", [31, 2147483647, 2147483647]),
+            ("+1/01/+1", [1, 1, 1]),
+        ] {
+            claims::assert_some_eq!(tile_coordinates(path), expected);
+        }
+        for path in [
+            "",
+            "0/0",
+            "0/0/0/0",
+            "/0/0/0",
+            "0/0/0/",
+            "32/0/0",
+            "0/1/0",
+            "0/0/1",
+            "31/2147483648/0",
+            "31/0/2147483648",
+            "4294967296/0/0",
+            "1/4294967296/0",
+            "1/0/4294967296",
+            "-1/0/0",
+            "1/-1/0",
+            "1/0/-1",
+            "a/0/0",
+            "0/ 0/0",
+        ] {
+            claims::assert_none!(tile_coordinates(path), "{path}");
+        }
+    }
+}

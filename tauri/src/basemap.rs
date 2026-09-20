@@ -243,13 +243,7 @@ fn open_basemap(path: &Path) -> Result<Connection> {
 }
 
 fn tile_coordinates(path: &str) -> Option<[u32; 3]> {
-    let parts = path.strip_suffix(".pbf")?.split('/').collect::<Vec<_>>();
-    let [z, x, y] = parts.as_slice() else {
-        return None;
-    };
-    let [z, x, y] = [z.parse().ok()?, x.parse().ok()?, y.parse().ok()?];
-    let size = 1_u32.checked_shl(z)?;
-    (x < size && y < size).then_some([z, x, y])
+    crate::updraft_uri::tile_coordinates(path.strip_suffix(".pbf")?)
 }
 
 fn response(status: StatusCode, body: Vec<u8>) -> Response<Vec<u8>> {

@@ -10,6 +10,7 @@
   import { onDestroy } from 'svelte';
 
   import Button from './Button.svelte';
+  import { formatDataSize } from './data-size';
   import IconButton from './IconButton.svelte';
   import { m } from './paraglide/messages.js';
   import { getLocale } from './paraglide/runtime.js';
@@ -109,15 +110,6 @@
   let selected = $derived(
     rows.filter((row) => row.selectable && selection.includes(row.entry.path)),
   );
-  function size(bytes: number) {
-    return new Intl.NumberFormat(getLocale(), {
-      style: 'unit',
-      unit: 'megabyte',
-      maximumFractionDigits: 1,
-    })
-      .format(bytes / 1_000_000)
-      .replaceAll(' ', '\u00a0');
-  }
   $effect(() => {
     if (selectionCountry !== country) {
       selectionCountry = country;
@@ -195,7 +187,7 @@
     style="width: 100%"
   >
     {m.data_download()}{selected.length
-      ? ` · ${size(selected.reduce((total, row) => total + row.entry.size, 0))}`
+      ? ` · ${formatDataSize(selected.reduce((total, row) => total + row.entry.size, 0))}`
       : ''}
   </Button>
 {/snippet}
@@ -228,13 +220,15 @@
                   >{new Intl.DateTimeFormat(getLocale(), {
                     dateStyle: 'medium',
                     timeZone: 'UTC',
-                  }).format(new Date(row.entry.publicationDate))} · {size(row.entry.size)}</span
+                  }).format(new Date(row.entry.publicationDate))} · {formatDataSize(
+                    row.entry.size,
+                  )}</span
                 >
                 {#if row.transfer?.type === 'downloading'}
                   <span
                     >{m.data_downloading()} · {m.data_download_progress({
-                      done: size(row.transfer.downloaded),
-                      total: size(row.transfer.total),
+                      done: formatDataSize(row.transfer.downloaded),
+                      total: formatDataSize(row.transfer.total),
                     })}</span
                   >
                   <progress

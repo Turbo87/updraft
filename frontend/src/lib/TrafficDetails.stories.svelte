@@ -9,18 +9,15 @@
 
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
+  import { trafficTarget } from '$lib/traffic.fixture';
   import TrafficDetails from '../routes/traffic/[id]/TrafficDetails.svelte';
 
-  const target = {
-    id: 'flarm:DDX7A2',
+  const target = trafficTarget('flarm:DDX7A2', {
     position: { latitudeDegrees: 50.82902, longitudeDegrees: 6.24417 },
     altitudeMslMeters: 1180,
     climb: { average20s: 2.1, average30s: 0, normalizedEma: -0.5, smoothed20s: 1.5 },
-    trafficType: 'glider',
     trackDegrees: 241,
-    alarmLevel: 'none',
-    stale: false,
-  } satisfies PublishedTrafficTarget;
+  });
 
   const identifiedTarget = {
     ...target,

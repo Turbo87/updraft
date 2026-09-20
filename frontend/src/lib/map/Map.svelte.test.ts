@@ -7,6 +7,7 @@ import { page, userEvent } from 'vitest/browser';
 
 import { MapState } from '$lib/map-state.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
+import { trafficTarget } from '$lib/traffic.fixture';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import MapComponent from './Map.svelte';
 
@@ -305,15 +306,11 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
     value: {
       type: 'snapshot',
       value: [
-        {
-          id: 'flarm:000001',
+        trafficTarget('flarm:000001', {
           position,
           altitudeMslMeters: 500,
-          trafficType: 'glider',
           trackDegrees: 90,
-          alarmLevel: 'none',
-          stale: false,
-        },
+        }),
       ],
     },
   });

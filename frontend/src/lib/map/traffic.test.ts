@@ -1,8 +1,8 @@
 import type { ErrorEvent } from 'maplibre-gl';
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { trafficTarget } from '$lib/traffic.fixture';
 import {
   applyTrafficSourceUpdate,
   trafficFeature,
@@ -10,25 +10,13 @@ import {
   trafficSourceDiff,
 } from './traffic';
 
-function target(
-  id: string,
-  overrides: Partial<PublishedTrafficTarget> = {},
-): PublishedTrafficTarget {
-  return {
-    id,
-    position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
-    altitudeMslMeters: 200,
-    trafficType: 'glider',
-    trackDegrees: 270,
-    alarmLevel: 'none',
-    stale: false,
-    ...overrides,
-  };
-}
-
 describe('trafficFeature', () => {
   it('projects a target with a whole-meter altitude label', () => {
-    let feature = trafficFeature(target('flarm:000123', { altitudeMslMeters: 200.4 }), 'm', 'm/s');
+    let feature = trafficFeature(
+      trafficTarget('flarm:000123', { altitudeMslMeters: 200.4 }),
+      'm',
+      'm/s',
+    );
 
     expect(feature).toMatchInlineSnapshot(`
       {
@@ -55,7 +43,7 @@ describe('trafficFeature', () => {
 
   it('projects unknown track and altitude properties as null', () => {
     let feature = trafficFeature(
-      target('flarm:000123', { trackDegrees: null, altitudeMslMeters: null }),
+      trafficTarget('flarm:000123', { trackDegrees: null, altitudeMslMeters: null }),
       'm',
       'm/s',
     );
@@ -84,7 +72,7 @@ describe('trafficFeature', () => {
   });
 
   it('projects a target with a whole-foot altitude label', () => {
-    let feature = trafficFeature(target('flarm:000123'), 'ft', 'm/s');
+    let feature = trafficFeature(trafficTarget('flarm:000123'), 'ft', 'm/s');
 
     expect(feature.properties.label).toBe('656 ft');
   });
@@ -92,8 +80,8 @@ describe('trafficFeature', () => {
 
 describe('trafficFeatureCollection', () => {
   it('contains one point per target', () => {
-    let first = target('flarm:000001');
-    let second = target('icao:000002');
+    let first = trafficTarget('flarm:000001');
+    let second = trafficTarget('icao:000002');
 
     expect(trafficFeatureCollection([first, second], 'm', 'm/s').features.length).toEqual(2);
   });
@@ -101,7 +89,7 @@ describe('trafficFeatureCollection', () => {
 
 describe('trafficSourceDiff', () => {
   it('adds a new target', () => {
-    let added = target('flarm:000001');
+    let added = trafficTarget('flarm:000001');
 
     expect(trafficSourceDiff({ upserts: [added], removed: [] }, 'm', 'm/s')).toEqual({
       add: [trafficFeature(added, 'm', 'm/s')],
@@ -109,7 +97,7 @@ describe('trafficSourceDiff', () => {
   });
 
   it('upserts a complete existing target without source state', () => {
-    let updated = target('flarm:000001', {
+    let updated = trafficTarget('flarm:000001', {
       position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
       trafficType: 'towPlane',
       alarmLevel: 'important',
@@ -124,7 +112,7 @@ describe('trafficSourceDiff', () => {
   });
 
   it('writes null properties for an updated target without property removal', () => {
-    let updated = target('flarm:000001', {
+    let updated = trafficTarget('flarm:000001', {
       trackDegrees: null,
       altitudeMslMeters: null,
     });
@@ -147,7 +135,7 @@ describe('trafficSourceDiff', () => {
 
 describe('applyTrafficSourceUpdate', () => {
   it('rebuilds the complete current map for a snapshot', async () => {
-    let current = target('flarm:000002');
+    let current = trafficTarget('flarm:000002');
     let source = {
       setData: vi.fn(async () => {}),
       updateData: vi.fn(async () => {}),
@@ -169,7 +157,7 @@ describe('applyTrafficSourceUpdate', () => {
   });
 
   it('applies a delta without reading previous source state', async () => {
-    let updated = target('flarm:000001', { trackDegrees: 90 });
+    let updated = trafficTarget('flarm:000001', { trackDegrees: 90 });
     let delta = { upserts: [updated], removed: [] };
     let source = {
       setData: vi.fn(async () => {}),
@@ -190,7 +178,7 @@ describe('applyTrafficSourceUpdate', () => {
   });
 
   it('warns once and rebuilds the exact current map after a rejected delta', async () => {
-    let updated = target('flarm:000001', { trackDegrees: 90 });
+    let updated = trafficTarget('flarm:000001', { trackDegrees: 90 });
     let error = new Error('worker update failed');
     let source = {
       setData: vi.fn(async () => {}),
@@ -221,7 +209,7 @@ describe('applyTrafficSourceUpdate', () => {
   });
 
   it('warns once and rebuilds when a resolved delta emits a source error', async () => {
-    let updated = target('flarm:000001', { trackDegrees: 90 });
+    let updated = trafficTarget('flarm:000001', { trackDegrees: 90 });
     let error = new Error('worker update failed');
     let errorListener: ((event: ErrorEvent) => void) | undefined;
     let unsubscribe = vi.fn();
@@ -269,7 +257,7 @@ describe('traffic identity labels', () => {
   ])(
     'formats callsign %s, registration %s, and altitude %s',
     (callSign, registration, altitudeMslMeters, expected) => {
-      let traffic = target('flarm:ABC123', {
+      let traffic = trafficTarget('flarm:ABC123', {
         altitudeMslMeters,
         flarmnet: {
           flarmId: 'ABC123',
@@ -286,7 +274,7 @@ describe('traffic identity labels', () => {
   );
 
   it('prefers broadcast callsign and registration over FlarmNet', () => {
-    let traffic = target('flarm:ABC123', {
+    let traffic = trafficTarget('flarm:ABC123', {
       broadcastIdentity: { callsign: 'LIVE', registration: 'D-LIVE' },
       flarmnet: {
         flarmId: 'ABC123',
@@ -306,7 +294,7 @@ describe('traffic identity labels', () => {
 });
 
 it('adds positive smoothed climb by default in the selected vertical-speed unit', () => {
-  let aircraft = target('flarm:000123', {
+  let aircraft = trafficTarget('flarm:000123', {
     climb: { average20s: 1, average30s: 3, normalizedEma: 4, smoothed20s: 2.1 },
   });
   expect(trafficFeature(aircraft, 'm', 'm/s').properties.label).toBe('200 m\n+2.1 m/s');
@@ -322,7 +310,7 @@ it('adds positive smoothed climb by default in the selected vertical-speed unit'
 });
 
 it('switches the displayed method using estimates already on the target', () => {
-  let aircraft = target('flarm:000123', {
+  let aircraft = trafficTarget('flarm:000123', {
     climb: { average20s: 1, average30s: 3, normalizedEma: 2, smoothed20s: 4 },
   });
   expect(trafficFeature(aircraft, 'm', 'm/s', 'average20s').properties.label).toBe(
@@ -349,7 +337,7 @@ it.each([
   ['uav', false],
   ['staticObstacle', false],
 ] as const)('filters map climb labels for %s traffic', (trafficType, showClimb) => {
-  let aircraft = target('flarm:000123', {
+  let aircraft = trafficTarget('flarm:000123', {
     trafficType,
     climb: { average20s: 2, average30s: 2, normalizedEma: 2, smoothed20s: 2 },
   });

@@ -6,6 +6,7 @@ import '../../../app.css';
 
 import { InstrumentsStore } from '$lib/stores/instruments.svelte';
 import { TrafficStore } from '$lib/stores/traffic.svelte';
+import { trafficTarget } from '$lib/traffic.fixture';
 import TrafficDetails from './TrafficDetails.svelte';
 
 it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (width) => {
@@ -23,15 +24,11 @@ it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (wid
       value: {
         type: 'snapshot',
         value: [
-          {
-            id: 'flarm:ABC123',
+          trafficTarget('flarm:ABC123', {
             position: { latitudeDegrees: 50.82, longitudeDegrees: 6.24 },
             altitudeMslMeters: 1180,
-            trafficType: 'glider',
             trackDegrees: 241,
-            alarmLevel: 'none',
-            stale: false,
-          },
+          }),
         ],
       },
     });
@@ -74,15 +71,11 @@ it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (wid
 
 it('shows available identity fields and follows database replacements', async () => {
   let traffic = new TrafficStore();
-  let target = {
-    id: 'flarm:ABC123',
+  let target = trafficTarget('flarm:ABC123', {
     position: { latitudeDegrees: 50.82, longitudeDegrees: 6.24 },
     altitudeMslMeters: 1180,
-    trafficType: 'glider' as const,
     trackDegrees: 241,
-    alarmLevel: 'none' as const,
-    stale: false,
-  };
+  });
   let record = {
     flarmId: 'ABC123',
     callSign: 'EL',
@@ -145,14 +138,10 @@ it('shows available identity fields and follows database replacements', async ()
 
 it('prefers broadcast identity fields and uses FlarmNet for missing fields', async () => {
   let traffic = new TrafficStore();
-  let target = {
-    id: 'flarm:ABC123',
+  let target = trafficTarget('flarm:ABC123', {
     position: { latitudeDegrees: 50.82, longitudeDegrees: 6.24 },
     altitudeMslMeters: 1180,
-    trafficType: 'glider' as const,
     trackDegrees: 241,
-    alarmLevel: 'none' as const,
-    stale: false,
     broadcastIdentity: { callsign: 'LIVE', aircraftType: 'ASW 27' },
     flarmnet: {
       flarmId: 'ABC123',
@@ -163,7 +152,7 @@ it('prefers broadcast identity fields and uses FlarmNet for missing fields', asy
       airfield: 'Example Airfield',
       frequency: '123.450',
     },
-  };
+  });
   traffic.apply({ topic: 'traffic', value: { type: 'snapshot', value: [target] } });
 
   await render(TrafficDetails, {
@@ -194,16 +183,12 @@ it('prefers broadcast identity fields and uses FlarmNet for missing fields', asy
 
 it('shows all signed climb estimates and updates their units and availability', async () => {
   let traffic = new TrafficStore();
-  let target = {
-    id: 'flarm:ABC123',
+  let target = trafficTarget('flarm:ABC123', {
     position: { latitudeDegrees: 50.82, longitudeDegrees: 6.24 },
     altitudeMslMeters: 1180,
-    trafficType: 'glider' as const,
     trackDegrees: 241,
-    alarmLevel: 'none' as const,
-    stale: false,
     climb: { average20s: 2, average30s: 0, normalizedEma: -1, smoothed20s: 1 },
-  };
+  });
   traffic.apply({ topic: 'traffic', value: { type: 'snapshot', value: [target] } });
   let screen = await render(TrafficDetails, {
     backLabel: 'Back',

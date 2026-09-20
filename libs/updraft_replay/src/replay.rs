@@ -1396,15 +1396,16 @@ mod tests {
         assert_ok!(str::from_utf8(event.payload()))
     }
 
+    fn messages(mut input: &[u8]) -> impl Iterator<Item = Message> {
+        std::iter::from_fn(move || match parse(&mut input) {
+            Step::Frame(message) => Some(message),
+            Step::Incomplete => None,
+            step => panic!("expected NMEA frame, got {step:?}"),
+        })
+    }
+
     fn assert_payload_parses(event: &ReplayEvent) {
-        let mut input = event.payload().as_ref();
-        loop {
-            match parse(&mut input) {
-                Step::Frame(_) => {}
-                Step::Incomplete => return,
-                step => panic!("expected NMEA frame, got {step:?}"),
-            }
-        }
+        messages(event.payload()).for_each(drop);
     }
 
     fn first_rmc(event: &ReplayEvent) -> Rmc {
@@ -1415,27 +1416,21 @@ mod tests {
     }
 
     fn rmc_messages(event: &ReplayEvent) -> Vec<Rmc> {
-        let mut input = event.payload().as_ref();
-        let mut messages = Vec::new();
-        loop {
-            match parse(&mut input) {
-                Step::Frame(Message::Rmc(rmc)) => messages.push(rmc),
-                Step::Frame(_) => {}
-                Step::Incomplete => return messages,
-                step => panic!("expected NMEA frame, got {step:?}"),
-            }
-        }
+        messages(event.payload())
+            .filter_map(|message| match message {
+                Message::Rmc(value) => Some(value),
+                _ => None,
+            })
+            .collect()
     }
 
     fn first_gga(event: &ReplayEvent) -> Gga {
-        let mut input = event.payload().as_ref();
-        loop {
-            match parse(&mut input) {
-                Step::Frame(Message::Gga(gga)) => return gga,
-                Step::Frame(_) => {}
-                step => panic!("expected GGA frame, got {step:?}"),
-            }
-        }
+        messages(event.payload())
+            .find_map(|message| match message {
+                Message::Gga(value) => Some(value),
+                _ => None,
+            })
+            .expect("expected GGA frame")
     }
 
     fn first_lxwp0(event: &ReplayEvent) -> Lxwp0 {
@@ -1458,26 +1453,20 @@ mod tests {
     }
 
     fn lxwp0_messages(event: &ReplayEvent) -> Vec<Lxwp0> {
-        let mut input = event.payload().as_ref();
-        let mut messages = Vec::new();
-        loop {
-            match parse(&mut input) {
-                Step::Frame(Message::Lxwp0(lxwp0)) => messages.push(lxwp0),
-                Step::Frame(_) => {}
-                Step::Incomplete => return messages,
-                step => panic!("expected NMEA frame, got {step:?}"),
-            }
-        }
+        messages(event.payload())
+            .filter_map(|message| match message {
+                Message::Lxwp0(value) => Some(value),
+                _ => None,
+            })
+            .collect()
     }
 
     fn first_plxvs(event: &ReplayEvent) -> Plxvs {
-        let mut input = event.payload().as_ref();
-        loop {
-            match parse(&mut input) {
-                Step::Frame(Message::Plxvs(plxvs)) => return plxvs,
-                Step::Frame(_) => {}
-                step => panic!("expected PLXVS frame, got {step:?}"),
-            }
-        }
+        messages(event.payload())
+            .find_map(|message| match message {
+                Message::Plxvs(value) => Some(value),
+                _ => None,
+            })
+            .expect("expected PLXVS frame")
     }
 }

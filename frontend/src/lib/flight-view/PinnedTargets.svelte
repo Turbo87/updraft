@@ -2,8 +2,6 @@
   import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
-  import { resolve } from '$app/paths';
-
   import { navigationLabel } from '$lib/navigation';
   import { m } from '$lib/paraglide/messages';
   import TargetBar from './TargetBar.svelte';
@@ -20,7 +18,7 @@
         navigation={pin.navigation}
         {units}
         compact
-        href={resolve('/pinned-targets/[id]', { id: String(pin.id) })}
+        href={`/pinned-targets/${pin.id}`}
         label={`${m.pins_details()}: ${navigationLabel(pin.navigation)}`}
       />
     {/each}

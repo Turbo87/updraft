@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Pathname } from '$app/types';
   import type { Navigation } from '$lib/protocol/generated/Navigation';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 
@@ -12,14 +13,14 @@
   type Props = {
     navigation: Navigation;
     units: UnitSettings;
-    href?: string;
+    href?: Pathname;
     label?: string;
     compact?: boolean;
   };
   let {
     navigation,
     units,
-    href = resolve('/navigation'),
+    href = '/navigation',
     label = m.navigation_details(),
     compact = false,
   }: Props = $props();
@@ -31,7 +32,7 @@
   const number = $derived(new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 1 }));
 </script>
 
-<a {href} aria-label={label} class:compact class:stale={guidance?.stale}>
+<a href={resolve(href)} aria-label={label} class:compact class:stale={guidance?.stale}>
   {#if compact}<span
       aria-hidden="true"
       class={navigation.target.type === 'traffic'

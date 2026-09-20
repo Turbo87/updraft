@@ -437,16 +437,8 @@ impl Core {
     }
 
     fn select_pressure_altitude_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
-        let selected_source_was_reset = self
-            .pressure_altitude
-            .selected()
-            .is_some_and(|selected| selected.source == source);
-
         self.select_pressure_altitude(at);
-        if selected_source_was_reset && matches!(self.pressure_altitude, DomainState::LastKnown(_))
-        {
-            self.pressure_altitude = DomainState::Unavailable;
-        }
+        self.pressure_altitude.discard_last_known_from(source);
     }
 
     fn select_true_airspeed(&mut self, at: Timestamp) {
@@ -469,27 +461,13 @@ impl Core {
     }
 
     fn select_true_airspeed_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
-        let selected_source_was_reset = self
-            .true_airspeed
-            .selected()
-            .is_some_and(|selected| selected.source == source);
-
         self.select_true_airspeed(at);
-        if selected_source_was_reset && matches!(self.true_airspeed, DomainState::LastKnown(_)) {
-            self.true_airspeed = DomainState::Unavailable;
-        }
+        self.true_airspeed.discard_last_known_from(source);
     }
 
     fn select_gps_after_source_reset(&mut self, source: SourceId, at: Timestamp) {
-        let selected_source_was_reset = self
-            .gps
-            .selected()
-            .is_some_and(|selected| selected.source == source);
-
         self.select_gps(at);
-        if selected_source_was_reset && matches!(self.gps, DomainState::LastKnown(_)) {
-            self.gps = DomainState::Unavailable;
-        }
+        self.gps.discard_last_known_from(source);
         self.update_solar_position(at);
     }
 

@@ -73,6 +73,14 @@ pub struct Selected<T> {
 pub type DomainState<T> = SignalState<Selected<T>>;
 
 impl<T> SignalState<Selected<T>> {
+    pub fn discard_last_known_from(&mut self, source: SourceId) {
+        if let Self::LastKnown(selected) = self
+            && selected.source == source
+        {
+            *self = Self::Unavailable;
+        }
+    }
+
     /// Returns the selected snapshot for current and last-known states.
     pub fn selected(&self) -> Option<&Selected<T>> {
         match self {

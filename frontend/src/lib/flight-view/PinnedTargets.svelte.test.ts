@@ -72,5 +72,5 @@ it('displays pin guidance with units and updates missing and stale values', asyn
   });
   await expect.element(page.getByLabelText('Arrival margin')).not.toBeInTheDocument();
   await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('-1,000 ft');
-  await expect.element(page.getByText('Last report 31s ago')).toBeVisible();
+  await expect.element(page.getByText('(31s)')).toBeVisible();
 });

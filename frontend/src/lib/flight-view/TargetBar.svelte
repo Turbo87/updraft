@@ -30,6 +30,12 @@
     new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0, signDisplay: 'always' }),
   );
   const number = $derived(new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 1 }));
+
+  function formatReportAge(seconds: number): string {
+    if (seconds >= 3600) return `${Math.floor(seconds / 3600)}h`;
+    if (seconds >= 60) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds)}s`;
+  }
 </script>
 
 <a href={resolve(href)} aria-label={label} class:compact class:stale={guidance?.stale}>
@@ -45,8 +51,8 @@
     >{navigationLabel(navigation)}
     {#if navigation.target.type === 'traffic'}
       {#if !navigation.traffic}<small>{m.navigation_waiting()}</small>
-      {:else if navigation.traffic.stale}<small
-          >{m.navigation_report_age({ seconds: navigation.traffic.ageSeconds })}</small
+      {:else if navigation.traffic.stale}<small class="report-age"
+          >({formatReportAge(navigation.traffic.ageSeconds)})</small
         >{/if}
     {/if}
   </strong>
@@ -112,6 +118,9 @@
   small {
     display: block;
     font: var(--text-row-label);
+  }
+  small.report-age {
+    display: inline;
   }
   span {
     white-space: nowrap;

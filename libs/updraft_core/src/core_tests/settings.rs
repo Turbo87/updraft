@@ -110,19 +110,9 @@ fn setting_locale_updates_the_topic_and_requests_persistence() {
         locale: Some(Locale::De),
         ..Settings::default()
     };
-    let snapshot = SettingsSnapshot {
-        settings,
-        external_devices: Vec::new(),
-    };
 
     let input = SetLocale::new(Locale::De);
-    assert_eq!(
-        core.apply(input, at(0)).effects,
-        vec![
-            Effect::emit(Topic::Settings(settings)),
-            Effect::persist_settings(snapshot),
-        ]
-    );
+    assert_eq!(core.apply(input, at(0)).effects, settings_effects(settings));
     assert_eq!(
         core.topics(),
         vec![
@@ -171,19 +161,9 @@ fn setting_units_updates_the_topic_and_requests_persistence() {
         units,
         ..Settings::default()
     };
-    let snapshot = SettingsSnapshot {
-        settings,
-        external_devices: Vec::new(),
-    };
 
     let input = SetUnits::new(units);
-    assert_eq!(
-        core.apply(input, at(0)).effects,
-        vec![
-            Effect::emit(Topic::Settings(settings)),
-            Effect::persist_settings(snapshot),
-        ]
-    );
+    assert_eq!(core.apply(input, at(0)).effects, settings_effects(settings));
     assert_eq!(
         core.topics(),
         vec![
@@ -226,17 +206,10 @@ fn setting_polar_updates_settings_and_requests_persistence() {
         polar,
         ..Settings::default()
     };
-    let snapshot = SettingsSnapshot {
-        settings,
-        external_devices: Vec::new(),
-    };
 
     assert_eq!(
         core.apply(SetPolar { polar }, at(0)).effects,
-        vec![
-            Effect::emit(Topic::Settings(settings)),
-            Effect::persist_settings(snapshot),
-        ]
+        settings_effects(settings)
     );
     assert_eq!(core.apply(SetPolar { polar }, at(1)).effects, vec![]);
 }
@@ -249,18 +222,8 @@ fn arrival_reserve_publishes_and_persists_only_changes() {
         arrival_reserve: reserve,
         ..Settings::default()
     };
-    let snapshot = SettingsSnapshot {
-        settings,
-        ..SettingsSnapshot::default()
-    };
     let effects = core.apply(SetArrivalReserve { reserve }, at(0)).effects;
-    assert_eq!(
-        effects,
-        vec![
-            Effect::emit(settings.as_topic()),
-            Effect::persist_settings(snapshot),
-        ]
-    );
+    assert_eq!(effects, settings_effects(settings));
     let repeated = core.apply(SetArrivalReserve { reserve }, at(1));
     assert_eq!(repeated.effects, vec![]);
 }
@@ -340,16 +303,7 @@ fn climb_average_method_defaults_and_persists_changes() {
             climb_average_method: method,
             ..Settings::default()
         };
-        assert_eq!(
-            effects,
-            vec![
-                Effect::emit(expected.as_topic()),
-                Effect::persist_settings(SettingsSnapshot {
-                    settings: expected,
-                    ..SettingsSnapshot::default()
-                })
-            ]
-        );
+        assert_eq!(effects, settings_effects(expected));
         assert!(
             core.apply(SetClimbAverageMethod { method }, at(1))
                 .effects
@@ -381,13 +335,7 @@ fn hillshade_direction_defaults_and_persists_changes() {
         assert_eq!(
             core.apply(SetHillshadeDirection { direction }, at(0))
                 .effects,
-            vec![
-                Effect::emit(expected.as_topic()),
-                Effect::persist_settings(SettingsSnapshot {
-                    settings: expected,
-                    ..SettingsSnapshot::default()
-                }),
-            ]
+            settings_effects(expected)
         );
         assert!(
             core.apply(SetHillshadeDirection { direction }, at(1))
@@ -419,13 +367,7 @@ fn energy_compensation_persists_both_modes_and_ignores_noop_changes() {
         };
         assert_eq!(
             core.apply(SetEnergyCompensation { enabled }, at(0)).effects,
-            vec![
-                Effect::emit(expected.as_topic()),
-                Effect::persist_settings(SettingsSnapshot {
-                    settings: expected,
-                    ..SettingsSnapshot::default()
-                }),
-            ]
+            settings_effects(expected)
         );
         assert!(
             core.apply(SetEnergyCompensation { enabled }, at(0))
@@ -460,20 +402,21 @@ fn flarm_position_correction_persists_both_modes_and_ignores_noop_changes() {
         };
         let command = SetFlarmPositionCorrection { enabled };
         let effects = core.apply(command, at(0)).effects;
-        assert_eq!(
-            effects,
-            vec![
-                Effect::emit(expected.as_topic()),
-                Effect::persist_settings(SettingsSnapshot {
-                    settings: expected,
-                    ..SettingsSnapshot::default()
-                }),
-            ]
-        );
+        assert_eq!(effects, settings_effects(expected));
         let effects = core.apply(command, at(0)).effects;
         assert!(effects.is_empty());
         let json = claims::assert_ok!(serde_json::to_string(&core.settings_snapshot()));
         let restored = Core::new(claims::assert_ok!(serde_json::from_str(&json)));
         assert_eq!(restored.settings, expected);
     }
+}
+
+fn settings_effects(settings: Settings) -> Vec<Effect> {
+    vec![
+        Effect::emit(settings.as_topic()),
+        Effect::persist_settings(SettingsSnapshot {
+            settings,
+            ..SettingsSnapshot::default()
+        }),
+    ]
 }

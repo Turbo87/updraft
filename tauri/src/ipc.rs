@@ -453,6 +453,15 @@ pub fn subscribe(channel: Channel<Topic>, handle: tauri::State<'_, DriverHandle>
     }));
 }
 
+#[tauri::command]
+pub async fn set_navigation_target(
+    target: Option<updraft_core::NavigationTarget>,
+    handle: tauri::State<'_, DriverHandle>,
+    file: tauri::State<'_, crate::navigation::NavigationFile>,
+) -> Result<bool, String> {
+    file.select(&handle, target).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -465,6 +474,8 @@ mod tests {
     use crate::test_support::{invoke, request, spawn_driver};
     use crate::waypoints::{commands::WaypointCommandState, storage::WaypointStorage};
     use serde_json::{Value, json};
+    use std::time::Duration;
+    use tauri::Manager;
     use tempfile::tempdir;
     use updraft_core::{AirspaceSource, AirspaceState, GetAirspaceSnapshot, SettingsSnapshot};
 
@@ -478,7 +489,11 @@ mod tests {
             AirspaceState::none_at_startup(),
         );
 
+        let directory = tempdir().unwrap();
+        let navigation_file = crate::navigation::NavigationFile::new(directory.path().to_owned());
         tauri::test::mock_builder()
+            .manage(navigation_file)
+            .manage(directory)
             .manage(handle)
             .plugin(tauri_plugin_updraft::init())
             .invoke_handler(tauri::generate_handler![
@@ -486,6 +501,7 @@ mod tests {
                 set_locale,
                 set_units,
                 get_polars,
+                set_navigation_target,
                 set_mac_cready,
                 set_bugs,
                 set_ballast,
@@ -504,6 +520,115 @@ mod tests {
             ])
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .expect("the IPC test app should build")
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn navigation_target_uses_ipc_deserialization() {
+        let app = app();
+        claims::assert_ok!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": {
+                "type": "waypoint", "name": "Home", "latitudeDegrees": 50., "longitudeDegrees": 6., "elevationMeters": 100.
+            }})
+        ));
+        claims::assert_err!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": {
+                "type": "waypoint", "name": "Home", "latitudeDegrees": 95., "longitudeDegrees": 6., "elevationMeters": 100.
+            }})
+        ));
+        claims::assert_ok!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": null})
+        ));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn navigation_saves_replaces_and_clears_the_target() {
+        let app = app();
+        let file = app.state::<crate::navigation::NavigationFile>();
+        for name in ["First", "Second"] {
+            claims::assert_ok!(invoke_airspace_args(
+                &app,
+                "set_navigation_target",
+                json!({"target": {
+                    "type": "waypoint", "name": name, "latitudeDegrees": 50., "longitudeDegrees": 6., "elevationMeters": 100.
+                }})
+            ));
+            let target = claims::assert_some!(claims::assert_ok!(file.load()));
+            std::assert_matches!(target, updraft_core::NavigationTarget::Waypoint { name: saved, .. } if saved == name);
+        }
+        claims::assert_ok!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": null})
+        ));
+        claims::assert_none!(claims::assert_ok!(file.load()));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn navigation_persists_only_the_traffic_id() {
+        let app = app();
+        assert_eq!(
+            claims::assert_ok!(invoke_airspace_args(
+                &app,
+                "set_navigation_target",
+                json!({"target": {"type":"traffic", "id":"icao:ABC123"}})
+            )),
+            json!(true)
+        );
+        let directory = app.state::<tempfile::TempDir>();
+        let saved = claims::assert_ok!(std::fs::read_to_string(
+            directory.path().join("navigation.json")
+        ));
+        insta::assert_snapshot!(saved, @r#"{"type":"traffic","id":"icao:ABC123"}"#);
+        let file = app.state::<crate::navigation::NavigationFile>();
+        std::assert_matches!(
+            claims::assert_ok!(file.load()),
+            Some(updraft_core::NavigationTarget::Traffic { .. })
+        );
+        claims::assert_err!(invoke_airspace_args(
+            &app,
+            "set_navigation_target",
+            json!({"target": {"type":"traffic", "id":"invalid"}})
+        ));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[tracing_test::traced_test]
+    async fn navigation_reports_storage_failure_but_keeps_the_target() {
+        let app = app();
+        let directory = app.state::<tempfile::TempDir>();
+        claims::assert_ok!(std::fs::create_dir(
+            directory.path().join("navigation.json")
+        ));
+        assert_eq!(
+            claims::assert_ok!(invoke_airspace_args(
+                &app,
+                "set_navigation_target",
+                json!({"target": {
+                    "type": "waypoint", "name": "Home", "latitudeDegrees": 50., "longitudeDegrees": 6., "elevationMeters": 100.
+                }})
+            )),
+            json!(false)
+        );
+        let (sender, receiver) = std::sync::mpsc::channel();
+        app.state::<DriverHandle>()
+            .subscribe(Box::new(move |topic: &Topic| {
+                if let Topic::Navigation(value) = topic {
+                    sender.send(value.clone()).unwrap();
+                    return false;
+                }
+                true
+            }));
+        claims::assert_some!(claims::assert_ok!(
+            receiver.recv_timeout(Duration::from_secs(2))
+        ));
+        let logs = tracing_test::internal::global_buf().lock().unwrap().clone();
+        assert!(String::from_utf8_lossy(&logs).contains("Could not save navigation target"));
     }
 
     fn driver(airspace: AirspaceState) -> DriverHandle {

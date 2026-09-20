@@ -5,6 +5,8 @@ import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId'
 import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
 import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 import type { Locale } from '$lib/protocol/generated/Locale';
+import type { Navigation } from '$lib/protocol/generated/Navigation';
+import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Topic } from '$lib/protocol/generated/Topic';
@@ -56,6 +58,27 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #navigation: Navigation | null = null;
+  async setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
+    this.#navigation = target
+      ? {
+          target,
+          position:
+            target.type === 'traffic'
+              ? null
+              : {
+                  latitudeDegrees: target.latitudeDegrees,
+                  longitudeDegrees: target.longitudeDegrees,
+                },
+          guidance: null,
+          arrival: null,
+          traffic: null,
+        }
+      : null;
+    this.emit({ topic: 'navigation', value: this.#navigation });
+    return true;
+  }
+
   #basemaps: BasemapStatus = { generation: 0, sources: [] };
   #basemapListeners = new Set<(status: BasemapStatus) => void>();
 
@@ -277,6 +300,7 @@ export class FakeClient implements UpdraftClient {
 
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
+    onTopic({ topic: 'navigation', value: this.#navigation });
     onTopic({ topic: 'settings', value: this.#settings });
     onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });
     onTopic({ topic: 'externalDevices', value: this.#externalDevices });

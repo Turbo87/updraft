@@ -17,9 +17,20 @@
     altitudeUnit: AltitudeUnit;
     sourceStatus: MapState['waypointSourceStatus'];
     onBack: () => void;
+    onNavigate?: (waypoint: WaypointFeature) => void;
+    error?: boolean;
   };
 
-  let { map, id, generation, altitudeUnit, sourceStatus, onBack }: Props = $props();
+  let {
+    map,
+    id,
+    generation,
+    altitudeUnit,
+    sourceStatus,
+    onBack,
+    onNavigate,
+    error = false,
+  }: Props = $props();
   type State =
     { type: 'loading' | 'failed' | 'notFound' } | { type: 'ready'; waypoint: WaypointFeature };
   let queryState = $state.raw<State>({ type: 'loading' });
@@ -82,7 +93,17 @@
 </script>
 
 {#if queryState.type === 'ready'}
-  <WaypointDetails waypoint={queryState.waypoint} {altitudeUnit} {onBack} />
+  <WaypointDetails
+    {error}
+    waypoint={queryState.waypoint}
+    {altitudeUnit}
+    {onBack}
+    onNavigate={onNavigate
+      ? () => {
+          if (queryState.type === 'ready') onNavigate?.(queryState.waypoint);
+        }
+      : undefined}
+  />
 {:else}
   <ScreenScaffold title={m.waypoints_heading()} backLabel={m.waypoint_back()} {onBack}>
     {#if queryState.type === 'failed'}

@@ -80,3 +80,17 @@ it.each([undefined, 0])('omits unset runway dimensions (%s)', async (dimension) 
   await expect.element(page.getByText('Runway width')).not.toBeInTheDocument();
   await expect.element(page.getByText('000°', { exact: true })).toBeVisible();
 });
+
+it('selects the displayed waypoint for navigation', async () => {
+  let selected = false;
+  await render(WaypointDetails, {
+    waypoint: { type: 'Feature', geometry: { type: 'Point', coordinates: [6, 50] }, properties },
+    altitudeUnit: 'm',
+    onBack: () => {},
+    onNavigate: () => {
+      selected = true;
+    },
+  });
+  await page.getByRole('button', { name: 'Navigate to waypoint' }).click();
+  expect(selected).toBe(true);
+});

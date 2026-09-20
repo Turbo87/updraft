@@ -57,12 +57,23 @@ for (let notes of ['Notes', '']) {
     await expect(page.getByRole('heading', { name: 'Point 0' })).toBeVisible();
     await expect(page.getByText('123.500 MHz')).toBeVisible();
     await expect(page.getByText('090°')).toBeVisible();
+    await page.getByRole('button', { name: 'Navigate to waypoint' }).click();
+    await expect(page).toHaveURL('/');
+    await expect(page.getByRole('link', { name: 'Target details' })).toContainText('Point 0');
+    await page.goBack();
     await page.evaluate(async () => {
       await window.__updraftFake!.removeWaypoints('local.cup');
     });
     await expect(page.getByText('This waypoint is no longer available.')).toBeVisible();
     await page.goBack();
     await expect(page.getByText('No nearby waypoints.')).toBeVisible();
+    expect(await page.evaluate(() => window.__updraftApp!.navigation.current?.target)).toEqual({
+      type: 'waypoint',
+      name: 'Point 0',
+      latitudeDegrees: 50.823,
+      longitudeDegrees: 6.186,
+      elevationMeters: 100,
+    });
   });
 }
 

@@ -429,5 +429,20 @@
   "flarm_correction_description": "Experimental correction for FLARM traffic positions and altitudes. Disable it if traffic positions or altitudes become less accurate with your device.",
   "flarm_correction_enabled": "Enabled",
   "flarm_correction_disabled": "Disabled",
-  "flarm_correction_change_failed": "Could not change FLARM position correction."
+  "flarm_correction_change_failed": "Could not change FLARM position correction.",
+  "navigation_waypoint": "Navigate to waypoint",
+  "navigation_heading": "Navigation",
+  "navigation_stop": "Stop navigation",
+  "navigation_failed": "Navigation may have changed, but the choice could not be saved. A previous target can return after restart. Try again.",
+  "navigation_none": "No active target",
+  "navigation_true": "True bearing",
+  "navigation_relative": "Relative bearing",
+  "navigation_details": "Target details",
+  "navigation_arrival": "Arrival margin",
+  "navigation_here": "Navigate here",
+  "navigation_map_position": "Map position",
+  "navigation_waiting": "Waiting for traffic",
+  "navigation_report_age": "Last report {seconds}s ago",
+  "navigation_relative_altitude": "Relative altitude",
+  "navigation_traffic": "Navigate to traffic"
 }

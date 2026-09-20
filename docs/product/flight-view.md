@@ -87,6 +87,12 @@ targets and mark removed targets unavailable.
 The nearby page links to airspace and traffic detail routes. Returning to the
 map preserves its camera and follow state.
 
+## Goto navigation
+
+The target bar reserves space above the map when a primary target is active.
+Waypoint details, map inspection, and traffic details can select a target.
+See [Goto navigation](navigation.md) for target lifetime and guidance rules.
+
 ## Excluded behavior
 
 The current flight view does not include map orientation policy, automatic

@@ -1109,3 +1109,85 @@ fn elevation_discards_cached_tiles_when_inventory_changes() {
     assert_ok!(terrain.remove("enroute/Europe/a.terrain"));
     assert_none!(assert_ok!(terrain.reader.elevation(position)));
 }
+
+#[tokio::test]
+async fn navigation_uses_offline_elevation_and_clears_arrival_when_terrain_is_disabled() {
+    use std::time::Duration;
+    use updraft_core::{Fix, InternalGps, NavigationTarget, SetNavigationTarget, Topic};
+    let directory = assert_ok!(tempfile::tempdir());
+    assert_ok!(fs::create_dir_all(directory.path().join("enroute/Europe")));
+    write_terrain(
+        &directory.path().join("enroute/Europe/a.terrain"),
+        &[(0, 0, 0, &elevation_webp(100))],
+    );
+    let terrain = Arc::new(Mutex::new(assert_ok!(Terrain::load(directory.path()))));
+    let driver = crate::driver::tests::spawn(
+        Default::default(),
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    );
+    assert_ok!(
+        driver
+            .handle
+            .send(InternalGps::new(Fix {
+                position: updraft_geo::LatLon::from_degrees(40., 6.),
+                altitude_ellipsoid: Some(updraft_units::EllipsoidAltitude::new(
+                    updraft_units::Length::from_meters(1000.)
+                )),
+                ground_speed: None,
+                track: None,
+                fix_time: None,
+            }))
+            .await
+    );
+    assert_ok!(assert_ok!(
+        driver
+            .handle
+            .send(SetNavigationTarget(Some(NavigationTarget::MapPosition {
+                latitude_degrees: 40.,
+                longitude_degrees: 6.
+            })))
+            .await
+    ));
+    let (sender, mut results) = tokio::sync::mpsc::unbounded_channel();
+    driver.handle.subscribe(Box::new(move |topic| {
+        if let Topic::Navigation(Some(navigation)) = topic {
+            return sender.send(navigation.clone()).is_ok();
+        }
+        true
+    }));
+    let worker = tokio::spawn(watch_elevation(terrain.clone(), driver.handle.clone()));
+    let arrival = assert_ok!(
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                if let Some(arrival) = results.recv().await.unwrap().arrival {
+                    break arrival;
+                }
+            }
+        })
+        .await
+    );
+    assert!(!arrival.stale);
+    assert_ok!(
+        terrain
+            .lock()
+            .unwrap()
+            .set_enabled("enroute/Europe/a.terrain", false)
+    );
+    let unavailable = assert_ok!(
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let navigation = results.recv().await.unwrap();
+                if navigation.arrival.is_none() {
+                    break navigation;
+                }
+            }
+        })
+        .await
+    );
+    assert_some!(unavailable.guidance);
+    worker.abort();
+    assert!(worker.await.unwrap_err().is_cancelled());
+    driver.terminate().await;
+}

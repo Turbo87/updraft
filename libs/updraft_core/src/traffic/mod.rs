@@ -22,7 +22,7 @@ use updraft_nmea::{FlarmAircraftType, FlarmAlarmLevel, FlarmIdType, Pflaa, Pflam
 use updraft_units::{Angle, Length, MslAltitude};
 
 const REFERENCE_HOLD: Duration = Duration::from_secs(2);
-const STALE_AFTER: Duration = Duration::from_secs(5);
+pub const STALE_AFTER: Duration = Duration::from_secs(5);
 const REMOVE_AFTER: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -44,7 +44,10 @@ impl From<FlarmIdType> for TrafficTargetIdType {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
+#[serde(try_from = "String", into = "String")]
 pub struct TrafficTargetId {
     pub id_type: TrafficTargetIdType,
     pub value: u32,
@@ -53,6 +56,38 @@ pub struct TrafficTargetId {
 impl TrafficTargetId {
     pub fn new(id_type: TrafficTargetIdType, value: u32) -> Self {
         Self { id_type, value }
+    }
+}
+
+impl TryFrom<String> for TrafficTargetId {
+    type Error = &'static str;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let invalid = "Invalid traffic ID";
+        let (kind, hex) = value.rsplit_once(':').ok_or(invalid)?;
+        if hex.len() != 6 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(invalid);
+        }
+        let id_type = match kind {
+            "random" => TrafficTargetIdType::Random,
+            "icao" => TrafficTargetIdType::Icao,
+            "flarm" => TrafficTargetIdType::Flarm,
+            _ => TrafficTargetIdType::Other(
+                kind.strip_prefix("other:")
+                    .ok_or(invalid)?
+                    .parse()
+                    .map_err(|_| invalid)?,
+            ),
+        };
+        Ok(Self::new(
+            id_type,
+            u32::from_str_radix(hex, 16).map_err(|_| invalid)?,
+        ))
+    }
+}
+
+impl From<TrafficTargetId> for String {
+    fn from(id: TrafficTargetId) -> Self {
+        id.to_string()
     }
 }
 
@@ -346,6 +381,20 @@ impl TrafficState {
 
     pub fn snapshot(&self) -> Vec<TrafficTarget> {
         self.targets.values().map(|stored| stored.target).collect()
+    }
+
+    pub fn navigation_observation(
+        &self,
+        id: TrafficTargetId,
+        database: &FlarmnetDatabase,
+    ) -> Option<(PublishedTrafficTarget, Timestamp)> {
+        let stored = self.targets.get(&id)?;
+        Some((
+            stored
+                .target
+                .publish(database, self.broadcast_identities.get(&id)),
+            stored.position_observed_at,
+        ))
     }
 
     pub fn published_targets(&self, database: &FlarmnetDatabase) -> Vec<PublishedTrafficTarget> {

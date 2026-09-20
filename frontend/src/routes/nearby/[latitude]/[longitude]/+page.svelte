@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
   import { getAppContext } from '$lib/app-context';
+  import Button from '$lib/Button.svelte';
   import { calculateDistanceAndBearing } from '$lib/geographic-position';
   import NearbyResultsScreen from '$lib/NearbyResultsScreen.svelte';
   import { m } from '$lib/paraglide/messages.js';
@@ -14,10 +17,28 @@
   import NearbyWaypoints from './NearbyWaypoints.svelte';
   import { parseNearbyRouteCoordinates } from './params';
 
-  const { airspace, instruments, mapState, settings, traffic, waypoints } = getAppContext();
+  const { client, airspace, instruments, mapState, settings, traffic, waypoints } = getAppContext();
   const selectedPosition = $derived(
     parseNearbyRouteCoordinates(page.params.latitude, page.params.longitude),
   );
+  let error = $state(false);
+  let busy = $state(false);
+  async function navigate() {
+    if (!selectedPosition) return;
+    busy = true;
+    error = false;
+    try {
+      if (await client.setNavigationTarget({ type: 'mapPosition', ...selectedPosition })) {
+        await goto(resolve('/'));
+      } else {
+        error = true;
+      }
+    } catch {
+      error = true;
+    } finally {
+      busy = false;
+    }
+  }
   const locale = $derived(settings.current.locale ?? getLocale());
   const ownshipRelation = $derived(
     selectedPosition && instruments.current.gps?.position
@@ -98,7 +119,11 @@
     {/if}
   {/snippet}
 
+  {#snippet actions()}<Button loading={busy} onclick={navigate}>{m.navigation_here()}</Button
+    >{/snippet}
   <NearbyResultsScreen
+    {actions}
+    {error}
     waypoints={waypointResults}
     {airspaces}
     backLabel={m.back_to_map()}

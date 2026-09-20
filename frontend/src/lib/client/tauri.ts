@@ -3,6 +3,7 @@ import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
 import type { Locale } from '$lib/protocol/generated/Locale';
+import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
@@ -32,6 +33,10 @@ type ArrivalNotification =
 
 /** Invokes the concrete Tauri commands that form the frontend shell boundary. */
 export class TauriClient implements UpdraftClient {
+  setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
+    return invoke('set_navigation_target', { target });
+  }
+
   subscribeBasemaps(
     onUpdate: (status: BasemapStatus) => void,
     onError: (error: unknown) => void,

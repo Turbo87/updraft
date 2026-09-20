@@ -75,6 +75,14 @@ impl GlideSnapshot {
     /// Stale position or altitude marks the result stale. Stale wind remains usable.
     /// Returns `None` for missing position or fused altitude, or an unsolvable glide.
     pub fn arrival_at(&self, waypoint: &Waypoint) -> Option<WaypointArrival> {
+        self.arrival_at_position(waypoint.position, waypoint.elevation.into_inner())
+    }
+
+    pub fn arrival_at_position(
+        &self,
+        destination: LatLon,
+        elevation: Length,
+    ) -> Option<WaypointArrival> {
         let gps = self.instruments.gps?;
         let derived = self.instruments.derived.as_ref()?;
         let altitude = derived.altitude?;
@@ -82,7 +90,7 @@ impl GlideSnapshot {
             gps.position.latitude_degrees,
             gps.position.longitude_degrees,
         );
-        let (distance, bearing) = position.distance_bearing(waypoint.position);
+        let (distance, bearing) = position.distance_bearing(destination);
         let (tailwind, crosswind) = derived.wind.map_or((0., 0.), |wind| {
             let angle = wind.direction_degrees.to_radians() - bearing.as_radians();
             let speed = wind.speed_meters_per_second;
@@ -97,7 +105,7 @@ impl GlideSnapshot {
         )?;
         let margin = altitude.altitude_msl_meters
             - glide.height_loss.as_meters()
-            - waypoint.elevation.into_inner().as_meters()
+            - elevation.as_meters()
             - self.arrival_reserve.meters();
         Some(WaypointArrival {
             margin: Length::from_meters(margin),

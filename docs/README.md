@@ -37,6 +37,8 @@ must state whether its behavior is current or planned.
   elevation colours, and source attribution.
 - [Traffic](product/traffic.md) defines FLARM observation, identity, freshness,
   topic updates, map presentation, and details.
+- [Goto navigation](product/navigation.md) defines primary targets, guidance,
+  traffic loss, and saved-target recovery.
 - [Flight View](product/flight-view.md) defines the map session, position follow
   mode, and map inspection.
 

@@ -1,6 +1,7 @@
 mod airspace;
 mod external_devices;
 mod flarm_reference;
+mod navigation;
 mod ownship;
 mod pressure_altitude;
 mod settings;

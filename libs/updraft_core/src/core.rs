@@ -37,6 +37,10 @@ use updraft_units::{MslAltitude, PressureAltitude, Speed};
 /// with no runtime, sleeps or wall clock.
 #[derive(Debug)]
 pub struct Core {
+    navigation_target: Option<crate::NavigationTarget>,
+    navigation_elevation: Option<f64>,
+    navigation_report: Option<(crate::PublishedTrafficTarget, Timestamp)>,
+    navigation_at: Timestamp,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -70,6 +74,10 @@ impl Core {
         let mut sensor_fusion = SensorFusion::default();
         sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
+            navigation_target: None,
+            navigation_elevation: None,
+            navigation_report: None,
+            navigation_at: Timestamp::default(),
             settings,
             glide_performance,
             external_devices: ExternalDevices::from_device_configs(external_devices),
@@ -94,7 +102,19 @@ impl Core {
     /// `at` is supplied by the shell rather than read, which is what keeps
     /// the core deterministic.
     pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
-        input.apply_to(self, at)
+        let before = self.navigation();
+        let mut update = input.apply_to(self, at);
+        self.navigation_at = self.navigation_at.max(at);
+        if let Some(crate::NavigationTarget::Traffic { id }) = self.navigation_target
+            && let Some(report) = self.traffic.navigation_observation(id, &self.flarmnet)
+        {
+            self.navigation_report = Some(report);
+        }
+        let after = self.navigation();
+        if before != after {
+            update.effects.push(Effect::Emit(Topic::Navigation(after)));
+        }
+        update
     }
 
     /// The current value of every topic, for a client that has just
@@ -108,6 +128,7 @@ impl Core {
             Topic::Airspace(self.airspace.status()),
             Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
             Topic::Traffic(TrafficUpdate::Snapshot(traffic)),
+            Topic::Navigation(self.navigation()),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -964,16 +985,7 @@ impl Input for crate::GetGlideSnapshot {
     type Response = crate::GlideSnapshot;
 
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
-        Update::empty().with_response(crate::GlideSnapshot {
-            waypoints: crate::WaypointSnapshot {
-                generation: core.waypoint_generation,
-                catalog: core.waypoints.clone(),
-            },
-            instruments: core.instruments(),
-            polar: core.glide_performance.glide_polar(core.settings.polar),
-            mac_cready: core.glide_performance.mac_cready,
-            arrival_reserve: core.settings.arrival_reserve,
-        })
+        Update::empty().with_response(core.glide_snapshot())
     }
 }
 
@@ -1013,6 +1025,62 @@ impl Input for ReplaceFlarmnetDatabase {
     }
 }
 
+impl Core {
+    fn glide_snapshot(&self) -> crate::GlideSnapshot {
+        crate::GlideSnapshot {
+            waypoints: crate::WaypointSnapshot {
+                generation: self.waypoint_generation,
+                catalog: self.waypoints.clone(),
+            },
+            instruments: self.instruments(),
+            polar: self.glide_performance.glide_polar(self.settings.polar),
+            mac_cready: self.glide_performance.mac_cready,
+            arrival_reserve: self.settings.arrival_reserve,
+        }
+    }
+
+    fn navigation(&self) -> Option<crate::Navigation> {
+        self.navigation_target.clone().map(|target| {
+            crate::Navigation::new(
+                target,
+                &self.glide_snapshot(),
+                self.navigation_elevation,
+                self.navigation_report.as_ref(),
+                self.navigation_at,
+            )
+        })
+    }
+}
+
+impl Input for crate::SetNavigationTarget {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        if let Some(target) = &self.0
+            && let Err(error) = target.validate()
+        {
+            return Update::empty().with_response(Err(error));
+        }
+        if core.navigation_target != self.0 {
+            core.navigation_elevation = None;
+            core.navigation_report = None;
+        }
+        core.navigation_target = self.0;
+        Update::empty().with_response(Ok(()))
+    }
+}
+
 #[cfg(test)]
 #[path = "core_tests/mod.rs"]
 mod tests;
+
+impl Input for crate::NavigationElevation {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if let Some(target @ crate::NavigationTarget::MapPosition { .. }) = &core.navigation_target
+            && target.position() == Some(self.position)
+        {
+            core.navigation_elevation = self.meters.filter(|meters| meters.is_finite());
+        }
+        Update::empty()
+    }
+}

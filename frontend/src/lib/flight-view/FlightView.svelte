@@ -6,6 +6,7 @@
   import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
   import type { Instruments } from '$lib/protocol/generated/Instruments';
   import type { LatLon } from '$lib/protocol/generated/LatLon';
+  import type { Navigation as NavigationState } from '$lib/protocol/generated/Navigation';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -18,8 +19,10 @@
   import { m } from '$lib/paraglide/messages.js';
   import { flightInfoboxes } from './infobox/fields';
   import InfoboxDock from './infobox/InfoboxDock.svelte';
+  import TargetBar from './TargetBar.svelte';
 
   type Props = {
+    navigation?: NavigationState | null;
     climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
     airspace: AirspaceStatus;
@@ -35,6 +38,7 @@
   };
 
   let {
+    navigation = null,
     climbAverageMethod = 'smoothed20s',
     client,
     airspace,
@@ -61,24 +65,28 @@
 </script>
 
 <section class="flight-view" aria-label={m.flight_view()}>
-  <div class="map">
-    <Map
-      {climbAverageMethod}
-      {client}
-      {airspace}
-      {basemapGeneration}
-      {terrainGeneration}
-      {waypoints}
-      {instruments}
-      {hillshadeDirection}
-      {mapState}
-      {traffic}
-      {units}
-      {testMode}
-      onInspect={openNearbyRoute}
-    />
-    <div class="overlay">
-      <MapOverlayControl href="/settings" icon="i-mdi-menu" label={m.settings_heading()} />
+  <div class="main">
+    {#if navigation}<TargetBar {navigation} {units} />{/if}
+    <div class="map" class:has-target={navigation !== null}>
+      <Map
+        {navigation}
+        {climbAverageMethod}
+        {client}
+        {airspace}
+        {basemapGeneration}
+        {terrainGeneration}
+        {waypoints}
+        {instruments}
+        {hillshadeDirection}
+        {mapState}
+        {traffic}
+        {units}
+        {testMode}
+        onInspect={openNearbyRoute}
+      />
+      <div class="overlay">
+        <MapOverlayControl href="/settings" icon="i-mdi-menu" label={m.settings_heading()} />
+      </div>
     </div>
   </div>
   <InfoboxDock {infoboxes} />
@@ -93,6 +101,16 @@
     height: 100%;
   }
 
+  .main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+  .map.has-target {
+    --safe-area-top: 0px;
+  }
   .map {
     --safe-area-bottom: 0px;
     position: relative;

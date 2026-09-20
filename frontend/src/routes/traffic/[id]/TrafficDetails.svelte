@@ -9,6 +9,7 @@
 
   import { onMount } from 'svelte';
 
+  import Button from '$lib/Button.svelte';
   import Card from '$lib/Card.svelte';
   import { calculateDistanceAndBearing } from '$lib/geographic-position';
   import { m } from '$lib/paraglide/messages.js';
@@ -34,9 +35,23 @@
     onBack: (event: MouseEvent) => void;
     traffic: TrafficStore;
     units: UnitSettings;
+    onNavigate?: () => void;
+    navigationError?: boolean;
+    navigating?: boolean;
   };
 
-  let { backLabel, id, instruments, locale, onBack, traffic, units }: Props = $props();
+  let {
+    backLabel,
+    id,
+    instruments,
+    locale,
+    onBack,
+    traffic,
+    units,
+    onNavigate,
+    navigationError = false,
+    navigating = false,
+  }: Props = $props();
 
   let retainedTarget = $state.raw<RetainedTarget>();
   let ownshipRelation = $derived(
@@ -154,7 +169,16 @@
   });
 </script>
 
-<ScreenScaffold {backLabel} {onBack} title={formatTrafficId(id)}>
+{#snippet navigationAction()}<Button onclick={onNavigate} loading={navigating}
+    >{m.navigation_traffic()}</Button
+  >{/snippet}
+<ScreenScaffold
+  {backLabel}
+  {onBack}
+  title={formatTrafficId(id)}
+  actions={onNavigate ? navigationAction : undefined}
+>
+  {#if navigationError}<p role="alert">{m.navigation_failed()}</p>{/if}
   {#if !traffic.initialized || retainedTarget === undefined}
     <Card>
       <p class="empty-state">{m.traffic_details_loading()}</p>

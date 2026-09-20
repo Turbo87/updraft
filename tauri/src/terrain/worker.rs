@@ -5,11 +5,29 @@ use std::{
     time::Duration,
 };
 use tokio::sync::watch;
-use updraft_core::{TerrainElevation, Topic};
+use updraft_core::{NavigationElevation, NavigationTarget, TerrainElevation, Topic};
 
 pub async fn watch_elevation(
     terrain: Arc<Mutex<Terrain>>,
     driver: DriverHandle,
+) -> anyhow::Result<()> {
+    tokio::try_join!(
+        watch_position(terrain.clone(), driver.clone(), ElevationTarget::Ownship),
+        watch_position(terrain, driver, ElevationTarget::Navigation),
+    )?;
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum ElevationTarget {
+    Ownship,
+    Navigation,
+}
+
+async fn watch_position(
+    terrain: Arc<Mutex<Terrain>>,
+    driver: DriverHandle,
+    target: ElevationTarget,
 ) -> anyhow::Result<()> {
     let mut generations = terrain
         .lock()
@@ -18,8 +36,20 @@ pub async fn watch_elevation(
         .subscribe();
     let (sender, mut positions) = watch::channel(None);
     driver.subscribe(Box::new(move |topic| {
-        if let Topic::Instruments(instruments) = topic {
-            let position = instruments.gps.map(|gps| gps.position);
+        let position = match (target, topic) {
+            (ElevationTarget::Ownship, Topic::Instruments(instruments)) => {
+                Some(instruments.gps.map(|gps| gps.position))
+            }
+            (ElevationTarget::Navigation, Topic::Navigation(navigation)) => {
+                Some(navigation.as_ref().and_then(|navigation| {
+                    matches!(navigation.target, NavigationTarget::MapPosition { .. })
+                        .then_some(navigation.position)
+                        .flatten()
+                }))
+            }
+            _ => None,
+        };
+        if let Some(position) = position {
             sender.send_if_modified(|previous| {
                 if *previous == position {
                     return false;
@@ -64,7 +94,16 @@ pub async fn watch_elevation(
                     (None, true)
                 }
             };
-            driver.send(TerrainElevation { position, meters }).await?;
+            match target {
+                ElevationTarget::Ownship => {
+                    driver.send(TerrainElevation { position, meters }).await?
+                }
+                ElevationTarget::Navigation => {
+                    driver
+                        .send(NavigationElevation { position, meters })
+                        .await?
+                }
+            }
             if !retry {
                 break;
             }

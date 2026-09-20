@@ -29,6 +29,8 @@
     airspaces: Snippet;
     traffic: Snippet;
     waypoints?: Snippet;
+    actions?: Snippet;
+    error?: boolean;
   };
 
   const sectionId = $props.id();
@@ -42,6 +44,8 @@
     airspaces,
     traffic,
     waypoints,
+    actions,
+    error = false,
   }: Props = $props();
 
   const coordinate = $derived(formatCoordinate(position));
@@ -54,7 +58,8 @@
   }
 </script>
 
-<ScreenScaffold backHref="/" {backLabel} {title}>
+<ScreenScaffold backHref="/" {backLabel} {title} {actions}>
+  {#if error}<p role="alert">{m.navigation_failed()}</p>{/if}
   <p class="coordinate">
     <span aria-hidden="true" class="i-mdi-map-marker-outline"></span>
     <span>{coordinate}</span>

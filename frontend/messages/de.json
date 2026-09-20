@@ -429,5 +429,20 @@
   "flarm_correction_description": "Experimentelle Korrektur der FLARM-Verkehrspositionen und -höhen. Deaktivieren, wenn die Verkehrspositionen oder -höhen mit deinem Gerät ungenauer werden.",
   "flarm_correction_enabled": "Aktiviert",
   "flarm_correction_disabled": "Deaktiviert",
-  "flarm_correction_change_failed": "Die FLARM-Positionskorrektur konnte nicht geändert werden."
+  "flarm_correction_change_failed": "Die FLARM-Positionskorrektur konnte nicht geändert werden.",
+  "navigation_waypoint": "Wegpunkt anfliegen",
+  "navigation_heading": "Navigation",
+  "navigation_stop": "Navigation beenden",
+  "navigation_failed": "Die Navigation wurde möglicherweise geändert, aber die Auswahl konnte nicht gespeichert werden. Nach einem Neustart kann ein vorheriges Ziel wieder erscheinen. Bitte erneut versuchen.",
+  "navigation_none": "Kein aktives Ziel",
+  "navigation_true": "Rechtweisende Peilung",
+  "navigation_relative": "Relative Peilung",
+  "navigation_details": "Zieldetails",
+  "navigation_arrival": "Ankunftsreserve",
+  "navigation_here": "Hierhin navigieren",
+  "navigation_map_position": "Kartenposition",
+  "navigation_waiting": "Warte auf Verkehr",
+  "navigation_report_age": "Letzter Bericht vor {seconds}s",
+  "navigation_relative_altitude": "Relative Höhe",
+  "navigation_traffic": "Verkehr anfliegen"
 }

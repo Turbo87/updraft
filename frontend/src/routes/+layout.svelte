@@ -24,6 +24,7 @@
   import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
   import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
   import { InstrumentsStore } from '$lib/stores/instruments.svelte';
+  import { NavigationStore } from '$lib/stores/navigation.svelte';
   import { SettingsStore } from '$lib/stores/settings.svelte';
   import { TerrainStore } from '$lib/stores/terrain.svelte';
   import { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -52,11 +53,13 @@
   const settings = new SettingsStore();
   const glidePerformance = new GlidePerformanceStore();
   const traffic = new TrafficStore();
+  const navigation = new NavigationStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
   const dataActivation = new DataActivation(client, airspace, waypoints, basemaps, terrain);
   const appContext = {
+    navigation,
     client,
     dataActivation,
     airspace,
@@ -94,6 +97,7 @@
       settings.apply(topic);
       glidePerformance.apply(topic);
       traffic.apply(topic);
+      navigation.apply(topic);
       if (topic.topic === 'settings') {
         applyLocaleSetting(topic.value.locale);
       }
@@ -177,6 +181,7 @@
 
 <div class="app">
   <FlightView
+    navigation={navigation.current}
     {client}
     airspace={airspace.current}
     basemapGeneration={basemaps.current?.generation ?? 0}

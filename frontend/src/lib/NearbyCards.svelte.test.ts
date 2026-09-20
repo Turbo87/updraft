@@ -1,4 +1,3 @@
-import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { AirspaceStore } from './stores/airspace.svelte';
 
 import { describe, expect, it } from 'vitest';
@@ -12,22 +11,10 @@ import '../app.css';
 import NearbyAirspaces from '../routes/nearby/[latitude]/[longitude]/NearbyAirspaces.svelte';
 import NearbyTraffic from '../routes/nearby/[latitude]/[longitude]/NearbyTraffic.svelte';
 import NearbyWaypoints from '../routes/nearby/[latitude]/[longitude]/NearbyWaypoints.svelte';
+import { previewMap } from './nearby-map.fixture';
 import { TrafficStore } from './stores/traffic.svelte';
 
 const position = { latitudeDegrees: 50.82, longitudeDegrees: 6.18 };
-
-function previewMap(features: unknown[]): MapLibreMap {
-  return {
-    on() {},
-    off() {},
-    isStyleLoaded: () => true,
-    isSourceLoaded: () => true,
-    getSource: () => ({}),
-    getLayer: () => ({}),
-    project: () => ({ x: 0, y: 0 }),
-    queryRenderedFeatures: () => features,
-  } as unknown as MapLibreMap;
-}
 
 describe('Nearby result cards', () => {
   it.each([

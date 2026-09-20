@@ -5,25 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
+import { instrumentsFixture } from '$lib/instruments.fixture';
+import { settingsFixture } from '$lib/settings.fixture';
 import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '$lib/stores/instruments.svelte';
 import MapDebugOverlay from './MapDebugOverlay.svelte';
 
-const emptyInstruments: Instruments = {
-  gps: null,
-  pressureAltitude: null,
-  trueAirspeed: null,
-  terrainElevation: null,
-  altitudeAgl: null,
-  solarPosition: null,
-  derived: null,
-};
-
-const metricUnits: UnitSettings = {
-  altitude: 'm',
-  distance: 'km',
-  speed: 'km/h',
-  verticalSpeed: 'm/s',
-};
+const emptyInstruments = instrumentsFixture();
+const metricUnits = settingsFixture().units;
 
 function text(element: Element): string {
   return element.textContent.replace(/\s+/g, ' ').trim();

@@ -718,5 +718,9 @@ fn available_updates_include_active_and_disabled_files_only_when_newer() {
         assert!(assert_ok!(basemaps.available_updates(&entries)).is_empty());
     }
     assert_ok!(fs::remove_file(germany));
-    assert_err!(basemaps.available_updates(&entries));
+    let error = assert_err!(basemaps.available_updates(&entries));
+    assert_eq!(
+        error.to_string(),
+        "Could not read basemap timestamp for enroute/Europe/Germany.mbtiles"
+    );
 }

@@ -968,7 +968,11 @@ fn available_updates_use_timestamps_for_active_and_disabled_terrain() {
         assert_eq!(assert_ok!(terrain.available_updates(&entries)), expected);
     }
     assert_ok!(fs::remove_file(france));
-    assert_err!(terrain.available_updates(&entries));
+    let error = assert_err!(terrain.available_updates(&entries));
+    assert_eq!(
+        error.to_string(),
+        "Could not read terrain timestamp for enroute/Europe/France.terrain"
+    );
 }
 
 fn elevation_webp(meters: u16) -> Vec<u8> {

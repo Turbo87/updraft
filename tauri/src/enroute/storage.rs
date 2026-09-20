@@ -1,3 +1,4 @@
+use super::CatalogEntry;
 use anyhow::{Context, Result, ensure};
 use std::collections::BTreeMap;
 use std::fs;
@@ -41,6 +42,28 @@ pub fn installed_files(directory: &Path) -> Result<BTreeMap<String, PathBuf>> {
                 .is_some_and(|ext| ext == "mbtiles" || ext == "terrain")
         })
         .collect())
+}
+
+pub fn available_updates<T>(
+    directory: &Path,
+    files: &BTreeMap<String, T>,
+    entries: &[CatalogEntry],
+    file_kind: &str,
+) -> Result<Vec<&'static str>> {
+    let mut updates = Vec::new();
+    for entry in entries {
+        let name = format!("enroute/{}", entry.path);
+        if !files.contains_key(&name) {
+            continue;
+        }
+        let modified = fs::metadata(directory.join(&name))
+            .and_then(|metadata| metadata.modified())
+            .with_context(|| format!("Could not read {file_kind} timestamp for {name}"))?;
+        if entry.update_available(modified) {
+            updates.push(entry.path);
+        }
+    }
+    Ok(updates)
 }
 
 /// Removes abandoned partial files. Call only at startup, before downloads begin.

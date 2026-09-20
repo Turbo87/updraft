@@ -76,20 +76,7 @@ impl Terrain {
     }
 
     pub fn available_updates(&self, entries: &[CatalogEntry]) -> Result<Vec<&'static str>> {
-        let mut updates = Vec::new();
-        for entry in entries {
-            let name = format!("enroute/{}", entry.path);
-            if !self.files.contains_key(&name) {
-                continue;
-            }
-            let modified = fs::metadata(self.directory.join(&name))
-                .and_then(|metadata| metadata.modified())
-                .with_context(|| format!("Could not read terrain timestamp for {name}"))?;
-            if entry.update_available(modified) {
-                updates.push(entry.path);
-            }
-        }
-        Ok(updates)
+        crate::enroute::storage::available_updates(&self.directory, &self.files, entries, "terrain")
     }
 
     pub fn resource_response(&self, path: &str) -> Response<Vec<u8>> {

@@ -16,6 +16,7 @@ mod flarmnet;
 mod http;
 mod ipc;
 mod navigation;
+mod pinned_targets;
 mod settings;
 mod source_files;
 mod terrain;
@@ -125,6 +126,8 @@ pub fn run() {
             ipc::set_units,
             ipc::get_polars,
             ipc::set_navigation_target,
+            pinned_targets::pin_target,
+            pinned_targets::unpin_target,
             ipc::set_mac_cready,
             ipc::set_bugs,
             ipc::set_ballast,
@@ -211,6 +214,21 @@ pub fn run() {
                 Err(error) => tracing::warn!(%error, "Could not restore navigation target"),
             }
             app.manage(navigation_file);
+            let pins_file = pinned_targets::PinnedTargetsFile::new(app.path().app_config_dir()?);
+            let restored = pins_file
+                .load()
+                .map_err(|error| error.to_string())
+                .and_then(|pins| {
+                    tauri::async_runtime::block_on(
+                        handle.send(updraft_core::RestorePinnedTargets(pins)),
+                    )
+                    .map_err(|error| error.to_string())?
+                    .map_err(str::to_owned)
+                });
+            if let Err(error) = restored {
+                tracing::warn!(%error, "Could not restore pinned targets");
+            }
+            app.manage(pins_file);
 
             #[cfg(target_os = "android")]
             let fixes = session::fix_channel(handle.clone());

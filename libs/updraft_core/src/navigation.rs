@@ -1,4 +1,4 @@
-use crate::{GpsInstruments, LatLon};
+use crate::{GlideSnapshot, LatLon};
 use serde::{Deserialize, Serialize};
 use updraft_geo::LatLon as Position;
 
@@ -54,6 +54,7 @@ pub struct Navigation {
     pub target: NavigationTarget,
     pub position: LatLon,
     pub guidance: Option<NavigationGuidance>,
+    pub arrival: Option<NavigationArrival>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
@@ -66,10 +67,18 @@ pub struct NavigationGuidance {
     pub stale: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct NavigationArrival {
+    pub margin_meters: f64,
+    pub stale: bool,
+}
+
 impl Navigation {
-    pub fn new(target: NavigationTarget, gps: Option<GpsInstruments>) -> Self {
+    pub fn new(target: NavigationTarget, glide: &GlideSnapshot) -> Self {
         let position = target.position();
-        let guidance = gps.map(|gps| {
+        let guidance = glide.instruments.gps.map(|gps| {
             let ownship = Position::from_degrees(
                 gps.position.latitude_degrees,
                 gps.position.longitude_degrees,
@@ -87,7 +96,20 @@ impl Navigation {
                 stale: gps.stale,
             }
         });
+        let NavigationTarget::Waypoint {
+            elevation_meters, ..
+        } = target;
+        let arrival = glide
+            .arrival_at_position(
+                Position::from_degrees(position.latitude_degrees, position.longitude_degrees),
+                updraft_units::Length::from_meters(elevation_meters),
+            )
+            .map(|arrival| NavigationArrival {
+                margin_meters: arrival.margin.as_meters(),
+                stale: arrival.stale,
+            });
         Self {
+            arrival,
             target,
             position,
             guidance,

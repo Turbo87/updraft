@@ -437,5 +437,6 @@
   "navigation_none": "Kein aktives Ziel",
   "navigation_true": "Rechtweisende Peilung",
   "navigation_relative": "Relative Peilung",
-  "navigation_details": "Zieldetails"
+  "navigation_details": "Zieldetails",
+  "navigation_arrival": "Ankunftsreserve"
 }

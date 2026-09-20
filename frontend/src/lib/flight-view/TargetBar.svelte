@@ -6,12 +6,15 @@
 
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
-  import { convertDistance } from '$lib/units';
+  import { convertAltitude, convertDistance } from '$lib/units';
 
   type Props = { navigation: Navigation; units: UnitSettings };
   let { navigation, units }: Props = $props();
   const guidance = $derived(navigation.guidance);
   const relative = $derived(guidance?.relativeBearingDegrees);
+  const altitude = $derived(
+    new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0, signDisplay: 'always' }),
+  );
   const number = $derived(new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 1 }));
 </script>
 
@@ -29,6 +32,11 @@
       ? `${number.format(convertDistance(guidance.distanceMeters, units.distance))} ${units.distance}`
       : '–'}</span
   >
+  <span aria-label={m.navigation_arrival()} class:stale={navigation.arrival?.stale}>
+    {navigation.arrival
+      ? `${altitude.format(convertAltitude(navigation.arrival.marginMeters, units.altitude))} ${units.altitude}`
+      : '–'}
+  </span>
 </a>
 
 <style>

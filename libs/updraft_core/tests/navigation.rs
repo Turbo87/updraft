@@ -105,3 +105,45 @@ fn goto_publishes_guidance_updates_and_keeps_snapshot_after_catalog_change() {
     );
     assert_eq!(assert_some!(navigation(&core)), expected);
 }
+
+#[test]
+fn waypoint_arrival_uses_fused_altitude_and_current_reserve() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let at = Timestamp::from_millis(0);
+    assert_ok!(
+        core.apply(
+            SetNavigationTarget(Some(NavigationTarget::Waypoint {
+                name: "Home".into(),
+                latitude_degrees: 0.,
+                longitude_degrees: 0.,
+                elevation_meters: 100.,
+            })),
+            at
+        )
+        .response
+    );
+    core.apply(
+        InternalGps::new(Fix {
+            position: LatLon::from_degrees(0., 0.),
+            altitude_ellipsoid: Some(updraft_units::EllipsoidAltitude::new(
+                updraft_units::Length::from_meters(1000.),
+            )),
+            track: None,
+            ground_speed: None,
+            fix_time: None,
+        }),
+        at,
+    );
+    let first = assert_some!(assert_some!(navigation(&core)).arrival);
+    core.apply(
+        updraft_core::SetArrivalReserve {
+            reserve: assert_ok!(updraft_core::ArrivalReserve::try_from(500.)),
+        },
+        at,
+    );
+    let second = assert_some!(assert_some!(navigation(&core)).arrival);
+    assert_eq!(first.margin_meters - second.margin_meters, 300.);
+    assert!(!second.stale);
+    core.apply(Tick, Timestamp::from_millis(4000));
+    assert!(assert_some!(assert_some!(navigation(&core)).arrival).stale);
+}

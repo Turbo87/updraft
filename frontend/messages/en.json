@@ -437,5 +437,6 @@
   "navigation_none": "No active target",
   "navigation_true": "True bearing",
   "navigation_relative": "Relative bearing",
-  "navigation_details": "Target details"
+  "navigation_details": "Target details",
+  "navigation_arrival": "Arrival margin"
 }

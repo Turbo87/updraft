@@ -973,16 +973,7 @@ impl Input for crate::GetGlideSnapshot {
     type Response = crate::GlideSnapshot;
 
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
-        Update::empty().with_response(crate::GlideSnapshot {
-            waypoints: crate::WaypointSnapshot {
-                generation: core.waypoint_generation,
-                catalog: core.waypoints.clone(),
-            },
-            instruments: core.instruments(),
-            polar: core.glide_performance.glide_polar(core.settings.polar),
-            mac_cready: core.glide_performance.mac_cready,
-            arrival_reserve: core.settings.arrival_reserve,
-        })
+        Update::empty().with_response(core.glide_snapshot())
     }
 }
 
@@ -1023,10 +1014,23 @@ impl Input for ReplaceFlarmnetDatabase {
 }
 
 impl Core {
+    fn glide_snapshot(&self) -> crate::GlideSnapshot {
+        crate::GlideSnapshot {
+            waypoints: crate::WaypointSnapshot {
+                generation: self.waypoint_generation,
+                catalog: self.waypoints.clone(),
+            },
+            instruments: self.instruments(),
+            polar: self.glide_performance.glide_polar(self.settings.polar),
+            mac_cready: self.glide_performance.mac_cready,
+            arrival_reserve: self.settings.arrival_reserve,
+        }
+    }
+
     fn navigation(&self) -> Option<crate::Navigation> {
         self.navigation_target
             .clone()
-            .map(|target| crate::Navigation::new(target, self.gps.published()))
+            .map(|target| crate::Navigation::new(target, &self.glide_snapshot()))
     }
 }
 

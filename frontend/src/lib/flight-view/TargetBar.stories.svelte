@@ -13,6 +13,7 @@
       elevationMeters: 100,
     },
     position: { latitudeDegrees: 50, longitudeDegrees: 6 },
+    arrival: { marginMeters: 250, stale: false },
     guidance: {
       distanceMeters: 12300,
       bearingDegrees: 90,
@@ -28,7 +29,7 @@
 </script>
 
 <Story name="Waypoint" />
-<Story name="No position" args={{ navigation: { ...navigation, guidance: null } }} />
+<Story name="No position" args={{ navigation: { ...navigation, guidance: null, arrival: null } }} />
 <Story
   name="Stale"
   args={{ navigation: { ...navigation, guidance: { ...navigation.guidance, stale: true } } }}

@@ -1,0 +1,256 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MapDebugOverlay.svelte > keeps missing values and map coordinates unchanged 1`] = `
+[
+  {
+    "label": "Zoom",
+    "value": "0.00",
+  },
+  {
+    "label": "Center",
+    "value": "0.00000, 0.00000",
+  },
+  {
+    "label": "Position",
+    "value": "–",
+  },
+  {
+    "label": "GPS fix time",
+    "value": "–",
+  },
+  {
+    "label": "MSL altitude",
+    "value": "–",
+  },
+  {
+    "label": "Ground speed",
+    "value": "–",
+  },
+  {
+    "label": "True airspeed",
+    "value": "–",
+  },
+  {
+    "label": "Pressure altitude",
+    "value": "–",
+  },
+  {
+    "label": "Raw vertical speed",
+    "value": "–",
+  },
+  {
+    "label": "Vertical speed",
+    "value": "–",
+  },
+  {
+    "label": "Vario",
+    "value": "–",
+  },
+  {
+    "label": "Netto",
+    "value": "–",
+  },
+  {
+    "label": "Relative vario",
+    "value": "–",
+  },
+  {
+    "label": "Air speed",
+    "value": "–",
+  },
+  {
+    "label": "Heading",
+    "value": "–",
+  },
+  {
+    "label": "Bank angle",
+    "value": "–",
+  },
+  {
+    "label": "Wind",
+    "value": "–",
+  },
+  {
+    "label": "Derived altitude",
+    "value": "–",
+  },
+  {
+    "label": "Terrain elevation",
+    "value": "–",
+  },
+  {
+    "label": "AGL altitude",
+    "value": "–",
+  },
+]
+`;
+
+exports[`MapDebugOverlay.svelte > shows the current flight values once visible 1`] = `
+[
+  {
+    "label": "Zoom",
+    "value": "0.00",
+  },
+  {
+    "label": "Center",
+    "value": "0.00000, 0.00000",
+  },
+  {
+    "label": "Position",
+    "value": "50.82300, 6.18600",
+  },
+  {
+    "label": "GPS fix time",
+    "value": "2026-01-01 12:00:00.000 UTC",
+  },
+  {
+    "label": "MSL altitude",
+    "value": "190 m",
+  },
+  {
+    "label": "Ground speed",
+    "value": "108.0 km/h",
+  },
+  {
+    "label": "True airspeed",
+    "value": "180.0 km/h",
+  },
+  {
+    "label": "Pressure altitude",
+    "value": "1000 m",
+  },
+  {
+    "label": "Raw vertical speed",
+    "value": "–",
+  },
+  {
+    "label": "Vertical speed",
+    "value": "–",
+  },
+  {
+    "label": "Vario",
+    "value": "–",
+  },
+  {
+    "label": "Netto",
+    "value": "–",
+  },
+  {
+    "label": "Relative vario",
+    "value": "–",
+  },
+  {
+    "label": "Air speed",
+    "value": "–",
+  },
+  {
+    "label": "Heading",
+    "value": "–",
+  },
+  {
+    "label": "Bank angle",
+    "value": "–",
+  },
+  {
+    "label": "Wind",
+    "value": "–",
+  },
+  {
+    "label": "Derived altitude",
+    "value": "–",
+  },
+  {
+    "label": "Terrain elevation",
+    "value": "–",
+  },
+  {
+    "label": "AGL altitude",
+    "value": "–",
+  },
+]
+`;
+
+exports[`MapDebugOverlay.svelte > uses the selected altitude and speed units 1`] = `
+[
+  {
+    "label": "Zoom",
+    "value": "0.00",
+  },
+  {
+    "label": "Center",
+    "value": "0.00000, 0.00000",
+  },
+  {
+    "label": "Position",
+    "value": "50.82300, 6.18600",
+  },
+  {
+    "label": "GPS fix time",
+    "value": "12:00:01.250 UTC",
+  },
+  {
+    "label": "MSL altitude",
+    "value": "623 ft",
+  },
+  {
+    "label": "Ground speed",
+    "value": "58.3 kt",
+  },
+  {
+    "label": "True airspeed",
+    "value": "97.2 kt",
+  },
+  {
+    "label": "Pressure altitude",
+    "value": "3281 ft",
+  },
+  {
+    "label": "Raw vertical speed",
+    "value": "–",
+  },
+  {
+    "label": "Vertical speed",
+    "value": "–",
+  },
+  {
+    "label": "Vario",
+    "value": "–",
+  },
+  {
+    "label": "Netto",
+    "value": "–",
+  },
+  {
+    "label": "Relative vario",
+    "value": "–",
+  },
+  {
+    "label": "Air speed",
+    "value": "–",
+  },
+  {
+    "label": "Heading",
+    "value": "–",
+  },
+  {
+    "label": "Bank angle",
+    "value": "–",
+  },
+  {
+    "label": "Wind",
+    "value": "–",
+  },
+  {
+    "label": "Derived altitude",
+    "value": "–",
+  },
+  {
+    "label": "Terrain elevation",
+    "value": "–",
+  },
+  {
+    "label": "AGL altitude",
+    "value": "–",
+  },
+]
+`;

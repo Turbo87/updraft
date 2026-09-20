@@ -17,7 +17,7 @@ const CATALOG_URL: &str = "https://enroute-data.akaflieg-freiburg.de/enroute-Geo
 #[serde(rename_all = "camelCase")]
 pub struct CachedCatalog {
     pub entries: Vec<CatalogEntry>,
-    #[serde(serialize_with = "serialize_checked_at")]
+    #[serde(serialize_with = "super::serialize_timestamp")]
     pub checked_at: SystemTime,
 }
 
@@ -189,17 +189,6 @@ pub async fn refresh_enroute_catalog(
         .refresh()
         .await
         .map_err(|_| "Could not refresh Enroute catalog")
-}
-
-fn serialize_checked_at<S: serde::Serializer>(
-    time: &SystemTime,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let seconds = match time.duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(duration) => duration.as_secs_f64(),
-        Err(error) => -error.duration().as_secs_f64(),
-    };
-    serializer.serialize_f64(seconds * 1000.)
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::num::NonZeroU64;
+use std::time::SystemTime;
 use time::{Date, macros::format_description};
 
 pub mod catalog;
@@ -94,6 +95,17 @@ fn serialize_publication_date<S: serde::Serializer>(
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     serializer.collect_str(date)
+}
+
+pub fn serialize_timestamp<S: serde::Serializer>(
+    time: &SystemTime,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let seconds = match time.duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs_f64(),
+        Err(error) => -error.duration().as_secs_f64(),
+    };
+    serializer.serialize_f64(seconds * 1000.)
 }
 
 #[cfg(test)]

@@ -238,6 +238,27 @@ fn edit_external_device_resets_gps_candidate() {
 }
 
 #[test]
+fn resetting_another_device_preserves_last_known_flight_data() {
+    let (mut core, selected, other) = core_with_two_external_devices();
+    core.apply(Bytes::new(selected, RMC), at(0));
+    let bytes = b"$PGRMZ,1000,m,3\r\n$LXWP0,Y,180\r\n";
+    core.apply(Bytes::new(selected, bytes), at(0));
+    core.apply(Tick, at(3_000));
+    assert_matches!(core.gps, DomainState::LastKnown(_));
+    assert_matches!(core.pressure_altitude, DomainState::LastKnown(_));
+    assert_matches!(core.true_airspeed, DomainState::LastKnown(_));
+    let gps = core.gps;
+    let pressure_altitude = core.pressure_altitude;
+    let true_airspeed = core.true_airspeed;
+
+    core.apply(SetExternalDeviceEnabled::disabled(other), at(3_001));
+
+    assert_eq!(core.gps, gps);
+    assert_eq!(core.pressure_altitude, pressure_altitude);
+    assert_eq!(core.true_airspeed, true_airspeed);
+}
+
+#[test]
 fn editing_selected_device_makes_gps_unavailable() {
     let (mut core, device_id) = core_with_external_device();
     core.apply(Bytes::new(device_id, RMC), at(0));

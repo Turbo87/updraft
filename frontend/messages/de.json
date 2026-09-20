@@ -438,5 +438,7 @@
   "navigation_true": "Rechtweisende Peilung",
   "navigation_relative": "Relative Peilung",
   "navigation_details": "Zieldetails",
-  "navigation_arrival": "Ankunftsreserve"
+  "navigation_arrival": "Ankunftsreserve",
+  "navigation_here": "Hierhin navigieren",
+  "navigation_map_position": "Kartenposition"
 }

@@ -147,3 +147,80 @@ fn waypoint_arrival_uses_fused_altitude_and_current_reserve() {
     core.apply(Tick, Timestamp::from_millis(4000));
     assert!(assert_some!(assert_some!(navigation(&core)).arrival).stale);
 }
+
+#[test]
+fn map_target_accepts_only_its_terrain_result_and_resets_elevation_on_replacement() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let at = Timestamp::from_millis(0);
+    core.apply(
+        InternalGps::new(Fix {
+            position: LatLon::from_degrees(0., 0.),
+            altitude_ellipsoid: Some(updraft_units::EllipsoidAltitude::new(
+                updraft_units::Length::from_meters(1000.),
+            )),
+            track: None,
+            ground_speed: None,
+            fix_time: None,
+        }),
+        at,
+    );
+    let target = NavigationTarget::MapPosition {
+        latitude_degrees: 0.,
+        longitude_degrees: 0.,
+    };
+    assert_ok!(core.apply(SetNavigationTarget(Some(target)), at).response);
+    assert_some!(assert_some!(navigation(&core)).guidance);
+    assert_none!(assert_some!(navigation(&core)).arrival);
+    core.apply(
+        updraft_core::NavigationElevation {
+            position: updraft_core::LatLon {
+                latitude_degrees: 1.,
+                longitude_degrees: 0.,
+            },
+            meters: Some(100.),
+        },
+        at,
+    );
+    assert_none!(assert_some!(navigation(&core)).arrival);
+    let position = updraft_core::LatLon {
+        latitude_degrees: 0.,
+        longitude_degrees: 0.,
+    };
+    core.apply(
+        updraft_core::NavigationElevation {
+            position,
+            meters: Some(100.),
+        },
+        at,
+    );
+    assert_some!(assert_some!(navigation(&core)).arrival);
+    assert_ok!(
+        core.apply(
+            SetNavigationTarget(Some(NavigationTarget::MapPosition {
+                latitude_degrees: 0.,
+                longitude_degrees: 0.
+            })),
+            at
+        )
+        .response
+    );
+    assert_some!(assert_some!(navigation(&core)).arrival);
+    assert_ok!(
+        core.apply(
+            SetNavigationTarget(Some(NavigationTarget::MapPosition {
+                latitude_degrees: 1.,
+                longitude_degrees: 0.
+            })),
+            at
+        )
+        .response
+    );
+    core.apply(
+        updraft_core::NavigationElevation {
+            position,
+            meters: Some(100.),
+        },
+        at,
+    );
+    assert_none!(assert_some!(navigation(&core)).arrival);
+}

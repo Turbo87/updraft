@@ -10,6 +10,10 @@ use updraft_geo::LatLon as Position;
     rename_all_fields = "camelCase"
 )]
 pub enum NavigationTarget {
+    MapPosition {
+        latitude_degrees: f64,
+        longitude_degrees: f64,
+    },
     Waypoint {
         name: String,
         latitude_degrees: f64,
@@ -21,7 +25,11 @@ pub enum NavigationTarget {
 impl NavigationTarget {
     pub fn position(&self) -> LatLon {
         match *self {
-            Self::Waypoint {
+            Self::MapPosition {
+                latitude_degrees,
+                longitude_degrees,
+            }
+            | Self::Waypoint {
                 latitude_degrees,
                 longitude_degrees,
                 ..
@@ -34,12 +42,10 @@ impl NavigationTarget {
 
     pub fn validate(&self) -> Result<(), &'static str> {
         let position = self.position();
-        let Self::Waypoint {
-            elevation_meters, ..
-        } = self;
+        let invalid_elevation = matches!(self, Self::Waypoint { elevation_meters, .. } if !elevation_meters.is_finite());
         if !(-90. ..=90.).contains(&position.latitude_degrees)
             || !(-180. ..=180.).contains(&position.longitude_degrees)
-            || !elevation_meters.is_finite()
+            || invalid_elevation
         {
             return Err("Invalid navigation target");
         }
@@ -76,7 +82,11 @@ pub struct NavigationArrival {
 }
 
 impl Navigation {
-    pub fn new(target: NavigationTarget, glide: &GlideSnapshot) -> Self {
+    pub fn new(
+        target: NavigationTarget,
+        glide: &GlideSnapshot,
+        terrain_elevation: Option<f64>,
+    ) -> Self {
         let position = target.position();
         let guidance = glide.instruments.gps.map(|gps| {
             let ownship = Position::from_degrees(
@@ -96,18 +106,23 @@ impl Navigation {
                 stale: gps.stale,
             }
         });
-        let NavigationTarget::Waypoint {
-            elevation_meters, ..
-        } = target;
-        let arrival = glide
-            .arrival_at_position(
-                Position::from_degrees(position.latitude_degrees, position.longitude_degrees),
-                updraft_units::Length::from_meters(elevation_meters),
-            )
-            .map(|arrival| NavigationArrival {
-                margin_meters: arrival.margin.as_meters(),
-                stale: arrival.stale,
-            });
+        let elevation = match target {
+            NavigationTarget::Waypoint {
+                elevation_meters, ..
+            } => Some(elevation_meters),
+            NavigationTarget::MapPosition { .. } => terrain_elevation,
+        };
+        let arrival = elevation.and_then(|elevation_meters| {
+            glide
+                .arrival_at_position(
+                    Position::from_degrees(position.latitude_degrees, position.longitude_degrees),
+                    updraft_units::Length::from_meters(elevation_meters),
+                )
+                .map(|arrival| NavigationArrival {
+                    margin_meters: arrival.margin.as_meters(),
+                    stale: arrival.stale,
+                })
+        });
         Self {
             arrival,
             target,

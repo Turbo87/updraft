@@ -30,7 +30,11 @@
 
 <ScreenScaffold title={m.navigation_heading()} backHref="/" backLabel={m.flight_view()}>
   {#if navigation.current}
-    <h2>{navigation.current.target.name}</h2>
+    <h2>
+      {navigation.current.target.type === 'waypoint'
+        ? navigation.current.target.name
+        : m.navigation_map_position()}
+    </h2>
     <p>
       {navigation.current.position.latitudeDegrees.toFixed(5)}°, {navigation.current.position.longitudeDegrees.toFixed(
         5,

@@ -19,7 +19,11 @@
 </script>
 
 <a href={resolve('/navigation')} aria-label={m.navigation_details()} class:stale={guidance?.stale}>
-  <strong>{navigation.target.name}</strong>
+  <strong
+    >{navigation.target.type === 'waypoint'
+      ? navigation.target.name
+      : m.navigation_map_position()}</strong
+  >
   <span aria-label={relative == null ? m.navigation_true() : m.navigation_relative()}>
     {#if guidance}
       {#if relative == null}{Math.round(guidance.bearingDegrees) % 360}° T

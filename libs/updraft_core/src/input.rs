@@ -305,3 +305,10 @@ impl private::Sealed for ReplaceFlarmnetDatabase {}
 #[derive(Clone, Debug)]
 pub struct SetNavigationTarget(pub Option<crate::NavigationTarget>);
 impl private::Sealed for SetNavigationTarget {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct NavigationElevation {
+    pub position: crate::LatLon,
+    pub meters: Option<f64>,
+}
+impl private::Sealed for NavigationElevation {}

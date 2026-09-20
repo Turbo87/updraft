@@ -38,6 +38,7 @@ use updraft_units::{MslAltitude, PressureAltitude, Speed};
 #[derive(Debug)]
 pub struct Core {
     navigation_target: Option<crate::NavigationTarget>,
+    navigation_elevation: Option<f64>,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -72,6 +73,7 @@ impl Core {
         sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
             navigation_target: None,
+            navigation_elevation: None,
             settings,
             glide_performance,
             external_devices: ExternalDevices::from_device_configs(external_devices),
@@ -1028,9 +1030,9 @@ impl Core {
     }
 
     fn navigation(&self) -> Option<crate::Navigation> {
-        self.navigation_target
-            .clone()
-            .map(|target| crate::Navigation::new(target, &self.glide_snapshot()))
+        self.navigation_target.clone().map(|target| {
+            crate::Navigation::new(target, &self.glide_snapshot(), self.navigation_elevation)
+        })
     }
 }
 
@@ -1042,6 +1044,9 @@ impl Input for crate::SetNavigationTarget {
         {
             return Update::empty().with_response(Err(error));
         }
+        if core.navigation_target != self.0 {
+            core.navigation_elevation = None;
+        }
         core.navigation_target = self.0;
         Update::empty().with_response(Ok(()))
     }
@@ -1050,3 +1055,15 @@ impl Input for crate::SetNavigationTarget {
 #[cfg(test)]
 #[path = "core_tests/mod.rs"]
 mod tests;
+
+impl Input for crate::NavigationElevation {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        if let Some(target @ crate::NavigationTarget::MapPosition { .. }) = &core.navigation_target
+            && target.position() == self.position
+        {
+            core.navigation_elevation = self.meters.filter(|meters| meters.is_finite());
+        }
+        Update::empty()
+    }
+}

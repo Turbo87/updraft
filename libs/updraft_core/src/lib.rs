@@ -80,5 +80,6 @@ pub use waypoints::{
     WaypointSourceStatus, WaypointStatus,
 };
 
+pub use input::NavigationElevation;
 pub use input::SetNavigationTarget;
 pub use navigation::{Navigation, NavigationGuidance, NavigationTarget};

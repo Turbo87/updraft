@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { settingsFixture } from '$lib/settings.fixture';
 import { AirspaceStore } from './airspace.svelte';
 
 describe('AirspaceStore', () => {
@@ -46,16 +47,7 @@ describe('AirspaceStore', () => {
 
     store.apply({
       topic: 'settings',
-      value: {
-        locale: 'de',
-        polar: 'LS 8',
-        arrivalReserve: 200,
-        climbAverageMethod: 'normalizedEma',
-        hillshadeDirection: 'fixed',
-        energyCompensation: true,
-        flarmPositionCorrection: true,
-        units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-      },
+      value: settingsFixture({ locale: 'de', climbAverageMethod: 'normalizedEma' }),
     });
 
     expect(store.initialized).toBe(false);

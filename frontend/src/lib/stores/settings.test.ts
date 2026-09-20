@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { instrumentsFixture } from '$lib/instruments.fixture';
+import { settingsFixture } from '$lib/settings.fixture';
 import { SettingsStore } from './settings.svelte';
 
 describe('SettingsStore', () => {
@@ -16,30 +17,16 @@ describe('SettingsStore', () => {
   it('replaces its value with the latest settings topic', () => {
     let store = new SettingsStore();
 
-    store.apply({
-      topic: 'settings',
-      value: {
-        locale: 'de',
-        polar: 'LS 8-18',
-        arrivalReserve: 200,
-        climbAverageMethod: 'normalizedEma',
-        hillshadeDirection: 'wind',
-        energyCompensation: true,
-        flarmPositionCorrection: true,
-        units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
-      },
-    });
-
-    expect(store.current).toEqual({
+    let value = settingsFixture({
       locale: 'de',
       polar: 'LS 8-18',
-      arrivalReserve: 200,
       climbAverageMethod: 'normalizedEma',
       hillshadeDirection: 'wind',
-      energyCompensation: true,
-      flarmPositionCorrection: true,
       units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
     });
+    store.apply({ topic: 'settings', value: structuredClone(value) });
+
+    expect(store.current).toEqual(value);
   });
 
   it('ignores unrelated topics', () => {

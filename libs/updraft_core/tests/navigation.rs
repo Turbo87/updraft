@@ -76,7 +76,7 @@ fn goto_publishes_guidance_updates_and_keeps_snapshot_after_catalog_change() {
         at(0),
     );
     assert_ok!(update.response);
-    assert_eq!(update.effects.len(), 1);
+    assert_eq!(update.effects.len(), 2);
     let expected = assert_some!(navigation(&core));
     let guidance = assert_some!(expected.guidance);
     assert_eq!(guidance.bearing_degrees, 0.);

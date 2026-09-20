@@ -450,5 +450,7 @@
   "pins_save_failed": "Die Änderung wurde nicht gespeichert. Nach einem Neustart können vorherige Ziele zurückkehren. Versuche es erneut.",
   "pins_missing": "Dieses Ziel ist nicht mehr angeheftet.",
   "pins_navigate": "Zum Ziel navigieren",
-  "pins_details": "Details zum angehefteten Ziel"
+  "pins_details": "Details zum angehefteten Ziel",
+  "navigation_current": "Aktuelles Ziel",
+  "navigation_recent": "Zuletzt verwendete Ziele"
 }

@@ -213,6 +213,16 @@ pub fn run() {
                 }
                 Err(error) => tracing::warn!(%error, "Could not restore navigation target"),
             }
+            match navigation_file.load_recents() {
+                Ok(targets) => {
+                    if let Err(error) = tauri::async_runtime::block_on(
+                        handle.send(updraft_core::RestoreRecentTargets(targets)),
+                    )? {
+                        tracing::warn!(%error, "Could not restore recent targets");
+                    }
+                }
+                Err(error) => tracing::warn!(%error, "Could not load recent targets"),
+            }
             app.manage(navigation_file);
             let pins_file = pinned_targets::PinnedTargetsFile::new(app.path().app_config_dir()?);
             let restored = pins_file

@@ -60,6 +60,14 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #recents: NavigationTarget[] = [];
+  #remember(target: NavigationTarget): void {
+    this.#recents = [
+      target,
+      ...this.#recents.filter((other) => !targetsMatch(target, other)),
+    ].slice(0, 30);
+    this.emit({ topic: 'recentTargets', value: this.#recents });
+  }
   #pins: PinnedTarget[] = [];
   #nextPinId = 0;
   async pinTarget(target: NavigationTarget): Promise<boolean> {
@@ -86,6 +94,8 @@ export class FakeClient implements UpdraftClient {
     return true;
   }
   async unpinTarget(id: number): Promise<boolean> {
+    let pin = this.#pins.find((pin) => pin.id === id);
+    if (pin) this.#remember(pin.navigation.target);
     this.#pins = this.#pins.filter((pin) => pin.id !== id);
     this.#publishPins();
     return true;
@@ -100,6 +110,7 @@ export class FakeClient implements UpdraftClient {
   }
   #navigation: Navigation | null = null;
   async setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
+    if (target) this.#remember(target);
     this.#navigation = target
       ? {
           target,
@@ -342,6 +353,7 @@ export class FakeClient implements UpdraftClient {
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'navigation', value: this.#navigation });
+    onTopic({ topic: 'recentTargets', value: this.#recents });
     onTopic({ topic: 'pinnedTargets', value: this.#pins });
     onTopic({ topic: 'settings', value: this.#settings });
     onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });

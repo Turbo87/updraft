@@ -332,3 +332,11 @@ pub struct PinnedTargetElevation {
     pub meters: Option<f64>,
 }
 impl private::Sealed for PinnedTargetElevation {}
+
+#[derive(Debug)]
+pub struct GetRecentTargets;
+impl private::Sealed for GetRecentTargets {}
+
+#[derive(Debug)]
+pub struct RestoreRecentTargets(pub Vec<crate::NavigationTarget>);
+impl private::Sealed for RestoreRecentTargets {}

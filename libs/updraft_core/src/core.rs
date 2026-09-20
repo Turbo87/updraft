@@ -42,6 +42,7 @@ pub struct Core {
     navigation_report: Option<(crate::PublishedTrafficTarget, Timestamp)>,
     navigation_at: Timestamp,
     pinned_targets: crate::pinned_targets::PinnedTargets,
+    recent_targets: Vec<crate::NavigationTarget>,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -76,6 +77,7 @@ impl Core {
         sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
             pinned_targets: Default::default(),
+            recent_targets: Vec::new(),
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -104,6 +106,7 @@ impl Core {
     /// `at` is supplied by the shell rather than read, which is what keeps
     /// the core deterministic.
     pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
+        let before_recents = self.recent_targets.clone();
         let before_pins = self.pinned_targets();
         let before = self.navigation();
         let mut update = input.apply_to(self, at);
@@ -127,6 +130,11 @@ impl Core {
         }
         self.pinned_targets
             .update_reports(&self.traffic, &self.flarmnet);
+        if before_recents != self.recent_targets {
+            update.effects.push(Effect::Emit(Topic::RecentTargets(
+                self.recent_targets.clone(),
+            )));
+        }
         let after_pins = self.pinned_targets();
         if before_pins != after_pins {
             update
@@ -157,6 +165,7 @@ impl Core {
             Topic::Traffic(TrafficUpdate::Snapshot(traffic)),
             Topic::Navigation(self.navigation()),
             Topic::PinnedTargets(self.pinned_targets()),
+            Topic::RecentTargets(self.recent_targets.clone()),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -1092,6 +1101,9 @@ impl Input for crate::SetNavigationTarget {
             core.navigation_elevation = None;
             core.navigation_report = None;
         }
+        if let Some(target) = &self.0 {
+            core.remember_target(target.clone());
+        }
         core.navigation_target = self.0;
         Update::empty().with_response(Ok(()))
     }
@@ -1123,6 +1135,9 @@ impl Input for crate::PinTarget {
 impl Input for crate::UnpinTarget {
     type Response = Result<Vec<crate::SavedPinnedTarget>, &'static str>;
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        if let Some(target) = core.pinned_targets.target(self.0) {
+            core.remember_target(target);
+        }
         Update::empty().with_response(Ok(core.pinned_targets.unpin(self.0)))
     }
 }
@@ -1139,5 +1154,34 @@ impl Input for crate::PinnedTargetElevation {
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
         core.pinned_targets.set_elevation(self);
         Update::empty()
+    }
+}
+
+impl Core {
+    fn remember_target(&mut self, target: crate::NavigationTarget) {
+        self.recent_targets.retain(|other| !other.matches(&target));
+        self.recent_targets.insert(0, target);
+        self.recent_targets.truncate(30);
+    }
+}
+impl Input for crate::GetRecentTargets {
+    type Response = Vec<crate::NavigationTarget>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.recent_targets.clone())
+    }
+}
+impl Input for crate::RestoreRecentTargets {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        for target in &self.0 {
+            if let Err(error) = target.validate() {
+                return Update::empty().with_response(Err(error));
+            }
+        }
+        core.recent_targets.clear();
+        for target in self.0.into_iter().rev() {
+            core.remember_target(target);
+        }
+        Update::empty().with_response(Ok(()))
     }
 }

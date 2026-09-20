@@ -450,5 +450,7 @@
   "pins_save_failed": "The pin change was not saved. Previous pins can return after restart. Retry to save the change.",
   "pins_missing": "This target is no longer pinned.",
   "pins_navigate": "Navigate to target",
-  "pins_details": "Pinned target details"
+  "pins_details": "Pinned target details",
+  "navigation_current": "Current target",
+  "navigation_recent": "Recent targets"
 }

@@ -177,6 +177,7 @@ impl Instruments {
 pub enum Topic {
     Navigation(Option<crate::Navigation>),
     PinnedTargets(Vec<crate::PinnedTarget>),
+    RecentTargets(Vec<crate::NavigationTarget>),
     Instruments(Instruments),
     Settings(Settings),
     ExternalDevices(Vec<PublishedExternalDevice>),

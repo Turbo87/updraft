@@ -104,3 +104,49 @@ test('reports a save failure while navigation remains active', async ({ page, ap
   );
   expect(await page.evaluate(() => window.__updraftApp!.navigation.current)).toBeNull();
 });
+
+test('selection rows open details and unpinning moves a target into recents', async ({
+  page,
+  app,
+}) => {
+  await app.open('/navigation');
+  await page.evaluate(async () => {
+    let client = window.__updraftFake!;
+    await client.pinTarget({
+      type: 'waypoint',
+      name: 'Home',
+      latitudeDegrees: 50,
+      longitudeDegrees: 6,
+      elevationMeters: 100,
+    });
+  });
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  expect(await page.evaluate(() => window.__updraftApp!.navigation.current)).toBeNull();
+  await page.goBack();
+  await page.evaluate(() => {
+    let client = window.__updraftFake!;
+    let unpin = client.unpinTarget.bind(client);
+    let fail = true;
+    client.unpinTarget = async (id) => {
+      await unpin(id);
+      if (fail) {
+        fail = false;
+        return false;
+      }
+      return true;
+    };
+  });
+  await page.getByRole('button', { name: 'Unpin target', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('not saved');
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute(
+    'href',
+    '/navigation/recent/0',
+  );
+  await page.getByRole('button', { name: 'Navigate to target', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Target details', exact: true })).toContainText(
+    'Home',
+  );
+});

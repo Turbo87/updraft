@@ -7,6 +7,8 @@ use updraft_core::{NavigationTarget, SetNavigationTarget};
 
 pub struct NavigationFile {
     path: PathBuf,
+    recents: PathBuf,
+    history_changes: tokio::sync::Mutex<()>,
     changes: tokio::sync::Mutex<()>,
 }
 
@@ -14,6 +16,8 @@ impl NavigationFile {
     pub fn new(directory: PathBuf) -> Self {
         Self {
             path: directory.join("navigation.json"),
+            recents: directory.join("recent-targets.json"),
+            history_changes: Default::default(),
             changes: tokio::sync::Mutex::new(()),
         }
     }
@@ -31,6 +35,30 @@ impl NavigationFile {
         Ok(target)
     }
 
+    pub fn load_recents(&self) -> std::io::Result<Vec<NavigationTarget>> {
+        match File::open(&self.recents) {
+            Ok(file) => Ok(serde_json::from_reader(BufReader::new(file))?),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+            Err(error) => Err(error),
+        }
+    }
+
+    pub async fn save_recents(&self, handle: &DriverHandle) -> Result<bool, String> {
+        let _guard = self.history_changes.lock().await;
+        let targets = handle
+            .send(updraft_core::GetRecentTargets)
+            .await
+            .map_err(|error| error.to_string())?;
+        let path = self.recents.clone();
+        match tauri::async_runtime::spawn_blocking(move || save_target_file(path, &targets)).await {
+            Ok(Ok(())) => Ok(true),
+            error => {
+                tracing::warn!(?error, "Could not save recent targets");
+                Ok(false)
+            }
+        }
+    }
+
     pub async fn select(
         &self,
         handle: &DriverHandle,
@@ -45,8 +73,9 @@ impl NavigationFile {
         let path = self.path.clone();
         let result =
             tauri::async_runtime::spawn_blocking(move || save_target_file(path, &target)).await;
+        let history_saved = self.save_recents(handle).await?;
         match result {
-            Ok(Ok(())) => Ok(true),
+            Ok(Ok(())) => Ok(history_saved),
             error => {
                 tracing::warn!(?error, "Could not save navigation target");
                 Ok(false)

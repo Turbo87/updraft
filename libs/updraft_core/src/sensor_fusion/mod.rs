@@ -14,5 +14,7 @@ mod fusion_tests;
 mod invariant_tests;
 #[cfg(test)]
 mod recorded_flight_tests;
+#[cfg(test)]
+mod recording_support;
 
 pub use fusion::{FusionInputs, SensorFusion};

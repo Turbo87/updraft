@@ -3,6 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { SettingsStore } from './settings.svelte';
 
 describe('SettingsStore', () => {
+  it('creates independent initial settings for each store', () => {
+    let first = new SettingsStore();
+    let second = new SettingsStore();
+
+    expect(first.current).toEqual(second.current);
+    expect(first.current).not.toBe(second.current);
+    expect(first.current.units).not.toBe(second.current.units);
+  });
+
   it('replaces its value with the latest settings topic', () => {
     let store = new SettingsStore();
 

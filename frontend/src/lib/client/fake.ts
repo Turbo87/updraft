@@ -7,7 +7,6 @@ import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirect
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
-import type { Settings } from '$lib/protocol/generated/Settings';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
@@ -29,6 +28,8 @@ import type {
   TopicListener,
   UpdraftClient,
 } from './index';
+
+import { defaultSettings } from '$lib/settings';
 
 /** Initial platform and external-device state for browser development. */
 export type FakeClientOptions = {
@@ -77,16 +78,7 @@ export class FakeClient implements UpdraftClient {
   #externalDevices: PublishedExternalDevice[];
   #nextExternalDeviceId: ExternalDeviceId;
   #bondedBluetoothDevices: BondedBluetoothDevices;
-  #settings: Settings = {
-    locale: null,
-    polar: 'LS 8',
-    arrivalReserve: 200,
-    climbAverageMethod: 'smoothed20s',
-    energyCompensation: true,
-    flarmPositionCorrection: true,
-    hillshadeDirection: 'fixed',
-    units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
-  };
+  #settings = defaultSettings();
 
   constructor(options: FakeClientOptions = {}) {
     this.#externalDevices = options.externalDevices?.map((device) => ({ ...device })) ?? [];

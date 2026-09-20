@@ -17,11 +17,15 @@
 
   let { generation, hillshadeDirection, wind, solarPosition }: Props = $props();
 
-  const terrainUrl = $derived(convertFileSrc(`terrain/${generation}`, 'updraft'));
+  const terrainUrl = $derived(`${convertFileSrc('terrain', 'updraft')}/${generation}`);
   const lighting = $derived(hillshadeLighting(hillshadeDirection, { wind, solarPosition }));
 </script>
 
-<RasterDEMTileSource id="terrain" url={`${terrainUrl}/metadata.json`}>
+<RasterDEMTileSource
+  id="terrain"
+  tiles={[`${terrainUrl}/{z}/{x}/{y}.webp`]}
+  url={`${terrainUrl}/metadata.json`}
+>
   <ColorReliefLayer
     id="terrain-color-relief"
     beforeId="water"

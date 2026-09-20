@@ -11,7 +11,7 @@ import Map from './Map.svelte';
 
 vi.mock('@tauri-apps/api/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tauri-apps/api/core')>()),
-  convertFileSrc: (path: string) => `generation://${path}`,
+  convertFileSrc: (path: string) => `generation://localhost/${encodeURIComponent(path)}`,
 }));
 vi.mock('./style/positron.json', () => ({
   default: {
@@ -61,7 +61,9 @@ it.each(['basemap', 'terrain-metadata', 'terrain-tiles', 'both'] as const)(
       }),
     );
     addProtocol('generation', async ({ url }, controller) => {
-      let [, kind, version, path] = url.match(/^generation:\/\/(basemap|terrain)\/(\d+)\/(.*)$/)!;
+      let [, kind, version, path] = url.match(
+        /^generation:\/\/localhost\/(basemap|terrain)\/(\d+)\/(.*)$/,
+      )!;
       let generation = Number(version);
       let metadata = path === 'metadata.json';
       if (
@@ -95,7 +97,7 @@ it.each(['basemap', 'terrain-metadata', 'terrain-tiles', 'both'] as const)(
             minzoom: 6,
             maxzoom: 6,
             attribution: `Terrain generation ${generation}`,
-            tiles: [`generation://terrain/${generation}/{z}/{x}/{y}.webp`],
+            tiles: [`updraft://localhost/terrain/${generation}/{z}/{x}/{y}.webp`],
           },
         };
       }

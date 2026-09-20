@@ -129,7 +129,7 @@ async fn pump(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::driver::Driver;
+    use crate::test_support::spawn_driver;
     use claims::{assert_none, assert_some};
     use tokio::io::AsyncWriteExt as _;
     use tokio::net::TcpListener;
@@ -143,12 +143,9 @@ mod tests {
     const PATIENCE: Duration = Duration::from_secs(5);
 
     fn driver() -> DriverHandle {
-        Driver::spawn(
+        spawn_driver(
             SettingsSnapshot::default(),
             AirspaceState::none_at_startup(),
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
         )
     }
 
@@ -246,7 +243,7 @@ mod tests {
     async fn bytes_from_a_listening_peer_reach_the_core() {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
         let port = listener.local_addr().expect("has an address").port();
-        let handle = Driver::spawn(
+        let handle = spawn_driver(
             SettingsSnapshot {
                 settings: Default::default(),
                 external_devices: vec![ExternalDeviceConfig {
@@ -255,9 +252,6 @@ mod tests {
                 }],
             },
             AirspaceState::none_at_startup(),
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
         );
 
         let (sender, mut topics) = mpsc::unbounded_channel();
@@ -399,7 +393,7 @@ mod tests {
 
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("binds");
         let port = listener.local_addr().expect("has an address").port();
-        let handle = Driver::spawn(
+        let handle = spawn_driver(
             SettingsSnapshot {
                 settings: Default::default(),
                 external_devices: vec![ExternalDeviceConfig {
@@ -408,9 +402,6 @@ mod tests {
                 }],
             },
             AirspaceState::none_at_startup(),
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
         );
         let (sender, mut topics) = mpsc::unbounded_channel();
         handle.subscribe(Box::new(move |topic: &Topic| {

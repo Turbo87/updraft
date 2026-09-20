@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_support::spawn_driver;
 use approx::assert_abs_diff_eq;
 use claims::{assert_some, assert_some_eq};
 use std::{
@@ -167,13 +168,7 @@ fn inactive_driver_handle() -> DriverHandle {
 
 #[tokio::test]
 async fn subscribing_delivers_current_state_immediately() {
-    let handle = Driver::spawn(
-        snapshot(),
-        no_airspace(),
-        Box::new(|_, _, _| Box::new(|| {})),
-        Box::new(|_| {}),
-        Duration::from_millis(100),
-    );
+    let handle = spawn_driver(snapshot(), no_airspace());
     let mut topics = topic_stream(&handle);
 
     let received = timeout(PATIENCE, topics.recv())
@@ -188,13 +183,7 @@ async fn subscribing_delivers_current_state_immediately() {
 
 #[tokio::test]
 async fn new_subscriber_receives_current_airspace_status() {
-    let handle = Driver::spawn(
-        snapshot(),
-        no_airspace(),
-        Box::new(|_, _, _| Box::new(|| {})),
-        Box::new(|_| {}),
-        Duration::from_millis(100),
-    );
+    let handle = spawn_driver(snapshot(), no_airspace());
     let dataset = Arc::new(AirspaceDataset::default());
     handle
         .send(updraft_core::ReplaceAirspaceCatalog(Arc::new(
@@ -232,13 +221,7 @@ async fn driver_starts_with_active_airspace_at_generation_zero() {
             AirspaceSource::Active(dataset),
         )]),
     });
-    let handle = Driver::spawn(
-        snapshot(),
-        initial_airspace,
-        Box::new(|_, _, _| Box::new(|| {})),
-        Box::new(|_| {}),
-        Duration::from_millis(100),
-    );
+    let handle = spawn_driver(snapshot(), initial_airspace);
     let mut topics = topic_stream(&handle);
 
     assert_eq!(
@@ -261,13 +244,7 @@ async fn driver_starts_with_unavailable_airspace() {
             AirspaceSource::Unavailable(AirspaceLoadError::ParseFailed),
         )]),
     });
-    let handle = Driver::spawn(
-        snapshot(),
-        initial_airspace,
-        Box::new(|_, _, _| Box::new(|| {})),
-        Box::new(|_| {}),
-        Duration::from_millis(100),
-    );
+    let handle = spawn_driver(snapshot(), initial_airspace);
     let mut topics = topic_stream(&handle);
 
     assert_eq!(
@@ -284,13 +261,7 @@ async fn driver_starts_with_unavailable_airspace() {
 
 #[tokio::test]
 async fn subscription_includes_a_traffic_snapshot() {
-    let handle = Driver::spawn(
-        snapshot(),
-        no_airspace(),
-        Box::new(|_, _, _| Box::new(|| {})),
-        Box::new(|_| {}),
-        Duration::from_millis(100),
-    );
+    let handle = spawn_driver(snapshot(), no_airspace());
     let mut topics = topic_stream(&handle);
 
     loop {
@@ -345,13 +316,7 @@ async fn locale_changes_reach_subscribers_and_persistence() {
 
 #[tokio::test]
 async fn decoded_fixes_reach_subscribers() {
-    let handle = Driver::spawn(
-        snapshot(),
-        no_airspace(),
-        Box::new(|_, _, _| Box::new(|| {})),
-        Box::new(|_| {}),
-        Duration::from_millis(100),
-    );
+    let handle = spawn_driver(snapshot(), no_airspace());
     let mut topics = topic_stream(&handle);
     let device_id = next_device_id(&mut topics).await;
 

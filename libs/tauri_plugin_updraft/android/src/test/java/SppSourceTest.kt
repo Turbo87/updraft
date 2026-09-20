@@ -18,7 +18,7 @@ class SppSourceTest {
         val events = EventCollector()
         val source = source(events) { _, connected, bytes ->
             SppReader(
-                FakeSocket(ChunkedInputStream(byteArrayOf(1, 2), byteArrayOf(3))),
+                FakeSppSocket(ChunkedInputStream(byteArrayOf(1, 2), byteArrayOf(3))),
                 connected,
                 bytes
             )
@@ -42,7 +42,7 @@ class SppSourceTest {
         val events = EventCollector()
         val source = source(events) { _, connected, bytes ->
             SppReader(
-                FakeSocket(
+                FakeSppSocket(
                     ByteArrayInputStream(byteArrayOf()),
                     connectFailure = IOException("connect failed")
                 ),
@@ -61,7 +61,7 @@ class SppSourceTest {
     fun `read failure emits one terminal event carrying the error`() {
         val events = EventCollector()
         val source = source(events) { _, connected, bytes ->
-            SppReader(FakeSocket(FailingInputStream()), connected, bytes)
+            SppReader(FakeSppSocket(FailingInputStream()), connected, bytes)
         }
 
         source.run()
@@ -73,11 +73,11 @@ class SppSourceTest {
     @Test
     fun `stop before reader assignment closes the reader when assigned`() {
         val events = EventCollector()
-        lateinit var socket: FakeSocket
+        lateinit var socket: FakeSppSocket
         lateinit var source: SppSource
         source = source(events) { _, connected, bytes ->
             source.stop()
-            socket = FakeSocket(ByteArrayInputStream(byteArrayOf()))
+            socket = FakeSppSocket(ByteArrayInputStream(byteArrayOf()))
             SppReader(socket, connected, bytes)
         }
 
@@ -98,7 +98,7 @@ class SppSourceTest {
             connected = reportConnected
             bytes = reportBytes
             SppReader(
-                FakeSocket(
+                FakeSppSocket(
                     object : InputStream() {
                         override fun read(): Int {
                             source.stop()
@@ -128,7 +128,7 @@ class SppSourceTest {
         val source = source(events, customUuid) { serviceUuid, connected, bytes ->
             receivedUuid = serviceUuid
             SppReader(
-                FakeSocket(ByteArrayInputStream(byteArrayOf())),
+                FakeSppSocket(ByteArrayInputStream(byteArrayOf())),
                 connected,
                 bytes
             )
@@ -181,35 +181,6 @@ class SppSourceTest {
             events.mapNotNull { event -> event[field]?.takeUnless(JsonNode::isNull)?.asText() }
 
         fun last(): JsonNode = events.last()
-    }
-
-    private class FakeSocket(
-        override val input: InputStream,
-        private val connectFailure: Exception? = null
-    ) : SppSocket {
-        var connected = false
-        var closed = false
-
-        override fun connect() {
-            connectFailure?.let { throw it }
-            connected = true
-        }
-
-        override fun close() {
-            closed = true
-        }
-    }
-
-    private class ChunkedInputStream(vararg chunks: ByteArray) : InputStream() {
-        private val chunks = ArrayDeque(chunks.toList())
-
-        override fun read(): Int = error("SppReader must use bulk reads")
-
-        override fun read(target: ByteArray, offset: Int, length: Int): Int {
-            val chunk = chunks.removeFirstOrNull() ?: return -1
-            chunk.copyInto(target, offset)
-            return chunk.size
-        }
     }
 
     private class FailingInputStream : InputStream() {

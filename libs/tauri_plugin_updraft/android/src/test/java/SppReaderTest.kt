@@ -14,7 +14,7 @@ class SppReaderTest {
     @Test
     fun `connect emits connected, copies bulk reads, reaches EOF, and closes`() {
         val input = ChunkedInputStream(byteArrayOf(1, 2), byteArrayOf(3))
-        val socket = FakeSocket(input)
+        val socket = FakeSppSocket(input)
         val events = mutableListOf<String>()
         val chunks = mutableListOf<ByteArray>()
         val reader = SppReader(
@@ -39,7 +39,7 @@ class SppReaderTest {
     @Test
     fun `connect failure is returned and closes`() {
         val failure = IOException("connect failed")
-        val socket = FakeSocket(ChunkedInputStream(), connectFailure = failure)
+        val socket = FakeSppSocket(ChunkedInputStream(), connectFailure = failure)
         val reader = SppReader(socket, {}, {})
 
         assertSame(failure, reader.run())
@@ -49,7 +49,7 @@ class SppReaderTest {
     @Test
     fun `read failure is returned and closes`() {
         val failure = IOException("read failed")
-        val socket = FakeSocket(FailingInputStream(failure))
+        val socket = FakeSppSocket(FailingInputStream(failure))
         val reader = SppReader(socket, {}, {})
 
         assertSame(failure, reader.run())
@@ -58,7 +58,7 @@ class SppReaderTest {
 
     @Test
     fun `stop closes the socket`() {
-        val socket = FakeSocket(ChunkedInputStream())
+        val socket = FakeSppSocket(ChunkedInputStream())
         val reader = SppReader(socket, {}, {})
 
         assertNull(reader.stop())
@@ -69,7 +69,7 @@ class SppReaderTest {
     fun `separate reads produce separate copied arrays`() {
         val chunks = mutableListOf<ByteArray>()
         val reader = SppReader(
-            FakeSocket(ChunkedInputStream(byteArrayOf(7), byteArrayOf(8))),
+            FakeSppSocket(ChunkedInputStream(byteArrayOf(7), byteArrayOf(8))),
             {},
             chunks::add
         )
@@ -85,7 +85,7 @@ class SppReaderTest {
     fun `close failure is returned after EOF`() {
         val failure = IOException("close failed")
         val reader = SppReader(
-            FakeSocket(ChunkedInputStream(), closeFailure = failure),
+            FakeSppSocket(ChunkedInputStream(), closeFailure = failure),
             {},
             {}
         )
@@ -97,7 +97,7 @@ class SppReaderTest {
     fun `connect failure takes precedence over close failure`() {
         val connectFailure = IOException("connect failed")
         val reader = SppReader(
-            FakeSocket(
+            FakeSppSocket(
                 ChunkedInputStream(),
                 connectFailure = connectFailure,
                 closeFailure = IOException("close failed")
@@ -113,7 +113,7 @@ class SppReaderTest {
     fun `read failure takes precedence over close failure`() {
         val readFailure = IOException("read failed")
         val reader = SppReader(
-            FakeSocket(
+            FakeSppSocket(
                 FailingInputStream(readFailure),
                 closeFailure = IOException("close failed")
             ),
@@ -128,43 +128,12 @@ class SppReaderTest {
     fun `stop propagates close failure`() {
         val failure = IOException("close failed")
         val reader = SppReader(
-            FakeSocket(ChunkedInputStream(), closeFailure = failure),
+            FakeSppSocket(ChunkedInputStream(), closeFailure = failure),
             {},
             {}
         )
 
         assertSame(failure, reader.stop())
-    }
-
-    private class FakeSocket(
-        override val input: InputStream,
-        private val connectFailure: Exception? = null,
-        private val closeFailure: Exception? = null
-    ) : SppSocket {
-        var closed = false
-
-        override fun connect() {
-            connectFailure?.let { throw it }
-        }
-
-        override fun close() {
-            closed = true
-            closeFailure?.let { throw it }
-        }
-    }
-
-    private class ChunkedInputStream(vararg chunks: ByteArray) : InputStream() {
-        private val chunks = ArrayDeque(chunks.toList())
-        val readLengths = mutableListOf<Int>()
-
-        override fun read(): Int = error("SppReader must use bulk reads")
-
-        override fun read(target: ByteArray, offset: Int, length: Int): Int {
-            readLengths += length
-            val chunk = chunks.removeFirstOrNull() ?: return -1
-            chunk.copyInto(target, offset)
-            return chunk.size
-        }
     }
 
     private class FailingInputStream(private val failure: IOException) : InputStream() {

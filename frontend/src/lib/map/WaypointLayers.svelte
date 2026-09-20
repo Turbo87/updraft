@@ -6,7 +6,7 @@
 
   import { convertAltitude } from '$lib/units';
   import { waypointSymbols } from '$lib/waypoint-symbols';
-  import { LANDABLE_WAYPOINT_KINDS } from '$lib/waypoints';
+  import { LANDABLE_WAYPOINT_KINDS, WAYPOINT_KIND } from '$lib/waypoints';
   import { FONT_REGULAR } from './basemap-style';
   import {
     COLOR_AMBER_500,
@@ -30,7 +30,7 @@
   const iconImage: ExpressionSpecification = [
     'match',
     ['get', 'kind'],
-    0,
+    WAYPOINT_KIND.UNKNOWN,
     'updraft-sdf:unknown',
     ...waypointSymbols.slice(1).flatMap(({ sprite }, kind) => [kind + 1, `updraft-sdf:${sprite}`]),
     'updraft-sdf:unknown',

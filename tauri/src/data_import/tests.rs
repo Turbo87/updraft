@@ -1,18 +1,14 @@
 use super::*;
-use crate::test_support::invoke;
+use crate::test_support::{invoke, spawn_driver};
 use crate::{
     airspace_storage::AirspaceStorage,
-    driver::Driver,
     file_picker::{FileBytesPicker, FileBytesPickerError, FileBytesPickerFuture, PickedFileBytes},
     ipc::AirspaceCommandState,
     waypoints::{commands::WaypointCommandState, storage::WaypointStorage},
 };
 use claims::{assert_none, assert_ok, assert_some};
 use serde_json::{Value, json};
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::sync::{Arc, Mutex};
 use tauri::{Manager, test::MockRuntime};
 use updraft_core::{AirspaceState, GetWaypointCatalog, SettingsSnapshot};
 
@@ -26,12 +22,9 @@ impl FileBytesPicker for Picker {
 }
 
 fn driver() -> DriverHandle {
-    Driver::spawn(
+    spawn_driver(
         SettingsSnapshot::default(),
         AirspaceState::none_at_startup(),
-        Box::new(|_, _, _| Box::new(|| {})),
-        Box::new(|_| {}),
-        Duration::from_millis(100),
     )
 }
 

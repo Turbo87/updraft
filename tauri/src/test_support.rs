@@ -1,4 +1,7 @@
+use crate::driver::{Driver, DriverHandle};
 use serde_json::Value;
+use std::time::Duration;
+use updraft_core::{AirspaceState, SettingsSnapshot};
 
 pub fn request(command: &str, body: Value) -> tauri::webview::InvokeRequest {
     tauri::webview::InvokeRequest {
@@ -41,4 +44,14 @@ pub fn capture_channels(
         );
         true
     })
+}
+
+pub fn spawn_driver(snapshot: SettingsSnapshot, airspace: AirspaceState) -> DriverHandle {
+    Driver::spawn(
+        snapshot,
+        airspace,
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Duration::from_millis(100),
+    )
 }

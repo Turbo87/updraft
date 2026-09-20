@@ -49,10 +49,9 @@ fn airspace_geojson(snapshot: &AirspaceSnapshot) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::driver::Driver;
+    use crate::test_support::spawn_driver;
     use claims::assert_some_eq;
     use std::sync::Arc;
-    use std::time::Duration;
     use tauri::http::{StatusCode, header};
     use tauri::test::mock_app;
     use tracing_test::traced_test;
@@ -61,13 +60,7 @@ mod tests {
 
     const POLYGON: &[u8] = include_bytes!("../../testdata/airspace/polygon.txt");
     fn driver(airspace: AirspaceState) -> DriverHandle {
-        Driver::spawn(
-            SettingsSnapshot::default(),
-            airspace,
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
-        )
+        spawn_driver(SettingsSnapshot::default(), airspace)
     }
 
     #[test]

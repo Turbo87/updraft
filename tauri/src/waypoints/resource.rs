@@ -83,14 +83,11 @@ mod tests {
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn resource_uses_current_core_generation_and_disables_caching() {
-        use crate::driver::Driver;
+        use crate::test_support::spawn_driver;
         use updraft_core::{AirspaceState, ReplaceWaypointCatalog, SettingsSnapshot};
-        let handle = Driver::spawn(
+        let handle = spawn_driver(
             SettingsSnapshot::default(),
             AirspaceState::none_at_startup(),
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            std::time::Duration::from_millis(100),
         );
         let app = tauri::test::mock_app();
         app.manage(handle.clone());

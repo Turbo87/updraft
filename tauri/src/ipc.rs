@@ -458,15 +458,13 @@ mod tests {
     use super::*;
     use crate::airspace_storage::AirspaceStorage;
     use crate::data_import::{self, DataImportState};
-    use crate::driver::Driver;
     use crate::file_picker::{
         FileBytesPicker, FileBytesPickerError, FileBytesPickerFuture, FileBytesPickerState,
         PickedFileBytes,
     };
-    use crate::test_support::{invoke, request};
+    use crate::test_support::{invoke, request, spawn_driver};
     use crate::waypoints::{commands::WaypointCommandState, storage::WaypointStorage};
     use serde_json::{Value, json};
-    use std::time::Duration;
     use tempfile::tempdir;
     use updraft_core::{AirspaceSource, AirspaceState, GetAirspaceSnapshot, SettingsSnapshot};
 
@@ -475,12 +473,9 @@ mod tests {
     const GEOMETRY_ERROR: &[u8] = b"AC D\nAL GND\nAH FL100\nDP 50:00:00 N 010:00:00 E\nDP 50:00:00 N 010:01:00 E\nDP 50:00:00 N 010:00:00 E\n";
 
     fn app() -> tauri::App<tauri::test::MockRuntime> {
-        let handle = Driver::spawn(
+        let handle = spawn_driver(
             SettingsSnapshot::default(),
             AirspaceState::none_at_startup(),
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
         );
 
         tauri::test::mock_builder()
@@ -512,13 +507,7 @@ mod tests {
     }
 
     fn driver(airspace: AirspaceState) -> DriverHandle {
-        Driver::spawn(
-            SettingsSnapshot::default(),
-            airspace,
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
-        )
+        spawn_driver(SettingsSnapshot::default(), airspace)
     }
 
     struct TestFileBytesPicker {

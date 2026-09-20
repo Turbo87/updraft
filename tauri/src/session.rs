@@ -56,7 +56,7 @@ fn fix(reported: ReportedFix) -> CoreFix {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::driver::Driver;
+    use crate::test_support::spawn_driver;
     use approx::assert_abs_diff_eq;
     use claims::{assert_some, assert_some_eq};
     use std::time::Duration;
@@ -99,12 +99,9 @@ mod tests {
     }"#;
 
     fn driver() -> DriverHandle {
-        Driver::spawn(
+        spawn_driver(
             SettingsSnapshot::default(),
             AirspaceState::none_at_startup(),
-            Box::new(|_, _, _| Box::new(|| {})),
-            Box::new(|_| {}),
-            Duration::from_millis(100),
         )
     }
 

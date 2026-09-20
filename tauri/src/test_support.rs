@@ -11,3 +11,34 @@ pub fn request(command: &str, body: Value) -> tauri::webview::InvokeRequest {
         invoke_key: tauri::test::INVOKE_KEY.to_owned(),
     }
 }
+
+pub fn invoke(
+    app: &tauri::App<tauri::test::MockRuntime>,
+    command: &str,
+    body: Value,
+) -> Result<Value, Value> {
+    use tauri::Manager;
+    let window = app.get_webview_window("main").unwrap_or_else(|| {
+        tauri::WebviewWindowBuilder::new(app, "main", Default::default())
+            .build()
+            .expect("the test webview should build")
+    });
+    tauri::test::get_ipc_response(&window, request(command, body)).map(|response| {
+        response
+            .deserialize()
+            .expect("the IPC response should deserialize")
+    })
+}
+
+pub fn capture_channels(
+    receive: impl Fn(Value) + Send + Sync + 'static,
+) -> tauri::Builder<tauri::test::MockRuntime> {
+    tauri::test::mock_builder().channel_interceptor(move |_, _, _, body| {
+        receive(
+            body.clone()
+                .deserialize()
+                .expect("the channel message should deserialize"),
+        );
+        true
+    })
+}

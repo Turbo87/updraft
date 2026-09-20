@@ -155,7 +155,7 @@ pub fn unsubscribe_basemaps(channel_id: u32, state: tauri::State<'_, Arc<Mutex<B
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_support::request;
+    use crate::test_support::invoke;
     use claims::assert_err;
 
     #[test]
@@ -170,7 +170,7 @@ mod tests {
     #[tracing_test::traced_test]
     fn file_details_read_disabled_files_and_reject_unknown_paths_through_ipc() {
         use claims::assert_ok;
-        use serde_json::{Value, json};
+        use serde_json::json;
         use std::fs::{self, FileTimes, OpenOptions};
         use std::time::{Duration, UNIX_EPOCH};
 
@@ -188,14 +188,8 @@ mod tests {
             .invoke_handler(tauri::generate_handler![get_basemap_file_details])
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
-        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .unwrap();
-        let invoke = |name: &str| {
-            let request = request("get_basemap_file_details", json!({"sourceName": name}));
-            tauri::test::get_ipc_response(&window, request)
-                .map(|r| r.deserialize::<Value>().unwrap())
-        };
+        let command = "get_basemap_file_details";
+        let invoke = |name: &str| invoke(&app, command, json!({"sourceName": name}));
         let name = "enroute/Europe/France.mbtiles";
         insta::assert_json_snapshot!(assert_ok!(invoke(name)), @r#"
         {

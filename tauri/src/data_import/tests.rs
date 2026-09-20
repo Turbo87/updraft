@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::request;
+use crate::test_support::invoke;
 use crate::{
     airspace_storage::AirspaceStorage,
     driver::Driver,
@@ -56,16 +56,6 @@ fn app(directory: &std::path::Path, name: &str, handle: DriverHandle) -> tauri::
         ])
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap()
-}
-
-fn invoke(app: &tauri::App<MockRuntime>, command: &str, body: Value) -> Result<Value, Value> {
-    let window = app.get_webview_window("main").unwrap_or_else(|| {
-        tauri::WebviewWindowBuilder::new(app, "main", Default::default())
-            .build()
-            .unwrap()
-    });
-    let request = request(command, body);
-    tauri::test::get_ipc_response(&window, request).map(|response| response.deserialize().unwrap())
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -44,7 +44,7 @@ pub struct Core {
     pinned_targets: crate::pinned_targets::PinnedTargets,
     recent_targets: Vec<crate::NavigationTarget>,
     task: crate::task::TaskState,
-    task_fix: Option<(SourceId, Timestamp)>,
+    task_fix: Option<crate::ownship::Selected<GpsSnapshot>>,
     task_save_failed: bool,
     settings: Settings,
     glide_performance: GlidePerformance,
@@ -278,6 +278,7 @@ impl Core {
         if let Some(device) = self.external_devices.get_mut(device_id) {
             device.flarm_reference.observe(&message, at);
         }
+        let mut position_updated = false;
         match message {
             Message::Rmc(rmc)
                 if rmc.status == RmcStatus::Active
@@ -298,6 +299,7 @@ impl Core {
                 }
                 if let Some(position) = rmc.position {
                     device.gps.position = Some(Timed::new(position, at));
+                    position_updated = true;
                 }
                 if let Some(course) = rmc.course_over_ground {
                     device.gps.track = Some(Timed::new(course, at));
@@ -316,6 +318,7 @@ impl Core {
                 }
                 if let Some(position) = gga.position {
                     device.gps.position = Some(Timed::new(position, at));
+                    position_updated = true;
                 }
                 if let Some(altitude) = gga.altitude {
                     let altitude = MslAltitude::new(altitude);
@@ -421,6 +424,9 @@ impl Core {
             }
             _ => {}
         }
+        if position_updated && let Some(fix) = self.gps_candidate(at) {
+            self.observe_task_fix(fix);
+        }
     }
 
     fn reevaluate_flight_data(&mut self, at: Timestamp) {
@@ -480,17 +486,18 @@ impl Core {
         });
     }
 
-    fn select_gps(&mut self, at: Timestamp) {
-        let selected = self
-            .external_devices
+    fn gps_candidate(&self, at: Timestamp) -> Option<crate::ownship::Selected<GpsSnapshot>> {
+        self.external_devices
             .iter()
             .filter(|device| device.config.enabled)
             .find_map(|device| {
                 select_gps_candidate(SourceId::External(device.device_id), device.gps, at)
             })
-            .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at));
+            .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at))
+    }
 
-        match selected {
+    fn select_gps(&mut self, at: Timestamp) {
+        match self.gps_candidate(at) {
             Some(selected) => self.gps.update(selected),
             None => self.gps.mark_stale(),
         }
@@ -1279,22 +1286,35 @@ impl Core {
         let DomainState::Current(fix) = self.gps else {
             return;
         };
-        let key = (fix.source, fix.ingested_at);
-        if self.task_fix == Some(key) {
+        if self.task_fix.is_some_and(|previous| {
+            previous.source == fix.source
+                && previous.ingested_at == fix.ingested_at
+                && previous.value.position == fix.value.position
+        }) {
+            return;
+        }
+        self.observe_task_fix(fix);
+    }
+
+    fn observe_task_fix(&mut self, fix: crate::ownship::Selected<GpsSnapshot>) {
+        if self.task_fix == Some(fix) {
             return;
         }
         if self
             .task_fix
-            .is_some_and(|previous| previous.0 != fix.source)
+            .is_some_and(|previous| previous.source != fix.source)
         {
             self.task.reset_crossing();
         }
-        self.task_fix = Some(key);
+        self.task_fix = Some(fix);
         let utc = fix
             .value
             .fix_time
             .and_then(|time| match time.value {
-                crate::FixTime::UtcInstant(utc) => Some(utc.unix_milliseconds()),
+                crate::FixTime::UtcInstant(utc) => Some(
+                    utc.saturating_add(fix.ingested_at.saturating_since(time.ingested_at))
+                        .unix_milliseconds(),
+                ),
                 _ => None,
             })
             .or_else(|| {
@@ -1304,7 +1324,21 @@ impl Core {
                         .unix_milliseconds()
                 })
             });
-        self.task.observe(fix.value.position, fix.ingested_at, utc);
+        let time_of_day = fix.value.fix_time.and_then(|time| match time.value {
+            crate::FixTime::UtcTimeOfDay(time) => Some(time.milliseconds_since_midnight()),
+            _ => None,
+        });
+        let utc = match (utc, time_of_day) {
+            (Some(reference), Some(time)) => {
+                let offset = (i64::from(time) - reference.rem_euclid(86_400_000) + 43_200_000)
+                    .rem_euclid(86_400_000)
+                    - 43_200_000;
+                Some(reference.saturating_add(offset))
+            }
+            _ => utc,
+        };
+        self.task
+            .observe(fix.value.position, fix.ingested_at, utc, time_of_day);
         if self.task.snapshot().status == crate::TaskStatus::Completed
             && self.navigation_target == Some(crate::NavigationTarget::Task)
         {

@@ -12,6 +12,9 @@ pub fn crossings(from: LatLon, to: LatLon, center: LatLon) -> (Option<f64>, Opti
             .distance(center)
             .as_meters()
     };
+    // GeographicLib can return a sub-micrometer error at an exact boundary.
+    let from_inside = from.distance(center).as_meters() <= 500. + 1e-6;
+    let to_inside = to.distance(center).as_meters() <= 500. + 1e-6;
     let (mut low, mut high) = (0., 1.);
     for _ in 0..40 {
         let a = low + (high - low) / 3.;
@@ -22,8 +25,14 @@ pub fn crossings(from: LatLon, to: LatLon, center: LatLon) -> (Option<f64>, Opti
             low = a;
         }
     }
-    let closest = (low + high) / 2.;
-    if distance(closest) >= 500. {
+    let closest = if from_inside {
+        0.
+    } else if to_inside {
+        1.
+    } else {
+        (low + high) / 2.
+    };
+    if !from_inside && !to_inside && distance(closest) >= 500. {
         return (None, None);
     }
     let boundary = |mut outside: f64, mut inside: f64| {
@@ -37,8 +46,8 @@ pub fn crossings(from: LatLon, to: LatLon, center: LatLon) -> (Option<f64>, Opti
         }
         (outside + inside) / 2.
     };
-    let entry = (distance(0.) > 500.).then(|| boundary(0., closest));
-    let exit = (distance(1.) > 500.).then(|| boundary(1., closest));
+    let entry = (!from_inside).then(|| boundary(0., closest));
+    let exit = (!to_inside).then(|| boundary(1., closest));
     (entry, exit)
 }
 
@@ -75,5 +84,14 @@ mod tests {
             ),
             (None, None)
         );
+    }
+
+    #[test]
+    fn a_report_on_the_boundary_can_enter_or_leave() {
+        let center = LatLon::from_degrees(0., 0.);
+        let boundary = center.destination(Angle::from_degrees(90.), Length::from_meters(500.));
+        let outside = center.destination(Angle::from_degrees(90.), Length::from_meters(600.));
+        claims::assert_some!(crossings(boundary, outside, center).1);
+        claims::assert_some!(crossings(outside, boundary, center).0);
     }
 }

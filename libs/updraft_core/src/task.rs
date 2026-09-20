@@ -46,6 +46,8 @@ pub struct TaskTime {
 struct PositionReport {
     position: LatLon,
     at: Timestamp,
+    utc: Option<i64>,
+    time_of_day: Option<u32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -194,21 +196,45 @@ impl TaskState {
         self.previous = None;
     }
 
-    pub fn observe(&mut self, position: LatLon, at: Timestamp, utc: Option<i64>) {
+    pub fn observe(
+        &mut self,
+        position: LatLon,
+        at: Timestamp,
+        utc: Option<i64>,
+        time_of_day: Option<u32>,
+    ) {
         if self.saved.status != TaskStatus::Running {
             return;
         }
-        if self.previous.is_some_and(|previous| at <= previous.at) {
-            return;
-        }
-        let previous = self.previous.replace(PositionReport { position, at });
-        let Some(previous) = previous else {
+        let report = PositionReport {
+            position,
+            at,
+            utc,
+            time_of_day,
+        };
+        let Some(previous) = self.previous else {
+            self.previous = Some(report);
             return;
         };
-        if at.saturating_since(previous.at).as_millis() > 10_000 {
+        if at < previous.at {
             return;
         }
-        let gap = at.saturating_since(previous.at).as_millis() as f64;
+        let gap = match (previous.utc, utc) {
+            (Some(previous), Some(current)) => current.saturating_sub(previous) as f64,
+            _ => match (previous.time_of_day, time_of_day) {
+                (Some(previous), Some(current)) => {
+                    (i64::from(current) - i64::from(previous)).rem_euclid(86_400_000) as f64
+                }
+                _ => at.saturating_since(previous.at).as_millis() as f64,
+            },
+        };
+        if gap <= 0. {
+            return;
+        }
+        self.previous = Some(report);
+        if gap > 10_000. {
+            return;
+        }
         let mut cursor = -1.;
         for _ in 0..=self.saved.points.len() {
             let Some(index) = self

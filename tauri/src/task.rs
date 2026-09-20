@@ -50,7 +50,6 @@ impl TaskFile {
     }
 
     pub async fn save(&self, handle: &DriverHandle) -> Result<bool, String> {
-        let _guard = self.changes.lock().await;
         let task = handle
             .send(GetTask)
             .await
@@ -99,6 +98,7 @@ async fn persist(
     navigation: &crate::navigation::NavigationFile,
     handle: &DriverHandle,
 ) -> Result<bool, String> {
+    let _guard = file.changes.lock().await;
     let task_saved = file.save(handle).await?;
     let navigation_saved = navigation.save_current(handle).await?;
     let saved = task_saved && navigation_saved;
@@ -152,11 +152,11 @@ mod tests {
             json!(true)
         );
         let task = assert_ok!(app.state::<Arc<TaskFile>>().load());
-        assert_eq!(task.current, Some(1));
+        claims::assert_some_eq!(task.current, 1);
         assert_eq!(task.status, updraft_core::TaskStatus::Running);
-        assert_eq!(
+        claims::assert_some_eq!(
             assert_ok!(app.state::<crate::navigation::NavigationFile>().load()),
-            Some(updraft_core::NavigationTarget::Task)
+            updraft_core::NavigationTarget::Task
         );
         assert_eq!(
             assert_ok!(invoke(
@@ -170,10 +170,9 @@ mod tests {
             assert_ok!(app.state::<Arc<TaskFile>>().load()).status,
             updraft_core::TaskStatus::Stopped
         );
-        assert_eq!(
-            assert_ok!(app.state::<crate::navigation::NavigationFile>().load()),
-            None
-        );
+        claims::assert_none!(assert_ok!(
+            app.state::<crate::navigation::NavigationFile>().load()
+        ));
         let file = app.state::<Arc<TaskFile>>();
         assert_ok!(std::fs::remove_file(&file.path));
         assert_ok!(std::fs::create_dir(&file.path));

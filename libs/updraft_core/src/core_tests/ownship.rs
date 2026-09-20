@@ -10,9 +10,7 @@ use updraft_units::{EllipsoidAltitude, Length, MslAltitude};
 fn selected_fix_time(sentence: &[u8]) -> FixTime {
     let (mut core, device_id) = core_with_external_device();
     core.apply(Bytes::new(device_id, sentence), at(0));
-    let DomainState::Current(selected) = core.gps else {
-        panic!("GPS should be current");
-    };
+    let selected = current_selection(core.gps);
     assert_some!(selected.value.fix_time).value
 }
 
@@ -28,10 +26,7 @@ fn fix_emits_instruments_immediately() {
 
     let effects = core.apply(Bytes::new(device_id, RMC), at(100)).effects;
 
-    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
-        unreachable!()
-    };
+    let instruments = single_instruments_emission(&effects);
     let gps = assert_some!(instruments.gps);
     let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-3);
@@ -45,9 +40,7 @@ fn selected_gps_fields_keep_their_ingestion_times() {
     core.apply(Bytes::new(device_id, RMC), at(100));
     core.apply(Bytes::new(device_id, GGA), at(200));
 
-    let DomainState::Current(selected) = core.gps else {
-        panic!("GPS should be current");
-    };
+    let selected = current_selection(core.gps);
     assert_eq!(assert_some!(selected.value.track).ingested_at, at(100));
     assert_eq!(
         assert_some!(selected.value.ground_speed).ingested_at,
@@ -85,24 +78,18 @@ fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
     core.apply(Bytes::new(device_id, GGA_LATER_TIME), at(1_000));
     core.apply(Bytes::new(device_id, GGA_WITHOUT_TIME), at(2_500));
 
-    let DomainState::Current(selected) = core.gps else {
-        panic!("GPS should be current");
-    };
+    let selected = current_selection(core.gps);
     assert_some_eq!(selected.value.fix_time.map(|time| time.value), full);
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 
-    let DomainState::Current(selected) = core.gps else {
-        panic!("GPS should remain current");
-    };
+    let selected = current_selection(core.gps);
     assert_some_eq!(selected.value.fix_time.map(|time| time.value), time_only);
 
     let effects = core.apply(Tick, at(4_000)).effects;
 
-    let DomainState::Current(selected) = core.gps else {
-        panic!("GPS should remain current");
-    };
+    let selected = current_selection(core.gps);
     assert_none!(selected.value.fix_time);
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 }
@@ -142,9 +129,7 @@ fn gps_becomes_last_known_at_the_exact_freshness_boundary() {
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let DomainState::LastKnown(selected) = core.gps else {
-        panic!("GPS should be last known");
-    };
+    let selected = last_known_selection(core.gps);
     assert_some!(selected.value.fix_time);
     assert!(gps_instruments(&core).stale);
 }
@@ -249,24 +234,18 @@ fn gps_falls_back_then_keeps_the_last_selected_stale_source() {
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let DomainState::Current(selected) = core.gps else {
-        panic!("the fresh fallback should be current");
-    };
+    let selected = current_selection(core.gps);
     assert_eq!(selected.source, SourceId::External(second));
 
     let effects = core.apply(Tick, at(4_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let DomainState::LastKnown(selected) = core.gps else {
-        panic!("the last selected source should become last known");
-    };
+    let selected = last_known_selection(core.gps);
     assert_eq!(selected.source, SourceId::External(second));
     assert_eq!(selected.ingested_at, at(1_000));
 
     let effects = core.apply(Tick, at(5_000)).effects;
     assert!(effects.is_empty());
-    let DomainState::LastKnown(selected) = core.gps else {
-        panic!("the last-known source should remain unchanged");
-    };
+    let selected = last_known_selection(core.gps);
     assert_eq!(selected.source, SourceId::External(second));
     assert_some_eq!(gps_instruments(&core).track_degrees, 180.0);
 }
@@ -294,15 +273,11 @@ fn disconnected_gps_source_remains_selected_until_it_is_stale() {
     let input = ConnectionChanged::new(first, ConnectionState::Disconnected);
     let effects = core.apply(input, at(2_500)).effects;
     assert!(effects.is_empty());
-    let DomainState::Current(selected) = core.gps else {
-        panic!("the disconnected source should remain current during its grace period");
-    };
+    let selected = current_selection(core.gps);
     assert_eq!(selected.source, SourceId::External(first));
 
     core.apply(Tick, at(3_000));
-    let DomainState::Current(selected) = core.gps else {
-        panic!("the fresh fallback should become current");
-    };
+    let selected = current_selection(core.gps);
     assert_eq!(selected.source, SourceId::External(second));
 }
 
@@ -325,16 +300,12 @@ fn equal_internal_fallback_publishes_the_changed_solar_time_source() {
 
     let effects = core.apply(InternalGps::new(equivalent_fix), at(1)).effects;
     assert!(effects.is_empty());
-    let DomainState::Current(selected) = core.gps else {
-        panic!("the external source should remain current");
-    };
+    let selected = current_selection(core.gps);
     assert_eq!(selected.source, SourceId::External(device_id));
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let DomainState::Current(selected) = core.gps else {
-        panic!("the internal fallback should become current");
-    };
+    let selected = current_selection(core.gps);
     assert_eq!(selected.source, SourceId::InternalGps);
 }
 
@@ -346,9 +317,7 @@ fn one_byte_input_publishes_only_its_final_gps_snapshot() {
 
     let effects = core.apply(Bytes::new(device_id, input), at(0)).effects;
 
-    let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
-        panic!("one byte input should emit one final instruments snapshot");
-    };
+    let instruments = single_instruments_emission(&effects);
     let position = assert_some!(instruments.gps).position;
     assert_abs_diff_eq!(position.latitude_degrees, 51.0, epsilon = 1e-3);
     assert_abs_diff_eq!(position.longitude_degrees, 7.0, epsilon = 1e-3);
@@ -493,10 +462,7 @@ fn internal_gps_emits_instruments_immediately() {
         assert_some!(core.internal_gps.ground_speed).ingested_at,
         at(100)
     );
-    assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
-    let [Effect::Emit(Topic::Instruments(instruments))] = effects.as_slice() else {
-        unreachable!()
-    };
+    let instruments = single_instruments_emission(&effects);
     let gps = assert_some!(instruments.gps);
     let position = gps.position;
     assert_abs_diff_eq!(position.latitude_degrees, 50.823, epsilon = 1e-9);
@@ -512,9 +478,7 @@ fn internal_gps_selects_full_fix_time() {
 
     core.apply(InternalGps::new(reported), at(100));
 
-    let DomainState::Current(selected) = core.gps else {
-        panic!("GPS should be current");
-    };
+    let selected = current_selection(core.gps);
     assert_some_eq!(
         selected.value.fix_time.map(|time| time.value),
         FixTime::UtcInstant(fix_time)

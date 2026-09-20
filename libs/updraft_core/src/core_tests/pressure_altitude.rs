@@ -1,7 +1,6 @@
 use super::super::*;
 use super::support::*;
 use crate::connection::ConnectionSpec;
-use crate::ownship::Selected;
 use approx::assert_abs_diff_eq;
 use claims::{assert_none, assert_ok, assert_some};
 use std::assert_matches;
@@ -19,13 +18,6 @@ fn pgrmz(meters: Option<f64>, fix_dimension: PgrmzFixDimension) -> Vec<u8> {
     }))
 }
 
-fn current_pressure_altitude(core: &Core) -> Selected<PressureAltitude> {
-    let DomainState::Current(selected) = core.pressure_altitude else {
-        panic!("pressure altitude should be current");
-    };
-    selected
-}
-
 #[test]
 fn pgrmz_selects_pressure_altitude_without_using_fix_dimension() {
     let (mut core, device_id) = core_with_external_device();
@@ -34,7 +26,7 @@ fn pgrmz_selects_pressure_altitude_without_using_fix_dimension() {
         .apply(Bytes::new(device_id, pgrmz(Some(1_000.), NoFix)), at(0))
         .effects;
 
-    let selected = current_pressure_altitude(&core);
+    let selected = current_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(device_id));
     assert_eq!(
         selected.value,
@@ -121,9 +113,7 @@ fn pressure_altitude_climb_updates_fused_instruments() {
             .effects;
     }
 
-    let [Effect::Emit(Topic::Instruments(instruments))] = last_effects.as_slice() else {
-        panic!("the climb should emit derived instruments");
-    };
+    let instruments = single_instruments_emission(&last_effects);
     let derived = assert_some!(instruments.derived.as_ref());
     let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
     assert_abs_diff_eq!(raw_vertical_speed.meters_per_second, 2.0, epsilon = 0.05);
@@ -147,7 +137,7 @@ fn pressure_source_change_keeps_the_previous_vertical_speed_stale() {
 
     core.apply(Tick, at(4_000));
 
-    let selected = current_pressure_altitude(&core);
+    let selected = current_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(second));
     let derived = assert_some!(instruments(&core).derived);
     let raw_vertical_speed = assert_some!(derived.raw_vertical_speed);
@@ -258,10 +248,8 @@ fn gps_and_pressure_altitude_select_independent_sources() {
         at(1),
     );
 
-    let DomainState::Current(gps) = core.gps else {
-        panic!("GPS should be current");
-    };
-    let pressure_altitude = current_pressure_altitude(&core);
+    let gps = current_selection(core.gps);
+    let pressure_altitude = current_selection(core.pressure_altitude);
     assert_eq!(gps.source, SourceId::External(first));
     assert_eq!(pressure_altitude.source, SourceId::External(second));
 }
@@ -275,13 +263,13 @@ fn pressure_altitude_falls_back_then_becomes_last_known() {
         at(1_000),
     );
 
-    let selected = current_pressure_altitude(&core);
+    let selected = current_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(first));
 
     let effects = core.apply(Tick, at(3_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 
-    let selected = current_pressure_altitude(&core);
+    let selected = current_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(second));
     let published = assert_some!(instruments(&core).pressure_altitude);
     assert_eq!(published.meters, 2_000.0);
@@ -290,17 +278,13 @@ fn pressure_altitude_falls_back_then_becomes_last_known() {
     let effects = core.apply(Tick, at(4_000)).effects;
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 
-    let DomainState::LastKnown(selected) = core.pressure_altitude else {
-        panic!("selected pressure altitude should become last known");
-    };
+    let selected = last_known_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(second));
     assert_eq!(selected.ingested_at, at(1_000));
     assert!(assert_some!(instruments(&core).pressure_altitude).stale);
 
     core.apply(ReorderExternalDevices::new(vec![second, first]), at(4_001));
-    let DomainState::LastKnown(selected) = core.pressure_altitude else {
-        panic!("reorder should keep the selected last-known altitude");
-    };
+    let selected = last_known_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(second));
 }
 
@@ -314,11 +298,11 @@ fn reorder_reselects_fresh_pressure_altitude_without_discarding_candidates() {
     );
 
     core.apply(ReorderExternalDevices::new(vec![second, first]), at(2));
-    let selected = current_pressure_altitude(&core);
+    let selected = current_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(second));
 
     core.apply(ReorderExternalDevices::new(vec![first, second]), at(2));
-    let selected = current_pressure_altitude(&core);
+    let selected = current_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(first));
 }
 
@@ -333,7 +317,7 @@ fn disabling_pressure_sources_reselects_and_discards_candidates() {
 
     core.apply(SetExternalDeviceEnabled::disabled(first), at(2));
 
-    let selected = current_pressure_altitude(&core);
+    let selected = current_selection(core.pressure_altitude);
     assert_eq!(selected.source, SourceId::External(second));
 
     core.apply(SetExternalDeviceEnabled::disabled(second), at(3));

@@ -1,6 +1,7 @@
 use super::super::*;
 use crate::connection::ConnectionSpec;
 use crate::external_device::ExternalDeviceConfig;
+use crate::ownship::Selected;
 use crate::settings::SettingsSnapshot;
 use crate::topic::{GpsInstruments, Instruments};
 use crate::traffic::{PublishedTrafficTarget, TrafficDelta, TrafficUpdate};
@@ -129,4 +130,28 @@ pub fn fix(latitude_degrees: f64, longitude_degrees: f64) -> Fix {
         ground_speed: Some(Speed::from_meters_per_second(30.0)),
         fix_time: None,
     }
+}
+
+#[track_caller]
+pub fn current_selection<T: std::fmt::Debug>(state: DomainState<T>) -> Selected<T> {
+    let DomainState::Current(selected) = state else {
+        panic!("expected a current selection, got {state:?}");
+    };
+    selected
+}
+
+#[track_caller]
+pub fn last_known_selection<T: std::fmt::Debug>(state: DomainState<T>) -> Selected<T> {
+    let DomainState::LastKnown(selected) = state else {
+        panic!("expected a last-known selection, got {state:?}");
+    };
+    selected
+}
+
+#[track_caller]
+pub fn single_instruments_emission(effects: &[Effect]) -> &Instruments {
+    let [Effect::Emit(Topic::Instruments(instruments))] = effects else {
+        panic!("expected exactly one instruments emission, got {effects:?}");
+    };
+    instruments
 }

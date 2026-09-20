@@ -197,9 +197,7 @@ fn reorder_external_devices_keeps_selected_last_known_gps() {
 
     let update = core.apply(ReorderExternalDevices::new(vec![second, first]), at(4_001));
 
-    let DomainState::LastKnown(selected) = core.gps else {
-        panic!("GPS should remain last known");
-    };
+    let selected = last_known_selection(core.gps);
     assert_eq!(selected.source, SourceId::External(second));
     assert_eq!(emitted_instruments(&update.effects), Vec::new());
 }

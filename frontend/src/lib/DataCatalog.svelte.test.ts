@@ -9,41 +9,13 @@ import 'virtual:uno.css';
 
 import { withViewport } from '$lib/viewport.fixture';
 import DataCatalog from './DataCatalog.svelte';
+import { catalogEntries } from './enroute-catalog.fixture';
 import { applyLocaleSetting } from './i18n.svelte';
 
 const catalog: EnrouteCatalogStatus = {
   cached: {
     checkedAt: Date.UTC(2026, 8, 8),
-    entries: [
-      {
-        path: 'Europe/Germany.mbtiles',
-        countryCode: 'DE',
-        continent: 'europe',
-        size: 10,
-        publicationDate: '2026-09-08',
-      },
-      {
-        path: 'Europe/France/North.mbtiles',
-        countryCode: 'FR',
-        continent: 'europe',
-        size: 20,
-        publicationDate: '2026-09-08',
-      },
-      {
-        path: 'Europe/France/South.mbtiles',
-        countryCode: 'FR',
-        continent: 'europe',
-        size: 30,
-        publicationDate: '2026-09-08',
-      },
-      {
-        path: 'Africa/Morocco.mbtiles',
-        countryCode: 'MA',
-        continent: 'africa',
-        size: 40,
-        publicationDate: '2026-09-08',
-      },
-    ],
+    entries: catalogEntries(),
   },
   refreshing: false,
   error: false,

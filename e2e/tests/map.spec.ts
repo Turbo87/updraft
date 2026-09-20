@@ -1,15 +1,15 @@
 import type { Page } from '@playwright/test';
 import type * as GeoJSON from 'geojson';
-import type { GeoJSONSource, GeoJSONSourceSpecification } from 'maplibre-gl';
+import type { GeoJSONSource } from 'maplibre-gl';
 import type { AirspaceProperties } from '$lib/airspace';
-import type { AppContext } from '$lib/app-context';
 import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
 import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
+import type { TestApp } from './app';
 
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { AIRSPACE_BROWSER_FIXTURE } from '../../frontend/src/lib/map/airspace.fixture';
+import { test } from './app';
 
 type MapState = {
   center: number[];
@@ -26,12 +26,6 @@ type AirspaceMapState = {
   featureCount: number;
   layerOrder: string[];
   renderedLayerIds: string[];
-};
-
-type TestWindow = Window & {
-  __updraftApp?: AppContext;
-  __updraftFake?: { emit: (topic: unknown) => void };
-  __updraftTestAirspaceData?: GeoJSONSourceSpecification['data'];
 };
 
 const POSITION_A: GpsInstruments = {
@@ -81,11 +75,10 @@ const TRAFFIC_B: PublishedTrafficTarget = {
   stale: false,
 };
 
-test('follows live positions until the user pans and returns', async ({ page }) => {
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+test('follows live positions until the user pans and returns', async ({ page, app }) => {
+  await app.open('/');
 
-  await emitInstruments(page, POSITION_A);
+  await app.emitInstruments(POSITION_A);
   await expectMapPosition(page, POSITION_A);
 
   let followedCenter = await readMapCenter(page);
@@ -97,20 +90,20 @@ test('follows live positions until the user pans and returns', async ({ page }) 
   await panMap(page);
   manualCenter = await expectFullPan(page, manualCenter);
 
-  await emitInstruments(page, POSITION_B);
+  await app.emitInstruments(POSITION_B);
   await expectMapPosition(page, POSITION_B, manualCenter);
 
   await returnButton.click();
   await expect(returnButton).not.toBeVisible();
   await expectMapPosition(page, POSITION_B);
 
-  await emitInstruments(page, POSITION_C);
+  await app.emitInstruments(POSITION_C);
   await expectMapPosition(page, POSITION_C);
 });
 
-test('keeps the Settings button inside the safe area', async ({ page }) => {
+test('keeps the Settings button inside the safe area', async ({ page, app }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto('/?testMode=1');
+  await app.open('/');
   await page.locator('html').evaluate((element) => {
     element.style.setProperty('--safe-area-top', '32px');
     element.style.setProperty('--safe-area-right', '24px');
@@ -128,9 +121,9 @@ test('keeps the Settings button inside the safe area', async ({ page }) => {
   await expect(settingsButton.locator('..')).toHaveCSS('right', '40px');
 });
 
-test('keeps the return-to-position button inside the safe area', async ({ page }) => {
+test('keeps the return-to-position button inside the safe area', async ({ page, app }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto('/?testMode=1');
+  await app.open('/');
   await page.locator('html').evaluate((element) => {
     element.style.setProperty('--safe-area-right', '24px');
     element.style.setProperty('--safe-area-bottom', '20px');
@@ -144,22 +137,19 @@ test('keeps the return-to-position button inside the safe area', async ({ page }
   await expect(returnButton.locator('..')).toHaveCSS('bottom', '16px');
 });
 
-test('renders active airspace below traffic and ownship', async ({ page }) => {
+test('renders active airspace below traffic and ownship', async ({ page, app }) => {
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await app.open('/');
 
-  await emitInstruments(page, POSITION_A);
-  await page.evaluate(() => {
-    (window as TestWindow).__updraftFake?.emit({
-      topic: 'airspace',
-      value: {
-        generation: 1,
-        sources: [{ type: 'active', sourceName: 'browser-fixture.txt', airspaceCount: 2 }],
-      },
-    });
+  await app.emitInstruments(POSITION_A);
+  await app.emit({
+    topic: 'airspace',
+    value: {
+      generation: 1,
+      sources: [{ type: 'active', sourceName: 'browser-fixture.txt', airspaceCount: 2 }],
+    },
   });
 
   await expect
@@ -177,11 +167,10 @@ test('renders active airspace below traffic and ownship', async ({ page }) => {
     });
 });
 
-test('opens a tapped map position and updates its ownship relation', async ({ page }) => {
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+test('opens a tapped map position and updates its ownship relation', async ({ page, app }) => {
+  await app.open('/');
 
-  await emitInstruments(page, POSITION_A);
+  await app.emitInstruments(POSITION_A);
   await expectMapPosition(page, POSITION_A);
 
   let bounds = await page.locator('.maplibregl-canvas').boundingBox();
@@ -200,14 +189,14 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
   await expect(page.getByRole('main').getByText('Elevation')).toBeVisible();
   await expect(page.getByRole('main').getByText('—', { exact: true })).toHaveCount(3);
 
-  await emitInstruments(page, POSITION_B);
+  await app.emitInstruments(POSITION_B);
   await expect(page.getByRole('main').getByText('0.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByText('212', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
 
-  await page.goto('/nearby/91/6.186?testMode=1');
+  await app.open('/nearby/91/6.186');
   await expect(page.getByRole('heading', { name: 'Nearby' })).toBeVisible();
   await expect(
     page.getByRole('main').getByText('The selected map position is invalid.'),
@@ -217,17 +206,16 @@ test('opens a tapped map position and updates its ownship relation', async ({ pa
   await expect(page).toHaveURL('/');
 });
 
-test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) => {
+test('shows overlapping nearby airspaces in MapLibre order', async ({ page, app }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   let airspaceFixture = structuredClone(AIRSPACE_BROWSER_FIXTURE);
   airspaceFixture.features[1].properties.name = 'SIV MARSEILLE NORD 1 EXTENDED AIRSPACE';
   airspaceFixture.features[1].properties.type = 29;
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, airspaceFixture);
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await app.open('/');
+  await emitAirspace(app, { type: 'active', generation: 1 });
   await expect.poll(() => readAirspaceMapState(page)).not.toBeNull();
 
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.182 });
@@ -264,9 +252,8 @@ test('shows overlapping nearby airspaces in MapLibre order', async ({ page }) =>
   );
 });
 
-test('shows empty states without rendered features', async ({ page }) => {
-  await page.goto('/nearby/50.82/6.15?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+test('shows empty states without rendered features', async ({ page, app }) => {
+  await app.open('/nearby/50.82/6.15');
   await expect(
     page.getByText('No GPS position is available. Values relative to ownship are unknown.'),
   ).toBeVisible();
@@ -295,18 +282,17 @@ test('shows empty states without rendered features', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Back to map' }).click();
   await expect(page).toHaveURL('/');
-  await emitAirspace(page, { type: 'unavailable' });
+  await emitAirspace(app, { type: 'unavailable' });
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.15 });
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
 });
 
-test('invalidates nearby airspaces when the catalog changes', async ({ page }) => {
+test('invalidates nearby airspaces when the catalog changes', async ({ page, app }) => {
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await app.open('/');
+  await emitAirspace(app, { type: 'active', generation: 1 });
   await expect.poll(() => readAirspaceMapState(page)).not.toBeNull();
 
   await clickMapPosition(page, { latitudeDegrees: 50.82, longitudeDegrees: 6.19 });
@@ -319,16 +305,15 @@ test('invalidates nearby airspaces when the catalog changes', async ({ page }) =
     '/airspaces/1:0:1',
   );
 
-  await emitAirspace(page, { type: 'unavailable' });
+  await emitAirspace(app, { type: 'unavailable' });
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
 });
 
-test('keeps nearby traffic membership while targets update', async ({ page }) => {
+test('keeps nearby traffic membership while targets update', async ({ page, app }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitInstruments(page, POSITION_A);
-  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A, TRAFFIC_B] });
+  await app.open('/');
+  await app.emitInstruments(POSITION_A);
+  await app.emitTraffic({ type: 'snapshot', value: [TRAFFIC_A, TRAFFIC_B] });
   let selectedPosition = TRAFFIC_A.position;
   await expect
     .poll(() => readTrafficIdsAt(page, selectedPosition))
@@ -355,7 +340,7 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
     trafficType: 'balloon' as const,
   };
   let unrelated = { ...TRAFFIC_A, id: 'flarm:000003' };
-  await emitTraffic(page, {
+  await app.emitTraffic({
     type: 'delta',
     value: { upserts: [updated, unrelated], removed: [TRAFFIC_B.id] },
   });
@@ -365,7 +350,7 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
   ]);
 
   let recovered = { ...TRAFFIC_B, trafficType: 'paraglider' as const };
-  await emitTraffic(page, {
+  await app.emitTraffic({
     type: 'delta',
     value: { upserts: [recovered], removed: [] },
   });
@@ -374,7 +359,7 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
     /Balloon · FLARM 000001/,
   ]);
 
-  await emitTraffic(page, {
+  await app.emitTraffic({
     type: 'delta',
     value: { upserts: [], removed: [TRAFFIC_B.id] },
   });
@@ -383,28 +368,26 @@ test('keeps nearby traffic membership while targets update', async ({ page }) =>
   await expect(page.getByText('Traffic not found.')).toBeVisible();
 });
 
-test('does not move the map for an off-screen nearby URL', async ({ page }) => {
+test('does not move the map for an off-screen nearby URL', async ({ page, app }) => {
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/nearby/0/0?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
+  await app.open('/nearby/0/0');
   await expect.poll(() => readMapCenter(page)).toBeTruthy();
   let initialCenter = await readMapCenter(page);
 
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await emitAirspace(app, { type: 'active', generation: 1 });
   let airspaces = page.getByRole('region', { name: 'Airspaces' });
   await expect(airspaces.getByText('No airspace at this position.')).toBeVisible();
   expect(await readMapCenter(page)).toEqual(initialCenter);
 });
 
-test('shows complete airspace details on direct visits and reloads', async ({ page }) => {
+test('shows complete airspace details on direct visits and reloads', async ({ page, app }) => {
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/airspaces/1:0:0?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await app.open('/airspaces/1:0:0');
+  await emitAirspace(app, { type: 'active', generation: 1 });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
   await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
@@ -478,58 +461,53 @@ test('shows complete airspace details on direct visits and reloads', async ({ pa
 
   await page.reload();
   await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'active', generation: 2 });
+  await emitAirspace(app, { type: 'active', generation: 2 });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 });
 
-test('shows airspace not found for unavailable data and missing IDs', async ({ page }) => {
+test('shows airspace not found for unavailable data and missing IDs', async ({ page, app }) => {
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/airspaces/1:0:0?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'unavailable' });
+  await app.open('/airspaces/1:0:0');
+  await emitAirspace(app, { type: 'unavailable' });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 
-  await page.goto('/airspaces/1:0:999?testMode=1');
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await app.open('/airspaces/1:0:999');
+  await emitAirspace(app, { type: 'active', generation: 1 });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 });
 
-test('omits an unclassified airspace class', async ({ page }) => {
+test('omits an unclassified airspace class', async ({ page, app }) => {
   let fixture = structuredClone(AIRSPACE_BROWSER_FIXTURE) as GeoJSON.FeatureCollection<
     GeoJSON.Polygon,
     AirspaceProperties
   >;
   fixture.features[0].properties.icaoClass = 8;
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, fixture);
-  await page.goto('/airspaces/1:0:0?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await app.open('/airspaces/1:0:0');
+  await emitAirspace(app, { type: 'active', generation: 1 });
 
   let classification = page.getByRole('heading', { name: 'Classification' }).locator('..');
   await expect(classification.getByText('ICAO class')).toHaveCount(0);
   await expect(classification.getByText('Unclassified')).toHaveCount(0);
 });
 
-test('retries an airspace source read failure', async ({ page }) => {
+test('retries an airspace source read failure', async ({ page, app }) => {
   await page.addInitScript(() => {
-    (window as TestWindow).__updraftTestAirspaceData = '/missing-airspace.geojson';
+    window.__updraftTestAirspaceData = '/missing-airspace.geojson';
   });
-  await page.goto('/airspaces/1:0:0?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await app.open('/airspaces/1:0:0');
+  await emitAirspace(app, { type: 'active', generation: 1 });
 
   let retry = page.getByRole('button', { name: 'Retry' });
   await expect(page.getByText('The airspace could not be loaded.')).toBeVisible();
   await expect(retry).toBeVisible();
 
   await page.evaluate(async (data) => {
-    let source = (window as TestWindow).__updraftApp?.mapState.map?.getSource<GeoJSONSource>(
-      'airspace',
-    );
+    let source = window.__updraftApp?.mapState.map?.getSource<GeoJSONSource>('airspace');
     if (!source) throw new Error('Airspace source is not available');
     await source.setData(data);
   }, AIRSPACE_BROWSER_FIXTURE);
@@ -537,11 +515,10 @@ test('retries an airspace source read failure', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Düsseldorf CTR');
 });
 
-test('shows complete traffic details on direct visits and reloads', async ({ page }) => {
-  await page.goto(`/traffic/${TRAFFIC_A.id}?testMode=1`);
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitInstruments(page, POSITION_A);
-  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+test('shows complete traffic details on direct visits and reloads', async ({ page, app }) => {
+  await app.open(`/traffic/${TRAFFIC_A.id}`);
+  await app.emitInstruments(POSITION_A);
+  await app.emitTraffic({ type: 'snapshot', value: [TRAFFIC_A] });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
   await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
@@ -566,15 +543,14 @@ test('shows complete traffic details on direct visits and reloads', async ({ pag
 
   await page.reload();
   await page.waitForFunction(() => '__updraftFake' in window);
-  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+  await app.emitTraffic({ type: 'snapshot', value: [TRAFFIC_A] });
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
 });
 
-test('updates and retains traffic details', async ({ page }) => {
-  await page.goto(`/traffic/${TRAFFIC_A.id}?testMode=1`);
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitInstruments(page, POSITION_A);
-  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+test('updates and retains traffic details', async ({ page, app }) => {
+  await app.open(`/traffic/${TRAFFIC_A.id}`);
+  await app.emitInstruments(POSITION_A);
+  await app.emitTraffic({ type: 'snapshot', value: [TRAFFIC_A] });
 
   let movedTarget = {
     ...TRAFFIC_A,
@@ -584,7 +560,7 @@ test('updates and retains traffic details', async ({ page }) => {
     alarmLevel: 'important' as const,
     stale: true,
   };
-  await emitTraffic(page, {
+  await app.emitTraffic({
     type: 'delta',
     value: { upserts: [movedTarget], removed: [] },
   });
@@ -595,17 +571,17 @@ test('updates and retains traffic details', async ({ page }) => {
   await expect(page.getByText('Important', { exact: true })).toBeVisible();
   await expect(page.getByText('—', { exact: true })).toHaveCount(7);
 
-  await emitInstruments(page, POSITION_C);
+  await app.emitInstruments(POSITION_C);
   await expect(page.getByText('212', { exact: true })).toBeVisible();
 
-  await emitTraffic(page, {
+  await app.emitTraffic({
     type: 'delta',
     value: { upserts: [], removed: [TRAFFIC_A.id] },
   });
   await expect(page.getByText('Unavailable', { exact: true })).toBeVisible();
   await expect(page.getByText('50.82400° N, 6.18700° E')).toBeVisible();
 
-  await emitTraffic(page, {
+  await app.emitTraffic({
     type: 'delta',
     value: { upserts: [TRAFFIC_A], removed: [] },
   });
@@ -613,24 +589,22 @@ test('updates and retains traffic details', async ({ page }) => {
   await expect(page.getByText('50.82300° N, 6.18600° E')).toBeVisible();
 });
 
-test('shows traffic not found for missing IDs', async ({ page }) => {
-  await page.goto('/traffic/flarm:999999?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitTraffic(page, { type: 'snapshot', value: [TRAFFIC_A] });
+test('shows traffic not found for missing IDs', async ({ page, app }) => {
+  await app.open('/traffic/flarm:999999');
+  await app.emitTraffic({ type: 'snapshot', value: [TRAFFIC_A] });
   await expect(page.getByText('Traffic not found.')).toBeVisible();
 });
 
-test('opens inspector details and requeries the map after browser Back', async ({ page }) => {
+test('opens inspector details and requeries the map after browser Back', async ({ page, app }) => {
   await page.addInitScript((data) => {
-    (window as TestWindow).__updraftTestAirspaceData = data;
+    window.__updraftTestAirspaceData = data;
   }, AIRSPACE_BROWSER_FIXTURE);
-  await page.goto('/?testMode=1');
-  await page.waitForFunction(() => '__updraftFake' in window);
-  await emitAirspace(page, { type: 'active', generation: 1 });
+  await app.open('/');
+  await emitAirspace(app, { type: 'active', generation: 1 });
 
   let selectedPosition = { latitudeDegrees: 50.82, longitudeDegrees: 6.182 };
   let trafficTarget = { ...TRAFFIC_A, position: selectedPosition };
-  await emitTraffic(page, { type: 'snapshot', value: [trafficTarget] });
+  await app.emitTraffic({ type: 'snapshot', value: [trafficTarget] });
   await expect.poll(() => readAirspaceMapState(page)).not.toBeNull();
   await expect.poll(() => readTrafficIdsAt(page, selectedPosition)).toEqual([TRAFFIC_A.id]);
 
@@ -654,7 +628,7 @@ test('opens inspector details and requeries the map after browser Back', async (
 
   await traffic.getByRole('link', { name: /^Glider · FLARM 000001/ }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('FLARM 000001');
-  await emitTraffic(page, {
+  await app.emitTraffic({
     type: 'delta',
     value: {
       upserts: [{ ...trafficTarget, position: { latitudeDegrees: 0, longitudeDegrees: 0 } }],
@@ -672,52 +646,33 @@ test('opens inspector details and requeries the map after browser Back', async (
   ]);
 });
 
-async function emitInstruments(page: Page, gps: GpsInstruments) {
-  await page.evaluate(
-    (value) => {
-      (window as TestWindow).__updraftFake?.emit({ topic: 'instruments', value });
-    },
-    { gps, pressureAltitude: null },
-  );
-}
-
 async function emitAirspace(
-  page: Page,
+  app: TestApp,
   state: { type: 'none' } | { type: 'unavailable' } | { type: 'active'; generation: number },
 ) {
-  await page.evaluate(
-    ({ airspace, airspaceCount }) => {
-      let value = {
-        generation: airspace.type === 'active' ? airspace.generation : 0,
-        sources:
-          airspace.type === 'active'
-            ? [{ type: 'active' as const, sourceName: 'browser-fixture.txt', airspaceCount }]
-            : airspace.type === 'unavailable'
-              ? [
-                  {
-                    type: 'unavailable' as const,
-                    sourceName: 'broken.txt',
-                    error: 'readFailed' as const,
-                  },
-                ]
-              : [],
-      };
-
-      (window as TestWindow).__updraftFake?.emit({ topic: 'airspace', value });
+  await app.emit({
+    topic: 'airspace',
+    value: {
+      generation: state.type === 'active' ? state.generation : 0,
+      sources:
+        state.type === 'active'
+          ? [
+              {
+                type: 'active',
+                sourceName: 'browser-fixture.txt',
+                airspaceCount: AIRSPACE_BROWSER_FIXTURE.features.length,
+              },
+            ]
+          : state.type === 'unavailable'
+            ? [{ type: 'unavailable', sourceName: 'broken.txt', error: 'readFailed' }]
+            : [],
     },
-    { airspace: state, airspaceCount: AIRSPACE_BROWSER_FIXTURE.features.length },
-  );
-}
-
-async function emitTraffic(page: Page, update: TrafficUpdate) {
-  await page.evaluate((value) => {
-    (window as TestWindow).__updraftFake?.emit({ topic: 'traffic', value });
-  }, update);
+  });
 }
 
 async function clickMapPosition(page: Page, position: MapCenter) {
   let point = await page.evaluate(({ latitudeDegrees, longitudeDegrees }) => {
-    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    let map = window.__updraftApp?.mapState.map;
     if (!map) throw new Error('Map is not available');
     return map.project([longitudeDegrees, latitudeDegrees]);
   }, position);
@@ -766,7 +721,7 @@ async function panMap(page: Page) {
 
 async function readMapCenter(page: Page): Promise<MapCenter> {
   return page.evaluate(() => {
-    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    let map = window.__updraftApp?.mapState.map;
     if (!map) throw new Error('Map is not available');
 
     let center = map.getCenter();
@@ -776,11 +731,11 @@ async function readMapCenter(page: Page): Promise<MapCenter> {
 
 async function expectFullPan(page: Page, previousCenter: MapCenter): Promise<MapCenter> {
   await expect
-    .poll(() => page.evaluate(() => (window as TestWindow).__updraftApp?.mapState.map?.isMoving()))
+    .poll(() => page.evaluate(() => window.__updraftApp?.mapState.map?.isMoving()))
     .toBe(false);
 
   let { center, displacementPixels } = await page.evaluate((previous) => {
-    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    let map = window.__updraftApp?.mapState.map;
     if (!map) throw new Error('Map is not available');
 
     let current = map.getCenter();
@@ -797,7 +752,7 @@ async function expectFullPan(page: Page, previousCenter: MapCenter): Promise<Map
 
 async function readMapState(page: Page): Promise<MapState | null> {
   return page.evaluate(async () => {
-    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    let map = window.__updraftApp?.mapState.map;
     let source = map?.getSource<GeoJSONSource>('ownship');
     if (!map || !source) return null;
 
@@ -818,7 +773,7 @@ async function readMapState(page: Page): Promise<MapState | null> {
 
 async function readAirspaceMapState(page: Page): Promise<AirspaceMapState | null> {
   return page.evaluate(async () => {
-    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    let map = window.__updraftApp?.mapState.map;
     let source = map?.getSource<GeoJSONSource>('airspace');
     if (!map || !source || !map.isSourceLoaded('airspace')) return null;
 
@@ -853,7 +808,7 @@ async function readAirspaceMapState(page: Page): Promise<AirspaceMapState | null
 
 async function readTrafficIdsAt(page: Page, position: MapCenter): Promise<(string | number)[]> {
   return page.evaluate(({ latitudeDegrees, longitudeDegrees }) => {
-    let map = (window as TestWindow).__updraftApp?.mapState.map;
+    let map = window.__updraftApp?.mapState.map;
     if (!map?.getLayer('traffic-hit')) return [];
 
     let point = map.project([longitudeDegrees, latitudeDegrees]);

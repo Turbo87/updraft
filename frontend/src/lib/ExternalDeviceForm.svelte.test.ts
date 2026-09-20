@@ -124,14 +124,11 @@ describe('ExternalDeviceForm.svelte', () => {
   });
 
   it('reports a bonded-device refresh as busy', async () => {
-    let finishRefresh = () => {};
-    let pendingRefresh = new Promise<{ status: 'available'; devices: [] }>((resolve) => {
-      finishRefresh = () => resolve({ status: 'available', devices: [] });
-    });
+    let pendingRefresh = Promise.withResolvers<{ status: 'available'; devices: [] }>();
     let getBondedBluetoothDevices = vi
       .fn()
       .mockResolvedValueOnce({ status: 'permissionDenied' })
-      .mockImplementationOnce(() => pendingRefresh);
+      .mockImplementationOnce(() => pendingRefresh.promise);
     renderExternalDeviceForm({ getBondedBluetoothDevices, onSave: async () => {} });
 
     await page.getByLabelText('Connection type').selectOptions('bluetooth');
@@ -140,7 +137,7 @@ describe('ExternalDeviceForm.svelte', () => {
 
     await expect.element(refreshButton).toBeDisabled();
     await expect.element(refreshButton).toHaveAttribute('aria-busy', 'true');
-    finishRefresh();
+    pendingRefresh.resolve({ status: 'available', devices: [] });
     await expect.element(refreshButton).toBeEnabled();
   });
 
@@ -396,11 +393,8 @@ describe('ExternalDeviceForm.svelte', () => {
   });
 
   it('disables Save while the command is pending', async () => {
-    let finishSave = () => {};
-    let pendingSave = new Promise<void>((resolve) => {
-      finishSave = resolve;
-    });
-    renderExternalDeviceForm({ onSave: () => pendingSave });
+    let pendingSave = Promise.withResolvers<void>();
+    renderExternalDeviceForm({ onSave: () => pendingSave.promise });
 
     await page.getByLabelText('Host').fill('192.0.2.1');
     await page.getByLabelText('Port').fill('4353');
@@ -409,7 +403,7 @@ describe('ExternalDeviceForm.svelte', () => {
 
     await expect.element(saveButton).toBeDisabled();
     await expect.element(saveButton).toHaveAttribute('aria-busy', 'true');
-    finishSave();
+    pendingSave.resolve();
     await expect.element(saveButton).toBeEnabled();
   });
 

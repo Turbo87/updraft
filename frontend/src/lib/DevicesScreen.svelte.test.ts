@@ -228,11 +228,8 @@ describe('DevicesScreen.svelte', () => {
   });
 
   it('disables only the switch whose command is pending', async () => {
-    let finishChange = () => {};
-    let pendingChange = new Promise<void>((resolve) => {
-      finishChange = resolve;
-    });
-    let onEnabledChange = vi.fn(() => pendingChange);
+    let pendingChange = Promise.withResolvers<void>();
+    let onEnabledChange = vi.fn(() => pendingChange.promise);
     render(DevicesScreen, {
       ...deviceScreenProps(),
       devices: [
@@ -248,7 +245,7 @@ describe('DevicesScreen.svelte', () => {
     await expect.element(switches.nth(0)).toBeDisabled();
     await expect.element(switches.nth(1)).toBeEnabled();
 
-    finishChange();
+    pendingChange.resolve();
     await expect.element(switches.nth(0)).toBeEnabled();
   });
 

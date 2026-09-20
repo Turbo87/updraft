@@ -5,7 +5,15 @@ import type { Task } from '$lib/protocol/generated/Task';
 import type { Topic } from '$lib/protocol/generated/Topic';
 
 export class NavigationStore {
-  task = $state.raw<Task>({ points: [], current: null, status: 'stopped', nextId: 0 });
+  task = $state.raw<Task>({
+    points: [],
+    current: null,
+    status: 'stopped',
+    nextId: 0,
+    start: null,
+    finish: null,
+    restartAllowed: false,
+  });
   recents = $state.raw<NavigationTarget[]>([]);
   pins = $state.raw<PinnedTarget[]>([]);
   current = $state.raw<Navigation | null>(null);

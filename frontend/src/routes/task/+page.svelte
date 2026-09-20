@@ -84,6 +84,16 @@
         ? m.task_completed()
         : m.task_stopped()}
   </p>
+  {#if task.start}<p>
+      {m.task_start()}: {task.start.unixMilliseconds === null
+        ? '—'
+        : new Date(task.start.unixMilliseconds).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC
+    </p>{/if}
+  {#if task.finish}<p>
+      {m.task_finish()}: {task.finish.unixMilliseconds === null
+        ? '—'
+        : new Date(task.finish.unixMilliseconds).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC
+    </p>{/if}
   <ol>
     {#each task.points as point, index (point.id)}
       <li aria-current={point.id === task.current ? 'step' : undefined}>

@@ -44,6 +44,7 @@ pub struct Core {
     pinned_targets: crate::pinned_targets::PinnedTargets,
     recent_targets: Vec<crate::NavigationTarget>,
     task: crate::task::TaskState,
+    task_fix: Option<(SourceId, Timestamp)>,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -80,6 +81,7 @@ impl Core {
             pinned_targets: Default::default(),
             recent_targets: Vec::new(),
             task: Default::default(),
+            task_fix: None,
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -114,6 +116,7 @@ impl Core {
         let before = self.navigation();
         let mut update = input.apply_to(self, at);
         self.navigation_at = self.navigation_at.max(at);
+        self.update_task();
         if let Some(crate::NavigationTarget::Traffic { id }) = self.navigation_target
             && let Some(report) = self.traffic.navigation_observation(id, &self.flarmnet)
         {
@@ -1265,5 +1268,44 @@ impl Input for crate::GetNavigationTarget {
     type Response = Option<crate::NavigationTarget>;
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
         Update::empty().with_response(core.navigation_target.clone())
+    }
+}
+
+impl Core {
+    fn update_task(&mut self) {
+        let DomainState::Current(fix) = self.gps else {
+            return;
+        };
+        let key = (fix.source, fix.ingested_at);
+        if self.task_fix == Some(key) {
+            return;
+        }
+        if self
+            .task_fix
+            .is_some_and(|previous| previous.0 != fix.source)
+        {
+            self.task.reset_crossing();
+        }
+        self.task_fix = Some(key);
+        let utc = fix
+            .value
+            .fix_time
+            .and_then(|time| match time.value {
+                crate::FixTime::UtcInstant(utc) => Some(utc.unix_milliseconds()),
+                _ => None,
+            })
+            .or_else(|| {
+                self.device_utc.map(|utc| {
+                    utc.value
+                        .saturating_add(fix.ingested_at.saturating_since(utc.ingested_at))
+                        .unix_milliseconds()
+                })
+            });
+        self.task.observe(fix.value.position, fix.ingested_at, utc);
+        if self.task.snapshot().status == crate::TaskStatus::Completed
+            && self.navigation_target == Some(crate::NavigationTarget::Task)
+        {
+            self.navigation_target = None;
+        }
     }
 }

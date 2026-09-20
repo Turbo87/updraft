@@ -62,7 +62,15 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
-  #task: Task = { points: [], current: null, status: 'stopped', nextId: 0 };
+  #task: Task = {
+    points: [],
+    current: null,
+    status: 'stopped',
+    nextId: 0,
+    start: null,
+    finish: null,
+    restartAllowed: false,
+  };
   async saveTask(): Promise<boolean> {
     return true;
   }
@@ -72,6 +80,7 @@ export class FakeClient implements UpdraftClient {
       case 'add':
         if (command.target.type !== 'waypoint') throw new Error('Task points must be waypoints');
         task.points.push({ id: task.nextId++, target: command.target });
+        if (task.current === null) task.restartAllowed = true;
         task.current ??= task.points[0].id;
         break;
       case 'move': {
@@ -97,6 +106,12 @@ export class FakeClient implements UpdraftClient {
         if (!task.points.some((point) => point.id === task.current))
           throw new Error('Unknown task point');
         task.status = 'running';
+        task.finish = null;
+        if (command.type === 'select') {
+          let index = task.points.findIndex((point) => point.id === task.current);
+          if (index === 0) task.restartAllowed = true;
+          else if (index > 1) task.restartAllowed = false;
+        }
         break;
       case 'stop':
         task.status = 'stopped';

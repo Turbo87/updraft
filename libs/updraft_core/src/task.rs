@@ -1,4 +1,6 @@
-use crate::NavigationTarget;
+use crate::{NavigationTarget, Timestamp};
+use updraft_geo::LatLon;
+mod cylinder;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -27,6 +29,23 @@ pub struct Task {
     pub current: Option<u32>,
     pub status: TaskStatus,
     pub next_id: u32,
+    pub start: Option<TaskTime>,
+    pub finish: Option<TaskTime>,
+    pub restart_allowed: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTime {
+    #[cfg_attr(feature = "ts", ts(type = "number | null"))]
+    pub unix_milliseconds: Option<i64>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct PositionReport {
+    position: LatLon,
+    at: Timestamp,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -44,6 +63,7 @@ pub enum TaskCommand {
 #[derive(Debug, Default)]
 pub struct TaskState {
     saved: Task,
+    previous: Option<PositionReport>,
 }
 
 impl TaskState {
@@ -79,6 +99,7 @@ impl TaskState {
             return Err("Invalid task progress");
         }
         self.saved = saved;
+        self.reset_crossing();
         Ok(())
     }
 
@@ -96,6 +117,9 @@ impl TaskState {
                 let id = self.saved.next_id;
                 self.saved.next_id = id.checked_add(1).ok_or("Task point IDs exhausted")?;
                 self.saved.points.push(TaskPoint { id, target });
+                if self.saved.current.is_none() {
+                    self.saved.restart_allowed = true;
+                }
                 self.saved.current.get_or_insert(id);
             }
             TaskCommand::Move { id, index } => {
@@ -125,15 +149,24 @@ impl TaskState {
                 }
             }
             TaskCommand::Select { id } => {
-                self.index(id)?;
+                let index = self.index(id)?;
                 self.start_tracking(id)?;
+                if index == 0 {
+                    self.saved.restart_allowed = true;
+                } else if index > 1 {
+                    self.saved.restart_allowed = false;
+                }
             }
             TaskCommand::Resume => {
+                if self.saved.status == TaskStatus::Running {
+                    return Ok(());
+                }
                 let id = self.saved.current.ok_or("The task is empty")?;
                 self.start_tracking(id)?;
             }
             TaskCommand::Stop => self.saved.status = TaskStatus::Stopped,
         }
+        self.reset_crossing();
         Ok(())
     }
 
@@ -143,6 +176,7 @@ impl TaskState {
         }
         self.saved.current = Some(id);
         self.saved.status = TaskStatus::Running;
+        self.saved.finish = None;
         Ok(())
     }
 
@@ -152,5 +186,76 @@ impl TaskState {
             .iter()
             .position(|point| point.id == id)
             .ok_or("Unknown task point")
+    }
+}
+
+impl TaskState {
+    pub fn reset_crossing(&mut self) {
+        self.previous = None;
+    }
+
+    pub fn observe(&mut self, position: LatLon, at: Timestamp, utc: Option<i64>) {
+        if self.saved.status != TaskStatus::Running {
+            return;
+        }
+        if self.previous.is_some_and(|previous| at <= previous.at) {
+            return;
+        }
+        let previous = self.previous.replace(PositionReport { position, at });
+        let Some(previous) = previous else {
+            return;
+        };
+        if at.saturating_since(previous.at).as_millis() > 10_000 {
+            return;
+        }
+        let gap = at.saturating_since(previous.at).as_millis() as f64;
+        let mut cursor = -1.;
+        for _ in 0..=self.saved.points.len() {
+            let Some(index) = self
+                .saved
+                .points
+                .iter()
+                .position(|point| Some(point.id) == self.saved.current)
+            else {
+                return;
+            };
+            let crossing = |index: usize, exit: bool| {
+                let center = self.saved.points[index].target.position()?;
+                let center =
+                    LatLon::from_degrees(center.latitude_degrees, center.longitude_degrees);
+                let (entry, leave) = cylinder::crossings(previous.position, position, center);
+                (if exit { leave } else { entry }).filter(|fraction| *fraction > cursor + 1e-9)
+            };
+            let restart = self
+                .saved
+                .restart_allowed
+                .then(|| crossing(0, true))
+                .flatten();
+            let entry = (index > 0).then(|| crossing(index, false)).flatten();
+            let (fraction, reached) = match (restart, entry) {
+                (Some(start), Some(point)) if start < point => (start, 0),
+                (_, Some(point)) => (point, index),
+                (Some(start), None) => (start, 0),
+                _ => return,
+            };
+            cursor = fraction;
+            let time = TaskTime {
+                unix_milliseconds: utc
+                    .map(|utc| utc.saturating_sub(((1. - fraction) * gap).round() as i64)),
+            };
+            if reached == 0 {
+                self.saved.start = Some(time);
+                self.saved.current = Some(self.saved.points[1].id);
+            } else {
+                self.saved.restart_allowed = false;
+                if reached + 1 == self.saved.points.len() {
+                    self.saved.finish = Some(time);
+                    self.saved.status = TaskStatus::Completed;
+                    self.reset_crossing();
+                    return;
+                }
+                self.saved.current = Some(self.saved.points[reached + 1].id);
+            }
+        }
     }
 }

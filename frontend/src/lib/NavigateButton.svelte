@@ -17,7 +17,12 @@
     busy = true;
     error = false;
     try {
-      if (await client.setNavigationTarget(target)) await goto(resolve('/'));
+      if (
+        await (target.type === 'task'
+          ? client.changeTask({ type: 'resume' })
+          : client.setNavigationTarget(target))
+      )
+        await goto(resolve('/'));
       else error = true;
     } catch {
       error = true;

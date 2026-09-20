@@ -452,5 +452,19 @@
   "pins_navigate": "Navigate to target",
   "pins_details": "Pinned target details",
   "navigation_current": "Current target",
-  "navigation_recent": "Recent targets"
+  "navigation_recent": "Recent targets",
+  "task_heading": "Task",
+  "task_add": "Add waypoint",
+  "task_remove": "Remove point",
+  "task_up": "Move up",
+  "task_down": "Move down",
+  "task_start": "Start",
+  "task_finish": "Finish",
+  "task_turnpoint": "Turnpoint",
+  "task_stop": "Stop task",
+  "task_failed": "The task change failed or was not saved.",
+  "task_search": "Find a waypoint",
+  "task_running": "Tracking task",
+  "task_stopped": "Task stopped",
+  "task_completed": "Task completed"
 }

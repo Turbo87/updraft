@@ -452,5 +452,19 @@
   "pins_navigate": "Zum Ziel navigieren",
   "pins_details": "Details zum angehefteten Ziel",
   "navigation_current": "Aktuelles Ziel",
-  "navigation_recent": "Zuletzt verwendete Ziele"
+  "navigation_recent": "Zuletzt verwendete Ziele",
+  "task_heading": "Aufgabe",
+  "task_add": "Wegpunkt hinzufügen",
+  "task_remove": "Punkt entfernen",
+  "task_up": "Nach oben",
+  "task_down": "Nach unten",
+  "task_start": "Start",
+  "task_finish": "Ziel",
+  "task_turnpoint": "Wendepunkt",
+  "task_stop": "Aufgabe stoppen",
+  "task_failed": "Die Aufgabenänderung ist fehlgeschlagen oder wurde nicht gespeichert.",
+  "task_search": "Wegpunkt suchen",
+  "task_running": "Aufgabe wird verfolgt",
+  "task_stopped": "Aufgabe gestoppt",
+  "task_completed": "Aufgabe abgeschlossen"
 }

@@ -43,6 +43,7 @@ pub struct Core {
     navigation_at: Timestamp,
     pinned_targets: crate::pinned_targets::PinnedTargets,
     recent_targets: Vec<crate::NavigationTarget>,
+    task: crate::task::TaskState,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -78,6 +79,7 @@ impl Core {
         Self {
             pinned_targets: Default::default(),
             recent_targets: Vec::new(),
+            task: Default::default(),
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -106,6 +108,7 @@ impl Core {
     /// `at` is supplied by the shell rather than read, which is what keeps
     /// the core deterministic.
     pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
+        let before_task = self.task.snapshot();
         let before_recents = self.recent_targets.clone();
         let before_pins = self.pinned_targets();
         let before = self.navigation();
@@ -135,6 +138,11 @@ impl Core {
                 self.recent_targets.clone(),
             )));
         }
+        if before_task != self.task.snapshot() {
+            update
+                .effects
+                .push(Effect::Emit(Topic::Task(self.task.snapshot())));
+        }
         let after_pins = self.pinned_targets();
         if before_pins != after_pins {
             update
@@ -145,11 +153,17 @@ impl Core {
     }
 
     fn pinned_targets(&self) -> Vec<crate::PinnedTarget> {
-        self.pinned_targets.published(
+        let mut pins = self.pinned_targets.published(
             &self.glide_snapshot(),
             self.navigation_target.as_ref(),
             self.navigation_at,
-        )
+        );
+        for pin in &mut pins {
+            if pin.navigation.target == crate::NavigationTarget::Task {
+                pin.navigation = self.task_navigation();
+            }
+        }
+        pins
     }
 
     /// The current value of every topic, for a client that has just
@@ -166,6 +180,7 @@ impl Core {
             Topic::Navigation(self.navigation()),
             Topic::PinnedTargets(self.pinned_targets()),
             Topic::RecentTargets(self.recent_targets.clone()),
+            Topic::Task(self.task.snapshot()),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -1076,7 +1091,26 @@ impl Core {
         }
     }
 
+    fn task_navigation(&self) -> crate::Navigation {
+        let mut navigation = crate::Navigation::new(
+            self.task
+                .target()
+                .cloned()
+                .unwrap_or(crate::NavigationTarget::Task),
+            &self.glide_snapshot(),
+            None,
+            None,
+            self.navigation_at,
+        );
+        navigation.target = crate::NavigationTarget::Task;
+        navigation
+    }
+
     fn navigation(&self) -> Option<crate::Navigation> {
+        if self.navigation_target == Some(crate::NavigationTarget::Task) {
+            return Some(self.task_navigation());
+        }
+
         self.navigation_target.clone().map(|target| {
             crate::Navigation::new(
                 target,
@@ -1094,6 +1128,11 @@ impl Input for crate::SetNavigationTarget {
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
         if let Some(target) = &self.0
             && let Err(error) = target.validate()
+        {
+            return Update::empty().with_response(Err(error));
+        }
+        if self.0 == Some(crate::NavigationTarget::Task)
+            && let Err(error) = core.task.change(crate::TaskCommand::Resume)
         {
             return Update::empty().with_response(Err(error));
         }
@@ -1159,6 +1198,9 @@ impl Input for crate::PinnedTargetElevation {
 
 impl Core {
     fn remember_target(&mut self, target: crate::NavigationTarget) {
+        if target == crate::NavigationTarget::Task {
+            return;
+        }
         self.recent_targets.retain(|other| !other.matches(&target));
         self.recent_targets.insert(0, target);
         self.recent_targets.truncate(30);
@@ -1183,5 +1225,45 @@ impl Input for crate::RestoreRecentTargets {
             core.remember_target(target);
         }
         Update::empty().with_response(Ok(()))
+    }
+}
+
+impl Input for crate::GetTask {
+    type Response = crate::Task;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.task.snapshot())
+    }
+}
+impl Input for crate::RestoreTask {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.task.restore(self.0))
+    }
+}
+impl Input for crate::ChangeTask {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        let select = matches!(
+            self.0,
+            crate::TaskCommand::Select { .. } | crate::TaskCommand::Resume
+        );
+        let stop = matches!(self.0, crate::TaskCommand::Stop);
+        if let Err(error) = core.task.change(self.0) {
+            return Update::empty().with_response(Err(error));
+        }
+        if select {
+            core.navigation_target = Some(crate::NavigationTarget::Task);
+        }
+        if stop && core.navigation_target == Some(crate::NavigationTarget::Task) {
+            core.navigation_target = None;
+        }
+        Update::empty().with_response(Ok(()))
+    }
+}
+
+impl Input for crate::GetNavigationTarget {
+    type Response = Option<crate::NavigationTarget>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.navigation_target.clone())
     }
 }

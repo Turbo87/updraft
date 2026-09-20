@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+
   import { getAppContext } from '$lib/app-context';
   import Button from '$lib/Button.svelte';
   import { navigationLabel } from '$lib/navigation';
@@ -33,8 +35,17 @@
       onPinFailure={pinFailed}
       target={navigation.current.target}
       label={navigationLabel(navigation.current)}
-      href="/navigation/current"
+      href={navigation.current.target.type === 'task' ? '/task' : '/navigation/current'}
     />
+  {/if}
+  {#if navigation.current?.target.type !== 'task' && !navigation.pins.some((pin) => pin.navigation.target.type === 'task')}
+    {#if navigation.task.points.length > 0}<NavigationSelectionRow
+        target={{ type: 'task' }}
+        label={m.task_heading()}
+        href="/task"
+        onPinFailure={pinFailed}
+      />
+    {:else}<a href={resolve('/task')}>{m.task_heading()}</a>{/if}
   {/if}
   <h2>{m.pins_details()}</h2>
   {#each navigation.pins.filter((pin) => !pin.primary) as pin (pin.id)}
@@ -42,11 +53,11 @@
       onPinFailure={pinFailed}
       target={pin.navigation.target}
       label={navigationLabel(pin.navigation)}
-      href={`/pinned-targets/${pin.id}`}
+      href={pin.navigation.target.type === 'task' ? '/task' : `/pinned-targets/${pin.id}`}
     />
   {/each}
   <h2>{m.navigation_recent()}</h2>
-  {#each navigation.recents as target, index}
+  {#each navigation.recents as target, index (JSON.stringify(target))}
     {#if !navigation.pins.some( (pin) => targetsMatch(pin.navigation.target, target) ) && !(navigation.current && targetsMatch(navigation.current.target, target))}
       <NavigationSelectionRow
         onPinFailure={pinFailed}

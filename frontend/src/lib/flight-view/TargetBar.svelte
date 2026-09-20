@@ -41,11 +41,13 @@
 <a href={resolve(href)} aria-label={label} class:compact class:stale={guidance?.stale}>
   {#if compact}<span
       aria-hidden="true"
-      class={navigation.target.type === 'traffic'
-        ? 'i-mdi-airplane'
-        : navigation.target.type === 'waypoint'
-          ? 'i-mdi-map-marker-outline'
-          : 'i-mdi-rhombus-outline'}
+      class={navigation.target.type === 'task'
+        ? 'i-mdi-flag-checkered'
+        : navigation.target.type === 'traffic'
+          ? 'i-mdi-airplane'
+          : navigation.target.type === 'waypoint'
+            ? 'i-mdi-map-marker-outline'
+            : 'i-mdi-rhombus-outline'}
     ></span>{/if}
   <strong
     >{navigationLabel(navigation)}

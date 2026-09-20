@@ -8,6 +8,7 @@
   import type { LatLon } from '$lib/protocol/generated/LatLon';
   import type { Navigation as NavigationState } from '$lib/protocol/generated/Navigation';
   import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
+  import type { Task } from '$lib/protocol/generated/Task';
   import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
   import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
   import type { TrafficStore } from '$lib/stores/traffic.svelte';
@@ -25,6 +26,7 @@
 
   type Props = {
     pins?: PinnedTarget[];
+    task?: Task;
     navigation?: NavigationState | null;
     climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
@@ -41,6 +43,7 @@
   };
 
   let {
+    task,
     navigation = null,
     pins = [],
     climbAverageMethod = 'smoothed20s',
@@ -74,6 +77,7 @@
     <PinnedTargets {pins} {units} hasPrimary={navigation !== null} />
     <div class="map" class:has-target={navigation !== null || pins.some((pin) => !pin.primary)}>
       <Map
+        {task}
         {navigation}
         {climbAverageMethod}
         {client}

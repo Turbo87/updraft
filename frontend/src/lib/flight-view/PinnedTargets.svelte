@@ -18,7 +18,7 @@
         navigation={pin.navigation}
         {units}
         compact
-        href={`/pinned-targets/${pin.id}`}
+        href={pin.navigation.target.type === 'task' ? '/task' : `/pinned-targets/${pin.id}`}
         label={`${m.pins_details()}: ${navigationLabel(pin.navigation)}`}
       />
     {/each}

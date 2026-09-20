@@ -340,3 +340,17 @@ impl private::Sealed for GetRecentTargets {}
 #[derive(Debug)]
 pub struct RestoreRecentTargets(pub Vec<crate::NavigationTarget>);
 impl private::Sealed for RestoreRecentTargets {}
+
+#[derive(Debug)]
+pub struct ChangeTask(pub crate::TaskCommand);
+impl private::Sealed for ChangeTask {}
+#[derive(Debug)]
+pub struct GetTask;
+impl private::Sealed for GetTask {}
+#[derive(Debug)]
+pub struct RestoreTask(pub crate::Task);
+impl private::Sealed for RestoreTask {}
+
+#[derive(Debug)]
+pub struct GetNavigationTarget;
+impl private::Sealed for GetNavigationTarget {}

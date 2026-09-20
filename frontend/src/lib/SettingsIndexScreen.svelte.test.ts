@@ -15,7 +15,7 @@ describe('SettingsIndexScreen.svelte', () => {
       let nav = page.getByRole('navigation', { name: 'Settings' }).element();
       let navBounds = nav.getBoundingClientRect();
       let links = [...nav.querySelectorAll('a')];
-      expect(links).toHaveLength(10);
+      expect(links).toHaveLength(11);
       expect(navBounds.left).toBe((width - Math.min(width, 544)) / 2 + 20);
       expect(navBounds.right).toBe(width - navBounds.left);
       for (let [index, link] of links.entries()) {

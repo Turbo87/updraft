@@ -181,6 +181,7 @@
 
 <div class="app">
   <FlightView
+    task={navigation.task}
     navigation={navigation.current}
     pins={navigation.pins}
     {client}

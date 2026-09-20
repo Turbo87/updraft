@@ -2,6 +2,7 @@ import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget'
 import type { WaypointFeature } from '$lib/waypoints';
 
 export function targetsMatch(a: NavigationTarget, b: NavigationTarget): boolean {
+  if (a.type === 'task' || b.type === 'task') return a.type === 'task' && b.type === 'task';
   if (a.type === 'traffic' || b.type === 'traffic')
     return a.type === 'traffic' && b.type === 'traffic' && a.id === b.id;
   if (a.type !== b.type) return false;

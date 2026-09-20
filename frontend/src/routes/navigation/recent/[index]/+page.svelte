@@ -17,7 +17,7 @@
   backHref="/navigation"
   backLabel={m.navigation_heading()}
 >
-  {#if target && target.type !== 'traffic'}<p>
+  {#if target && target.type !== 'traffic' && target.type !== 'task'}<p>
       {target.latitudeDegrees.toFixed(5)}°, {target.longitudeDegrees.toFixed(5)}°
     </p>{/if}
   {#snippet actions()}

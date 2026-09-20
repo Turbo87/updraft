@@ -64,12 +64,20 @@ impl NavigationFile {
         handle: &DriverHandle,
         target: Option<NavigationTarget>,
     ) -> Result<bool, String> {
-        let _guard = self.changes.lock().await;
         handle
-            .send(SetNavigationTarget(target.clone()))
+            .send(SetNavigationTarget(target))
             .await
             .map_err(|error| error.to_string())?
             .map_err(str::to_owned)?;
+        self.save_current(handle).await
+    }
+
+    pub async fn save_current(&self, handle: &DriverHandle) -> Result<bool, String> {
+        let _guard = self.changes.lock().await;
+        let target = handle
+            .send(updraft_core::GetNavigationTarget)
+            .await
+            .map_err(|error| error.to_string())?;
         let path = self.path.clone();
         let result =
             tauri::async_runtime::spawn_blocking(move || save_target_file(path, &target)).await;

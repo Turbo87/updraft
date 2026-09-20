@@ -46,6 +46,15 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
     "value": [],
   },
   {
+    "topic": "task",
+    "value": {
+      "current": null,
+      "nextId": 0,
+      "points": [],
+      "status": "stopped",
+    },
+  },
+  {
     "topic": "pinnedTargets",
     "value": [],
   },

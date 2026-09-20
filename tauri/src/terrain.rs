@@ -293,12 +293,7 @@ fn error_response(status: StatusCode) -> Response<Vec<u8>> {
 }
 
 fn terrain_coordinates(path: &str) -> Option<[u32; 3]> {
-    let mut parts = path.strip_suffix(".webp")?.split('/');
-    let z = parts.next()?.parse().ok()?;
-    let x = parts.next()?.parse().ok()?;
-    let y = parts.next()?.parse().ok()?;
-    let size = 1_u32.checked_shl(z)?;
-    (parts.next().is_none() && x < size && y < size).then_some([z, x, y])
+    crate::updraft_uri::tile_coordinates(path.strip_suffix(".webp")?)
 }
 
 #[cfg(test)]

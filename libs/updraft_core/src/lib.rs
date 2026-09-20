@@ -87,3 +87,5 @@ pub use navigation::{Navigation, NavigationGuidance, NavigationTarget};
 
 pub use input::{PinTarget, RestorePinnedTargets, UnpinTarget};
 pub use pinned_targets::{PinnedTarget, SavedPinnedTarget};
+
+pub use input::PinnedTargetElevation;

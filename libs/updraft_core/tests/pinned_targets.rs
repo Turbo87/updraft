@@ -101,3 +101,94 @@ fn matching_uses_names_types_and_coordinate_tolerance() {
     };
     assert!(west.matches(&east));
 }
+
+#[test]
+fn pinned_map_arrival_uses_only_matching_terrain_results() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let at = Timestamp::default();
+    core.apply(
+        InternalGps::new(Fix {
+            position: updraft_geo::LatLon::from_degrees(0., 0.),
+            altitude_ellipsoid: Some(updraft_units::EllipsoidAltitude::new(
+                updraft_units::Length::from_meters(1000.),
+            )),
+            track: None,
+            ground_speed: None,
+            fix_time: None,
+        }),
+        at,
+    );
+    let target = NavigationTarget::MapPosition {
+        latitude_degrees: 0.,
+        longitude_degrees: 0.,
+    };
+    let saved = assert_ok!(core.apply(PinTarget(target.clone()), at).response);
+    let id = saved[0].id;
+    let position = LatLon {
+        latitude_degrees: 0.,
+        longitude_degrees: 0.,
+    };
+    claims::assert_some!(pins(&core)[0].navigation.guidance);
+    claims::assert_none!(pins(&core)[0].navigation.arrival);
+    core.apply(
+        PinnedTargetElevation {
+            id,
+            position,
+            meters: Some(100.),
+        },
+        at,
+    );
+    let arrival = claims::assert_some!(pins(&core)[0].navigation.arrival);
+    core.apply(
+        SetArrivalReserve {
+            reserve: assert_ok!(ArrivalReserve::try_from(500.)),
+        },
+        at,
+    );
+    assert_eq!(
+        arrival.margin_meters
+            - claims::assert_some!(pins(&core)[0].navigation.arrival).margin_meters,
+        300.
+    );
+    assert_ok!(core.apply(UnpinTarget(id), at).response);
+    assert_ok!(core.apply(PinTarget(target), at).response);
+    core.apply(
+        PinnedTargetElevation {
+            id,
+            position,
+            meters: Some(100.),
+        },
+        at,
+    );
+    claims::assert_none!(pins(&core)[0].navigation.arrival);
+    let id = pins(&core)[0].id;
+    core.apply(
+        PinnedTargetElevation {
+            id,
+            position: LatLon {
+                latitude_degrees: 1.,
+                ..position
+            },
+            meters: Some(100.),
+        },
+        at,
+    );
+    claims::assert_none!(pins(&core)[0].navigation.arrival);
+    core.apply(
+        PinnedTargetElevation {
+            id,
+            position,
+            meters: Some(100.),
+        },
+        at,
+    );
+    core.apply(
+        PinnedTargetElevation {
+            id,
+            position,
+            meters: None,
+        },
+        at,
+    );
+    claims::assert_none!(pins(&core)[0].navigation.arrival);
+}

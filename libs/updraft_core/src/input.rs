@@ -324,3 +324,11 @@ impl private::Sealed for UnpinTarget {}
 #[derive(Clone, Debug)]
 pub struct RestorePinnedTargets(pub Vec<crate::SavedPinnedTarget>);
 impl private::Sealed for RestorePinnedTargets {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PinnedTargetElevation {
+    pub id: u32,
+    pub position: crate::LatLon,
+    pub meters: Option<f64>,
+}
+impl private::Sealed for PinnedTargetElevation {}

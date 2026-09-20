@@ -113,10 +113,20 @@ impl Core {
         {
             self.navigation_report = Some(report);
         }
+        if let Some(target @ crate::NavigationTarget::Traffic { .. }) = &self.navigation_target {
+            if self.navigation_report.is_none() {
+                self.navigation_report = self.pinned_targets.report(target);
+            }
+            if let Some(report) = &self.navigation_report {
+                self.pinned_targets.remember_report(target, report);
+            }
+        }
         let after = self.navigation();
         if before != after {
             update.effects.push(Effect::Emit(Topic::Navigation(after)));
         }
+        self.pinned_targets
+            .update_reports(&self.traffic, &self.flarmnet);
         let after_pins = self.pinned_targets();
         if before_pins != after_pins {
             update
@@ -1121,5 +1131,13 @@ impl Input for crate::RestorePinnedTargets {
     type Response = Result<(), &'static str>;
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
         Update::empty().with_response(core.pinned_targets.restore(self.0))
+    }
+}
+
+impl Input for crate::PinnedTargetElevation {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        core.pinned_targets.set_elevation(self);
+        Update::empty()
     }
 }

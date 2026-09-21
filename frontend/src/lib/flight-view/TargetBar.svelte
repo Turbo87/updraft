@@ -90,7 +90,9 @@
 
 <style>
   a {
-    display: flex;
+    font-family: var(--font-numeric);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5ch 7ch 9ch;
     gap: var(--space-3);
     align-items: center;
     padding: calc(var(--space-2) + var(--safe-area-top))
@@ -103,15 +105,13 @@
     border-bottom: 1px solid var(--color-separator);
   }
   a.compact {
+    grid-template-columns: 1em minmax(0, 1fr) 5ch 7ch 9ch;
     padding-top: var(--space-2);
     font-size: 0.875rem;
     gap: var(--space-2);
   }
-  a.compact > span:first-child {
-    flex-shrink: 0;
-  }
   strong {
-    flex: 1;
+    font-family: var(--font-ui);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -125,6 +125,10 @@
   }
   span {
     white-space: nowrap;
+  }
+  strong ~ span {
+    font-variant-numeric: tabular-nums;
+    text-align: end;
   }
   .stale {
     color: var(--color-value-stale);

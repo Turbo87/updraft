@@ -100,7 +100,7 @@
     color: var(--color-text);
     text-decoration: none;
     min-height: 3rem;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-separator);
   }
   a.compact {
     padding-top: var(--space-2);

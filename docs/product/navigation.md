@@ -2,7 +2,8 @@
 
 Status: Current behavior
 
-Goto has one primary target. A pilot can select a waypoint, a map position,
+Goto has one primary target. [Ordered tasks](tasks.md) can also supply primary
+guidance while task progress remains independent. A pilot can select a waypoint, a map position,
 or a traffic aircraft. A new selection replaces the current target.
 Navigation continues until the pilot selects another target or uses **Stop
 navigation**. Passing a target does not stop navigation.
@@ -12,8 +13,13 @@ navigation**. Passing a target does not stop navigation.
 Waypoint details, map inspection, and traffic details provide navigation
 actions. Selection returns to the Flight View and preserves the map camera
 and follow setting. The target bar reserves space above the map. The ten
-instrument boxes remain unchanged. Selecting the bar opens target details
-and the stop action.
+instrument boxes remain unchanged. Selecting the bar opens the navigation selection screen. Each row opens details.
+A separate navigation-arrow button selects guidance. Pin buttons change pins
+without changing primary navigation. The screen also provides the stop action.
+Recent targets retain the latest 30 distinct standalone goto selections and
+unpinned targets across restarts. Selecting or unpinning a target moves it to the
+top. Waypoints retain snapshots, map positions retain coordinates, and traffic
+retains only IDs. Task selections and task unpinning do not enter this history.
 
 The bar shows direct distance and bearing relative to ownship ground track.
 If ground track is unavailable, it shows true bearing with a `T` suffix.
@@ -57,8 +63,10 @@ The shell atomically replaces the saved target after selection, replacement,
 or stopping. It restores waypoint snapshots and map coordinates on startup.
 For traffic, it saves only the ID. It does not save a traffic position,
 altitude, identity label, or observation time. After restart, traffic
-navigation shows **Waiting for traffic** without guidance or a course line
-until a report arrives.
+navigation resolves the callsign or registration from FlarmNet when available.
+Otherwise, it shows the target ID. A small `(n/a)` suffix indicates that no
+report is available. Guidance and the course line remain unavailable until
+a report arrives.
 
 A save failure leaves the active navigation choice usable. The selection or
 stop screen reports that the choice was not saved and that a previous target

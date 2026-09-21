@@ -62,10 +62,12 @@ pub async fn pin_target(
 #[tauri::command]
 pub async fn unpin_target(
     id: u32,
+    navigation: tauri::State<'_, crate::navigation::NavigationFile>,
     handle: tauri::State<'_, DriverHandle>,
     file: tauri::State<'_, PinnedTargetsFile>,
 ) -> Result<bool, String> {
-    file.change(&handle, UnpinTarget(id)).await
+    let saved = file.change(&handle, UnpinTarget(id)).await?;
+    Ok(navigation.save_recents(&handle).await? && saved)
 }
 
 #[cfg(test)]

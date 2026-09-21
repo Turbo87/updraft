@@ -101,3 +101,14 @@
     })),
   }}
 />
+
+<Story
+  name="Task beside standalone goto"
+  args={{
+    hasPrimary: true,
+    pins: [
+      { ...waypoint, navigation: { ...waypoint.navigation, target: { type: 'task' } } },
+      traffic,
+    ],
+  }}
+/>

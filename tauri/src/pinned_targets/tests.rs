@@ -9,6 +9,9 @@ fn app() -> tauri::App<tauri::test::MockRuntime> {
     let directory = tempfile::tempdir().unwrap();
     tauri::test::mock_builder()
         .manage(PinnedTargetsFile::new(directory.path().to_owned()))
+        .manage(crate::navigation::NavigationFile::new(
+            directory.path().to_owned(),
+        ))
         .manage(directory)
         .manage(spawn_driver(
             SettingsSnapshot::default(),
@@ -59,6 +62,13 @@ async fn ipc_persists_order_and_only_target_identity_then_removes_pins() {
             .map(|pin| pin.id)
             .collect::<Vec<_>>(),
         vec![0, 2]
+    );
+    assert_eq!(
+        assert_ok!(serde_json::to_value(assert_ok!(
+            app.state::<crate::navigation::NavigationFile>()
+                .load_recents()
+        ))),
+        json!([{"type":"traffic","id":"icao:ABC123"}])
     );
     assert_err!(invoke(
         &app,

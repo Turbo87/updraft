@@ -12,6 +12,7 @@ use updraft_geo::LatLon as Position;
     rename_all_fields = "camelCase"
 )]
 pub enum NavigationTarget {
+    Task,
     Traffic {
         #[cfg_attr(feature = "ts", ts(type = "string"))]
         id: TrafficTargetId,
@@ -31,6 +32,7 @@ pub enum NavigationTarget {
 impl NavigationTarget {
     pub fn matches(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::Task, Self::Task) => return true,
             (Self::Traffic { id }, Self::Traffic { id: other }) => return id == other,
             (Self::Waypoint { name, .. }, Self::Waypoint { name: other, .. }) if name == other => {}
             (Self::MapPosition { .. }, Self::MapPosition { .. }) => {}
@@ -46,7 +48,7 @@ impl NavigationTarget {
 
     pub fn position(&self) -> Option<LatLon> {
         match *self {
-            Self::Traffic { .. } => None,
+            Self::Traffic { .. } | Self::Task => None,
             Self::MapPosition {
                 latitude_degrees,
                 longitude_degrees,
@@ -86,6 +88,9 @@ pub struct Navigation {
     pub guidance: Option<NavigationGuidance>,
     pub arrival: Option<NavigationArrival>,
     pub traffic: Option<NavigationTraffic>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub traffic_name: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
@@ -118,6 +123,24 @@ pub struct NavigationTraffic {
 }
 
 impl Navigation {
+    pub fn resolve_traffic_name(&mut self, database: &updraft_flarmnet::FlarmnetDatabase) {
+        let NavigationTarget::Traffic { id } = self.target else {
+            return;
+        };
+        if !matches!(
+            id.id_type,
+            crate::TrafficTargetIdType::Flarm | crate::TrafficTargetIdType::Icao
+        ) {
+            return;
+        }
+        self.traffic_name = database.lookup(id.value).and_then(|record| {
+            [&record.call_sign, &record.registration]
+                .into_iter()
+                .find(|name| !name.is_empty())
+                .cloned()
+        });
+    }
+
     pub fn new(
         target: NavigationTarget,
         glide: &GlideSnapshot,
@@ -192,7 +215,7 @@ impl Navigation {
                 elevation_meters, ..
             } => Some(elevation_meters),
             NavigationTarget::MapPosition { .. } => terrain_elevation,
-            NavigationTarget::Traffic { .. } => None,
+            NavigationTarget::Traffic { .. } | NavigationTarget::Task => None,
         };
         let arrival = elevation
             .zip(position)
@@ -211,6 +234,7 @@ impl Navigation {
                     })
             });
         Self {
+            traffic_name: None,
             traffic,
             arrival,
             target,

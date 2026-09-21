@@ -63,12 +63,15 @@ for (let viewport of [
   });
 }
 
-test('selects traffic by ID and shows waiting without a saved position', async ({ page, app }) => {
+test('selects traffic by ID and shows an unavailable suffix without a saved position', async ({
+  page,
+  app,
+}) => {
   await app.open('/traffic/icao:ABC123');
   await page.getByRole('button', { name: 'Navigate to traffic' }).click();
   await expect(page).toHaveURL('/');
   let bar = page.getByRole('link', { name: 'Target details' });
-  await expect(bar).toContainText('Waiting for traffic');
+  await expect(bar).toContainText('icao:ABC123 (n/a)');
   expect(await page.evaluate(() => window.__updraftApp!.navigation.current?.target)).toEqual({
     type: 'traffic',
     id: 'icao:ABC123',
@@ -103,4 +106,76 @@ test('reports a save failure while navigation remains active', async ({ page, ap
     'A previous target can return after restart.',
   );
   expect(await page.evaluate(() => window.__updraftApp!.navigation.current)).toBeNull();
+});
+
+test('selection rows open details and unpinning moves a target into recents', async ({
+  page,
+  app,
+}) => {
+  await app.open('/navigation');
+  await page.evaluate(async () => {
+    let client = window.__updraftFake!;
+    await client.pinTarget({
+      type: 'waypoint',
+      name: 'Home',
+      latitudeDegrees: 50,
+      longitudeDegrees: 6,
+      elevationMeters: 100,
+    });
+  });
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  expect(await page.evaluate(() => window.__updraftApp!.navigation.current)).toBeNull();
+  await page.goBack();
+  await page.evaluate(() => {
+    let client = window.__updraftFake!;
+    let unpin = client.unpinTarget.bind(client);
+    let fail = true;
+    client.unpinTarget = async (id) => {
+      await unpin(id);
+      if (fail) {
+        fail = false;
+        return false;
+      }
+      return true;
+    };
+  });
+  await page.getByRole('button', { name: 'Unpin target', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('not saved');
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute(
+    'href',
+    '/navigation/recent/0',
+  );
+  await page.getByRole('button', { name: 'Navigate to target', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Target details', exact: true })).toContainText(
+    'Home',
+  );
+});
+
+test('recent details wait for restored history and keep the selected snapshot', async ({
+  page,
+  app,
+}) => {
+  await app.open('/navigation/recent/0');
+  await page.evaluate(async () => {
+    await window.__updraftFake!.setNavigationTarget({
+      type: 'waypoint',
+      name: 'Restored',
+      latitudeDegrees: 50,
+      longitudeDegrees: 6,
+      elevationMeters: 100,
+    });
+  });
+  await expect(page.getByRole('heading', { name: 'Restored', exact: true })).toBeVisible();
+  await page.evaluate(async () => {
+    await window.__updraftFake!.setNavigationTarget({ type: 'traffic', id: 'icao:ABC123' });
+  });
+  await expect(page.getByRole('heading', { name: 'Restored', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Navigation', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'icao:ABC123', exact: true })).toHaveAttribute(
+    'href',
+    '/traffic/icao:ABC123',
+  );
 });

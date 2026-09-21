@@ -5,4 +5,4 @@ import type { NavigationGuidance } from "./NavigationGuidance";
 import type { NavigationTarget } from "./NavigationTarget";
 import type { NavigationTraffic } from "./NavigationTraffic";
 
-export type Navigation = { target: NavigationTarget, position: LatLon | null, guidance: NavigationGuidance | null, arrival: NavigationArrival | null, traffic: NavigationTraffic | null, };
+export type Navigation = { target: NavigationTarget, position: LatLon | null, guidance: NavigationGuidance | null, arrival: NavigationArrival | null, traffic: NavigationTraffic | null, trafficName?: string, };

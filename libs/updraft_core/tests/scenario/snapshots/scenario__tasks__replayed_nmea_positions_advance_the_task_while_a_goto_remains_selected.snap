@@ -1,0 +1,35 @@
+---
+source: libs/updraft_core/tests/scenario/tasks.rs
+expression: progress
+---
+[
+  {
+    "current": 1,
+    "finish": null,
+    "restartAllowed": true,
+    "start": {
+      "unixMilliseconds": 1789905601749
+    },
+    "status": "running"
+  },
+  {
+    "current": 2,
+    "finish": null,
+    "restartAllowed": false,
+    "start": {
+      "unixMilliseconds": 1789905601749
+    },
+    "status": "running"
+  },
+  {
+    "current": 2,
+    "finish": {
+      "unixMilliseconds": 1789905604679
+    },
+    "restartAllowed": false,
+    "start": {
+      "unixMilliseconds": 1789905601749
+    },
+    "status": "completed"
+  }
+]

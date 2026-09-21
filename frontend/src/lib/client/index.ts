@@ -5,6 +5,7 @@ import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirect
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
+import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
@@ -70,6 +71,8 @@ export type SelectedDataFile = {
  * shared frontend state.
  */
 export interface UpdraftClient {
+  saveTask(): Promise<boolean>;
+  changeTask(command: TaskCommand): Promise<boolean>;
   /** Adds a pin. Returns false if the live change could not be saved. */
   pinTarget(target: NavigationTarget): Promise<boolean>;
   /** Removes a pin. Returns false if the live change could not be saved. */

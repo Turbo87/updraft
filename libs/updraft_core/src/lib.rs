@@ -89,3 +89,12 @@ pub use input::{PinTarget, RestorePinnedTargets, UnpinTarget};
 pub use pinned_targets::{PinnedTarget, SavedPinnedTarget};
 
 pub use input::PinnedTargetElevation;
+pub use input::{GetRecentTargets, RestoreRecentTargets};
+
+mod task;
+pub use input::{ChangeTask, GetTask, RestoreTask};
+pub use task::{Task, TaskCommand, TaskPoint, TaskStatus, TaskTime};
+
+pub use input::GetNavigationTarget;
+
+pub use input::{RestoreNavigationTarget, SetTaskSaveFailed};

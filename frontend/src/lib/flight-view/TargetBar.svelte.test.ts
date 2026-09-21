@@ -28,41 +28,52 @@ it('shows relative bearing and distance, then true bearing when track is unavail
   await expect.element(page.getByRole('link', { name: 'Target details' })).toHaveClass('stale');
 });
 
-it('shows waiting traffic without guidance, then the retained report age and relative altitude', async () => {
-  let navigation = {
-    target: { type: 'traffic' as const, id: 'icao:ABC123' },
-    position: null,
-    guidance: null,
-    arrival: null,
-    traffic: null,
-  };
-  let screen = await render(TargetBar, { navigation, units: defaultSettings().units });
-  await expect.element(page.getByText('Waiting for traffic')).toBeVisible();
-  await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('–');
-  await expect.element(page.getByLabelText('Arrival margin')).not.toBeInTheDocument();
-  await screen.rerender({
-    navigation: {
-      ...navigation,
-      position: { latitudeDegrees: 50, longitudeDegrees: 6 },
-      guidance: {
-        bearingDegrees: 90,
-        relativeBearingDegrees: null,
-        distanceMeters: 1000,
-        stale: true,
+it.each([false, true])(
+  'shows unavailable traffic inline (compact: %s), then report age',
+  async (compact) => {
+    let navigation = {
+      target: { type: 'traffic' as const, id: 'icao:ABC123' },
+      trafficName: 'AB',
+      position: null,
+      guidance: null,
+      arrival: null,
+      traffic: null,
+    };
+    let screen = await render(TargetBar, { navigation, compact, units: defaultSettings().units });
+    expect(document.querySelector('strong')?.textContent?.trim()).toBe('AB (n/a)');
+    let title = document.querySelector('strong')!;
+    let suffix = title.querySelector('small')!;
+    expect(getComputedStyle(suffix).display).toBe('inline');
+    expect(parseFloat(getComputedStyle(suffix).fontSize)).toBeLessThan(
+      parseFloat(getComputedStyle(title).fontSize),
+    );
+    await expect.element(page.getByText('(n/a)')).toBeVisible();
+    await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('–');
+    await expect.element(page.getByLabelText('Arrival margin')).not.toBeInTheDocument();
+    await screen.rerender({
+      navigation: {
+        ...navigation,
+        position: { latitudeDegrees: 50, longitudeDegrees: 6 },
+        guidance: {
+          bearingDegrees: 90,
+          relativeBearingDegrees: null,
+          distanceMeters: 1000,
+          stale: true,
+        },
+        traffic: {
+          name: 'ABC',
+          ageSeconds: 35,
+          stale: true,
+          relativeAltitude: { meters: -50, stale: true },
+        },
       },
-      traffic: {
-        name: 'ABC',
-        ageSeconds: 35,
-        stale: true,
-        relativeAltitude: { meters: -50, stale: true },
-      },
-    },
-  });
-  await expect.element(page.getByText('Waiting for traffic')).not.toBeInTheDocument();
-  await expect.element(page.getByText('(35s)')).toBeVisible();
-  await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('-50 m');
-  await expect.element(page.getByLabelText('Relative altitude')).toHaveClass('stale');
-});
+    });
+    await expect.element(page.getByText('(n/a)')).not.toBeInTheDocument();
+    await expect.element(page.getByText('(35s)')).toBeVisible();
+    await expect.element(page.getByLabelText('Relative altitude')).toHaveTextContent('-50 m');
+    await expect.element(page.getByLabelText('Relative altitude')).toHaveClass('stale');
+  },
+);
 
 it.each([false, true])(
   'floors report age to one unit in the callsign row (compact: %s)',

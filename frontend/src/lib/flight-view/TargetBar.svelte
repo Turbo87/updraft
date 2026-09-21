@@ -41,16 +41,18 @@
 <a href={resolve(href)} aria-label={label} class:compact class:stale={guidance?.stale}>
   {#if compact}<span
       aria-hidden="true"
-      class={navigation.target.type === 'traffic'
-        ? 'i-mdi-airplane'
-        : navigation.target.type === 'waypoint'
-          ? 'i-mdi-map-marker-outline'
-          : 'i-mdi-rhombus-outline'}
+      class={navigation.target.type === 'task'
+        ? 'i-mdi-flag-checkered'
+        : navigation.target.type === 'traffic'
+          ? 'i-mdi-airplane'
+          : navigation.target.type === 'waypoint'
+            ? 'i-mdi-map-marker-outline'
+            : 'i-mdi-rhombus-outline'}
     ></span>{/if}
   <strong
     >{navigationLabel(navigation)}
     {#if navigation.target.type === 'traffic'}
-      {#if !navigation.traffic}<small>{m.navigation_waiting()}</small>
+      {#if !navigation.traffic}<small class="report-age">(n/a)</small>
       {:else if navigation.traffic.stale}<small class="report-age"
           >({formatReportAge(navigation.traffic.ageSeconds)})</small
         >{/if}
@@ -98,10 +100,10 @@
     color: var(--color-text);
     text-decoration: none;
     min-height: 3rem;
+    border-bottom: 1px solid var(--color-separator);
   }
   a.compact {
     padding-top: var(--space-2);
-    border-bottom: 1px solid var(--color-border);
     font-size: 0.875rem;
     gap: var(--space-2);
   }
@@ -114,10 +116,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  small {
-    display: block;
-    font: var(--text-row-label);
   }
   small.report-age {
     display: inline;

@@ -616,3 +616,14 @@ it('publishes only changed FLARM position correction settings', async () => {
   }
   expect(onTopic).toHaveBeenCalledTimes(2);
 });
+
+it('keeps tasks out of recent goto history when selected or unpinned', async () => {
+  let client = new FakeClient();
+  let topics = collectTopics(client);
+  await client.setNavigationTarget({ type: 'task' });
+  await client.pinTarget({ type: 'task' });
+  await client.unpinTarget(0);
+  expect(topics.filter((topic) => topic.topic === 'recentTargets')).toEqual([
+    { topic: 'recentTargets', value: [] },
+  ]);
+});

@@ -5,6 +5,7 @@ import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirect
 import type { Locale } from '$lib/protocol/generated/Locale';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
+import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
@@ -33,6 +34,12 @@ type ArrivalNotification =
 
 /** Invokes the concrete Tauri commands that form the frontend shell boundary. */
 export class TauriClient implements UpdraftClient {
+  saveTask(): Promise<boolean> {
+    return invoke('save_task');
+  }
+  async changeTask(command: TaskCommand): Promise<boolean> {
+    return invoke('change_task', { command });
+  }
   pinTarget(target: NavigationTarget): Promise<boolean> {
     return invoke('pin_target', { target });
   }

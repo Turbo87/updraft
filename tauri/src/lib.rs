@@ -19,6 +19,7 @@ mod navigation;
 mod pinned_targets;
 mod settings;
 mod source_files;
+mod task;
 mod terrain;
 #[cfg(test)]
 mod test_support;
@@ -126,6 +127,8 @@ pub fn run() {
             ipc::set_units,
             ipc::get_polars,
             ipc::set_navigation_target,
+            task::change_task,
+            task::save_task,
             pinned_targets::pin_target,
             pinned_targets::unpin_target,
             ipc::set_mac_cready,
@@ -204,15 +207,39 @@ pub fn run() {
                 )
             };
 
+            let task_file = std::sync::Arc::new(task::TaskFile::new(app.path().app_config_dir()?));
+            match task_file.load() {
+                Ok(task) => {
+                    if let Err(error) = tauri::async_runtime::block_on(
+                        handle.send(updraft_core::RestoreTask(task)),
+                    )? {
+                        tracing::warn!(%error, "Could not restore task");
+                    }
+                }
+                Err(error) => tracing::warn!(%error, "Could not load task"),
+            }
+
             let navigation_file = navigation::NavigationFile::new(app.path().app_config_dir()?);
             match navigation_file.load() {
                 Ok(target) => {
                     tauri::async_runtime::block_on(
-                        handle.send(updraft_core::SetNavigationTarget(target)),
+                        handle.send(updraft_core::RestoreNavigationTarget(target)),
                     )??;
                 }
                 Err(error) => tracing::warn!(%error, "Could not restore navigation target"),
             }
+            match navigation_file.load_recents() {
+                Ok(targets) => {
+                    if let Err(error) = tauri::async_runtime::block_on(
+                        handle.send(updraft_core::RestoreRecentTargets(targets)),
+                    )? {
+                        tracing::warn!(%error, "Could not restore recent targets");
+                    }
+                }
+                Err(error) => tracing::warn!(%error, "Could not load recent targets"),
+            }
+            task_file.start(handle.clone(), navigation_file.clone());
+            app.manage(task_file);
             app.manage(navigation_file);
             let pins_file = pinned_targets::PinnedTargetsFile::new(app.path().app_config_dir()?);
             let restored = pins_file

@@ -80,6 +80,13 @@ impl PinnedTargets {
         Ok(self.saved())
     }
 
+    pub fn target(&self, id: u32) -> Option<NavigationTarget> {
+        self.targets
+            .iter()
+            .find(|pin| pin.saved.id == id)
+            .map(|pin| pin.saved.target.clone())
+    }
+
     pub fn unpin(&mut self, id: u32) -> Vec<SavedPinnedTarget> {
         self.targets.retain(|pin| pin.saved.id != id);
         self.saved()

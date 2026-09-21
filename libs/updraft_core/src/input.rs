@@ -332,3 +332,32 @@ pub struct PinnedTargetElevation {
     pub meters: Option<f64>,
 }
 impl private::Sealed for PinnedTargetElevation {}
+
+#[derive(Debug)]
+pub struct GetRecentTargets;
+impl private::Sealed for GetRecentTargets {}
+
+#[derive(Debug)]
+pub struct RestoreRecentTargets(pub Vec<crate::NavigationTarget>);
+impl private::Sealed for RestoreRecentTargets {}
+
+#[derive(Debug)]
+pub struct ChangeTask(pub crate::TaskCommand);
+impl private::Sealed for ChangeTask {}
+#[derive(Debug)]
+pub struct GetTask;
+impl private::Sealed for GetTask {}
+#[derive(Debug)]
+pub struct RestoreTask(pub crate::Task);
+impl private::Sealed for RestoreTask {}
+
+#[derive(Debug)]
+pub struct GetNavigationTarget;
+impl private::Sealed for GetNavigationTarget {}
+
+#[derive(Debug)]
+pub struct RestoreNavigationTarget(pub Option<crate::NavigationTarget>);
+impl private::Sealed for RestoreNavigationTarget {}
+#[derive(Debug)]
+pub struct SetTaskSaveFailed(pub bool);
+impl private::Sealed for SetTaskSaveFailed {}

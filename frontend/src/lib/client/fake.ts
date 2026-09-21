@@ -10,6 +10,8 @@ import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget'
 import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
+import type { Task } from '$lib/protocol/generated/Task';
+import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
@@ -60,6 +62,80 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
 
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  #task: Task = {
+    points: [],
+    current: null,
+    status: 'stopped',
+    nextId: 0,
+    start: null,
+    finish: null,
+    restartAllowed: false,
+  };
+  async saveTask(): Promise<boolean> {
+    this.emit({ topic: 'taskSaveFailed', value: false });
+    return true;
+  }
+  async changeTask(command: TaskCommand): Promise<boolean> {
+    let task = structuredClone(this.#task);
+    switch (command.type) {
+      case 'add':
+        if (command.target.type !== 'waypoint') throw new Error('Task points must be waypoints');
+        task.points.push({ id: task.nextId++, target: command.target });
+        if (task.current === null) task.restartAllowed = true;
+        task.current ??= task.points[0].id;
+        break;
+      case 'move': {
+        let index = task.points.findIndex((point) => point.id === command.id);
+        if (index < 0 || command.index < 0 || command.index >= task.points.length)
+          throw new Error('Unknown task point');
+        task.points.splice(command.index, 0, ...task.points.splice(index, 1));
+        break;
+      }
+      case 'remove': {
+        let index = task.points.findIndex((point) => point.id === command.id);
+        if (index < 0 || (task.status === 'running' && task.points.length <= 2))
+          throw new Error('Cannot remove task point');
+        task.points.splice(index, 1);
+        if (task.current === command.id)
+          task.current = task.points[index]?.id ?? task.points.at(-1)?.id ?? null;
+        if (task.points.length < 2) task.status = 'stopped';
+        break;
+      }
+      case 'select':
+      case 'resume':
+        if (task.points.length < 2) throw new Error('A task needs two points');
+        if (command.type === 'select') task.current = command.id;
+        if (!task.points.some((point) => point.id === task.current))
+          throw new Error('Unknown task point');
+        task.status = 'running';
+        task.finish = null;
+        if (command.type === 'select') {
+          let index = task.points.findIndex((point) => point.id === task.current);
+          if (index === 0) task.restartAllowed = true;
+          else if (index > 1) task.restartAllowed = false;
+        }
+        break;
+      case 'stop':
+        task.status = 'stopped';
+        break;
+    }
+    this.#task = task;
+    this.emit({ topic: 'task', value: task });
+    if (command.type === 'select' || command.type === 'resume')
+      await this.setNavigationTarget({ type: 'task' });
+    if (command.type === 'stop' && this.#navigation?.target.type === 'task')
+      await this.setNavigationTarget(null);
+    return true;
+  }
+  #recents: NavigationTarget[] = [];
+  #remember(target: NavigationTarget): void {
+    if (target.type === 'task') return;
+    this.#recents = [
+      target,
+      ...this.#recents.filter((other) => !targetsMatch(target, other)),
+    ].slice(0, 30);
+    this.emit({ topic: 'recentTargets', value: this.#recents });
+  }
   #pins: PinnedTarget[] = [];
   #nextPinId = 0;
   async pinTarget(target: NavigationTarget): Promise<boolean> {
@@ -70,7 +146,7 @@ export class FakeClient implements UpdraftClient {
         navigation: {
           target,
           position:
-            target.type === 'traffic'
+            target.type === 'traffic' || target.type === 'task'
               ? null
               : {
                   latitudeDegrees: target.latitudeDegrees,
@@ -86,6 +162,8 @@ export class FakeClient implements UpdraftClient {
     return true;
   }
   async unpinTarget(id: number): Promise<boolean> {
+    let pin = this.#pins.find((pin) => pin.id === id);
+    if (pin) this.#remember(pin.navigation.target);
     this.#pins = this.#pins.filter((pin) => pin.id !== id);
     this.#publishPins();
     return true;
@@ -100,11 +178,12 @@ export class FakeClient implements UpdraftClient {
   }
   #navigation: Navigation | null = null;
   async setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
+    if (target) this.#remember(target);
     this.#navigation = target
       ? {
           target,
           position:
-            target.type === 'traffic'
+            target.type === 'traffic' || target.type === 'task'
               ? null
               : {
                   latitudeDegrees: target.latitudeDegrees,
@@ -342,6 +421,9 @@ export class FakeClient implements UpdraftClient {
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
     onTopic({ topic: 'navigation', value: this.#navigation });
+    onTopic({ topic: 'recentTargets', value: this.#recents });
+    onTopic({ topic: 'task', value: this.#task });
+    onTopic({ topic: 'taskSaveFailed', value: false });
     onTopic({ topic: 'pinnedTargets', value: this.#pins });
     onTopic({ topic: 'settings', value: this.#settings });
     onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });

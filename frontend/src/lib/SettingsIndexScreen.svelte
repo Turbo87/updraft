@@ -17,6 +17,14 @@
 
 <ScreenScaffold backHref="/" backLabel={m.back_to_flight_view()} title={m.settings_heading()}>
   <nav aria-label={m.settings_heading()}>
+    <Card
+      ><ListRow
+        href="/navigation"
+        icon="i-mdi-navigation"
+        label={m.navigation_heading()}
+        size="large"
+      /></Card
+    >
     <Card>
       <ListRow
         href="/settings/flight-controls"

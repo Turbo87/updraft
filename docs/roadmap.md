@@ -156,6 +156,11 @@ documents for accepted behavior.
 
 ## Tasks
 
+- [x] **ordered-task-slice**: one saved editable waypoint route, fixed 500 m cylinders,
+  automatic progression and restarts, independent task guidance and pinning,
+  and persisted progress. See [Ordered tasks](product/tasks.md). The broader
+  competition features below remain backlog.
+
 - [ ] **observation-zones** — OZ types (cylinder, FAI sector, keyhole, line) with entry/exit detection, per-point overrides. _(needs: geo-shapes)_
 - [ ] **task-model** — task data model: task types, start/finish rules, validation, serde. _(needs: observation-zones, waypoint-db)_
 - [ ] **task-engine** — in-flight progress: start detection/arming, automatic + manual turnpoint advance, and finish. Publish the current task point as the default Task target without stealing focus from another active target, and persist task state via snapshots for crash resume. _(needs: task-model, flight-modes, navigation-targets)_

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
   import type { Navigation as NavigationState } from '$lib/protocol/generated/Navigation';
+  import type { Task } from '$lib/protocol/generated/Task';
 
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
@@ -28,6 +29,7 @@
   import { positionCoordinates } from './ownship';
   import Ownship from './Ownship.svelte';
   import ReturnToPositionButton from './ReturnToPositionButton.svelte';
+  import TaskRoute from './TaskRoute.svelte';
   import Terrain from './Terrain.svelte';
   import Traffic from './Traffic.svelte';
   import Waypoints from './Waypoints.svelte';
@@ -39,6 +41,7 @@
 
   const FOLLOW_DURATION_MS = 300;
   type Props = {
+    task?: Task;
     navigation?: NavigationState | null;
     climbAverageMethod?: ClimbAverageMethod;
     client?: UpdraftClient;
@@ -58,6 +61,7 @@
   };
 
   let {
+    task,
     navigation = null,
     climbAverageMethod = 'smoothed20s',
     client,
@@ -223,6 +227,7 @@
         {/if}
       {/if}
     {/if}
+    {#if task}<TaskRoute {task} />{/if}
     {#if navigation?.position}<Navigation position={navigation.position} ownship={position} />{/if}
   </MapLibre>
   {#if !mapState.followMode}

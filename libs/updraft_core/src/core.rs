@@ -42,6 +42,10 @@ pub struct Core {
     navigation_report: Option<(crate::PublishedTrafficTarget, Timestamp)>,
     navigation_at: Timestamp,
     pinned_targets: crate::pinned_targets::PinnedTargets,
+    recent_targets: Vec<crate::NavigationTarget>,
+    task: crate::task::TaskState,
+    task_fix: Option<crate::ownship::Selected<GpsSnapshot>>,
+    task_save_failed: bool,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -76,6 +80,10 @@ impl Core {
         sensor_fusion.set_polar(glide_performance.glide_polar(settings.polar));
         Self {
             pinned_targets: Default::default(),
+            recent_targets: Vec::new(),
+            task: Default::default(),
+            task_fix: None,
+            task_save_failed: false,
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -104,10 +112,13 @@ impl Core {
     /// `at` is supplied by the shell rather than read, which is what keeps
     /// the core deterministic.
     pub fn apply<I: Input>(&mut self, input: I, at: Timestamp) -> Update<I::Response> {
+        let before_task = self.task.snapshot();
+        let before_recents = self.recent_targets.clone();
         let before_pins = self.pinned_targets();
         let before = self.navigation();
         let mut update = input.apply_to(self, at);
         self.navigation_at = self.navigation_at.max(at);
+        self.update_task();
         if let Some(crate::NavigationTarget::Traffic { id }) = self.navigation_target
             && let Some(report) = self.traffic.navigation_observation(id, &self.flarmnet)
         {
@@ -127,6 +138,16 @@ impl Core {
         }
         self.pinned_targets
             .update_reports(&self.traffic, &self.flarmnet);
+        if before_recents != self.recent_targets {
+            update.effects.push(Effect::Emit(Topic::RecentTargets(
+                self.recent_targets.clone(),
+            )));
+        }
+        if before_task != self.task.snapshot() {
+            update
+                .effects
+                .push(Effect::Emit(Topic::Task(self.task.snapshot())));
+        }
         let after_pins = self.pinned_targets();
         if before_pins != after_pins {
             update
@@ -137,11 +158,18 @@ impl Core {
     }
 
     fn pinned_targets(&self) -> Vec<crate::PinnedTarget> {
-        self.pinned_targets.published(
+        let mut pins = self.pinned_targets.published(
             &self.glide_snapshot(),
             self.navigation_target.as_ref(),
             self.navigation_at,
-        )
+        );
+        for pin in &mut pins {
+            pin.navigation.resolve_traffic_name(&self.flarmnet);
+            if pin.navigation.target == crate::NavigationTarget::Task {
+                pin.navigation = self.task_navigation();
+            }
+        }
+        pins
     }
 
     /// The current value of every topic, for a client that has just
@@ -157,6 +185,9 @@ impl Core {
             Topic::Traffic(TrafficUpdate::Snapshot(traffic)),
             Topic::Navigation(self.navigation()),
             Topic::PinnedTargets(self.pinned_targets()),
+            Topic::RecentTargets(self.recent_targets.clone()),
+            Topic::Task(self.task.snapshot()),
+            Topic::TaskSaveFailed(self.task_save_failed),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -248,6 +279,7 @@ impl Core {
         if let Some(device) = self.external_devices.get_mut(device_id) {
             device.flarm_reference.observe(&message, at);
         }
+        let mut position_updated = false;
         match message {
             Message::Rmc(rmc)
                 if rmc.status == RmcStatus::Active
@@ -268,6 +300,7 @@ impl Core {
                 }
                 if let Some(position) = rmc.position {
                     device.gps.position = Some(Timed::new(position, at));
+                    position_updated = true;
                 }
                 if let Some(course) = rmc.course_over_ground {
                     device.gps.track = Some(Timed::new(course, at));
@@ -286,6 +319,7 @@ impl Core {
                 }
                 if let Some(position) = gga.position {
                     device.gps.position = Some(Timed::new(position, at));
+                    position_updated = true;
                 }
                 if let Some(altitude) = gga.altitude {
                     let altitude = MslAltitude::new(altitude);
@@ -391,6 +425,9 @@ impl Core {
             }
             _ => {}
         }
+        if position_updated && let Some(fix) = self.gps_candidate(at) {
+            self.observe_task_fix(fix);
+        }
     }
 
     fn reevaluate_flight_data(&mut self, at: Timestamp) {
@@ -450,17 +487,18 @@ impl Core {
         });
     }
 
-    fn select_gps(&mut self, at: Timestamp) {
-        let selected = self
-            .external_devices
+    fn gps_candidate(&self, at: Timestamp) -> Option<crate::ownship::Selected<GpsSnapshot>> {
+        self.external_devices
             .iter()
             .filter(|device| device.config.enabled)
             .find_map(|device| {
                 select_gps_candidate(SourceId::External(device.device_id), device.gps, at)
             })
-            .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at));
+            .or_else(|| select_gps_candidate(SourceId::InternalGps, self.internal_gps, at))
+    }
 
-        match selected {
+    fn select_gps(&mut self, at: Timestamp) {
+        match self.gps_candidate(at) {
             Some(selected) => self.gps.update(selected),
             None => self.gps.mark_stale(),
         }
@@ -1067,15 +1105,36 @@ impl Core {
         }
     }
 
+    fn task_navigation(&self) -> crate::Navigation {
+        let mut navigation = crate::Navigation::new(
+            self.task
+                .target()
+                .cloned()
+                .unwrap_or(crate::NavigationTarget::Task),
+            &self.glide_snapshot(),
+            None,
+            None,
+            self.navigation_at,
+        );
+        navigation.target = crate::NavigationTarget::Task;
+        navigation
+    }
+
     fn navigation(&self) -> Option<crate::Navigation> {
+        if self.navigation_target == Some(crate::NavigationTarget::Task) {
+            return Some(self.task_navigation());
+        }
+
         self.navigation_target.clone().map(|target| {
-            crate::Navigation::new(
+            let mut navigation = crate::Navigation::new(
                 target,
                 &self.glide_snapshot(),
                 self.navigation_elevation,
                 self.navigation_report.as_ref(),
                 self.navigation_at,
-            )
+            );
+            navigation.resolve_traffic_name(&self.flarmnet);
+            navigation
         })
     }
 }
@@ -1088,9 +1147,17 @@ impl Input for crate::SetNavigationTarget {
         {
             return Update::empty().with_response(Err(error));
         }
+        if self.0 == Some(crate::NavigationTarget::Task)
+            && let Err(error) = core.task.change(crate::TaskCommand::Resume)
+        {
+            return Update::empty().with_response(Err(error));
+        }
         if core.navigation_target != self.0 {
             core.navigation_elevation = None;
             core.navigation_report = None;
+        }
+        if let Some(target) = &self.0 {
+            core.remember_target(target.clone());
         }
         core.navigation_target = self.0;
         Update::empty().with_response(Ok(()))
@@ -1123,6 +1190,9 @@ impl Input for crate::PinTarget {
 impl Input for crate::UnpinTarget {
     type Response = Result<Vec<crate::SavedPinnedTarget>, &'static str>;
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        if let Some(target) = core.pinned_targets.target(self.0) {
+            core.remember_target(target);
+        }
         Update::empty().with_response(Ok(core.pinned_targets.unpin(self.0)))
     }
 }
@@ -1139,5 +1209,167 @@ impl Input for crate::PinnedTargetElevation {
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
         core.pinned_targets.set_elevation(self);
         Update::empty()
+    }
+}
+
+impl Core {
+    fn remember_target(&mut self, target: crate::NavigationTarget) {
+        if target == crate::NavigationTarget::Task {
+            return;
+        }
+        self.recent_targets.retain(|other| !other.matches(&target));
+        self.recent_targets.insert(0, target);
+        self.recent_targets.truncate(30);
+    }
+}
+impl Input for crate::GetRecentTargets {
+    type Response = Vec<crate::NavigationTarget>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.recent_targets.clone())
+    }
+}
+impl Input for crate::RestoreRecentTargets {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        for target in &self.0 {
+            if let Err(error) = target.validate() {
+                return Update::empty().with_response(Err(error));
+            }
+        }
+        core.recent_targets.clear();
+        for target in self.0.into_iter().rev() {
+            core.remember_target(target);
+        }
+        Update::empty().with_response(Ok(()))
+    }
+}
+
+impl Input for crate::GetTask {
+    type Response = crate::Task;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.task.snapshot())
+    }
+}
+impl Input for crate::RestoreTask {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.task.restore(self.0))
+    }
+}
+impl Input for crate::ChangeTask {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        let select = matches!(
+            self.0,
+            crate::TaskCommand::Select { .. } | crate::TaskCommand::Resume
+        );
+        let stop = matches!(self.0, crate::TaskCommand::Stop);
+        if let Err(error) = core.task.change(self.0) {
+            return Update::empty().with_response(Err(error));
+        }
+        if select {
+            core.navigation_target = Some(crate::NavigationTarget::Task);
+        }
+        if stop && core.navigation_target == Some(crate::NavigationTarget::Task) {
+            core.navigation_target = None;
+        }
+        Update::empty().with_response(Ok(()))
+    }
+}
+
+impl Input for crate::GetNavigationTarget {
+    type Response = Option<crate::NavigationTarget>;
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
+        Update::empty().with_response(core.navigation_target.clone())
+    }
+}
+
+impl Core {
+    fn update_task(&mut self) {
+        let DomainState::Current(fix) = self.gps else {
+            return;
+        };
+        if self.task_fix.is_some_and(|previous| {
+            previous.source == fix.source
+                && previous.ingested_at == fix.ingested_at
+                && previous.value.position == fix.value.position
+        }) {
+            return;
+        }
+        self.observe_task_fix(fix);
+    }
+
+    fn observe_task_fix(&mut self, fix: crate::ownship::Selected<GpsSnapshot>) {
+        if self.task_fix == Some(fix) {
+            return;
+        }
+        if self
+            .task_fix
+            .is_some_and(|previous| previous.source != fix.source)
+        {
+            self.task.reset_crossing();
+        }
+        self.task_fix = Some(fix);
+        let utc = fix
+            .value
+            .fix_time
+            .and_then(|time| match time.value {
+                crate::FixTime::UtcInstant(utc) => Some(
+                    utc.saturating_add(fix.ingested_at.saturating_since(time.ingested_at))
+                        .unix_milliseconds(),
+                ),
+                _ => None,
+            })
+            .or_else(|| {
+                self.device_utc.map(|utc| {
+                    utc.value
+                        .saturating_add(fix.ingested_at.saturating_since(utc.ingested_at))
+                        .unix_milliseconds()
+                })
+            });
+        let time_of_day = fix.value.fix_time.and_then(|time| match time.value {
+            crate::FixTime::UtcTimeOfDay(time) => Some(time.milliseconds_since_midnight()),
+            _ => None,
+        });
+        let utc = match (utc, time_of_day) {
+            (Some(reference), Some(time)) => {
+                let offset = (i64::from(time) - reference.rem_euclid(86_400_000) + 43_200_000)
+                    .rem_euclid(86_400_000)
+                    - 43_200_000;
+                Some(reference.saturating_add(offset))
+            }
+            _ => utc,
+        };
+        self.task
+            .observe(fix.value.position, fix.ingested_at, utc, time_of_day);
+        if self.task.snapshot().status == crate::TaskStatus::Completed
+            && self.navigation_target == Some(crate::NavigationTarget::Task)
+        {
+            self.navigation_target = None;
+        }
+    }
+}
+
+impl Input for crate::RestoreNavigationTarget {
+    type Response = Result<(), &'static str>;
+    fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
+        let target = if self.0 == Some(crate::NavigationTarget::Task)
+            && core.task.snapshot().status != crate::TaskStatus::Running
+        {
+            None
+        } else {
+            self.0
+        };
+        crate::SetNavigationTarget(target).apply_to(core, at)
+    }
+}
+impl Input for crate::SetTaskSaveFailed {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        core.task_save_failed = self.0;
+        Update {
+            response: (),
+            effects: vec![Effect::Emit(Topic::TaskSaveFailed(self.0))],
+        }
     }
 }

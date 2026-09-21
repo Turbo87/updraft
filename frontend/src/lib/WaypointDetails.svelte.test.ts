@@ -33,7 +33,16 @@ it('shows source data and converts elevation to the selected unit', async () => 
   await expect.element(page.getByText('30 m')).toBeVisible();
   await expect.element(page.getByText('123.500 MHz')).toBeVisible();
   await expect.element(page.getByText('local.cup')).toBeVisible();
-  expect(document.querySelector('dl')?.lastElementChild?.textContent).toBe('local.cup');
+  expect([...document.querySelectorAll('dt')].map((term) => term.textContent)).toEqual([
+    'Elevation',
+    'Frequency',
+    'Runway direction',
+    'Runway length',
+    'Runway width',
+    'Notes',
+    'Coordinates',
+    'Source file',
+  ]);
   await expect.element(page.getByText('First line Second line')).toBeVisible();
 });
 

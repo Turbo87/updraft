@@ -28,8 +28,10 @@ for (let viewport of [
     }
     let points = page.getByRole('list').getByRole('listitem');
     await expect(points).toHaveCount(3);
-    await page.waitForFunction(() =>
-      window.__updraftApp!.mapState.map?.getLayer('task-route-line'),
+    await page.waitForFunction(
+      () =>
+        window.__updraftApp!.mapState.map?.getLayer('task-route-line') &&
+        window.__updraftApp!.mapState.map?.getLayer('task-cylinder-outline'),
     );
     await points.nth(2).getByRole('button', { name: 'Move up' }).click();
     await expect(points.nth(1)).toContainText('Point 2');

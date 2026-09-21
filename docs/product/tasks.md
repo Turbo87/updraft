@@ -11,7 +11,9 @@ A running task requires at least two points.
 
 Open **Navigation** from the menu or the active navigation bar, then open
 **Task**. The editor searches the enabled waypoint data. Add points, move them
-up or down, or remove them. The map displays the route.
+up or down, or remove them. The map displays the route and each point’s
+500 m cylinder with an outline and a light fill. Cylinder display uses a
+spherical approximation. Crossing detection uses WGS84 geometry.
 
 Selecting a task point makes it current and selects task guidance as primary
 navigation. The pilot can skip ahead or return to an earlier point. A separate

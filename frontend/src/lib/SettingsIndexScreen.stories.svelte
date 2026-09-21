@@ -11,7 +11,7 @@
       docs: {
         description: {
           component:
-            'Use the Settings index as the direct entry from the Flight View. Each 56-pixel row opens one settings section. Show the current language and build date. Keep either value visible as an em dash when its data is unavailable.',
+            'Use the Settings index as the direct entry from the Flight View. Three cards group flight settings, data and devices, and application preferences. Each 56-pixel row opens one destination. Show the current language and build date. Keep either value visible as an em dash when its data is unavailable.',
         },
       },
     },

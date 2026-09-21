@@ -17,34 +17,50 @@
 
 <ScreenScaffold backHref="/" backLabel={m.back_to_flight_view()} title={m.settings_heading()}>
   <nav aria-label={m.settings_heading()}>
-    <Card
-      ><ListRow
-        href="/navigation"
-        icon="i-mdi-navigation"
-        label={m.navigation_heading()}
-        size="large"
-      /></Card
-    >
     <Card>
-      <ListRow
-        href="/settings/flight-controls"
-        icon="i-mdi-tune"
-        label={m.flight_controls_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/language"
-        icon="i-mdi-translate"
-        label={m.language_label()}
-        size="large"
-        value={language ?? '—'}
-      />
-    </Card>
-    <div class="data-settings">
-      <Card>
+      <div class="group">
         <ListRow
+          href="/navigation"
+          icon="i-mdi-navigation"
+          label={m.navigation_heading()}
+          size="large"
+        />
+        <ListRow
+          href="/settings/flight-controls"
+          icon="i-mdi-tune"
+          label={m.flight_controls_heading()}
+          size="large"
+        />
+        <ListRow
+          href="/settings/map"
+          icon="i-mdi-map-outline"
+          label={m.map_settings_heading()}
+          size="large"
+        />
+        <ListRow
+          href="/settings/glide"
+          icon="i-mdi-airplane"
+          label={m.glide_heading()}
+          size="large"
+        />
+        <ListRow
+          href="/settings/vario"
+          icon="i-mdi-airplane-marker"
+          label={m.vario_settings_heading()}
+          size="large"
+        />
+        <ListRow
+          href="/settings/traffic"
+          icon="i-mdi-radar"
+          label={m.traffic_settings_heading()}
+          size="large"
+        />
+      </div>
+    </Card>
+    <Card>
+      <div class="group">
+        <ListRow
+          class="data-settings"
           href="/settings/data"
           icon="i-mdi-database-outline"
           label={m.data_heading()}
@@ -55,59 +71,32 @@
               ? m.data_update_count({ count: updateCount })
               : ''}
         />
-      </Card>
-    </div>
-    <Card>
-      <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
+        <ListRow
+          href="/settings/devices"
+          icon="i-mdi-lan-connect"
+          label={m.external_devices_heading()}
+          size="large"
+        />
+      </div>
     </Card>
     <Card>
-      <ListRow
-        href="/settings/map"
-        icon="i-mdi-map-outline"
-        label={m.map_settings_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/glide"
-        icon="i-mdi-airplane"
-        label={m.glide_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/vario"
-        icon="i-mdi-airplane-marker"
-        label={m.vario_settings_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/traffic"
-        icon="i-mdi-radar"
-        label={m.traffic_settings_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/devices"
-        icon="i-mdi-lan-connect"
-        label={m.external_devices_heading()}
-        size="large"
-      />
-    </Card>
-    <Card>
-      <ListRow
-        href="/settings/about"
-        icon="i-mdi-information-outline"
-        label={m.about_heading()}
-        size="large"
-        value={buildDate ?? '—'}
-      />
+      <div class="group">
+        <ListRow
+          href="/settings/language"
+          icon="i-mdi-translate"
+          label={m.language_label()}
+          size="large"
+          value={language ?? '—'}
+        />
+        <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
+        <ListRow
+          href="/settings/about"
+          icon="i-mdi-information-outline"
+          label={m.about_heading()}
+          size="large"
+          value={buildDate ?? '—'}
+        />
+      </div>
     </Card>
   </nav>
   {#if onQuit}
@@ -122,7 +111,7 @@
 </ScreenScaffold>
 
 <style>
-  .data-settings :global(.value) {
+  nav :global(.data-settings .value) {
     max-width: 30vw;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -131,7 +120,15 @@
 
   nav {
     display: grid;
-    gap: var(--space-2);
+    gap: var(--space-6);
+  }
+
+  .group > :global(.list-row) {
+    border-radius: 0;
+  }
+
+  .group > :global(.list-row + .list-row) {
+    border-block-start: 1px solid var(--color-separator);
   }
 
   .quit-action {

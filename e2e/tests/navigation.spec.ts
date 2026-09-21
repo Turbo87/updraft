@@ -63,12 +63,15 @@ for (let viewport of [
   });
 }
 
-test('selects traffic by ID and shows waiting without a saved position', async ({ page, app }) => {
+test('selects traffic by ID and shows an unavailable suffix without a saved position', async ({
+  page,
+  app,
+}) => {
   await app.open('/traffic/icao:ABC123');
   await page.getByRole('button', { name: 'Navigate to traffic' }).click();
   await expect(page).toHaveURL('/');
   let bar = page.getByRole('link', { name: 'Target details' });
-  await expect(bar).toContainText('Waiting for traffic');
+  await expect(bar).toContainText('icao:ABC123 (n/a)');
   expect(await page.evaluate(() => window.__updraftApp!.navigation.current?.target)).toEqual({
     type: 'traffic',
     id: 'icao:ABC123',

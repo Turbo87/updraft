@@ -52,7 +52,7 @@
   <strong
     >{navigationLabel(navigation)}
     {#if navigation.target.type === 'traffic'}
-      {#if !navigation.traffic}<small>{m.navigation_waiting()}</small>
+      {#if !navigation.traffic}<small class="report-age">(n/a)</small>
       {:else if navigation.traffic.stale}<small class="report-age"
           >({formatReportAge(navigation.traffic.ageSeconds)})</small
         >{/if}
@@ -100,10 +100,10 @@
     color: var(--color-text);
     text-decoration: none;
     min-height: 3rem;
+    border-bottom: 1px solid var(--color-border);
   }
   a.compact {
     padding-top: var(--space-2);
-    border-bottom: 1px solid var(--color-border);
     font-size: 0.875rem;
     gap: var(--space-2);
   }
@@ -116,10 +116,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  small {
-    display: block;
-    font: var(--text-row-label);
   }
   small.report-age {
     display: inline;

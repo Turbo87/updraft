@@ -201,3 +201,55 @@ fn fix(track: Option<Angle>, altitude_ellipsoid: Option<EllipsoidAltitude>) -> F
         fix_time: None,
     }
 }
+
+#[test]
+fn restored_traffic_uses_flarmnet_names_before_any_report() {
+    use std::sync::Arc;
+    use updraft_core::{PinTarget, ReplaceFlarmnetDatabase, TrafficTargetId, TrafficTargetIdType};
+    let mut core = Core::new(SettingsSnapshot::default());
+    let at = Timestamp::default();
+    let target = NavigationTarget::Traffic {
+        id: TrafficTargetId::new(TrafficTargetIdType::Flarm, 0xABC123),
+    };
+    assert_ok!(
+        core.apply(SetNavigationTarget(Some(target.clone())), at)
+            .response
+    );
+    assert_ok!(core.apply(PinTarget(target), at).response);
+    for (record, expected) in [
+        (
+            r#"[{"flarm_id":"ABC123","call_sign":"AB","registration":"D-1234"}]"#,
+            "AB",
+        ),
+        (
+            r#"[{"flarm_id":"ABC123","registration":"D-1234"}]"#,
+            "D-1234",
+        ),
+    ] {
+        let database = assert_ok!(updraft_flarmnet::FlarmnetDatabase::from_json(
+            record.as_bytes()
+        ));
+        let update = core.apply(ReplaceFlarmnetDatabase(Arc::new(database)), at);
+        assert!(
+            update
+                .effects
+                .iter()
+                .any(|effect| matches!(effect, updraft_core::Effect::Emit(Topic::Navigation(_))))
+        );
+        let current = assert_some!(navigation(&core));
+        assert_eq!(
+            serde_json::to_value(&current).unwrap()["trafficName"],
+            expected
+        );
+        assert_none!(current.traffic);
+        assert_none!(current.position);
+        for topic in core.topics() {
+            if let Topic::PinnedTargets(pins) = topic {
+                assert_eq!(
+                    serde_json::to_value(&pins[0].navigation).unwrap()["trafficName"],
+                    expected
+                );
+            }
+        }
+    }
+}

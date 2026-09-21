@@ -63,8 +63,10 @@ The shell atomically replaces the saved target after selection, replacement,
 or stopping. It restores waypoint snapshots and map coordinates on startup.
 For traffic, it saves only the ID. It does not save a traffic position,
 altitude, identity label, or observation time. After restart, traffic
-navigation shows **Waiting for traffic** without guidance or a course line
-until a report arrives.
+navigation resolves the callsign or registration from FlarmNet when available.
+Otherwise, it shows the target ID. A small `(n/a)` suffix indicates that no
+report is available. Guidance and the course line remain unavailable until
+a report arrives.
 
 A save failure leaves the active navigation choice usable. The selection or
 stop screen reports that the choice was not saved and that a previous target

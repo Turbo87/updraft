@@ -164,6 +164,7 @@ impl Core {
             self.navigation_at,
         );
         for pin in &mut pins {
+            pin.navigation.resolve_traffic_name(&self.flarmnet);
             if pin.navigation.target == crate::NavigationTarget::Task {
                 pin.navigation = self.task_navigation();
             }
@@ -1125,13 +1126,15 @@ impl Core {
         }
 
         self.navigation_target.clone().map(|target| {
-            crate::Navigation::new(
+            let mut navigation = crate::Navigation::new(
                 target,
                 &self.glide_snapshot(),
                 self.navigation_elevation,
                 self.navigation_report.as_ref(),
                 self.navigation_at,
-            )
+            );
+            navigation.resolve_traffic_name(&self.flarmnet);
+            navigation
         })
     }
 }

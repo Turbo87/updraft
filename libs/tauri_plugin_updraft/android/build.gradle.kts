@@ -31,7 +31,7 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.core:core-ktx:1.19.1")
     implementation(project(":tauri-android"))
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
     testImplementation("junit:junit:4.13.2")

@@ -24,7 +24,7 @@ rustls = { version = "=0.23.45", default-features = false, features = ["ring", "
 rusqlite = { version = "=0.40.2", features = ["bundled"] }
 serde_json = "=1.0.151"
 serde = { version = "=1.0.229", features = ["derive", "rc"] }
-tauri = { version = "=2.11.5", features = [] }
+tauri = { version = "=2.11.6", features = [] }
 tauri-plugin-dialog = "=2.7.3"
 tauri-plugin-fs = "=2.5.2"
 tauri-plugin-opener = "=2.5.5"
@@ -51,6 +51,6 @@ approx = "=0.6.0-rc2"
 claims = "=0.8.0"
 image-webp = "=0.2.4"
 insta = { version = "=1.48.0", features = ["json"] }
-tauri = { version = "=2.11.5", features = ["test"] }
+tauri = { version = "=2.11.6", features = ["test"] }
 tokio = { version = "=1.53.1", features = ["test-util"] }
 tracing-test = "=0.2.6"

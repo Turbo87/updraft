@@ -1,13 +1,10 @@
-import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+import type { ChangeSetting } from '$lib/protocol/generated/ChangeSetting';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
-import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
-import type { Locale } from '$lib/protocol/generated/Locale';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
-import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 
 export type TopicListener = (topic: Topic) => void;
@@ -132,19 +129,14 @@ export interface UpdraftClient {
    * while the layout owns the only subscription and never unmounts.
    */
   subscribe(onTopic: TopicListener): () => void;
-  setLocale(locale: Locale): Promise<void>;
+  changeSetting(change: ChangeSetting): Promise<void>;
   getPolars(): Promise<PolarId[]>;
   setPolar(polar: PolarId): Promise<void>;
-  setArrivalReserve(reserve: number): Promise<void>;
-  setClimbAverageMethod(method: ClimbAverageMethod): Promise<void>;
-  setHillshadeDirection(direction: HillshadeDirection): Promise<void>;
   setEnergyCompensation(enabled: boolean): Promise<void>;
   setFlarmPositionCorrection(enabled: boolean): Promise<void>;
   setMacCready(macCready: number): Promise<void>;
   setBugs(bugs: number): Promise<void>;
   setBallast(ballast: number): Promise<void>;
-  /** Replaces all display-unit selections. */
-  setUnits(units: UnitSettings): Promise<void>;
   selectDataFile(): Promise<SelectedDataFile | null>;
   importDataFile(selectionId: string): Promise<SelectedDataFile>;
   discardDataFile(selectionId: string): Promise<void>;

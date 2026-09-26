@@ -9,8 +9,8 @@ use crate::settings::{
 };
 use crate::topic::Instruments;
 use crate::{
-    ArrivalReserve, Ballast, Bugs, GlidePerformance, MacCready, SetArrivalReserve, SetBallast,
-    SetBugs, SetMacCready,
+    ArrivalReserve, Ballast, Bugs, ChangeSetting, GlidePerformance, MacCready, SetBallast, SetBugs,
+    SetMacCready,
 };
 use claims::assert_some_eq;
 
@@ -53,7 +53,9 @@ fn maccready_is_published_but_not_persisted_and_resets_on_restart() {
     assert_eq!(effects, vec![Effect::emit(topic)]);
     assert_eq!(core.apply(SetBallast { ballast }, at(1)).effects, vec![]);
 
-    let effects = core.apply(SetLocale::new(Locale::De), at(2)).effects;
+    let effects = core
+        .apply(ChangeSetting::Locale { locale: Locale::De }, at(2))
+        .effects;
     let Effect::PersistSettings(snapshot) = &effects[1] else {
         panic!("settings must be saved")
     };
@@ -111,7 +113,7 @@ fn setting_locale_updates_the_topic_and_requests_persistence() {
         ..Settings::default()
     };
 
-    let input = SetLocale::new(Locale::De);
+    let input = ChangeSetting::Locale { locale: Locale::De };
     assert_eq!(core.apply(input, at(0)).effects, settings_effects(settings));
     assert_eq!(
         core.topics(),
@@ -142,7 +144,7 @@ fn setting_the_active_explicit_locale_is_a_no_op() {
         external_devices: Vec::new(),
     });
 
-    let input = SetLocale::new(Locale::De);
+    let input = ChangeSetting::Locale { locale: Locale::De };
     assert_eq!(core.apply(input, at(0)).effects, vec![]);
 }
 
@@ -167,7 +169,7 @@ fn setting_units_updates_the_topic_and_requests_persistence() {
         ..Settings::default()
     };
 
-    let input = SetUnits::new(units);
+    let input = ChangeSetting::Units { units };
     assert_eq!(core.apply(input, at(0)).effects, settings_effects(settings));
     assert_eq!(
         core.topics(),
@@ -204,7 +206,7 @@ fn setting_the_active_unit_selections_is_a_no_op() {
         external_devices: Vec::new(),
     });
 
-    let input = SetUnits::new(units);
+    let input = ChangeSetting::Units { units };
     assert_eq!(core.apply(input, at(0)).effects, vec![]);
 }
 
@@ -232,9 +234,11 @@ fn arrival_reserve_publishes_and_persists_only_changes() {
         arrival_reserve: reserve,
         ..Settings::default()
     };
-    let effects = core.apply(SetArrivalReserve { reserve }, at(0)).effects;
+    let effects = core
+        .apply(ChangeSetting::ArrivalReserve { reserve }, at(0))
+        .effects;
     assert_eq!(effects, settings_effects(settings));
-    let repeated = core.apply(SetArrivalReserve { reserve }, at(1));
+    let repeated = core.apply(ChangeSetting::ArrivalReserve { reserve }, at(1));
     assert_eq!(repeated.effects, vec![]);
 }
 
@@ -295,7 +299,7 @@ fn loaded_and_changed_polars_drive_netto() {
 
 #[test]
 fn climb_average_method_defaults_and_persists_changes() {
-    use crate::{ClimbAverageMethod, SetClimbAverageMethod};
+    use crate::ClimbAverageMethod;
     let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
     assert_eq!(
         settings.climb_average_method,
@@ -308,14 +312,16 @@ fn climb_average_method_defaults_and_persists_changes() {
         ClimbAverageMethod::NormalizedEma,
         ClimbAverageMethod::Smoothed20s,
     ] {
-        let effects = core.apply(SetClimbAverageMethod { method }, at(0)).effects;
+        let effects = core
+            .apply(ChangeSetting::ClimbAverageMethod { method }, at(0))
+            .effects;
         let expected = Settings {
             climb_average_method: method,
             ..Settings::default()
         };
         assert_eq!(effects, settings_effects(expected));
         assert!(
-            core.apply(SetClimbAverageMethod { method }, at(1))
+            core.apply(ChangeSetting::ClimbAverageMethod { method }, at(1))
                 .effects
                 .is_empty()
         );
@@ -329,7 +335,7 @@ fn climb_average_method_defaults_and_persists_changes() {
 
 #[test]
 fn hillshade_direction_defaults_and_persists_changes() {
-    use crate::{HillshadeDirection, SetHillshadeDirection};
+    use crate::HillshadeDirection;
     let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
     assert_eq!(settings.hillshade_direction, HillshadeDirection::Fixed);
     let mut core = Core::new(SettingsSnapshot::default());
@@ -343,12 +349,12 @@ fn hillshade_direction_defaults_and_persists_changes() {
             ..Settings::default()
         };
         assert_eq!(
-            core.apply(SetHillshadeDirection { direction }, at(0))
+            core.apply(ChangeSetting::HillshadeDirection { direction }, at(0))
                 .effects,
             settings_effects(expected)
         );
         assert!(
-            core.apply(SetHillshadeDirection { direction }, at(1))
+            core.apply(ChangeSetting::HillshadeDirection { direction }, at(1))
                 .effects
                 .is_empty()
         );

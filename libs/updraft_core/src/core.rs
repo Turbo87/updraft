@@ -4,11 +4,10 @@ use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
 use crate::fix::{Fix, UtcInstant, UtcTime};
 use crate::input::{
-    AddExternalDevice, Bytes, ConnectionChanged, DeleteExternalDevice, EditExternalDevice,
-    GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices, SetArrivalReserve, SetBallast,
-    SetBugs, SetClimbAverageMethod, SetEnergyCompensation, SetExternalDeviceEnabled,
-    SetFlarmPositionCorrection, SetHillshadeDirection, SetLocale, SetMacCready, SetPolar, SetUnits,
-    Start, Tick, Update, UtcTick,
+    AddExternalDevice, Bytes, ChangeSetting, ConnectionChanged, DeleteExternalDevice,
+    EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices,
+    SetBallast, SetBugs, SetEnergyCompensation, SetExternalDeviceEnabled,
+    SetFlarmPositionCorrection, SetMacCready, SetPolar, Start, Tick, Update, UtcTick,
 };
 use crate::ownship::{
     DomainState, GpsCandidate, GpsSnapshot, SourceId, Timed, select_gps_candidate,
@@ -691,20 +690,25 @@ impl Input for InternalGps {
     }
 }
 
-impl Input for SetLocale {
+impl Input for ChangeSetting {
     type Response = ();
 
     fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        let effects = if core.settings.locale == Some(self.locale) {
-            Vec::new()
-        } else {
-            core.settings.locale = Some(self.locale);
-            vec![
-                Effect::emit(core.settings.as_topic()),
-                Effect::persist_settings(core.settings_snapshot()),
-            ]
-        };
-        Update::effects(effects)
+        let previous = core.settings;
+        match self {
+            Self::Locale { locale } => core.settings.locale = Some(locale),
+            Self::Units { units } => core.settings.units = units,
+            Self::ArrivalReserve { reserve } => core.settings.arrival_reserve = reserve,
+            Self::ClimbAverageMethod { method } => core.settings.climb_average_method = method,
+            Self::HillshadeDirection { direction } => core.settings.hillshade_direction = direction,
+        }
+        if core.settings == previous {
+            return Update::empty();
+        }
+        Update::effects(vec![
+            Effect::emit(core.settings.as_topic()),
+            Effect::persist_settings(core.settings_snapshot()),
+        ])
     }
 }
 
@@ -728,21 +732,6 @@ impl Input for SetPolar {
             effects.push(Effect::emit(after.as_topic()));
         }
         Update::effects(effects)
-    }
-}
-
-impl Input for SetArrivalReserve {
-    type Response = ();
-
-    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
-        if core.settings.arrival_reserve == self.reserve {
-            return Update::empty();
-        }
-        core.settings.arrival_reserve = self.reserve;
-        Update::effects(vec![
-            Effect::emit(core.settings.as_topic()),
-            Effect::persist_settings(core.settings_snapshot()),
-        ])
     }
 }
 
@@ -784,36 +773,6 @@ impl Input for SetEnergyCompensation {
             effects.push(Effect::emit(Topic::Traffic(TrafficUpdate::Delta(delta))));
         }
         Update::effects(effects)
-    }
-}
-
-impl Input for SetClimbAverageMethod {
-    type Response = ();
-
-    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
-        if core.settings.climb_average_method == self.method {
-            return Update::empty();
-        }
-        core.settings.climb_average_method = self.method;
-        Update::effects(vec![
-            Effect::emit(core.settings.as_topic()),
-            Effect::persist_settings(core.settings_snapshot()),
-        ])
-    }
-}
-
-impl Input for SetHillshadeDirection {
-    type Response = ();
-
-    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
-        if core.settings.hillshade_direction == self.direction {
-            return Update::empty();
-        }
-        core.settings.hillshade_direction = self.direction;
-        Update::effects(vec![
-            Effect::emit(core.settings.as_topic()),
-            Effect::persist_settings(core.settings_snapshot()),
-        ])
     }
 }
 
@@ -868,23 +827,6 @@ impl Input for SetBallast {
         if after != before {
             effects.push(Effect::emit(after.as_topic()));
         }
-        Update::effects(effects)
-    }
-}
-
-impl Input for SetUnits {
-    type Response = ();
-
-    fn apply_to(self, core: &mut Core, _at: Timestamp) -> Update<Self::Response> {
-        let effects = if core.settings.units == self.units {
-            Vec::new()
-        } else {
-            core.settings.units = self.units;
-            vec![
-                Effect::emit(core.settings.as_topic()),
-                Effect::persist_settings(core.settings_snapshot()),
-            ]
-        };
         Update::effects(effects)
     }
 }

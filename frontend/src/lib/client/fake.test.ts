@@ -120,11 +120,13 @@ describe('FakeClient', () => {
     let client = new FakeClient();
     let onTopic = observeTopicChanges(client);
     for (let reserve of [-1, NaN, Infinity]) {
-      await expect(client.setArrivalReserve(reserve)).rejects.toThrow('Arrival reserve');
+      await expect(client.changeSetting({ type: 'arrivalReserve', reserve })).rejects.toThrow(
+        'Arrival reserve',
+      );
     }
-    await client.setArrivalReserve(200);
+    await client.changeSetting({ type: 'arrivalReserve', reserve: 200 });
     expect(onTopic).not.toHaveBeenCalled();
-    await client.setArrivalReserve(304.8);
+    await client.changeSetting({ type: 'arrivalReserve', reserve: 304.8 });
     expect(onTopic).toHaveBeenCalledExactlyOnceWith({
       topic: 'settings',
       value: settingsFixture({ arrivalReserve: 304.8 }),
@@ -184,7 +186,7 @@ describe('FakeClient', () => {
     let client = new FakeClient();
     let received = collectTopics(client);
 
-    await client.setLocale('de');
+    await client.changeSetting({ type: 'locale', locale: 'de' });
 
     expect(received.at(-1)).toEqual({
       topic: 'settings',
@@ -197,8 +199,8 @@ describe('FakeClient', () => {
     let received = collectTopics(client);
     received.length = 0;
 
-    await client.setLocale('de');
-    await client.setLocale('de');
+    await client.changeSetting({ type: 'locale', locale: 'de' });
+    await client.changeSetting({ type: 'locale', locale: 'de' });
 
     expect(received).toHaveLength(1);
   });
@@ -206,14 +208,17 @@ describe('FakeClient', () => {
   it('publishes complete unit selections through the settings topic', async () => {
     let client = new FakeClient();
     let received = collectTopics(client);
-    await client.setLocale('de');
+    await client.changeSetting({ type: 'locale', locale: 'de' });
     received.length = 0;
 
-    await client.setUnits({
-      altitude: 'ft',
-      distance: 'nm',
-      speed: 'kt',
-      verticalSpeed: 'ft/min',
+    await client.changeSetting({
+      type: 'units',
+      units: {
+        altitude: 'ft',
+        distance: 'nm',
+        speed: 'kt',
+        verticalSpeed: 'ft/min',
+      },
     });
 
     expect(received.at(-1)).toEqual({
@@ -230,11 +235,14 @@ describe('FakeClient', () => {
     let received = collectTopics(client);
     received.length = 0;
 
-    await client.setUnits({
-      altitude: 'm',
-      distance: 'km',
-      speed: 'km/h',
-      verticalSpeed: 'm/s',
+    await client.changeSetting({
+      type: 'units',
+      units: {
+        altitude: 'm',
+        distance: 'km',
+        speed: 'km/h',
+        verticalSpeed: 'm/s',
+      },
     });
 
     expect(received).toEqual([]);
@@ -566,9 +574,9 @@ it('delivers download snapshots until each subscription closes', async () => {
 it('publishes only changed climb settings', async () => {
   let client = new FakeClient();
   let onTopic = observeTopicChanges(client);
-  await client.setClimbAverageMethod('smoothed20s');
+  await client.changeSetting({ type: 'climbAverageMethod', method: 'smoothed20s' });
   expect(onTopic).not.toHaveBeenCalled();
-  await client.setClimbAverageMethod('average30s');
+  await client.changeSetting({ type: 'climbAverageMethod', method: 'average30s' });
   expect(onTopic).toHaveBeenCalledExactlyOnceWith({
     topic: 'settings',
     value: expect.objectContaining({ climbAverageMethod: 'average30s' }),
@@ -578,9 +586,9 @@ it('publishes only changed climb settings', async () => {
 it('publishes only changed hillshade direction settings', async () => {
   let client = new FakeClient();
   let onTopic = observeTopicChanges(client);
-  await client.setHillshadeDirection('fixed');
+  await client.changeSetting({ type: 'hillshadeDirection', direction: 'fixed' });
   expect(onTopic).not.toHaveBeenCalled();
-  await client.setHillshadeDirection('wind');
+  await client.changeSetting({ type: 'hillshadeDirection', direction: 'wind' });
   expect(onTopic).toHaveBeenCalledExactlyOnceWith({
     topic: 'settings',
     value: expect.objectContaining({ hillshadeDirection: 'wind' }),

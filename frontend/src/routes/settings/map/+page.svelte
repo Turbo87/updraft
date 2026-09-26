@@ -14,6 +14,6 @@
 >
   <MapSettings
     direction={settings.current.hillshadeDirection}
-    setDirection={(direction) => client.setHillshadeDirection(direction)}
+    setDirection={(direction) => client.changeSetting({ type: 'hillshadeDirection', direction })}
   />
 </ScreenScaffold>

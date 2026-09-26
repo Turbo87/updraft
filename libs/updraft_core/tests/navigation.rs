@@ -107,7 +107,7 @@ fn waypoint_arrival_uses_fused_altitude_and_current_reserve() {
     core.apply(InternalGps::new(fix(None, Some(altitude))), at(0));
     let first = assert_some!(assert_some!(navigation(&core)).arrival);
     core.apply(
-        updraft_core::SetArrivalReserve {
+        updraft_core::ChangeSetting::ArrivalReserve {
             reserve: assert_ok!(updraft_core::ArrivalReserve::try_from(500.)),
         },
         at(0),

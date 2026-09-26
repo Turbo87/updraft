@@ -140,7 +140,7 @@ fn pinned_map_arrival_uses_only_matching_terrain_results() {
     );
     let arrival = claims::assert_some!(pins(&core)[0].navigation.arrival);
     core.apply(
-        SetArrivalReserve {
+        ChangeSetting::ArrivalReserve {
             reserve: assert_ok!(ArrivalReserve::try_from(500.)),
         },
         at,

@@ -1,13 +1,10 @@
-import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+import type { ChangeSetting } from '$lib/protocol/generated/ChangeSetting';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
-import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
-import type { Locale } from '$lib/protocol/generated/Locale';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
-import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
   ArrivalSubscription,
@@ -235,12 +232,8 @@ export class TauriClient implements UpdraftClient {
     return invoke('quit');
   }
 
-  setLocale(locale: Locale): Promise<void> {
-    return invoke('set_locale', { locale });
-  }
-
-  setUnits(units: UnitSettings): Promise<void> {
-    return invoke('set_units', { units });
+  changeSetting(change: ChangeSetting): Promise<void> {
+    return invoke('change_setting', { change });
   }
 
   getPolars(): Promise<PolarId[]> {
@@ -257,18 +250,6 @@ export class TauriClient implements UpdraftClient {
 
   setEnergyCompensation(enabled: boolean): Promise<void> {
     return invoke('set_energy_compensation', { enabled });
-  }
-
-  setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
-    return invoke('set_climb_average_method', { method });
-  }
-
-  setHillshadeDirection(direction: HillshadeDirection): Promise<void> {
-    return invoke('set_hillshade_direction', { direction });
-  }
-
-  setArrivalReserve(reserve: number): Promise<void> {
-    return invoke('set_arrival_reserve', { reserve });
   }
 
   setMacCready(macCready: number): Promise<void> {

@@ -11,7 +11,7 @@
   const activeLocale = $derived(settings.current.locale ?? getLocale());
 
   function selectLocale(locale: Locale): void {
-    void client.setLocale(locale).catch((error: unknown) => {
+    void client.changeSetting({ type: 'locale', locale }).catch((error: unknown) => {
       console.error('Failed to set locale', error);
     });
   }

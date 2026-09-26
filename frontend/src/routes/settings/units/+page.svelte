@@ -13,7 +13,7 @@
   function selectUnits(units: UnitSettingsValue): void {
     optimisticUnits = units;
     void client
-      .setUnits(units)
+      .changeSetting({ type: 'units', units })
       .catch((error: unknown) => {
         console.error('Failed to set units', error);
       })

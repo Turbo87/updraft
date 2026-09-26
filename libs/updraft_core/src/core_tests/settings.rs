@@ -319,10 +319,7 @@ fn climb_average_method_defaults_and_persists_changes() {
         assert_eq!(effects, settings_effects(expected));
         assert!(core.apply(change, at(1)).effects.is_empty());
         let json = claims::assert_ok!(serde_json::to_string(&expected));
-        assert_eq!(
-            claims::assert_ok!(serde_json::from_str::<Settings>(&json)),
-            expected
-        );
+        claims::assert_ok_eq!(serde_json::from_str::<Settings>(&json), expected);
     }
 }
 
@@ -342,10 +339,8 @@ fn hillshade_direction_defaults_and_persists_changes() {
             hillshade_direction: direction,
             ..Settings::default()
         };
-        assert_eq!(
-            core.apply(change, at(0)).effects,
-            settings_effects(expected)
-        );
+        let effects = core.apply(change, at(0)).effects;
+        assert_eq!(effects, settings_effects(expected));
         assert!(core.apply(change, at(1)).effects.is_empty());
     }
 }

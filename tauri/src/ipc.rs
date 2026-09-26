@@ -709,12 +709,10 @@ mod tests {
         let command = "change_setting";
         for method in ["normalizedEma", "average20s", "average30s", "smoothed20s"] {
             let body = json!({ "change": { "type": "climbAverageMethod", "method": method } });
-            let result = invoke(&app, command, body);
-            claims::assert_ok!(result);
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
         }
         let body = json!({ "change": { "type": "climbAverageMethod", "method": "unknown" } });
-        let result = invoke(&app, command, body);
-        claims::assert_err!(result);
+        claims::assert_err!(invoke(&app, command, body));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -724,12 +722,10 @@ mod tests {
         for direction in ["fixed", "wind"] {
             let body =
                 json!({ "change": { "type": "hillshadeDirection", "direction": direction } });
-            let result = invoke(&app, command, body);
-            claims::assert_ok!(result);
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
         }
         let body = json!({ "change": { "type": "hillshadeDirection", "direction": "unknown" } });
-        let result = invoke(&app, command, body);
-        claims::assert_err!(result);
+        claims::assert_err!(invoke(&app, command, body));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -738,13 +734,11 @@ mod tests {
         let command = "change_setting";
         for reserve in [0.0, 200.0, 304.8] {
             let body = json!({ "change": { "type": "arrivalReserve", "reserve": reserve } });
-            let result = invoke(&app, command, body);
-            claims::assert_ok!(result);
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
         }
         for reserve in [json!(-1), json!(null), json!("200")] {
             let body = json!({ "change": { "type": "arrivalReserve", "reserve": reserve } });
-            let result = invoke(&app, command, body);
-            claims::assert_err!(result);
+            claims::assert_err!(invoke(&app, command, body));
         }
     }
 
@@ -812,8 +806,7 @@ mod tests {
         let command = "change_setting";
 
         let body = json!({ "change": { "type": "locale", "locale": "de" } });
-        let response = claims::assert_ok!(invoke(&app, command, body));
-        assert_eq!(response, Value::Null);
+        claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
 
         let body = json!({
             "change": {
@@ -826,9 +819,8 @@ mod tests {
                 }
             }
         });
-        let response = invoke(&app, command, body).expect("the unit selections should be accepted");
+        claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
 
-        assert_eq!(response, Value::Null);
         let body = json!({ "change": { "type": "unknown" } });
         claims::assert_err!(invoke(&app, command, body));
     }

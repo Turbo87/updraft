@@ -53,9 +53,8 @@ fn maccready_is_published_but_not_persisted_and_resets_on_restart() {
     assert_eq!(effects, vec![Effect::emit(topic)]);
     assert_eq!(core.apply(SetBallast { ballast }, at(1)).effects, vec![]);
 
-    let effects = core
-        .apply(ChangeSetting::Locale { locale: Locale::De }, at(2))
-        .effects;
+    let change = ChangeSetting::Locale { locale: Locale::De };
+    let effects = core.apply(change, at(2)).effects;
     let Effect::PersistSettings(snapshot) = &effects[1] else {
         panic!("settings must be saved")
     };
@@ -234,11 +233,10 @@ fn arrival_reserve_publishes_and_persists_only_changes() {
         arrival_reserve: reserve,
         ..Settings::default()
     };
-    let effects = core
-        .apply(ChangeSetting::ArrivalReserve { reserve }, at(0))
-        .effects;
+    let change = ChangeSetting::ArrivalReserve { reserve };
+    let effects = core.apply(change, at(0)).effects;
     assert_eq!(effects, settings_effects(settings));
-    let repeated = core.apply(ChangeSetting::ArrivalReserve { reserve }, at(1));
+    let repeated = core.apply(change, at(1));
     assert_eq!(repeated.effects, vec![]);
 }
 
@@ -312,19 +310,14 @@ fn climb_average_method_defaults_and_persists_changes() {
         ClimbAverageMethod::NormalizedEma,
         ClimbAverageMethod::Smoothed20s,
     ] {
-        let effects = core
-            .apply(ChangeSetting::ClimbAverageMethod { method }, at(0))
-            .effects;
+        let change = ChangeSetting::ClimbAverageMethod { method };
+        let effects = core.apply(change, at(0)).effects;
         let expected = Settings {
             climb_average_method: method,
             ..Settings::default()
         };
         assert_eq!(effects, settings_effects(expected));
-        assert!(
-            core.apply(ChangeSetting::ClimbAverageMethod { method }, at(1))
-                .effects
-                .is_empty()
-        );
+        assert!(core.apply(change, at(1)).effects.is_empty());
         let json = claims::assert_ok!(serde_json::to_string(&expected));
         assert_eq!(
             claims::assert_ok!(serde_json::from_str::<Settings>(&json)),
@@ -344,20 +337,16 @@ fn hillshade_direction_defaults_and_persists_changes() {
         HillshadeDirection::Sun,
         HillshadeDirection::Fixed,
     ] {
+        let change = ChangeSetting::HillshadeDirection { direction };
         let expected = Settings {
             hillshade_direction: direction,
             ..Settings::default()
         };
         assert_eq!(
-            core.apply(ChangeSetting::HillshadeDirection { direction }, at(0))
-                .effects,
+            core.apply(change, at(0)).effects,
             settings_effects(expected)
         );
-        assert!(
-            core.apply(ChangeSetting::HillshadeDirection { direction }, at(1))
-                .effects
-                .is_empty()
-        );
+        assert!(core.apply(change, at(1)).effects.is_empty());
     }
 }
 

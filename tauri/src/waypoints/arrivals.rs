@@ -169,12 +169,8 @@ mod tests {
         let polar_margin = updated_margin(&driver.handle, &mut results, SetPolar { polar }).await;
         assert_ne!(polar_margin, ballast_margin);
         let reserve = assert_ok!(300.0.try_into());
-        let reserve_margin = updated_margin(
-            &driver.handle,
-            &mut results,
-            ChangeSetting::ArrivalReserve { reserve },
-        )
-        .await;
+        let change = ChangeSetting::ArrivalReserve { reserve };
+        let reserve_margin = updated_margin(&driver.handle, &mut results, change).await;
         assert_eq!(reserve_margin, polar_margin - 100.);
         let disabled = Arc::new(WaypointCatalog {
             sources: BTreeMap::from([("field.cup".into(), WaypointSource::Disabled)]),

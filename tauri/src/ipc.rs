@@ -708,18 +708,12 @@ mod tests {
         let app = app();
         let command = "change_setting";
         for method in ["normalizedEma", "average20s", "average30s", "smoothed20s"] {
-            let result = invoke(
-                &app,
-                command,
-                json!({ "change": { "type": "climbAverageMethod", "method": method } }),
-            );
+            let body = json!({ "change": { "type": "climbAverageMethod", "method": method } });
+            let result = invoke(&app, command, body);
             claims::assert_ok!(result);
         }
-        let result = invoke(
-            &app,
-            command,
-            json!({ "change": { "type": "climbAverageMethod", "method": "unknown" } }),
-        );
+        let body = json!({ "change": { "type": "climbAverageMethod", "method": "unknown" } });
+        let result = invoke(&app, command, body);
         claims::assert_err!(result);
     }
 
@@ -728,38 +722,28 @@ mod tests {
         let app = app();
         let command = "change_setting";
         for direction in ["fixed", "wind"] {
-            let result = invoke(
-                &app,
-                command,
-                json!({ "change": { "type": "hillshadeDirection", "direction": direction } }),
-            );
+            let body =
+                json!({ "change": { "type": "hillshadeDirection", "direction": direction } });
+            let result = invoke(&app, command, body);
             claims::assert_ok!(result);
         }
-        let result = invoke(
-            &app,
-            command,
-            json!({ "change": { "type": "hillshadeDirection", "direction": "unknown" } }),
-        );
+        let body = json!({ "change": { "type": "hillshadeDirection", "direction": "unknown" } });
+        let result = invoke(&app, command, body);
         claims::assert_err!(result);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn arrival_reserve_command_accepts_nonnegative_meters() {
         let app = app();
+        let command = "change_setting";
         for reserve in [0.0, 200.0, 304.8] {
-            let result = invoke(
-                &app,
-                "change_setting",
-                json!({ "change": { "type": "arrivalReserve", "reserve": reserve } }),
-            );
+            let body = json!({ "change": { "type": "arrivalReserve", "reserve": reserve } });
+            let result = invoke(&app, command, body);
             claims::assert_ok!(result);
         }
         for reserve in [json!(-1), json!(null), json!("200")] {
-            let result = invoke(
-                &app,
-                "change_setting",
-                json!({ "change": { "type": "arrivalReserve", "reserve": reserve } }),
-            );
+            let body = json!({ "change": { "type": "arrivalReserve", "reserve": reserve } });
+            let result = invoke(&app, command, body);
             claims::assert_err!(result);
         }
     }
@@ -825,15 +809,11 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn change_setting_deserializes_typed_changes() {
         let app = app();
+        let command = "change_setting";
 
-        assert_eq!(
-            claims::assert_ok!(invoke(
-                &app,
-                "change_setting",
-                json!({ "change": { "type": "locale", "locale": "de" } }),
-            )),
-            Value::Null,
-        );
+        let body = json!({ "change": { "type": "locale", "locale": "de" } });
+        let response = claims::assert_ok!(invoke(&app, command, body));
+        assert_eq!(response, Value::Null);
 
         let body = json!({
             "change": {
@@ -846,15 +826,11 @@ mod tests {
                 }
             }
         });
-        let response =
-            invoke(&app, "change_setting", body).expect("the unit selections should be accepted");
+        let response = invoke(&app, command, body).expect("the unit selections should be accepted");
 
         assert_eq!(response, Value::Null);
-        claims::assert_err!(invoke(
-            &app,
-            "change_setting",
-            json!({ "change": { "type": "unknown" } }),
-        ));
+        let body = json!({ "change": { "type": "unknown" } });
+        claims::assert_err!(invoke(&app, command, body));
     }
 
     #[tokio::test(flavor = "multi_thread")]

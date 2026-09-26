@@ -8,7 +8,7 @@ import { withViewport } from '$lib/viewport.fixture';
 import SettingsIndexScreen from './SettingsIndexScreen.svelte';
 
 describe('SettingsIndexScreen.svelte', () => {
-  it.each([320, 413, 915])('keeps separate inset navigation cards at width %s', async (width) => {
+  it.each([320, 413, 915])('keeps grouped inset navigation cards at width %s', async (width) => {
     await withViewport(async () => {
       await page.viewport(width, 600);
       render(SettingsIndexScreen, { updateCount: 2 });
@@ -25,9 +25,11 @@ describe('SettingsIndexScreen.svelte', () => {
           navBounds.right,
           56,
         ]);
-        expect(getComputedStyle(link).borderRadius).toBe('12px');
+        expect(getComputedStyle(link).borderRadius).toBe('0px');
         if (index > 0) {
-          expect(bounds.top - links[index - 1].getBoundingClientRect().bottom).toBe(8);
+          expect(bounds.top - links[index - 1].getBoundingClientRect().bottom).toBe(
+            [6, 8].includes(index) ? 24 : 0,
+          );
         }
       }
     });

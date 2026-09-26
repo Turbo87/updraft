@@ -105,11 +105,7 @@ impl InternalGps {
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
-#[serde(
-    tag = "type",
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase"
-)]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum ChangeSetting {
     Locale {
         locale: Locale,

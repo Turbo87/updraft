@@ -108,3 +108,21 @@ it.each([false, true])(
     );
   },
 );
+
+it.each([false, true])(
+  'keeps guidance columns stable when values disappear (compact: %s)',
+  async (compact) => {
+    let navigation = waypointNavigation('Home airfield');
+    let screen = await render(TargetBar, { navigation, compact, units: defaultSettings().units });
+    let bearing = page.getByLabelText('Relative bearing').element();
+    let distance = page.getByText('12.3 km').element();
+    let arrival = page.getByLabelText('Arrival margin').element();
+    let positions = [bearing, distance, arrival].map(
+      (element) => element.getBoundingClientRect().right,
+    );
+    await screen.rerender({ navigation: { ...navigation, guidance: null, arrival: null } });
+    expect(
+      [bearing, distance, arrival].map((element) => element.getBoundingClientRect().right),
+    ).toEqual(positions);
+  },
+);

@@ -36,7 +36,7 @@
     "@storybook/sveltekit": "10.6.0",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.70.3",
-    "@sveltejs/vite-plugin-svelte": "7.3.0",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@types/geojson": "7946.0.16",
     "@types/node": "24.13.5",
     "@vitest/browser-playwright": "4.1.11",

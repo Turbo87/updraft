@@ -10,7 +10,7 @@
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "@types/geojson": "7946.0.16",
-    "@types/node": "24.13.5",
+    "@types/node": "24.13.6",
     "maplibre-gl": "6.11.1",
     "typescript": "6.0.3"
   }

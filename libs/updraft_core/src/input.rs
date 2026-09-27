@@ -4,6 +4,7 @@ use crate::effect::Effect;
 use crate::fix::Fix;
 use crate::settings::{Locale, UnitSettings};
 use crate::time::Timestamp;
+use serde::Deserialize;
 use std::sync::Arc;
 
 mod private {
@@ -102,26 +103,31 @@ impl InternalGps {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SetLocale {
-    pub locale: Locale,
-}
-
-impl SetLocale {
-    pub fn new(locale: Locale) -> Self {
-        Self { locale }
-    }
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ChangeSetting {
+    Locale {
+        locale: Locale,
+    },
+    Units {
+        units: UnitSettings,
+    },
+    ArrivalReserve {
+        reserve: crate::ArrivalReserve,
+    },
+    ClimbAverageMethod {
+        method: crate::ClimbAverageMethod,
+    },
+    HillshadeDirection {
+        direction: crate::HillshadeDirection,
+    },
 }
 
 /// Selects the persisted glide polar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetPolar {
     pub polar: crate::PolarId,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SetArrivalReserve {
-    pub reserve: crate::ArrivalReserve,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -132,16 +138,6 @@ pub struct SetFlarmPositionCorrection {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetEnergyCompensation {
     pub enabled: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SetClimbAverageMethod {
-    pub method: crate::ClimbAverageMethod,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SetHillshadeDirection {
-    pub direction: crate::HillshadeDirection,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -157,18 +153,6 @@ pub struct SetBugs {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SetBallast {
     pub ballast: crate::Ballast,
-}
-
-/// Replaces all application-wide display-unit selections.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SetUnits {
-    pub units: UnitSettings,
-}
-
-impl SetUnits {
-    pub fn new(units: UnitSettings) -> Self {
-        Self { units }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -247,12 +231,8 @@ impl private::Sealed for UtcTick {}
 impl private::Sealed for Bytes {}
 impl private::Sealed for ConnectionChanged {}
 impl private::Sealed for InternalGps {}
-impl private::Sealed for SetLocale {}
-impl private::Sealed for SetUnits {}
+impl private::Sealed for ChangeSetting {}
 impl private::Sealed for SetPolar {}
-impl private::Sealed for SetArrivalReserve {}
-impl private::Sealed for SetClimbAverageMethod {}
-impl private::Sealed for SetHillshadeDirection {}
 impl private::Sealed for SetEnergyCompensation {}
 impl private::Sealed for SetFlarmPositionCorrection {}
 impl private::Sealed for SetMacCready {}

@@ -1,10 +1,8 @@
 import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
-import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+import type { ChangeSetting } from '$lib/protocol/generated/ChangeSetting';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
-import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
-import type { Locale } from '$lib/protocol/generated/Locale';
 import type { Navigation } from '$lib/protocol/generated/Navigation';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
@@ -13,7 +11,6 @@ import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedE
 import type { Task } from '$lib/protocol/generated/Task';
 import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
-import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
 import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
@@ -488,25 +485,45 @@ export class FakeClient implements UpdraftClient {
     this.#publishExternalDevices();
   }
 
-  async setLocale(locale: Locale): Promise<void> {
-    if (this.#settings.locale === locale) return;
-
-    this.#settings = { ...this.#settings, locale };
-    this.emit({ topic: 'settings', value: this.#settings });
-  }
-
-  async setUnits(units: UnitSettings): Promise<void> {
-    let current = this.#settings.units;
+  async changeSetting(change: ChangeSetting): Promise<void> {
     if (
-      current.altitude === units.altitude &&
-      current.distance === units.distance &&
-      current.speed === units.speed &&
-      current.verticalSpeed === units.verticalSpeed
+      change.type === 'arrivalReserve' &&
+      (!Number.isFinite(change.reserve) || change.reserve < 0)
     ) {
-      return;
+      throw new Error('Arrival reserve must be finite and nonnegative');
     }
-
-    this.#settings = { ...this.#settings, units: { ...units } };
+    let settings = this.#settings;
+    switch (change.type) {
+      case 'locale':
+        if (settings.locale === change.locale) return;
+        this.#settings = { ...settings, locale: change.locale };
+        break;
+      case 'units': {
+        let current = settings.units;
+        let units = change.units;
+        if (
+          current.altitude === units.altitude &&
+          current.distance === units.distance &&
+          current.speed === units.speed &&
+          current.verticalSpeed === units.verticalSpeed
+        )
+          return;
+        this.#settings = { ...settings, units: { ...units } };
+        break;
+      }
+      case 'arrivalReserve':
+        if (settings.arrivalReserve === change.reserve) return;
+        this.#settings = { ...settings, arrivalReserve: change.reserve };
+        break;
+      case 'climbAverageMethod':
+        if (settings.climbAverageMethod === change.method) return;
+        this.#settings = { ...settings, climbAverageMethod: change.method };
+        break;
+      case 'hillshadeDirection':
+        if (settings.hillshadeDirection === change.direction) return;
+        this.#settings = { ...settings, hillshadeDirection: change.direction };
+        break;
+    }
     this.emit({ topic: 'settings', value: this.#settings });
   }
 
@@ -530,27 +547,6 @@ export class FakeClient implements UpdraftClient {
   async setFlarmPositionCorrection(enabled: boolean): Promise<void> {
     if (this.#settings.flarmPositionCorrection === enabled) return;
     this.#settings = { ...this.#settings, flarmPositionCorrection: enabled };
-    this.emit({ topic: 'settings', value: this.#settings });
-  }
-
-  async setClimbAverageMethod(method: ClimbAverageMethod): Promise<void> {
-    if (this.#settings.climbAverageMethod === method) return;
-    this.#settings = { ...this.#settings, climbAverageMethod: method };
-    this.emit({ topic: 'settings', value: this.#settings });
-  }
-
-  async setHillshadeDirection(direction: HillshadeDirection): Promise<void> {
-    if (this.#settings.hillshadeDirection === direction) return;
-    this.#settings = { ...this.#settings, hillshadeDirection: direction };
-    this.emit({ topic: 'settings', value: this.#settings });
-  }
-
-  async setArrivalReserve(reserve: number): Promise<void> {
-    if (!Number.isFinite(reserve) || reserve < 0) {
-      throw new Error('Arrival reserve must be finite and nonnegative');
-    }
-    if (this.#settings.arrivalReserve === reserve) return;
-    this.#settings = { ...this.#settings, arrivalReserve: reserve };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 

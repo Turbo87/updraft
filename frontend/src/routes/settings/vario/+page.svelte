@@ -16,6 +16,6 @@
     method={settings.current.climbAverageMethod}
     energyCompensation={settings.current.energyCompensation}
     setEnergyCompensation={(enabled) => client.setEnergyCompensation(enabled)}
-    setMethod={(method) => client.setClimbAverageMethod(method)}
+    setMethod={(method) => client.changeSetting({ type: 'climbAverageMethod', method })}
   />
 </ScreenScaffold>

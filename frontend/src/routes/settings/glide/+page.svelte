@@ -9,7 +9,7 @@
   polar={settings.current.polar}
   arrivalReserve={settings.current.arrivalReserve}
   altitudeUnit={settings.current.units.altitude}
-  setArrivalReserve={(reserve) => client.setArrivalReserve(reserve)}
+  setArrivalReserve={(reserve) => client.changeSetting({ type: 'arrivalReserve', reserve })}
   getPolars={() => client.getPolars()}
   setPolar={(polar) => client.setPolar(polar)}
 />

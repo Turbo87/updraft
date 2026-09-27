@@ -106,12 +106,9 @@ fn waypoint_arrival_uses_fused_altitude_and_current_reserve() {
     let altitude = EllipsoidAltitude::new(Length::from_meters(1000.));
     core.apply(InternalGps::new(fix(None, Some(altitude))), at(0));
     let first = assert_some!(assert_some!(navigation(&core)).arrival);
-    core.apply(
-        updraft_core::SetArrivalReserve {
-            reserve: assert_ok!(updraft_core::ArrivalReserve::try_from(500.)),
-        },
-        at(0),
-    );
+    let reserve = assert_ok!(updraft_core::ArrivalReserve::try_from(500.));
+    let change = updraft_core::ChangeSetting::ArrivalReserve { reserve };
+    core.apply(change, at(0));
     let second = assert_some!(assert_some!(navigation(&core)).arrival);
     assert_eq!(first.margin_meters - second.margin_meters, 300.);
     assert!(!second.stale);

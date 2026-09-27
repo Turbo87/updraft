@@ -7,10 +7,9 @@ use tauri::ipc::Channel;
 use tauri_plugin_updraft::{BondedBluetoothDevices, UpdraftMobileExt};
 use tokio::sync::Mutex;
 use updraft_core::{
-    AddExternalDevice, AirspaceCatalog, ConnectionSpec, DeleteExternalDevice, EditExternalDevice,
-    ExternalDeviceId, GetAirspaceSnapshot, HillshadeDirection, InvalidExternalDeviceOrder,
-    ReorderExternalDevices, ReplaceAirspaceCatalog, SetExternalDeviceEnabled,
-    SetHillshadeDirection, SetLocale, SetPolar, SetUnits, Topic, UnitSettings,
+    AddExternalDevice, AirspaceCatalog, ChangeSetting, ConnectionSpec, DeleteExternalDevice,
+    EditExternalDevice, ExternalDeviceId, GetAirspaceSnapshot, InvalidExternalDeviceOrder,
+    ReorderExternalDevices, ReplaceAirspaceCatalog, SetExternalDeviceEnabled, SetPolar, Topic,
     UnknownExternalDevice,
 };
 
@@ -237,13 +236,12 @@ pub fn quit<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
 }
 
 #[tauri::command]
-pub async fn set_locale(
-    locale: updraft_core::Locale,
+pub async fn change_setting(
+    change: ChangeSetting,
     handle: tauri::State<'_, DriverHandle>,
 ) -> Result<(), DriverCommandError> {
-    let input = SetLocale::new(locale);
     handle
-        .send(input)
+        .send(change)
         .await
         .map_err(|_| DriverCommandError::DriverStopped)
 }
@@ -309,57 +307,12 @@ pub async fn set_flarm_position_correction(
 }
 
 #[tauri::command]
-pub async fn set_climb_average_method(
-    method: updraft_core::ClimbAverageMethod,
-    handle: tauri::State<'_, DriverHandle>,
-) -> Result<(), DriverCommandError> {
-    handle
-        .send(updraft_core::SetClimbAverageMethod { method })
-        .await
-        .map_err(|_| DriverCommandError::DriverStopped)
-}
-
-#[tauri::command]
-pub async fn set_hillshade_direction(
-    direction: HillshadeDirection,
-    handle: tauri::State<'_, DriverHandle>,
-) -> Result<(), DriverCommandError> {
-    handle
-        .send(SetHillshadeDirection { direction })
-        .await
-        .map_err(|_| DriverCommandError::DriverStopped)
-}
-
-#[tauri::command]
-pub async fn set_arrival_reserve(
-    reserve: updraft_core::ArrivalReserve,
-    handle: tauri::State<'_, DriverHandle>,
-) -> Result<(), DriverCommandError> {
-    handle
-        .send(updraft_core::SetArrivalReserve { reserve })
-        .await
-        .map_err(|_| DriverCommandError::DriverStopped)
-}
-
-#[tauri::command]
 pub async fn set_polar(
     polar: updraft_core::PolarId,
     handle: tauri::State<'_, DriverHandle>,
 ) -> Result<(), DriverCommandError> {
     handle
         .send(SetPolar { polar })
-        .await
-        .map_err(|_| DriverCommandError::DriverStopped)
-}
-
-#[tauri::command]
-pub async fn set_units(
-    units: UnitSettings,
-    handle: tauri::State<'_, DriverHandle>,
-) -> Result<(), DriverCommandError> {
-    let input = SetUnits::new(units);
-    handle
-        .send(input)
         .await
         .map_err(|_| DriverCommandError::DriverStopped)
 }
@@ -498,16 +451,12 @@ mod tests {
             .plugin(tauri_plugin_updraft::init())
             .invoke_handler(tauri::generate_handler![
                 bonded_bluetooth_devices,
-                set_locale,
-                set_units,
+                change_setting,
                 get_polars,
                 set_navigation_target,
                 set_mac_cready,
                 set_bugs,
                 set_ballast,
-                set_arrival_reserve,
-                set_climb_average_method,
-                set_hillshade_direction,
                 set_energy_compensation,
                 set_flarm_position_correction,
                 set_polar,
@@ -757,37 +706,39 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn climb_average_method_command_accepts_only_known_methods() {
         let app = app();
-        let command = "set_climb_average_method";
+        let command = "change_setting";
         for method in ["normalizedEma", "average20s", "average30s", "smoothed20s"] {
-            let result = invoke(&app, command, json!({ "method": method }));
-            claims::assert_ok!(result);
+            let body = json!({ "change": { "type": "climbAverageMethod", "method": method } });
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
         }
-        let result = invoke(&app, command, json!({ "method": "unknown" }));
-        claims::assert_err!(result);
+        let body = json!({ "change": { "type": "climbAverageMethod", "method": "unknown" } });
+        claims::assert_err!(invoke(&app, command, body));
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn hillshade_direction_command_accepts_only_known_directions() {
         let app = app();
-        let command = "set_hillshade_direction";
+        let command = "change_setting";
         for direction in ["fixed", "wind"] {
-            let result = invoke(&app, command, json!({ "direction": direction }));
-            claims::assert_ok!(result);
+            let body =
+                json!({ "change": { "type": "hillshadeDirection", "direction": direction } });
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
         }
-        let result = invoke(&app, command, json!({ "direction": "unknown" }));
-        claims::assert_err!(result);
+        let body = json!({ "change": { "type": "hillshadeDirection", "direction": "unknown" } });
+        claims::assert_err!(invoke(&app, command, body));
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn arrival_reserve_command_accepts_nonnegative_meters() {
         let app = app();
+        let command = "change_setting";
         for reserve in [0.0, 200.0, 304.8] {
-            let result = invoke(&app, "set_arrival_reserve", json!({ "reserve": reserve }));
-            claims::assert_ok!(result);
+            let body = json!({ "change": { "type": "arrivalReserve", "reserve": reserve } });
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
         }
         for reserve in [json!(-1), json!(null), json!("200")] {
-            let result = invoke(&app, "set_arrival_reserve", json!({ "reserve": reserve }));
-            claims::assert_err!(result);
+            let body = json!({ "change": { "type": "arrivalReserve", "reserve": reserve } });
+            claims::assert_err!(invoke(&app, command, body));
         }
     }
 
@@ -850,21 +801,28 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn set_units_deserializes_complete_unit_settings() {
+    async fn change_setting_deserializes_typed_changes() {
         let app = app();
+        let command = "change_setting";
+
+        let body = json!({ "change": { "type": "locale", "locale": "de" } });
+        claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
 
         let body = json!({
-            "units": {
-                "altitude": "ft",
-                "distance": "nm",
-                "speed": "kt",
-                "verticalSpeed": "ft/min"
+            "change": {
+                "type": "units",
+                "units": {
+                    "altitude": "ft",
+                    "distance": "nm",
+                    "speed": "kt",
+                    "verticalSpeed": "ft/min"
+                }
             }
         });
-        let response =
-            invoke(&app, "set_units", body).expect("the unit selections should be accepted");
+        claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
 
-        assert_eq!(response, Value::Null);
+        let body = json!({ "change": { "type": "unknown" } });
+        claims::assert_err!(invoke(&app, command, body));
     }
 
     #[tokio::test(flavor = "multi_thread")]

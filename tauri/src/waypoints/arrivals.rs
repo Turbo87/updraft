@@ -80,7 +80,7 @@ mod tests {
     use claims::{assert_err, assert_lt, assert_none, assert_ok, assert_some};
     use std::{collections::BTreeMap, sync::Arc};
     use updraft_core::{
-        Fix, Input, InternalGps, MacCready, PolarId, ReplaceWaypointCatalog, SetArrivalReserve,
+        ChangeSetting, Fix, Input, InternalGps, MacCready, PolarId, ReplaceWaypointCatalog,
         SetBallast, SetBugs, SetMacCready, SetPolar, SettingsSnapshot, WaypointCatalog,
         WaypointSource,
     };
@@ -169,8 +169,8 @@ mod tests {
         let polar_margin = updated_margin(&driver.handle, &mut results, SetPolar { polar }).await;
         assert_ne!(polar_margin, ballast_margin);
         let reserve = assert_ok!(300.0.try_into());
-        let reserve_margin =
-            updated_margin(&driver.handle, &mut results, SetArrivalReserve { reserve }).await;
+        let change = ChangeSetting::ArrivalReserve { reserve };
+        let reserve_margin = updated_margin(&driver.handle, &mut results, change).await;
         assert_eq!(reserve_margin, polar_margin - 100.);
         let disabled = Arc::new(WaypointCatalog {
             sources: BTreeMap::from([("field.cup".into(), WaypointSource::Disabled)]),

@@ -10,8 +10,8 @@ use updraft_waypoint::WaypointDataset;
 fn glide_snapshot_keeps_the_catalog_flight_state_and_performance_from_one_query() {
     use claims::{assert_none, assert_some};
     use updraft_core::{
-        ArrivalReserve, Ballast, Bugs, Fix, GetGlideSnapshot, InternalGps, MacCready, PolarId,
-        SetArrivalReserve, SetBallast, SetBugs, SetMacCready, SetPolar,
+        ArrivalReserve, Ballast, Bugs, ChangeSetting, Fix, GetGlideSnapshot, InternalGps,
+        MacCready, PolarId, SetBallast, SetBugs, SetMacCready, SetPolar,
     };
     use updraft_geo::LatLon;
 
@@ -44,7 +44,7 @@ fn glide_snapshot_keeps_the_catalog_flight_state_and_performance_from_one_query(
     let polar = assert_ok!(PolarId::try_from("ASK 21".to_owned()));
     core.apply(SetPolar { polar }, at);
     let reserve = assert_ok!(ArrivalReserve::try_from(300.));
-    core.apply(SetArrivalReserve { reserve }, at);
+    core.apply(ChangeSetting::ArrivalReserve { reserve }, at);
     let mac_cready = assert_ok!(MacCready::try_from(1.5));
     core.apply(SetMacCready { mac_cready }, at);
     let bugs = assert_ok!(Bugs::try_from(10.));

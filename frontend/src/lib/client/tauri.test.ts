@@ -28,6 +28,13 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
+it('forwards a typed settings change', async () => {
+  let change = { type: 'locale' as const, locale: 'de' as const };
+  mocks.invoke.mockResolvedValue(undefined);
+  await new TauriClient().changeSetting(change);
+  expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith('change_setting', { change });
+});
+
 it.each([
   ['setAirspaceEnabled', 'set_airspace_enabled'],
   ['setWaypointsEnabled', 'set_waypoints_enabled'],

@@ -14,8 +14,8 @@ use tokio::time::timeout;
 use updraft_airspace::AirspaceDataset;
 use updraft_core::{
     AddExternalDevice, AirspaceLoadError, AirspaceSource, AirspaceState, AirspaceStatus, Bytes,
-    ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
-    ExternalDeviceId, LatLon, PublishedExternalDevice, SetExternalDeviceEnabled, SetLocale,
+    ChangeSetting, ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
+    ExternalDeviceId, LatLon, Locale, PublishedExternalDevice, SetExternalDeviceEnabled,
     SettingsSnapshot, Topic, TrafficUpdate,
 };
 
@@ -289,7 +289,7 @@ async fn locale_changes_reach_subscribers_and_persistence() {
     );
     let mut topics = topic_stream(&handle);
 
-    let input = SetLocale::new(updraft_core::Locale::De);
+    let input = ChangeSetting::Locale { locale: Locale::De };
     assert_eq!(handle.send(input).await, Ok(()));
 
     let settings = loop {
@@ -370,7 +370,7 @@ async fn admitted_input_survives_a_dropped_response_receiver() {
     handle
         .messages
         .send(Message::Input(Box::new(Request {
-            input: SetLocale::new(updraft_core::Locale::De),
+            input: ChangeSetting::Locale { locale: Locale::De },
             reply,
         })))
         .expect("request is admitted");
@@ -391,7 +391,7 @@ async fn admitted_input_survives_a_dropped_response_receiver() {
 
 #[tokio::test]
 async fn send_to_a_stopped_driver_fails() {
-    let input = SetLocale::new(updraft_core::Locale::De);
+    let input = ChangeSetting::Locale { locale: Locale::De };
     assert_eq!(
         inactive_driver_handle().send(input).await,
         Err(DriverStopped)

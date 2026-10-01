@@ -9,11 +9,11 @@ links = "tauri-plugin-updraft"
 workspace = true
 
 [build-dependencies]
-tauri-plugin = { version = "=2.6.3", features = ["build"] }
+tauri-plugin = { version = "=2.7.0", features = ["build"] }
 
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
-tauri = { version = "=2.11.6", features = [] }
+tauri = { version = "=2.12.0", features = [] }
 thiserror = "=2.0.21"
 uuid = { version = "=1.26.1", features = ["serde"] }
 

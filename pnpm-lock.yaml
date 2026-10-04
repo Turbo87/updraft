@@ -249,8 +249,8 @@ importers:
         version: 2.19.3(@internationalized/date@3.12.4)(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1(@typescript-eslint/types@8.70.0))(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)))(svelte@5.57.1(@typescript-eslint/types@8.70.0))(typescript@6.0.3)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)))(svelte@5.57.1(@typescript-eslint/types@8.70.0))
     devDependencies:
       '@iconify-json/circle-flags':
-        specifier: 1.2.11
-        version: 1.2.11
+        specifier: 1.2.12
+        version: 1.2.12
       '@iconify-json/mdi':
         specifier: 1.2.3
         version: 1.2.3
@@ -734,8 +734,8 @@ packages:
       prettier-plugin-ember-template-tag:
         optional: true
 
-  '@iconify-json/circle-flags@1.2.11':
-    resolution: {integrity: sha512-vrx2btOkTQ4/P75ElEDnjXShmNTwInXuhhpIQQ6U6YUTdxfWyvm/4ijNG8FX8iWFr+sqqQRCvXpm2RfRtjVXfg==}
+  '@iconify-json/circle-flags@1.2.12':
+    resolution: {integrity: sha512-TPuLJF7uDjqR2ZA7FldWEGz7gZijhnMG5K7B3nKKyJdGYU8KLHh7F4VcrFjUTJHG+ttGglYrHbw0GoIqCqoOyw==}
 
   '@iconify-json/mdi@1.2.3':
     resolution: {integrity: sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg==}
@@ -3587,7 +3587,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@iconify-json/circle-flags@1.2.11':
+  '@iconify-json/circle-flags@1.2.12':
     dependencies:
       '@iconify/types': 2.0.0
 

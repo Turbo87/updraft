@@ -182,6 +182,25 @@ describe('FakeClient', () => {
     expect(received).toMatchSnapshot();
   });
 
+  it('delivers the latest emitted snapshot topics to a new subscriber', () => {
+    let client = new FakeClient();
+    let saveFailed: Topic = { topic: 'taskSaveFailed', value: true };
+    client.emit(instruments(90));
+    client.emit(saveFailed);
+    client.emit({
+      topic: 'traffic',
+      value: { type: 'delta', value: { upserts: [], removed: [] } },
+    });
+
+    let received = collectTopics(client);
+
+    expect(received.filter((topic) => topic.topic === 'taskSaveFailed')).toEqual([saveFailed]);
+    expect(received).toContainEqual(instruments(90));
+    expect(received.filter((topic) => topic.topic === 'traffic')).toEqual([
+      { topic: 'traffic', value: { type: 'snapshot', value: [] } },
+    ]);
+  });
+
   it('publishes an explicit locale through the settings topic', async () => {
     let client = new FakeClient();
     let received = collectTopics(client);
@@ -625,13 +644,27 @@ it('publishes only changed FLARM position correction settings', async () => {
   expect(onTopic).toHaveBeenCalledTimes(2);
 });
 
-it('keeps tasks out of recent goto history when selected or unpinned', async () => {
+it('records navigation commands and replies with queued results without publishing', async () => {
   let client = new FakeClient();
-  let topics = collectTopics(client);
-  await client.setNavigationTarget({ type: 'task' });
-  await client.pinTarget({ type: 'task' });
-  await client.unpinTarget(0);
-  expect(topics.filter((topic) => topic.topic === 'recentTargets')).toEqual([
-    { topic: 'recentTargets', value: [] },
+  let onTopic = observeTopicChanges(client);
+  let target = { type: 'traffic', id: 'icao:ABC123' } as const;
+  client.queueNavigationReplies(false);
+
+  let replies = [
+    await client.pinTarget(target),
+    await client.unpinTarget(0),
+    await client.setNavigationTarget(target),
+    await client.changeTask({ type: 'stop' }),
+    await client.saveTask(),
+  ];
+
+  expect(replies).toEqual([false, true, true, true, true]);
+  expect(client.navigationCommands).toEqual([
+    ['pinTarget', target],
+    ['unpinTarget', 0],
+    ['setNavigationTarget', target],
+    ['changeTask', { type: 'stop' }],
+    ['saveTask'],
   ]);
+  expect(onTopic).not.toHaveBeenCalled();
 });

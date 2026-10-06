@@ -96,13 +96,6 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
     "value": [],
   },
   {
-    "topic": "traffic",
-    "value": {
-      "type": "snapshot",
-      "value": [],
-    },
-  },
-  {
     "topic": "airspace",
     "value": {
       "generation": 0,
@@ -114,6 +107,13 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
     "value": {
       "generation": 0,
       "sources": [],
+    },
+  },
+  {
+    "topic": "traffic",
+    "value": {
+      "type": "snapshot",
+      "value": [],
     },
   },
 ]

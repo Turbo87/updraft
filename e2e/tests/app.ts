@@ -2,8 +2,11 @@ import type { Page } from '@playwright/test';
 import type { GeoJSONSourceSpecification } from 'maplibre-gl';
 import type { AppContext } from '$lib/app-context';
 import type { BasemapStatus, TerrainStatus } from '$lib/client';
-import type { FakeClient } from '$lib/client/fake';
+import type { FakeClient, NavigationCommand } from '$lib/client/fake';
 import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
+import type { Navigation } from '$lib/protocol/generated/Navigation';
+import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
+import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
 
@@ -25,6 +28,24 @@ export const test = base.extend<{ app: TestApp }>({
 });
 
 export type TestApp = ReturnType<typeof createApp>;
+
+/** Builds a navigation snapshot without guidance. */
+export function targetNavigation(target: NavigationTarget): Navigation {
+  return {
+    target,
+    position:
+      'latitudeDegrees' in target
+        ? { latitudeDegrees: target.latitudeDegrees, longitudeDegrees: target.longitudeDegrees }
+        : null,
+    guidance: null,
+    arrival: null,
+    traffic: null,
+  };
+}
+
+export function pinnedTarget(id: number, target: NavigationTarget, primary = false): PinnedTarget {
+  return { id, primary, navigation: targetNavigation(target) };
+}
 
 function createApp(page: Page) {
   return {
@@ -54,6 +75,21 @@ function createApp(page: Page) {
     },
     async emitTerrain(value: TerrainStatus) {
       await page.evaluate((value) => window.__updraftFake!.emitTerrain(value), value);
+    },
+    async emitNavigation(target: NavigationTarget | null) {
+      await this.emit({ topic: 'navigation', value: target && targetNavigation(target) });
+    },
+    async emitPins(value: PinnedTarget[]) {
+      await this.emit({ topic: 'pinnedTargets', value });
+    },
+    navigationCommands(): Promise<NavigationCommand[]> {
+      return page.evaluate(() => window.__updraftFake!.navigationCommands);
+    },
+    async queueNavigationReplies(...replies: boolean[]) {
+      await page.evaluate(
+        (replies) => window.__updraftFake!.queueNavigationReplies(...replies),
+        replies,
+      );
     },
     async emit(topic: Topic) {
       await page.evaluate((topic) => {

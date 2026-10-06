@@ -215,6 +215,7 @@ export class FakeClient implements UpdraftClient {
   #airspaceFixtures = new Map<string, AirspaceStatus['sources'][number]>();
   #waypointFixtures = new Map<string, WaypointStatus['sources'][number]>();
   #listeners = new Set<TopicListener>();
+  #snapshots = new Map<Topic['topic'], Topic>();
   #externalDevices: PublishedExternalDevice[];
   #nextExternalDeviceId: ExternalDeviceId;
   #bondedBluetoothDevices: BondedBluetoothDevices;
@@ -227,6 +228,19 @@ export class FakeClient implements UpdraftClient {
       1,
     );
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
+    let onboarding: Topic[] = [
+      { topic: 'navigation', value: this.#navigation },
+      { topic: 'recentTargets', value: this.#recents },
+      { topic: 'task', value: this.#task },
+      { topic: 'taskSaveFailed', value: false },
+      { topic: 'pinnedTargets', value: this.#pins },
+      { topic: 'settings', value: this.#settings },
+      { topic: 'glidePerformance', value: this.#glidePerformance },
+      { topic: 'externalDevices', value: this.#externalDevices },
+      { topic: 'airspace', value: this.#airspace },
+      { topic: 'waypoints', value: this.#waypoints },
+    ];
+    for (let topic of onboarding) this.#snapshots.set(topic.topic, topic);
   }
 
   subscribeBasemaps(onUpdate: (status: BasemapStatus) => void): BasemapSubscription {
@@ -417,17 +431,8 @@ export class FakeClient implements UpdraftClient {
 
   subscribe(onTopic: TopicListener): () => void {
     this.#listeners.add(onTopic);
-    onTopic({ topic: 'navigation', value: this.#navigation });
-    onTopic({ topic: 'recentTargets', value: this.#recents });
-    onTopic({ topic: 'task', value: this.#task });
-    onTopic({ topic: 'taskSaveFailed', value: false });
-    onTopic({ topic: 'pinnedTargets', value: this.#pins });
-    onTopic({ topic: 'settings', value: this.#settings });
-    onTopic({ topic: 'glidePerformance', value: this.#glidePerformance });
-    onTopic({ topic: 'externalDevices', value: this.#externalDevices });
+    for (let topic of this.#snapshots.values()) onTopic(topic);
     onTopic({ topic: 'traffic', value: { type: 'snapshot', value: [] } });
-    onTopic({ topic: 'airspace', value: this.#airspace });
-    onTopic({ topic: 'waypoints', value: this.#waypoints });
 
     return () => {
       this.#listeners.delete(onTopic);
@@ -579,9 +584,11 @@ export class FakeClient implements UpdraftClient {
 
   /**
    * Publishes a topic as though the core had emitted it.
+   * New subscribers receive the latest snapshot topics.
    * Enabled source records also seed fixtures for later activation.
    */
   emit(topic: Topic): void {
+    if (topic.topic !== 'traffic') this.#snapshots.set(topic.topic, topic);
     if (topic.topic === 'airspace') {
       this.#airspace = topic.value;
       updateSourceFixtures(topic.value.sources, this.#airspaceFixtures);

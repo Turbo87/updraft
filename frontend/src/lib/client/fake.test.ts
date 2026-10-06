@@ -182,6 +182,25 @@ describe('FakeClient', () => {
     expect(received).toMatchSnapshot();
   });
 
+  it('delivers the latest emitted snapshot topics to a new subscriber', () => {
+    let client = new FakeClient();
+    let saveFailed: Topic = { topic: 'taskSaveFailed', value: true };
+    client.emit(instruments(90));
+    client.emit(saveFailed);
+    client.emit({
+      topic: 'traffic',
+      value: { type: 'delta', value: { upserts: [], removed: [] } },
+    });
+
+    let received = collectTopics(client);
+
+    expect(received.filter((topic) => topic.topic === 'taskSaveFailed')).toEqual([saveFailed]);
+    expect(received).toContainEqual(instruments(90));
+    expect(received.filter((topic) => topic.topic === 'traffic')).toEqual([
+      { topic: 'traffic', value: { type: 'snapshot', value: [] } },
+    ]);
+  });
+
   it('publishes an explicit locale through the settings topic', async () => {
     let client = new FakeClient();
     let received = collectTopics(client);

@@ -11,7 +11,7 @@ four roles. Do not combine the roles when you interpret a requirement.
 - [Product scope](product-scope.md) classifies target, partial, excluded, and
   undecided capabilities without implying delivery status.
 - [CSS](css.md) defines current frontend styling rules.
-- [Glossary](glossary.md) defines project terms.
+- [Glossary](../CONTEXT.md) defines project terms.
 
 Code and tests define implemented behavior. A document can define accepted
 behavior that is not implemented yet only when it states that status.

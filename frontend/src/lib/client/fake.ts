@@ -76,9 +76,25 @@ export type SettingsCommand =
   | ['setBugs', number]
   | ['setBallast', number];
 
+/** An external device command call that the fake client records. */
+export type ExternalDeviceCommand =
+  | ['addExternalDevice', ConnectionSpec]
+  | ['editExternalDevice', ExternalDeviceId, ConnectionSpec]
+  | ['setExternalDeviceEnabled', ExternalDeviceId, boolean]
+  | ['deleteExternalDevice', ExternalDeviceId];
+
+/** An airspace or waypoint file command call that the fake client records. */
+export type DataFileCommand =
+  | ['setAirspaceEnabled', string, boolean]
+  | ['removeAirspace', string]
+  | ['setWaypointsEnabled', string, boolean]
+  | ['removeWaypoints', string];
+
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
   readonly settingsCommands: SettingsCommand[] = [];
+  readonly externalDeviceCommands: ExternalDeviceCommand[] = [];
+  readonly dataFileCommands: DataFileCommand[] = [];
   readonly navigationCommands: NavigationCommand[] = [];
   #navigationReplies: boolean[] = [];
   /** Sets the results of the next navigation commands. Later commands reply true. */
@@ -295,6 +311,7 @@ export class FakeClient implements UpdraftClient {
   async discardDataFile(): Promise<void> {}
 
   async removeWaypoints(sourceName: string): Promise<void> {
+    this.dataFileCommands.push(['removeWaypoints', sourceName]);
     this.emit({
       topic: 'waypoints',
       value: {
@@ -305,6 +322,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    this.dataFileCommands.push(['setWaypointsEnabled', sourceName, enabled]);
     this.emit({
       topic: 'waypoints',
       value: {
@@ -320,6 +338,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void> {
+    this.dataFileCommands.push(['setAirspaceEnabled', sourceName, enabled]);
     this.emit({
       topic: 'airspace',
       value: {
@@ -335,6 +354,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async removeAirspace(sourceName: string): Promise<void> {
+    this.dataFileCommands.push(['removeAirspace', sourceName]);
     this.emit({
       topic: 'airspace',
       value: {
@@ -358,6 +378,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async addExternalDevice(spec: ConnectionSpec): Promise<ExternalDeviceId> {
+    this.externalDeviceCommands.push(['addExternalDevice', spec]);
     let deviceId = this.#nextExternalDeviceId;
     this.#nextExternalDeviceId += 1;
     this.#externalDevices = [...this.#externalDevices, { deviceId, enabled: true, ...spec }];
@@ -370,6 +391,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async editExternalDevice(deviceId: ExternalDeviceId, spec: ConnectionSpec): Promise<void> {
+    this.externalDeviceCommands.push(['editExternalDevice', deviceId, spec]);
     let index = this.#externalDevices.findIndex((device) => device.deviceId === deviceId);
     if (index === -1) throw unknownExternalDeviceError(deviceId);
 
@@ -388,6 +410,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setExternalDeviceEnabled(deviceId: ExternalDeviceId, enabled: boolean): Promise<void> {
+    this.externalDeviceCommands.push(['setExternalDeviceEnabled', deviceId, enabled]);
     let index = this.#externalDevices.findIndex((device) => device.deviceId === deviceId);
     if (index === -1) throw unknownExternalDeviceError(deviceId);
 
@@ -401,6 +424,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async deleteExternalDevice(deviceId: ExternalDeviceId): Promise<void> {
+    this.externalDeviceCommands.push(['deleteExternalDevice', deviceId]);
     let index = this.#externalDevices.findIndex((device) => device.deviceId === deviceId);
     if (index === -1) throw unknownExternalDeviceError(deviceId);
 

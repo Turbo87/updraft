@@ -492,3 +492,38 @@ it('records settings commands without validating or publishing', async () => {
   ]);
   expect(onTopic).not.toHaveBeenCalled();
 });
+
+it('records external device and data file commands', async () => {
+  let client = new FakeClient();
+  let spec = { type: 'tcp', host: '127.0.0.1', port: 4353 } as const;
+  client.emit({
+    topic: 'airspace',
+    value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'a.txt' }] },
+  });
+  client.emit({
+    topic: 'waypoints',
+    value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'b.cup' }] },
+  });
+
+  let deviceId = await client.addExternalDevice(spec);
+  await client.editExternalDevice(deviceId, { ...spec, port: 10110 });
+  await client.setExternalDeviceEnabled(deviceId, false);
+  await client.deleteExternalDevice(deviceId);
+  await client.setAirspaceEnabled('a.txt', true);
+  await client.removeAirspace('a.txt');
+  await client.setWaypointsEnabled('b.cup', true);
+  await client.removeWaypoints('b.cup');
+
+  expect(client.externalDeviceCommands).toEqual([
+    ['addExternalDevice', spec],
+    ['editExternalDevice', deviceId, { ...spec, port: 10110 }],
+    ['setExternalDeviceEnabled', deviceId, false],
+    ['deleteExternalDevice', deviceId],
+  ]);
+  expect(client.dataFileCommands).toEqual([
+    ['setAirspaceEnabled', 'a.txt', true],
+    ['removeAirspace', 'a.txt'],
+    ['setWaypointsEnabled', 'b.cup', true],
+    ['removeWaypoints', 'b.cup'],
+  ]);
+});

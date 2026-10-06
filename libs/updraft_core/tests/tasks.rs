@@ -1,7 +1,8 @@
-use claims::{assert_err, assert_ok};
+use claims::{assert_err, assert_none, assert_ok, assert_some_eq};
 use updraft_core::{
-    ChangeTask, Core, GetTask, NavigationTarget, SettingsSnapshot, TaskCommand, TaskStatus,
-    Timestamp,
+    ChangeTask, Core, GetNavigationTarget, GetRecentTargets, GetTask, NavigationTarget,
+    SetNavigationTarget, SettingsSnapshot, TaskCommand, TaskStatus, Timestamp, TrafficTargetId,
+    TrafficTargetIdType,
 };
 
 fn waypoint(name: &str) -> NavigationTarget {
@@ -346,4 +347,45 @@ fn skipping_closes_the_restart_window_and_finish_clears_only_task_guidance() {
         )
         .response
     );
+}
+
+#[test]
+fn selecting_a_moved_point_navigates_to_the_task_without_a_recent_target() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let at = Timestamp::default();
+    for name in ["Start", "Turn", "Finish"] {
+        let target = waypoint(name);
+        let add = ChangeTask(TaskCommand::Add { target });
+        assert_ok!(core.apply(add, at).response);
+    }
+    let move_up = ChangeTask(TaskCommand::Move { id: 2, index: 1 });
+    assert_ok!(core.apply(move_up, at).response);
+    let task = core.apply(GetTask, at).response;
+    let ids = task.points.iter().map(|point| point.id).collect::<Vec<_>>();
+    assert_eq!(ids, [0, 2, 1]);
+    let select = ChangeTask(TaskCommand::Select { id: 2 });
+    assert_ok!(core.apply(select, at).response);
+    assert_some_eq!(core.apply(GetTask, at).response.current, 2);
+    let navigation = core.apply(GetNavigationTarget, at).response;
+    assert_some_eq!(navigation, NavigationTarget::Task);
+    assert_eq!(core.apply(GetRecentTargets, at).response, vec![]);
+}
+
+#[test]
+fn stopping_a_task_clears_only_task_navigation() {
+    let mut core = route();
+    let at = Timestamp::default();
+    assert_ok!(core.apply(ChangeTask(TaskCommand::Stop), at).response);
+    assert_none!(core.apply(GetNavigationTarget, at).response);
+    let select = ChangeTask(TaskCommand::Select { id: 0 });
+    assert_ok!(core.apply(select, at).response);
+    let navigation = core.apply(GetNavigationTarget, at).response;
+    assert_some_eq!(navigation, NavigationTarget::Task);
+    let traffic = NavigationTarget::Traffic {
+        id: TrafficTargetId::new(TrafficTargetIdType::Icao, 0xABC123),
+    };
+    let goto = SetNavigationTarget(Some(traffic.clone()));
+    assert_ok!(core.apply(goto, at).response);
+    assert_ok!(core.apply(ChangeTask(TaskCommand::Stop), at).response);
+    assert_some_eq!(core.apply(GetNavigationTarget, at).response, traffic);
 }

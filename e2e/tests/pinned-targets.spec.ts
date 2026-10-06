@@ -1,61 +1,62 @@
 import { expect } from '@playwright/test';
 
-import { test } from './app';
+import { pinnedTarget, test } from './app';
+
+const mapPosition = {
+  type: 'mapPosition',
+  latitudeDegrees: 50.823,
+  longitudeDegrees: 6.186,
+} as const;
 
 for (let viewport of [
   { width: 390, height: 844 },
   { width: 844, height: 390 },
 ]) {
-  test(`pins independently and hides only the primary row at ${viewport.width}x${viewport.height}`, async ({
+  test(`pins a target and hides only the primary row at ${viewport.width}x${viewport.height}`, async ({
     page,
     app,
   }) => {
     await page.setViewportSize(viewport);
     await app.open('/nearby/50.823/6.186');
     await page.getByRole('button', { name: 'Pin target', exact: true }).click();
+    expect(await app.navigationCommands()).toEqual([['pinTarget', mapPosition]]);
+    await app.emitPins([pinnedTarget(0, mapPosition)]);
     await expect(page.getByRole('button', { name: 'Unpin target', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Navigate here' }).click();
-    await expect(page.getByRole('region', { name: 'Pinned targets' })).toBeHidden();
-    await page.getByRole('link', { name: 'Target details', exact: true }).click();
-    await page.getByRole('button', { name: 'Stop navigation' }).click();
+    await app.emitNavigation(mapPosition);
+    await app.emitPins([pinnedTarget(0, mapPosition, true)]);
     let panel = page.getByRole('region', { name: 'Pinned targets' });
+    await expect(page.getByRole('link', { name: 'Target details', exact: true })).toBeVisible();
+    await expect(panel).toBeHidden();
+    await app.emitNavigation(null);
+    await app.emitPins([pinnedTarget(0, mapPosition)]);
     await expect(panel.getByRole('link')).toHaveCount(1);
     await panel.getByRole('link').click();
     await expect(page.getByRole('heading', { name: 'Map position' })).toBeVisible();
-    await page.getByRole('button', { name: 'Navigate to target' }).click();
-    await expect(panel).toBeHidden();
-    await page.getByRole('link', { name: 'Target details', exact: true }).click();
     await page.getByRole('button', { name: 'Unpin target', exact: true }).click();
-    expect(await page.evaluate(() => window.__updraftApp!.navigation.current?.target.type)).toBe(
-      'mapPosition',
-    );
-    await page.getByRole('button', { name: 'Stop navigation' }).click();
-    await expect(panel).toBeHidden();
+    expect(await app.navigationCommands()).toEqual([
+      ['pinTarget', mapPosition],
+      ['setNavigationTarget', mapPosition],
+      ['unpinTarget', 0],
+    ]);
   });
 }
 
 test('retries a failed unpin without re-pinning the target', async ({ page, app }) => {
   await app.open('/traffic/icao:ABC123');
-  await page.getByRole('button', { name: 'Pin target', exact: true }).click();
-  await page.evaluate(() => {
-    let client = window.__updraftFake!;
-    let unpin = client.unpinTarget.bind(client);
-    let fail = true;
-    client.unpinTarget = async (id) => {
-      await unpin(id);
-      if (fail) {
-        fail = false;
-        return false;
-      }
-      return true;
-    };
-  });
+  let traffic = { type: 'traffic', id: 'icao:ABC123' } as const;
+  await app.emitPins([pinnedTarget(0, traffic)]);
+  await app.queueNavigationReplies(false);
   await page.getByRole('button', { name: 'Unpin target', exact: true }).click();
+  await app.emitPins([]);
   await expect(page.getByRole('alert')).toContainText('not saved');
   await page.getByRole('button', { name: 'Retry' }).click();
   await expect(page.getByRole('alert')).toBeHidden();
+  expect(await app.navigationCommands()).toEqual([
+    ['unpinTarget', 0],
+    ['unpinTarget', 0],
+  ]);
   await expect(page.getByRole('button', { name: 'Pin target', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => window.__updraftApp!.navigation.pins)).toEqual([]);
 });
 
 for (let viewport of [
@@ -68,17 +69,17 @@ for (let viewport of [
   }, testInfo) => {
     await page.setViewportSize(viewport);
     await app.open('/');
-    await page.evaluate(async () => {
-      for (let index = 0; index < 12; index++) {
-        await window.__updraftFake!.pinTarget({
+    await app.emitPins(
+      Array.from({ length: 12 }, (_, index) =>
+        pinnedTarget(index, {
           type: 'waypoint',
           name: `Field ${index + 1}`,
           latitudeDegrees: 50,
           longitudeDegrees: 6 + index / 100,
           elevationMeters: 100,
-        });
-      }
-    });
+        }),
+      ),
+    );
     let panel = page.getByRole('region', { name: 'Pinned targets' });
     await expect(panel.getByRole('link')).toHaveCount(12);
     await expect(panel.getByRole('link').first()).toContainText('Field 1');

@@ -1,8 +1,10 @@
 import type { Topic } from '$lib/protocol/generated/Topic';
+import type { WaypointFeature } from '$lib/waypoints';
 
 import { expect } from '@playwright/test';
 
 import { waypointsFixture } from '../../frontend/src/lib/map/waypoint.fixture';
+import { waypointTarget } from '../../frontend/src/lib/navigation-target';
 import { test } from './app';
 
 const waypointTopic: Extract<Topic, { topic: 'waypoints' }> = {
@@ -64,7 +66,11 @@ for (let notes of ['Notes', '']) {
     await page.getByRole('button', { name: 'Pin target', exact: true }).click();
     await page.getByRole('button', { name: 'Navigate to waypoint' }).click();
     await expect(page).toHaveURL('/');
-    await expect(page.getByRole('link', { name: 'Target details' })).toContainText('Point 0');
+    let target = waypointTarget(waypointsFixture.features[0] as WaypointFeature);
+    expect(await app.navigationCommands()).toEqual([
+      ['pinTarget', target],
+      ['setNavigationTarget', target],
+    ]);
     await page.goBack();
     await page.evaluate(async () => {
       await window.__updraftFake!.removeWaypoints('local.cup');
@@ -72,16 +78,6 @@ for (let notes of ['Notes', '']) {
     await expect(page.getByText('This waypoint is no longer available.')).toBeVisible();
     await page.goBack();
     await expect(page.getByText('No nearby waypoints.')).toBeVisible();
-    expect(
-      await page.evaluate(() => window.__updraftApp!.navigation.pins[0].navigation.target),
-    ).toEqual(await page.evaluate(() => window.__updraftApp!.navigation.current?.target));
-    expect(await page.evaluate(() => window.__updraftApp!.navigation.current?.target)).toEqual({
-      type: 'waypoint',
-      name: 'Point 0',
-      latitudeDegrees: 50.823,
-      longitudeDegrees: 6.186,
-      elevationMeters: 100,
-    });
   });
 }
 

@@ -4,6 +4,7 @@ import type { AppContext } from '$lib/app-context';
 import type { BasemapStatus, TerrainStatus } from '$lib/client';
 import type {
   DataFileCommand,
+  ExternalDeviceCommand,
   FakeClient,
   NavigationCommand,
   SettingsCommand,
@@ -89,6 +90,9 @@ function createApp(page: Page) {
     },
     settingsCommands(): Promise<SettingsCommand[]> {
       return page.evaluate(() => window.__updraftFake!.settingsCommands);
+    },
+    externalDeviceCommands(): Promise<ExternalDeviceCommand[]> {
+      return page.evaluate(() => window.__updraftFake!.externalDeviceCommands);
     },
     dataFileCommands(): Promise<DataFileCommand[]> {
       return page.evaluate(() => window.__updraftFake!.dataFileCommands);

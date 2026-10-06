@@ -64,8 +64,19 @@ export type NavigationCommand =
   | ['unpinTarget', number]
   | ['setNavigationTarget', NavigationTarget | null];
 
+/** A settings or glide performance command call that the fake client records. */
+export type SettingsCommand =
+  | ['changeSetting', ChangeSetting]
+  | ['setPolar', PolarId]
+  | ['setEnergyCompensation', boolean]
+  | ['setFlarmPositionCorrection', boolean]
+  | ['setMacCready', number]
+  | ['setBugs', number]
+  | ['setBallast', number];
+
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  readonly settingsCommands: SettingsCommand[] = [];
   readonly navigationCommands: NavigationCommand[] = [];
   #navigationReplies: boolean[] = [];
   /** Sets the results of the next navigation commands. Later commands reply true. */
@@ -398,6 +409,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async changeSetting(change: ChangeSetting): Promise<void> {
+    this.settingsCommands.push(['changeSetting', change]);
     if (
       change.type === 'arrivalReserve' &&
       (!Number.isFinite(change.reserve) || change.reserve < 0)
@@ -444,6 +456,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setPolar(polar: PolarId): Promise<void> {
+    this.settingsCommands.push(['setPolar', polar]);
     if (!(await this.getPolars()).includes(polar)) throw new Error('Unknown polar');
     if (this.#settings.polar === polar) return;
     this.#settings = { ...this.#settings, polar };
@@ -451,18 +464,21 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setEnergyCompensation(enabled: boolean): Promise<void> {
+    this.settingsCommands.push(['setEnergyCompensation', enabled]);
     if (this.#settings.energyCompensation === enabled) return;
     this.#settings = { ...this.#settings, energyCompensation: enabled };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 
   async setFlarmPositionCorrection(enabled: boolean): Promise<void> {
+    this.settingsCommands.push(['setFlarmPositionCorrection', enabled]);
     if (this.#settings.flarmPositionCorrection === enabled) return;
     this.#settings = { ...this.#settings, flarmPositionCorrection: enabled };
     this.emit({ topic: 'settings', value: this.#settings });
   }
 
   async setMacCready(macCready: number): Promise<void> {
+    this.settingsCommands.push(['setMacCready', macCready]);
     if (!Number.isFinite(macCready) || macCready < 0) {
       throw new Error('MacCready must be finite and nonnegative');
     }
@@ -472,6 +488,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setBugs(bugs: number): Promise<void> {
+    this.settingsCommands.push(['setBugs', bugs]);
     if (!Number.isFinite(bugs) || bugs < 0 || bugs >= 100) {
       throw new Error('Bugs must be between 0% and less than 100%');
     }
@@ -481,6 +498,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setBallast(ballast: number): Promise<void> {
+    this.settingsCommands.push(['setBallast', ballast]);
     if (!Number.isFinite(ballast) || ballast < 0) {
       throw new Error('Ballast must be finite and nonnegative');
     }

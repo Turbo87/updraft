@@ -668,3 +668,25 @@ it('records navigation commands and replies with queued results without publishi
   ]);
   expect(onTopic).not.toHaveBeenCalled();
 });
+
+it('records settings commands', async () => {
+  let client = new FakeClient();
+
+  await client.changeSetting({ type: 'locale', locale: 'de' });
+  await client.setPolar('LS 8-18');
+  await client.setEnergyCompensation(false);
+  await client.setFlarmPositionCorrection(false);
+  await client.setMacCready(1.5);
+  await client.setBugs(10);
+  await client.setBallast(100);
+
+  expect(client.settingsCommands).toEqual([
+    ['changeSetting', { type: 'locale', locale: 'de' }],
+    ['setPolar', 'LS 8-18'],
+    ['setEnergyCompensation', false],
+    ['setFlarmPositionCorrection', false],
+    ['setMacCready', 1.5],
+    ['setBugs', 10],
+    ['setBallast', 100],
+  ]);
+});

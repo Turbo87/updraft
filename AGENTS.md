@@ -94,3 +94,17 @@ Document decisions, constraints, and behavior that could reasonably differ. Omit
 Keep comments true in every commit. Update or remove a comment when the code changes the behavior that it describes.
 
 Keep committed documentation self-contained and safe for public review. Do not rely on host-local paths, unavailable artifacts, local plans, or unpushed branches. Redact credentials, personal identifiers, and unique device identifiers.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `Turbo87/updraft` through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.

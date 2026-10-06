@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 
 import { expect } from '@playwright/test';
 
+import { settingsFixture } from '../../frontend/src/lib/settings.fixture';
 import { test } from './app';
 
 const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -17,10 +18,7 @@ type SettingsWindow = Window & {
 test.describe('with an unsupported browser language', () => {
   test.use({ locale: 'es-ES' });
 
-  test('falls back to English and changes settings through the backend-shaped fake', async ({
-    page,
-    app,
-  }) => {
+  test('falls back to English and sends language and unit changes', async ({ page, app }) => {
     await app.open('/');
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('link', { name: 'Language' }).click();
@@ -29,6 +27,10 @@ test.describe('with an unsupported browser language', () => {
     await expect(page.getByRole('radio', { name: 'English' })).toBeChecked();
 
     await page.getByRole('radio', { name: 'Deutsch' }).click();
+    expect(await app.settingsCommands()).toEqual([
+      ['changeSetting', { type: 'locale', locale: 'de' }],
+    ]);
+    await app.emit({ topic: 'settings', value: settingsFixture({ locale: 'de' }) });
 
     await expect(page.getByRole('heading', { name: 'Sprache' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
@@ -41,6 +43,12 @@ test.describe('with an unsupported browser language', () => {
     let altitude = page.getByRole('group', { name: 'Höhe', exact: true });
     await expect(altitude.getByRole('radio', { name: 'm', exact: true })).toBeChecked();
     await altitude.getByText('ft', { exact: true }).click();
+    let units = { altitude: 'ft', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' } as const;
+    expect(await app.settingsCommands()).toEqual([
+      ['changeSetting', { type: 'locale', locale: 'de' }],
+      ['changeSetting', { type: 'units', units }],
+    ]);
+    await app.emit({ topic: 'settings', value: settingsFixture({ locale: 'de', units }) });
     await expect(altitude.getByRole('radio', { name: 'ft', exact: true })).toBeChecked();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
@@ -249,6 +257,8 @@ test('selects a glide polar and keeps it when revisiting settings', async ({ pag
   let polar = page.getByRole('combobox', { name: 'Polar', exact: true });
   await expect(polar).toHaveValue('LS 8');
   await polar.selectOption('LS 8-18');
+  expect(await app.settingsCommands()).toEqual([['setPolar', 'LS 8-18']]);
+  await app.emit({ topic: 'settings', value: settingsFixture({ polar: 'LS 8-18' }) });
   await expect(polar).toHaveValue('LS 8-18');
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Glide', exact: true }).click();
@@ -261,6 +271,10 @@ test('keeps the arrival reserve when revisiting settings', async ({ page, app })
   await expect(reserve).toHaveValue('200');
   await reserve.fill('350');
   await page.getByRole('heading').click();
+  expect(await app.settingsCommands()).toEqual([
+    ['changeSetting', { type: 'arrivalReserve', reserve: 350 }],
+  ]);
+  await app.emit({ topic: 'settings', value: settingsFixture({ arrivalReserve: 350 }) });
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Glide', exact: true }).click();
   await expect(reserve).toHaveValue('350');
@@ -270,13 +284,17 @@ test('keeps the sun hillshade direction when revisiting map settings', async ({ 
   await app.open('/settings/map');
   let sun = page.getByRole('radio', { name: 'Sun direction' });
   await sun.click();
+  expect(await app.settingsCommands()).toEqual([
+    ['changeSetting', { type: 'hillshadeDirection', direction: 'sun' }],
+  ]);
+  await app.emit({ topic: 'settings', value: settingsFixture({ hillshadeDirection: 'sun' }) });
   await expect(sun).toBeChecked();
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Map', exact: true }).click();
   await expect(sun).toBeChecked();
 });
 
-test('keeps MC during navigation and resets it on restart', async ({ page, app }) => {
+test('keeps MC during navigation', async ({ page, app }) => {
   await app.open('/settings');
   await expect(page.getByRole('spinbutton')).toHaveCount(0);
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
@@ -284,17 +302,14 @@ test('keeps MC during navigation and resets it on restart', async ({ page, app }
   await expect(mc).toHaveValue('0.0');
   await mc.fill('1.5');
   await page.getByRole('heading', { name: 'Flight controls', exact: true }).click();
+  expect(await app.settingsCommands()).toEqual([['setMacCready', 1.5]]);
+  await app.emit({ topic: 'glidePerformance', value: { macCready: 1.5, bugs: 0, ballast: 0 } });
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(mc).toHaveValue('1.5');
-  await app.open('/settings/flight-controls');
-  await expect(mc).toHaveValue('0.0');
 });
 
-test('keeps bugs and ballast during navigation and resets them on restart', async ({
-  page,
-  app,
-}) => {
+test('keeps bugs and ballast during navigation', async ({ page, app }) => {
   await app.open('/settings/flight-controls');
   let bugs = page.getByRole('spinbutton', { name: 'Bugs (%)', exact: true });
   await expect(bugs).toHaveValue('0');
@@ -304,13 +319,18 @@ test('keeps bugs and ballast during navigation and resets them on restart', asyn
   await expect(ballast).toHaveValue('0');
   await ballast.fill('100.5');
   await page.getByRole('heading').click();
+  expect(await app.settingsCommands()).toEqual([
+    ['setBugs', 10.5],
+    ['setBallast', 100.5],
+  ]);
+  await app.emit({
+    topic: 'glidePerformance',
+    value: { macCready: 0, bugs: 10.5, ballast: 100.5 },
+  });
   await page.getByRole('link', { name: 'Back to settings' }).click();
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(bugs).toHaveValue('10.5');
   await expect(ballast).toHaveValue('100.5');
-  await app.open('/settings/flight-controls');
-  await expect(bugs).toHaveValue('0');
-  await expect(ballast).toHaveValue('0');
 });
 
 test('the Data library handles live statuses, file details, and removal', async ({ page, app }) => {

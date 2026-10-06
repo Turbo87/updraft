@@ -644,19 +644,9 @@ it('publishes only changed FLARM position correction settings', async () => {
   expect(onTopic).toHaveBeenCalledTimes(2);
 });
 
-it('keeps tasks out of recent goto history when selected or unpinned', async () => {
+it('records navigation commands and replies with queued results without publishing', async () => {
   let client = new FakeClient();
-  let topics = collectTopics(client);
-  await client.setNavigationTarget({ type: 'task' });
-  await client.pinTarget({ type: 'task' });
-  await client.unpinTarget(0);
-  expect(topics.filter((topic) => topic.topic === 'recentTargets')).toEqual([
-    { topic: 'recentTargets', value: [] },
-  ]);
-});
-
-it('records navigation commands and replies with queued results', async () => {
-  let client = new FakeClient();
+  let onTopic = observeTopicChanges(client);
   let target = { type: 'traffic', id: 'icao:ABC123' } as const;
   client.queueNavigationReplies(false);
 
@@ -676,4 +666,5 @@ it('records navigation commands and replies with queued results', async () => {
     ['changeTask', { type: 'stop' }],
     ['saveTask'],
   ]);
+  expect(onTopic).not.toHaveBeenCalled();
 });

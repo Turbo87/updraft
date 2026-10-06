@@ -3,12 +3,9 @@ import type { ChangeSetting } from '$lib/protocol/generated/ChangeSetting';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
-import type { Navigation } from '$lib/protocol/generated/Navigation';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
-import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
-import type { Task } from '$lib/protocol/generated/Task';
 import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
@@ -31,7 +28,6 @@ import type {
   UpdraftClient,
 } from './index';
 
-import { targetsMatch } from '$lib/navigation-target';
 import { defaultSettings } from '$lib/settings';
 
 /** Initial platform and external-device state for browser development. */
@@ -57,7 +53,10 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
   return { kind: 'unknownExternalDevice', deviceId };
 }
 
-/** A navigation, pin, or task command call that the fake client records. */
+/**
+ * A navigation, pin, or task command call that the fake client records.
+ * The fake client does not change state or emit topics for these commands.
+ */
 export type NavigationCommand =
   | ['saveTask']
   | ['changeTask', TaskCommand]
@@ -77,147 +76,20 @@ export class FakeClient implements UpdraftClient {
     this.navigationCommands.push(command);
     return this.#navigationReplies.shift() ?? true;
   }
-  #task: Task = {
-    points: [],
-    current: null,
-    status: 'stopped',
-    nextId: 0,
-    start: null,
-    finish: null,
-    restartAllowed: false,
-  };
   async saveTask(): Promise<boolean> {
-    let reply = this.#reply(['saveTask']);
-    this.emit({ topic: 'taskSaveFailed', value: false });
-    return reply;
+    return this.#reply(['saveTask']);
   }
   async changeTask(command: TaskCommand): Promise<boolean> {
-    let reply = this.#reply(['changeTask', command]);
-    let task = structuredClone(this.#task);
-    switch (command.type) {
-      case 'add':
-        if (command.target.type !== 'waypoint') throw new Error('Task points must be waypoints');
-        task.points.push({ id: task.nextId++, target: command.target });
-        if (task.current === null) task.restartAllowed = true;
-        task.current ??= task.points[0].id;
-        break;
-      case 'move': {
-        let index = task.points.findIndex((point) => point.id === command.id);
-        if (index < 0 || command.index < 0 || command.index >= task.points.length)
-          throw new Error('Unknown task point');
-        task.points.splice(command.index, 0, ...task.points.splice(index, 1));
-        break;
-      }
-      case 'remove': {
-        let index = task.points.findIndex((point) => point.id === command.id);
-        if (index < 0 || (task.status === 'running' && task.points.length <= 2))
-          throw new Error('Cannot remove task point');
-        task.points.splice(index, 1);
-        if (task.current === command.id)
-          task.current = task.points[index]?.id ?? task.points.at(-1)?.id ?? null;
-        if (task.points.length < 2) task.status = 'stopped';
-        break;
-      }
-      case 'select':
-      case 'resume':
-        if (task.points.length < 2) throw new Error('A task needs two points');
-        if (command.type === 'select') task.current = command.id;
-        if (!task.points.some((point) => point.id === task.current))
-          throw new Error('Unknown task point');
-        task.status = 'running';
-        task.finish = null;
-        if (command.type === 'select') {
-          let index = task.points.findIndex((point) => point.id === task.current);
-          if (index === 0) task.restartAllowed = true;
-          else if (index > 1) task.restartAllowed = false;
-        }
-        break;
-      case 'stop':
-        task.status = 'stopped';
-        break;
-    }
-    this.#task = task;
-    this.emit({ topic: 'task', value: task });
-    if (command.type === 'select' || command.type === 'resume') this.#navigate({ type: 'task' });
-    if (command.type === 'stop' && this.#navigation?.target.type === 'task') this.#navigate(null);
-    return reply;
+    return this.#reply(['changeTask', command]);
   }
-  #recents: NavigationTarget[] = [];
-  #remember(target: NavigationTarget): void {
-    if (target.type === 'task') return;
-    this.#recents = [
-      target,
-      ...this.#recents.filter((other) => !targetsMatch(target, other)),
-    ].slice(0, 30);
-    this.emit({ topic: 'recentTargets', value: this.#recents });
-  }
-  #pins: PinnedTarget[] = [];
-  #nextPinId = 0;
   async pinTarget(target: NavigationTarget): Promise<boolean> {
-    let reply = this.#reply(['pinTarget', target]);
-    if (!this.#pins.some((pin) => targetsMatch(pin.navigation.target, target))) {
-      this.#pins.push({
-        id: this.#nextPinId++,
-        primary: false,
-        navigation: {
-          target,
-          position:
-            target.type === 'traffic' || target.type === 'task'
-              ? null
-              : {
-                  latitudeDegrees: target.latitudeDegrees,
-                  longitudeDegrees: target.longitudeDegrees,
-                },
-          guidance: null,
-          arrival: null,
-          traffic: null,
-        },
-      });
-    }
-    this.#publishPins();
-    return reply;
+    return this.#reply(['pinTarget', target]);
   }
   async unpinTarget(id: number): Promise<boolean> {
-    let reply = this.#reply(['unpinTarget', id]);
-    let pin = this.#pins.find((pin) => pin.id === id);
-    if (pin) this.#remember(pin.navigation.target);
-    this.#pins = this.#pins.filter((pin) => pin.id !== id);
-    this.#publishPins();
-    return reply;
+    return this.#reply(['unpinTarget', id]);
   }
-  #publishPins(): void {
-    this.#pins = this.#pins.map((pin) => ({
-      ...pin,
-      primary:
-        this.#navigation !== null && targetsMatch(pin.navigation.target, this.#navigation.target),
-    }));
-    this.emit({ topic: 'pinnedTargets', value: this.#pins });
-  }
-  #navigation: Navigation | null = null;
   async setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
-    let reply = this.#reply(['setNavigationTarget', target]);
-    this.#navigate(target);
-    return reply;
-  }
-  #navigate(target: NavigationTarget | null): void {
-    if (target) this.#remember(target);
-    this.#navigation = target
-      ? {
-          target,
-          position:
-            target.type === 'traffic' || target.type === 'task'
-              ? null
-              : {
-                  latitudeDegrees: target.latitudeDegrees,
-                  longitudeDegrees: target.longitudeDegrees,
-                },
-          guidance: null,
-          arrival: null,
-          traffic: null,
-        }
-      : null;
-    this.emit({ topic: 'navigation', value: this.#navigation });
-    this.#publishPins();
+    return this.#reply(['setNavigationTarget', target]);
   }
 
   #basemaps: BasemapStatus = { generation: 0, sources: [] };
@@ -253,11 +125,22 @@ export class FakeClient implements UpdraftClient {
     );
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
     let onboarding: Topic[] = [
-      { topic: 'navigation', value: this.#navigation },
-      { topic: 'recentTargets', value: this.#recents },
-      { topic: 'task', value: this.#task },
+      { topic: 'navigation', value: null },
+      { topic: 'recentTargets', value: [] },
+      {
+        topic: 'task',
+        value: {
+          points: [],
+          current: null,
+          status: 'stopped',
+          nextId: 0,
+          start: null,
+          finish: null,
+          restartAllowed: false,
+        },
+      },
       { topic: 'taskSaveFailed', value: false },
-      { topic: 'pinnedTargets', value: this.#pins },
+      { topic: 'pinnedTargets', value: [] },
       { topic: 'settings', value: this.#settings },
       { topic: 'glidePerformance', value: this.#glidePerformance },
       { topic: 'externalDevices', value: this.#externalDevices },

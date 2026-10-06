@@ -87,6 +87,9 @@ connection attempts, cancellation, retries, and platform APIs.
 
 The frontend uses one `UpdraftClient` interface. The production implementation
 uses concrete Tauri commands. Browser tests and Storybook use a fake client.
+The fake client does not copy core rules for navigation, pinned targets,
+recent targets, and tasks. It records these commands, and tests emit the
+resulting topics.
 Components do not import a client implementation directly.
 
 Commands report completion or return a typed response. Shared state changes

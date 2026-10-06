@@ -57,8 +57,26 @@ function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
   return { kind: 'unknownExternalDevice', deviceId };
 }
 
+/** A navigation, pin, or task command call that the fake client records. */
+export type NavigationCommand =
+  | ['saveTask']
+  | ['changeTask', TaskCommand]
+  | ['pinTarget', NavigationTarget]
+  | ['unpinTarget', number]
+  | ['setNavigationTarget', NavigationTarget | null];
+
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  readonly navigationCommands: NavigationCommand[] = [];
+  #navigationReplies: boolean[] = [];
+  /** Sets the results of the next navigation commands. Later commands reply true. */
+  queueNavigationReplies(...replies: boolean[]): void {
+    this.#navigationReplies.push(...replies);
+  }
+  #reply(command: NavigationCommand): boolean {
+    this.navigationCommands.push(command);
+    return this.#navigationReplies.shift() ?? true;
+  }
   #task: Task = {
     points: [],
     current: null,
@@ -69,10 +87,12 @@ export class FakeClient implements UpdraftClient {
     restartAllowed: false,
   };
   async saveTask(): Promise<boolean> {
+    let reply = this.#reply(['saveTask']);
     this.emit({ topic: 'taskSaveFailed', value: false });
-    return true;
+    return reply;
   }
   async changeTask(command: TaskCommand): Promise<boolean> {
+    let reply = this.#reply(['changeTask', command]);
     let task = structuredClone(this.#task);
     switch (command.type) {
       case 'add':
@@ -118,11 +138,9 @@ export class FakeClient implements UpdraftClient {
     }
     this.#task = task;
     this.emit({ topic: 'task', value: task });
-    if (command.type === 'select' || command.type === 'resume')
-      await this.setNavigationTarget({ type: 'task' });
-    if (command.type === 'stop' && this.#navigation?.target.type === 'task')
-      await this.setNavigationTarget(null);
-    return true;
+    if (command.type === 'select' || command.type === 'resume') this.#navigate({ type: 'task' });
+    if (command.type === 'stop' && this.#navigation?.target.type === 'task') this.#navigate(null);
+    return reply;
   }
   #recents: NavigationTarget[] = [];
   #remember(target: NavigationTarget): void {
@@ -136,6 +154,7 @@ export class FakeClient implements UpdraftClient {
   #pins: PinnedTarget[] = [];
   #nextPinId = 0;
   async pinTarget(target: NavigationTarget): Promise<boolean> {
+    let reply = this.#reply(['pinTarget', target]);
     if (!this.#pins.some((pin) => targetsMatch(pin.navigation.target, target))) {
       this.#pins.push({
         id: this.#nextPinId++,
@@ -156,14 +175,15 @@ export class FakeClient implements UpdraftClient {
       });
     }
     this.#publishPins();
-    return true;
+    return reply;
   }
   async unpinTarget(id: number): Promise<boolean> {
+    let reply = this.#reply(['unpinTarget', id]);
     let pin = this.#pins.find((pin) => pin.id === id);
     if (pin) this.#remember(pin.navigation.target);
     this.#pins = this.#pins.filter((pin) => pin.id !== id);
     this.#publishPins();
-    return true;
+    return reply;
   }
   #publishPins(): void {
     this.#pins = this.#pins.map((pin) => ({
@@ -175,6 +195,11 @@ export class FakeClient implements UpdraftClient {
   }
   #navigation: Navigation | null = null;
   async setNavigationTarget(target: NavigationTarget | null): Promise<boolean> {
+    let reply = this.#reply(['setNavigationTarget', target]);
+    this.#navigate(target);
+    return reply;
+  }
+  #navigate(target: NavigationTarget | null): void {
     if (target) this.#remember(target);
     this.#navigation = target
       ? {
@@ -193,7 +218,6 @@ export class FakeClient implements UpdraftClient {
       : null;
     this.emit({ topic: 'navigation', value: this.#navigation });
     this.#publishPins();
-    return true;
   }
 
   #basemaps: BasemapStatus = { generation: 0, sources: [] };

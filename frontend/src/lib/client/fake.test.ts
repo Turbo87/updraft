@@ -654,3 +654,26 @@ it('keeps tasks out of recent goto history when selected or unpinned', async () 
     { topic: 'recentTargets', value: [] },
   ]);
 });
+
+it('records navigation commands and replies with queued results', async () => {
+  let client = new FakeClient();
+  let target = { type: 'traffic', id: 'icao:ABC123' } as const;
+  client.queueNavigationReplies(false);
+
+  let replies = [
+    await client.pinTarget(target),
+    await client.unpinTarget(0),
+    await client.setNavigationTarget(target),
+    await client.changeTask({ type: 'stop' }),
+    await client.saveTask(),
+  ];
+
+  expect(replies).toEqual([false, true, true, true, true]);
+  expect(client.navigationCommands).toEqual([
+    ['pinTarget', target],
+    ['unpinTarget', 0],
+    ['setNavigationTarget', target],
+    ['changeTask', { type: 'stop' }],
+    ['saveTask'],
+  ]);
+});

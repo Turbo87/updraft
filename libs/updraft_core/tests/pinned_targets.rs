@@ -1,5 +1,7 @@
-use claims::{assert_err, assert_ok};
+use claims::{assert_err, assert_none, assert_ok, assert_some_eq};
+use std::{collections::BTreeMap, sync::Arc};
 use updraft_core::*;
+use updraft_waypoint::WaypointDataset;
 
 fn waypoint(name: &str, latitude_degrees: f64) -> NavigationTarget {
     NavigationTarget::Waypoint {
@@ -188,4 +190,41 @@ fn pinned_map_arrival_uses_only_matching_terrain_results() {
         at,
     );
     claims::assert_none!(pins(&core)[0].navigation.arrival);
+}
+
+#[test]
+fn pinning_and_unpinning_do_not_change_navigation() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let at = Timestamp::default();
+    let target = NavigationTarget::MapPosition {
+        latitude_degrees: 50.,
+        longitude_degrees: 6.,
+    };
+    let saved = assert_ok!(core.apply(PinTarget(target.clone()), at).response);
+    assert_none!(core.apply(GetNavigationTarget, at).response);
+    let goto = SetNavigationTarget(Some(target.clone()));
+    assert_ok!(core.apply(goto, at).response);
+    let unpin = UnpinTarget(saved[0].id);
+    assert_eq!(assert_ok!(core.apply(unpin, at).response), vec![]);
+    assert_some_eq!(core.apply(GetNavigationTarget, at).response, target);
+    assert_eq!(assert_ok!(core.apply(unpin, at).response), vec![]);
+}
+
+#[test]
+fn removing_a_waypoint_source_keeps_pinned_and_navigation_snapshots() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let at = Timestamp::default();
+    let bytes = b"name,code,country,lat,lon,elev,style\nHome,,,5000.000N,00600.000E,100m,2\n";
+    let dataset = Arc::new(assert_ok!(WaypointDataset::from_cup(bytes)));
+    let sources = BTreeMap::from([("home.cup".into(), WaypointSource::Active(dataset))]);
+    let catalog = Arc::new(WaypointCatalog { sources });
+    core.apply(ReplaceWaypointCatalog(catalog), at);
+    let target = waypoint("Home", 50.);
+    assert_ok!(core.apply(PinTarget(target.clone()), at).response);
+    let goto = SetNavigationTarget(Some(target.clone()));
+    assert_ok!(core.apply(goto, at).response);
+    let pinned = pins(&core);
+    core.apply(ReplaceWaypointCatalog(Default::default()), at);
+    assert_eq!(pins(&core), pinned);
+    assert_some_eq!(core.apply(GetNavigationTarget, at).response, target);
 }

@@ -15,7 +15,7 @@ indicatif = "=0.18.6"
 igc = "=0.3.0"
 thiserror = "=2.0.21"
 time = { version = "=0.3.55", default-features = false }
-tokio = { version = "=1.53.1", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "=1.53.2", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 tracing = "=0.1.44"
 tracing-indicatif = "=0.3.14"
 tracing-subscriber = "=0.3.23"
@@ -28,5 +28,5 @@ updraft_units = { path = "../updraft_units" }
 approx = "=0.6.0-rc2"
 claims = "=0.8.0"
 insta = "=1.49.0"
-tokio = { version = "=1.53.1", features = ["test-util"] }
+tokio = { version = "=1.53.2", features = ["test-util"] }
 updraft_core = { path = "../updraft_core" }

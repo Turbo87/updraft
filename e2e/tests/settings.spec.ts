@@ -1,3 +1,5 @@
+import type { WaypointSourceStatus } from '$lib/protocol/generated/WaypointSourceStatus';
+
 import { execFileSync } from 'node:child_process';
 
 import { expect } from '@playwright/test';
@@ -12,7 +14,6 @@ const EXPECTED_BUILD_COMMIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
 type SettingsWindow = Window & {
   __dataSelectionCalls?: number;
   __quitCalls?: number;
-  __releaseActivation?: () => void;
 };
 
 test.describe('with an unsupported browser language', () => {
@@ -337,20 +338,17 @@ test('the Data library handles live statuses, file details, and removal', async 
   await app.open('/settings/data');
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await page.reload();
-  await page.evaluate(() => {
-    let client = window.__updraftFake!;
-    client.emit({
-      topic: 'airspace',
-      value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] },
-    });
-    client.emit({
-      topic: 'waypoints',
-      value: {
-        generation: 1,
-        sources: [{ type: 'active', sourceName: 'local.cup', waypointCount: 2, warnings: [] }],
-      },
-    });
+  let localCup: WaypointSourceStatus = {
+    type: 'active',
+    sourceName: 'local.cup',
+    waypointCount: 2,
+    warnings: [],
+  };
+  await app.emit({
+    topic: 'airspace',
+    value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'local.txt' }] },
   });
+  await app.emit({ topic: 'waypoints', value: { generation: 1, sources: [localCup] } });
   await expect(page.getByRole('button', { name: /^local\.txt/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^local\.cup/ })).toBeVisible();
   await expect(page.getByText('Disabled', { exact: true })).toBeVisible();
@@ -360,18 +358,6 @@ test('the Data library handles live statuses, file details, and removal', async 
   await row.click();
   let dialog = page.getByRole('dialog', { name: 'local.cup' });
   await expect(dialog).toBeVisible();
-  await page.evaluate(() => {
-    let testWindow = window as SettingsWindow;
-    let client = testWindow.__updraftFake!;
-    let original = client.setWaypointsEnabled.bind(client);
-    let gate = new Promise<void>((resolve) => {
-      testWindow.__releaseActivation = resolve;
-    });
-    client.setWaypointsEnabled = async (name, enabled) => {
-      await gate;
-      await original(name, enabled);
-    };
-  });
   await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
   await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
@@ -379,9 +365,14 @@ test('the Data library handles live statuses, file details, and removal', async 
   await page.getByRole('link', { name: 'Data', exact: true }).click();
   await row.click();
   await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).not.toBeChecked();
-  await page.evaluate(() => (window as SettingsWindow).__releaseActivation!());
+  await expect(page.getByRole('button', { name: 'Remove from device' })).toBeDisabled();
+  await app.emit({
+    topic: 'waypoints',
+    value: { generation: 2, sources: [{ type: 'disabled', sourceName: 'local.cup' }] },
+  });
   await expect(page.getByRole('button', { name: 'Remove from device' })).toBeEnabled();
   await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await app.emit({ topic: 'waypoints', value: { generation: 3, sources: [localCup] } });
   await expect(dialog.getByText('2', { exact: true })).toBeVisible();
   await page.evaluate(() => history.back());
   await expect(dialog).not.toBeVisible();
@@ -393,15 +384,31 @@ test('the Data library handles live statuses, file details, and removal', async 
   await row.click();
   await page.getByRole('button', { name: 'Remove from device' }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await app.emit({ topic: 'waypoints', value: { generation: 4, sources: [] } });
   await expect(row).not.toBeVisible();
   await expect(page.getByRole('button', { name: /^local\.txt/ })).toBeVisible();
   await page.getByRole('button', { name: /^local\.txt/ }).click();
   await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
   await expect(page.getByRole('switch', { name: 'Enabled', exact: true })).toBeChecked();
+  await app.emit({
+    topic: 'airspace',
+    value: {
+      generation: 2,
+      sources: [{ type: 'unavailable', sourceName: 'local.txt', error: 'readFailed' }],
+    },
+  });
   await expect(page.getByRole('dialog').getByText('Could not be read')).toBeVisible();
   await page.getByRole('button', { name: 'Remove from device' }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await app.emit({ topic: 'airspace', value: { generation: 3, sources: [] } });
   await expect(page.getByText('No data on this device')).toBeVisible();
+  expect(await app.dataFileCommands()).toEqual([
+    ['setWaypointsEnabled', 'local.cup', false],
+    ['setWaypointsEnabled', 'local.cup', true],
+    ['removeWaypoints', 'local.cup'],
+    ['setAirspaceEnabled', 'local.txt', true],
+    ['removeAirspace', 'local.txt'],
+  ]);
 });
 
 test('the Data library imports through the client and shows published parsing errors', async ({

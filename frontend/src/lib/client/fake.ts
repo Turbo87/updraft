@@ -1,13 +1,10 @@
-import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 import type { ChangeSetting } from '$lib/protocol/generated/ChangeSetting';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
-import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
 import type { Topic } from '$lib/protocol/generated/Topic';
-import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
   ArrivalSubscription,
@@ -29,28 +26,10 @@ import type {
 
 import { defaultSettings } from '$lib/settings';
 
-/** Initial platform and external-device state for browser development. */
+/** Initial platform state for browser development. */
 export type FakeClientOptions = {
-  externalDevices?: readonly PublishedExternalDevice[];
   bondedBluetoothDevices?: BondedBluetoothDevices;
 };
-
-function hasConnectionSpec(device: PublishedExternalDevice, spec: ConnectionSpec): boolean {
-  if (device.type === 'tcp' && spec.type === 'tcp') {
-    return device.host === spec.host && device.port === spec.port;
-  }
-  if (device.type === 'bluetooth' && spec.type === 'bluetooth') {
-    return device.address === spec.address && device.serviceUuid === spec.serviceUuid;
-  }
-  return false;
-}
-
-function unknownExternalDeviceError(deviceId: ExternalDeviceId): {
-  kind: 'unknownExternalDevice';
-  deviceId: ExternalDeviceId;
-} {
-  return { kind: 'unknownExternalDevice', deviceId };
-}
 
 /**
  * A navigation, pin, or task command call that the fake client records.
@@ -76,14 +55,20 @@ export type SettingsCommand =
   | ['setBugs', number]
   | ['setBallast', number];
 
-/** An external device command call that the fake client records. */
+/**
+ * An external device command call that the fake client records.
+ * The fake client does not change state or emit topics for these commands.
+ */
 export type ExternalDeviceCommand =
   | ['addExternalDevice', ConnectionSpec]
   | ['editExternalDevice', ExternalDeviceId, ConnectionSpec]
   | ['setExternalDeviceEnabled', ExternalDeviceId, boolean]
   | ['deleteExternalDevice', ExternalDeviceId];
 
-/** An airspace or waypoint file command call that the fake client records. */
+/**
+ * An airspace or waypoint file command call that the fake client records.
+ * The fake client does not change state or emit topics for these commands.
+ */
 export type DataFileCommand =
   | ['setAirspaceEnabled', string, boolean]
   | ['removeAirspace', string]
@@ -134,22 +119,11 @@ export class FakeClient implements UpdraftClient {
   #terrainListeners = new Set<(status: TerrainStatus) => void>();
 
   #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
-  #airspace: AirspaceStatus = { generation: 0, sources: [] };
-  #waypoints: WaypointStatus = { generation: 0, sources: [] };
-  #airspaceFixtures = new Map<string, AirspaceStatus['sources'][number]>();
-  #waypointFixtures = new Map<string, WaypointStatus['sources'][number]>();
   #listeners = new Set<TopicListener>();
   #snapshots = new Map<Topic['topic'], Topic>();
-  #externalDevices: PublishedExternalDevice[];
-  #nextExternalDeviceId: ExternalDeviceId;
   #bondedBluetoothDevices: BondedBluetoothDevices;
 
   constructor(options: FakeClientOptions = {}) {
-    this.#externalDevices = options.externalDevices?.map((device) => ({ ...device })) ?? [];
-    this.#nextExternalDeviceId = this.#externalDevices.reduce(
-      (nextId, device) => Math.max(nextId, device.deviceId + 1),
-      1,
-    );
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
     let onboarding: Topic[] = [
       { topic: 'navigation', value: null },
@@ -170,9 +144,9 @@ export class FakeClient implements UpdraftClient {
       { topic: 'pinnedTargets', value: [] },
       { topic: 'settings', value: defaultSettings() },
       { topic: 'glidePerformance', value: { macCready: 0, bugs: 0, ballast: 0 } },
-      { topic: 'externalDevices', value: this.#externalDevices },
-      { topic: 'airspace', value: this.#airspace },
-      { topic: 'waypoints', value: this.#waypoints },
+      { topic: 'externalDevices', value: [] },
+      { topic: 'airspace', value: { generation: 0, sources: [] } },
+      { topic: 'waypoints', value: { generation: 0, sources: [] } },
     ];
     for (let topic of onboarding) this.#snapshots.set(topic.topic, topic);
   }
@@ -312,56 +286,18 @@ export class FakeClient implements UpdraftClient {
 
   async removeWaypoints(sourceName: string): Promise<void> {
     this.dataFileCommands.push(['removeWaypoints', sourceName]);
-    this.emit({
-      topic: 'waypoints',
-      value: {
-        generation: this.#waypoints.generation + 1,
-        sources: this.#waypoints.sources.filter((source) => source.sourceName !== sourceName),
-      },
-    });
   }
 
   async setWaypointsEnabled(sourceName: string, enabled: boolean): Promise<void> {
     this.dataFileCommands.push(['setWaypointsEnabled', sourceName, enabled]);
-    this.emit({
-      topic: 'waypoints',
-      value: {
-        generation: this.#waypoints.generation + 1,
-        sources: setSourceEnabled(
-          this.#waypoints.sources,
-          this.#waypointFixtures,
-          sourceName,
-          enabled,
-        ),
-      },
-    });
   }
 
   async setAirspaceEnabled(sourceName: string, enabled: boolean): Promise<void> {
     this.dataFileCommands.push(['setAirspaceEnabled', sourceName, enabled]);
-    this.emit({
-      topic: 'airspace',
-      value: {
-        generation: this.#airspace.generation + 1,
-        sources: setSourceEnabled(
-          this.#airspace.sources,
-          this.#airspaceFixtures,
-          sourceName,
-          enabled,
-        ),
-      },
-    });
   }
 
   async removeAirspace(sourceName: string): Promise<void> {
     this.dataFileCommands.push(['removeAirspace', sourceName]);
-    this.emit({
-      topic: 'airspace',
-      value: {
-        generation: this.#airspace.generation + 1,
-        sources: this.#airspace.sources.filter((source) => source.sourceName !== sourceName),
-      },
-    });
   }
 
   /** Browser development has no session and no process to end. */
@@ -377,13 +313,10 @@ export class FakeClient implements UpdraftClient {
     };
   }
 
+  /** Replies with the ID that the core assigns to the first device. */
   async addExternalDevice(spec: ConnectionSpec): Promise<ExternalDeviceId> {
     this.externalDeviceCommands.push(['addExternalDevice', spec]);
-    let deviceId = this.#nextExternalDeviceId;
-    this.#nextExternalDeviceId += 1;
-    this.#externalDevices = [...this.#externalDevices, { deviceId, enabled: true, ...spec }];
-    this.#publishExternalDevices();
-    return deviceId;
+    return 1;
   }
 
   async getBondedBluetoothDevices(): Promise<BondedBluetoothDevices> {
@@ -392,44 +325,14 @@ export class FakeClient implements UpdraftClient {
 
   async editExternalDevice(deviceId: ExternalDeviceId, spec: ConnectionSpec): Promise<void> {
     this.externalDeviceCommands.push(['editExternalDevice', deviceId, spec]);
-    let index = this.#externalDevices.findIndex((device) => device.deviceId === deviceId);
-    if (index === -1) throw unknownExternalDeviceError(deviceId);
-
-    let current = this.#externalDevices[index];
-    if (hasConnectionSpec(current, spec)) return;
-
-    let replacement: PublishedExternalDevice = {
-      deviceId,
-      enabled: current.enabled,
-      ...spec,
-    };
-    this.#externalDevices = this.#externalDevices.map((device, deviceIndex) =>
-      deviceIndex === index ? replacement : device,
-    );
-    this.#publishExternalDevices();
   }
 
   async setExternalDeviceEnabled(deviceId: ExternalDeviceId, enabled: boolean): Promise<void> {
     this.externalDeviceCommands.push(['setExternalDeviceEnabled', deviceId, enabled]);
-    let index = this.#externalDevices.findIndex((device) => device.deviceId === deviceId);
-    if (index === -1) throw unknownExternalDeviceError(deviceId);
-
-    let current = this.#externalDevices[index];
-    if (current.enabled === enabled) return;
-
-    this.#externalDevices = this.#externalDevices.map((device, deviceIndex) =>
-      deviceIndex === index ? { ...current, enabled } : device,
-    );
-    this.#publishExternalDevices();
   }
 
   async deleteExternalDevice(deviceId: ExternalDeviceId): Promise<void> {
     this.externalDeviceCommands.push(['deleteExternalDevice', deviceId]);
-    let index = this.#externalDevices.findIndex((device) => device.deviceId === deviceId);
-    if (index === -1) throw unknownExternalDeviceError(deviceId);
-
-    this.#externalDevices = this.#externalDevices.filter((device) => device.deviceId !== deviceId);
-    this.#publishExternalDevices();
   }
 
   async changeSetting(change: ChangeSetting): Promise<void> {
@@ -467,56 +370,13 @@ export class FakeClient implements UpdraftClient {
   /**
    * Publishes a topic as though the core had emitted it.
    * New subscribers receive the latest snapshot topics.
-   * Enabled source records also seed fixtures for later activation.
    */
   emit(topic: Topic): void {
     if (topic.topic !== 'traffic') this.#snapshots.set(topic.topic, topic);
-    if (topic.topic === 'airspace') {
-      this.#airspace = topic.value;
-      updateSourceFixtures(topic.value.sources, this.#airspaceFixtures);
-    }
-    if (topic.topic === 'waypoints') {
-      this.#waypoints = topic.value;
-      updateSourceFixtures(topic.value.sources, this.#waypointFixtures);
-    }
     for (let listener of this.#listeners) {
       listener(topic);
     }
   }
-
-  #publishExternalDevices(): void {
-    this.emit({ topic: 'externalDevices', value: this.#externalDevices });
-  }
-}
-
-function updateSourceFixtures<T extends { type: string; sourceName: string }>(
-  sources: T[],
-  fixtures: Map<string, T>,
-) {
-  for (let name of fixtures.keys()) {
-    if (!sources.some((source) => source.sourceName === name)) fixtures.delete(name);
-  }
-  for (let source of sources) {
-    if (source.type !== 'disabled') fixtures.set(source.sourceName, source);
-  }
-}
-
-function setSourceEnabled<T extends { sourceName: string }>(
-  sources: T[],
-  fixtures: Map<string, T>,
-  sourceName: string,
-  enabled: boolean,
-) {
-  if (!sources.some((source) => source.sourceName === sourceName))
-    throw new Error('Source not found');
-  let replacement = enabled
-    ? (fixtures.get(sourceName) ?? {
-        type: 'unavailable' as const,
-        sourceName,
-        error: 'readFailed' as const,
-      })
-    : { type: 'disabled' as const, sourceName };
-  return sources.map((source) => (source.sourceName === sourceName ? replacement : source));
 }
 
 function subscribeStatus<T>(

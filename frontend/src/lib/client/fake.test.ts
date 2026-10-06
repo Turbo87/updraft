@@ -1,4 +1,3 @@
-import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
 import type { Topic } from '$lib/protocol/generated/Topic';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type { EnrouteCatalogStatus, EnrouteDownloadStatus } from './index';
@@ -7,8 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { instrumentsFixture } from '$lib/instruments.fixture';
 import { FakeClient } from './fake';
-
-type ExternalDevicesTopic = Extract<Topic, { topic: 'externalDevices' }>;
 
 it('delivers prepared arrival resources until the subscription closes', async () => {
   let client = new FakeClient();
@@ -33,22 +30,6 @@ function observeTopicChanges(client: FakeClient) {
   client.subscribe(onTopic);
   onTopic.mockClear();
   return onTopic;
-}
-
-function externalDeviceTopics(topics: Topic[]): ExternalDevicesTopic[] {
-  return topics.filter((topic): topic is ExternalDevicesTopic => topic.topic === 'externalDevices');
-}
-
-function configuredDevices(): PublishedExternalDevice[] {
-  return [
-    { deviceId: 4, enabled: true, type: 'tcp', host: '127.0.0.1', port: 4353 },
-    {
-      deviceId: 7,
-      enabled: false,
-      type: 'bluetooth',
-      address: '00:11:22:33:44:55',
-    },
-  ];
 }
 
 function instruments(trackDegrees: number): Topic {
@@ -121,92 +102,6 @@ describe('FakeClient', () => {
     ]);
   });
 
-  it('allocates device IDs and publishes complete authoritative topics', async () => {
-    let client = new FakeClient();
-    let received = collectTopics(client);
-    received.length = 0;
-
-    let tcpId = await client.addExternalDevice({ type: 'tcp', host: '127.0.0.1', port: 4353 });
-    let bluetoothId = await client.addExternalDevice({
-      type: 'bluetooth',
-      address: '00:11:22:33:44:55',
-    });
-
-    expect([tcpId, bluetoothId]).toEqual([1, 2]);
-    expect(externalDeviceTopics(received)).toMatchSnapshot();
-  });
-
-  it('allocates a fresh ID after configured devices', async () => {
-    let client = new FakeClient({ externalDevices: configuredDevices() });
-
-    await expect(
-      client.addExternalDevice({ type: 'tcp', host: '192.0.2.1', port: 10110 }),
-    ).resolves.toBe(8);
-  });
-
-  it('edits a device without changing its ID, enabled state, or position', async () => {
-    let client = new FakeClient({ externalDevices: configuredDevices() });
-    let received = collectTopics(client);
-    received.length = 0;
-
-    await client.editExternalDevice(4, {
-      type: 'bluetooth',
-      address: 'AA:BB:CC:DD:EE:FF',
-    });
-
-    expect(externalDeviceTopics(received)).toMatchSnapshot();
-  });
-
-  it('publishes enable, disable, and delete changes', async () => {
-    let client = new FakeClient({ externalDevices: configuredDevices() });
-    let received = collectTopics(client);
-    received.length = 0;
-
-    await client.setExternalDeviceEnabled(4, false);
-    await client.setExternalDeviceEnabled(7, true);
-    await client.deleteExternalDevice(4);
-
-    expect(externalDeviceTopics(received).map((topic) => topic.value)).toMatchSnapshot();
-  });
-
-  it('does not publish identical edits or enabled states', async () => {
-    let client = new FakeClient({ externalDevices: configuredDevices() });
-    let received = collectTopics(client);
-    received.length = 0;
-
-    await client.editExternalDevice(4, { type: 'tcp', host: '127.0.0.1', port: 4353 });
-    await client.setExternalDeviceEnabled(4, true);
-
-    expect(externalDeviceTopics(received)).toEqual([]);
-  });
-
-  it('rejects unknown device IDs without changing authoritative state', async () => {
-    let devices = configuredDevices();
-    let client = new FakeClient({ externalDevices: devices });
-    let received = collectTopics(client);
-    received.length = 0;
-
-    await expect(
-      client.editExternalDevice(99, { type: 'tcp', host: '192.0.2.1', port: 10110 }),
-    ).rejects.toEqual({ kind: 'unknownExternalDevice', deviceId: 99 });
-    await expect(client.setExternalDeviceEnabled(99, false)).rejects.toEqual({
-      kind: 'unknownExternalDevice',
-      deviceId: 99,
-    });
-    await expect(client.deleteExternalDevice(99)).rejects.toEqual({
-      kind: 'unknownExternalDevice',
-      deviceId: 99,
-    });
-
-    expect(externalDeviceTopics(received)).toEqual([]);
-
-    let current: PublishedExternalDevice[] = [];
-    client.subscribe((topic) => {
-      if (topic.topic === 'externalDevices') current = topic.value;
-    });
-    expect(current).toEqual(devices);
-  });
-
   it('returns its configured bonded Bluetooth state', async () => {
     let bondedBluetoothDevices: BondedBluetoothDevices = {
       status: 'available',
@@ -217,127 +112,6 @@ describe('FakeClient', () => {
     await expect(client.getBondedBluetoothDevices()).resolves.toEqual(bondedBluetoothDevices);
   });
 });
-
-it('removes only the selected fake waypoint source', async () => {
-  let client = new FakeClient();
-  let received = collectTopics(client);
-  client.emit({
-    topic: 'waypoints',
-    value: {
-      generation: 1,
-      sources: ['a.cup', 'b.cup'].map((sourceName) => ({
-        type: 'active',
-        sourceName,
-        waypointCount: 1,
-        warnings: [],
-      })),
-    },
-  });
-  await client.removeWaypoints('a.cup');
-  expect(received.at(-1)).toEqual({
-    topic: 'waypoints',
-    value: {
-      generation: 2,
-      sources: [{ type: 'active', sourceName: 'b.cup', waypointCount: 1, warnings: [] }],
-    },
-  });
-});
-
-it('removes only the named airspace source and advances its generation', async () => {
-  let client = new FakeClient();
-  let topics = collectTopics(client);
-  client.emit({
-    topic: 'airspace',
-    value: {
-      generation: 2,
-      sources: [
-        { type: 'active', sourceName: 'a.txt', airspaceCount: 1 },
-        { type: 'active', sourceName: 'b.txt', airspaceCount: 2 },
-      ],
-    },
-  });
-  await client.removeAirspace('a.txt');
-  expect(topics.at(-1)).toEqual({
-    topic: 'airspace',
-    value: { generation: 3, sources: [{ type: 'active', sourceName: 'b.txt', airspaceCount: 2 }] },
-  });
-});
-
-it.each(['airspace', 'waypoints'] as const)(
-  'toggles %s fixtures without losing diagnostics',
-  async (kind) => {
-    let client = new FakeClient();
-    let received = collectTopics(client);
-    let initial: Topic =
-      kind === 'airspace'
-        ? {
-            topic: kind,
-            value: {
-              generation: 1,
-              sources: [
-                { type: 'active', sourceName: 'local', airspaceCount: 2 },
-                { type: 'unavailable', sourceName: 'broken', error: 'parseFailed' },
-              ],
-            },
-          }
-        : {
-            topic: kind,
-            value: {
-              generation: 1,
-              sources: [
-                {
-                  type: 'active',
-                  sourceName: 'local',
-                  waypointCount: 2,
-                  warnings: [{ line: 4, message: 'Skipped waypoint' }],
-                },
-                { type: 'unavailable', sourceName: 'broken', error: 'parseFailed' },
-              ],
-            },
-          };
-    client.emit(initial);
-    let setEnabled =
-      kind === 'airspace'
-        ? client.setAirspaceEnabled.bind(client)
-        : client.setWaypointsEnabled.bind(client);
-    await setEnabled('local', false);
-    expect(received.at(-1)).toEqual({
-      topic: kind,
-      value: {
-        generation: 2,
-        sources: [{ type: 'disabled', sourceName: 'local' }, initial.value.sources[1]],
-      },
-    });
-    await setEnabled('local', true);
-    expect(received.at(-1)).toEqual({
-      topic: kind,
-      value: { generation: 3, sources: initial.value.sources },
-    });
-    await setEnabled('broken', false);
-    await setEnabled('broken', true);
-    expect(received.at(-1)).toEqual({
-      topic: kind,
-      value: { generation: 5, sources: initial.value.sources },
-    });
-    let count = received.length;
-    await expect(setEnabled('missing', true)).rejects.toThrow('Source not found');
-    expect(received).toHaveLength(count);
-    if (kind === 'airspace') await client.removeAirspace('local');
-    else await client.removeWaypoints('local');
-    client.emit({
-      topic: kind,
-      value: { generation: 7, sources: [{ type: 'disabled', sourceName: 'local' }] },
-    });
-    await setEnabled('local', true);
-    expect(received.at(-1)).toEqual({
-      topic: kind,
-      value: {
-        generation: 8,
-        sources: [{ type: 'unavailable', sourceName: 'local', error: 'readFailed' }],
-      },
-    });
-  },
-);
 
 it.each([
   ['subscribeBasemaps', 'emitBasemaps', 'local.mbtiles'],
@@ -493,17 +267,10 @@ it('records settings commands without validating or publishing', async () => {
   expect(onTopic).not.toHaveBeenCalled();
 });
 
-it('records external device and data file commands', async () => {
+it('records external device and data file commands without publishing', async () => {
   let client = new FakeClient();
+  let onTopic = observeTopicChanges(client);
   let spec = { type: 'tcp', host: '127.0.0.1', port: 4353 } as const;
-  client.emit({
-    topic: 'airspace',
-    value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'a.txt' }] },
-  });
-  client.emit({
-    topic: 'waypoints',
-    value: { generation: 1, sources: [{ type: 'disabled', sourceName: 'b.cup' }] },
-  });
 
   let deviceId = await client.addExternalDevice(spec);
   await client.editExternalDevice(deviceId, { ...spec, port: 10110 });
@@ -526,4 +293,5 @@ it('records external device and data file commands', async () => {
     ['setWaypointsEnabled', 'b.cup', true],
     ['removeWaypoints', 'b.cup'],
   ]);
+  expect(onTopic).not.toHaveBeenCalled();
 });

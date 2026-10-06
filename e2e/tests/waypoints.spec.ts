@@ -72,9 +72,7 @@ for (let notes of ['Notes', '']) {
       ['setNavigationTarget', target],
     ]);
     await page.goBack();
-    await page.evaluate(async () => {
-      await window.__updraftFake!.removeWaypoints('local.cup');
-    });
+    await app.emit({ topic: 'waypoints', value: { generation: 2, sources: [] } });
     await expect(page.getByText('This waypoint is no longer available.')).toBeVisible();
     await page.goBack();
     await expect(page.getByText('No nearby waypoints.')).toBeVisible();

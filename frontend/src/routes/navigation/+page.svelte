@@ -35,14 +35,16 @@
       onPinFailure={pinFailed}
       target={navigation.current.target}
       label={navigationLabel(navigation.current)}
-      href={navigation.current.target.type === 'task' ? '/task' : '/navigation/current'}
+      href={navigation.current.target.type === 'task'
+        ? resolve('/task')
+        : resolve('/navigation/current')}
     />
   {/if}
   {#if navigation.current?.target.type !== 'task' && !navigation.pins.some((pin) => pin.navigation.target.type === 'task')}
     {#if navigation.task.points.length > 0}<NavigationSelectionRow
         target={{ type: 'task' }}
         label={m.task_heading()}
-        href="/task"
+        href={resolve('/task')}
         onPinFailure={pinFailed}
       />
     {:else}<a href={resolve('/task')}>{m.task_heading()}</a>{/if}
@@ -53,7 +55,9 @@
       onPinFailure={pinFailed}
       target={pin.navigation.target}
       label={navigationLabel(pin.navigation)}
-      href={pin.navigation.target.type === 'task' ? '/task' : `/pinned-targets/${pin.id}`}
+      href={pin.navigation.target.type === 'task'
+        ? resolve('/task')
+        : resolve('/pinned-targets/[id]', { id: String(pin.id) })}
     />
   {/each}
   <h2>{m.navigation_recent()}</h2>
@@ -63,7 +67,7 @@
         onPinFailure={pinFailed}
         {target}
         label={navigationLabel({ target, traffic: null })}
-        href={`/navigation/recent/${index}`}
+        href={resolve('/navigation/recent/[index]', { index: String(index) })}
       />
     {/if}
   {/each}

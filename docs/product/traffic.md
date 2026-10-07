@@ -294,5 +294,5 @@ succeeds.
 ## Excluded behavior
 
 The current contract does not include OGN or ADS-B input, cross-network
-deduplication, trails, radar view, navigation toward traffic,
-warning presentation, acknowledgement, or Updraft-calculated collision risk.
+deduplication, trails, radar view, warning presentation, acknowledgement, or
+Updraft-calculated collision risk.

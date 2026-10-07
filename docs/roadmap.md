@@ -88,14 +88,14 @@ documents for accepted behavior.
 - [ ] **replay** — add in-app replay at variable speed for simulator mode and demos. It sends typed simulator inputs and does not act as a device. _(needs: igc-read, core-time)_
 - [ ] **input-recording** — optionally record the exact core input sequence in `captures/`. Save worker results in a compressed companion file. Replay can start from an empty core or a saved resume snapshot. _(needs: replay, compute-workers)_
 - [ ] **flight-modes** — detect takeoff, landing, cruise, and circling. Publish the flight timer and current mode. _(needs: source-selection)_
-- [ ] **vario-values** — core calculates TE vario, netto, and relative vario from altitude, airspeed, and the active polar. Relative vario subtracts density-corrected minimum sink from netto. The instruments topic and debug overlay expose these values. Integrator and thermal averagers remain planned. _(needs: nmea, flight-modes, polar)_
+- [x] **vario-values** — core calculates TE vario, netto, relative vario, and a 20-second average vario from altitude, airspeed, and the active polar. Relative vario subtracts density-corrected minimum sink from netto. The instruments topic and debug overlay expose these values. Thermal averagers remain planned. _(needs: nmea, flight-modes, polar)_
 
 ## Glide computer
 
 - [x] **polar** — glide polar model (quadratic coefficients, ballast/bugs degradation), a starter polar library, speed-to-fly and MacCready ring math. _(needs: units)_
 - [x] **glide-settings** — persisted polar selection and arrival reserve, with session-only MacCready, bugs, and ballast controls. Safety MC remains outside the current version. See [Settings](product/settings.md). _(needs: polar, core-app, frontend-protocol)_
-- [ ] **wind-circling** — wind estimation from circling drift; wind vector in state, manual override command, wind display. _(needs: flight-modes)_
-- [ ] **wind-zigzag** — airspeed-based zigzag/EKF wind estimation, layered wind statistics, source blending. _(needs: wind-circling, lx-nmea)_
+- [x] **wind-circling** — the core estimates wind from circling drift, including partial arcs. The instruments topic and Flight View infoboxes show the wind vector. A manual override command remains planned. _(needs: flight-modes)_
+- [x] **wind-zigzag** — a Kalman filter estimates wind from true airspeed and ground velocity. _(needs: wind-circling, lx-nmea)_
 - [ ] **final-glide** — selected-MC direct-glide calculations for landables are implemented, including wind, density, and arrival reserve. Waypoint and map goto targets also have direct arrival margins. Separate MC-0 results remain planned. _(needs: glide-settings, wind-circling)_
 - [ ] **speed-to-fly** — STF / speed command values, dolphin speed, auto MacCready modes. _(needs: glide-settings, vario-values)_
 - [ ] **infobox-values** — add tap panels and searchable quick replacement for the fixed flight-data fields. Replacement preserves the slot. _(needs: flight-data-fields)_
@@ -120,7 +120,7 @@ documents for accepted behavior.
 - [x] **navigation-targets** — one primary waypoint, map-position, or traffic target, with select/stop commands, saved-target recovery, a target bar, and a course line. Fixed targets use direct arrival margins. Traffic uses relative altitude and retains stale guidance during the session. See [Goto navigation](product/navigation.md). _(needs: waypoint-db, infobox-values)_
 - [x] **pinned-navigation-targets**: independent waypoint, map-position, and traffic pins with saved-list recovery, live guidance, pinning order, primary-target suppression, and a scrollable Flight View panel. See [Pinned targets](product/pinned-targets.md). Android device validation remains open. _(needs: navigation-targets)_
 - [x] **waypoint-details** — nearby map results and details with source, elevation, runway, frequency, and notes. _(needs: waypoints-on-map)_
-- [ ] **map-inspector-waypoints** — a point-first inspector that opens on every normal map tap, always shows distance and point actions beginning with **Navigate here**, and lists nearby waypoints and landables even for one result. Add fullscreen categorized result lists on phones and waypoint details such as elevation, runway, frequency, and notes. This establishes the extensible inspector result model. _(needs: waypoints-on-map, navigation-targets)_
+- [x] **map-inspector-waypoints** — a point-first inspector that opens on every normal map tap, always shows distance and point actions beginning with **Navigate here**, and lists nearby waypoints and landables even for one result. Add fullscreen categorized result lists on phones and waypoint details such as elevation, runway, frequency, and notes. This establishes the extensible inspector result model. _(needs: waypoints-on-map, navigation-targets)_
 - [x] **arrival-heights** — direct-glide arrival margins and reachability colours for viewport landables. Native desktop delivery is confirmed. Final layout acceptance, Android validation, and performance measurements remain open. See [Waypoints](product/waypoints.md#arrival-margins). _(needs: polar, glide-settings, waypoints-on-map)_
 - [ ] **emergency-navigation** — Emergency target mode with up to three ranked reachable landables, including a suitable airfield when available. Preserve the selected candidate, update the other two, draw and label every route, and allow direct map selection. _(needs: arrival-heights, pinned-navigation-targets)_
 - [ ] **nearest-lists** — sortable nearest waypoint/landable/airfield list pages. _(needs: arrival-heights)_
@@ -131,10 +131,10 @@ documents for accepted behavior.
 
 - [x] **terrain-downloads** — manage Enroute terrain through the country catalog and shared download queue, with installed metadata, manual updates, cancellation, and recovery. Physical Android background and screen-lock validation remains pending. _(needs: basemap-downloads, terrain-hillshade)_
 
-- [x] **terrain-hillshade** — display offline Enroute terrain with Igor hillshade, selectable fixed or wind-relative lighting, and installed source attribution. _(needs: offline-basemap-serving)_
+- [x] **terrain-hillshade** — display offline Enroute terrain with Igor hillshade, selectable fixed, wind-relative, or sun-relative lighting, and installed source attribution. _(needs: offline-basemap-serving)_
 - [x] **terrain-colours** — show elevation colours beneath land cover from the same offline terrain source. _(needs: terrain-hillshade)_
-- [ ] **dem** — `libs/updraft_dem`: DEM tile format, elevation lookup, download manifest format. _(needs: geo)_
-- [ ] **agl-terrain** — AGL computation in core. _(needs: dem)_
+- [x] **dem** — `libs/updraft_terrain` reads offline Terrarium MBTiles files and samples terrain MSL elevation. _(needs: geo)_
+- [x] **agl-terrain** — the core publishes terrain elevation and AGL from fused MSL altitude. See [Terrain](product/terrain.md#aircraft-elevation). _(needs: dem)_
 - [ ] **map-inspector-terrain** — add terrain elevation, AGL information, and arrival height at the selected map position. _(needs: agl-terrain, final-glide, map-inspector-waypoints)_
 - [ ] **glide-range** — terrain-aware glide range footprint ("reach polygon") rendered on the map. _(needs: agl-terrain, final-glide, compute-workers)_
 
@@ -183,13 +183,15 @@ documents for accepted behavior.
 - [ ] **traffic-trails** — render a short track trail for each moving target. _(needs: traffic-on-map)_
 - [ ] **radar-view** — dedicated FLARM radar page (relative-position rose). _(needs: traffic-store)_
 - [ ] **traffic-warnings** — present authoritative FLARM alarm levels through the shared warning UI. Support one-tap acknowledgement and reactivation when the device reports a new or worse alarm. Do not calculate collision risk in Updraft. _(needs: traffic-store, warning-presentation)_
-- [ ] **traffic-lookup** — FlarmNet / OGN DDB parsing and ID→registration lookup, custom naming, buddy highlighting. _(needs: traffic-store)_
+- [x] **traffic-lookup** — `libs/updraft_flarmnet` resolves identities from United FlarmNet, which includes OGN DDB data. FLARM broadcast identity takes priority. _(needs: traffic-store)_
+- [ ] **traffic-custom-names** — let the pilot assign custom names to traffic targets. _(needs: traffic-lookup)_
+- [ ] **buddy-highlighting** — highlight buddy aircraft on the map and in traffic details. _(needs: traffic-lookup)_
 - [x] **map-inspector-traffic** — retain traffic at the selected map point,
   refresh those targets from topic updates, and link to live details. _(needs:
   traffic-on-map, map-inspector)_
 - [ ] **traffic-list** — add a sortable list of all current traffic with search
   and direct detail navigation. _(needs: traffic-store, traffic-lookup)_
-- [ ] **traffic-navigation-targets** — allow live traffic to occupy additional-target positions alongside waypoints and map positions, including focus and pinning, relative-altitude presentation, live guidance updates, and unavailable retention with report age and last-known-position guidance. _(needs: map-inspector-traffic, pinned-navigation-targets)_
+- [x] **traffic-navigation-targets** — allow live traffic to occupy additional-target positions alongside waypoints and map positions, including focus and pinning, relative-altitude presentation, live guidance updates, and unavailable retention with report age and last-known-position guidance. _(needs: map-inspector-traffic, pinned-navigation-targets)_
 - [ ] **ogn** — OGN traffic via the WeGlide Live API (bbox-scoped polling) + FLARM/OGN deduplication. _(needs: traffic-store, connectivity)_
 - [ ] **adsb** — ADS-B In traffic: `libs/updraft_gdl90` (flag-delimited binary framing) as a second parser framing, plus PowerFLARM/Stratux wiring. _(needs: traffic-store)_
 
@@ -223,7 +225,9 @@ documents for accepted behavior.
 - [ ] **webview-compat-warning** — detect webviews too old to render the MapLibre map and show an unsupported-version warning instead of a blank map. Repro: the Android emulator API 34 image ships WebView 113, which renders the map blank. API 35 (WebView 124) renders fine. _(needs: frontend-map)_
 - [ ] **input-gestures** — configurable hardware buttons/keys and gesture bindings. _(needs: frontend-protocol)_
 - [ ] **status-pages** — flight / times / system status dialogs. _(needs: infobox-values)_
-- [ ] **sun-ephemeris** — `libs/updraft_sun`: sunrise/sunset/twilight math, time-of-day infobox values, and an "arrival past sunset" warning. _(needs: units, task-calculator)_
+- [x] **sun-ephemeris** — `libs/updraft_sun` calculates solar position and daily solar events. The core publishes the solar position for sun-relative hillshade. _(needs: units)_
+- [ ] **time-of-day-values** — sunrise, sunset, and twilight infobox values. _(needs: sun-ephemeris, infobox-values)_
+- [ ] **sunset-arrival-warning** — warn when the estimated arrival is after sunset. _(needs: sun-ephemeris, task-calculator)_
 - [ ] **checklists** — user checklist files/pages. _(needs: frontend-protocol)_
 - [ ] **weight-balance** — W&B / CG-envelope calculator. _(needs: aircraft-profiles)_
 - [ ] **config-sharing** — configuration sharing via files / QR codes. _(needs: configuration-profiles)_

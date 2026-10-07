@@ -31,6 +31,12 @@ a connected instrument (GPS, vario, FLARM). Never a phone/tablet running the app
 **Emergency mode**:
 the navigation-target mode that shows up to three suitable landables and highlights the one currently selected.
 
+**Engine noise level (ENL)**:
+a 0 to 999 measure of engine noise, as defined by the IGC specification, from a device or the microphone of the phone or tablet.
+
+**Engine running**:
+the state that Updraft derives from the engine noise level.
+
 **FLARM**:
 collision-warning system ubiquitous in European gliding.
 
@@ -41,7 +47,7 @@ pressure altitude in hundreds of feet referenced to 1013.25 hPa.
 the component that records the current flight into a flight recording.
 
 **Flight recording**:
-the stored, time-ordered fixes and events of one flight, produced by the flight recorder. Not a developer capture of core inputs.
+the stored, time-ordered fixes of one flight, with the values derived for each fix, produced by the flight recorder. Not a developer capture of core inputs.
 
 **Flight View**:
 the primary in-flight UI containing the map, Situation Bar, infoboxes, and flight controls.

@@ -13,13 +13,15 @@ four roles. Do not combine the roles when you interpret a requirement.
 - [CSS](css.md) defines current frontend styling rules.
 - [Glossary](../CONTEXT.md) defines project terms.
 
-Code and tests define implemented behavior. A document can define accepted
-behavior that is not implemented yet only when it states that status.
+Code and tests define implemented behavior. Spec issues on GitHub define
+accepted behavior that is not implemented yet. A roadmap entry links the spec
+issue that it implements.
 
 ## Product design
 
-Product documents define accepted user-visible behavior. A product document
-must state whether its behavior is current or planned.
+Product documents define current user-visible behavior. The pull request that
+delivers a roadmap slice updates them. A spec issue closes when its last slice
+is delivered.
 
 - [Settings](product/settings.md) defines current navigation, ownership,
   persistence, and presentation behavior.
@@ -45,6 +47,11 @@ must state whether its behavior is current or planned.
   traffic loss, and saved-target recovery.
 - [Flight View](product/flight-view.md) defines the map session, position follow
   mode, and map inspection.
+
+## Decisions
+
+[Architecture decision records](adr/) state a decision that is hard to
+reverse, and the reason for it.
 
 ## Research
 

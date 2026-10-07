@@ -17,9 +17,10 @@ An HTTP API is not part of the current architecture. It can return later if a sp
 
 A checked item means that the described slice exists in the current code. It
 does not mean that the broader product capability is complete. An unchecked
-item is backlog, not an accepted design or delivery commitment. Use
-[`product-scope.md`](product-scope.md) for product intent and the product
-documents for accepted behavior.
+item is backlog, not an accepted design or delivery commitment. An unchecked
+item that links a spec issue has an accepted design. Use
+[`product-scope.md`](product-scope.md) for product intent, the product
+documents for current behavior, and the linked spec issue for planned behavior.
 
 ## MVP delivery status
 
@@ -42,6 +43,7 @@ documents for accepted behavior.
 - [x] **offline-basemap-serving** — scan the application data directory's `enroute` folder for MBTiles basemaps and serve the first matching vector tile. The map uses offline tiles only, with fixed Enroute zoom limits. _(needs: basemap-assets, resource-scheme)_
 - [x] **basemap-inventory** — retain basemap files and load errors in the native inventory. Honor per-file disabled markers at startup without opening disabled files. _(needs: offline-basemap-serving)_
 - [x] **basemap-downloads** — manage Enroute basemaps in Settings → Data, with country selection, a download queue, manual updates, cancellation, recovery, and file details. Physical Android background and screen-lock validation remains pending. _(needs: offline-basemap-serving)_
+- [ ] **snail-trail** — the `trail` topic, the `updraft://` trail resource, fetch and merge, and trail rendering with the defaults: Relative vario, 60 min, and no drift. See [Spec: Trail](https://github.com/Turbo87/updraft/issues/572). _(needs: flight-recording, resource-scheme, frontend-map)_
 
 ## Scaffolding
 
@@ -86,8 +88,8 @@ documents for accepted behavior.
 - [x] **developer-replay** — `updraft_replay` sends NMEA files or converted IGC data through a TCP server in real time. It supports skip and loop controls. _(needs: nmea, tcp-client)_
 - [ ] **igc-read** — add reusable application-level IGC parsing for the records and extensions that future product features need. _(needs: units, geo)_
 - [ ] **replay** — add in-app replay at variable speed for simulator mode and demos. It sends typed simulator inputs and does not act as a device. _(needs: igc-read, core-time)_
-- [ ] **input-recording** — optionally record the exact core input sequence in `captures/`. Save worker results in a compressed companion file. Replay can start from an empty core or a saved resume snapshot. _(needs: replay, compute-workers)_
-- [ ] **flight-modes** — detect takeoff, landing, cruise, and circling. Publish the flight timer and current mode. _(needs: source-selection)_
+- [ ] **input-recording** — optionally record the exact core input sequence in `captures/`. Save worker results in a compressed companion file. Replay starts from an empty core. _(needs: replay, compute-workers)_
+- [ ] **flight-modes** — detect takeoff, landing, cruise, and circling. Publish the flight timer and current mode. Derive takeoff, landing, and the flight timer from the flight recording samples, so that they survive a restart. _(needs: source-selection, flight-recording)_
 - [x] **vario-values** — core calculates TE vario, netto, relative vario, and a 20-second average vario from altitude, airspeed, and the active polar. Relative vario subtracts density-corrected minimum sink from netto. The instruments topic and debug overlay expose these values. Thermal averagers remain planned. _(needs: nmea, flight-modes, polar)_
 
 ## Glide computer
@@ -161,9 +163,10 @@ documents for accepted behavior.
   and persisted progress. See [Ordered tasks](product/tasks.md). The broader
   competition features below remain backlog.
 
+- [ ] **task-progress-recovery** — derive task progress from the flight recording at restore and after each route change. Remove the persisted progress of `ordered-task-slice`. See [task: Derive task progress from fixes and the route](https://github.com/Turbo87/updraft/issues/564) and [Spec: Flight recording](https://github.com/Turbo87/updraft/issues/571). _(needs: flight-recording, ordered-task-slice)_
 - [ ] **observation-zones** — OZ types (cylinder, FAI sector, keyhole, line) with entry/exit detection, per-point overrides. _(needs: geo-shapes)_
 - [ ] **task-model** — task data model: task types, start/finish rules, validation, serde. _(needs: observation-zones, waypoint-db)_
-- [ ] **task-engine** — in-flight progress: start detection/arming, automatic + manual turnpoint advance, and finish. Publish the current task point as the default Task target without stealing focus from another active target, and persist task state via snapshots for crash resume. _(needs: task-model, flight-modes, navigation-targets)_
+- [ ] **task-engine** — in-flight progress: start detection/arming, automatic + manual turnpoint advance, and finish. Publish the current task point as the default Task target without stealing focus from another active target. Progress is derived from the flight recording. _(needs: task-model, flight-modes, navigation-targets, flight-recording)_
 - [ ] **task-manager-ui** — task build/edit UI (list editing + map rendering of the task). _(needs: task-model, frontend-map)_
 - [ ] **map-inspector-task-points** — add task points and their task context to map-inspector results. _(needs: task-manager-ui, map-inspector-waypoints)_
 - [ ] **task-calculator** — required speed, achieved speed, time gates, task arrival estimates, and task infobox values. _(needs: task-engine, final-glide)_
@@ -197,17 +200,20 @@ documents for accepted behavior.
 
 ## Logging & recording
 
-- [ ] **igc-write** — IGC recording: headers, B-records, pre-takeoff buffer, auto start/stop, interval control. Crash-safe: incremental flush-per-batch writes plus state snapshots so an interrupted flight resumes logging on restart. _(needs: igc-read, flight-modes)_
+- [ ] **flight-recording** — the core recording rules and record effects, the `state.sqlite` samples table with WAL and `user_version` migrations, the unusable-database rule, and the write-failure `error` log. Restore at startup discards a recording older than 3 h, keeps UTC and position in the core, and seeds the wind. See [Spec: Flight recording](https://github.com/Turbo87/updraft/issues/571). _(needs: vario-values, agl-terrain, wind-circling, tauri-driver)_
+- [ ] **igc-write** — IGC recording: headers, B-records, pre-takeoff buffer, auto start/stop, interval control. Crash safety uses `state.sqlite`, like the flight recording. Before the IGC log moves into `state.sqlite`, check the unusable-database rule again, because that rule deletes the whole database. The IGC log contains only internal GNSS and baro data, and writes ENL when `engine-monitoring` exists. See [The IGC log is separate from the flight recording](adr/0003-the-igc-log-is-separate-from-the-flight-recording.md). _(needs: igc-read, flight-modes, flight-recording)_
 - [ ] **g-record** — tamper-evident G-record signing and validation. _(needs: igc-write)_
 - [ ] **markers-pev** — manual/automatic markers and pilot events (1 Hz burst logging), markers on map, and the map-inspector **Drop marker** action. _(needs: igc-write, frontend-map, map-inspector-waypoints)_
 - [ ] **replay-ui** — flight replay controls in the UI (file picker, speed, seek) on top of the replay engine. _(needs: replay, frontend-protocol)_
-- [ ] **engine-monitoring** — ENL/MoP detection, engine hours, microphone-based ENL. _(needs: igc-write)_
+- [ ] **engine-monitoring** — microphone ENL as the only engine source, the nullable `enl` sample column and its migration, and `enl` on the trail resource and topic. Add the engine-running threshold (raw 0 to 999, default 500) to new engine settings, and the engine-on ramp of the trail. See [Spec: Flight recording](https://github.com/Turbo87/updraft/issues/571) and [Spec: Trail](https://github.com/Turbo87/updraft/issues/572). _(needs: flight-recording, snail-trail)_
+- [ ] **engine-hours** — engine hours from the engine-running state. _(needs: engine-monitoring)_
 
 ## Map & UI polish
 
 - [x] **map-follow** — follow fresh ownship positions until the user pans. Show a control that returns to the current position. Keep camera state while a settings route covers the map. _(needs: map-position, route-shell)_
 - [ ] **map-orientation** — add track-up, north-up, and target-up modes. Add auto-zoom, circling zoom, and smart position offset. _(needs: map-follow, flight-modes)_
-- [ ] **snail-trail** — flight trail with length modes and colouring by vario/altitude/speed. _(needs: frontend-map, vario-values)_
+- [ ] **trail-settings** — six trail colour modes with their scales, the trail length from 0 to 1440 min with presets, and drift compensation on `/settings/map`. See [Spec: Trail](https://github.com/Turbo87/updraft/issues/572). _(needs: snail-trail, settings-persistence)_
+- [ ] **trail-flight-phases** — drift compensation only while circling and on by default. Separate cruise and circling trail lengths. See [Spec: Trail](https://github.com/Turbo87/updraft/issues/572). _(needs: flight-modes, trail-settings)_
 - [ ] **warning-presentation** — shared core warning identity, relevance, priority, and acknowledgement state. It provides fixed Situation Bar presentation with the highest-priority warning, body/details and `✓` actions, persistent pinned-target readouts with a temporary focused-target readout, warning-aware screen Map controls, global collision-warning overlays, and one-shot activation effects for native audio. _(needs: core-time, app-shell, pinned-navigation-targets)_
 - [ ] **native-warning-notifications** — mirror each active warning in a platform notification while the app is in the background. Handle permissions, lifecycle, identity-based updates, removal, and tap-to-open routing. _(needs: warning-presentation, tauri-scaffold)_
 - [ ] **infobox-pages** — linear infobox pages in a bottom portrait dock and side landscape dock, orientation-adaptive page swipes, a transient non-clickable page indicator, and automatic Thermal-page behavior. _(needs: infobox-values, flight-modes)_

@@ -48,6 +48,11 @@ is delivered.
 - [Flight View](product/flight-view.md) defines the map session, position follow
   mode, and map inspection.
 
+## Decisions
+
+[Architecture decision records](adr/) state a decision that is hard to
+reverse, and the reason for it.
+
 ## Research
 
 Research documents record dated observations and analysis. They inform product

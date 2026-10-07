@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Pathname } from '$app/types';
+  import type { ResolvedPathname } from '$app/types';
   import type { Navigation } from '#lib/protocol/generated/Navigation.js';
   import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
@@ -13,14 +13,14 @@
   type Props = {
     navigation: Navigation;
     units: UnitSettings;
-    href?: Pathname;
+    href?: ResolvedPathname;
     label?: string;
     compact?: boolean;
   };
   let {
     navigation,
     units,
-    href = '/navigation',
+    href = resolve('/navigation'),
     label = m.navigation_details(),
     compact = false,
   }: Props = $props();
@@ -38,7 +38,7 @@
   }
 </script>
 
-<a href={resolve(href)} aria-label={label} class:compact class:stale={guidance?.stale}>
+<a {href} aria-label={label} class:compact class:stale={guidance?.stale}>
   {#if compact}<span
       aria-hidden="true"
       class={navigation.target.type === 'task'

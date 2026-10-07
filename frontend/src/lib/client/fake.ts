@@ -2,7 +2,6 @@ import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
 import type { ChangeSetting } from '$lib/protocol/generated/ChangeSetting';
 import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
 import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
-import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
 import type { PolarId } from '$lib/protocol/generated/PolarId';
 import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
@@ -64,8 +63,22 @@ export type NavigationCommand =
   | ['unpinTarget', number]
   | ['setNavigationTarget', NavigationTarget | null];
 
+/**
+ * A settings or glide performance command call that the fake client records.
+ * The fake client does not validate, change state, or emit topics for these commands.
+ */
+export type SettingsCommand =
+  | ['changeSetting', ChangeSetting]
+  | ['setPolar', PolarId]
+  | ['setEnergyCompensation', boolean]
+  | ['setFlarmPositionCorrection', boolean]
+  | ['setMacCready', number]
+  | ['setBugs', number]
+  | ['setBallast', number];
+
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  readonly settingsCommands: SettingsCommand[] = [];
   readonly navigationCommands: NavigationCommand[] = [];
   #navigationReplies: boolean[] = [];
   /** Sets the results of the next navigation commands. Later commands reply true. */
@@ -105,7 +118,6 @@ export class FakeClient implements UpdraftClient {
   #terrainListeners = new Set<(status: TerrainStatus) => void>();
 
   #arrivalListeners = new Set<(update: ArrivalUpdate) => void>();
-  #glidePerformance: GlidePerformance = { macCready: 0, bugs: 0, ballast: 0 };
   #airspace: AirspaceStatus = { generation: 0, sources: [] };
   #waypoints: WaypointStatus = { generation: 0, sources: [] };
   #airspaceFixtures = new Map<string, AirspaceStatus['sources'][number]>();
@@ -115,7 +127,6 @@ export class FakeClient implements UpdraftClient {
   #externalDevices: PublishedExternalDevice[];
   #nextExternalDeviceId: ExternalDeviceId;
   #bondedBluetoothDevices: BondedBluetoothDevices;
-  #settings = defaultSettings();
 
   constructor(options: FakeClientOptions = {}) {
     this.#externalDevices = options.externalDevices?.map((device) => ({ ...device })) ?? [];
@@ -141,8 +152,8 @@ export class FakeClient implements UpdraftClient {
       },
       { topic: 'taskSaveFailed', value: false },
       { topic: 'pinnedTargets', value: [] },
-      { topic: 'settings', value: this.#settings },
-      { topic: 'glidePerformance', value: this.#glidePerformance },
+      { topic: 'settings', value: defaultSettings() },
+      { topic: 'glidePerformance', value: { macCready: 0, bugs: 0, ballast: 0 } },
       { topic: 'externalDevices', value: this.#externalDevices },
       { topic: 'airspace', value: this.#airspace },
       { topic: 'waypoints', value: this.#waypoints },
@@ -398,45 +409,7 @@ export class FakeClient implements UpdraftClient {
   }
 
   async changeSetting(change: ChangeSetting): Promise<void> {
-    if (
-      change.type === 'arrivalReserve' &&
-      (!Number.isFinite(change.reserve) || change.reserve < 0)
-    ) {
-      throw new Error('Arrival reserve must be finite and nonnegative');
-    }
-    let settings = this.#settings;
-    switch (change.type) {
-      case 'locale':
-        if (settings.locale === change.locale) return;
-        this.#settings = { ...settings, locale: change.locale };
-        break;
-      case 'units': {
-        let current = settings.units;
-        let units = change.units;
-        if (
-          current.altitude === units.altitude &&
-          current.distance === units.distance &&
-          current.speed === units.speed &&
-          current.verticalSpeed === units.verticalSpeed
-        )
-          return;
-        this.#settings = { ...settings, units: { ...units } };
-        break;
-      }
-      case 'arrivalReserve':
-        if (settings.arrivalReserve === change.reserve) return;
-        this.#settings = { ...settings, arrivalReserve: change.reserve };
-        break;
-      case 'climbAverageMethod':
-        if (settings.climbAverageMethod === change.method) return;
-        this.#settings = { ...settings, climbAverageMethod: change.method };
-        break;
-      case 'hillshadeDirection':
-        if (settings.hillshadeDirection === change.direction) return;
-        this.#settings = { ...settings, hillshadeDirection: change.direction };
-        break;
-    }
-    this.emit({ topic: 'settings', value: this.#settings });
+    this.settingsCommands.push(['changeSetting', change]);
   }
 
   async getPolars(): Promise<PolarId[]> {
@@ -444,49 +417,27 @@ export class FakeClient implements UpdraftClient {
   }
 
   async setPolar(polar: PolarId): Promise<void> {
-    if (!(await this.getPolars()).includes(polar)) throw new Error('Unknown polar');
-    if (this.#settings.polar === polar) return;
-    this.#settings = { ...this.#settings, polar };
-    this.emit({ topic: 'settings', value: this.#settings });
+    this.settingsCommands.push(['setPolar', polar]);
   }
 
   async setEnergyCompensation(enabled: boolean): Promise<void> {
-    if (this.#settings.energyCompensation === enabled) return;
-    this.#settings = { ...this.#settings, energyCompensation: enabled };
-    this.emit({ topic: 'settings', value: this.#settings });
+    this.settingsCommands.push(['setEnergyCompensation', enabled]);
   }
 
   async setFlarmPositionCorrection(enabled: boolean): Promise<void> {
-    if (this.#settings.flarmPositionCorrection === enabled) return;
-    this.#settings = { ...this.#settings, flarmPositionCorrection: enabled };
-    this.emit({ topic: 'settings', value: this.#settings });
+    this.settingsCommands.push(['setFlarmPositionCorrection', enabled]);
   }
 
   async setMacCready(macCready: number): Promise<void> {
-    if (!Number.isFinite(macCready) || macCready < 0) {
-      throw new Error('MacCready must be finite and nonnegative');
-    }
-    if (this.#glidePerformance.macCready === macCready) return;
-    this.#glidePerformance = { ...this.#glidePerformance, macCready };
-    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
+    this.settingsCommands.push(['setMacCready', macCready]);
   }
 
   async setBugs(bugs: number): Promise<void> {
-    if (!Number.isFinite(bugs) || bugs < 0 || bugs >= 100) {
-      throw new Error('Bugs must be between 0% and less than 100%');
-    }
-    if (this.#glidePerformance.bugs === bugs) return;
-    this.#glidePerformance = { ...this.#glidePerformance, bugs };
-    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
+    this.settingsCommands.push(['setBugs', bugs]);
   }
 
   async setBallast(ballast: number): Promise<void> {
-    if (!Number.isFinite(ballast) || ballast < 0) {
-      throw new Error('Ballast must be finite and nonnegative');
-    }
-    if (this.#glidePerformance.ballast === ballast) return;
-    this.#glidePerformance = { ...this.#glidePerformance, ballast };
-    this.emit({ topic: 'glidePerformance', value: this.#glidePerformance });
+    this.settingsCommands.push(['setBallast', ballast]);
   }
 
   /**

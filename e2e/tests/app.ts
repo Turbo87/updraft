@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import type { GeoJSONSourceSpecification } from 'maplibre-gl';
 import type { AppContext } from '$lib/app-context';
 import type { BasemapStatus, TerrainStatus } from '$lib/client';
-import type { FakeClient, NavigationCommand } from '$lib/client/fake';
+import type { FakeClient, NavigationCommand, SettingsCommand } from '$lib/client/fake';
 import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
 import type { Navigation } from '$lib/protocol/generated/Navigation';
 import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
@@ -81,6 +81,9 @@ function createApp(page: Page) {
     },
     async emitPins(value: PinnedTarget[]) {
       await this.emit({ topic: 'pinnedTargets', value });
+    },
+    settingsCommands(): Promise<SettingsCommand[]> {
+      return page.evaluate(() => window.__updraftFake!.settingsCommands);
     },
     navigationCommands(): Promise<NavigationCommand[]> {
       return page.evaluate(() => window.__updraftFake!.navigationCommands);

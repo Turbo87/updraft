@@ -27,7 +27,7 @@ serde = { version = "=1.0.229", features = ["derive", "rc"] }
 tauri = { version = "=2.12.1", features = [] }
 tauri-plugin-dialog = "=2.7.3"
 tauri-plugin-fs = "=2.5.2"
-tauri-plugin-opener = "=2.5.5"
+tauri-plugin-opener = "=2.7.0"
 tauri-plugin-updraft = { path = "../libs/tauri_plugin_updraft" }
 tempfile = "=3.27.0"
 tracing = "=0.1.44"

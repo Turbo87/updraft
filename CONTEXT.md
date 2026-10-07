@@ -37,6 +37,12 @@ collision-warning system ubiquitous in European gliding.
 **FL (Flight Level)**:
 pressure altitude in hundreds of feet referenced to 1013.25 hPa.
 
+**Flight recorder**:
+the component that records the current flight into a flight recording.
+
+**Flight recording**:
+the stored, time-ordered fixes and events of one flight, produced by the flight recorder. Not a developer capture of core inputs.
+
 **Flight View**:
 the primary in-flight UI containing the map, Situation Bar, infoboxes, and flight controls.
 
@@ -90,3 +96,6 @@ the fixed Flight View region that normally shows the focused target and is tempo
 
 **SPP**:
 Bluetooth Serial Port Profile (classic Bluetooth serial).
+
+**Trail**:
+the map rendering of the current flight recording. Also called snail trail.

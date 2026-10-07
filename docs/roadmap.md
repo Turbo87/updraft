@@ -17,9 +17,10 @@ An HTTP API is not part of the current architecture. It can return later if a sp
 
 A checked item means that the described slice exists in the current code. It
 does not mean that the broader product capability is complete. An unchecked
-item is backlog, not an accepted design or delivery commitment. Use
-[`product-scope.md`](product-scope.md) for product intent and the product
-documents for accepted behavior.
+item is backlog, not an accepted design or delivery commitment. An unchecked
+item that links a spec issue has an accepted design. Use
+[`product-scope.md`](product-scope.md) for product intent, the product
+documents for current behavior, and the linked spec issue for planned behavior.
 
 ## MVP delivery status
 

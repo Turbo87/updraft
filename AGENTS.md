@@ -21,7 +21,7 @@ Git history contains earlier designs and dated implementation specifications.
 Do not recover them as current requirements. Report a missing or unclear
 current requirement instead of combining historical designs.
 
-Current product documents define accepted intended behavior. Code and tests define implemented behavior. Treat prototypes and simulators as evidence, not as architecture or hardware-compatibility guarantees.
+Product documents define current behavior. Spec issues that the roadmap links define accepted planned behavior. Code and tests define implemented behavior. Treat prototypes and simulators as evidence, not as architecture or hardware-compatibility guarantees.
 
 ## Scope and design
 

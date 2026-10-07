@@ -1,10 +1,10 @@
-import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
+import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget.js';
 
 import { expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
-import { settingsFixture } from '$lib/settings.fixture';
+import { settingsFixture } from '#lib/settings.fixture.js';
 import PinnedTargets from './PinnedTargets.svelte';
 
 it('displays pin guidance with units and updates missing and stale values', async () => {

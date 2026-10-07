@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
+  import type { PublishedExternalDevice } from '#lib/protocol/generated/PublishedExternalDevice.js';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { fn } from 'storybook/test';

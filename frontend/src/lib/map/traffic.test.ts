@@ -2,7 +2,7 @@ import type { ErrorEvent } from 'maplibre-gl';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { trafficTarget } from '$lib/traffic.fixture';
+import { trafficTarget } from '#lib/traffic.fixture.js';
 import {
   applyTrafficSourceUpdate,
   trafficFeature,

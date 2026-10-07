@@ -6,8 +6,8 @@ import { page } from 'vitest/browser';
 
 import '../../../app.css';
 
-import { AIRSPACE_BROWSER_FIXTURE } from '$lib/map/airspace.fixture';
-import { withViewport } from '$lib/viewport.fixture';
+import { AIRSPACE_BROWSER_FIXTURE } from '#lib/map/airspace.fixture.js';
+import { withViewport } from '#lib/viewport.fixture.js';
 import AirspaceDetails from './AirspaceDetails.svelte';
 
 const map = {

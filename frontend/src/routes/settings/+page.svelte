@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { getAppContext } from '$lib/app-context';
-  import ConfirmDialog from '$lib/ConfirmDialog.svelte';
-  import { languageOptions } from '$lib/language-options';
-  import { m } from '$lib/paraglide/messages.js';
-  import { getLocale } from '$lib/paraglide/runtime.js';
-  import SettingsIndexScreen from '$lib/SettingsIndexScreen.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import ConfirmDialog from '#lib/ConfirmDialog.svelte';
+  import { languageOptions } from '#lib/language-options.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import SettingsIndexScreen from '#lib/SettingsIndexScreen.svelte';
 
   const { client, settings, enrouteCatalog } = getAppContext();
 

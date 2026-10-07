@@ -1,6 +1,6 @@
-import type { DerivedInstruments } from '$lib/protocol/generated/DerivedInstruments';
-import type { Instruments } from '$lib/protocol/generated/Instruments';
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { DerivedInstruments } from '#lib/protocol/generated/DerivedInstruments.js';
+import type { Instruments } from '#lib/protocol/generated/Instruments.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 
 /** Every derived value absent, for a test that names only a few. */
 export const EMPTY_DERIVED_INSTRUMENTS: DerivedInstruments = {

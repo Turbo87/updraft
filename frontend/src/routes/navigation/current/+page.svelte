@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { getAppContext } from '$lib/app-context';
-  import { navigationLabel } from '$lib/navigation';
-  import { m } from '$lib/paraglide/messages';
-  import PinTargetButton from '$lib/PinTargetButton.svelte';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
-  import StopNavigationButton from '$lib/StopNavigationButton.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import { navigationLabel } from '#lib/navigation.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import PinTargetButton from '#lib/PinTargetButton.svelte';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
+  import StopNavigationButton from '#lib/StopNavigationButton.svelte';
 
   const { navigation } = getAppContext();
 </script>

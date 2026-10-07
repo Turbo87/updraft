@@ -5,9 +5,9 @@ import { addProtocol, removeProtocol } from 'maplibre-gl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
-import { instrumentsFixture } from '$lib/instruments.fixture';
-import { MapState } from '$lib/map-state.svelte';
-import { TrafficStore } from '$lib/stores/traffic.svelte';
+import { instrumentsFixture } from '#lib/instruments.fixture.js';
+import { MapState } from '#lib/map-state.svelte.js';
+import { TrafficStore } from '#lib/stores/traffic.svelte.js';
 import Map from './Map.svelte';
 
 const transport = vi.hoisted(() => ({ origin: '' }));

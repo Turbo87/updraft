@@ -1,24 +1,24 @@
 <script lang="ts">
-  import type { UpdraftClient } from '$lib/client';
-  import type { MapState } from '$lib/map-state.svelte';
-  import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
-  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
-  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
-  import type { Instruments } from '$lib/protocol/generated/Instruments';
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
-  import type { Navigation as NavigationState } from '$lib/protocol/generated/Navigation';
-  import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
-  import type { Task } from '$lib/protocol/generated/Task';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
-  import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
-  import type { TrafficStore } from '$lib/stores/traffic.svelte';
+  import type { UpdraftClient } from '#lib/client/index.js';
+  import type { MapState } from '#lib/map-state.svelte.js';
+  import type { AirspaceStatus } from '#lib/protocol/generated/AirspaceStatus.js';
+  import type { ClimbAverageMethod } from '#lib/protocol/generated/ClimbAverageMethod.js';
+  import type { HillshadeDirection } from '#lib/protocol/generated/HillshadeDirection.js';
+  import type { Instruments } from '#lib/protocol/generated/Instruments.js';
+  import type { LatLon } from '#lib/protocol/generated/LatLon.js';
+  import type { Navigation as NavigationState } from '#lib/protocol/generated/Navigation.js';
+  import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget.js';
+  import type { Task } from '#lib/protocol/generated/Task.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
+  import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
+  import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
 
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
 
-  import Map from '$lib/map/Map.svelte';
-  import MapOverlayControl from '$lib/MapOverlayControl.svelte';
-  import { m } from '$lib/paraglide/messages.js';
+  import Map from '#lib/map/Map.svelte';
+  import MapOverlayControl from '#lib/MapOverlayControl.svelte';
+  import { m } from '#lib/paraglide/messages.js';
   import { flightInfoboxes } from './infobox/fields';
   import InfoboxDock from './infobox/InfoboxDock.svelte';
   import PinnedTargets from './PinnedTargets.svelte';

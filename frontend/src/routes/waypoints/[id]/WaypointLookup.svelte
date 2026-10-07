@@ -2,14 +2,14 @@
   import type { FeatureCollection, Point } from 'geojson';
   import type { GeoJSONSource, Map, MapEventType } from 'maplibre-gl';
   import type { Snippet } from 'svelte';
-  import type { MapState } from '$lib/map-state.svelte';
-  import type { AltitudeUnit } from '$lib/units';
-  import type { WaypointFeature, WaypointProperties } from '$lib/waypoints';
+  import type { MapState } from '#lib/map-state.svelte.js';
+  import type { AltitudeUnit } from '#lib/units.js';
+  import type { WaypointFeature, WaypointProperties } from '#lib/waypoints.js';
 
-  import Button from '$lib/Button.svelte';
-  import { m } from '$lib/paraglide/messages.js';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
-  import WaypointDetails from '$lib/WaypointDetails.svelte';
+  import Button from '#lib/Button.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
+  import WaypointDetails from '#lib/WaypointDetails.svelte';
 
   type Props = {
     map: Map;

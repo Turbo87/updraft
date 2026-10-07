@@ -1,24 +1,24 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { Locale } from '$lib/protocol/generated/Locale';
-  import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-  import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
-  import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
-  import type { InstrumentsStore } from '$lib/stores/instruments.svelte';
-  import type { TrafficStore } from '$lib/stores/traffic.svelte';
+  import type { Locale } from '#lib/protocol/generated/Locale.js';
+  import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget.js';
+  import type { TrafficAlarmLevel } from '#lib/protocol/generated/TrafficAlarmLevel.js';
+  import type { TrafficUpdate } from '#lib/protocol/generated/TrafficUpdate.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
+  import type { InstrumentsStore } from '#lib/stores/instruments.svelte.js';
+  import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
 
   import { onMount } from 'svelte';
 
-  import Button from '$lib/Button.svelte';
-  import Card from '$lib/Card.svelte';
-  import { calculateDistanceAndBearing } from '$lib/geographic-position';
-  import { m } from '$lib/paraglide/messages.js';
-  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
-  import StatusPill from '$lib/StatusPill.svelte';
-  import { convertAltitude, convertDistance, convertVerticalSpeed } from '$lib/units';
-  import ValueTile from '$lib/ValueTile.svelte';
+  import Button from '#lib/Button.svelte';
+  import Card from '#lib/Card.svelte';
+  import { calculateDistanceAndBearing } from '#lib/geographic-position.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import ResponsiveCard from '#lib/ResponsiveCard.svelte';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
+  import StatusPill from '#lib/StatusPill.svelte';
+  import { convertAltitude, convertDistance, convertVerticalSpeed } from '#lib/units.js';
+  import ValueTile from '#lib/ValueTile.svelte';
   import {
     formatTrafficAlarmLevel,
     formatTrafficId,

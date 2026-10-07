@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { BondedBluetoothDevices } from '$lib/client/bonded-bluetooth-devices';
-  import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
-  import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
+  import type { BondedBluetoothDevices } from '#lib/client/bonded-bluetooth-devices.js';
+  import type { ConnectionSpec } from '#lib/protocol/generated/ConnectionSpec.js';
+  import type { PublishedExternalDevice } from '#lib/protocol/generated/PublishedExternalDevice.js';
 
   import { onMount } from 'svelte';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import Button from './Button.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
   import RadioList from './RadioList.svelte';

@@ -3,10 +3,10 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
-  import { getAppContext } from '$lib/app-context';
-  import { m } from '$lib/paraglide/messages.js';
-  import { getLocale } from '$lib/paraglide/runtime.js';
-  import PinTargetButton from '$lib/PinTargetButton.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import PinTargetButton from '#lib/PinTargetButton.svelte';
   import TrafficDetails from './TrafficDetails.svelte';
 
   const { client, instruments, settings, traffic } = getAppContext();

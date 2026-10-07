@@ -1,6 +1,6 @@
-import type { Locale } from '$lib/protocol/generated/Locale';
+import type { Locale } from '#lib/protocol/generated/Locale.js';
 
-import { getLocale, overwriteGetLocale } from '$lib/paraglide/runtime.js';
+import { getLocale, overwriteGetLocale } from '#lib/paraglide/runtime.js';
 
 const automaticLocale: Locale = getLocale();
 let locale = $state<Locale>(automaticLocale);

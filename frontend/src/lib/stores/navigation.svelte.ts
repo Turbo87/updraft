@@ -1,8 +1,8 @@
-import type { Navigation } from '$lib/protocol/generated/Navigation';
-import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
-import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
-import type { Task } from '$lib/protocol/generated/Task';
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { Navigation } from '#lib/protocol/generated/Navigation.js';
+import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
+import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget.js';
+import type { Task } from '#lib/protocol/generated/Task.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 
 export class NavigationStore {
   task = $state.raw<Task>({

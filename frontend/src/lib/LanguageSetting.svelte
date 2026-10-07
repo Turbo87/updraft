@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { Locale } from '$lib/protocol/generated/Locale';
+  import type { Locale } from '#lib/protocol/generated/Locale.js';
 
-  import { languageOptions } from '$lib/language-options';
-  import { m } from '$lib/paraglide/messages.js';
-  import RadioList from '$lib/RadioList.svelte';
+  import { languageOptions } from '#lib/language-options.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import RadioList from '#lib/RadioList.svelte';
 
   type Props = {
     locale: Locale;

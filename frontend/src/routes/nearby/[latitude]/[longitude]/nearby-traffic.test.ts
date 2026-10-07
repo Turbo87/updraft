@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { trafficTarget } from '$lib/traffic.fixture';
+import { trafficTarget } from '#lib/traffic.fixture.js';
 import {
   createRetainedTraffic,
   formatTrafficAlarmLevel,

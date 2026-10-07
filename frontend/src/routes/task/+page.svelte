@@ -1,18 +1,18 @@
 <script lang="ts">
   import type { FeatureCollection, Point } from 'geojson';
   import type { GeoJSONSource } from 'maplibre-gl';
-  import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
-  import type { WaypointFeature, WaypointProperties } from '$lib/waypoints';
+  import type { TaskCommand } from '#lib/protocol/generated/TaskCommand.js';
+  import type { WaypointFeature, WaypointProperties } from '#lib/waypoints.js';
 
-  import { getAppContext } from '$lib/app-context';
-  import Button from '$lib/Button.svelte';
-  import NavigateButton from '$lib/NavigateButton.svelte';
-  import { navigationLabel } from '$lib/navigation';
-  import { waypointTarget } from '$lib/navigation-target';
-  import { m } from '$lib/paraglide/messages';
-  import { getLocale } from '$lib/paraglide/runtime';
-  import PinTargetButton from '$lib/PinTargetButton.svelte';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import Button from '#lib/Button.svelte';
+  import NavigateButton from '#lib/NavigateButton.svelte';
+  import { waypointTarget } from '#lib/navigation-target.js';
+  import { navigationLabel } from '#lib/navigation.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import PinTargetButton from '#lib/PinTargetButton.svelte';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
 
   const { client, navigation, mapState, waypoints } = getAppContext();
   const task = $derived(navigation.task);

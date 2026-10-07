@@ -1,21 +1,21 @@
 <script lang="ts">
-  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
-  import type { Navigation as NavigationState } from '$lib/protocol/generated/Navigation';
-  import type { Task } from '$lib/protocol/generated/Task';
+  import type { ClimbAverageMethod } from '#lib/protocol/generated/ClimbAverageMethod.js';
+  import type { Navigation as NavigationState } from '#lib/protocol/generated/Navigation.js';
+  import type { Task } from '#lib/protocol/generated/Task.js';
 
   import 'maplibre-gl/dist/maplibre-gl.css';
   import 'svelte-maplibre-gl/vite';
 
   import type { GeoJSONSourceSpecification, MapEventType, MapMouseEvent } from 'maplibre-gl';
-  import type { UpdraftClient } from '$lib/client';
-  import type { MapState } from '$lib/map-state.svelte';
-  import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
-  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
-  import type { Instruments } from '$lib/protocol/generated/Instruments';
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
-  import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
-  import type { TrafficStore } from '$lib/stores/traffic.svelte';
+  import type { UpdraftClient } from '#lib/client/index.js';
+  import type { MapState } from '#lib/map-state.svelte.js';
+  import type { AirspaceStatus } from '#lib/protocol/generated/AirspaceStatus.js';
+  import type { HillshadeDirection } from '#lib/protocol/generated/HillshadeDirection.js';
+  import type { Instruments } from '#lib/protocol/generated/Instruments.js';
+  import type { LatLon } from '#lib/protocol/generated/LatLon.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
+  import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
+  import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
 
   import { untrack } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';

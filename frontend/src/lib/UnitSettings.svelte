@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-  import type { DistanceUnit } from '$lib/protocol/generated/DistanceUnit';
-  import type { SpeedUnit } from '$lib/protocol/generated/SpeedUnit';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
-  import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
+  import type { AltitudeUnit } from '#lib/protocol/generated/AltitudeUnit.js';
+  import type { DistanceUnit } from '#lib/protocol/generated/DistanceUnit.js';
+  import type { SpeedUnit } from '#lib/protocol/generated/SpeedUnit.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
+  import type { VerticalSpeedUnit } from '#lib/protocol/generated/VerticalSpeedUnit.js';
 
-  import InlineChoiceGroup from '$lib/InlineChoiceGroup.svelte';
-  import { m } from '$lib/paraglide/messages.js';
+  import InlineChoiceGroup from '#lib/InlineChoiceGroup.svelte';
+  import { m } from '#lib/paraglide/messages.js';
 
   type UnitSettingsProps = {
     units: UnitSettings;

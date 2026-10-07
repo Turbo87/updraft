@@ -1,5 +1,5 @@
-import type { Task } from '$lib/protocol/generated/Task';
-import type { WaypointFeature } from '$lib/waypoints';
+import type { Task } from '#lib/protocol/generated/Task';
+import type { WaypointFeature } from '#lib/waypoints';
 
 import { expect } from '@playwright/test';
 

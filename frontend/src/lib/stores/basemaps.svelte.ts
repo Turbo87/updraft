@@ -1,4 +1,4 @@
-import type { BasemapStatus } from '$lib/client';
+import type { BasemapStatus } from '#lib/client/index.js';
 
 export class BasemapsStore {
   current = $state.raw<BasemapStatus | null>(null);

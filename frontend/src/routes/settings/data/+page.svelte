@@ -1,8 +1,8 @@
 <script lang="ts">
   import { beforeNavigate } from '$app/navigation';
 
-  import { getAppContext } from '$lib/app-context';
-  import DataLibrary from '$lib/DataLibrary.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import DataLibrary from '#lib/DataLibrary.svelte';
 
   const {
     client,

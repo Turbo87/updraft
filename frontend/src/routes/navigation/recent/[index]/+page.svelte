@@ -1,14 +1,14 @@
 <script lang="ts">
-  import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
+  import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
 
   import { page } from '$app/state';
 
-  import { getAppContext } from '$lib/app-context';
-  import NavigateButton from '$lib/NavigateButton.svelte';
-  import { navigationLabel } from '$lib/navigation';
-  import { m } from '$lib/paraglide/messages';
-  import PinTargetButton from '$lib/PinTargetButton.svelte';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import NavigateButton from '#lib/NavigateButton.svelte';
+  import { navigationLabel } from '#lib/navigation.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import PinTargetButton from '#lib/PinTargetButton.svelte';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
 
   const { navigation } = getAppContext();
   let selected = $state.raw<{ index: string | undefined; target: NavigationTarget } | null>(null);

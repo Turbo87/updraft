@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
 import type * as GeoJSON from 'geojson';
 import type { GeoJSONSource } from 'maplibre-gl';
-import type { AirspaceProperties } from '$lib/airspace';
-import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
+import type { AirspaceProperties } from '#lib/airspace';
+import type { GpsInstruments } from '#lib/protocol/generated/GpsInstruments';
+import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget';
 import type { TestApp } from './app';
 
 import { expect } from '@playwright/test';

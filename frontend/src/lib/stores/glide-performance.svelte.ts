@@ -1,5 +1,5 @@
-import type { GlidePerformance } from '$lib/protocol/generated/GlidePerformance';
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { GlidePerformance } from '#lib/protocol/generated/GlidePerformance.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 
 export class GlidePerformanceStore {
   current = $state.raw<GlidePerformance>({ macCready: 0, bugs: 0, ballast: 0 });

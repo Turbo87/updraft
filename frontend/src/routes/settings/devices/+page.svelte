@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { BondedBluetoothDevices } from '$lib/client/bonded-bluetooth-devices';
+  import type { BondedBluetoothDevices } from '#lib/client/bonded-bluetooth-devices.js';
 
   import { onMount } from 'svelte';
 
-  import { getAppContext } from '$lib/app-context';
-  import DevicesScreen from '$lib/DevicesScreen.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import DevicesScreen from '#lib/DevicesScreen.svelte';
 
   const { client, externalDevices } = getAppContext();
   let bondedBluetoothDevices = $state.raw<BondedBluetoothDevices>({ status: 'unsupported' });

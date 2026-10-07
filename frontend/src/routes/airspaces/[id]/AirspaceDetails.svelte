@@ -1,18 +1,18 @@
 <script lang="ts">
   import type * as GeoJSON from 'geojson';
   import type { GeoJSONSource, Map, MapEventType } from 'maplibre-gl';
-  import type { AirspaceLimit, AirspaceProperties } from '$lib/airspace';
-  import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-  import type { Locale } from '$lib/protocol/generated/Locale';
+  import type { AirspaceLimit, AirspaceProperties } from '#lib/airspace.js';
+  import type { AltitudeUnit } from '#lib/protocol/generated/AltitudeUnit.js';
+  import type { Locale } from '#lib/protocol/generated/Locale.js';
 
   import { onMount } from 'svelte';
 
-  import Button from '$lib/Button.svelte';
-  import Card from '$lib/Card.svelte';
-  import { m } from '$lib/paraglide/messages.js';
-  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
-  import ValueTile from '$lib/ValueTile.svelte';
+  import Button from '#lib/Button.svelte';
+  import Card from '#lib/Card.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import ResponsiveCard from '#lib/ResponsiveCard.svelte';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
+  import ValueTile from '#lib/ValueTile.svelte';
   import {
     formatAirspaceActivity,
     formatAirspaceClass,

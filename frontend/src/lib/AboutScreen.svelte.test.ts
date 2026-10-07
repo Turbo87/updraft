@@ -4,7 +4,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
-import { withViewport } from '$lib/viewport.fixture';
+import { withViewport } from '#lib/viewport.fixture.js';
 import AboutScreen from './AboutScreen.svelte';
 
 const BUILD_TIMESTAMP = '2026-08-12T07:14:22.000Z';

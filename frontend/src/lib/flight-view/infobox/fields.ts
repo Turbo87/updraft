@@ -1,8 +1,8 @@
-import type { Instruments } from '$lib/protocol/generated/Instruments';
-import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+import type { Instruments } from '#lib/protocol/generated/Instruments.js';
+import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 import type { InfoboxValue } from './value';
 
-import { m } from '$lib/paraglide/messages';
+import { m } from '#lib/paraglide/messages.js';
 
 export type InfoboxField = {
   id: string;

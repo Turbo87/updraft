@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { Pathname } from '$app/types';
-  import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
+  import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
 
   import { resolve } from '$app/paths';
 
-  import NavigateButton from '$lib/NavigateButton.svelte';
-  import PinTargetButton from '$lib/PinTargetButton.svelte';
+  import NavigateButton from '#lib/NavigateButton.svelte';
+  import PinTargetButton from '#lib/PinTargetButton.svelte';
 
   type Props = {
     target: NavigationTarget;

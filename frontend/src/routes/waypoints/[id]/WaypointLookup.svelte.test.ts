@@ -4,7 +4,7 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
-import { waypointsFixture } from '$lib/map/waypoint.fixture';
+import { waypointsFixture } from '#lib/map/waypoint.fixture.js';
 import WaypointLookup from './WaypointLookup.svelte';
 
 function mapWithData(getData = async () => waypointsFixture) {

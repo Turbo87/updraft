@@ -1,6 +1,6 @@
-import type { Navigation } from '$lib/protocol/generated/Navigation';
+import type { Navigation } from '#lib/protocol/generated/Navigation.js';
 
-import { m } from '$lib/paraglide/messages';
+import { m } from '#lib/paraglide/messages.js';
 
 export function navigationLabel(
   navigation: Pick<Navigation, 'target' | 'traffic' | 'trafficName'>,

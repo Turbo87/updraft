@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
+  import type { LatLon } from '#lib/protocol/generated/LatLon.js';
 
   import { GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';
 

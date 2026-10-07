@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
+  import type { ClimbAverageMethod } from '#lib/protocol/generated/ClimbAverageMethod.js';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import AsyncRadioList from './AsyncRadioList.svelte';
 
   type Props = {

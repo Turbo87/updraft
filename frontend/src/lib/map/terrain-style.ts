@@ -1,6 +1,6 @@
-import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
-import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
-import type { SolarPositionInstruments } from '$lib/protocol/generated/SolarPositionInstruments';
+import type { DerivedWindInstruments } from '#lib/protocol/generated/DerivedWindInstruments.js';
+import type { HillshadeDirection } from '#lib/protocol/generated/HillshadeDirection.js';
+import type { SolarPositionInstruments } from '#lib/protocol/generated/SolarPositionInstruments.js';
 
 type HillshadeLighting = {
   'hillshade-illumination-anchor': 'map' | 'viewport';

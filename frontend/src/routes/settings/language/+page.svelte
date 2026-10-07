@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { Locale } from '$lib/protocol/generated/Locale';
+  import type { Locale } from '#lib/protocol/generated/Locale.js';
 
-  import { getAppContext } from '$lib/app-context';
-  import LanguageSetting from '$lib/LanguageSetting.svelte';
-  import { m } from '$lib/paraglide/messages.js';
-  import { getLocale } from '$lib/paraglide/runtime.js';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import LanguageSetting from '#lib/LanguageSetting.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
 
   const { client, settings } = getAppContext();
   const activeLocale = $derived(settings.current.locale ?? getLocale());

@@ -1,4 +1,4 @@
-import type { EnrouteCatalogStatus } from '$lib/client';
+import type { EnrouteCatalogStatus } from '#lib/client/index.js';
 
 import { flushSync } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';

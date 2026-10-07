@@ -1,6 +1,6 @@
-import type { AltitudeUnit, SpeedUnit, VerticalSpeedUnit } from '$lib/units';
+import type { AltitudeUnit, SpeedUnit, VerticalSpeedUnit } from '#lib/units.js';
 
-import { convertAltitude, convertSpeed, convertVerticalSpeed } from '$lib/units';
+import { convertAltitude, convertSpeed, convertVerticalSpeed } from '#lib/units.js';
 
 export type InfoboxValue =
   | { kind: 'altitude'; meters: number | null; unit: AltitudeUnit }

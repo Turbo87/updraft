@@ -1,4 +1,4 @@
-import type { WaypointSourceStatus } from '$lib/protocol/generated/WaypointSourceStatus';
+import type { WaypointSourceStatus } from '#lib/protocol/generated/WaypointSourceStatus';
 
 import { execFileSync } from 'node:child_process';
 

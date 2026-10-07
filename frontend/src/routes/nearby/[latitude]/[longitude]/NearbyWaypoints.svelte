@@ -1,16 +1,16 @@
 <script lang="ts">
   import type { MapGeoJSONFeature, Map as MapLibreMap } from 'maplibre-gl';
-  import type { MapState } from '$lib/map-state.svelte';
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
-  import type { AltitudeUnit } from '$lib/units';
+  import type { MapState } from '#lib/map-state.svelte.js';
+  import type { LatLon } from '#lib/protocol/generated/LatLon.js';
+  import type { AltitudeUnit } from '#lib/units.js';
 
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
 
-  import { m } from '$lib/paraglide/messages.js';
-  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
-  import { convertAltitude } from '$lib/units';
-  import WaypointSymbol from '$lib/WaypointSymbol.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import ResponsiveCard from '#lib/ResponsiveCard.svelte';
+  import { convertAltitude } from '#lib/units.js';
+  import WaypointSymbol from '#lib/WaypointSymbol.svelte';
 
   type Props = {
     map: MapLibreMap;

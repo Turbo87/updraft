@@ -1,9 +1,9 @@
-import type { SpeedInstrument } from '$lib/protocol/generated/SpeedInstrument';
-import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+import type { SpeedInstrument } from '#lib/protocol/generated/SpeedInstrument.js';
+import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
 import { describe, expect, it } from 'vitest';
 
-import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '$lib/stores/instruments.svelte';
+import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '#lib/stores/instruments.svelte.js';
 import { flightInfoboxes } from './fields';
 
 const units: UnitSettings = { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' };

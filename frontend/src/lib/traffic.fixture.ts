@@ -1,4 +1,4 @@
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
+import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget.js';
 
 export function trafficTarget(
   id: string,

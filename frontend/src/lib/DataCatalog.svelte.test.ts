@@ -7,7 +7,7 @@ import { page, userEvent } from 'vitest/browser';
 import '../app.css';
 import 'virtual:uno.css';
 
-import { withViewport } from '$lib/viewport.fixture';
+import { withViewport } from '#lib/viewport.fixture.js';
 import DataCatalog from './DataCatalog.svelte';
 import { catalogEntries } from './enroute-catalog.fixture';
 import { applyLocaleSetting } from './i18n.svelte';

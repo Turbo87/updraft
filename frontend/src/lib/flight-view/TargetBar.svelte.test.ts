@@ -4,7 +4,7 @@ import { page } from 'vitest/browser';
 
 import '../../app.css';
 
-import { defaultSettings } from '$lib/settings';
+import { defaultSettings } from '#lib/settings.js';
 import { waypointNavigation } from './navigation.fixture';
 import TargetBar from './TargetBar.svelte';
 

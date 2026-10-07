@@ -1,9 +1,9 @@
 <script module lang="ts">
-  import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
+  import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget.js';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { settingsFixture } from '$lib/settings.fixture';
+  import { settingsFixture } from '#lib/settings.fixture.js';
   import PinnedTargets from './PinnedTargets.svelte';
 
   const waypoint: PinnedTarget = {

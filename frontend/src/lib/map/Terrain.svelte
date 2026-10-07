@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
-  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
-  import type { SolarPositionInstruments } from '$lib/protocol/generated/SolarPositionInstruments';
+  import type { DerivedWindInstruments } from '#lib/protocol/generated/DerivedWindInstruments.js';
+  import type { HillshadeDirection } from '#lib/protocol/generated/HillshadeDirection.js';
+  import type { SolarPositionInstruments } from '#lib/protocol/generated/SolarPositionInstruments.js';
 
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { ColorReliefLayer, HillshadeLayer, RasterDEMTileSource } from 'svelte-maplibre-gl';

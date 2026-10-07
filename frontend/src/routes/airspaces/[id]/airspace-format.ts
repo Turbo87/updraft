@@ -1,9 +1,9 @@
-import type { AirspaceLimit } from '$lib/airspace';
-import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-import type { Locale } from '$lib/protocol/generated/Locale';
+import type { AirspaceLimit } from '#lib/airspace.js';
+import type { AltitudeUnit } from '#lib/protocol/generated/AltitudeUnit.js';
+import type { Locale } from '#lib/protocol/generated/Locale.js';
 
-import { m } from '$lib/paraglide/messages.js';
-import { convertAltitude } from '$lib/units';
+import { m } from '#lib/paraglide/messages.js';
+import { convertAltitude } from '#lib/units.js';
 
 export function formatAirspaceLimit(limit: AirspaceLimit, altitudeUnit: AltitudeUnit): string {
   if ('unlimited' in limit) return 'UNL';

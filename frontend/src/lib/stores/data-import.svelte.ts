@@ -1,10 +1,10 @@
-import type { SelectedDataFile, UpdraftClient } from '$lib/client';
-import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
-import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
+import type { SelectedDataFile, UpdraftClient } from '#lib/client/index.js';
+import type { AirspaceStatus } from '#lib/protocol/generated/AirspaceStatus.js';
+import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
 
 import { tick } from 'svelte';
 
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 type ImportContext = {
   importer: Pick<UpdraftClient, 'selectDataFile' | 'importDataFile' | 'discardDataFile'>;

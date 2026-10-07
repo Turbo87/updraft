@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { instrumentsFixture } from '$lib/instruments.fixture';
+import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { InstrumentsStore } from './instruments.svelte';
 
 describe('InstrumentsStore', () => {

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  import { getAppContext } from '$lib/app-context';
-  import Card from '$lib/Card.svelte';
-  import { m } from '$lib/paraglide/messages.js';
-  import { getLocale } from '$lib/paraglide/runtime.js';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import Card from '#lib/Card.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
   import AirspaceDetails from './AirspaceDetails.svelte';
 
   const { airspace, mapState, settings } = getAppContext();

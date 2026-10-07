@@ -4,10 +4,10 @@ import { page } from 'vitest/browser';
 
 import '../../../app.css';
 
-import { InstrumentsStore } from '$lib/stores/instruments.svelte';
-import { TrafficStore } from '$lib/stores/traffic.svelte';
-import { trafficTarget } from '$lib/traffic.fixture';
-import { withViewport } from '$lib/viewport.fixture';
+import { InstrumentsStore } from '#lib/stores/instruments.svelte.js';
+import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+import { trafficTarget } from '#lib/traffic.fixture.js';
+import { withViewport } from '#lib/viewport.fixture.js';
 import TrafficDetails from './TrafficDetails.svelte';
 
 it.each([413, 544, 915])('lays out traffic detail cards at width %s', async (width) => {

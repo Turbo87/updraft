@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { trafficTarget } from '$lib/traffic.fixture';
+import { trafficTarget } from '#lib/traffic.fixture.js';
 import { TrafficStore } from './traffic.svelte';
 
 describe('TrafficStore', () => {

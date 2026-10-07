@@ -1,14 +1,14 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
 
-  import { getAppContext } from '$lib/app-context';
-  import Button from '$lib/Button.svelte';
-  import { navigationLabel } from '$lib/navigation';
-  import { targetsMatch } from '$lib/navigation-target';
-  import NavigationSelectionRow from '$lib/NavigationSelectionRow.svelte';
-  import { m } from '$lib/paraglide/messages';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
-  import StopNavigationButton from '$lib/StopNavigationButton.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import Button from '#lib/Button.svelte';
+  import { targetsMatch } from '#lib/navigation-target.js';
+  import { navigationLabel } from '#lib/navigation.js';
+  import NavigationSelectionRow from '#lib/NavigationSelectionRow.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
+  import StopNavigationButton from '#lib/StopNavigationButton.svelte';
 
   const { navigation } = getAppContext();
   let retryPin = $state.raw<(() => Promise<boolean>) | null>(null);

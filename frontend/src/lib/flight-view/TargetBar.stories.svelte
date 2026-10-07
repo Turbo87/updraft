@@ -1,7 +1,7 @@
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { defaultSettings } from '$lib/settings';
+  import { defaultSettings } from '#lib/settings.js';
   import { waypointNavigation } from './navigation.fixture';
   import TargetBar from './TargetBar.svelte';
 

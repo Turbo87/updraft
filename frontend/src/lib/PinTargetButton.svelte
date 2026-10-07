@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
+  import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
 
-  import { getAppContext } from '$lib/app-context';
-  import Button from '$lib/Button.svelte';
-  import { targetsMatch } from '$lib/navigation-target';
-  import { m } from '$lib/paraglide/messages';
+  import { getAppContext } from '#lib/app-context.js';
+  import Button from '#lib/Button.svelte';
+  import { targetsMatch } from '#lib/navigation-target.js';
+  import { m } from '#lib/paraglide/messages.js';
 
   type Props = {
     target: NavigationTarget;

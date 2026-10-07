@@ -1,4 +1,4 @@
-import type { Instruments } from '$lib/protocol/generated/Instruments';
+import type { Instruments } from '#lib/protocol/generated/Instruments.js';
 
 export const INFOBOX_INSTRUMENTS: Instruments = {
   gps: {

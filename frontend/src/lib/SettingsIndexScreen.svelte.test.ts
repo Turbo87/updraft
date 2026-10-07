@@ -4,7 +4,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
-import { withViewport } from '$lib/viewport.fixture';
+import { withViewport } from '#lib/viewport.fixture.js';
 import SettingsIndexScreen from './SettingsIndexScreen.svelte';
 
 describe('SettingsIndexScreen.svelte', () => {

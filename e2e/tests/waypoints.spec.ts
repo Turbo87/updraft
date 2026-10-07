@@ -1,5 +1,5 @@
-import type { Topic } from '$lib/protocol/generated/Topic';
-import type { WaypointFeature } from '$lib/waypoints';
+import type { Topic } from '#lib/protocol/generated/Topic';
+import type { WaypointFeature } from '#lib/waypoints';
 
 import { expect } from '@playwright/test';
 

@@ -1,14 +1,14 @@
 <script lang="ts">
   import type { Pathname } from '$app/types';
-  import type { Navigation } from '$lib/protocol/generated/Navigation';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+  import type { Navigation } from '#lib/protocol/generated/Navigation.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
   import { resolve } from '$app/paths';
 
-  import { navigationLabel } from '$lib/navigation';
-  import { m } from '$lib/paraglide/messages';
-  import { getLocale } from '$lib/paraglide/runtime';
-  import { convertAltitude, convertDistance } from '$lib/units';
+  import { navigationLabel } from '#lib/navigation.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import { convertAltitude, convertDistance } from '#lib/units.js';
 
   type Props = {
     navigation: Navigation;

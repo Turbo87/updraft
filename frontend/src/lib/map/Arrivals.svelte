@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Map, MapEventType } from 'maplibre-gl';
-  import type { ArrivalViewport, UpdraftClient } from '$lib/client';
-  import type { AltitudeUnit } from '$lib/units';
+  import type { ArrivalViewport, UpdraftClient } from '#lib/client/index.js';
+  import type { AltitudeUnit } from '#lib/units.js';
 
   import { GeoJSONSource } from 'svelte-maplibre-gl';
 

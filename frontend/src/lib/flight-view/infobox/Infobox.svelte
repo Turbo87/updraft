@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { InfoboxValue } from './value';
 
-  import { m } from '$lib/paraglide/messages';
-  import { getLocale } from '$lib/paraglide/runtime';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import { fitReadout } from './fit-readout';
   import { formatInfoboxValue } from './value';
 

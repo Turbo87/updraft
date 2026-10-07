@@ -1,15 +1,15 @@
 import type * as GeoJSON from 'geojson';
 import type { ErrorEvent, GeoJSONSource, GeoJSONSourceDiff, Subscription } from 'maplibre-gl';
-import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
-import type { TrafficDelta } from '$lib/protocol/generated/TrafficDelta';
-import type { TrafficType } from '$lib/protocol/generated/TrafficType';
-import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
-import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
+import type { AltitudeUnit } from '#lib/protocol/generated/AltitudeUnit.js';
+import type { ClimbAverageMethod } from '#lib/protocol/generated/ClimbAverageMethod.js';
+import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget.js';
+import type { TrafficAlarmLevel } from '#lib/protocol/generated/TrafficAlarmLevel.js';
+import type { TrafficDelta } from '#lib/protocol/generated/TrafficDelta.js';
+import type { TrafficType } from '#lib/protocol/generated/TrafficType.js';
+import type { TrafficUpdate } from '#lib/protocol/generated/TrafficUpdate.js';
+import type { VerticalSpeedUnit } from '#lib/protocol/generated/VerticalSpeedUnit.js';
 
-import { convertAltitude, convertVerticalSpeed } from '$lib/units';
+import { convertAltitude, convertVerticalSpeed } from '#lib/units.js';
 
 type TrafficGeoJSONSource = Pick<GeoJSONSource, 'setData' | 'updateData'> & {
   on(type: 'error', listener: (event: ErrorEvent) => void): Subscription;

@@ -1,22 +1,22 @@
 <script lang="ts">
   import type { Map } from 'maplibre-gl';
-  import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
-  import type { Locale } from '$lib/protocol/generated/Locale';
-  import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-  import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
-  import type { TrafficStore } from '$lib/stores/traffic.svelte';
+  import type { GpsInstruments } from '#lib/protocol/generated/GpsInstruments.js';
+  import type { LatLon } from '#lib/protocol/generated/LatLon.js';
+  import type { Locale } from '#lib/protocol/generated/Locale.js';
+  import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget.js';
+  import type { TrafficUpdate } from '#lib/protocol/generated/TrafficUpdate.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
+  import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
   import type { RetainedTraffic } from './nearby-traffic';
 
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
 
-  import { calculateDistanceAndBearing } from '$lib/geographic-position';
-  import { m } from '$lib/paraglide/messages.js';
-  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
-  import TrafficSymbol from '$lib/TrafficSymbol.svelte';
-  import { convertAltitude, convertDistance } from '$lib/units';
+  import { calculateDistanceAndBearing } from '#lib/geographic-position.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import ResponsiveCard from '#lib/ResponsiveCard.svelte';
+  import TrafficSymbol from '#lib/TrafficSymbol.svelte';
+  import { convertAltitude, convertDistance } from '#lib/units.js';
   import {
     createRetainedTraffic,
     formatTrafficId,

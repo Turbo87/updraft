@@ -1,6 +1,6 @@
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-import type { Topic } from '$lib/protocol/generated/Topic';
-import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
+import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
+import type { TrafficUpdate } from '#lib/protocol/generated/TrafficUpdate.js';
 
 import { SvelteMap } from 'svelte/reactivity';
 

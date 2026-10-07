@@ -3,7 +3,7 @@
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { EMPTY_INSTRUMENTS } from '$lib/stores/instruments.svelte';
+  import { EMPTY_INSTRUMENTS } from '#lib/stores/instruments.svelte.js';
   import { flightInfoboxes } from './fields';
   import InfoboxDock from './InfoboxDock.svelte';
   import { INFOBOX_INSTRUMENTS } from './instruments.fixture';

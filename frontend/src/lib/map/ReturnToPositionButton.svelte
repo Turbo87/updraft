@@ -1,6 +1,6 @@
 <script lang="ts">
-  import MapOverlayControl from '$lib/MapOverlayControl.svelte';
-  import { m } from '$lib/paraglide/messages.js';
+  import MapOverlayControl from '#lib/MapOverlayControl.svelte';
+  import { m } from '#lib/paraglide/messages.js';
 
   type Props = { onClick: () => void };
 

@@ -3,11 +3,11 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
-  import { getAppContext } from '$lib/app-context';
-  import Button from '$lib/Button.svelte';
-  import { navigationLabel } from '$lib/navigation';
-  import { m } from '$lib/paraglide/messages';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import Button from '#lib/Button.svelte';
+  import { navigationLabel } from '#lib/navigation.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
 
   const { client, navigation } = getAppContext();
   const id = $derived(Number(page.params.id));

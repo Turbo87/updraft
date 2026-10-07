@@ -1,5 +1,5 @@
 import type * as GeoJSON from 'geojson';
-import type { AirspaceProperties } from '$lib/airspace';
+import type { AirspaceProperties } from '#lib/airspace.js';
 
 /** Fixed airspace GeoJSON for browser tests and Storybook. */
 export const AIRSPACE_BROWSER_FIXTURE = {

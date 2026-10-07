@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+  import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
-  import { navigationLabel } from '$lib/navigation';
-  import { m } from '$lib/paraglide/messages';
+  import { navigationLabel } from '#lib/navigation.js';
+  import { m } from '#lib/paraglide/messages.js';
   import TargetBar from './TargetBar.svelte';
 
   type Props = { pins: PinnedTarget[]; units: UnitSettings; hasPrimary: boolean };

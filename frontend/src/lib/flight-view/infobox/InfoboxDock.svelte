@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { InfoboxField } from './fields';
 
-  import { m } from '$lib/paraglide/messages';
+  import { m } from '#lib/paraglide/messages.js';
   import Infobox from './Infobox.svelte';
 
   type Props = { infoboxes: InfoboxField[] };

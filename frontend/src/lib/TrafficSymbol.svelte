@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
-  import type { TrafficType } from '$lib/protocol/generated/TrafficType';
+  import type { TrafficAlarmLevel } from '#lib/protocol/generated/TrafficAlarmLevel.js';
+  import type { TrafficType } from '#lib/protocol/generated/TrafficType.js';
 
   import aircraft from '../../../libs/updraft_sprites/sprites/aircraft.svg?url';
   import airship from '../../../libs/updraft_sprites/sprites/airship.svg?url';

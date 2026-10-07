@@ -338,6 +338,7 @@ test('the Data library handles live statuses, file details, and removal', async 
   await app.open('/settings/data');
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await page.reload();
+  await page.waitForFunction(() => '__updraftFake' in window);
   let localCup: WaypointSourceStatus = {
     type: 'active',
     sourceName: 'local.cup',

@@ -3,32 +3,32 @@
   import 'virtual:uno.css';
 
   import type { Snippet } from 'svelte';
-  import type { AppContext } from '$lib/app-context';
+  import type { AppContext } from '#lib/app-context.js';
 
   import { onMount } from 'svelte';
   import { page } from '$app/state';
 
-  import { setAppContext } from '$lib/app-context';
-  import favicon from '$lib/assets/favicon.svg';
-  import { FakeClient } from '$lib/client/fake';
-  import { TauriClient } from '$lib/client/tauri';
-  import FlightView from '$lib/flight-view/FlightView.svelte';
-  import { applyLocaleSetting } from '$lib/i18n.svelte.js';
-  import { MapState } from '$lib/map-state.svelte';
-  import { getLocale } from '$lib/paraglide/runtime.js';
-  import { AirspaceStore } from '$lib/stores/airspace.svelte';
-  import { BasemapsStore } from '$lib/stores/basemaps.svelte';
-  import { DataActivation } from '$lib/stores/data-activation.svelte';
-  import { EnrouteCatalogStore } from '$lib/stores/enroute-catalog.svelte';
-  import { EnrouteDownloadsStore } from '$lib/stores/enroute-downloads.svelte';
-  import { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
-  import { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
-  import { InstrumentsStore } from '$lib/stores/instruments.svelte';
-  import { NavigationStore } from '$lib/stores/navigation.svelte';
-  import { SettingsStore } from '$lib/stores/settings.svelte';
-  import { TerrainStore } from '$lib/stores/terrain.svelte';
-  import { TrafficStore } from '$lib/stores/traffic.svelte';
-  import { WaypointsStore } from '$lib/stores/waypoints.svelte';
+  import { setAppContext } from '#lib/app-context.js';
+  import favicon from '#lib/assets/favicon.svg';
+  import { FakeClient } from '#lib/client/fake.js';
+  import { TauriClient } from '#lib/client/tauri.js';
+  import FlightView from '#lib/flight-view/FlightView.svelte';
+  import { applyLocaleSetting } from '#lib/i18n.svelte.js';
+  import { MapState } from '#lib/map-state.svelte.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import { AirspaceStore } from '#lib/stores/airspace.svelte.js';
+  import { BasemapsStore } from '#lib/stores/basemaps.svelte.js';
+  import { DataActivation } from '#lib/stores/data-activation.svelte.js';
+  import { EnrouteCatalogStore } from '#lib/stores/enroute-catalog.svelte.js';
+  import { EnrouteDownloadsStore } from '#lib/stores/enroute-downloads.svelte.js';
+  import { ExternalDevicesStore } from '#lib/stores/external-devices.svelte.js';
+  import { GlidePerformanceStore } from '#lib/stores/glide-performance.svelte.js';
+  import { InstrumentsStore } from '#lib/stores/instruments.svelte.js';
+  import { NavigationStore } from '#lib/stores/navigation.svelte.js';
+  import { SettingsStore } from '#lib/stores/settings.svelte.js';
+  import { TerrainStore } from '#lib/stores/terrain.svelte.js';
+  import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+  import { WaypointsStore } from '#lib/stores/waypoints.svelte.js';
 
   type TestWindow = Window & {
     __updraftApp?: AppContext;

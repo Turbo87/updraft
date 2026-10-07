@@ -1,14 +1,14 @@
 import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap } from 'maplibre-gl';
-import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
+import type { AirspaceStatus } from '#lib/protocol/generated/AirspaceStatus.js';
 
 import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
-import { instrumentsFixture } from '$lib/instruments.fixture';
-import { MapState } from '$lib/map-state.svelte';
-import { TrafficStore } from '$lib/stores/traffic.svelte';
-import { trafficTarget } from '$lib/traffic.fixture';
+import { instrumentsFixture } from '#lib/instruments.fixture.js';
+import { MapState } from '#lib/map-state.svelte.js';
+import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+import { trafficTarget } from '#lib/traffic.fixture.js';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';

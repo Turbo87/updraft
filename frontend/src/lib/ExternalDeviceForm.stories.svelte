@@ -1,11 +1,11 @@
 <script module lang="ts">
-  import type { BondedBluetoothDevices } from '$lib/client/bonded-bluetooth-devices';
-  import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
+  import type { BondedBluetoothDevices } from '#lib/client/bonded-bluetooth-devices.js';
+  import type { PublishedExternalDevice } from '#lib/protocol/generated/PublishedExternalDevice.js';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { fn } from 'storybook/test';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import ExternalDeviceForm from './ExternalDeviceForm.svelte';
 
   const tcpDevice = {

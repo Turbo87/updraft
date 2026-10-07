@@ -1,15 +1,15 @@
 <script lang="ts">
   import type { Map, MapEventType, MapGeoJSONFeature } from 'maplibre-gl';
-  import type { AirspaceProperties } from '$lib/airspace';
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
-  import type { Locale } from '$lib/protocol/generated/Locale';
-  import type { AirspaceStore } from '$lib/stores/airspace.svelte';
+  import type { AirspaceProperties } from '#lib/airspace.js';
+  import type { LatLon } from '#lib/protocol/generated/LatLon.js';
+  import type { Locale } from '#lib/protocol/generated/Locale.js';
+  import type { AirspaceStore } from '#lib/stores/airspace.svelte.js';
 
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
 
-  import { m } from '$lib/paraglide/messages.js';
-  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import ResponsiveCard from '#lib/ResponsiveCard.svelte';
 
   type QueryState = { type: 'loading' } | { type: 'ready'; features: MapGeoJSONFeature[] };
 

@@ -1,4 +1,4 @@
-import type { Settings } from '$lib/protocol/generated/Settings';
+import type { Settings } from '#lib/protocol/generated/Settings.js';
 
 export function defaultSettings(): Settings {
   return {

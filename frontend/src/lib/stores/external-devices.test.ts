@@ -1,8 +1,8 @@
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 
 import { describe, expect, it } from 'vitest';
 
-import { settingsFixture } from '$lib/settings.fixture';
+import { settingsFixture } from '#lib/settings.fixture.js';
 import { ExternalDevicesStore } from './external-devices.svelte';
 
 describe('ExternalDevicesStore', () => {

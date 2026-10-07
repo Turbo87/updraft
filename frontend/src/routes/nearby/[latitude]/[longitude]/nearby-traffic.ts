@@ -1,9 +1,9 @@
-import type { Locale } from '$lib/protocol/generated/Locale';
-import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-import type { TrafficAlarmLevel } from '$lib/protocol/generated/TrafficAlarmLevel';
-import type { TrafficType } from '$lib/protocol/generated/TrafficType';
+import type { Locale } from '#lib/protocol/generated/Locale.js';
+import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget.js';
+import type { TrafficAlarmLevel } from '#lib/protocol/generated/TrafficAlarmLevel.js';
+import type { TrafficType } from '#lib/protocol/generated/TrafficType.js';
 
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export type RetainedTraffic = {
   id: string;

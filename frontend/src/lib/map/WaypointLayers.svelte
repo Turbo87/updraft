@@ -1,12 +1,12 @@
 <script lang="ts">
   import type { ExpressionSpecification, SymbolLayerSpecification } from 'maplibre-gl';
-  import type { AltitudeUnit } from '$lib/units';
+  import type { AltitudeUnit } from '#lib/units.js';
 
   import { SymbolLayer } from 'svelte-maplibre-gl';
 
-  import { convertAltitude } from '$lib/units';
-  import { waypointSymbols } from '$lib/waypoint-symbols';
-  import { LANDABLE_WAYPOINT_KINDS, WAYPOINT_KIND } from '$lib/waypoints';
+  import { convertAltitude } from '#lib/units.js';
+  import { waypointSymbols } from '#lib/waypoint-symbols.js';
+  import { LANDABLE_WAYPOINT_KINDS, WAYPOINT_KIND } from '#lib/waypoints.js';
   import { FONT_REGULAR } from './basemap-style';
   import {
     COLOR_AMBER_500,

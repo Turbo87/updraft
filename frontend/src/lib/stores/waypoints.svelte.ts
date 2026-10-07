@@ -1,5 +1,5 @@
-import type { Topic } from '$lib/protocol/generated/Topic';
-import type { WaypointStatus } from '$lib/protocol/generated/WaypointStatus';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
+import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
 
 export class WaypointsStore {
   current = $state.raw<WaypointStatus>({ generation: 0, sources: [] });

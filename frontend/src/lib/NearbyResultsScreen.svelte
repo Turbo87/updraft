@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { LatLon } from '$lib/protocol/generated/LatLon';
+  import type { LatLon } from '#lib/protocol/generated/LatLon.js';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import Card from './Card.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import ValueTile from './ValueTile.svelte';

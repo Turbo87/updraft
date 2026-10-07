@@ -1,4 +1,4 @@
-import type { LatLon } from '$lib/protocol/generated/LatLon';
+import type { LatLon } from '#lib/protocol/generated/LatLon.js';
 
 /** Parses finite nearby route coordinates within the inclusive geographic bounds. */
 export function parseNearbyRouteCoordinates(

@@ -1,5 +1,5 @@
-import type { BasemapStatus, TerrainStatus, UpdraftClient } from '$lib/client';
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { BasemapStatus, TerrainStatus, UpdraftClient } from '#lib/client/index.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 import type { AirspaceStore } from './airspace.svelte';
 import type { BasemapsStore } from './basemaps.svelte';
 import type { TerrainStore } from './terrain.svelte';

@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Map } from 'maplibre-gl';
-  import type { FixTime } from '$lib/protocol/generated/FixTime';
-  import type { Instruments } from '$lib/protocol/generated/Instruments';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+  import type { FixTime } from '#lib/protocol/generated/FixTime.js';
+  import type { Instruments } from '#lib/protocol/generated/Instruments.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
-  import { convertAltitude, convertSpeed, convertVerticalSpeed } from '$lib/units';
+  import { convertAltitude, convertSpeed, convertVerticalSpeed } from '#lib/units.js';
 
   type Props = {
     map: Map | undefined;

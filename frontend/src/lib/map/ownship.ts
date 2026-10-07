@@ -1,5 +1,5 @@
 import type * as GeoJSON from 'geojson';
-import type { LatLon } from '$lib/protocol/generated/LatLon';
+import type { LatLon } from '#lib/protocol/generated/LatLon.js';
 
 export function positionCoordinates(position: LatLon): [number, number] {
   return [position.longitudeDegrees, position.latitudeDegrees];

@@ -1,4 +1,4 @@
-import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
+import type { PublishedExternalDevice } from '#lib/protocol/generated/PublishedExternalDevice';
 
 import { expect } from '@playwright/test';
 

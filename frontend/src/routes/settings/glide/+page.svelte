@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { getAppContext } from '$lib/app-context';
-  import GlideSettings from '$lib/GlideSettings.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import GlideSettings from '#lib/GlideSettings.svelte';
 
   const { client, settings } = getAppContext();
 </script>

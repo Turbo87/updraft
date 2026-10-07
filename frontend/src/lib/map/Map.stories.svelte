@@ -1,16 +1,16 @@
 <script module lang="ts">
   import type { GeoJSONSource } from 'maplibre-gl';
   import type { ComponentProps } from 'svelte';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { expect, waitFor } from 'storybook/test';
 
-  import { FakeClient } from '$lib/client/fake';
-  import { instrumentsFixture } from '$lib/instruments.fixture';
-  import { MapState } from '$lib/map-state.svelte';
-  import { TrafficStore } from '$lib/stores/traffic.svelte';
-  import { trafficTarget } from '$lib/traffic.fixture';
+  import { FakeClient } from '#lib/client/fake.js';
+  import { instrumentsFixture } from '#lib/instruments.fixture.js';
+  import { MapState } from '#lib/map-state.svelte.js';
+  import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+  import { trafficTarget } from '#lib/traffic.fixture.js';
   import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
   import { arrivalFixture } from './arrival.fixture';
   import Map from './Map.svelte';

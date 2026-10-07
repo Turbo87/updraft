@@ -1,16 +1,16 @@
 <script module lang="ts">
-  import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
-  import type { PublishedTrafficTarget } from '$lib/protocol/generated/PublishedTrafficTarget';
-  import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
-  import type { TrafficSubscriber } from '$lib/stores/traffic.svelte';
+  import type { GpsInstruments } from '#lib/protocol/generated/GpsInstruments.js';
+  import type { PublishedTrafficTarget } from '#lib/protocol/generated/PublishedTrafficTarget.js';
+  import type { TrafficUpdate } from '#lib/protocol/generated/TrafficUpdate.js';
+  import type { TrafficSubscriber } from '#lib/stores/traffic.svelte.js';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { fn } from 'storybook/test';
 
-  import { instrumentsFixture } from '$lib/instruments.fixture';
-  import { InstrumentsStore } from '$lib/stores/instruments.svelte';
-  import { TrafficStore } from '$lib/stores/traffic.svelte';
-  import { trafficTarget } from '$lib/traffic.fixture';
+  import { instrumentsFixture } from '#lib/instruments.fixture.js';
+  import { InstrumentsStore } from '#lib/stores/instruments.svelte.js';
+  import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+  import { trafficTarget } from '#lib/traffic.fixture.js';
   import TrafficDetails from '../routes/traffic/[id]/TrafficDetails.svelte';
 
   const target = trafficTarget('flarm:DDX7A2', {

@@ -1,7 +1,7 @@
-import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-import type { DistanceUnit } from '$lib/protocol/generated/DistanceUnit';
-import type { SpeedUnit } from '$lib/protocol/generated/SpeedUnit';
-import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
+import type { AltitudeUnit } from '#lib/protocol/generated/AltitudeUnit.js';
+import type { DistanceUnit } from '#lib/protocol/generated/DistanceUnit.js';
+import type { SpeedUnit } from '#lib/protocol/generated/SpeedUnit.js';
+import type { VerticalSpeedUnit } from '#lib/protocol/generated/VerticalSpeedUnit.js';
 
 export type { AltitudeUnit, DistanceUnit, SpeedUnit, VerticalSpeedUnit };
 

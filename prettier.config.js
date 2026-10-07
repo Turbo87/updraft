@@ -8,7 +8,7 @@ const config = {
   importOrder: [
     '<TYPES>^(node:)',
     '<TYPES>',
-    '<TYPES>^\\$lib/',
+    '<TYPES>^#lib/',
     '<TYPES>^[.]',
     '',
     '<BUILTIN_MODULES>',
@@ -17,7 +17,7 @@ const config = {
     '^\\$(app|env)/',
     '<THIRD_PARTY_MODULES>',
     '',
-    '^\\$lib/',
+    '^#lib/',
     '^[.]',
   ],
   importOrderParserPlugins: ['typescript'],

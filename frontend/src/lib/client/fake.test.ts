@@ -1,10 +1,10 @@
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type { EnrouteCatalogStatus, EnrouteDownloadStatus } from './index';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { instrumentsFixture } from '$lib/instruments.fixture';
+import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { FakeClient } from './fake';
 
 it('delivers prepared arrival resources until the subscription closes', async () => {

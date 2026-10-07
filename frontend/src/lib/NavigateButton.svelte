@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
+  import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
 
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
 
-  import { getAppContext } from '$lib/app-context';
-  import Button from '$lib/Button.svelte';
-  import { m } from '$lib/paraglide/messages';
+  import { getAppContext } from '#lib/app-context.js';
+  import Button from '#lib/Button.svelte';
+  import { m } from '#lib/paraglide/messages.js';
 
   type Props = { target: NavigationTarget; iconOnly?: boolean };
   let { target, iconOnly = false }: Props = $props();

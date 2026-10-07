@@ -7,7 +7,7 @@ import { page, userEvent } from 'vitest/browser';
 import '../app.css';
 import 'virtual:uno.css';
 
-import { withViewport } from '$lib/viewport.fixture';
+import { withViewport } from '#lib/viewport.fixture.js';
 import DataCountry from './DataCountry.svelte';
 
 const north = 'Europe/France/North.mbtiles';

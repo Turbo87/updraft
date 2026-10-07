@@ -3,7 +3,7 @@
   import type { AltitudeUnit } from './units';
   import type { WaypointFeature } from './waypoints';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import Button from './Button.svelte';
   import Card from './Card.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';

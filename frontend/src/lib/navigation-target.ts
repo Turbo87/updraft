@@ -1,5 +1,5 @@
-import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
-import type { WaypointFeature } from '$lib/waypoints';
+import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
+import type { WaypointFeature } from '#lib/waypoints.js';
 
 export function targetsMatch(a: NavigationTarget, b: NavigationTarget): boolean {
   if (a.type === 'task' || b.type === 'task') return a.type === 'task' && b.type === 'task';

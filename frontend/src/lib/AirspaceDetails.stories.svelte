@@ -6,7 +6,7 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import { fn } from 'storybook/test';
 
-  import { AIRSPACE_BROWSER_FIXTURE } from '$lib/map/airspace.fixture';
+  import { AIRSPACE_BROWSER_FIXTURE } from '#lib/map/airspace.fixture.js';
   import AirspaceDetails from '../routes/airspaces/[id]/AirspaceDetails.svelte';
 
   function createMap({ data, error }: { data?: GeoJSON.FeatureCollection; error?: Error }): Map {

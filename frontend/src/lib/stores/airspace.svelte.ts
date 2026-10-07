@@ -1,5 +1,5 @@
-import type { AirspaceStatus } from '$lib/protocol/generated/AirspaceStatus';
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { AirspaceStatus } from '#lib/protocol/generated/AirspaceStatus.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 
 export class AirspaceStore {
   current = $state.raw<AirspaceStatus>({ generation: 0, sources: [] });

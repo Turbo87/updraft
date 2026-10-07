@@ -1,15 +1,15 @@
 <script lang="ts">
-  import type { WaypointFeature } from '$lib/waypoints';
+  import type { WaypointFeature } from '#lib/waypoints.js';
 
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
-  import { getAppContext } from '$lib/app-context';
-  import { waypointTarget } from '$lib/navigation-target';
-  import { m } from '$lib/paraglide/messages.js';
-  import PinTargetButton from '$lib/PinTargetButton.svelte';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import { waypointTarget } from '#lib/navigation-target.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import PinTargetButton from '#lib/PinTargetButton.svelte';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
   import WaypointLookup from './WaypointLookup.svelte';
 
   const { client, mapState, settings, waypoints } = getAppContext();

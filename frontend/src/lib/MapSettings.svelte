@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { HillshadeDirection } from '$lib/protocol/generated/HillshadeDirection';
+  import type { HillshadeDirection } from '#lib/protocol/generated/HillshadeDirection.js';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import AsyncRadioList from './AsyncRadioList.svelte';
 
   type Props = {

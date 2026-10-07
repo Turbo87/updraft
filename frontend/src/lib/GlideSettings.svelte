@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-  import type { PolarId } from '$lib/protocol/generated/PolarId';
+  import type { AltitudeUnit } from '#lib/protocol/generated/AltitudeUnit.js';
+  import type { PolarId } from '#lib/protocol/generated/PolarId.js';
 
   import { onMount } from 'svelte';
 

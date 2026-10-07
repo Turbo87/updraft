@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
-import { MapState } from '$lib/map-state.svelte';
+import { MapState } from '#lib/map-state.svelte.js';
 import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
 import { waypointsFixture } from './waypoint.fixture';

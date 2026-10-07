@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { instrumentsFixture } from '$lib/instruments.fixture';
-import { settingsFixture } from '$lib/settings.fixture';
+import { instrumentsFixture } from '#lib/instruments.fixture.js';
+import { settingsFixture } from '#lib/settings.fixture.js';
 import { SettingsStore } from './settings.svelte';
 
 describe('SettingsStore', () => {

@@ -1,14 +1,14 @@
 <script lang="ts">
-  import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
+  import type { ConnectionSpec } from '#lib/protocol/generated/ConnectionSpec.js';
 
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
-  import { getAppContext } from '$lib/app-context';
-  import ExternalDeviceForm from '$lib/ExternalDeviceForm.svelte';
-  import { m } from '$lib/paraglide/messages.js';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import ExternalDeviceForm from '#lib/ExternalDeviceForm.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
 
   const { client, externalDevices } = getAppContext();
   const deviceId = $derived.by(() => {

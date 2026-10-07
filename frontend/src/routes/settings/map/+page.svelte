@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { getAppContext } from '$lib/app-context';
-  import MapSettings from '$lib/MapSettings.svelte';
-  import { m } from '$lib/paraglide/messages.js';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import MapSettings from '#lib/MapSettings.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
 
   const { client, settings } = getAppContext();
 </script>

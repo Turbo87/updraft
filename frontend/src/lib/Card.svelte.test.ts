@@ -5,7 +5,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
-import { withViewport } from '$lib/viewport.fixture';
+import { withViewport } from '#lib/viewport.fixture.js';
 import Card from './Card.svelte';
 import ResponsiveCard from './ResponsiveCard.svelte';
 import ScreenScaffold from './ScreenScaffold.svelte';

@@ -1,4 +1,4 @@
-import type { LatLon } from '$lib/protocol/generated/LatLon';
+import type { LatLon } from '#lib/protocol/generated/LatLon.js';
 
 import { bearing as turfBearing } from '@turf/bearing';
 import { distance as turfDistance } from '@turf/distance';

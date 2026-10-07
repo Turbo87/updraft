@@ -1,5 +1,5 @@
-import type { DerivedWindInstruments } from '$lib/protocol/generated/DerivedWindInstruments';
-import type { SolarPositionInstruments } from '$lib/protocol/generated/SolarPositionInstruments';
+import type { DerivedWindInstruments } from '#lib/protocol/generated/DerivedWindInstruments.js';
+import type { SolarPositionInstruments } from '#lib/protocol/generated/SolarPositionInstruments.js';
 
 import { describe, expect, it } from 'vitest';
 

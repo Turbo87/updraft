@@ -1,9 +1,9 @@
 import type { ComponentProps } from 'svelte';
-import type { MapState } from '$lib/map-state.svelte';
+import type { MapState } from '#lib/map-state.svelte.js';
 import type Map from './Map.svelte';
 
-import { instrumentsFixture } from '$lib/instruments.fixture';
-import { TrafficStore } from '$lib/stores/traffic.svelte';
+import { instrumentsFixture } from '#lib/instruments.fixture.js';
+import { TrafficStore } from '#lib/stores/traffic.svelte.js';
 
 export function mapProps(mapState: MapState) {
   return {

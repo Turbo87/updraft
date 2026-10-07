@@ -1,4 +1,4 @@
-import type { Locale } from '$lib/protocol/generated/Locale';
+import type { Locale } from '#lib/protocol/generated/Locale.js';
 
 // @unocss-include
 export const languageOptions = [

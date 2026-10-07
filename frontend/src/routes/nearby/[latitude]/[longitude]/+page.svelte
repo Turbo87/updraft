@@ -3,16 +3,16 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
-  import { getAppContext } from '$lib/app-context';
-  import Button from '$lib/Button.svelte';
-  import { calculateDistanceAndBearing } from '$lib/geographic-position';
-  import NearbyResultsScreen from '$lib/NearbyResultsScreen.svelte';
-  import { m } from '$lib/paraglide/messages.js';
-  import { getLocale } from '$lib/paraglide/runtime.js';
-  import PinTargetButton from '$lib/PinTargetButton.svelte';
-  import ResponsiveCard from '$lib/ResponsiveCard.svelte';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
-  import { convertDistance } from '$lib/units';
+  import { getAppContext } from '#lib/app-context.js';
+  import Button from '#lib/Button.svelte';
+  import { calculateDistanceAndBearing } from '#lib/geographic-position.js';
+  import NearbyResultsScreen from '#lib/NearbyResultsScreen.svelte';
+  import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import PinTargetButton from '#lib/PinTargetButton.svelte';
+  import ResponsiveCard from '#lib/ResponsiveCard.svelte';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
+  import { convertDistance } from '#lib/units.js';
   import NearbyAirspaces from './NearbyAirspaces.svelte';
   import NearbyTraffic from './NearbyTraffic.svelte';
   import NearbyWaypoints from './NearbyWaypoints.svelte';

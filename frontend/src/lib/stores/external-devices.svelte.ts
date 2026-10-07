@@ -1,5 +1,5 @@
-import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { PublishedExternalDevice } from '#lib/protocol/generated/PublishedExternalDevice.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 
 /** Holds the complete ordered external-device list from the latest topic. */
 export class ExternalDevicesStore {

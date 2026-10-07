@@ -1,4 +1,4 @@
-import type { Navigation } from '$lib/protocol/generated/Navigation';
+import type { Navigation } from '#lib/protocol/generated/Navigation.js';
 
 export function waypointNavigation(name: string) {
   return {

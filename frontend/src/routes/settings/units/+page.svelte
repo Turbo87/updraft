@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { UnitSettings as UnitSettingsValue } from '$lib/protocol/generated/UnitSettings';
+  import type { UnitSettings as UnitSettingsValue } from '#lib/protocol/generated/UnitSettings.js';
 
-  import { getAppContext } from '$lib/app-context';
-  import { m } from '$lib/paraglide/messages.js';
-  import ScreenScaffold from '$lib/ScreenScaffold.svelte';
-  import UnitSettings from '$lib/UnitSettings.svelte';
+  import { getAppContext } from '#lib/app-context.js';
+  import { m } from '#lib/paraglide/messages.js';
+  import ScreenScaffold from '#lib/ScreenScaffold.svelte';
+  import UnitSettings from '#lib/UnitSettings.svelte';
 
   const { client, settings } = getAppContext();
   let optimisticUnits = $state.raw<UnitSettingsValue | null>(null);

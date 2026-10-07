@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { AttributionPart } from './map-attribution';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import ExternalLink from './ExternalLink.svelte';
   import { parseMapAttributions } from './map-attribution';
   import ResponsiveCard from './ResponsiveCard.svelte';

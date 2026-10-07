@@ -4,10 +4,10 @@
     GeoJSONSource as MapLibreGeoJSONSource,
     SymbolLayerSpecification,
   } from 'maplibre-gl';
-  import type { AltitudeUnit } from '$lib/protocol/generated/AltitudeUnit';
-  import type { ClimbAverageMethod } from '$lib/protocol/generated/ClimbAverageMethod';
-  import type { VerticalSpeedUnit } from '$lib/protocol/generated/VerticalSpeedUnit';
-  import type { TrafficStore } from '$lib/stores/traffic.svelte';
+  import type { AltitudeUnit } from '#lib/protocol/generated/AltitudeUnit.js';
+  import type { ClimbAverageMethod } from '#lib/protocol/generated/ClimbAverageMethod.js';
+  import type { VerticalSpeedUnit } from '#lib/protocol/generated/VerticalSpeedUnit.js';
+  import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
 
   import { onMount } from 'svelte';
   import { CircleLayer, GeoJSONSource, SymbolLayer } from 'svelte-maplibre-gl';

@@ -5,8 +5,8 @@
     "moduleResolution": "bundler",
     "noEmit": true,
     "paths": {
-      "$lib": ["../frontend/src/lib"],
-      "$lib/*": ["../frontend/src/lib/*"]
+      "#lib": ["../frontend/src/lib"],
+      "#lib/*": ["../frontend/src/lib/*"]
     },
     "strict": true,
     "target": "ES2022",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { settingsFixture } from '$lib/settings.fixture';
+import { settingsFixture } from '#lib/settings.fixture.js';
 import { AirspaceStore } from './airspace.svelte';
 
 describe('AirspaceStore', () => {

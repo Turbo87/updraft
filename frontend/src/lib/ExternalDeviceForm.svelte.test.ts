@@ -6,7 +6,7 @@ import { page } from 'vitest/browser';
 
 import '../app.css';
 
-import { withViewport } from '$lib/viewport.fixture';
+import { withViewport } from '#lib/viewport.fixture.js';
 import ExternalDeviceForm from './ExternalDeviceForm.svelte';
 
 type ExternalDeviceFormProps = ComponentProps<typeof ExternalDeviceForm>;

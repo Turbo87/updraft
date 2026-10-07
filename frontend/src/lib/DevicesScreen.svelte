@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { BondedBluetoothDevices } from '$lib/client/bonded-bluetooth-devices';
-  import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
-  import type { PublishedExternalDevice } from '$lib/protocol/generated/PublishedExternalDevice';
+  import type { BondedBluetoothDevices } from '#lib/client/bonded-bluetooth-devices.js';
+  import type { ExternalDeviceId } from '#lib/protocol/generated/ExternalDeviceId.js';
+  import type { PublishedExternalDevice } from '#lib/protocol/generated/PublishedExternalDevice.js';
 
   import { resolve } from '$app/paths';
 
-  import { m } from '$lib/paraglide/messages.js';
+  import { m } from '#lib/paraglide/messages.js';
   import ResponsiveCard from './ResponsiveCard.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import StatusPill from './StatusPill.svelte';

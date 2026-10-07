@@ -1,4 +1,4 @@
-import type { EnrouteCatalogStatus, UpdraftClient } from '$lib/client';
+import type { EnrouteCatalogStatus, UpdraftClient } from '#lib/client/index.js';
 import type { BasemapsStore } from './basemaps.svelte';
 import type { TerrainStore } from './terrain.svelte';
 

@@ -1,10 +1,10 @@
-import type { ChangeSetting } from '$lib/protocol/generated/ChangeSetting';
-import type { ConnectionSpec } from '$lib/protocol/generated/ConnectionSpec';
-import type { ExternalDeviceId } from '$lib/protocol/generated/ExternalDeviceId';
-import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
-import type { PolarId } from '$lib/protocol/generated/PolarId';
-import type { TaskCommand } from '$lib/protocol/generated/TaskCommand';
-import type { Topic } from '$lib/protocol/generated/Topic';
+import type { ChangeSetting } from '#lib/protocol/generated/ChangeSetting.js';
+import type { ConnectionSpec } from '#lib/protocol/generated/ConnectionSpec.js';
+import type { ExternalDeviceId } from '#lib/protocol/generated/ExternalDeviceId.js';
+import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
+import type { PolarId } from '#lib/protocol/generated/PolarId.js';
+import type { TaskCommand } from '#lib/protocol/generated/TaskCommand.js';
+import type { Topic } from '#lib/protocol/generated/Topic.js';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
   ArrivalSubscription,
@@ -24,7 +24,7 @@ import type {
   UpdraftClient,
 } from './index';
 
-import { defaultSettings } from '$lib/settings';
+import { defaultSettings } from '#lib/settings.js';
 
 /** Initial platform state for browser development. */
 export type FakeClientOptions = {

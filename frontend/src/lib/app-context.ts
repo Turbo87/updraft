@@ -1,18 +1,18 @@
-import type { UpdraftClient } from '$lib/client';
-import type { MapState } from '$lib/map-state.svelte';
-import type { AirspaceStore } from '$lib/stores/airspace.svelte';
-import type { BasemapsStore } from '$lib/stores/basemaps.svelte';
-import type { DataActivation } from '$lib/stores/data-activation.svelte';
-import type { EnrouteCatalogStore } from '$lib/stores/enroute-catalog.svelte';
-import type { EnrouteDownloadsStore } from '$lib/stores/enroute-downloads.svelte';
-import type { ExternalDevicesStore } from '$lib/stores/external-devices.svelte';
-import type { GlidePerformanceStore } from '$lib/stores/glide-performance.svelte';
-import type { InstrumentsStore } from '$lib/stores/instruments.svelte';
-import type { NavigationStore } from '$lib/stores/navigation.svelte';
-import type { SettingsStore } from '$lib/stores/settings.svelte';
-import type { TerrainStore } from '$lib/stores/terrain.svelte';
-import type { TrafficStore } from '$lib/stores/traffic.svelte';
-import type { WaypointsStore } from '$lib/stores/waypoints.svelte';
+import type { UpdraftClient } from '#lib/client/index.js';
+import type { MapState } from '#lib/map-state.svelte.js';
+import type { AirspaceStore } from '#lib/stores/airspace.svelte.js';
+import type { BasemapsStore } from '#lib/stores/basemaps.svelte.js';
+import type { DataActivation } from '#lib/stores/data-activation.svelte.js';
+import type { EnrouteCatalogStore } from '#lib/stores/enroute-catalog.svelte.js';
+import type { EnrouteDownloadsStore } from '#lib/stores/enroute-downloads.svelte.js';
+import type { ExternalDevicesStore } from '#lib/stores/external-devices.svelte.js';
+import type { GlidePerformanceStore } from '#lib/stores/glide-performance.svelte.js';
+import type { InstrumentsStore } from '#lib/stores/instruments.svelte.js';
+import type { NavigationStore } from '#lib/stores/navigation.svelte.js';
+import type { SettingsStore } from '#lib/stores/settings.svelte.js';
+import type { TerrainStore } from '#lib/stores/terrain.svelte.js';
+import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
+import type { WaypointsStore } from '#lib/stores/waypoints.svelte.js';
 
 import { createContext } from 'svelte';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { m } from '$lib/paraglide/messages.js';
-import { baseLocale, locales } from '$lib/paraglide/runtime.js';
+import { m } from '#lib/paraglide/messages.js';
+import { baseLocale, locales } from '#lib/paraglide/runtime.js';
 
 describe('i18n', () => {
   it('falls back to English as the base locale', () => {

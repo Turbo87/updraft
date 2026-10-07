@@ -54,5 +54,8 @@
     "vite": "8.3.2",
     "vitest": "4.1.11",
     "vitest-browser-svelte": "3.1.0"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
   }
 }

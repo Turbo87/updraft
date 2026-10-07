@@ -1,11 +1,11 @@
 <script module lang="ts">
   import type { Map } from 'maplibre-gl';
-  import type { Instruments } from '$lib/protocol/generated/Instruments';
-  import type { UnitSettings } from '$lib/protocol/generated/UnitSettings';
+  import type { Instruments } from '#lib/protocol/generated/Instruments.js';
+  import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '$lib/stores/instruments.svelte';
+  import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '#lib/stores/instruments.svelte.js';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
 
   const instruments = {

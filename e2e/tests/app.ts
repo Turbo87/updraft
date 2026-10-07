@@ -1,20 +1,20 @@
 import type { Page } from '@playwright/test';
 import type { GeoJSONSourceSpecification } from 'maplibre-gl';
-import type { AppContext } from '$lib/app-context';
-import type { BasemapStatus, TerrainStatus } from '$lib/client';
+import type { AppContext } from '#lib/app-context';
+import type { BasemapStatus, TerrainStatus } from '#lib/client';
 import type {
   DataFileCommand,
   ExternalDeviceCommand,
   FakeClient,
   NavigationCommand,
   SettingsCommand,
-} from '$lib/client/fake';
-import type { GpsInstruments } from '$lib/protocol/generated/GpsInstruments';
-import type { Navigation } from '$lib/protocol/generated/Navigation';
-import type { NavigationTarget } from '$lib/protocol/generated/NavigationTarget';
-import type { PinnedTarget } from '$lib/protocol/generated/PinnedTarget';
-import type { Topic } from '$lib/protocol/generated/Topic';
-import type { TrafficUpdate } from '$lib/protocol/generated/TrafficUpdate';
+} from '#lib/client/fake';
+import type { GpsInstruments } from '#lib/protocol/generated/GpsInstruments';
+import type { Navigation } from '#lib/protocol/generated/Navigation';
+import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget';
+import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget';
+import type { Topic } from '#lib/protocol/generated/Topic';
+import type { TrafficUpdate } from '#lib/protocol/generated/TrafficUpdate';
 
 import { test as base } from '@playwright/test';
 

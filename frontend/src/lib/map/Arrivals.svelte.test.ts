@@ -1,13 +1,13 @@
 import type { GeoJSONSource } from 'maplibre-gl';
-import type { UpdraftClient } from '$lib/client';
+import type { UpdraftClient } from '#lib/client/index.js';
 
 import { tick } from 'svelte';
 import { LngLatBounds } from 'maplibre-gl';
 import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
-import { FakeClient } from '$lib/client/fake';
-import { MapState } from '$lib/map-state.svelte';
+import { FakeClient } from '#lib/client/fake.js';
+import { MapState } from '#lib/map-state.svelte.js';
 import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
 import { waypointsFixture } from './waypoint.fixture';

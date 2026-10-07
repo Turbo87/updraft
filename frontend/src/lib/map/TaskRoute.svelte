@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Task } from '$lib/protocol/generated/Task';
+  import type { Task } from '#lib/protocol/generated/Task.js';
 
   import { FillLayer, GeoJSONSource, LineLayer } from 'svelte-maplibre-gl';
 

@@ -6,7 +6,7 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../app.css';
 
-import { withViewport } from '$lib/viewport.fixture';
+import { withViewport } from '#lib/viewport.fixture.js';
 import { FakeClient } from './client/fake';
 import DataLibrary from './DataLibrary.svelte';
 import { applyLocaleSetting } from './i18n.svelte';

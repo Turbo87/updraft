@@ -63,6 +63,11 @@ test('imports two airspace files, replaces one, and removes only the confirmed f
   await first.click();
   await page.getByRole('button', { name: 'Remove from device' }).click();
   await confirmation.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect.poll(() => app.dataFileCommands()).toEqual([['removeAirspace', 'a.txt']]);
+  await app.emit({
+    topic: 'airspace',
+    value: { generation: 4, sources: [{ type: 'active', sourceName: 'b.txt', airspaceCount: 1 }] },
+  });
   await expect(first).toHaveCount(0);
   await expect(second).toBeVisible();
 });
@@ -104,8 +109,9 @@ test('keeps duplicate airspaces separate and invalidates details after any sourc
   await expect(
     page.getByRole('heading', { level: 1, name: feature.properties.name }),
   ).toBeVisible();
-  await page.evaluate(async () => {
-    await window.__updraftFake!.removeAirspace('a.txt');
+  await app.emit({
+    topic: 'airspace',
+    value: { generation: 2, sources: [{ type: 'active', sourceName: 'b.txt', airspaceCount: 1 }] },
   });
   await expect(page.getByText('Airspace not found.')).toBeVisible();
 });

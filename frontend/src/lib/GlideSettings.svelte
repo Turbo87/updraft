@@ -3,6 +3,7 @@
   import type { PolarId } from '#lib/protocol/generated/PolarId.js';
 
   import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
 
   import Button from './Button.svelte';
   import { m } from './paraglide/messages.js';
@@ -76,7 +77,11 @@
   }
 </script>
 
-<ScreenScaffold backHref="/settings" backLabel={m.back_to_settings()} title={m.glide_heading()}>
+<ScreenScaffold
+  backHref={resolve('/settings')}
+  backLabel={m.back_to_settings()}
+  title={m.glide_heading()}
+>
   {#if loadingFailed}
     <p role="alert">{m.polars_load_failed()}</p>
     <Button onclick={loadPolars}>{m.retry()}</Button>

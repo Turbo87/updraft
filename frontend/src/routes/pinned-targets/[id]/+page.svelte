@@ -43,7 +43,7 @@
 
 <ScreenScaffold
   title={pin ? navigationLabel(pin.navigation) : m.pins_details()}
-  backHref="/"
+  backHref={resolve('/')}
   backLabel={m.flight_view()}
 >
   {#if pin?.navigation.position}

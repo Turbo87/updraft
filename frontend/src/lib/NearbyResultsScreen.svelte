@@ -2,6 +2,8 @@
   import type { Snippet } from 'svelte';
   import type { LatLon } from '#lib/protocol/generated/LatLon.js';
 
+  import { resolve } from '$app/paths';
+
   import { m } from '#lib/paraglide/messages.js';
   import Card from './Card.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
@@ -58,7 +60,7 @@
   }
 </script>
 
-<ScreenScaffold backHref="/" {backLabel} {title} {actions}>
+<ScreenScaffold backHref={resolve('/')} {backLabel} {title} {actions}>
   {#if error}<p role="alert">{m.navigation_failed()}</p>{/if}
   <p class="coordinate">
     <span aria-hidden="true" class="i-mdi-map-marker-outline"></span>

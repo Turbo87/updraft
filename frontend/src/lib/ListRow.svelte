@@ -1,8 +1,6 @@
 <script lang="ts">
-  import type { Pathname } from '$app/types';
+  import type { ResolvedPathname } from '$app/types';
   import type { Snippet } from 'svelte';
-
-  import { resolve } from '$app/paths';
 
   type Detail =
     | { value: string; numeric?: boolean; trailing?: never }
@@ -17,7 +15,7 @@
   };
 
   type Props = BaseProps &
-    ({ href: Pathname; size: 'large' } | { href?: never; size?: 'standard' | 'large' });
+    ({ href: ResolvedPathname; size: 'large' } | { href?: never; size?: 'standard' | 'large' });
 
   let {
     label,
@@ -54,7 +52,7 @@
 {/snippet}
 
 {#if href && !disabled}
-  <a href={resolve(href)} class={['list-row', size, className]}>
+  <a {href} class={['list-row', size, className]}>
     {@render content()}
   </a>
 {:else}

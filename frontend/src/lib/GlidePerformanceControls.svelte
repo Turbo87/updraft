@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { VerticalSpeedUnit } from './units';
 
+  import { resolve } from '$app/paths';
+
   import { m } from './paraglide/messages.js';
   import ScreenScaffold from './ScreenScaffold.svelte';
   import { convertVerticalSpeed } from './units';
@@ -86,7 +88,7 @@
 </script>
 
 <ScreenScaffold
-  backHref="/settings"
+  backHref={resolve('/settings')}
   backLabel={m.back_to_settings()}
   title={m.flight_controls_heading()}
 >

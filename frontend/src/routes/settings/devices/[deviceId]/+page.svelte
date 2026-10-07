@@ -59,7 +59,7 @@
 
 {#if !externalDevices.initialized}
   <ScreenScaffold
-    backHref="/settings/devices"
+    backHref={resolve('/settings/devices')}
     backLabel={m.back_to_external_devices()}
     title={m.external_devices_heading()}
   >
@@ -67,7 +67,7 @@
   </ScreenScaffold>
 {:else if !device || commandDeviceNotFound}
   <ScreenScaffold
-    backHref="/settings/devices"
+    backHref={resolve('/settings/devices')}
     backLabel={m.back_to_external_devices()}
     title={m.external_devices_heading()}
   >

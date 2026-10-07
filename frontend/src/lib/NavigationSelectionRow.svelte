@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Pathname } from '$app/types';
+  import type { ResolvedPathname } from '$app/types';
   import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
 
   import { resolve } from '$app/paths';
@@ -10,7 +10,7 @@
   type Props = {
     target: NavigationTarget;
     label: string;
-    href: Pathname;
+    href: ResolvedPathname;
     onPinFailure?: (retry: () => Promise<boolean>) => void;
   };
   let { target, label, href, onPinFailure }: Props = $props();
@@ -18,13 +18,14 @@
 
 <div class="row">
   <a
-    href={resolve(
-      target.type === 'traffic'
-        ? `/traffic/${target.id}`
-        : target.type === 'mapPosition'
-          ? `/nearby/${target.latitudeDegrees}/${target.longitudeDegrees}`
-          : href,
-    )}>{label}</a
+    href={target.type === 'traffic'
+      ? resolve('/traffic/[id]', { id: target.id })
+      : target.type === 'mapPosition'
+        ? resolve('/nearby/[latitude]/[longitude]', {
+            latitude: String(target.latitudeDegrees),
+            longitude: String(target.longitudeDegrees),
+          })
+        : href}>{label}</a
   >
   <NavigateButton {target} iconOnly />
   <PinTargetButton {target} iconOnly onFailure={onPinFailure} />

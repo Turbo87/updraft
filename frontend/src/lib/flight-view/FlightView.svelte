@@ -97,7 +97,11 @@
         onInspect={openNearbyRoute}
       />
       <div class="overlay">
-        <MapOverlayControl href="/settings" icon="i-mdi-menu" label={m.settings_heading()} />
+        <MapOverlayControl
+          href={resolve('/settings')}
+          icon="i-mdi-menu"
+          label={m.settings_heading()}
+        />
       </div>
     </div>
   </div>

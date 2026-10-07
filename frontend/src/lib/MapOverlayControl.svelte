@@ -1,7 +1,5 @@
 <script lang="ts">
-  import type { Pathname } from '$app/types';
-
-  import { resolve } from '$app/paths';
+  import type { ResolvedPathname } from '$app/types';
 
   type CommonProps = {
     icon: string;
@@ -10,7 +8,7 @@
   };
 
   type Props = CommonProps &
-    ({ href: Pathname; onClick?: never } | { href?: never; onClick: () => void });
+    ({ href: ResolvedPathname; onClick?: never } | { href?: never; onClick: () => void });
 
   let { icon, label, href, onClick, class: className }: Props = $props();
 </script>
@@ -20,7 +18,7 @@
 {/snippet}
 
 {#if href}
-  <a aria-label={label} class={['map-overlay-control', className]} href={resolve(href)}>
+  <a aria-label={label} class={['map-overlay-control', className]} {href}>
     {@render content()}
   </a>
 {:else}

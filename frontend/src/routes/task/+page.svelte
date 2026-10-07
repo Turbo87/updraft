@@ -4,6 +4,8 @@
   import type { TaskCommand } from '#lib/protocol/generated/TaskCommand.js';
   import type { WaypointFeature, WaypointProperties } from '#lib/waypoints.js';
 
+  import { resolve } from '$app/paths';
+
   import { getAppContext } from '#lib/app-context.js';
   import Button from '#lib/Button.svelte';
   import NavigateButton from '#lib/NavigateButton.svelte';
@@ -85,7 +87,11 @@
   }
 </script>
 
-<ScreenScaffold title={m.task_heading()} backHref="/navigation" backLabel={m.navigation_heading()}>
+<ScreenScaffold
+  title={m.task_heading()}
+  backHref={resolve('/navigation')}
+  backLabel={m.navigation_heading()}
+>
   <p>
     {task.status === 'running'
       ? m.task_running()

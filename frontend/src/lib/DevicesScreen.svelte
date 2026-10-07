@@ -73,7 +73,7 @@
 
 <ScreenScaffold
   {actions}
-  backHref="/settings"
+  backHref={resolve('/settings')}
   backLabel={m.back_to_settings()}
   title={m.external_devices_heading()}
 >

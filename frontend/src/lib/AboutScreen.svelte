@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { AttributionPart } from './map-attribution';
 
+  import { resolve } from '$app/paths';
+
   import { m } from '#lib/paraglide/messages.js';
   import ExternalLink from './ExternalLink.svelte';
   import { parseMapAttributions } from './map-attribution';
@@ -42,7 +44,11 @@
   }
 </script>
 
-<ScreenScaffold backHref="/settings" backLabel={m.back_to_settings()} title={m.about_heading()}>
+<ScreenScaffold
+  backHref={resolve('/settings')}
+  backLabel={m.back_to_settings()}
+  title={m.about_heading()}
+>
   <div class="identity">
     <span aria-hidden="true" class="i-mdi-weather-windy"></span>
     <span>

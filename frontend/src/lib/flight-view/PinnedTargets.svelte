@@ -2,6 +2,8 @@
   import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget.js';
   import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
+  import { resolve } from '$app/paths';
+
   import { navigationLabel } from '#lib/navigation.js';
   import { m } from '#lib/paraglide/messages.js';
   import TargetBar from './TargetBar.svelte';
@@ -18,7 +20,9 @@
         navigation={pin.navigation}
         {units}
         compact
-        href={pin.navigation.target.type === 'task' ? '/task' : `/pinned-targets/${pin.id}`}
+        href={pin.navigation.target.type === 'task'
+          ? resolve('/task')
+          : resolve('/pinned-targets/[id]', { id: String(pin.id) })}
         label={`${m.pins_details()}: ${navigationLabel(pin.navigation)}`}
       />
     {/each}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.js';
 
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
   import { getAppContext } from '#lib/app-context.js';
@@ -23,7 +24,7 @@
 
 <ScreenScaffold
   title={target ? navigationLabel({ target, traffic: null }) : m.navigation_none()}
-  backHref="/navigation"
+  backHref={resolve('/navigation')}
   backLabel={m.navigation_heading()}
 >
   {#if target && target.type !== 'traffic' && target.type !== 'task'}<p>

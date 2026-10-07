@@ -26,37 +26,37 @@
     <Card>
       <div class="group">
         <ListRow
-          href="/navigation"
+          href={resolve('/navigation')}
           icon="i-mdi-navigation"
           label={m.navigation_heading()}
           size="large"
         />
         <ListRow
-          href="/settings/flight-controls"
+          href={resolve('/settings/flight-controls')}
           icon="i-mdi-tune"
           label={m.flight_controls_heading()}
           size="large"
         />
         <ListRow
-          href="/settings/map"
+          href={resolve('/settings/map')}
           icon="i-mdi-map-outline"
           label={m.map_settings_heading()}
           size="large"
         />
         <ListRow
-          href="/settings/glide"
+          href={resolve('/settings/glide')}
           icon="i-mdi-airplane"
           label={m.glide_heading()}
           size="large"
         />
         <ListRow
-          href="/settings/vario"
+          href={resolve('/settings/vario')}
           icon="i-mdi-airplane-marker"
           label={m.vario_settings_heading()}
           size="large"
         />
         <ListRow
-          href="/settings/traffic"
+          href={resolve('/settings/traffic')}
           icon="i-mdi-radar"
           label={m.traffic_settings_heading()}
           size="large"
@@ -67,7 +67,7 @@
       <div class="group">
         <ListRow
           class="data-settings"
-          href="/settings/data"
+          href={resolve('/settings/data')}
           icon="i-mdi-database-outline"
           label={m.data_heading()}
           size="large"
@@ -78,7 +78,7 @@
               : ''}
         />
         <ListRow
-          href="/settings/devices"
+          href={resolve('/settings/devices')}
           icon="i-mdi-lan-connect"
           label={m.external_devices_heading()}
           size="large"
@@ -88,15 +88,20 @@
     <Card>
       <div class="group">
         <ListRow
-          href="/settings/language"
+          href={resolve('/settings/language')}
           icon="i-mdi-translate"
           label={m.language_label()}
           size="large"
           value={language ?? '—'}
         />
-        <ListRow href="/settings/units" icon="i-mdi-ruler" label={m.units_label()} size="large" />
         <ListRow
-          href="/settings/about"
+          href={resolve('/settings/units')}
+          icon="i-mdi-ruler"
+          label={m.units_label()}
+          size="large"
+        />
+        <ListRow
+          href={resolve('/settings/about')}
           icon="i-mdi-information-outline"
           label={m.about_heading()}
           size="large"

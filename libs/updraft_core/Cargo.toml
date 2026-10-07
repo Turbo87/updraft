@@ -31,11 +31,16 @@ ts = ["dep:ts-rs", "updraft_flarmnet/ts"]
 [dev-dependencies]
 approx = "=0.6.0-rc2"
 claims = "=0.8.0"
+criterion = "=0.8.2"
 igc = "=0.3.0"
 insta = { version = "=1.49.0", features = ["filters", "json"] }
 tempfile = "=3.27.0"
 tracing-test = "=0.2.6"
 updraft_units = { path = "../updraft_units", features = ["approx"] }
+
+[[bench]]
+name = "task"
+harness = false
 
 [[example]]
 name = "generate_protocol_bindings"

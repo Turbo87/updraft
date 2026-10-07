@@ -13,8 +13,16 @@ pub fn crossings(from: LatLon, to: LatLon, center: LatLon) -> (Option<f64>, Opti
             .as_meters()
     };
     // GeographicLib can return a sub-micrometer error at an exact boundary.
-    let from_inside = from.distance(center).as_meters() <= 500. + 1e-6;
-    let to_inside = to.distance(center).as_meters() <= 500. + 1e-6;
+    let radius = 500. + 1e-6;
+    let from_distance = from.distance(center).as_meters();
+    let to_distance = to.distance(center).as_meters();
+    // By the triangle inequality, each point on the segment is at least
+    // (from_distance + to_distance - length) / 2 from the center.
+    if (from_distance + to_distance - length.as_meters()) / 2. > radius {
+        return (None, None);
+    }
+    let from_inside = from_distance <= radius;
+    let to_inside = to_distance <= radius;
     let (mut low, mut high) = (0., 1.);
     for _ in 0..40 {
         let a = low + (high - low) / 3.;

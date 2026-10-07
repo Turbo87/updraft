@@ -1,11 +1,9 @@
 <script lang="ts">
-  import type { Pathname } from '$app/types';
+  import type { ResolvedPathname } from '$app/types';
   import type { Snippet } from 'svelte';
 
-  import { resolve } from '$app/paths';
-
   type BackTarget =
-    | { backHref: Pathname; onBack?: never }
+    | { backHref: ResolvedPathname; onBack?: never }
     | { backHref?: never; onBack: (event: MouseEvent) => void };
 
   type Props = BackTarget & {
@@ -30,7 +28,7 @@
 <div class="screen-scaffold" class:responsive-actions={responsiveActions}>
   <header>
     {#if backHref}
-      <a class="back-control" aria-label={backLabel} href={resolve(backHref)}>
+      <a class="back-control" aria-label={backLabel} href={backHref}>
         <span aria-hidden="true" class="i-mdi-arrow-left"></span>
       </a>
     {:else}

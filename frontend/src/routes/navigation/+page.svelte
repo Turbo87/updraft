@@ -28,7 +28,7 @@
   }
 </script>
 
-<ScreenScaffold title={m.navigation_heading()} backHref="/" backLabel={m.flight_view()}>
+<ScreenScaffold title={m.navigation_heading()} backHref={resolve('/')} backLabel={m.flight_view()}>
   {#if navigation.current}
     <h2>{m.navigation_current()}</h2>
     <NavigationSelectionRow

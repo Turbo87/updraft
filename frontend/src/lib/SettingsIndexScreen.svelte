@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+
   import Button from './Button.svelte';
   import Card from './Card.svelte';
   import ListRow from './ListRow.svelte';
@@ -15,7 +17,11 @@
   let { language, buildDate, updateCount = 0, onQuit }: Props = $props();
 </script>
 
-<ScreenScaffold backHref="/" backLabel={m.back_to_flight_view()} title={m.settings_heading()}>
+<ScreenScaffold
+  backHref={resolve('/')}
+  backLabel={m.back_to_flight_view()}
+  title={m.settings_heading()}
+>
   <nav aria-label={m.settings_heading()}>
     <Card>
       <div class="group">

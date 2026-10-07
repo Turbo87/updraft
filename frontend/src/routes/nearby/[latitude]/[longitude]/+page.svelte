@@ -138,7 +138,7 @@
     traffic={trafficResults}
   />
 {:else}
-  <ScreenScaffold backHref="/" backLabel={m.back_to_map()} title={m.nearby_heading()}>
+  <ScreenScaffold backHref={resolve('/')} backLabel={m.back_to_map()} title={m.nearby_heading()}>
     <p role="alert">{m.invalid_inspection()}</p>
   </ScreenScaffold>
 {/if}

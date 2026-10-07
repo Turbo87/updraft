@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+
   import { getAppContext } from '#lib/app-context.js';
   import { navigationLabel } from '#lib/navigation.js';
   import { m } from '#lib/paraglide/messages.js';
@@ -9,7 +11,7 @@
   const { navigation } = getAppContext();
 </script>
 
-<ScreenScaffold title={m.navigation_heading()} backHref="/" backLabel={m.flight_view()}>
+<ScreenScaffold title={m.navigation_heading()} backHref={resolve('/')} backLabel={m.flight_view()}>
   {#if navigation.current}
     <h2>{navigationLabel(navigation.current)}</h2>
     {#if navigation.current.position}

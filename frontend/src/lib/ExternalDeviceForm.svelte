@@ -4,6 +4,7 @@
   import type { PublishedExternalDevice } from '#lib/protocol/generated/PublishedExternalDevice.js';
 
   import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
 
   import { m } from '#lib/paraglide/messages.js';
   import Button from './Button.svelte';
@@ -166,7 +167,7 @@
 
 <ScreenScaffold
   actions={canSave ? actions : undefined}
-  backHref="/settings/devices"
+  backHref={resolve('/settings/devices')}
   backLabel={m.back_to_external_devices()}
   title={device ? m.edit_external_device_heading() : m.add_external_device()}
 >

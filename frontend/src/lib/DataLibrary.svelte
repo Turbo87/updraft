@@ -13,6 +13,7 @@
 
   import { onDestroy, tick, untrack } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
+  import { resolve } from '$app/paths';
   import { Dialog } from 'bits-ui';
 
   import Button from './Button.svelte';
@@ -452,7 +453,7 @@
 {/if}
 <div class="data-library" hidden={catalogOpen} bind:this={libraryContainer} style="height: 100%">
   <ScreenScaffold
-    {...updatesOpen ? { onBack: handleBack } : { backHref: '/settings' as const }}
+    {...updatesOpen ? { onBack: handleBack } : { backHref: resolve('/settings') }}
     backLabel={updatesOpen ? m.back_to_data() : m.back_to_settings()}
     title={updatesOpen ? m.data_updates_heading() : m.data_heading()}
     responsiveActions

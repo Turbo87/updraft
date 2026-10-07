@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Locale } from '#lib/protocol/generated/Locale.js';
 
+  import { resolve } from '$app/paths';
+
   import { getAppContext } from '#lib/app-context.js';
   import LanguageSetting from '#lib/LanguageSetting.svelte';
   import { m } from '#lib/paraglide/messages.js';
@@ -17,6 +19,10 @@
   }
 </script>
 
-<ScreenScaffold backHref="/settings" backLabel={m.back_to_settings()} title={m.language_label()}>
+<ScreenScaffold
+  backHref={resolve('/settings')}
+  backLabel={m.back_to_settings()}
+  title={m.language_label()}
+>
   <LanguageSetting locale={activeLocale} onLocaleChange={selectLocale} />
 </ScreenScaffold>

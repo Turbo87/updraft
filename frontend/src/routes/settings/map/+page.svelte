@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+
   import { getAppContext } from '#lib/app-context.js';
   import MapSettings from '#lib/MapSettings.svelte';
   import { m } from '#lib/paraglide/messages.js';
@@ -8,7 +10,7 @@
 </script>
 
 <ScreenScaffold
-  backHref="/settings"
+  backHref={resolve('/settings')}
   backLabel={m.back_to_settings()}
   title={m.map_settings_heading()}
 >

@@ -48,6 +48,9 @@ pub struct GpsCandidate {
 }
 
 /// Stores the latest canonical GPS fix times from one source.
+///
+/// A time of day is newer than the full instant. A new full instant
+/// clears it.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct GpsTimeCandidate {
     pub full: Option<Timed<UtcInstant>>,
@@ -162,18 +165,17 @@ pub fn select_gps_candidate(
     let altitude_msl = candidate.altitude.and_then(|altitude| altitude.fresh(at));
     let track = candidate.track.and_then(|track| track.fresh(at));
     let ground_speed = candidate.ground_speed.and_then(|speed| speed.fresh(at));
-    let fix_time = candidate
-        .fix_time
-        .full
-        .and_then(|time| time.fresh(at))
-        .map(|time| time.map(FixTime::UtcInstant))
-        .or_else(|| {
-            candidate
-                .fix_time
-                .time_only
-                .and_then(|time| time.fresh(at))
-                .map(|time| time.map(FixTime::UtcTimeOfDay))
-        });
+    let full = candidate.fix_time.full.and_then(|time| time.fresh(at));
+    let time_only = candidate.fix_time.time_only.and_then(|time| time.fresh(at));
+    let fix_time = match (full, time_only) {
+        (Some(full), Some(time)) => {
+            let elapsed = time.ingested_at.saturating_since(full.ingested_at);
+            let reference = full.value.saturating_add(elapsed);
+            Some(time.map(|time| FixTime::UtcInstant(reference.nearest_with_time_of_day(time))))
+        }
+        (Some(full), None) => Some(full.map(FixTime::UtcInstant)),
+        (None, time) => time.map(|time| time.map(FixTime::UtcTimeOfDay)),
+    };
 
     Some(Selected {
         source,

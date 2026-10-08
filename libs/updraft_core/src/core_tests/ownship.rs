@@ -69,9 +69,25 @@ fn nmea_sentences_select_canonical_fix_times() {
 }
 
 #[test]
-fn full_fix_time_precedes_then_falls_back_to_time_of_day() {
+fn fix_time_follows_the_last_sentence_of_one_read() {
+    for (sentences, expected) in [
+        ([RMC, GGA_LATER_TIME], 1_767_268_801_500),
+        ([GGA_LATER_TIME, RMC], 1_767_268_800_000),
+    ] {
+        let (mut core, device_id) = core_with_external_device();
+        core.apply(Bytes::new(device_id, sentences.concat()), at(0));
+        let selected = current_selection(core.gps);
+        assert_some_eq!(
+            selected.value.fix_time.map(|time| time.value),
+            FixTime::UtcInstant(UtcInstant::from_unix_milliseconds(expected))
+        );
+    }
+}
+
+#[test]
+fn newer_time_of_day_updates_the_full_fix_time_then_falls_back() {
     let (mut core, device_id) = core_with_external_device();
-    let full = FixTime::UtcInstant(UtcInstant::from_unix_milliseconds(1_767_268_800_000));
+    let full = FixTime::UtcInstant(UtcInstant::from_unix_milliseconds(1_767_268_801_500));
     let time_only = FixTime::UtcTimeOfDay(utc_time(43_201_500));
 
     core.apply(Bytes::new(device_id, RMC), at(0));

@@ -291,6 +291,7 @@ impl Core {
                     if let Some(date) = rmc.date {
                         if let Some(fix_time) = UtcInstant::from_nmea_date_time(date, time) {
                             device.gps.fix_time.full = Some(Timed::new(fix_time, at));
+                            device.gps.fix_time.time_only = None;
                         }
                     } else {
                         let fix_time = UtcTime::from_nmea_time(time);
@@ -1270,18 +1271,18 @@ impl Core {
                 })
             });
         let time_of_day = fix.value.fix_time.and_then(|time| match time.value {
-            crate::FixTime::UtcTimeOfDay(time) => Some(time.milliseconds_since_midnight()),
+            crate::FixTime::UtcTimeOfDay(time) => Some(time),
             _ => None,
         });
         let utc = match (utc, time_of_day) {
-            (Some(reference), Some(time)) => {
-                let offset = (i64::from(time) - reference.rem_euclid(86_400_000) + 43_200_000)
-                    .rem_euclid(86_400_000)
-                    - 43_200_000;
-                Some(reference.saturating_add(offset))
-            }
+            (Some(reference), Some(time)) => Some(
+                UtcInstant::from_unix_milliseconds(reference)
+                    .nearest_with_time_of_day(time)
+                    .unix_milliseconds(),
+            ),
             _ => utc,
         };
+        let time_of_day = time_of_day.map(UtcTime::milliseconds_since_midnight);
         self.task
             .observe(fix.value.position, fix.ingested_at, utc, time_of_day);
         if self.task.snapshot().status == crate::TaskStatus::Completed

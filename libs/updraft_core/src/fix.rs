@@ -39,6 +39,15 @@ impl UtcInstant {
         self.0
     }
 
+    /// Returns the instant within 12 hours of this one that has the given
+    /// time of day.
+    pub fn nearest_with_time_of_day(self, time: UtcTime) -> Self {
+        const DAY: i64 = 86_400_000;
+        let time = i64::from(time.milliseconds_since_midnight());
+        let offset = (time - self.0.rem_euclid(DAY) + DAY / 2).rem_euclid(DAY) - DAY / 2;
+        Self(self.0.saturating_add(offset))
+    }
+
     /// Advances the instant by monotonic elapsed time.
     pub fn saturating_add(self, duration: std::time::Duration) -> Self {
         let milliseconds = i64::try_from(duration.as_millis()).unwrap_or(i64::MAX);
@@ -111,5 +120,22 @@ mod tests {
         let last_millisecond = assert_some!(UtcTime::from_milliseconds_since_midnight(86_399_999));
         assert_eq!(last_millisecond.milliseconds_since_midnight(), 86_399_999);
         assert_none!(UtcTime::from_milliseconds_since_midnight(86_400_000));
+    }
+
+    #[test]
+    fn nearest_time_of_day_crosses_midnight() {
+        // 2026-01-01T23:59:59.000Z
+        let before_midnight = UtcInstant::from_unix_milliseconds(1_767_311_999_000);
+        let after_midnight = assert_some!(UtcTime::from_milliseconds_since_midnight(500));
+        assert_eq!(
+            before_midnight.nearest_with_time_of_day(after_midnight),
+            UtcInstant::from_unix_milliseconds(1_767_312_000_500)
+        );
+        let midnight = UtcInstant::from_unix_milliseconds(1_767_312_000_000);
+        let last_second = assert_some!(UtcTime::from_milliseconds_since_midnight(86_399_000));
+        assert_eq!(
+            midnight.nearest_with_time_of_day(last_second),
+            before_midnight
+        );
     }
 }

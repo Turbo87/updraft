@@ -32,6 +32,7 @@ pub enum RecordingWrite {
 pub struct FlightRecording {
     connection: Connection,
     terrain: Arc<Mutex<Terrain>>,
+    write_fails: bool,
 }
 
 impl FlightRecording {
@@ -70,6 +71,7 @@ impl FlightRecording {
         Ok(Self {
             connection,
             terrain,
+            write_fails: false,
         })
     }
 
@@ -89,6 +91,22 @@ impl FlightRecording {
             insert(&transaction, sample, terrain_elevation)?;
         }
         transaction.commit()
+    }
+
+    /// Writes the effect. Logs only the first failure of a series and the
+    /// next success, because a source can give several samples each second.
+    pub fn record(&mut self, write: RecordingWrite) {
+        match (self.write(&write), self.write_fails) {
+            (Err(error), false) => {
+                tracing::warn!(%error, "Could not write the flight recording");
+                self.write_fails = true;
+            }
+            (Ok(()), true) => {
+                tracing::info!("Resumed writing the flight recording");
+                self.write_fails = false;
+            }
+            _ => {}
+        }
     }
 
     fn samples(&self) -> rusqlite::Result<Vec<Sample>> {
@@ -148,9 +166,7 @@ pub fn load(
             return;
         };
         for write in receiver {
-            if let Err(error) = recording.write(&write) {
-                tracing::error!(path = %path.display(), %error, "Could not write the flight recording");
-            }
+            recording.record(write);
         }
     });
 
@@ -433,6 +449,36 @@ mod tests {
         assert_eq!(user_version(&path), 1);
         logs_assert(|lines| {
             only_logs(lines, &[("WARN", "Deleting the unusable flight recording")])
+        });
+    }
+
+    #[test]
+    #[tracing_test::traced_test]
+    fn writes_continue_after_a_write_failure() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.sqlite");
+        let mut recording = assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
+        recording.record(StartRecording(sample(1_000, COVERED)));
+
+        // SQLite stores NaN as NULL, which the `NOT NULL` latitude rejects.
+        recording.record(RecordSample(sample(2_000, (f64::NAN, 2.0))));
+        recording.record(RecordSample(sample(3_000, (f64::NAN, 2.0))));
+        recording.record(RecordSample(sample(4_000, COVERED)));
+        recording.record(RecordSample(sample(5_000, COVERED)));
+
+        let utc: Vec<_> = rows(&path).into_iter().map(|row| row[0].clone()).collect();
+        assert_eq!(
+            utc,
+            [1_000, 4_000, 5_000].map(rusqlite::types::Value::Integer)
+        );
+        logs_assert(|lines| {
+            only_logs(
+                lines,
+                &[
+                    ("WARN", "Could not write the flight recording"),
+                    ("INFO", "Resumed writing the flight recording"),
+                ],
+            )
         });
     }
 }

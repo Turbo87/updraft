@@ -41,3 +41,7 @@ newer version than Updraft supports. Updraft then logs a warning, deletes the
 database, and starts with an empty recording. When Updraft cannot create the
 database, it logs an error, restores nothing, and does not record. When it
 cannot read the samples, it logs an error and restores nothing.
+
+When Updraft cannot write a sample, it logs a warning and continues to write
+the next samples. When a write succeeds again, it logs this event. The recording
+then has a gap. Navigation continues. Updraft shows no warning to the pilot.

@@ -7,7 +7,7 @@ use claims::{assert_err, assert_none, assert_ok, assert_some, assert_some_eq};
 use rusqlite::Connection;
 use tauri::http::header;
 
-fn write_terrain(path: &Path, tiles: &[(u32, u32, u32, &[u8])]) {
+pub fn write_terrain(path: &Path, tiles: &[(u32, u32, u32, &[u8])]) {
     let connection = Connection::open(path).unwrap();
     connection.execute_batch(
         "CREATE TABLE metadata (name TEXT, value TEXT);
@@ -956,7 +956,7 @@ fn available_updates_use_timestamps_for_active_and_disabled_terrain() {
     );
 }
 
-fn elevation_webp(meters: u16) -> Vec<u8> {
+pub fn elevation_webp(meters: u16) -> Vec<u8> {
     let value = meters + 32768;
     let pixel = [(value >> 8) as u8, value as u8, 0];
     let mut bytes = Vec::new();

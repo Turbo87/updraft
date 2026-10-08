@@ -13,6 +13,7 @@ mod driver;
 pub mod enroute;
 mod file_picker;
 mod flarmnet;
+mod flight_recording;
 mod http;
 mod ipc;
 mod navigation;
@@ -192,6 +193,10 @@ pub fn run() {
                 let runtime = tauri::async_runtime::handle();
                 let _guard = runtime.inner().enter();
                 let persist = Box::new(settings_file.writer());
+                let record = Box::new(flight_recording::writer(
+                    data_directory.join("state.sqlite"),
+                    app.state::<Arc<Mutex<terrain::Terrain>>>().inner().clone(),
+                ));
                 driver::Driver::spawn(
                     snapshot,
                     airspace,
@@ -199,6 +204,7 @@ pub fn run() {
                         transport::open(device_id, spec, handle, app_handle.clone())
                     }),
                     persist,
+                    record,
                     std::time::Duration::from_millis(100),
                 )
             };

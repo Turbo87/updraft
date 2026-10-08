@@ -276,7 +276,7 @@ fn split_gps_sentence_uses_its_first_byte_input_for_freshness() {
     let effects = core
         .apply(Bytes::new(device_id, &RMC[24..]), at(3_000))
         .effects;
-    assert!(effects.is_empty());
+    assert!(emissions(effects).is_empty());
     assert_matches!(core.gps, DomainState::Unavailable);
 }
 
@@ -346,7 +346,7 @@ fn repeated_identical_sentences_emit_only_once() {
 
     for millis in [0, 2_500] {
         let input = Bytes::new(device_id, RMC);
-        emissions += core.apply(input, at(millis)).effects.len();
+        emissions += super::support::emissions(core.apply(input, at(millis)).effects).len();
     }
 
     assert_eq!(emissions, 1, "only the first sentence changed any value");

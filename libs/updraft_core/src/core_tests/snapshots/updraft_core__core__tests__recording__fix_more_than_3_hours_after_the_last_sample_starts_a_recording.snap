@@ -1,0 +1,46 @@
+---
+source: libs/updraft_core/src/core_tests/recording.rs
+expression: effects
+---
+[
+    RecordSample(
+        Sample {
+            utc: UtcInstant(
+                1767279600000,
+            ),
+            position: LatLon {
+                latitude: 50°,
+                longitude: 6.000000000000001°,
+            },
+            altitude_msl: Some(
+                MslAltitude(
+                    199 m,
+                ),
+            ),
+            vario: None,
+            netto: None,
+            relative_vario: None,
+            wind: None,
+        },
+    ),
+    StartRecording(
+        Sample {
+            utc: UtcInstant(
+                1767290400001,
+            ),
+            position: LatLon {
+                latitude: 50°,
+                longitude: 6.000000000000001°,
+            },
+            altitude_msl: Some(
+                MslAltitude(
+                    199 m,
+                ),
+            ),
+            vario: None,
+            netto: None,
+            relative_vario: None,
+            wind: None,
+        },
+    ),
+]

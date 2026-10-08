@@ -148,9 +148,21 @@ pub fn last_known_selection<T: std::fmt::Debug>(state: DomainState<T>) -> Select
     selected
 }
 
+pub fn emissions(effects: Vec<Effect>) -> Vec<Effect> {
+    effects
+        .into_iter()
+        .filter(|effect| matches!(effect, Effect::Emit(_)))
+        .collect()
+}
+
 #[track_caller]
 pub fn single_instruments_emission(effects: &[Effect]) -> &Instruments {
-    let [Effect::Emit(Topic::Instruments(instruments))] = effects else {
+    let mut emissions = effects
+        .iter()
+        .filter(|effect| matches!(effect, Effect::Emit(_)));
+    let (Some(Effect::Emit(Topic::Instruments(instruments))), None) =
+        (emissions.next(), emissions.next())
+    else {
         panic!("expected exactly one instruments emission, got {effects:?}");
     };
     instruments

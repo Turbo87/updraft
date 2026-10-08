@@ -1,0 +1,26 @@
+---
+source: libs/updraft_core/src/core_tests/recording.rs
+expression: "record(&mut core, UTC - 30_001, 3_000)"
+---
+[
+    StartRecording(
+        Sample {
+            utc: UtcInstant(
+                1767268769999,
+            ),
+            position: LatLon {
+                latitude: 50°,
+                longitude: 6.000000000000001°,
+            },
+            altitude_msl: Some(
+                MslAltitude(
+                    199 m,
+                ),
+            ),
+            vario: None,
+            netto: None,
+            relative_vario: None,
+            wind: None,
+        },
+    ),
+]

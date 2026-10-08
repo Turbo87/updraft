@@ -22,6 +22,7 @@ mod navigation;
 mod ownship;
 mod pinned_targets;
 mod polar;
+mod recording;
 mod sensor_fusion;
 mod settings;
 mod signal_state;
@@ -35,7 +36,7 @@ pub use airspace::{
     AirspaceState, AirspaceStatus,
 };
 pub use arrival_reserve::{ArrivalReserve, InvalidArrivalReserve};
-pub use climb::ClimbEstimates;
+pub use climb::{ClimbEstimates, Velocity};
 pub use connection::{
     ConnectionSpec, ConnectionState, ExternalDeviceId, STANDARD_SPP_SERVICE_UUID,
 };
@@ -60,6 +61,7 @@ pub use input::{
     TerrainElevation, Tick, Update, UtcTick,
 };
 pub use polar::{PolarId, UnknownPolar};
+pub use recording::Sample;
 pub use settings::{
     AltitudeUnit, ClimbAverageMethod, DistanceUnit, HillshadeDirection, Locale, Settings,
     SettingsSnapshot, SpeedUnit, UnitSettings, VerticalSpeedUnit,

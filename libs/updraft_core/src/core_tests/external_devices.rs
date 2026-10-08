@@ -132,7 +132,7 @@ fn reorder_external_devices_preserves_partial_decoder_state() {
     core.apply(input, at(1));
 
     let input = Bytes::new(first, &RMC[24..]);
-    let effects = core.apply(input, at(2)).effects;
+    let effects = emissions(core.apply(input, at(2)).effects);
 
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 }

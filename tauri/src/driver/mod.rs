@@ -135,6 +135,7 @@ impl DriverState {
                     .open(device_id, spec, self.handle.clone(), &self.open);
             }
             Effect::CloseConnection { device_id } => self.transports.close(device_id),
+            Effect::StartRecording(_) | Effect::RecordSample(_) => {}
         }
     }
 }

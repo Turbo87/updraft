@@ -1,0 +1,34 @@
+---
+source: libs/updraft_core/src/core_tests/recording.rs
+expression: core.task.snapshot()
+---
+Task {
+    points: [
+        TaskPoint {
+            id: 0,
+            target: Waypoint {
+                name: "Start",
+                latitude_degrees: 50.0,
+                longitude_degrees: 6.0,
+                elevation_meters: 0.0,
+            },
+        },
+        TaskPoint {
+            id: 1,
+            target: Waypoint {
+                name: "Finish",
+                latitude_degrees: 51.0,
+                longitude_degrees: 6.0,
+                elevation_meters: 0.0,
+            },
+        },
+    ],
+    current: Some(
+        0,
+    ),
+    status: Running,
+    next_id: 2,
+    start: None,
+    finish: None,
+    restart_allowed: true,
+}

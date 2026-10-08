@@ -35,14 +35,29 @@ pub struct FlightRecording {
 }
 
 impl FlightRecording {
+    /// Replaces an unusable database with an empty one.
     pub fn open(path: &Path, terrain: Arc<Mutex<Terrain>>) -> anyhow::Result<Self> {
         if let Some(directory) = path.parent() {
             std::fs::create_dir_all(directory)?;
         }
-        let mut connection = Connection::open(path)?;
+        let (mut connection, current) = match open_usable(path) {
+            Ok(opened) => opened,
+            Err(error) => {
+                tracing::warn!(path = %path.display(), %error, "Deleting the unusable flight recording");
+                for suffix in ["", "-wal", "-shm"] {
+                    let mut file = path.as_os_str().to_owned();
+                    file.push(suffix);
+                    if let Err(error) = std::fs::remove_file(file)
+                        && error.kind() != std::io::ErrorKind::NotFound
+                    {
+                        return Err(error.into());
+                    }
+                }
+                open_usable(path)?
+            }
+        };
         connection.pragma_update_and_check(None, "journal_mode", "WAL", |_| Ok(()))?;
         connection.pragma_update(None, "synchronous", "NORMAL")?;
-        let current: i64 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
         for (version, migration) in (1_i64..)
             .zip(MIGRATIONS)
             .skip_while(|(version, _)| *version <= current)
@@ -107,8 +122,8 @@ impl FlightRecording {
 /// Opens the flight recording and reads its samples for the restore.
 ///
 /// The returned writer stores the recording effects in order on a blocking
-/// worker. Without a usable database, the restore is empty and the writer
-/// drops all writes.
+/// worker. When the database cannot be opened, the restore is empty and the
+/// writer drops all writes.
 pub fn load(
     path: PathBuf,
     terrain: Arc<Mutex<Terrain>>,
@@ -143,6 +158,24 @@ pub fn load(
         let _ = sender.send(write);
     };
     (samples, writer)
+}
+
+/// Opens the database and returns its `user_version`. Fails when the
+/// database does not pass `PRAGMA quick_check` or is newer than the migrations.
+fn open_usable(path: &Path) -> anyhow::Result<(Connection, i64)> {
+    let connection = Connection::open(path)?;
+    let check: Vec<String> = connection
+        .prepare("PRAGMA quick_check")?
+        .query_map([], |row| row.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    anyhow::ensure!(check == ["ok"], "quick check failed: {}", check.join(" "));
+    let current: i64 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    let supported = MIGRATIONS.len() as i64;
+    anyhow::ensure!(
+        current <= supported,
+        "user version {current} is newer than {supported}"
+    );
+    Ok((connection, current))
 }
 
 fn terrain_elevation(terrain: &Mutex<Terrain>, sample: &Sample) -> Option<f64> {
@@ -336,5 +369,70 @@ mod tests {
         assert_eq!(samples, []);
         assert!(logs_contain("ERROR"));
         assert!(logs_contain("Could not open the flight recording"));
+    }
+
+    /// Accepts only the expected log lines, each with its level and message.
+    fn only_logs(lines: &[&str], expected: &[(&str, &str)]) -> Result<(), String> {
+        let matches = lines.len() == expected.len()
+            && lines.iter().zip(expected).all(|(line, (level, message))| {
+                line.contains(&format!(" {level} ")) && line.contains(message)
+            });
+        if matches {
+            Ok(())
+        } else {
+            Err(format!("expected {expected:?}, got {lines:#?}"))
+        }
+    }
+
+    fn user_version(path: &Path) -> i64 {
+        let connection = assert_ok!(Connection::open(path));
+        assert_ok!(connection.pragma_query_value(None, "user_version", |row| row.get(0)))
+    }
+
+    #[test]
+    #[tracing_test::traced_test]
+    fn load_replaces_a_corrupt_database_with_an_empty_one() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.sqlite");
+        let terrain = terrain(directory.path());
+        let mut recording = assert_ok!(FlightRecording::open(&path, terrain.clone()));
+        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED))));
+        drop(recording);
+        // Page 2 is the root page of the `samples` table.
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes[4096..8192].fill(0xff);
+        std::fs::write(&path, bytes).unwrap();
+
+        let (samples, _) = load(path.clone(), terrain);
+
+        assert_eq!(samples, []);
+        assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
+        assert_eq!(user_version(&path), 1);
+        logs_assert(|lines| {
+            only_logs(lines, &[("WARN", "Deleting the unusable flight recording")])
+        });
+    }
+
+    #[test]
+    #[tracing_test::traced_test]
+    fn load_replaces_a_database_with_a_newer_version_with_an_empty_one() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.sqlite");
+        let terrain = terrain(directory.path());
+        let mut recording = assert_ok!(FlightRecording::open(&path, terrain.clone()));
+        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED))));
+        drop(recording);
+        let connection = assert_ok!(Connection::open(&path));
+        assert_ok!(connection.pragma_update(None, "user_version", 2));
+        drop(connection);
+
+        let (samples, _) = load(path.clone(), terrain);
+
+        assert_eq!(samples, []);
+        assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
+        assert_eq!(user_version(&path), 1);
+        logs_assert(|lines| {
+            only_logs(lines, &[("WARN", "Deleting the unusable flight recording")])
+        });
     }
 }

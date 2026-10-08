@@ -2,8 +2,9 @@ use crate::terrain::Terrain;
 use rusqlite::{Connection, Transaction};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use updraft_core::Sample;
-use updraft_units::Speed;
+use updraft_core::{Sample, UtcInstant, Velocity};
+use updraft_geo::LatLon;
+use updraft_units::{Length, MslAltitude, Speed};
 
 /// Each migration upgrades the database to the `user_version` that is its
 /// position plus one.
@@ -24,6 +25,7 @@ const MIGRATIONS: &[&str] = &["CREATE TABLE samples (
 pub enum RecordingWrite {
     StartRecording(Sample),
     RecordSample(Sample),
+    DiscardRecording,
 }
 
 /// Stores the current flight recording in `state.sqlite`.
@@ -58,31 +60,77 @@ impl FlightRecording {
 
     /// Runs one transaction for the write.
     pub fn write(&mut self, write: &RecordingWrite) -> rusqlite::Result<()> {
-        let (RecordingWrite::StartRecording(sample) | RecordingWrite::RecordSample(sample)) = write;
-        let terrain_elevation = terrain_elevation(&self.terrain, sample);
+        let (deletes_samples, sample) = match write {
+            RecordingWrite::StartRecording(sample) => (true, Some(sample)),
+            RecordingWrite::RecordSample(sample) => (false, Some(sample)),
+            RecordingWrite::DiscardRecording => (true, None),
+        };
+        let row = sample.map(|sample| (sample, terrain_elevation(&self.terrain, sample)));
         let transaction = self.connection.transaction()?;
-        if let RecordingWrite::StartRecording(_) = write {
+        if deletes_samples {
             transaction.execute("DELETE FROM samples", [])?;
         }
-        insert(&transaction, sample, terrain_elevation)?;
+        if let Some((sample, terrain_elevation)) = row {
+            insert(&transaction, sample, terrain_elevation)?;
+        }
         transaction.commit()
+    }
+
+    fn samples(&self) -> rusqlite::Result<Vec<Sample>> {
+        let mut statement = self.connection.prepare(
+            "SELECT utc_ms, latitude_deg, longitude_deg, altitude_msl_m, vario_mps, netto_mps,
+                relative_vario_mps, wind_east_mps, wind_north_mps
+            FROM samples ORDER BY rowid",
+        )?;
+        let speed = |value: Option<f64>| value.map(Speed::from_meters_per_second);
+        let rows = statement.query_map([], |row| {
+            let wind_east = speed(row.get(7)?);
+            let wind_north = speed(row.get(8)?);
+            Ok(Sample {
+                utc: UtcInstant::from_unix_milliseconds(row.get(0)?),
+                position: LatLon::from_degrees(row.get(1)?, row.get(2)?),
+                altitude_msl: row
+                    .get::<_, Option<f64>>(3)?
+                    .map(|meters| MslAltitude::new(Length::from_meters(meters))),
+                vario: speed(row.get(4)?),
+                netto: speed(row.get(5)?),
+                relative_vario: speed(row.get(6)?),
+                wind: wind_east
+                    .zip(wind_north)
+                    .map(|(east, north)| Velocity { east, north }),
+            })
+        })?;
+        rows.collect()
     }
 }
 
-/// Writes the flight recording in effect order on a blocking worker.
-pub fn writer(
+/// Opens the flight recording and reads its samples for the restore.
+///
+/// The returned writer stores the recording effects in order on a blocking
+/// worker. Without a usable database, the restore is empty and the writer
+/// drops all writes.
+pub fn load(
     path: PathBuf,
     terrain: Arc<Mutex<Terrain>>,
-) -> impl Fn(RecordingWrite) + Send + 'static {
+) -> (Vec<Sample>, impl Fn(RecordingWrite) + Send + 'static) {
+    let (recording, samples) = match FlightRecording::open(&path, terrain) {
+        Ok(recording) => {
+            let samples = recording.samples().unwrap_or_else(|error| {
+                tracing::error!(path = %path.display(), %error, "Could not read the flight recording");
+                Vec::new()
+            });
+            (Some(recording), samples)
+        }
+        Err(error) => {
+            tracing::error!(path = %path.display(), %error, "Could not open the flight recording");
+            (None, Vec::new())
+        }
+    };
     let (sender, receiver) = std::sync::mpsc::channel();
 
     tauri::async_runtime::spawn_blocking(move || {
-        let mut recording = match FlightRecording::open(&path, terrain) {
-            Ok(recording) => recording,
-            Err(error) => {
-                tracing::error!(path = %path.display(), %error, "Could not open the flight recording");
-                return;
-            }
+        let Some(mut recording) = recording else {
+            return;
         };
         for write in receiver {
             if let Err(error) = recording.write(&write) {
@@ -91,9 +139,10 @@ pub fn writer(
         }
     });
 
-    move |write| {
+    let writer = move |write| {
         let _ = sender.send(write);
-    }
+    };
+    (samples, writer)
 }
 
 fn terrain_elevation(terrain: &Mutex<Terrain>, sample: &Sample) -> Option<f64> {
@@ -134,11 +183,8 @@ fn insert(
 mod tests {
     use super::*;
     use crate::terrain::tests::{elevation_webp, write_terrain};
-    use RecordingWrite::{RecordSample, StartRecording};
+    use RecordingWrite::{DiscardRecording, RecordSample, StartRecording};
     use claims::{assert_err, assert_ok};
-    use updraft_core::{UtcInstant, Velocity};
-    use updraft_geo::LatLon;
-    use updraft_units::{Length, MslAltitude};
 
     /// Tile 7/64/45 covers this position.
     const COVERED: (f64, f64) = (46.0, 2.0);
@@ -243,5 +289,52 @@ mod tests {
         );
 
         assert_eq!(rows(&path).len(), 1);
+    }
+
+    #[test]
+    fn discard_recording_deletes_all_samples() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.sqlite");
+        let mut recording = assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
+        for utc in [1_000, 2_000] {
+            assert_ok!(recording.write(&RecordSample(sample(utc, COVERED))));
+        }
+
+        assert_ok!(recording.write(&DiscardRecording));
+
+        assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
+    }
+
+    #[test]
+    fn load_reads_the_samples_in_recording_order() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.sqlite");
+        let terrain = terrain(directory.path());
+        let mut recording = assert_ok!(FlightRecording::open(&path, terrain.clone()));
+        let uncovered = (50.0, 20.0);
+        let mut partial = sample(2_000, uncovered);
+        partial.altitude_msl = None;
+        partial.wind = None;
+        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED))));
+        assert_ok!(recording.write(&RecordSample(partial)));
+        drop(recording);
+
+        let (samples, _) = load(path, terrain);
+
+        assert_eq!(samples, [sample(1_000, COVERED), partial]);
+    }
+
+    #[test]
+    #[tracing_test::traced_test]
+    fn load_without_a_usable_database_restores_nothing() {
+        let directory = tempfile::tempdir().unwrap();
+        let file = directory.path().join("file");
+        std::fs::write(&file, "").unwrap();
+
+        let (samples, _) = load(file.join("state.sqlite"), terrain(directory.path()));
+
+        assert_eq!(samples, []);
+        assert!(logs_contain("ERROR"));
+        assert!(logs_contain("Could not open the flight recording"));
     }
 }

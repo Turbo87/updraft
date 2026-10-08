@@ -1,3 +1,4 @@
+use crate::climb::Velocity;
 use std::time::Duration;
 use updraft_units::{Angle, Speed};
 
@@ -29,6 +30,10 @@ const INITIAL_VARIANCE: f64 = 100.;
 /// The estimate counts as converged once the sum of both component
 /// variances drops to this value, in `(m/s)²`.
 const CONVERGED_VARIANCE: f64 = 1.;
+
+/// Variance per component of a restored estimate, in `(m/s)²`. The
+/// estimate then stays converged through 30 minutes without a measurement.
+const RESTORED_VARIANCE: f64 = CONVERGED_VARIANCE / 2. - PROCESS_NOISE * 30. * 60.;
 
 /// Airspeed below which the measurement carries no wind information,
 /// in m/s. It also keeps the estimate out of the taxi and launch phase.
@@ -77,6 +82,17 @@ impl Default for WindFilter {
 }
 
 impl WindFilter {
+    /// Continues from a wind vector of an earlier estimate.
+    pub fn restored(wind: Velocity) -> Self {
+        Self {
+            east: wind.east,
+            north: wind.north,
+            variance_east: RESTORED_VARIANCE,
+            covariance: 0.,
+            variance_north: RESTORED_VARIANCE,
+        }
+    }
+
     /// Lets the estimate age by `interval` seconds. It is called once per
     /// fix, whatever measurements that fix carries, so that the wind grows
     /// uncertain at the same rate whether it is being measured or not.
@@ -182,7 +198,7 @@ mod tests {
     use super::*;
     use crate::sensor_fusion::sample::SampleAcceptance::{Accepted, Ignored};
     use approx::assert_abs_diff_eq;
-    use claims::{assert_le, assert_none, assert_some};
+    use claims::{assert_le, assert_none, assert_some, assert_some_eq};
     use std::f64::consts::TAU;
 
     fn speed(value: f64) -> Speed {
@@ -233,6 +249,22 @@ mod tests {
         }
 
         assert_some!(filter.vector());
+    }
+
+    #[test]
+    fn restored_estimate_survives_30_minutes_without_measurements() {
+        let mut filter = WindFilter::restored(Velocity {
+            east: speed(-6.),
+            north: speed(-8.),
+        });
+        assert_some_eq!(filter.vector(), (speed(-6.), speed(-8.)));
+
+        for _ in 0..1800 {
+            filter.predict(Duration::from_secs(1));
+        }
+        assert_some!(filter.vector());
+        filter.predict(Duration::from_secs(1));
+        assert_none!(filter.vector());
     }
 
     #[test]

@@ -1360,6 +1360,21 @@ impl Input for crate::RestoreNavigationTarget {
         crate::SetNavigationTarget(target).apply_to(core, at)
     }
 }
+impl Input for crate::RestoreRecording {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        let Some(last) = self.samples.last() else {
+            return Update::empty();
+        };
+        if !core.recorder.restore(last.utc, self.utc) {
+            return Update::effects(vec![Effect::DiscardRecording]);
+        }
+        if let Some(wind) = last.wind {
+            core.sensor_fusion.restore_wind(wind);
+        }
+        Update::empty()
+    }
+}
 impl Input for crate::SetTaskSaveFailed {
     type Response = ();
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {

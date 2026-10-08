@@ -5,8 +5,8 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 use updraft_core::{
-    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, SettingsSnapshot,
-    Timestamp, Topic, Update, UtcInstant, UtcTick,
+    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, RestoreRecording, Sample,
+    SettingsSnapshot, Timestamp, Topic, Update, UtcInstant, UtcTick,
 };
 
 /// Receives every emitted topic. Returns `false` once its consumer is
@@ -141,6 +141,7 @@ impl DriverState {
             Effect::CloseConnection { device_id } => self.transports.close(device_id),
             Effect::StartRecording(sample) => (self.record)(RecordingWrite::StartRecording(sample)),
             Effect::RecordSample(sample) => (self.record)(RecordingWrite::RecordSample(sample)),
+            Effect::DiscardRecording => (self.record)(RecordingWrite::DiscardRecording),
         }
     }
 }
@@ -160,20 +161,32 @@ impl DriverState {
 pub struct Driver;
 
 impl Driver {
+    /// Restores `recording` before the core starts any transport.
     pub fn spawn(
         snapshot: SettingsSnapshot,
         airspace: AirspaceState,
+        recording: Vec<Sample>,
         open: OpenFn,
         persist: PersistFn,
         record: RecordFn,
         tick_interval: Duration,
     ) -> DriverHandle {
-        Self::spawn_task(snapshot, airspace, open, persist, record, tick_interval).0
+        Self::spawn_task(
+            snapshot,
+            airspace,
+            recording,
+            open,
+            persist,
+            record,
+            tick_interval,
+        )
+        .0
     }
 
     fn spawn_task(
         snapshot: SettingsSnapshot,
         airspace: AirspaceState,
+        recording: Vec<Sample>,
         open: OpenFn,
         persist: PersistFn,
         record: RecordFn,
@@ -198,12 +211,13 @@ impl Driver {
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
             let at = Timestamp::from_millis(0);
-            state.apply(
-                UtcTick::new(UtcInstant::from_offset_date_time(
-                    time::OffsetDateTime::now_utc(),
-                )),
-                at,
-            );
+            let utc = UtcInstant::from_offset_date_time(time::OffsetDateTime::now_utc());
+            state.apply(UtcTick::new(utc), at);
+            let restore = RestoreRecording {
+                samples: recording,
+                utc,
+            };
+            state.apply(restore, at);
             state.apply(updraft_core::Start, at);
 
             loop {

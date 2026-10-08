@@ -5,7 +5,7 @@ use super::sample::{AltitudeDomain, SampleAcceptance};
 use super::smoothing::smoothing_weight;
 use super::vario::Vario;
 use super::wind::{Wind, WindFilter};
-use crate::climb::ClimbWindow;
+use crate::climb::{ClimbWindow, Velocity};
 use std::time::Duration;
 use updraft_geo::LatLon;
 use updraft_polar::{GlidePolar, isa_density_ratio};
@@ -467,6 +467,10 @@ impl Estimator {
         self.ground = None;
         self.previous_heading = None;
         self.turn_rate = None;
+    }
+
+    pub fn restore_wind(&mut self, wind: Velocity) {
+        self.wind = WindFilter::restored(wind);
     }
 
     pub fn estimate(&self) -> Estimate {

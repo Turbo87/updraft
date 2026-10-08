@@ -60,6 +60,16 @@ impl FlightRecorder {
         starts_recording
     }
 
+    /// Continues the recording after its last sample. Returns `false` when
+    /// the recording ended more than 3 h before `utc`.
+    pub fn restore(&mut self, last: UtcInstant, utc: UtcInstant) -> bool {
+        if utc.unix_milliseconds() - last.unix_milliseconds() > MAX_GAP_MILLISECONDS {
+            return false;
+        }
+        self.last_utc = Some(last);
+        true
+    }
+
     pub fn take_pending(&mut self) -> Vec<RecordedFix> {
         std::mem::take(&mut self.pending)
     }

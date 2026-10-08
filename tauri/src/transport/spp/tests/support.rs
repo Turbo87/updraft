@@ -217,6 +217,7 @@ pub fn driver_with_spp_addresses(addresses: &[&str]) -> DriverHandle {
                 .collect(),
         },
         AirspaceState::none_at_startup(),
+        Vec::new(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Box::new(|_| {}),

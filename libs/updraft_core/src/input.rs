@@ -341,3 +341,13 @@ impl private::Sealed for RestoreNavigationTarget {}
 #[derive(Debug)]
 pub struct SetTaskSaveFailed(pub bool);
 impl private::Sealed for SetTaskSaveFailed {}
+
+/// Continues the flight recording that the shell read at startup.
+#[derive(Debug)]
+pub struct RestoreRecording {
+    /// The samples in recording order.
+    pub samples: Vec<crate::Sample>,
+    /// The shell UTC at startup.
+    pub utc: crate::UtcInstant,
+}
+impl private::Sealed for RestoreRecording {}

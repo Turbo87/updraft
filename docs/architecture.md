@@ -33,8 +33,19 @@ Each input declares its response type. `Core::apply()` returns that response and
 a list of `Effect` values.
 
 Effects request external work. The current effects publish a topic, open or
-close a transport, or persist settings. The shell matches effects exhaustively.
-Pure calculations stay in the core.
+close a transport, persist settings, or start, append to, or discard the flight
+recording. The shell matches effects exhaustively. Pure calculations stay in
+the core.
+
+The core owns the flight recording rules. It keeps the UTC of the last sample
+and emits one record effect for each new fix of the selected source. The shell
+stores the samples in `state.sqlite` in the app data directory and adds the
+terrain elevation. At startup, the shell reads all samples before any transport
+starts. The driver applies them and the shell UTC as one `RestoreRecording`
+input before `Start`. The core discards a recording that ended more than 3 hours
+before the shell UTC. Otherwise it continues the recording rules from the last
+sample and seeds the wind estimate from its wind. Restore emits no per-sample
+effects. See [Flight recording](product/flight-recording.md).
 
 The core owns the selected goto target and ordered pinned targets. It emits
 guidance for both. The shell saves target choices and restores them at startup.

@@ -193,18 +193,19 @@ pub fn run() {
                 let runtime = tauri::async_runtime::handle();
                 let _guard = runtime.inner().enter();
                 let persist = Box::new(settings_file.writer());
-                let record = Box::new(flight_recording::writer(
+                let (recording, record) = flight_recording::load(
                     data_directory.join("state.sqlite"),
                     app.state::<Arc<Mutex<terrain::Terrain>>>().inner().clone(),
-                ));
+                );
                 driver::Driver::spawn(
                     snapshot,
                     airspace,
+                    recording,
                     Box::new(move |device_id, spec, handle| {
                         transport::open(device_id, spec, handle, app_handle.clone())
                     }),
                     persist,
-                    record,
+                    Box::new(record),
                     std::time::Duration::from_millis(100),
                 )
             };

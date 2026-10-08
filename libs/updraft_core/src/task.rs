@@ -196,6 +196,22 @@ impl TaskState {
         self.previous = None;
     }
 
+    /// Returns the task to its first point with no recorded crossing times.
+    /// A completed task runs again.
+    pub fn reset_progress(&mut self) {
+        let Some(first) = self.saved.points.first() else {
+            return;
+        };
+        self.saved.current = Some(first.id);
+        self.saved.start = None;
+        self.saved.finish = None;
+        self.saved.restart_allowed = true;
+        if self.saved.status == TaskStatus::Completed {
+            self.saved.status = TaskStatus::Running;
+        }
+        self.reset_crossing();
+    }
+
     pub fn observe(
         &mut self,
         position: LatLon,

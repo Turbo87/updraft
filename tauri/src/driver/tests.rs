@@ -45,6 +45,7 @@ pub fn spawn(
         AirspaceState::none_at_startup(),
         open,
         persist,
+        Box::new(|_| {}),
         tick_interval,
     );
     TestDriver { handle, task }
@@ -60,6 +61,7 @@ pub fn stop_after_next_input(core: Core) -> DriverHandle {
         transports: ActiveTransports::default(),
         open: Box::new(|_, _, _| Box::new(|| {})),
         persist: Box::new(|_| {}),
+        record: Box::new(|_| {}),
         handle: handle.clone(),
     };
     tokio::spawn(async move {
@@ -285,6 +287,7 @@ async fn locale_changes_reach_subscribers_and_persistence() {
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
         }),
+        Box::new(|_| {}),
         Duration::from_millis(100),
     );
     let mut topics = topic_stream(&handle);
@@ -328,6 +331,47 @@ async fn decoded_fixes_reach_subscribers() {
 }
 
 #[tokio::test]
+async fn replay_writes_one_flight_recording_row_for_each_fix() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("state.sqlite");
+    let record = crate::flight_recording::writer(path.clone(), Default::default());
+    let handle = Driver::spawn(
+        snapshot(),
+        no_airspace(),
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Box::new(record),
+        Duration::from_secs(60),
+    );
+    let mut topics = topic_stream(&handle);
+    let device_id = next_device_id(&mut topics).await;
+
+    for line in include_str!("../../../testdata/flight_1.nmea").lines() {
+        let input = Bytes::new(device_id, format!("{line}\r\n").into_bytes());
+        handle.send(input).await.expect("driver remains active");
+    }
+
+    // The distinct fix times of the RMC and GGA sentences.
+    let expected = 468;
+    let rows = timeout(PATIENCE, async {
+        loop {
+            if let Ok(connection) = rusqlite::Connection::open(&path)
+                && let Ok(rows) = connection.query_row("SELECT count(*) FROM samples", [], |row| {
+                    row.get::<_, i64>(0)
+                })
+                && rows >= expected
+            {
+                return rows;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the recording rows within the timeout");
+    assert_eq!(rows, expected);
+}
+
+#[tokio::test]
 async fn start_asks_for_a_transport_per_configured_connection() {
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let handle = Driver::spawn(
@@ -337,6 +381,7 @@ async fn start_asks_for_a_transport_per_configured_connection() {
             let _ = sender.send((device_id, spec));
             Box::new(|| {})
         }),
+        Box::new(|_| {}),
         Box::new(|_| {}),
         Duration::from_millis(100),
     );
@@ -362,6 +407,7 @@ async fn admitted_input_survives_a_dropped_response_receiver() {
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
         }),
+        Box::new(|_| {}),
         Duration::from_millis(100),
     );
     let (reply, response) = oneshot::channel();
@@ -420,6 +466,7 @@ async fn external_device_mutations_drive_one_worker_and_complete_snapshots() {
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
         }),
+        Box::new(|_| {}),
         Duration::from_millis(100),
     );
     let mut topics = topic_stream(&handle);

@@ -16,7 +16,7 @@ use crate::ownship::{
 use crate::sensor_fusion::{FusionInputs, SensorFusion};
 use crate::settings::{Settings, SettingsSnapshot};
 use crate::time::Timestamp;
-use crate::topic::{Instruments, Topic};
+use crate::topic::{DerivedInstruments, Instruments, SpeedInstrument, Topic};
 use crate::traffic::{
     FlarmCorrection, TrafficChanges, TrafficMotion, TrafficState, TrafficTargetId, TrafficUpdate,
     target_from_pflaa,
@@ -27,7 +27,7 @@ use std::sync::Arc;
 use updraft_egm96::ellipsoidal_to_msl;
 use updraft_flarmnet::FlarmnetDatabase;
 use updraft_nmea::{GgaFixQuality, Message, PositioningMode, RmcStatus};
-use updraft_units::{MslAltitude, PressureAltitude, Speed};
+use updraft_units::{Length, MslAltitude, PressureAltitude, Speed};
 
 /// The deterministic application core.
 ///
@@ -45,6 +45,7 @@ pub struct Core {
     task: crate::task::TaskState,
     task_fix: Option<crate::ownship::Selected<GpsSnapshot>>,
     task_save_failed: bool,
+    recorder: crate::recording::FlightRecorder,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -83,6 +84,7 @@ impl Core {
             task: Default::default(),
             task_fix: None,
             task_save_failed: false,
+            recorder: Default::default(),
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -153,7 +155,52 @@ impl Core {
                 .effects
                 .push(Effect::Emit(Topic::PinnedTargets(after_pins)));
         }
+        update.effects.extend(self.recording_effects());
         update
+    }
+
+    fn recording_effects(&mut self) -> Vec<Effect> {
+        let fixes = self.recorder.take_pending();
+        if fixes.is_empty() {
+            return Vec::new();
+        }
+        let derived = self.sensor_fusion.instruments();
+        let speed = |select: fn(&DerivedInstruments) -> Option<SpeedInstrument>| {
+            let instrument = derived
+                .as_ref()
+                .and_then(select)
+                .filter(|value| !value.stale)?;
+            Some(Speed::from_meters_per_second(instrument.meters_per_second))
+        };
+        let vario = speed(|derived| derived.vario);
+        let netto = speed(|derived| derived.netto);
+        let relative_vario = speed(|derived| derived.relative_vario);
+        let altitude_msl = derived
+            .and_then(|derived| derived.altitude)
+            .filter(|altitude| !altitude.stale)
+            .map(|altitude| MslAltitude::new(Length::from_meters(altitude.altitude_msl_meters)));
+        let wind = self
+            .sensor_fusion
+            .current_wind()
+            .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
+        fixes
+            .into_iter()
+            .map(|fix| {
+                let effect = match fix.starts_recording {
+                    true => Effect::StartRecording,
+                    false => Effect::RecordSample,
+                };
+                effect(crate::Sample {
+                    utc: fix.utc,
+                    position: fix.position,
+                    altitude_msl,
+                    vario,
+                    netto,
+                    relative_vario,
+                    wind,
+                })
+            })
+            .collect()
     }
 
     fn pinned_targets(&self) -> Vec<crate::PinnedTarget> {
@@ -291,6 +338,7 @@ impl Core {
                     if let Some(date) = rmc.date {
                         if let Some(fix_time) = UtcInstant::from_nmea_date_time(date, time) {
                             device.gps.fix_time.full = Some(Timed::new(fix_time, at));
+                            device.gps.fix_time.time_only = None;
                         }
                     } else {
                         let fix_time = UtcTime::from_nmea_time(time);
@@ -1270,18 +1318,25 @@ impl Core {
                 })
             });
         let time_of_day = fix.value.fix_time.and_then(|time| match time.value {
-            crate::FixTime::UtcTimeOfDay(time) => Some(time.milliseconds_since_midnight()),
+            crate::FixTime::UtcTimeOfDay(time) => Some(time),
             _ => None,
         });
         let utc = match (utc, time_of_day) {
-            (Some(reference), Some(time)) => {
-                let offset = (i64::from(time) - reference.rem_euclid(86_400_000) + 43_200_000)
-                    .rem_euclid(86_400_000)
-                    - 43_200_000;
-                Some(reference.saturating_add(offset))
-            }
+            (Some(reference), Some(time)) => Some(
+                UtcInstant::from_unix_milliseconds(reference)
+                    .nearest_with_time_of_day(time)
+                    .unix_milliseconds(),
+            ),
             _ => utc,
         };
+        let time_of_day = time_of_day.map(UtcTime::milliseconds_since_midnight);
+        if let Some(utc) = utc
+            && self
+                .recorder
+                .observe(UtcInstant::from_unix_milliseconds(utc), fix.value.position)
+        {
+            self.task.reset_progress();
+        }
         self.task
             .observe(fix.value.position, fix.ingested_at, utc, time_of_day);
         if self.task.snapshot().status == crate::TaskStatus::Completed

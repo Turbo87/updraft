@@ -120,7 +120,7 @@ fn batches_all_traffic_changes_from_one_bytes_input() {
     input.extend_from_slice(PFLAA_A);
     input.extend_from_slice(PFLAA_B);
 
-    let effects = core.apply(Bytes::new(device_id, input), at(100)).effects;
+    let effects = emissions(core.apply(Bytes::new(device_id, input), at(100)).effects);
 
     let [
         Effect::Emit(Topic::Instruments(_)),
@@ -238,7 +238,7 @@ fn input_without_a_traffic_change_emits_no_traffic_topic() {
     let mut input = RMC.to_vec();
     input.extend_from_slice(PFLAA_A_MISSING_EAST);
 
-    let effects = core.apply(Bytes::new(device_id, input), at(100)).effects;
+    let effects = emissions(core.apply(Bytes::new(device_id, input), at(100)).effects);
 
     assert_matches!(effects.as_slice(), [Effect::Emit(Topic::Instruments(_))]);
 }

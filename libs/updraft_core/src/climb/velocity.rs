@@ -1,6 +1,6 @@
 use updraft_units::{Angle, Length, Speed};
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Velocity {
     pub east: Speed,
     pub north: Speed,

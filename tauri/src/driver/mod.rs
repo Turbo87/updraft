@@ -1,3 +1,4 @@
+use crate::flight_recording::RecordingWrite;
 use std::{
     collections::BTreeMap,
     time::{Duration, Instant},
@@ -21,6 +22,8 @@ pub type StopFn = Box<dyn FnOnce() + Send>;
 pub type OpenFn = Box<dyn Fn(ExternalDeviceId, ConnectionSpec, DriverHandle) -> StopFn + Send>;
 
 pub type PersistFn = Box<dyn Fn(SettingsSnapshot) + Send>;
+
+pub type RecordFn = Box<dyn Fn(RecordingWrite) + Send>;
 
 #[derive(Default)]
 struct ActiveTransports {
@@ -108,6 +111,7 @@ struct DriverState {
     transports: ActiveTransports,
     open: OpenFn,
     persist: PersistFn,
+    record: RecordFn,
     handle: DriverHandle,
 }
 
@@ -135,6 +139,8 @@ impl DriverState {
                     .open(device_id, spec, self.handle.clone(), &self.open);
             }
             Effect::CloseConnection { device_id } => self.transports.close(device_id),
+            Effect::StartRecording(sample) => (self.record)(RecordingWrite::StartRecording(sample)),
+            Effect::RecordSample(sample) => (self.record)(RecordingWrite::RecordSample(sample)),
         }
     }
 }
@@ -159,9 +165,10 @@ impl Driver {
         airspace: AirspaceState,
         open: OpenFn,
         persist: PersistFn,
+        record: RecordFn,
         tick_interval: Duration,
     ) -> DriverHandle {
-        Self::spawn_task(snapshot, airspace, open, persist, tick_interval).0
+        Self::spawn_task(snapshot, airspace, open, persist, record, tick_interval).0
     }
 
     fn spawn_task(
@@ -169,6 +176,7 @@ impl Driver {
         airspace: AirspaceState,
         open: OpenFn,
         persist: PersistFn,
+        record: RecordFn,
         tick_interval: Duration,
     ) -> (DriverHandle, tokio::task::JoinHandle<()>) {
         let (sender, mut receiver) = mpsc::unbounded_channel();
@@ -183,6 +191,7 @@ impl Driver {
                 transports: ActiveTransports::default(),
                 open,
                 persist,
+                record,
                 handle: driver_handle,
             };
             let mut ticker = tokio::time::interval(tick_interval);

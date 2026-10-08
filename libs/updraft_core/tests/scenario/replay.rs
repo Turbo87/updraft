@@ -1,5 +1,7 @@
 use super::support::{core_with_external_device, describe};
-use updraft_core::{Bytes, Core, Effect, Fix, InternalGps, SettingsSnapshot, Start, Timestamp};
+use updraft_core::{
+    Bytes, Core, Effect, Fix, InternalGps, SettingsSnapshot, Start, Timestamp, UtcInstant,
+};
 use updraft_geo::LatLon;
 use updraft_units::{Angle, Speed};
 
@@ -73,7 +75,7 @@ fn gnss_fix_and_equivalent_sentence_agree() {
         altitude_ellipsoid: None,
         track: Some(Angle::from_degrees(270.0)),
         ground_speed: Some(Speed::from_meters_per_second(45.0 * 1852.0 / 3600.0)),
-        fix_time: None,
+        fix_time: Some(UtcInstant::from_unix_milliseconds(1_767_268_800_000)),
     };
     let input = InternalGps::new(fix);
     let equivalent = from_fix.apply(input, Timestamp::from_millis(0)).effects;

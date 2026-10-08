@@ -1,3 +1,4 @@
+use crate::Sample;
 use crate::connection::{ConnectionSpec, ExternalDeviceId};
 use crate::settings::SettingsSnapshot;
 use crate::topic::Topic;
@@ -22,6 +23,11 @@ pub enum Effect {
         device_id: ExternalDeviceId,
     },
     PersistSettings(SettingsSnapshot),
+    /// Replace the flight recording with a new recording that contains
+    /// only this sample.
+    StartRecording(Sample),
+    /// Append this sample to the flight recording.
+    RecordSample(Sample),
 }
 
 impl Effect {

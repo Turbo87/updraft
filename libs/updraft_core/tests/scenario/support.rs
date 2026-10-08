@@ -54,6 +54,8 @@ pub fn describe(effect: &Effect) -> String {
         Effect::OpenConnection { device_id, spec } => format!("open {device_id:?} {spec:?}"),
         Effect::CloseConnection { device_id } => format!("close {device_id:?}"),
         Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),
+        Effect::StartRecording(sample) => format!("start recording {:?}", sample.utc),
+        Effect::RecordSample(sample) => format!("record sample {:?}", sample.utc),
     }
 }
 

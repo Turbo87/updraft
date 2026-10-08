@@ -75,6 +75,10 @@ impl Terrain {
         })
     }
 
+    pub fn elevation(&self, position: updraft_geo::LatLon) -> Result<Option<f64>> {
+        self.reader.elevation(position)
+    }
+
     pub fn available_updates(&self, entries: &[CatalogEntry]) -> Result<Vec<&'static str>> {
         crate::enroute::storage::available_updates(&self.directory, &self.files, entries, "terrain")
     }
@@ -266,4 +270,4 @@ fn terrain_coordinates(path: &str) -> Option<[u32; 3]> {
 }
 
 #[cfg(test)]
-mod tests;
+pub mod tests;

@@ -81,6 +81,7 @@ fn route() -> Core {
             .response
         );
     }
+    start_recording(&mut core);
     assert_ok!(
         core.apply(
             ChangeTask(TaskCommand::Select { id: 0 }),
@@ -89,6 +90,12 @@ fn route() -> Core {
         .response
     );
     core
+}
+
+/// Starts the flight recording away from the route, so that the first fix
+/// of a test does not reset the task progress.
+fn start_recording(core: &mut Core) {
+    fix(core, -1., 0);
 }
 
 fn fix(core: &mut Core, longitude: f64, millis: u64) {
@@ -233,6 +240,7 @@ fn restoring_progress_and_selecting_after_completion_do_not_infer_crossings() {
     fix(&mut core, 0.006, 2000);
     let saved = core.apply(GetTask, Timestamp::from_millis(2000)).response;
     let mut restored = Core::new(SettingsSnapshot::default());
+    start_recording(&mut restored);
     assert_ok!(
         restored
             .apply(

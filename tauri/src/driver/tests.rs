@@ -1,7 +1,8 @@
 use super::*;
+use crate::flight_recording::{self, FlightRecording};
 use crate::test_support::spawn_driver;
 use approx::assert_abs_diff_eq;
-use claims::{assert_some, assert_some_eq};
+use claims::{assert_ok, assert_some, assert_some_eq};
 use std::{
     sync::{
         Arc,
@@ -15,8 +16,8 @@ use updraft_airspace::AirspaceDataset;
 use updraft_core::{
     AddExternalDevice, AirspaceLoadError, AirspaceSource, AirspaceState, AirspaceStatus, Bytes,
     ChangeSetting, ConnectionSpec, DeleteExternalDevice, EditExternalDevice, ExternalDeviceConfig,
-    ExternalDeviceId, LatLon, Locale, PublishedExternalDevice, SetExternalDeviceEnabled,
-    SettingsSnapshot, Topic, TrafficUpdate,
+    ExternalDeviceId, LatLon, Locale, PublishedExternalDevice, Sample, SetExternalDeviceEnabled,
+    SettingsSnapshot, Topic, TrafficUpdate, UtcInstant,
 };
 
 const RMC: &[u8] = b"$GPRMC,120000.00,A,5049.38,N,00611.16,E,45.0,270.0,010126,,,A\r\n";
@@ -43,6 +44,7 @@ pub fn spawn(
     let (handle, task) = Driver::spawn_task(
         snapshot,
         AirspaceState::none_at_startup(),
+        Vec::new(),
         open,
         persist,
         Box::new(|_| {}),
@@ -283,6 +285,7 @@ async fn locale_changes_reach_subscribers_and_persistence() {
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
+        Vec::new(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
@@ -334,10 +337,11 @@ async fn decoded_fixes_reach_subscribers() {
 async fn replay_writes_one_flight_recording_row_for_each_fix() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("state.sqlite");
-    let record = crate::flight_recording::writer(path.clone(), Default::default());
+    let (_, record) = flight_recording::load(path.clone(), Default::default());
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
+        Vec::new(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Box::new(record),
@@ -371,12 +375,86 @@ async fn replay_writes_one_flight_recording_row_for_each_fix() {
     assert_eq!(rows, expected);
 }
 
+/// A sample that ended more than 3 h before any test run.
+fn stale_sample() -> Sample {
+    Sample {
+        utc: UtcInstant::from_unix_milliseconds(0),
+        position: updraft_geo::LatLon::from_degrees(50.0, 6.0),
+        altitude_msl: None,
+        vario: None,
+        netto: None,
+        relative_vario: None,
+        wind: None,
+    }
+}
+
+#[tokio::test]
+async fn driver_restores_the_recording_before_it_starts_transports() {
+    let (sender, mut receiver) = mpsc::unbounded_channel();
+    let opened = sender.clone();
+    let _handle = Driver::spawn(
+        snapshot(),
+        no_airspace(),
+        vec![stale_sample()],
+        Box::new(move |_, _, _| {
+            let _ = opened.send("open transport".to_owned());
+            Box::new(|| {})
+        }),
+        Box::new(|_| {}),
+        Box::new(move |write| {
+            let _ = sender.send(format!("{write:?}"));
+        }),
+        Duration::from_secs(60),
+    );
+
+    for expected in ["DiscardRecording", "open transport"] {
+        let event = timeout(PATIENCE, receiver.recv()).await;
+        assert_some_eq!(event.expect("an event within the timeout"), expected);
+    }
+}
+
+#[tokio::test]
+async fn relaunch_empties_a_recording_that_ended_more_than_3_hours_ago() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("state.sqlite");
+    let mut previous = assert_ok!(FlightRecording::open(&path, Default::default()));
+    assert_ok!(previous.write(&RecordingWrite::StartRecording(stale_sample())));
+    drop(previous);
+
+    let (samples, record) = flight_recording::load(path.clone(), Default::default());
+    assert_eq!(samples.len(), 1);
+    let _handle = Driver::spawn(
+        snapshot(),
+        no_airspace(),
+        samples,
+        Box::new(|_, _, _| Box::new(|| {})),
+        Box::new(|_| {}),
+        Box::new(record),
+        Duration::from_secs(60),
+    );
+
+    timeout(PATIENCE, async {
+        let connection = assert_ok!(rusqlite::Connection::open(&path));
+        while assert_ok!(
+            connection.query_row("SELECT count(*) FROM samples", [], |row| {
+                row.get::<_, i64>(0)
+            })
+        ) > 0
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("an empty recording within the timeout");
+}
+
 #[tokio::test]
 async fn start_asks_for_a_transport_per_configured_connection() {
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
+        Vec::new(),
         Box::new(move |device_id, spec, _handle| {
             let _ = sender.send((device_id, spec));
             Box::new(|| {})
@@ -403,6 +481,7 @@ async fn admitted_input_survives_a_dropped_response_receiver() {
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
+        Vec::new(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
@@ -455,6 +534,7 @@ async fn external_device_mutations_drive_one_worker_and_complete_snapshots() {
     let handle = Driver::spawn(
         SettingsSnapshot::default(),
         no_airspace(),
+        Vec::new(),
         Box::new(move |device_id, spec, _handle| {
             open_count.fetch_add(1, Ordering::SeqCst);
             let _ = opened_tx.send((device_id, spec));

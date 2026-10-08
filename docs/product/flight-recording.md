@@ -34,6 +34,14 @@ sample is available directly after the restart. Without a new wind measurement,
 it stays available for 30 minutes. The circling wind and the 20-second average
 vario are not restored. They fill again in about 60 seconds and 20 seconds.
 
-When Updraft cannot open the database, it logs an error, restores nothing, and
-does not record. When it cannot read the samples, it logs an error and restores
-nothing.
+## Storage faults
+
+At startup, the database can fail to open, fail its integrity check, or have a
+newer version than Updraft supports. Updraft then logs a warning, deletes the
+database, and starts with an empty recording. When Updraft cannot create the
+database, it logs an error, restores nothing, and does not record. When it
+cannot read the samples, it logs an error and restores nothing.
+
+When Updraft cannot write a sample, it logs a warning and continues to write
+the next samples. When a write succeeds again, it logs this event. The recording
+then has a gap. Navigation continues. Updraft shows no warning to the pilot.

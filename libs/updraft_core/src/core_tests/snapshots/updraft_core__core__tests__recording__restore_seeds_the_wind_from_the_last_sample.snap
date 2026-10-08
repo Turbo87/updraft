@@ -1,0 +1,11 @@
+---
+source: libs/updraft_core/src/core_tests/recording.rs
+expression: derived.wind
+---
+Some(
+    DerivedWindInstruments {
+        direction_degrees: 143.13010235415598,
+        speed_meters_per_second: 5.0,
+        stale: false,
+    },
+)

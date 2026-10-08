@@ -56,6 +56,7 @@ pub fn describe(effect: &Effect) -> String {
         Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),
         Effect::StartRecording(sample) => format!("start recording {:?}", sample.utc),
         Effect::RecordSample(sample) => format!("record sample {:?}", sample.utc),
+        Effect::DiscardRecording => "discard recording".to_owned(),
     }
 }
 

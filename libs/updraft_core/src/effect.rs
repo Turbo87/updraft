@@ -28,6 +28,8 @@ pub enum Effect {
     StartRecording(Sample),
     /// Append this sample to the flight recording.
     RecordSample(Sample),
+    /// Delete all samples of the flight recording.
+    DiscardRecording,
 }
 
 impl Effect {

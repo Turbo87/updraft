@@ -141,6 +141,7 @@ impl DriverState {
             Effect::CloseConnection { device_id } => self.transports.close(device_id),
             Effect::StartRecording(sample) => (self.record)(RecordingWrite::StartRecording(sample)),
             Effect::RecordSample(sample) => (self.record)(RecordingWrite::RecordSample(sample)),
+            Effect::DiscardRecording => {}
         }
     }
 }

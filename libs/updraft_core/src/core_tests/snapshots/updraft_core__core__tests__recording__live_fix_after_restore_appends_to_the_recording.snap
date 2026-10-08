@@ -1,0 +1,37 @@
+---
+source: libs/updraft_core/src/core_tests/recording.rs
+expression: "round_wind(record(&mut core, UTC + 1_000, 1_000))"
+---
+[
+    RecordSample(
+        Sample {
+            utc: UtcInstant(
+                1767268801000,
+            ),
+            position: LatLon {
+                latitude: 50°,
+                longitude: 6.000000000000001°,
+            },
+            altitude_msl: Some(
+                MslAltitude(
+                    199 m,
+                ),
+            ),
+            vario: Some(
+                0 m/s,
+            ),
+            netto: Some(
+                0.8056842848980033 m/s,
+            ),
+            relative_vario: Some(
+                0.16778270878340273 m/s,
+            ),
+            wind: Some(
+                Velocity {
+                    east: -3 m/s,
+                    north: 4 m/s,
+                },
+            ),
+        },
+    ),
+]

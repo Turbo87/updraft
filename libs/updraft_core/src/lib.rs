@@ -98,4 +98,4 @@ pub use task::{Task, TaskCommand, TaskPoint, TaskStatus, TaskTime};
 
 pub use input::GetNavigationTarget;
 
-pub use input::{RestoreNavigationTarget, SetTaskSaveFailed};
+pub use input::{RestoreNavigationTarget, RestoreRecording, SetTaskSaveFailed};

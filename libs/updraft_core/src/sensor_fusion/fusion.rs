@@ -1,6 +1,7 @@
 use super::estimator::{Estimator, Fix, FixAcceptance};
 use super::sample::SampleAcceptance;
 use super::wind::Wind;
+use crate::climb::Velocity;
 use crate::ownship::{DomainState, GpsSnapshot, Selected, SourceId};
 use crate::signal_state::SignalState;
 use crate::topic::{
@@ -348,6 +349,14 @@ impl SensorFusion {
             self.relative_vario.update(relative_vario);
         } else {
             self.relative_vario.mark_stale();
+        }
+    }
+
+    /// Continues from the air mass velocity of a restored recording.
+    pub fn restore_wind(&mut self, wind: Velocity) {
+        self.estimator.restore_wind(wind);
+        if let Some(wind) = self.estimator.estimate().wind {
+            self.wind.update(wind);
         }
     }
 

@@ -10,6 +10,7 @@ import { FakeClient } from '#lib/client/fake.js';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { MapState } from '#lib/map-state.svelte.js';
 import { settingsFixture } from '#lib/settings.fixture.js';
+import { EMPTY_DERIVED_INSTRUMENTS } from '#lib/stores/instruments.svelte.js';
 import { SettingsStore } from '#lib/stores/settings.svelte.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
 import { TrailStore } from '#lib/stores/trail.svelte.js';
@@ -17,7 +18,7 @@ import { trafficTarget } from '#lib/traffic.fixture.js';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
-import { trailColor } from './trail';
+import { trailColor, trailTranslate } from './trail';
 
 const instruments = instrumentsFixture();
 
@@ -439,6 +440,27 @@ it('recolours the older trail segments after a new maximum altitude', async () =
   let maxima = { maxAltitudeMslMeters: 1_500, maxAltitudeAglMeters: 800 };
   await vi.waitFor(() => {
     expect(map.getPaintProperty('trail', 'line-color')).toEqual(trailColor('altitude', maxima));
+  });
+});
+
+it('moves the whole trail by the drift translation', async () => {
+  let trail = new TrailStore(new FakeClient());
+  let wind = { directionDegrees: 270, speedMetersPerSecond: 10, stale: false };
+  let derived = { ...EMPTY_DERIVED_INSTRUMENTS, wind };
+  trail.apply({ topic: 'settings', value: settingsFixture({ trailDriftCompensation: true }) });
+  trail.apply({ topic: 'instruments', value: instrumentsFixture({ derived }) });
+  for (let seconds of [0, 1, 2]) applyTrailSample(trail, seconds);
+  let { map } = await renderTrail(trail, new SettingsStore());
+  let before = trail.translation!;
+  expect(map.getPaintProperty('trail', 'line-translate')).toEqual(trailTranslate(before));
+
+  applyTrailSample(trail, 3);
+
+  expect(trail.translation!.eastMeters - before.eastMeters).toBeCloseTo(10);
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('trail', 'line-translate')).toEqual(
+      trailTranslate(trail.translation),
+    );
   });
 });
 

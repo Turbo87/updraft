@@ -1,3 +1,4 @@
+import type { DerivedWindInstruments } from '#lib/protocol/generated/DerivedWindInstruments.js';
 import type { Trail } from '#lib/protocol/generated/Trail.js';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 import type { TrailSubscriber } from './trail.svelte';
@@ -5,9 +6,11 @@ import type { TrailSubscriber } from './trail.svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { settingsFixture } from '#lib/settings.fixture.js';
+import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from './instruments.svelte';
 import { TrailStore } from './trail.svelte';
 
 const MINUTE = 60_000;
+const WIND = { directionDegrees: 270, speedMetersPerSecond: 10, stale: false };
 
 function sample(minutes: number): TrailSample {
   return {
@@ -245,5 +248,60 @@ describe('TrailStore', () => {
     expect(requests).toEqual([]);
     expect(ids()).toEqual([]);
     expect(subscriber).not.toHaveBeenCalled();
+  });
+
+  describe('drift', () => {
+    let rebuild = { removeAll: true, add: [expect.objectContaining({ id: MINUTE })] };
+
+    /** Returns a store that shows one segment, from 0 min to 1 min. */
+    async function setupDrift() {
+      let context = setup();
+      let { store, requests, subscriber, apply } = context;
+      apply(trail(1));
+      requests[0].resolve([sample(0)]);
+      await vi.waitFor(() => expect(subscriber).toHaveBeenCalled());
+      subscriber.mockClear();
+
+      let setDrift = (trailDriftCompensation: boolean) =>
+        store.apply({ topic: 'settings', value: settingsFixture({ trailDriftCompensation }) });
+      let setWind = (wind: DerivedWindInstruments | null) =>
+        store.apply({
+          topic: 'instruments',
+          value: { ...EMPTY_INSTRUMENTS, derived: { ...EMPTY_DERIVED_INSTRUMENTS, wind } },
+        });
+      return { ...context, setDrift, setWind };
+    }
+
+    it('drifts the trail with the instruments wind only while drift compensation is on', async () => {
+      let { store, subscriber, setDrift, setWind } = await setupDrift();
+
+      setWind(WIND);
+      expect(subscriber).not.toHaveBeenCalled();
+      expect(store.translation).toBeNull();
+
+      setDrift(true);
+      expect(subscriber).toHaveBeenLastCalledWith(rebuild);
+      expect(store.translation).toEqual(store.segments.translation());
+      expect(store.translation).not.toBeNull();
+
+      setDrift(false);
+      expect(subscriber).toHaveBeenCalledTimes(2);
+      expect(subscriber).toHaveBeenLastCalledWith(rebuild);
+      expect(store.translation).toBeNull();
+    });
+
+    it('draws no drift without a wind estimate', async () => {
+      let { store, subscriber, setDrift, setWind } = await setupDrift();
+
+      setDrift(true);
+      expect(subscriber).not.toHaveBeenCalled();
+      expect(store.translation).toBeNull();
+
+      setWind(WIND);
+      setWind(null);
+      expect(subscriber).toHaveBeenCalledTimes(2);
+      expect(subscriber).toHaveBeenLastCalledWith(rebuild);
+      expect(store.translation).toBeNull();
+    });
   });
 });

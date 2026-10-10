@@ -1,5 +1,7 @@
 import type { GeoJSONSourceDiff } from 'maplibre-gl';
 import type { UpdraftClient } from '#lib/client/index.js';
+import type { TrailTranslation } from '#lib/map/trail.js';
+import type { DerivedWindInstruments } from '#lib/protocol/generated/DerivedWindInstruments.js';
 import type { Topic } from '#lib/protocol/generated/Topic.js';
 import type { TrailLength } from '#lib/protocol/generated/TrailLength.js';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
@@ -18,17 +20,28 @@ export class TrailStore {
   #subscribers = new Set<TrailSubscriber>();
   /** The topic samples that arrive while the resource request is pending. */
   #pending: { recordingStart: number; samples: TrailSample[] } | null = null;
+  #driftCompensation = false;
+  #wind: DerivedWindInstruments | null = null;
 
   segments = new TrailSegments();
   maxAltitudeMslMeters = $state<number | null>(null);
   maxAltitudeAglMeters = $state<number | null>(null);
+  translation = $state.raw<TrailTranslation | null>(null);
 
   constructor(client: Pick<UpdraftClient, 'getTrail'>) {
     this.#client = client;
   }
 
   apply(topic: Topic): void {
-    if (topic.topic === 'settings') this.#resize(topic.value.trailLength);
+    if (topic.topic === 'settings') {
+      this.#resize(topic.value.trailLength);
+      this.#driftCompensation = topic.value.trailDriftCompensation;
+      this.#drift();
+    }
+    if (topic.topic === 'instruments') {
+      this.#wind = topic.value.derived?.wind ?? null;
+      this.#drift();
+    }
     if (topic.topic !== 'trail') return;
 
     let trail = topic.value;
@@ -77,6 +90,10 @@ export class TrailStore {
     }
   }
 
+  #drift(): void {
+    this.#send(this.segments.drift(this.#driftCompensation ? this.#wind : null));
+  }
+
   /** `samples` are the topic samples in arrival order, so the last is the newest. */
   async #fetch(recordingStart: number, samples: TrailSample[]): Promise<void> {
     let pending = { recordingStart, samples };
@@ -106,10 +123,20 @@ export class TrailStore {
   }
 
   #send(diff: GeoJSONSourceDiff | null): void {
+    let translation = this.segments.translation();
+    if (!sameTranslation(translation, this.translation)) this.translation = translation;
     if (!diff) return;
 
     for (let subscriber of this.#subscribers) {
       subscriber(diff);
     }
   }
+}
+
+function sameTranslation(a: TrailTranslation | null, b: TrailTranslation | null): boolean {
+  return (
+    a?.eastMeters === b?.eastMeters &&
+    a?.northMeters === b?.northMeters &&
+    a?.latitudeDegrees === b?.latitudeDegrees
+  );
 }

@@ -8,6 +8,7 @@ expression: contents
   "climbAverageMethod": "average30s",
   "hillshadeDirection": "wind",
   "trailColorMode": "netto",
+  "trailLength": 300,
   "locale": "de",
   "polar": "LS 8-18",
   "arrivalReserve": 304.8,

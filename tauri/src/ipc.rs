@@ -748,6 +748,20 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn trail_length_command_accepts_whole_minutes_up_to_one_day() {
+        let app = app();
+        let command = "change_setting";
+        for length in [0, 60, 1440] {
+            let body = json!({ "change": { "type": "trailLength", "length": length } });
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
+        }
+        for length in [json!(1441), json!(-1), json!(1.5), json!(null), json!("60")] {
+            let body = json!({ "change": { "type": "trailLength", "length": length } });
+            claims::assert_err!(invoke(&app, command, body));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn arrival_reserve_command_accepts_nonnegative_meters() {
         let app = app();
         let command = "change_setting";

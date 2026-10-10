@@ -125,6 +125,9 @@ pub enum ChangeSetting {
     TrailColorMode {
         mode: crate::TrailColorMode,
     },
+    TrailLength {
+        length: crate::TrailLength,
+    },
 }
 
 /// Selects the persisted glide polar.

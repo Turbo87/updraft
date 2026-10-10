@@ -23,6 +23,7 @@ describe('SettingsStore', () => {
       climbAverageMethod: 'normalizedEma',
       hillshadeDirection: 'wind',
       trailColorMode: 'altitude',
+      trailLength: 300,
       units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
     });
     store.apply({ topic: 'settings', value: structuredClone(value) });
@@ -45,6 +46,7 @@ describe('SettingsStore', () => {
       climbAverageMethod: 'smoothed20s',
       hillshadeDirection: 'fixed',
       trailColorMode: 'relativeVario',
+      trailLength: 60,
       energyCompensation: true,
       flarmPositionCorrection: true,
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

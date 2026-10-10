@@ -759,6 +759,7 @@ impl Input for ChangeSetting {
             Self::ClimbAverageMethod { method } => core.settings.climb_average_method = method,
             Self::HillshadeDirection { direction } => core.settings.hillshade_direction = direction,
             Self::TrailColorMode { mode } => core.settings.trail_color_mode = mode,
+            Self::TrailLength { length } => core.settings.trail_length = length,
         }
         if core.settings == previous {
             return Update::empty();

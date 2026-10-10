@@ -5,6 +5,7 @@ import type { HillshadeDirection } from "./HillshadeDirection";
 import type { Locale } from "./Locale";
 import type { PolarId } from "./PolarId";
 import type { TrailColorMode } from "./TrailColorMode";
+import type { TrailLength } from "./TrailLength";
 import type { UnitSettings } from "./UnitSettings";
 
-export type Settings = { flarmPositionCorrection: boolean, energyCompensation: boolean, climbAverageMethod: ClimbAverageMethod, hillshadeDirection: HillshadeDirection, trailColorMode: TrailColorMode, locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };
+export type Settings = { flarmPositionCorrection: boolean, energyCompensation: boolean, climbAverageMethod: ClimbAverageMethod, hillshadeDirection: HillshadeDirection, trailColorMode: TrailColorMode, trailLength: TrailLength, locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };

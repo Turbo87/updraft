@@ -96,6 +96,7 @@ describe('TrafficStore', () => {
         climbAverageMethod: 'normalizedEma',
         hillshadeDirection: 'fixed',
         trailColorMode: 'relativeVario',
+        trailLength: 60,
         energyCompensation: true,
         flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

@@ -4,6 +4,7 @@ import type { ClimbAverageMethod } from "./ClimbAverageMethod";
 import type { HillshadeDirection } from "./HillshadeDirection";
 import type { Locale } from "./Locale";
 import type { TrailColorMode } from "./TrailColorMode";
+import type { TrailLength } from "./TrailLength";
 import type { UnitSettings } from "./UnitSettings";
 
-export type ChangeSetting = { "type": "locale", locale: Locale, } | { "type": "units", units: UnitSettings, } | { "type": "arrivalReserve", reserve: ArrivalReserve, } | { "type": "climbAverageMethod", method: ClimbAverageMethod, } | { "type": "hillshadeDirection", direction: HillshadeDirection, } | { "type": "trailColorMode", mode: TrailColorMode, };
+export type ChangeSetting = { "type": "locale", locale: Locale, } | { "type": "units", units: UnitSettings, } | { "type": "arrivalReserve", reserve: ArrivalReserve, } | { "type": "climbAverageMethod", method: ClimbAverageMethod, } | { "type": "hillshadeDirection", direction: HillshadeDirection, } | { "type": "trailColorMode", mode: TrailColorMode, } | { "type": "trailLength", length: TrailLength, };

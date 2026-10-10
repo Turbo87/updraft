@@ -41,6 +41,7 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
       "hillshadeDirection": "fixed",
       "locale": null,
       "polar": "LS 8",
+      "trailColorMode": "relativeVario",
       "units": {
         "altitude": "m",
         "distance": "km",

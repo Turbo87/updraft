@@ -122,6 +122,9 @@ pub enum ChangeSetting {
     HillshadeDirection {
         direction: crate::HillshadeDirection,
     },
+    TrailColorMode {
+        mode: crate::TrailColorMode,
+    },
 }
 
 /// Selects the persisted glide polar.

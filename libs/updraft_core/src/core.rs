@@ -758,6 +758,7 @@ impl Input for ChangeSetting {
             Self::ArrivalReserve { reserve } => core.settings.arrival_reserve = reserve,
             Self::ClimbAverageMethod { method } => core.settings.climb_average_method = method,
             Self::HillshadeDirection { direction } => core.settings.hillshade_direction = direction,
+            Self::TrailColorMode { mode } => core.settings.trail_color_mode = mode,
         }
         if core.settings == previous {
             return Update::empty();

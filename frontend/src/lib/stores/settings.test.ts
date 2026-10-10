@@ -22,6 +22,7 @@ describe('SettingsStore', () => {
       polar: 'LS 8-18',
       climbAverageMethod: 'normalizedEma',
       hillshadeDirection: 'wind',
+      trailColorMode: 'altitude',
       units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
     });
     store.apply({ topic: 'settings', value: structuredClone(value) });
@@ -43,6 +44,7 @@ describe('SettingsStore', () => {
       arrivalReserve: 200,
       climbAverageMethod: 'smoothed20s',
       hillshadeDirection: 'fixed',
+      trailColorMode: 'relativeVario',
       energyCompensation: true,
       flarmPositionCorrection: true,
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

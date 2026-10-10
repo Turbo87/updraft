@@ -418,6 +418,7 @@ mod tests {
             "energyCompensation": true,
             "climbAverageMethod": "smoothed20s",
             "hillshadeDirection": "fixed",
+            "trailColorMode": "relativeVario",
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

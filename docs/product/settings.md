@@ -50,10 +50,10 @@ new waypoint arrival calculations.
 
 ## Ownership and updates
 
-The core owns the active locale, display units, hillshade direction, glide
-polar, arrival reserve, and external-device configuration. The `Settings` topic
-contains the active locale, units, hillshade direction, polar, and arrival
-reserve. The `ExternalDevices` topic publishes the separate device projection.
+The core owns the active locale, display units, hillshade direction, trail
+colour mode, glide polar, arrival reserve, and external-device configuration.
+The `Settings` topic contains the active locale, units, hillshade direction,
+trail colour mode, polar, and arrival reserve. The `ExternalDevices` topic publishes the separate device projection.
 
 The frontend can show an optimistic control value while a command is pending.
 The next topic remains authoritative. A rejected command clears the optimistic
@@ -66,7 +66,8 @@ topic and requests persistence of the complete snapshot.
 
 The Tauri shell stores `settings.json` in the application configuration
 directory. The file contains the locale, unit selections, hillshade direction,
-glide polar, arrival reserve, and external-device configuration.
+trail colour mode, glide polar, arrival reserve, and external-device
+configuration.
 
 A missing file loads defaults and remains absent until a setting changes. A
 malformed or unreadable file produces a warning and loads defaults. Updraft

@@ -7,6 +7,7 @@ export function settingsFixture(overrides: Partial<Settings> = {}): Settings {
     arrivalReserve: 200,
     climbAverageMethod: 'smoothed20s',
     hillshadeDirection: 'fixed',
+    trailColorMode: 'relativeVario',
     energyCompensation: true,
     flarmPositionCorrection: true,
     ...overrides,

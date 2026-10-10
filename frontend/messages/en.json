@@ -465,8 +465,5 @@
   "task_stop_confirm_title": "Stop the task?",
   "task_stop_hint": "This removes all task points.",
   "task_failed": "The task change failed or was not saved.",
-  "task_search": "Find a waypoint",
-  "task_running": "Tracking task",
-  "task_stopped": "Task stopped",
-  "task_completed": "Task completed"
+  "task_search": "Find a waypoint"
 }

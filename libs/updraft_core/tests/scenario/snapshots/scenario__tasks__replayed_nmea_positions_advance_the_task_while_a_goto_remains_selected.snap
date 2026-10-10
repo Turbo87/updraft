@@ -4,32 +4,35 @@ expression: progress
 ---
 [
   {
-    "current": 1,
-    "finish": null,
-    "restartAllowed": true,
-    "start": {
-      "unixMilliseconds": 1789905601749
+    "progress": {
+      "finish": null,
+      "reached": 1,
+      "start": {
+        "unixMilliseconds": 1789905601749
+      }
     },
-    "status": "running"
+    "target": 1
   },
   {
-    "current": 2,
-    "finish": null,
-    "restartAllowed": false,
-    "start": {
-      "unixMilliseconds": 1789905601749
+    "progress": {
+      "finish": null,
+      "reached": 2,
+      "start": {
+        "unixMilliseconds": 1789905601749
+      }
     },
-    "status": "running"
+    "target": 2
   },
   {
-    "current": 2,
-    "finish": {
-      "unixMilliseconds": 1789905604679
+    "progress": {
+      "finish": {
+        "unixMilliseconds": 1789905604679
+      },
+      "reached": 3,
+      "start": {
+        "unixMilliseconds": 1789905601749
+      }
     },
-    "restartAllowed": false,
-    "start": {
-      "unixMilliseconds": 1789905601749
-    },
-    "status": "completed"
+    "target": null
   }
 ]

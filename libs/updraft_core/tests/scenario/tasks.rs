@@ -54,7 +54,7 @@ fn replayed_nmea_positions_advance_the_task_while_a_goto_remains_selected() {
         );
         for effect in update.effects {
             if let Effect::Emit(Topic::Task(task)) = effect {
-                progress.push(serde_json::json!({"current":task.current,"status":task.status,"start":task.start,"finish":task.finish,"restartAllowed":task.restart_allowed}));
+                progress.push(serde_json::json!({"target":task.target,"progress":task.progress}));
             }
         }
     }
@@ -152,10 +152,10 @@ fn check_batched_positions(gga: bool, start_seconds: usize) {
         Bytes::new(device_id, data.into_bytes()),
         Timestamp::from_millis(5000),
     );
-    assert_eq!(
+    claims::assert_some!(
         core.apply(updraft_core::GetTask, Timestamp::from_millis(5000))
             .response
-            .status,
-        updraft_core::TaskStatus::Completed
+            .progress
+            .finish
     );
 }

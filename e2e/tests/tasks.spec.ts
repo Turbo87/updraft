@@ -1,4 +1,4 @@
-import type { Task } from '#lib/protocol/generated/Task';
+import type { PublishedTask } from '#lib/protocol/generated/PublishedTask';
 import type { WaypointFeature } from '#lib/waypoints';
 
 import { expect } from '@playwright/test';
@@ -11,15 +11,12 @@ const targets = waypointsFixture.features.map((feature) =>
   waypointTarget(feature as WaypointFeature),
 );
 
-function task(order: number[], status: Task['status'] = 'stopped', current = order[0]): Task {
+function task(order: number[], target = order[0] ?? null): PublishedTask {
   return {
     points: order.map((id) => ({ id, target: targets[id] })),
-    current,
-    status,
     nextId: targets.length,
-    start: null,
-    finish: null,
-    restartAllowed: true,
+    target,
+    progress: { reached: 0, start: null, finish: null },
   };
 }
 
@@ -59,9 +56,8 @@ for (let viewport of [
     await app.emit({ topic: 'task', value: task([0, 2, 1]) });
     await expect(points.nth(1)).toContainText('Point 2');
     await points.nth(1).getByRole('button', { name: 'Point 2', exact: true }).click();
-    await app.emit({ topic: 'task', value: task([0, 2, 1], 'running', 2) });
+    await app.emit({ topic: 'task', value: task([0, 2, 1], 2) });
     await app.emitNavigation({ type: 'task' });
-    await expect(page.getByText('Tracking task', { exact: true })).toBeVisible();
     await expect(points.nth(1)).toHaveAttribute('aria-current', 'step');
     await page.getByRole('button', { name: 'Pin target', exact: true }).click();
     await app.emitPins([pinnedTarget(0, { type: 'task' }, true)]);
@@ -70,7 +66,7 @@ for (let viewport of [
     await app.emitNavigation({ type: 'traffic', id: 'icao:ABC123' });
     await app.emitPins([pinnedTarget(0, { type: 'task' })]);
     await page.getByRole('link', { name: 'Task', exact: true }).click();
-    await expect(page.getByText('Tracking task', { exact: true })).toBeVisible();
+    await expect(points.nth(1)).toHaveAttribute('aria-current', 'step');
     await page.getByRole('button', { name: 'Stop task' }).click();
     let dialog = page.getByRole('alertdialog', { name: 'Stop the task?' });
     await dialog.getByRole('button', { name: 'Stop task' }).click();

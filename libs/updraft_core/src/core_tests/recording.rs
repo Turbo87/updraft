@@ -84,9 +84,9 @@ fn new_recording_resets_task_progress() {
     core.apply(utc_fix(UTC, 50.0), at(0));
     core.apply(utc_fix(UTC + 1_000, 50.01), at(1_000));
     let started = core.task.snapshot();
-    assert_some_eq!(started.current, 1);
+    assert_some_eq!(started.target, 1);
     assert_some_eq!(
-        started.start,
+        started.progress.start,
         TaskTime {
             unix_milliseconds: UTC + 450
         }

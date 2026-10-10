@@ -3,16 +3,6 @@ use updraft_geo::LatLon;
 mod cylinder;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
-#[serde(rename_all = "camelCase")]
-pub enum TaskStatus {
-    #[default]
-    Stopped,
-    Running,
-    Completed,
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
@@ -21,17 +11,40 @@ pub struct TaskPoint {
     pub target: NavigationTarget,
 }
 
+/// The route of the task. The task file stores only the route.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
     pub points: Vec<TaskPoint>,
-    pub current: Option<u32>,
-    pub status: TaskStatus,
     pub next_id: u32,
+}
+
+/// The reached task points and the start and finish times.
+///
+/// Progress is derived from the route and the recorded fixes. The
+/// navigation target of the task does not change it.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct TaskProgress {
+    /// The number of reached points. Points are reached in route order.
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub reached: usize,
     pub start: Option<TaskTime>,
     pub finish: Option<TaskTime>,
-    pub restart_allowed: bool,
+}
+
+/// The route of the task with its derived state.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct PublishedTask {
+    #[serde(flatten)]
+    pub route: Task,
+    /// The ID of the point that task navigation guides to.
+    pub target: Option<u32>,
+    pub progress: TaskProgress,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -56,50 +69,52 @@ pub enum TaskCommand {
     Move { id: u32, index: usize },
     Remove { id: u32 },
     Select { id: u32 },
-    Resume,
     Stop,
 }
 
 #[derive(Debug, Default)]
 pub struct TaskState {
-    saved: Task,
-    previous: Option<PositionReport>,
+    route: Task,
+    /// The recorded fixes of the current recording since startup.
+    fixes: Vec<PositionReport>,
+    progress: TaskProgress,
+    target: Option<u32>,
 }
 
 impl TaskState {
-    pub fn snapshot(&self) -> Task {
-        self.saved.clone()
+    pub fn snapshot(&self) -> PublishedTask {
+        PublishedTask {
+            route: self.route.clone(),
+            target: self.target,
+            progress: self.progress.clone(),
+        }
+    }
+
+    pub fn route(&self) -> &Task {
+        &self.route
     }
 
     pub fn target(&self) -> Option<&NavigationTarget> {
-        self.saved
+        self.route
             .points
             .iter()
-            .find(|point| Some(point.id) == self.saved.current)
+            .find(|point| Some(point.id) == self.target)
             .map(|point| &point.target)
     }
 
-    pub fn restore(&mut self, saved: Task) -> Result<(), &'static str> {
-        for (index, point) in saved.points.iter().enumerate() {
+    pub fn restore(&mut self, route: Task) -> Result<(), &'static str> {
+        for (index, point) in route.points.iter().enumerate() {
             Self::validate_waypoint(&point.target)?;
-            if point.id >= saved.next_id
-                || saved.points[..index]
+            if point.id >= route.next_id
+                || route.points[..index]
                     .iter()
                     .any(|other| other.id == point.id)
             {
                 return Err("Invalid task point ID");
             }
         }
-        if saved
-            .current
-            .is_some_and(|id| !saved.points.iter().any(|point| point.id == id))
-            || (saved.status != TaskStatus::Stopped
-                && (saved.points.len() < 2 || saved.current.is_none()))
-        {
-            return Err("Invalid task progress");
-        }
-        self.saved = saved;
-        self.reset_crossing();
+        self.route = route;
+        self.derive_progress();
         Ok(())
     }
 
@@ -114,158 +129,151 @@ impl TaskState {
         match command {
             TaskCommand::Add { target } => {
                 Self::validate_waypoint(&target)?;
-                let id = self.saved.next_id;
-                self.saved.next_id = id.checked_add(1).ok_or("Task point IDs exhausted")?;
-                self.saved.points.push(TaskPoint { id, target });
-                if self.saved.current.is_none() {
-                    self.saved.restart_allowed = true;
-                }
-                self.saved.current.get_or_insert(id);
+                let id = self.route.next_id;
+                self.route.next_id = id.checked_add(1).ok_or("Task point IDs exhausted")?;
+                self.route.points.push(TaskPoint { id, target });
             }
             TaskCommand::Move { id, index } => {
-                if index >= self.saved.points.len() {
+                if index >= self.route.points.len() {
                     return Err("Invalid task point position");
                 }
                 let old = self.index(id)?;
-                let point = self.saved.points.remove(old);
-                self.saved.points.insert(index, point);
+                let point = self.route.points.remove(old);
+                self.route.points.insert(index, point);
             }
             TaskCommand::Remove { id } => {
                 let index = self.index(id)?;
-                if self.saved.status == TaskStatus::Running && self.saved.points.len() <= 2 {
-                    return Err("A running task needs two points");
-                }
-                self.saved.points.remove(index);
-                if self.saved.current == Some(id) {
-                    self.saved.current = self
-                        .saved
-                        .points
-                        .get(index)
-                        .or_else(|| self.saved.points.last())
-                        .map(|point| point.id);
-                }
-                if self.saved.points.len() < 2 {
-                    self.saved.status = TaskStatus::Stopped;
-                }
+                self.route.points.remove(index);
             }
             TaskCommand::Select { id } => {
-                let index = self.index(id)?;
-                self.start_tracking(id)?;
-                if index == 0 {
-                    self.saved.restart_allowed = true;
-                } else if index > 1 {
-                    self.saved.restart_allowed = false;
+                self.index(id)?;
+                if self.route.points.len() < 2 {
+                    return Err("A task needs two points");
                 }
+                self.target = Some(id);
+                return Ok(());
             }
-            TaskCommand::Resume => {
-                if self.saved.status == TaskStatus::Running {
-                    return Ok(());
-                }
-                let id = self.saved.current.ok_or("The task is empty")?;
-                self.start_tracking(id)?;
-            }
-            TaskCommand::Stop => self.saved = Task::default(),
+            TaskCommand::Stop => self.route = Task::default(),
         }
-        self.reset_crossing();
-        Ok(())
-    }
-
-    fn start_tracking(&mut self, id: u32) -> Result<(), &'static str> {
-        if self.saved.points.len() < 2 {
-            return Err("A task needs two points");
-        }
-        self.saved.current = Some(id);
-        self.saved.status = TaskStatus::Running;
-        self.saved.finish = None;
+        self.derive_progress();
         Ok(())
     }
 
     fn index(&self, id: u32) -> Result<usize, &'static str> {
-        self.saved
+        self.route
             .points
             .iter()
             .position(|point| point.id == id)
             .ok_or("Unknown task point")
     }
-}
 
-impl TaskState {
-    pub fn reset_crossing(&mut self) {
-        self.previous = None;
-    }
-
-    /// Returns the task to its first point with no recorded crossing times.
-    /// A completed task runs again.
-    pub fn reset_progress(&mut self) {
-        let Some(first) = self.saved.points.first() else {
-            return;
-        };
-        self.saved.current = Some(first.id);
-        self.saved.start = None;
-        self.saved.finish = None;
-        self.saved.restart_allowed = true;
-        if self.saved.status == TaskStatus::Completed {
-            self.saved.status = TaskStatus::Running;
+    /// Derives the progress from all recorded fixes and targets the first
+    /// unreached point.
+    fn derive_progress(&mut self) {
+        self.progress = TaskProgress::default();
+        for segment in self.fixes.windows(2) {
+            self.progress
+                .advance(&self.route.points, segment[0], segment[1]);
         }
-        self.reset_crossing();
-    }
-
-    /// Observes a fix that the flight recorder records.
-    pub fn observe(&mut self, position: LatLon, utc: UtcInstant) {
-        if self.saved.status != TaskStatus::Running {
-            return;
-        }
-        let Some(previous) = self.previous.replace(PositionReport { position, utc }) else {
-            return;
-        };
-        let gap = (utc.unix_milliseconds() - previous.utc.unix_milliseconds()) as f64;
-        let mut cursor = -1.;
-        for _ in 0..=self.saved.points.len() {
-            let Some(index) = self
-                .saved
+        self.target = match self.route.points.len() {
+            0 | 1 => None,
+            _ => self
+                .route
                 .points
+                .get(self.progress.reached)
+                .map(|point| point.id),
+        };
+    }
+
+    /// Starts a new recording without fixes and progress.
+    pub fn start_recording(&mut self) {
+        self.fixes.clear();
+        self.progress = TaskProgress::default();
+    }
+
+    /// Observes a fix that the flight recorder records. Returns whether
+    /// the fix reached the finish while the finish was the target.
+    pub fn observe(&mut self, position: LatLon, utc: UtcInstant) -> bool {
+        let fix = PositionReport { position, utc };
+        let previous = self.fixes.last().copied();
+        self.fixes.push(fix);
+        let Some(previous) = previous else {
+            return false;
+        };
+        self.progress.advance(&self.route.points, previous, fix);
+        self.advance_target(previous, fix)
+    }
+
+    fn advance_target(&mut self, from: PositionReport, to: PositionReport) -> bool {
+        let points = &self.route.points;
+        let mut cursor = -1.;
+        loop {
+            let Some(index) = points
                 .iter()
-                .position(|point| Some(point.id) == self.saved.current)
+                .position(|point| Some(point.id) == self.target)
             else {
-                return;
+                return false;
             };
-            let crossing = |index: usize, exit: bool| {
-                let center = self.saved.points[index].target.position()?;
-                let center =
-                    LatLon::from_degrees(center.latitude_degrees, center.longitude_degrees);
-                let (entry, leave) = cylinder::crossings(previous.position, position, center);
-                (if exit { leave } else { entry }).filter(|fraction| *fraction > cursor + 1e-9)
-            };
-            let restart = self
-                .saved
-                .restart_allowed
-                .then(|| crossing(0, true))
-                .flatten();
-            let entry = (index > 0).then(|| crossing(index, false)).flatten();
-            let (fraction, reached) = match (restart, entry) {
-                (Some(start), Some(point)) if start < point => (start, 0),
-                (_, Some(point)) => (point, index),
-                (Some(start), None) => (start, 0),
-                _ => return,
+            let Some(fraction) = crossing(&points[index], from, to, index == 0, cursor) else {
+                return false;
             };
             cursor = fraction;
-            let time = TaskTime {
-                unix_milliseconds: previous.utc.unix_milliseconds()
-                    + (fraction * gap).round() as i64,
-            };
-            if reached == 0 {
-                self.saved.start = Some(time);
-                self.saved.current = Some(self.saved.points[1].id);
-            } else {
-                self.saved.restart_allowed = false;
-                if reached + 1 == self.saved.points.len() {
-                    self.saved.finish = Some(time);
-                    self.saved.status = TaskStatus::Completed;
-                    self.reset_crossing();
-                    return;
-                }
-                self.saved.current = Some(self.saved.points[reached + 1].id);
+            self.target = points.get(index + 1).map(|point| point.id);
+            if self.target.is_none() {
+                return true;
             }
         }
     }
+}
+
+impl TaskProgress {
+    fn advance(&mut self, points: &[TaskPoint], from: PositionReport, to: PositionReport) {
+        if points.len() < 2 {
+            return;
+        }
+        let gap = (to.utc.unix_milliseconds() - from.utc.unix_milliseconds()) as f64;
+        let mut cursor = -1.;
+        while self.reached < points.len() {
+            let start = (self.reached <= 1)
+                .then(|| crossing(&points[0], from, to, true, cursor))
+                .flatten();
+            let entry = (self.reached >= 1)
+                .then(|| crossing(&points[self.reached], from, to, false, cursor))
+                .flatten();
+            let (fraction, starts) = match (start, entry) {
+                (Some(start), Some(entry)) if start < entry => (start, true),
+                (_, Some(entry)) => (entry, false),
+                (Some(start), None) => (start, true),
+                (None, None) => return,
+            };
+            cursor = fraction;
+            let time = TaskTime {
+                unix_milliseconds: from.utc.unix_milliseconds() + (fraction * gap).round() as i64,
+            };
+            if starts {
+                self.reached = 1;
+                self.start = Some(time);
+            } else {
+                self.reached += 1;
+                if self.reached == points.len() {
+                    self.finish = Some(time);
+                }
+            }
+        }
+    }
+}
+
+/// Returns the fraction along the segment where it exits or enters the
+/// cylinder of `point`, when the crossing is after `cursor`.
+fn crossing(
+    point: &TaskPoint,
+    from: PositionReport,
+    to: PositionReport,
+    exit: bool,
+    cursor: f64,
+) -> Option<f64> {
+    let center = point.target.position()?;
+    let center = LatLon::from_degrees(center.latitude_degrees, center.longitude_degrees);
+    let (entry, leave) = cylinder::crossings(from.position, to.position, center);
+    (if exit { leave } else { entry }).filter(|fraction| *fraction > cursor + 1e-9)
 }

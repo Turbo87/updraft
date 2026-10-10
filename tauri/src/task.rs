@@ -53,7 +53,8 @@ impl TaskFile {
         let task = handle
             .send(GetTask)
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| error.to_string())?
+            .route;
         let path = self.path.clone();
         match tauri::async_runtime::spawn_blocking(move || {
             crate::navigation::save_target_file(path, &task)
@@ -119,7 +120,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     #[tracing_test::traced_test]
-    async fn commands_save_task_progress_and_primary_selection() {
+    async fn commands_save_the_route_and_primary_selection() {
         let directory = assert_ok!(tempfile::tempdir());
         let app = tauri::test::mock_builder()
             .manage(Arc::new(TaskFile::new(directory.path().to_owned())))
@@ -151,9 +152,13 @@ mod tests {
             )),
             json!(true)
         );
-        let task = assert_ok!(app.state::<Arc<TaskFile>>().load());
-        claims::assert_some_eq!(task.current, 1);
-        assert_eq!(task.status, updraft_core::TaskStatus::Running);
+        let saved = assert_ok!(std::fs::read_to_string(directory.path().join("task.json")));
+        let saved: serde_json::Value = assert_ok!(serde_json::from_str(&saved));
+        let point = |id, name| json!({"id":id,"target":{"type":"waypoint","name":name,"latitudeDegrees":50.,"longitudeDegrees":6.,"elevationMeters":100.}});
+        assert_eq!(
+            saved,
+            json!({"points":[point(0, "Start"), point(1, "Finish")],"nextId":2})
+        );
         claims::assert_some_eq!(
             assert_ok!(app.state::<crate::navigation::NavigationFile>().load()),
             updraft_core::NavigationTarget::Task
@@ -193,6 +198,18 @@ mod tests {
         let logs = tracing_test::internal::global_buf().lock().unwrap().clone();
         assert!(String::from_utf8_lossy(&logs).contains("Could not save task"));
     }
+
+    #[test]
+    fn a_task_file_with_progress_fields_loads_as_its_route() {
+        let directory = assert_ok!(tempfile::tempdir());
+        let file = TaskFile::new(directory.path().to_owned());
+        let point = json!({"id":0,"target":{"type":"waypoint","name":"Start","latitudeDegrees":50.,"longitudeDegrees":6.,"elevationMeters":100.}});
+        let saved = json!({"points":[point],"current":0,"status":"completed","nextId":1,"start":{"unixMilliseconds":1000},"finish":{"unixMilliseconds":null},"restartAllowed":false});
+        assert_ok!(std::fs::write(&file.path, saved.to_string()));
+        let route: Task = assert_ok!(serde_json::from_value(json!({"points":[point],"nextId":1})));
+        assert_eq!(assert_ok!(file.load()), route);
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     async fn background_changes_save_without_a_frontend_command() {
         let directory = assert_ok!(tempfile::tempdir());

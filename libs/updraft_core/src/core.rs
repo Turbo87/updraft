@@ -1151,10 +1151,8 @@ impl Input for crate::SetNavigationTarget {
         {
             return Update::empty().with_response(Err(error));
         }
-        if self.0 == Some(crate::NavigationTarget::Task)
-            && let Err(error) = core.task.change(crate::TaskCommand::Resume)
-        {
-            return Update::empty().with_response(Err(error));
+        if self.0 == Some(crate::NavigationTarget::Task) && core.task.route().points.len() < 2 {
+            return Update::empty().with_response(Err("A task needs two points"));
         }
         if core.navigation_target != self.0 {
             core.navigation_elevation = None;
@@ -1249,7 +1247,7 @@ impl Input for crate::RestoreRecentTargets {
 }
 
 impl Input for crate::GetTask {
-    type Response = crate::Task;
+    type Response = crate::PublishedTask;
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
         Update::empty().with_response(core.task.snapshot())
     }
@@ -1263,10 +1261,7 @@ impl Input for crate::RestoreTask {
 impl Input for crate::ChangeTask {
     type Response = Result<(), &'static str>;
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<Self::Response> {
-        let select = matches!(
-            self.0,
-            crate::TaskCommand::Select { .. } | crate::TaskCommand::Resume
-        );
+        let select = matches!(self.0, crate::TaskCommand::Select { .. });
         let stop = matches!(self.0, crate::TaskCommand::Stop);
         if let Err(error) = core.task.change(self.0) {
             return Update::empty().with_response(Err(error));
@@ -1344,10 +1339,9 @@ impl Core {
             return;
         };
         if starts_recording {
-            self.task.reset_progress();
+            self.task.start_recording();
         }
-        self.task.observe(fix.value.position, utc);
-        if self.task.snapshot().status == crate::TaskStatus::Completed
+        if self.task.observe(fix.value.position, utc)
             && self.navigation_target == Some(crate::NavigationTarget::Task)
         {
             self.navigation_target = None;
@@ -1358,13 +1352,9 @@ impl Core {
 impl Input for crate::RestoreNavigationTarget {
     type Response = Result<(), &'static str>;
     fn apply_to(self, core: &mut Core, at: Timestamp) -> Update<Self::Response> {
-        let target = if self.0 == Some(crate::NavigationTarget::Task)
-            && core.task.snapshot().status != crate::TaskStatus::Running
-        {
-            None
-        } else {
-            self.0
-        };
+        let target = self.0.filter(|target| {
+            *target != crate::NavigationTarget::Task || core.task.target().is_some()
+        });
         crate::SetNavigationTarget(target).apply_to(core, at)
     }
 }

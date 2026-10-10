@@ -230,7 +230,7 @@ impl TrailSample {
 pub enum Topic {
     Navigation(Option<crate::Navigation>),
     PinnedTargets(Vec<crate::PinnedTarget>),
-    Task(crate::Task),
+    Task(crate::PublishedTask),
     TaskSaveFailed(bool),
     RecentTargets(Vec<crate::NavigationTarget>),
     Instruments(Instruments),

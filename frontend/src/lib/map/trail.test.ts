@@ -26,6 +26,8 @@ function trail(
       relativeVarioMetersPerSecond: 3,
       ...overrides,
     },
+    maxAltitudeMslMeters: 1000,
+    maxAltitudeAglMeters: 800,
   };
 }
 

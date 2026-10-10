@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import type { GeoJSONSource } from 'maplibre-gl';
+import type { Trail } from '#lib/protocol/generated/Trail';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample';
 
 import { expect } from '@playwright/test';
@@ -25,21 +26,29 @@ test('restores the trail after a reload and continues it with topic samples', as
   app,
 }) => {
   await app.open('/');
-  let recording = [0, 1, 2].map(sample);
-  for (let value of recording) {
-    await app.emit({ topic: 'trail', value: { recordingStart: RECORDING_START, sample: value } });
+  for (let seconds of [0, 1, 2]) {
+    await app.emit({ topic: 'trail', value: trail(seconds) });
   }
   await expect.poll(() => readTrailIds(page)).toEqual([1, 2]);
 
   await page.reload();
   await page.waitForFunction(() => '__updraftFake' in window);
-  await app.setFlightRecording(recording);
-  await app.emit({ topic: 'trail', value: { recordingStart: RECORDING_START, sample: sample(2) } });
+  await app.setFlightRecording([0, 1, 2].map(sample));
+  await app.emit({ topic: 'trail', value: trail(2) });
   await expect.poll(() => readTrailIds(page)).toEqual([1, 2]);
 
-  await app.emit({ topic: 'trail', value: { recordingStart: RECORDING_START, sample: sample(3) } });
+  await app.emit({ topic: 'trail', value: trail(3) });
   await expect.poll(() => readTrailIds(page)).toEqual([1, 2, 3]);
 });
+
+function trail(seconds: number): Trail {
+  return {
+    recordingStart: RECORDING_START,
+    sample: sample(seconds),
+    maxAltitudeMslMeters: 1_000,
+    maxAltitudeAglMeters: 800,
+  };
+}
 
 /** Returns the trail segment ids in seconds after the recording start. */
 async function readTrailIds(page: Page): Promise<number[] | null> {

@@ -21,7 +21,12 @@ function sample(minutes: number): TrailSample {
 }
 
 function trail(minutes: number, recordingStart = 0): Trail {
-  return { recordingStart, sample: sample(minutes) };
+  return {
+    recordingStart,
+    sample: sample(minutes),
+    maxAltitudeMslMeters: null,
+    maxAltitudeAglMeters: null,
+  };
 }
 
 /** Returns a store whose resource requests stay pending until the test resolves them. */

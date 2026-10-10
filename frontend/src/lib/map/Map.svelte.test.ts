@@ -356,6 +356,8 @@ function applyTrailSample(trail: TrailStore, seconds: number) {
         nettoMetersPerSecond: 1,
         relativeVarioMetersPerSecond: 1,
       },
+      maxAltitudeMslMeters: 1_000,
+      maxAltitudeAglMeters: 800,
     },
   });
 }

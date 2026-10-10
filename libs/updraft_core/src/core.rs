@@ -200,20 +200,15 @@ impl Core {
                 true => Effect::StartRecording(sample),
                 false => Effect::RecordSample(sample),
             });
-            self.trail = Some(self.trail(fix.recording_start, &sample));
+            // The terrain elevation can belong to an earlier fix, because
+            // the shell samples it after the core publishes a position.
+            let terrain_elevation = self.terrain_elevation.map(|(_, meters)| meters);
+            let sample = crate::TrailSample::new(&sample, terrain_elevation);
+            let recording_start = fix.recording_start.unix_milliseconds();
+            self.trail = Some(crate::Trail::new(self.trail, recording_start, sample));
             effects.push(Effect::emit(Topic::Trail(self.trail)));
         }
         effects
-    }
-
-    /// The terrain elevation can belong to an earlier fix, because the
-    /// shell samples it after the core publishes a position.
-    fn trail(&self, recording_start: UtcInstant, sample: &crate::Sample) -> crate::Trail {
-        let terrain_elevation = self.terrain_elevation.map(|(_, meters)| meters);
-        crate::Trail {
-            recording_start: recording_start.unix_milliseconds(),
-            sample: crate::TrailSample::new(sample, terrain_elevation),
-        }
     }
 
     fn pinned_targets(&self) -> Vec<crate::PinnedTarget> {
@@ -1374,7 +1369,11 @@ impl Input for crate::RestoreRecording {
         }
         core.task
             .restore_recording(self.samples.iter().map(|stored| &stored.sample));
-        core.trail = Some(core.trail(first.sample.utc, &last.sample));
+        let recording_start = first.sample.utc.unix_milliseconds();
+        core.trail = self.samples.iter().fold(None, |trail, stored| {
+            let sample = crate::TrailSample::new(&stored.sample, stored.terrain_elevation_meters);
+            Some(crate::Trail::new(trail, recording_start, sample))
+        });
         if let Some(wind) = last.sample.wind {
             core.sensor_fusion.restore_wind(wind);
         }

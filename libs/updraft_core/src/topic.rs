@@ -171,6 +171,33 @@ pub struct Trail {
     #[cfg_attr(feature = "ts", ts(type = "number"))]
     pub recording_start: i64,
     pub sample: TrailSample,
+    /// The maximum MSL altitude of all samples of the recording.
+    pub max_altitude_msl_meters: Option<f64>,
+    /// The maximum AGL altitude of all samples of the recording.
+    pub max_altitude_agl_meters: Option<f64>,
+}
+
+impl Trail {
+    /// Returns the trail with `sample` as the newest sample. The maxima
+    /// continue from `previous` when it has the same recording start.
+    pub(crate) fn new(previous: Option<Trail>, recording_start: i64, sample: TrailSample) -> Self {
+        let previous = previous.filter(|trail| trail.recording_start == recording_start);
+        let max = |previous: Option<f64>, value: Option<f64>| {
+            previous.into_iter().chain(value).reduce(f64::max)
+        };
+        Self {
+            recording_start,
+            sample,
+            max_altitude_msl_meters: max(
+                previous.and_then(|trail| trail.max_altitude_msl_meters),
+                sample.altitude_msl_meters,
+            ),
+            max_altitude_agl_meters: max(
+                previous.and_then(|trail| trail.max_altitude_agl_meters),
+                sample.altitude_agl_meters,
+            ),
+        }
+    }
 }
 
 /// One flight recording sample at the frontend boundary.

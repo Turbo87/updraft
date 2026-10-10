@@ -1,6 +1,6 @@
 use super::super::*;
 use super::support::*;
-use crate::{RestoreRecording, Sample, TerrainElevation, Trail};
+use crate::{RestoreRecording, Sample, StoredSample, TerrainElevation, Trail};
 use claims::assert_none;
 use updraft_geo::LatLon;
 use updraft_units::{Length, MslAltitude, Speed};
@@ -67,9 +67,19 @@ fn restored_sample(utc: i64) -> Sample {
     }
 }
 
+fn stored_sample(utc: i64, terrain_elevation_meters: Option<f64>) -> StoredSample {
+    StoredSample {
+        sample: restored_sample(utc),
+        terrain_elevation_meters,
+    }
+}
+
 fn restore(core: &mut Core, last_utc: i64, utc: i64) -> Vec<Effect> {
     let input = RestoreRecording {
-        samples: vec![restored_sample(last_utc - 1_000), restored_sample(last_utc)],
+        samples: vec![
+            stored_sample(last_utc - 1_000, Some(100.0)),
+            stored_sample(last_utc, Some(100.0)),
+        ],
         stored_utc: Some(UtcInstant::from_unix_milliseconds(last_utc)),
         utc: UtcInstant::from_unix_milliseconds(utc),
     };

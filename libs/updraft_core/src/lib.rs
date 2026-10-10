@@ -61,7 +61,7 @@ pub use input::{
     TerrainElevation, Tick, Update, UtcTick,
 };
 pub use polar::{PolarId, UnknownPolar};
-pub use recording::Sample;
+pub use recording::{Sample, StoredSample};
 pub use settings::{
     AltitudeUnit, ClimbAverageMethod, DistanceUnit, HillshadeDirection, Locale, Settings,
     SettingsSnapshot, SpeedUnit, UnitSettings, VerticalSpeedUnit,

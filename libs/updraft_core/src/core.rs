@@ -1368,13 +1368,14 @@ impl Input for crate::RestoreRecording {
         };
         if !core
             .recorder
-            .restore(first.utc, last.utc, stored_utc, self.utc)
+            .restore(first.sample.utc, last.sample.utc, stored_utc, self.utc)
         {
             return Update::effects(vec![Effect::DiscardRecording]);
         }
-        core.task.restore_recording(&self.samples);
-        core.trail = Some(core.trail(first.utc, last));
-        if let Some(wind) = last.wind {
+        core.task
+            .restore_recording(self.samples.iter().map(|stored| &stored.sample));
+        core.trail = Some(core.trail(first.sample.utc, &last.sample));
+        if let Some(wind) = last.sample.wind {
             core.sensor_fusion.restore_wind(wind);
         }
         Update::empty()

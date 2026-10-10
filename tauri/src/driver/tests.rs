@@ -396,7 +396,10 @@ async fn driver_restores_the_recording_before_it_starts_transports() {
         snapshot(),
         no_airspace(),
         StoredRecording {
-            samples: vec![stale_sample()],
+            samples: vec![updraft_core::StoredSample {
+                sample: stale_sample(),
+                terrain_elevation_meters: None,
+            }],
             stored_utc: Some(UtcInstant::from_unix_milliseconds(0)),
         },
         Box::new(move |_, _, _| {

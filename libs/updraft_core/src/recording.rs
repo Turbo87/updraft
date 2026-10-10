@@ -26,6 +26,14 @@ pub struct Sample {
     pub wind: Option<Velocity>,
 }
 
+/// One sample that the shell stored, with the terrain elevation that the
+/// shell stored with it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StoredSample {
+    pub sample: Sample,
+    pub terrain_elevation_meters: Option<f64>,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct RecordedFix {
     pub starts_recording: bool,

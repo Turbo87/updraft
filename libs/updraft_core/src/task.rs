@@ -187,9 +187,9 @@ impl TaskState {
 
     /// Replaces the fixes with the samples of the restored recording and
     /// derives the progress.
-    pub fn restore_recording(&mut self, samples: &[Sample]) {
+    pub fn restore_recording<'a>(&mut self, samples: impl IntoIterator<Item = &'a Sample>) {
         self.fixes = samples
-            .iter()
+            .into_iter()
             .map(|sample| PositionReport {
                 position: sample.position,
                 utc: sample.utc,

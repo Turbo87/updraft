@@ -19,5 +19,7 @@
     setDirection={(direction) => client.changeSetting({ type: 'hillshadeDirection', direction })}
     trailColorMode={settings.current.trailColorMode}
     setTrailColorMode={(mode) => client.changeSetting({ type: 'trailColorMode', mode })}
+    trailLength={settings.current.trailLength}
+    setTrailLength={(length) => client.changeSetting({ type: 'trailLength', length })}
   />
 </ScreenScaffold>

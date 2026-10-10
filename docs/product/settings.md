@@ -127,6 +127,15 @@ segments. A segment without a value for the selected mode is grey. A change
 recolours the whole trail. The selection is saved across restarts, and a
 settings file without this field uses the default.
 
+The Map page also sets the trail length in whole minutes from 0 to 1440. The
+presets are Off, 15 min, 60 min, 3 h, 5 h, and 10 h. The default is 60 min.
+Off, or 0 min, turns the trail off. The length counts back from the UTC of the
+newest sample. A shorter length removes the older segments. A longer length
+reads the trail again from the flight recording. The control rejects other
+values. A pending command disables the control. Failure restores the published
+value and shows an error. The length is saved across restarts, and a settings
+file without this field uses the default.
+
 ## Glide settings
 
 The Glide page selects a polar from the built-in catalog. The default is the

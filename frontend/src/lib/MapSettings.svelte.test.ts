@@ -12,6 +12,8 @@ function props(overrides: Partial<ComponentProps<typeof MapSettings>> = {}) {
     setDirection: vi.fn(),
     trailColorMode: 'relativeVario',
     setTrailColorMode: vi.fn(),
+    trailLength: 60,
+    setTrailLength: vi.fn(),
     ...overrides,
   } satisfies ComponentProps<typeof MapSettings>;
 }
@@ -79,4 +81,41 @@ it('selects a trail colour mode and restores the authoritative value after failu
   await screen.rerender({ trailColorMode: 'altitude' });
   await expect.element(altitude).toBeChecked();
   await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+});
+
+it('sets the trail length with a preset or in whole minutes', async () => {
+  let setTrailLength = vi.fn();
+  await render(MapSettings, props({ setTrailLength }));
+  let input = page.getByRole('spinbutton', { name: 'Trail length (min)' });
+  await expect.element(input).toHaveValue(60);
+
+  for (let name of ['Off', '15 min', '60 min', '3 h', '5 h', '10 h'])
+    await page.getByRole('button', { name, exact: true }).click();
+  await input.fill('90');
+  (input.element() as HTMLInputElement).blur();
+
+  expect(setTrailLength.mock.calls).toEqual([[0], [15], [60], [180], [300], [600], [90]]);
+});
+
+it('rejects a trail length outside the range and restores the value after failure', async () => {
+  let setTrailLength = vi.fn().mockRejectedValue(new Error('driver stopped'));
+  await render(MapSettings, props({ setTrailLength }));
+  let input = page.getByRole('spinbutton', { name: 'Trail length (min)' });
+
+  for (let value of ['1441', '-1', '1.5']) {
+    await input.fill(value);
+    (input.element() as HTMLInputElement).blur();
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent('Enter a whole number of minutes from 0 to 1440.');
+  }
+  expect(setTrailLength).not.toHaveBeenCalled();
+
+  await page.getByRole('button', { name: '3 h' }).click();
+
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not change the trail length.');
+  await expect.element(input).toHaveValue(60);
+  await expect.element(input).toBeEnabled();
 });

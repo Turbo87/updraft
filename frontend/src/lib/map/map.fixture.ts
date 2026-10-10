@@ -5,7 +5,7 @@ import type Map from './Map.svelte';
 import { FakeClient } from '#lib/client/fake.js';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
-import { TrailStore } from '#lib/stores/trail.js';
+import { TrailStore } from '#lib/stores/trail.svelte.js';
 
 export function mapProps(mapState: MapState) {
   return {
@@ -14,6 +14,7 @@ export function mapProps(mapState: MapState) {
     mapState,
     traffic: new TrafficStore(),
     trail: new TrailStore(new FakeClient()),
+    trailColorMode: 'relativeVario',
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     airspace: { generation: 0, sources: [] },
     testMode: true,

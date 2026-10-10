@@ -9,4 +9,12 @@ export type Trail = {
  * The UTC of the first sample in Unix milliseconds. It identifies the
  * recording.
  */
-recordingStart: number, sample: TrailSample, };
+recordingStart: number, sample: TrailSample, 
+/**
+ * The maximum MSL altitude of all samples of the recording.
+ */
+maxAltitudeMslMeters: number | null, 
+/**
+ * The maximum AGL altitude of all samples of the recording.
+ */
+maxAltitudeAglMeters: number | null, };

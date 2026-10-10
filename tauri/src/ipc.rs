@@ -729,6 +729,25 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn trail_color_mode_command_accepts_only_known_modes() {
+        let app = app();
+        let command = "change_setting";
+        for mode in [
+            "fixed",
+            "altitude",
+            "agl",
+            "vario",
+            "netto",
+            "relativeVario",
+        ] {
+            let body = json!({ "change": { "type": "trailColorMode", "mode": mode } });
+            claims::assert_ok_eq!(invoke(&app, command, body), Value::Null);
+        }
+        let body = json!({ "change": { "type": "trailColorMode", "mode": "unknown" } });
+        claims::assert_err!(invoke(&app, command, body));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn arrival_reserve_command_accepts_nonnegative_meters() {
         let app = app();
         let command = "change_setting";

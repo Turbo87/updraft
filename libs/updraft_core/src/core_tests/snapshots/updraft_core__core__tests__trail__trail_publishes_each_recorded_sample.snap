@@ -22,6 +22,12 @@ expression: topics
                 netto_meters_per_second: None,
                 relative_vario_meters_per_second: None,
             },
+            max_altitude_msl_meters: Some(
+                199.0,
+            ),
+            max_altitude_agl_meters: Some(
+                199.0,
+            ),
         },
     ),
     Some(
@@ -43,6 +49,12 @@ expression: topics
                 netto_meters_per_second: None,
                 relative_vario_meters_per_second: None,
             },
+            max_altitude_msl_meters: Some(
+                199.0002,
+            ),
+            max_altitude_agl_meters: Some(
+                199.0,
+            ),
         },
     ),
 ]

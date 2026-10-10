@@ -92,7 +92,7 @@
   const { Story } = defineMeta({
     title: 'Map/Map',
     component: Map,
-    args: { hillshadeDirection: 'fixed' },
+    args: { hillshadeDirection: 'fixed', trailColorMode: 'relativeVario' },
     parameters: { layout: 'fullscreen' },
   });
 

@@ -3,6 +3,7 @@ import type { ArrivalReserve } from "./ArrivalReserve";
 import type { ClimbAverageMethod } from "./ClimbAverageMethod";
 import type { HillshadeDirection } from "./HillshadeDirection";
 import type { Locale } from "./Locale";
+import type { TrailColorMode } from "./TrailColorMode";
 import type { UnitSettings } from "./UnitSettings";
 
-export type ChangeSetting = { "type": "locale", locale: Locale, } | { "type": "units", units: UnitSettings, } | { "type": "arrivalReserve", reserve: ArrivalReserve, } | { "type": "climbAverageMethod", method: ClimbAverageMethod, } | { "type": "hillshadeDirection", direction: HillshadeDirection, };
+export type ChangeSetting = { "type": "locale", locale: Locale, } | { "type": "units", units: UnitSettings, } | { "type": "arrivalReserve", reserve: ArrivalReserve, } | { "type": "climbAverageMethod", method: ClimbAverageMethod, } | { "type": "hillshadeDirection", direction: HillshadeDirection, } | { "type": "trailColorMode", mode: TrailColorMode, };

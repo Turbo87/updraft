@@ -9,6 +9,7 @@ export function defaultSettings(): Settings {
     energyCompensation: true,
     flarmPositionCorrection: true,
     hillshadeDirection: 'fixed',
+    trailColorMode: 'relativeVario',
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 }

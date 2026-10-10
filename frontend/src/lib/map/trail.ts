@@ -1,35 +1,70 @@
 import type * as GeoJSON from 'geojson';
 import type { ExpressionSpecification, GeoJSONSourceDiff } from 'maplibre-gl';
 import type { Trail } from '#lib/protocol/generated/Trail.js';
+import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 
 import {
+  COLOR_CYAN_600,
+  COLOR_FUCHSIA_600,
   COLOR_INDIGO_700,
+  COLOR_LIME_400,
   COLOR_RED_600,
   COLOR_SKY_400,
   COLOR_SLATE_400,
+  COLOR_VIOLET_800,
   COLOR_YELLOW_400,
 } from './colors.generated';
 
 const TRAIL_LENGTH_MILLISECONDS = 60 * 60 * 1000;
 
-type TrailSegmentProperties = { relativeVario: number | null };
+/** Keeps the stops of an altitude scale in ascending order. */
+const MIN_ALTITUDE_SCALE_METERS = 1;
+
+type TrailSegmentProperties = {
+  altitudeMsl: number | null;
+  altitudeAgl: number | null;
+  vario: number | null;
+  netto: number | null;
+  relativeVario: number | null;
+};
 type TrailSegment = GeoJSON.Feature<GeoJSON.LineString, TrailSegmentProperties> & { id: number };
 type WindowedSegment = { start: number; feature: TrailSegment };
+
+export type TrailMaxima = Pick<Trail, 'maxAltitudeMslMeters' | 'maxAltitudeAglMeters'>;
+
+/**
+ * Returns the `line-color` of the trail. Each segment contains the values
+ * of every mode, so a mode change does not change the source data.
+ */
+export function trailColor(
+  mode: TrailColorMode,
+  maxima: TrailMaxima,
+): string | ExpressionSpecification {
+  switch (mode) {
+    case 'fixed':
+      return COLOR_FUCHSIA_600;
+    case 'altitude':
+      return altitudeColor('altitudeMsl', maxima.maxAltitudeMslMeters);
+    case 'agl':
+      return altitudeColor('altitudeAgl', maxima.maxAltitudeAglMeters);
+    case 'vario':
+    case 'netto':
+    case 'relativeVario':
+      return climbColor(mode);
+  }
+}
 
 /**
  * Sink and lift use different hues. The narrow blend around zero keeps noise
  * in neutral air from striping the trail. `interpolate-lab` clamps values
  * outside the outer stops to the outer colours.
  */
-export const TRAIL_COLOR: ExpressionSpecification = [
-  'case',
-  ['==', ['get', 'relativeVario'], null],
-  COLOR_SLATE_400,
-  [
+function climbColor(property: 'vario' | 'netto' | 'relativeVario'): ExpressionSpecification {
+  return colorOrNoValue(property, [
     'interpolate-lab',
     ['linear'],
-    ['get', 'relativeVario'],
+    ['get', property],
     -5,
     COLOR_INDIGO_700,
     -0.25,
@@ -38,8 +73,37 @@ export const TRAIL_COLOR: ExpressionSpecification = [
     COLOR_YELLOW_400,
     5,
     COLOR_RED_600,
-  ],
-];
+  ]);
+}
+
+/**
+ * The scale goes from 0 m to the maximum of the recording, so a new maximum
+ * changes the colour of the older segments.
+ */
+function altitudeColor(
+  property: 'altitudeMsl' | 'altitudeAgl',
+  maximum: number | null,
+): ExpressionSpecification {
+  let top = Math.max(maximum ?? 0, MIN_ALTITUDE_SCALE_METERS);
+  return colorOrNoValue(property, [
+    'interpolate-lab',
+    ['linear'],
+    ['get', property],
+    0,
+    COLOR_VIOLET_800,
+    top / 2,
+    COLOR_CYAN_600,
+    top,
+    COLOR_LIME_400,
+  ]);
+}
+
+function colorOrNoValue(
+  property: keyof TrailSegmentProperties,
+  color: ExpressionSpecification,
+): ExpressionSpecification {
+  return ['case', ['==', ['get', property], null], COLOR_SLATE_400, color];
+}
 
 /** Returns the UTC of the oldest sample inside the trail length before `newest`. */
 export function trailSince(newest: TrailSample): number {
@@ -129,7 +193,13 @@ function segment(from: TrailSample, to: TrailSample): TrailSegment {
       type: 'LineString',
       coordinates: [coordinates(from), coordinates(to)],
     },
-    properties: { relativeVario: to.relativeVarioMetersPerSecond },
+    properties: {
+      altitudeMsl: to.altitudeMslMeters,
+      altitudeAgl: to.altitudeAglMeters,
+      vario: to.varioMetersPerSecond,
+      netto: to.nettoMetersPerSecond,
+      relativeVario: to.relativeVarioMetersPerSecond,
+    },
   };
 }
 

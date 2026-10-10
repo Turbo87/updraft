@@ -1,5 +1,6 @@
 import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap } from 'maplibre-gl';
 import type { AirspaceStatus } from '#lib/protocol/generated/AirspaceStatus.js';
+import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
 
 import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
@@ -8,12 +9,15 @@ import { page, userEvent } from 'vitest/browser';
 import { FakeClient } from '#lib/client/fake.js';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { MapState } from '#lib/map-state.svelte.js';
+import { settingsFixture } from '#lib/settings.fixture.js';
+import { SettingsStore } from '#lib/stores/settings.svelte.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
-import { TrailStore } from '#lib/stores/trail.js';
+import { TrailStore } from '#lib/stores/trail.svelte.js';
 import { trafficTarget } from '#lib/traffic.fixture.js';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
+import { trailColor } from './trail';
 
 const instruments = instrumentsFixture();
 
@@ -342,7 +346,7 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
 });
 
 /** Adds one sample about 33 m north of the previous sample. */
-function applyTrailSample(trail: TrailStore, seconds: number) {
+function applyTrailSample(trail: TrailStore, seconds: number, maxAltitudeMslMeters = 1_000) {
   trail.apply({
     topic: 'trail',
     value: {
@@ -356,6 +360,8 @@ function applyTrailSample(trail: TrailStore, seconds: number) {
         nettoMetersPerSecond: 1,
         relativeVarioMetersPerSecond: 1,
       },
+      maxAltitudeMslMeters,
+      maxAltitudeAglMeters: 800,
     },
   });
 }
@@ -376,6 +382,63 @@ it('renders the trail segments before and after the source exists', async () => 
     expect(data.type === 'FeatureCollection' && data.features.map(({ id }) => id)).toEqual([
       1_000, 2_000,
     ]);
+  });
+});
+
+/** Renders the trail with the colour mode of `settings`, as the root layout does. */
+async function renderTrail(trail: TrailStore, settings: SettingsStore) {
+  let mapState = new MapState();
+  await render(MapComponent, {
+    ...mapProps(mapState),
+    trail,
+    get trailColorMode() {
+      return settings.current.trailColorMode;
+    },
+  });
+  await vi.waitFor(() => expect(mapState.map?.getLayer('trail')).toBeDefined());
+  let map = mapState.map!;
+  let source = map.getSource<GeoJSONSource>('trail')!;
+  await vi.waitFor(async () => {
+    let data = await source.getData();
+    expect(data.type === 'FeatureCollection' && data.features).toHaveLength(2);
+  });
+  return { map, source };
+}
+
+function applyTrailColorMode(settings: SettingsStore, trailColorMode: TrailColorMode) {
+  settings.apply({ topic: 'settings', value: settingsFixture({ trailColorMode }) });
+}
+
+it('recolours the whole trail without a data change when the colour mode changes', async () => {
+  let trail = new TrailStore(new FakeClient());
+  for (let seconds of [0, 1, 2]) applyTrailSample(trail, seconds);
+  let settings = new SettingsStore();
+  let { map, source } = await renderTrail(trail, settings);
+  expect(map.getPaintProperty('trail', 'line-color')).toEqual(trailColor('relativeVario', trail));
+  let setData = vi.spyOn(source, 'setData');
+  let updateData = vi.spyOn(source, 'updateData');
+
+  applyTrailColorMode(settings, 'altitude');
+
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('trail', 'line-color')).toEqual(trailColor('altitude', trail));
+  });
+  expect(setData).not.toHaveBeenCalled();
+  expect(updateData).not.toHaveBeenCalled();
+});
+
+it('recolours the older trail segments after a new maximum altitude', async () => {
+  let trail = new TrailStore(new FakeClient());
+  for (let seconds of [0, 1, 2]) applyTrailSample(trail, seconds);
+  let settings = new SettingsStore();
+  applyTrailColorMode(settings, 'altitude');
+  let { map } = await renderTrail(trail, settings);
+
+  applyTrailSample(trail, 3, 1_500);
+
+  let maxima = { maxAltitudeMslMeters: 1_500, maxAltitudeAglMeters: 800 };
+  await vi.waitFor(() => {
+    expect(map.getPaintProperty('trail', 'line-color')).toEqual(trailColor('altitude', maxima));
   });
 });
 

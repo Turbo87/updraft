@@ -1,10 +1,10 @@
 import type { Trail } from '#lib/protocol/generated/Trail.js';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
-import type { TrailSubscriber } from './trail';
+import type { TrailSubscriber } from './trail.svelte';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { TrailStore } from './trail';
+import { TrailStore } from './trail.svelte';
 
 const MINUTE = 60_000;
 
@@ -21,7 +21,12 @@ function sample(minutes: number): TrailSample {
 }
 
 function trail(minutes: number, recordingStart = 0): Trail {
-  return { recordingStart, sample: sample(minutes) };
+  return {
+    recordingStart,
+    sample: sample(minutes),
+    maxAltitudeMslMeters: null,
+    maxAltitudeAglMeters: null,
+  };
 }
 
 /** Returns a store whose resource requests stay pending until the test resolves them. */
@@ -87,6 +92,17 @@ describe('TrailStore', () => {
     apply(trail(4));
     expect(ids()).toEqual([1, 2, 3, 4]);
     expect(requests).toHaveLength(1);
+  });
+
+  it('keeps the maximum altitudes of the newest trail value', () => {
+    let { store, apply } = setup();
+
+    apply({ ...trail(1), maxAltitudeMslMeters: 1000, maxAltitudeAglMeters: 800 });
+    apply({ ...trail(2), maxAltitudeMslMeters: 1200, maxAltitudeAglMeters: 900 });
+    apply(null);
+
+    expect(store.maxAltitudeMslMeters).toBe(1200);
+    expect(store.maxAltitudeAglMeters).toBe(900);
   });
 
   it('fetches again when a new recording starts', async () => {

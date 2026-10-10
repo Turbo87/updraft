@@ -252,6 +252,7 @@ mod tests {
         let snapshot = SettingsSnapshot {
             settings: Settings {
                 hillshade_direction: updraft_core::HillshadeDirection::Wind,
+                trail_color_mode: updraft_core::TrailColorMode::Netto,
                 flarm_position_correction: false,
                 climb_average_method: updraft_core::ClimbAverageMethod::Average30s,
                 energy_compensation: false,

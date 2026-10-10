@@ -9,7 +9,7 @@ import { FakeClient } from '#lib/client/fake.js';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { MapState } from '#lib/map-state.svelte.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
-import { TrailStore } from '#lib/stores/trail.js';
+import { TrailStore } from '#lib/stores/trail.svelte.js';
 import Map from './Map.svelte';
 
 const transport = vi.hoisted(() => ({ origin: '' }));
@@ -146,6 +146,7 @@ describe.each(['macos', 'windows'] as const)('%s resource URLs', (os) => {
         mapState,
         traffic: new TrafficStore(),
         trail: new TrailStore(new FakeClient()),
+        trailColorMode: 'relativeVario',
         airspace: { generation: 0, sources: [] },
         hillshadeDirection: 'fixed',
         instruments: instrumentsFixture(),

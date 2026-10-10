@@ -93,6 +93,20 @@ pub enum HillshadeDirection {
     Sun,
 }
 
+/// The sample value that colours the trail.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub enum TrailColorMode {
+    Fixed,
+    Altitude,
+    Agl,
+    Vario,
+    Netto,
+    #[default]
+    RelativeVario,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
@@ -105,6 +119,8 @@ pub struct Settings {
     pub climb_average_method: ClimbAverageMethod,
     #[serde(default)]
     pub hillshade_direction: HillshadeDirection,
+    #[serde(default)]
+    pub trail_color_mode: TrailColorMode,
     pub locale: Option<Locale>,
     #[serde(default)]
     pub polar: PolarId,
@@ -129,6 +145,7 @@ impl Default for Settings {
             flarm_position_correction: flarm_position_correction_default(),
             climb_average_method: ClimbAverageMethod::default(),
             hillshade_direction: HillshadeDirection::default(),
+            trail_color_mode: TrailColorMode::default(),
             locale: None,
             polar: PolarId::default(),
             arrival_reserve: ArrivalReserve::default(),

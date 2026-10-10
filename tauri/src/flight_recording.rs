@@ -2,7 +2,7 @@ use crate::terrain::Terrain;
 use rusqlite::{Connection, OpenFlags, Transaction};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use updraft_core::{Sample, TrailSample, UtcInstant, Velocity};
+use updraft_core::{Sample, StoredSample, TrailSample, UtcInstant, Velocity};
 use updraft_geo::LatLon;
 use updraft_units::{Length, MslAltitude, Speed};
 
@@ -135,13 +135,16 @@ impl FlightRecording {
 
     fn stored_recording(&self) -> rusqlite::Result<StoredRecording> {
         let mut statement = self.connection.prepare(&format!(
-            "SELECT {SAMPLE_COLUMNS}, system_utc_ms FROM samples ORDER BY rowid"
+            "SELECT {SAMPLE_COLUMNS}, terrain_elevation_m, system_utc_ms FROM samples ORDER BY rowid"
         ))?;
         let mut recording = StoredRecording::default();
         let mut rows = statement.query([])?;
         while let Some(row) = rows.next()? {
-            recording.samples.push(sample(row)?);
-            recording.stored_utc = Some(UtcInstant::from_unix_milliseconds(row.get(9)?));
+            recording.samples.push(StoredSample {
+                sample: sample(row)?,
+                terrain_elevation_meters: row.get(9)?,
+            });
+            recording.stored_utc = Some(UtcInstant::from_unix_milliseconds(row.get(10)?));
         }
         Ok(recording)
     }
@@ -151,7 +154,7 @@ impl FlightRecording {
 #[derive(Debug, Default, PartialEq)]
 pub struct StoredRecording {
     /// The samples in recording order.
-    pub samples: Vec<Sample>,
+    pub samples: Vec<StoredSample>,
     /// The shell UTC at which the shell stored the last sample.
     pub stored_utc: Option<UtcInstant>,
 }
@@ -460,7 +463,16 @@ pub mod tests {
         assert_eq!(
             stored,
             StoredRecording {
-                samples: vec![sample(1_000, COVERED), partial],
+                samples: vec![
+                    StoredSample {
+                        sample: sample(1_000, COVERED),
+                        terrain_elevation_meters: Some(100.0),
+                    },
+                    StoredSample {
+                        sample: partial,
+                        terrain_elevation_meters: None,
+                    },
+                ],
                 stored_utc: Some(stored_utc),
             }
         );

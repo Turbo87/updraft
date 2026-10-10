@@ -15,7 +15,7 @@ Some(
                 1000.0,
             ),
             altitude_agl_meters: Some(
-                1000.0,
+                900.0,
             ),
             vario_meters_per_second: Some(
                 1.5,
@@ -27,5 +27,11 @@ Some(
                 3.5,
             ),
         },
+        max_altitude_msl_meters: Some(
+            1000.0,
+        ),
+        max_altitude_agl_meters: Some(
+            900.0,
+        ),
     },
 )

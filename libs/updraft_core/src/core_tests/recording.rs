@@ -1,8 +1,8 @@
 use super::super::*;
 use super::support::*;
 use crate::{
-    ChangeTask, NavigationTarget, RestoreRecording, RestoreTask, Sample, Task, TaskCommand,
-    TaskPoint, TaskTime, Velocity,
+    ChangeTask, NavigationTarget, RestoreRecording, RestoreTask, Sample, StoredSample, Task,
+    TaskCommand, TaskPoint, TaskTime, Velocity,
 };
 use claims::{assert_ok, assert_some, assert_some_eq};
 use updraft_geo::LatLon;
@@ -101,8 +101,8 @@ fn new_recording_resets_task_progress() {
     insta::assert_debug_snapshot!(core.task.snapshot());
 }
 
-fn restored_sample(utc: i64, latitude_degrees: f64) -> Sample {
-    Sample {
+fn restored_sample(utc: i64, latitude_degrees: f64) -> StoredSample {
+    let sample = Sample {
         utc: UtcInstant::from_unix_milliseconds(utc),
         position: LatLon::from_degrees(latitude_degrees, 6.0),
         altitude_msl: None,
@@ -113,6 +113,10 @@ fn restored_sample(utc: i64, latitude_degrees: f64) -> Sample {
             east: Speed::from_meters_per_second(-3.0),
             north: Speed::from_meters_per_second(4.0),
         }),
+    };
+    StoredSample {
+        sample,
+        terrain_elevation_meters: None,
     }
 }
 

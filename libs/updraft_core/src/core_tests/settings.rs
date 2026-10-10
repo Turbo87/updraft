@@ -348,6 +348,34 @@ fn hillshade_direction_defaults_and_persists_changes() {
 }
 
 #[test]
+fn trail_color_mode_defaults_and_persists_changes() {
+    use crate::TrailColorMode;
+    let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
+    assert_eq!(settings.trail_color_mode, TrailColorMode::RelativeVario);
+    let mut core = Core::new(SettingsSnapshot::default());
+    for mode in [
+        TrailColorMode::Fixed,
+        TrailColorMode::Altitude,
+        TrailColorMode::Agl,
+        TrailColorMode::Vario,
+        TrailColorMode::Netto,
+        TrailColorMode::RelativeVario,
+    ] {
+        let change = ChangeSetting::TrailColorMode { mode };
+        let expected = Settings {
+            trail_color_mode: mode,
+            ..Settings::default()
+        };
+        let effects = core.apply(change, at(0)).effects;
+        assert_eq!(effects, settings_effects(expected));
+        assert!(core.apply(change, at(1)).effects.is_empty());
+        let json = claims::assert_ok!(serde_json::to_string(&core.settings_snapshot()));
+        let restored = Core::new(claims::assert_ok!(serde_json::from_str(&json)));
+        assert_eq!(restored.settings, expected);
+    }
+}
+
+#[test]
 fn energy_compensation_defaults_to_enabled() {
     for settings in [
         Settings::default(),

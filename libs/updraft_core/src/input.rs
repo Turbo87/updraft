@@ -122,6 +122,9 @@ pub enum ChangeSetting {
     HillshadeDirection {
         direction: crate::HillshadeDirection,
     },
+    TrailColorMode {
+        mode: crate::TrailColorMode,
+    },
 }
 
 /// Selects the persisted glide polar.
@@ -346,7 +349,7 @@ impl private::Sealed for SetTaskSaveFailed {}
 #[derive(Debug)]
 pub struct RestoreRecording {
     /// The samples in recording order.
-    pub samples: Vec<crate::Sample>,
+    pub samples: Vec<crate::StoredSample>,
     /// The shell UTC at which the shell stored the last sample, or `None`
     /// without samples.
     pub stored_utc: Option<crate::UtcInstant>,

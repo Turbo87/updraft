@@ -103,5 +103,8 @@ the fixed Flight View region that normally shows the focused target and is tempo
 **SPP**:
 Bluetooth Serial Port Profile (classic Bluetooth serial).
 
+**Task progress**:
+the reached task points and the start and finish times, derived from the flight recording and the route, independent of the navigation target.
+
 **Trail**:
 the map rendering of the current flight recording. Also called snail trail.

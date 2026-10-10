@@ -18,8 +18,8 @@ for a fixed target or relative altitude for traffic. Calculations, units, missin
 inputs, and stale indications follow [goto navigation](navigation.md). Arrival
 margins do not establish terrain clearance or landing suitability.
 
-A task pin follows the current task point. Unpinning the task does not stop it
-or add it to recents. Unpinning other targets moves them to recent goto history.
+A task pin follows the navigation target of the task. Unpinning the task does
+not change it or add it to recents. Unpinning other targets moves them to recent goto history.
 
 Selecting a row opens its details. **Navigate to target** makes it primary and
 keeps it pinned. **Unpin target** removes only the pin.

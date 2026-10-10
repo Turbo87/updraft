@@ -54,7 +54,7 @@ fn replayed_nmea_positions_advance_the_task_while_a_goto_remains_selected() {
         );
         for effect in update.effects {
             if let Effect::Emit(Topic::Task(task)) = effect {
-                progress.push(serde_json::json!({"current":task.current,"status":task.status,"start":task.start,"finish":task.finish,"restartAllowed":task.restart_allowed}));
+                progress.push(serde_json::json!({"target":task.target,"progress":task.progress}));
             }
         }
     }
@@ -115,18 +115,28 @@ fn check_batched_positions(gga: bool, start_seconds: usize) {
         )
         .response
     );
+    let clock = |index: usize| {
+        let seconds = (start_seconds + index) % 86_400;
+        format!(
+            "{:02}{:02}{:02}",
+            seconds / 3600,
+            seconds / 60 % 60,
+            seconds % 60
+        )
+    };
+    // GGA reports only a time of day. The dated RMC gives it the UTC date.
+    let date = gga.then(|| {
+        format!(
+            "$GPRMC,{}.00,A,0000.000,N,00000.000,E,60.0,90.0,200926,,,A\r\n",
+            clock(0)
+        )
+    });
     let data = [0., 0.36, 0.84, 1.56, 2.4]
         .into_iter()
         .enumerate()
         .map(|(index, minutes)| {
             if gga {
-                let seconds = (start_seconds + index) % 86_400;
-                let clock = format!(
-                    "{:02}{:02}{:02}",
-                    seconds / 3600,
-                    seconds / 60 % 60,
-                    seconds % 60
-                );
+                let clock = clock(index);
                 return format!(
                     "$GPGGA,{clock}.00,0000.000,N,000{minutes:06.3},E,1,08,1.0,1000.0,M,0.0,M,,\r\n"
                 );
@@ -137,14 +147,15 @@ fn check_batched_positions(gga: bool, start_seconds: usize) {
             )
         })
         .collect::<String>();
+    let data = date.unwrap_or_default() + &data;
     core.apply(
         Bytes::new(device_id, data.into_bytes()),
         Timestamp::from_millis(5000),
     );
-    assert_eq!(
+    claims::assert_some!(
         core.apply(updraft_core::GetTask, Timestamp::from_millis(5000))
             .response
-            .status,
-        updraft_core::TaskStatus::Completed
+            .progress
+            .finish
     );
 }

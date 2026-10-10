@@ -5,7 +5,7 @@ Status: Current behavior
 Updraft retains one editable task across restarts. A task is an ordered list of
 waypoint snapshots. The first point is the start, the last is the finish, and
 intermediate points are turnpoints. Each point uses a 500 m radius cylinder.
-A running task requires at least two points.
+A task with fewer than two points has no progress and no navigation target.
 
 ## Planning and navigation
 
@@ -15,66 +15,70 @@ up or down, or remove them. The map displays the route and each point’s
 500 m cylinder with an outline and a light fill. Cylinder display uses a
 spherical approximation. Crossing detection uses WGS84 geometry.
 
-Selecting a task point makes it current and selects task guidance as primary
-navigation. The pilot can skip ahead or return to an earlier point. A separate
-goto does not stop task tracking. Returning primary navigation to the task
-follows its current point without resetting running progress.
+Selecting a task point makes it the navigation target of the task and selects
+task guidance as primary navigation. The pilot can skip ahead or return to an
+earlier point. A separate goto does not change the task. Returning primary
+navigation to the task follows its navigation target.
 
-The task can be pinned. Its pinned guidance follows the current point. Pinning
-and unpinning do not start or stop tracking. The navigation selection screen
-shows the task once: as the current target, otherwise as a pin, otherwise as
-its dedicated entry. The task never enters recent goto history.
+The task can be pinned. Its pinned guidance follows the navigation target.
+The navigation selection screen shows the task once: as the current target,
+otherwise as a pin, otherwise as its dedicated entry. The task never enters
+recent goto history.
 
-Live edits retain the current point's identity. Removing it selects the following
-point, or the preceding point if none follows. The first and last roles follow
-the new order. Edits do not count as crossings. They reset crossing detection
-until a fresh position establishes the new baseline. The editor rejects removing
-a point when that would leave a running task with fewer than two points.
+## Progress
 
-## Crossings and restarts
+Task progress is the set of reached task points and the start and finish times.
+It is a function of the route and the fixes that the flight recorder records.
+The navigation target and manual selection do not change it.
 
-An exit from the start cylinder records a start and selects the second point.
-Entry into an intermediate cylinder selects the following point. Entry into the
-finish completes the task. The detector checks the geodesic segment between
-successive fresh positions, including a complete cylinder passage between reports.
-It uses WGS84 geometry. A numerical tolerance of one micrometer applies when a
-reported position lies on a cylinder boundary.
+Progress uses only the recorded fixes, in order. A fix without UTC, or a fix
+that the recorder drops, does not count. A new recording resets progress and
+keeps the navigation target. The detector checks the geodesic segment between
+two consecutive recorded fixes, including a complete cylinder passage between
+them. A segment has no maximum length, and a source change does not interrupt
+it. A numerical tolerance of one micrometer applies when a reported position
+lies on a cylinder boundary.
 
-The maximum report gap is ten seconds. The detector uses UTC report times when
-available, including time-of-day reports across midnight. Otherwise, it uses
-monotonic ingestion times. It processes each position
-report in a transport read, rather than only the final position. The ten-second limit is provisional. Competition rules will define it later. Longer gaps, source changes, task edits, manual point
-selection, and restoration establish a new baseline. Selecting a point while
-inside its cylinder requires leaving and re-entering. Crossings before that
-point became current do not count for it.
+The start is the last exit from the start cylinder before the pilot reaches the
+second point. Later start exits do not count. For a two-point task, the second
+point is the finish. Turnpoints count in route order. An entry counts for a
+point only when the start and all earlier points are reached. The finish is the
+first entry into the finish cylinder after the last turnpoint is reached.
+Nothing changes after the finish.
 
-The start remains monitored after the first start exit. Another exit replaces
-the start time until the pilot reaches the second point or manually selects a
-point beyond it. Selecting the start in task details reopens this window. A
-standalone goto to the same waypoint does not affect it. Skipping the start does
-not invent a start time.
+Crossing times interpolate along the segment from the UTC of its fixes. The
+details page displays the start and finish times in UTC.
 
-Crossing times interpolate along the report segment. They use GPS UTC when
-available, otherwise the shell UTC clock. An event without an available UTC clock
-still changes progress, but has no recorded clock time. The details page displays
-available start and finish times in UTC.
+Each route change derives progress again from all recorded fixes of the current
+recording that the core received since startup. Restarts after the second point
+and competition start gates wait for competition rules.
 
-## Stopping, completion, and storage
+## Navigation target
 
-**Stop task** pauses tracking and retains the route, current point, and recorded
-times. It clears primary navigation only when that follows the task. Selecting a
-task point or using the task navigation arrow resumes tracking.
+After startup or a route change, the navigation target is the first unreached
+point. With nothing reached, that is the start. While the start is the target, a
+start exit moves the target to the second point. Entry into the cylinder of the
+target moves the target to the following point, also when the entry does not
+count for progress. For example, the pilot skips the second point and selects
+the third point. Entry into the third point moves the target to the fourth
+point, and the second point stays unreached.
 
-Completion clears primary navigation only when it follows the task. A separate
-goto remains unchanged. Selecting a point after completion resumes tracking,
-clears the finish time, and retains the start time. Selecting the start also
-reopens the restart window.
+Entry into the finish cylinder while the finish is the target removes the
+target. This clears primary navigation only when primary navigation follows the
+task. A separate goto remains unchanged. A manual selection holds until one of
+these rules moves the target. Selecting a point while inside its cylinder
+requires leaving and re-entering.
 
-The core owns the task, guidance, and crossing state. The shell saves route and
-progress changes, including automatic changes while another target is primary.
-Restoration retains running, stopped, or completed status. It does not infer
-crossings during the interruption. A failed save retains live state and exposes
-a retry action that saves the current state without repeating an edit.
+## Stopping and storage
+
+**Stop task** asks for a confirmation. It then clears the route and the
+progress. It clears primary navigation only when that follows the task.
+
+The core owns the route, the progress, and the navigation target. The task file
+stores only the route. Task files with saved progress from earlier versions load
+as their route. After a restart, the task has no progress until the follow-up
+work replays the restored flight recording. A failed save retains live state and
+exposes a retry action that saves the current route without repeating an edit.
 
 Competition rules, additional observation zones, task import, a named task
 library, and record validation require later slices. Physical Android lifecycle

@@ -5,7 +5,7 @@ use igc::records::Record;
 use std::hint::black_box;
 use updraft_core::{
     ChangeTask, Core, Fix, GetTask, InternalGps, NavigationTarget, SettingsSnapshot, TaskCommand,
-    TaskStatus, Timestamp, UtcInstant,
+    Timestamp, UtcInstant,
 };
 use updraft_geo::LatLon;
 
@@ -68,7 +68,7 @@ fn bench_task(c: &mut Criterion) {
     let fixes = fixes();
     let mut core = replay(&fixes, true);
     let task = core.apply(GetTask, Timestamp::default()).response;
-    assert_eq!(task.status, TaskStatus::Completed);
+    claims::assert_some!(task.progress.finish);
     let mut group = c.benchmark_group("weglide_1141558");
     group.sample_size(10);
     group.bench_function("without_task", |b| b.iter(|| replay(&fixes, false)));

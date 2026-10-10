@@ -43,13 +43,14 @@ pub struct FlightRecorder {
 }
 
 impl FlightRecorder {
-    /// Returns whether the fix starts a new recording.
-    pub fn observe(&mut self, utc: UtcInstant, position: LatLon) -> bool {
+    /// Returns whether the fix starts a new recording, or `None` when the
+    /// recorder drops the fix.
+    pub fn observe(&mut self, utc: UtcInstant, position: LatLon) -> Option<bool> {
         let recording_start = match self.recording {
             Some((start, last)) => {
                 let gap = utc.unix_milliseconds() - last.unix_milliseconds();
                 if (-MAX_BACKWARD_MILLISECONDS..=0).contains(&gap) {
-                    return false;
+                    return None;
                 }
                 match (1..=MAX_GAP_MILLISECONDS).contains(&gap) {
                     true => start,
@@ -66,7 +67,7 @@ impl FlightRecorder {
             utc,
             position,
         });
-        starts_recording
+        Some(starts_recording)
     }
 
     /// Continues the recording after its last sample. Returns `false` when

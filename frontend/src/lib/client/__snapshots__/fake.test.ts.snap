@@ -13,13 +13,14 @@ exports[`FakeClient > delivers onboarding topics when a subscriber connects 1`] 
   {
     "topic": "task",
     "value": {
-      "current": null,
-      "finish": null,
       "nextId": 0,
       "points": [],
-      "restartAllowed": false,
-      "start": null,
-      "status": "stopped",
+      "progress": {
+        "finish": null,
+        "reached": 0,
+        "start": null,
+      },
+      "target": null,
     },
   },
   {

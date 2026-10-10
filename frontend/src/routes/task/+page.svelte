@@ -2,12 +2,14 @@
   import type { FeatureCollection, Point } from 'geojson';
   import type { GeoJSONSource } from 'maplibre-gl';
   import type { TaskCommand } from '#lib/protocol/generated/TaskCommand.js';
+  import type { TaskTime } from '#lib/protocol/generated/TaskTime.js';
   import type { WaypointFeature, WaypointProperties } from '#lib/waypoints.js';
 
   import { resolve } from '$app/paths';
 
   import { getAppContext } from '#lib/app-context.js';
   import Button from '#lib/Button.svelte';
+  import ConfirmDialog from '#lib/ConfirmDialog.svelte';
   import NavigateButton from '#lib/NavigateButton.svelte';
   import { waypointTarget } from '#lib/navigation-target.js';
   import { navigationLabel } from '#lib/navigation.js';
@@ -23,6 +25,7 @@
   let busy = $state(false);
   let error = $state(false);
   let notSaved = $state(false);
+  let confirmingStop = $state(false);
   let loadError = $state(false);
   let retryCount = $state(0);
   $effect(() => {
@@ -75,6 +78,13 @@
       busy = false;
     }
   }
+  function utcTime({ unixMilliseconds }: TaskTime) {
+    return new Date(unixMilliseconds).toLocaleTimeString(getLocale(), { timeZone: 'UTC' });
+  }
+  async function stop() {
+    await change({ type: 'stop' });
+    if (!error) confirmingStop = false;
+  }
   async function save() {
     busy = true;
     try {
@@ -92,30 +102,11 @@
   backHref={resolve('/navigation')}
   backLabel={m.navigation_heading()}
 >
-  <p>
-    {task.status === 'running'
-      ? m.task_running()
-      : task.status === 'completed'
-        ? m.task_completed()
-        : m.task_stopped()}
-  </p>
-  {#if task.start}<p>
-      {m.task_start()}: {task.start.unixMilliseconds === null
-        ? '—'
-        : new Date(task.start.unixMilliseconds).toLocaleTimeString(getLocale(), {
-            timeZone: 'UTC',
-          })} UTC
-    </p>{/if}
-  {#if task.finish}<p>
-      {m.task_finish()}: {task.finish.unixMilliseconds === null
-        ? '—'
-        : new Date(task.finish.unixMilliseconds).toLocaleTimeString(getLocale(), {
-            timeZone: 'UTC',
-          })} UTC
-    </p>{/if}
+  {#if task.progress.start}<p>{m.task_start()}: {utcTime(task.progress.start)} UTC</p>{/if}
+  {#if task.progress.finish}<p>{m.task_finish()}: {utcTime(task.progress.finish)} UTC</p>{/if}
   <ol>
     {#each task.points as point, index (point.id)}
-      <li aria-current={point.id === task.current ? 'step' : undefined}>
+      <li aria-current={point.id === task.target ? 'step' : undefined}>
         <span
           >{index === 0
             ? m.task_start()
@@ -142,7 +133,7 @@
           >
           <Button
             aria-label={m.task_remove()}
-            disabled={busy || (task.status === 'running' && task.points.length <= 2)}
+            disabled={busy}
             onclick={() => change({ type: 'remove', id: point.id })}>×</Button
           >
         </div>
@@ -168,11 +159,25 @@
   {#snippet actions()}
     {#if task.points.length >= 2}<NavigateButton target={{ type: 'task' }} />{/if}
     {#if task.points.length}<PinTargetButton target={{ type: 'task' }} />{/if}
-    {#if task.status === 'running'}<Button onclick={() => change({ type: 'stop' })} loading={busy}
-        >{m.task_stop()}</Button
+    {#if task.points.length}<Button
+        variant="destructive-outline"
+        onclick={() => (confirmingStop = true)}
+        disabled={busy}>{m.task_stop()}</Button
       >{/if}
   {/snippet}
 </ScreenScaffold>
+
+<ConfirmDialog
+  bind:open={confirmingStop}
+  title={m.task_stop_confirm_title()}
+  description={m.task_stop_hint()}
+  cancelLabel={m.cancel()}
+  confirmLabel={m.task_stop()}
+  pending={busy}
+  error={error ? m.task_failed() : undefined}
+  onCancel={() => (confirmingStop = false)}
+  onConfirm={() => void stop()}
+/>
 
 <style>
   li {

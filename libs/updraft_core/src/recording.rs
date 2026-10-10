@@ -71,9 +71,18 @@ impl FlightRecorder {
     }
 
     /// Continues the recording after its last sample. Returns `false` when
-    /// the recording ended more than 3 h before `utc`.
-    pub fn restore(&mut self, start: UtcInstant, last: UtcInstant, utc: UtcInstant) -> bool {
-        if utc.unix_milliseconds() - last.unix_milliseconds() > MAX_GAP_MILLISECONDS {
+    /// the shell stored the last sample more than 3 h before `utc`.
+    ///
+    /// Both values come from the shell clock, so the fix UTC of the source
+    /// does not affect the result.
+    pub fn restore(
+        &mut self,
+        start: UtcInstant,
+        last: UtcInstant,
+        stored_utc: UtcInstant,
+        utc: UtcInstant,
+    ) -> bool {
+        if utc.unix_milliseconds() - stored_utc.unix_milliseconds() > MAX_GAP_MILLISECONDS {
             return false;
         }
         self.recording = Some((start, last));

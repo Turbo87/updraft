@@ -44,7 +44,7 @@ pub fn spawn(
     let (handle, task) = Driver::spawn_task(
         snapshot,
         AirspaceState::none_at_startup(),
-        Vec::new(),
+        Default::default(),
         open,
         persist,
         Box::new(|_| {}),
@@ -285,7 +285,7 @@ async fn locale_changes_reach_subscribers_and_persistence() {
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
-        Vec::new(),
+        Default::default(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
@@ -341,7 +341,7 @@ async fn replay_writes_one_flight_recording_row_for_each_fix() {
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
-        Vec::new(),
+        Default::default(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Box::new(record),
@@ -395,7 +395,10 @@ async fn driver_restores_the_recording_before_it_starts_transports() {
     let _handle = Driver::spawn(
         snapshot(),
         no_airspace(),
-        vec![stale_sample()],
+        StoredRecording {
+            samples: vec![stale_sample()],
+            stored_utc: Some(UtcInstant::from_unix_milliseconds(0)),
+        },
         Box::new(move |_, _, _| {
             let _ = opened.send("open transport".to_owned());
             Box::new(|| {})
@@ -414,20 +417,20 @@ async fn driver_restores_the_recording_before_it_starts_transports() {
 }
 
 #[tokio::test]
-async fn relaunch_empties_a_recording_that_ended_more_than_3_hours_ago() {
+async fn relaunch_empties_a_recording_that_the_shell_stored_more_than_3_hours_ago() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("state.sqlite");
     let mut previous = assert_ok!(FlightRecording::open(&path, Default::default()));
-    let sample = stale_sample();
-    assert_ok!(previous.write(&RecordingWrite::StartRecording(sample), sample.utc));
+    let stored_utc = UtcInstant::from_unix_milliseconds(0);
+    assert_ok!(previous.write(&RecordingWrite::StartRecording(stale_sample()), stored_utc));
     drop(previous);
 
-    let (samples, record) = flight_recording::load(path.clone(), Default::default());
-    assert_eq!(samples.len(), 1);
+    let (stored, record) = flight_recording::load(path.clone(), Default::default());
+    assert_eq!(stored.samples.len(), 1);
     let _handle = Driver::spawn(
         snapshot(),
         no_airspace(),
-        samples,
+        stored,
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Box::new(record),
@@ -455,7 +458,7 @@ async fn start_asks_for_a_transport_per_configured_connection() {
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
-        Vec::new(),
+        Default::default(),
         Box::new(move |device_id, spec, _handle| {
             let _ = sender.send((device_id, spec));
             Box::new(|| {})
@@ -482,7 +485,7 @@ async fn admitted_input_survives_a_dropped_response_receiver() {
     let handle = Driver::spawn(
         snapshot(),
         no_airspace(),
-        Vec::new(),
+        Default::default(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(move |snapshot| {
             let _ = persisted_tx.send(snapshot);
@@ -535,7 +538,7 @@ async fn external_device_mutations_drive_one_worker_and_complete_snapshots() {
     let handle = Driver::spawn(
         SettingsSnapshot::default(),
         no_airspace(),
-        Vec::new(),
+        Default::default(),
         Box::new(move |device_id, spec, _handle| {
             open_count.fetch_add(1, Ordering::SeqCst);
             let _ = opened_tx.send((device_id, spec));

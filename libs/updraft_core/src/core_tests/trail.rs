@@ -70,6 +70,7 @@ fn restored_sample(utc: i64) -> Sample {
 fn restore(core: &mut Core, last_utc: i64, utc: i64) -> Vec<Effect> {
     let input = RestoreRecording {
         samples: vec![restored_sample(last_utc - 1_000), restored_sample(last_utc)],
+        stored_utc: Some(UtcInstant::from_unix_milliseconds(last_utc)),
         utc: UtcInstant::from_unix_milliseconds(utc),
     };
     core.apply(input, at(0)).effects

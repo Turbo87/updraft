@@ -1361,10 +1361,15 @@ impl Input for crate::RestoreNavigationTarget {
 impl Input for crate::RestoreRecording {
     type Response = ();
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
-        let (Some(first), Some(last)) = (self.samples.first(), self.samples.last()) else {
+        let (Some(first), Some(last), Some(stored_utc)) =
+            (self.samples.first(), self.samples.last(), self.stored_utc)
+        else {
             return Update::empty();
         };
-        if !core.recorder.restore(first.utc, last.utc, self.utc) {
+        if !core
+            .recorder
+            .restore(first.utc, last.utc, stored_utc, self.utc)
+        {
             return Update::effects(vec![Effect::DiscardRecording]);
         }
         core.trail = Some(core.trail(first.utc, last));

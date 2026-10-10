@@ -26,8 +26,11 @@ the samples that are not committed yet.
 ## Recovery
 
 At startup, Updraft restores the recording before it connects to any device.
-When the last sample is more than 3 hours older than the current time, Updraft
-deletes the recording. The next fix then starts a new recording.
+Updraft stores the system time with each sample. When it stored the last
+sample more than 3 hours before the current system time, Updraft deletes the
+recording. The next fix then starts a new recording. The fix time does not
+affect this rule, so a replayed flight with an old date also continues after
+a restart.
 
 Otherwise, the next fix continues the restored recording. The wind of the last
 sample is available directly after the restart. Without a new wind measurement,

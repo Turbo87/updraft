@@ -50,7 +50,7 @@ pub fn spawn_driver(snapshot: SettingsSnapshot, airspace: AirspaceState) -> Driv
     Driver::spawn(
         snapshot,
         airspace,
-        Vec::new(),
+        Default::default(),
         Box::new(|_, _, _| Box::new(|| {})),
         Box::new(|_| {}),
         Box::new(|_| {}),

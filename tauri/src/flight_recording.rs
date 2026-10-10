@@ -133,17 +133,19 @@ impl FlightRecording {
         }
     }
 
-    fn samples(&self) -> rusqlite::Result<Vec<Sample>> {
+    fn stored_recording(&self) -> rusqlite::Result<StoredRecording> {
         let mut statement = self.connection.prepare(
             "SELECT utc_ms, latitude_deg, longitude_deg, altitude_msl_m, vario_mps, netto_mps,
-                relative_vario_mps, wind_east_mps, wind_north_mps
+                relative_vario_mps, wind_east_mps, wind_north_mps, system_utc_ms
             FROM samples ORDER BY rowid",
         )?;
         let speed = |value: Option<f64>| value.map(Speed::from_meters_per_second);
-        let rows = statement.query_map([], |row| {
+        let mut recording = StoredRecording::default();
+        let mut rows = statement.query([])?;
+        while let Some(row) = rows.next()? {
             let wind_east = speed(row.get(7)?);
             let wind_north = speed(row.get(8)?);
-            Ok(Sample {
+            recording.samples.push(Sample {
                 utc: UtcInstant::from_unix_milliseconds(row.get(0)?),
                 position: LatLon::from_degrees(row.get(1)?, row.get(2)?),
                 altitude_msl: row
@@ -155,13 +157,23 @@ impl FlightRecording {
                 wind: wind_east
                     .zip(wind_north)
                     .map(|(east, north)| Velocity { east, north }),
-            })
-        })?;
-        rows.collect()
+            });
+            recording.stored_utc = Some(UtcInstant::from_unix_milliseconds(row.get(9)?));
+        }
+        Ok(recording)
     }
 }
 
-/// Opens the flight recording and reads its samples for the restore.
+/// The flight recording that `load()` reads for the restore.
+#[derive(Debug, Default, PartialEq)]
+pub struct StoredRecording {
+    /// The samples in recording order.
+    pub samples: Vec<Sample>,
+    /// The shell UTC at which the shell stored the last sample.
+    pub stored_utc: Option<UtcInstant>,
+}
+
+/// Opens the flight recording and reads it for the restore.
 ///
 /// The returned writer stores the recording effects in order on a blocking
 /// worker. When the database cannot be opened, the restore is empty and the
@@ -169,18 +181,18 @@ impl FlightRecording {
 pub fn load(
     path: PathBuf,
     terrain: Arc<Mutex<Terrain>>,
-) -> (Vec<Sample>, impl Fn(RecordingWrite) + Send + 'static) {
-    let (recording, samples) = match FlightRecording::open(&path, terrain) {
+) -> (StoredRecording, impl Fn(RecordingWrite) + Send + 'static) {
+    let (recording, stored) = match FlightRecording::open(&path, terrain) {
         Ok(recording) => {
-            let samples = recording.samples().unwrap_or_else(|error| {
+            let stored = recording.stored_recording().unwrap_or_else(|error| {
                 tracing::error!(path = %path.display(), %error, "Could not read the flight recording");
-                Vec::new()
+                StoredRecording::default()
             });
-            (Some(recording), samples)
+            (Some(recording), stored)
         }
         Err(error) => {
             tracing::error!(path = %path.display(), %error, "Could not open the flight recording");
-            (None, Vec::new())
+            (None, StoredRecording::default())
         }
     };
     let (sender, receiver) = std::sync::mpsc::channel();
@@ -198,7 +210,7 @@ pub fn load(
         let system_utc = UtcInstant::from_offset_date_time(time::OffsetDateTime::now_utc());
         let _ = sender.send((write, system_utc));
     };
-    (samples, writer)
+    (stored, writer)
 }
 
 /// Opens the database and returns its `user_version`. Fails when the
@@ -403,7 +415,7 @@ mod tests {
     }
 
     #[test]
-    fn load_reads_the_samples_in_recording_order() {
+    fn load_reads_the_samples_in_recording_order_and_the_last_stored_utc() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("state.sqlite");
         let terrain = terrain(directory.path());
@@ -413,12 +425,19 @@ mod tests {
         partial.altitude_msl = None;
         partial.wind = None;
         assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED)), SYSTEM_UTC));
-        assert_ok!(recording.write(&RecordSample(partial), SYSTEM_UTC));
+        let stored_utc = UtcInstant::from_unix_milliseconds(9_500);
+        assert_ok!(recording.write(&RecordSample(partial), stored_utc));
         drop(recording);
 
-        let (samples, _) = load(path, terrain);
+        let (stored, _) = load(path, terrain);
 
-        assert_eq!(samples, [sample(1_000, COVERED), partial]);
+        assert_eq!(
+            stored,
+            StoredRecording {
+                samples: vec![sample(1_000, COVERED), partial],
+                stored_utc: Some(stored_utc),
+            }
+        );
     }
 
     #[test]
@@ -428,9 +447,9 @@ mod tests {
         let file = directory.path().join("file");
         std::fs::write(&file, "").unwrap();
 
-        let (samples, _) = load(file.join("state.sqlite"), terrain(directory.path()));
+        let (stored, _) = load(file.join("state.sqlite"), terrain(directory.path()));
 
-        assert_eq!(samples, []);
+        assert_eq!(stored, StoredRecording::default());
         assert!(logs_contain("ERROR"));
         assert!(logs_contain("Could not open the flight recording"));
     }
@@ -467,9 +486,9 @@ mod tests {
         bytes[4096..8192].fill(0xff);
         std::fs::write(&path, bytes).unwrap();
 
-        let (samples, _) = load(path.clone(), terrain);
+        let (stored, _) = load(path.clone(), terrain);
 
-        assert_eq!(samples, []);
+        assert_eq!(stored, StoredRecording::default());
         assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
         assert_eq!(user_version(&path), 2);
         logs_assert(|lines| {
@@ -490,9 +509,9 @@ mod tests {
         assert_ok!(connection.pragma_update(None, "user_version", 3));
         drop(connection);
 
-        let (samples, _) = load(path.clone(), terrain);
+        let (stored, _) = load(path.clone(), terrain);
 
-        assert_eq!(samples, []);
+        assert_eq!(stored, StoredRecording::default());
         assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
         assert_eq!(user_version(&path), 2);
         logs_assert(|lines| {

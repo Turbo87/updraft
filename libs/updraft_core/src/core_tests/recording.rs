@@ -111,21 +111,41 @@ fn restored_sample(utc: i64) -> Sample {
     }
 }
 
+/// Restores a recording that the shell stored at the UTC of its last sample.
 fn restore(core: &mut Core, last_utc: i64, utc: i64) -> Vec<Effect> {
+    restore_stored(core, last_utc, last_utc, utc)
+}
+
+fn restore_stored(core: &mut Core, last_utc: i64, stored_utc: i64, utc: i64) -> Vec<Effect> {
     let samples = vec![restored_sample(last_utc - 1_000), restored_sample(last_utc)];
     let input = RestoreRecording {
         samples,
+        stored_utc: Some(UtcInstant::from_unix_milliseconds(stored_utc)),
         utc: UtcInstant::from_unix_milliseconds(utc),
     };
     core.apply(input, at(0)).effects
 }
 
 #[test]
-fn restore_discards_a_recording_that_ended_more_than_3_hours_ago() {
+fn restore_discards_a_recording_that_the_shell_stored_more_than_3_hours_ago() {
     let mut core = Core::new(SettingsSnapshot::default());
-    let mut effects = restore(&mut core, UTC, UTC + 3 * HOURS + 1);
+    let last_utc = UTC + 3 * HOURS;
+    let mut effects = restore_stored(&mut core, last_utc, UTC, UTC + 3 * HOURS + 1);
     effects.extend(record(&mut core, UTC + 1_000, 1_000));
     insta::assert_debug_snapshot!(effects);
+}
+
+#[test]
+fn restore_continues_a_recording_with_an_old_fix_utc_that_the_shell_stored_recently() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    let last_utc = UTC - 30 * 24 * HOURS;
+
+    assert_eq!(
+        restore_stored(&mut core, last_utc, UTC, UTC + 3 * HOURS),
+        []
+    );
+
+    assert_eq!(record(&mut core, last_utc, 0), []);
 }
 
 #[test]

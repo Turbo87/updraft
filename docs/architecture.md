@@ -127,6 +127,12 @@ The current airspace resource uses
 the frontend must reload a replaced dataset. The browser test client uses its
 own deterministic data path.
 
+The trail resource `updraft://localhost/trail.json?since=<utc>` serves the
+flight recording samples with a UTC at or after `since` in Unix milliseconds.
+The shell reads them from `state.sqlite` and does not query the core. It
+calculates the AGL altitude with the rule of the `trail` topic, from the terrain
+elevation that it stored with each sample.
+
 Resource projection and serialization run outside the core driver task. The
 core can own an immutable canonical dataset when domain queries need it. The
 shell owns platform storage and the frontend-specific resource representation.

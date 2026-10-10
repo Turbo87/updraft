@@ -193,7 +193,7 @@ pub struct TrailSample {
 }
 
 impl TrailSample {
-    pub(crate) fn new(sample: &crate::Sample, terrain_elevation_meters: Option<f64>) -> Self {
+    pub fn new(sample: &crate::Sample, terrain_elevation_meters: Option<f64>) -> Self {
         let altitude_msl_meters = sample
             .altitude_msl
             .map(|altitude| altitude.into_inner().as_meters());

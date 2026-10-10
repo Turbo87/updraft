@@ -1,8 +1,8 @@
 use crate::terrain::Terrain;
-use rusqlite::{Connection, Transaction};
+use rusqlite::{Connection, OpenFlags, Transaction};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use updraft_core::{Sample, UtcInstant, Velocity};
+use updraft_core::{Sample, TrailSample, UtcInstant, Velocity};
 use updraft_geo::LatLon;
 use updraft_units::{Length, MslAltitude, Speed};
 
@@ -219,6 +219,26 @@ pub fn load(
     (stored, writer)
 }
 
+/// The path of `state.sqlite`.
+pub struct FlightRecordingPath(pub PathBuf);
+
+/// Reads the samples with a UTC at or after `since` in Unix milliseconds.
+///
+/// The read uses a separate read-only connection, so it does not wait for
+/// the writer.
+pub fn trail_samples(path: &Path, since: i64) -> rusqlite::Result<Vec<TrailSample>> {
+    let connection = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    let mut statement = connection.prepare(&format!(
+        "SELECT {SAMPLE_COLUMNS}, terrain_elevation_m FROM samples
+        WHERE utc_ms >= ?1 ORDER BY rowid"
+    ))?;
+    statement
+        .query_map([since], |row| {
+            Ok(TrailSample::new(&sample(row)?, row.get(9)?))
+        })?
+        .collect()
+}
+
 /// Opens the database and returns its `user_version`. Fails when the
 /// database does not pass `PRAGMA quick_check` or is newer than the migrations.
 fn open_usable(path: &Path) -> anyhow::Result<(Connection, i64)> {
@@ -274,18 +294,18 @@ fn insert(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::terrain::tests::{elevation_webp, write_terrain};
     use RecordingWrite::{DiscardRecording, RecordSample, StartRecording};
     use claims::{assert_err, assert_ok};
 
-    const SYSTEM_UTC: UtcInstant = UtcInstant::from_unix_milliseconds(9_000);
+    pub const SYSTEM_UTC: UtcInstant = UtcInstant::from_unix_milliseconds(9_000);
 
     /// Tile 7/64/45 covers this position.
-    const COVERED: (f64, f64) = (46.0, 2.0);
+    pub const COVERED: (f64, f64) = (46.0, 2.0);
 
-    fn terrain(directory: &Path) -> Arc<Mutex<Terrain>> {
+    pub fn terrain(directory: &Path) -> Arc<Mutex<Terrain>> {
         std::fs::create_dir_all(directory.join("enroute/Europe")).unwrap();
         write_terrain(
             &directory.join("enroute/Europe/a.terrain"),
@@ -294,7 +314,7 @@ mod tests {
         Arc::new(Mutex::new(assert_ok!(Terrain::load(directory))))
     }
 
-    fn sample(utc: i64, (latitude, longitude): (f64, f64)) -> Sample {
+    pub fn sample(utc: i64, (latitude, longitude): (f64, f64)) -> Sample {
         Sample {
             utc: UtcInstant::from_unix_milliseconds(utc),
             position: LatLon::from_degrees(latitude, longitude),

@@ -1,0 +1,31 @@
+---
+source: libs/updraft_core/src/core_tests/trail.rs
+expression: current_trail(&core)
+---
+Some(
+    Trail {
+        recording_start: 1767268799000,
+        sample: TrailSample {
+            unix_milliseconds: 1767268800000,
+            position: LatLon {
+                latitude_degrees: 50.0,
+                longitude_degrees: 6.000000000000001,
+            },
+            altitude_msl_meters: Some(
+                1000.0,
+            ),
+            altitude_agl_meters: Some(
+                1000.0,
+            ),
+            vario_meters_per_second: Some(
+                1.5,
+            ),
+            netto_meters_per_second: Some(
+                2.5,
+            ),
+            relative_vario_meters_per_second: Some(
+                3.5,
+            ),
+        },
+    },
+)

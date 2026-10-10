@@ -1,0 +1,48 @@
+---
+source: libs/updraft_core/src/core_tests/trail.rs
+expression: topics
+---
+[
+    Some(
+        Trail {
+            recording_start: 1767268800000,
+            sample: TrailSample {
+                unix_milliseconds: 1767268800000,
+                position: LatLon {
+                    latitude_degrees: 50.0,
+                    longitude_degrees: 6.000000000000001,
+                },
+                altitude_msl_meters: Some(
+                    199.0,
+                ),
+                altitude_agl_meters: Some(
+                    199.0,
+                ),
+                vario_meters_per_second: None,
+                netto_meters_per_second: None,
+                relative_vario_meters_per_second: None,
+            },
+        },
+    ),
+    Some(
+        Trail {
+            recording_start: 1767268800000,
+            sample: TrailSample {
+                unix_milliseconds: 1767268801000,
+                position: LatLon {
+                    latitude_degrees: 50.0001,
+                    longitude_degrees: 6.000000000000001,
+                },
+                altitude_msl_meters: Some(
+                    199.0002,
+                ),
+                altitude_agl_meters: Some(
+                    99.0002,
+                ),
+                vario_meters_per_second: None,
+                netto_meters_per_second: None,
+                relative_vario_meters_per_second: None,
+            },
+        },
+    ),
+]

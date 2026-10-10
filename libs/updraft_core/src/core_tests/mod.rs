@@ -10,5 +10,6 @@ mod solar;
 mod support;
 mod terrain;
 mod traffic;
+mod trail;
 mod transport;
 mod true_airspeed;

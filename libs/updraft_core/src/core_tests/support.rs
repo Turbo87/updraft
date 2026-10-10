@@ -148,18 +148,21 @@ pub fn last_known_selection<T: std::fmt::Debug>(state: DomainState<T>) -> Select
     selected
 }
 
+/// Returns the topic emissions without the trail topic, which follows each
+/// recording effect.
 pub fn emissions(effects: Vec<Effect>) -> Vec<Effect> {
-    effects
-        .into_iter()
-        .filter(|effect| matches!(effect, Effect::Emit(_)))
-        .collect()
+    effects.into_iter().filter(is_non_trail_emission).collect()
+}
+
+fn is_non_trail_emission(effect: &Effect) -> bool {
+    matches!(effect, Effect::Emit(topic) if !matches!(topic, Topic::Trail(_)))
 }
 
 #[track_caller]
 pub fn single_instruments_emission(effects: &[Effect]) -> &Instruments {
     let mut emissions = effects
         .iter()
-        .filter(|effect| matches!(effect, Effect::Emit(_)));
+        .filter(|effect| is_non_trail_emission(effect));
     let (Some(Effect::Emit(Topic::Instruments(instruments))), None) =
         (emissions.next(), emissions.next())
     else {

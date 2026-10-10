@@ -16,6 +16,8 @@
     setTrailColorMode: (mode: TrailColorMode) => Promise<void>;
     trailLength: TrailLength;
     setTrailLength: (length: TrailLength) => Promise<void>;
+    trailDriftCompensation: boolean;
+    setTrailDriftCompensation: (enabled: boolean) => Promise<void>;
   };
 
   let {
@@ -25,6 +27,8 @@
     setTrailColorMode,
     trailLength,
     setTrailLength,
+    trailDriftCompensation,
+    setTrailDriftCompensation,
   }: Props = $props();
   let options = $derived([
     { value: 'fixed', label: m.hillshade_direction_fixed() },
@@ -110,6 +114,21 @@
       </p>
     {/if}
   </fieldset>
+  <AsyncRadioList
+    name="trail-drift-compensation"
+    legend={m.trail_drift_compensation_label()}
+    options={[
+      {
+        value: 'enabled',
+        label: m.trail_drift_compensation_enabled(),
+        description: m.trail_drift_compensation_description(),
+      },
+      { value: 'disabled', label: m.trail_drift_compensation_disabled() },
+    ]}
+    value={trailDriftCompensation ? 'enabled' : 'disabled'}
+    onChange={(value) => setTrailDriftCompensation(value === 'enabled')}
+    errorMessage={m.trail_drift_compensation_change_failed}
+  />
 </div>
 
 <style>

@@ -141,9 +141,11 @@ Trail drift compensation moves each trail point downwind by its age multiplied
 by the current wind estimate. A thermal then shows as a column relative to the
 air mass. The age counts back from the UTC of the newest sample. A stale wind
 estimate is used. Without a wind estimate, the trail has no drift. The trail
-keeps its wind until the estimate changes by more than 0.5 m/s. Drift
-compensation is off by default. It is saved across restarts, and a settings
-file without this field uses the default.
+keeps its wind until the estimate changes by more than 0.5 m/s. The Map page
+turns drift compensation on or off. It is off by default. A pending command
+disables the control. Failure restores the published value and shows an error.
+The selection is saved across restarts, and a settings file without this field
+uses the default.
 
 ## Glide settings
 

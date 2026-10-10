@@ -5,6 +5,7 @@ import { addProtocol, removeProtocol } from 'maplibre-gl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
+import { FakeClient } from '#lib/client/fake.js';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { MapState } from '#lib/map-state.svelte.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
@@ -144,7 +145,7 @@ describe.each(['macos', 'windows'] as const)('%s resource URLs', (os) => {
       let component = await render(Map, {
         mapState,
         traffic: new TrafficStore(),
-        trail: new TrailStore(),
+        trail: new TrailStore(new FakeClient()),
         airspace: { generation: 0, sources: [] },
         hillshadeDirection: 'fixed',
         instruments: instrumentsFixture(),

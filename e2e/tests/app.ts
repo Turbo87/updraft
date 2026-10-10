@@ -15,6 +15,7 @@ import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget'
 import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget';
 import type { Topic } from '#lib/protocol/generated/Topic';
 import type { TrafficUpdate } from '#lib/protocol/generated/TrafficUpdate';
+import type { TrailSample } from '#lib/protocol/generated/TrailSample';
 
 import { test as base } from '@playwright/test';
 
@@ -75,6 +76,9 @@ function createApp(page: Page) {
     },
     async emitTraffic(value: TrafficUpdate) {
       await this.emit({ topic: 'traffic', value });
+    },
+    async setFlightRecording(samples: TrailSample[]) {
+      await page.evaluate((samples) => window.__updraftFake!.setFlightRecording(samples), samples);
     },
     async emitBasemaps(value: BasemapStatus) {
       await page.evaluate((value) => window.__updraftFake!.emitBasemaps(value), value);

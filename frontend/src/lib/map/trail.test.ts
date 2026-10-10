@@ -110,6 +110,57 @@ describe('TrailSegments', () => {
     ).toEqual([RECORDING_START + 3 * MINUTE]);
   });
 
+  it('ignores a sample that is not newer than the previous sample', () => {
+    let segments = new TrailSegments();
+    for (let minutes of [0, 1]) segments.apply(trail(minutes));
+
+    expect(segments.apply(trail(1))).toBeNull();
+    expect(segments.apply(trail(0))).toBeNull();
+    expect(segments.featureCollection().features.map(({ id }) => id)).toEqual([
+      RECORDING_START + MINUTE,
+    ]);
+  });
+
+  it('replaces the trail with the samples sorted by UTC without duplicates', () => {
+    let segments = new TrailSegments();
+    for (let minutes of [0, 1]) segments.apply(trail(minutes, {}, RECORDING_START - MINUTE));
+    let samples = [3, 0, 2, 1, 2, 62].map((minutes) => trail(minutes).sample);
+
+    let diff = segments.replace(RECORDING_START, samples);
+
+    expect(diff?.removeAll).toBe(true);
+    expect(diff?.add?.map(({ id }) => id)).toEqual([
+      RECORDING_START + 3 * MINUTE,
+      RECORDING_START + 62 * MINUTE,
+    ]);
+    expect(segments.recordingStart).toBe(RECORDING_START);
+    expect(segments.apply(trail(63))?.add?.map(({ id }) => id)).toEqual([
+      RECORDING_START + 63 * MINUTE,
+    ]);
+  });
+
+  it('builds the segments inside the window from the replaced samples', () => {
+    let segments = new TrailSegments();
+
+    let diff = segments.replace(
+      RECORDING_START,
+      [0, 1, 2].map((minutes) => trail(minutes).sample),
+    );
+
+    expect(diff).toEqual({ removeAll: true, add: segments.featureCollection().features });
+    expect(diff?.add?.map(({ id }) => id)).toEqual([
+      RECORDING_START + MINUTE,
+      RECORDING_START + 2 * MINUTE,
+    ]);
+  });
+
+  it('changes nothing when an empty trail replaces an empty trail', () => {
+    let segments = new TrailSegments();
+
+    expect(segments.replace(RECORDING_START, [trail(0).sample])).toBeNull();
+    expect(segments.recordingStart).toBe(RECORDING_START);
+  });
+
   it('clears the trail when no recording exists', () => {
     let segments = new TrailSegments();
     for (let minutes of [0, 1]) segments.apply(trail(minutes));

@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 
+import { FakeClient } from '#lib/client/fake.js';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { MapState } from '#lib/map-state.svelte.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
@@ -360,7 +361,7 @@ function applyTrailSample(trail: TrailStore, seconds: number) {
 }
 
 it('renders the trail segments before and after the source exists', async () => {
-  let trail = new TrailStore();
+  let trail = new TrailStore(new FakeClient());
   applyTrailSample(trail, 0);
   applyTrailSample(trail, 1);
   let mapState = new MapState();
@@ -379,7 +380,7 @@ it('renders the trail segments before and after the source exists', async () => 
 });
 
 it('renders trail segments that are shorter than a pixel', async () => {
-  let trail = new TrailStore();
+  let trail = new TrailStore(new FakeClient());
   for (let seconds = 0; seconds <= 10; seconds++) applyTrailSample(trail, seconds);
   let mapState = new MapState();
   await render(MapComponent, { ...mapProps(mapState), trail });

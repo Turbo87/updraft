@@ -131,7 +131,10 @@ The trail resource `updraft://localhost/trail.json?since=<utc>` serves the
 flight recording samples with a UTC at or after `since` in Unix milliseconds.
 The shell reads them from `state.sqlite` and does not query the core. It
 calculates the AGL altitude with the rule of the `trail` topic, from the terrain
-elevation that it stored with each sample.
+elevation that it stored with each sample. The frontend fetches the resource
+when the `recordingStart` of the topic differs from the trail that it shows.
+It buffers the topic samples during the fetch and merges them with the resource
+by UTC. The browser test client serves the samples that a test supplies.
 
 Resource projection and serialization run outside the core driver task. The
 core can own an immutable canonical dataset when domain queries need it. The

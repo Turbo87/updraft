@@ -17,5 +17,7 @@
   <MapSettings
     direction={settings.current.hillshadeDirection}
     setDirection={(direction) => client.changeSetting({ type: 'hillshadeDirection', direction })}
+    trailColorMode={settings.current.trailColorMode}
+    setTrailColorMode={(mode) => client.changeSetting({ type: 'trailColorMode', mode })}
   />
 </ScreenScaffold>

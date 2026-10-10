@@ -115,6 +115,17 @@ The selection is saved across restarts. A settings file without this field uses
 the fixed default. A pending command disables the control. Failure restores the
 published value and shows an error.
 
+The Map page also selects the trail colour: Fixed colour, Altitude, AGL, Vario,
+Netto, or Relative vario. Relative vario is the default. Vario, netto, and
+relative vario use one fixed scale from -5 m/s to +5 m/s, with zero at the
+centre. Values outside the scale use the end colours. Altitude uses the MSL
+altitude that the altitude infobox shows, on a scale from 0 m to the maximum
+altitude of the flight recording. AGL uses a scale from 0 m to the maximum AGL
+altitude of the recording. A new maximum changes the colours of the older
+segments. A segment without a value for the selected mode is grey. A change
+recolours the whole trail. The selection is saved across restarts, and a
+settings file without this field uses the default.
+
 ## Glide settings
 
 The Glide page selects a polar from the built-in catalog. The default is the

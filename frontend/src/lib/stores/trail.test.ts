@@ -1,10 +1,10 @@
 import type { Trail } from '#lib/protocol/generated/Trail.js';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
-import type { TrailSubscriber } from './trail';
+import type { TrailSubscriber } from './trail.svelte';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { TrailStore } from './trail';
+import { TrailStore } from './trail.svelte';
 
 const MINUTE = 60_000;
 

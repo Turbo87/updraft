@@ -16,7 +16,7 @@
   import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
   import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
   import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
-  import type { TrailStore } from '#lib/stores/trail.js';
+  import type { TrailStore } from '#lib/stores/trail.svelte.js';
 
   import { untrack } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';

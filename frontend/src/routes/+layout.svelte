@@ -28,7 +28,7 @@
   import { SettingsStore } from '#lib/stores/settings.svelte.js';
   import { TerrainStore } from '#lib/stores/terrain.svelte.js';
   import { TrafficStore } from '#lib/stores/traffic.svelte.js';
-  import { TrailStore } from '#lib/stores/trail.js';
+  import { TrailStore } from '#lib/stores/trail.svelte.js';
   import { WaypointsStore } from '#lib/stores/waypoints.svelte.js';
 
   type TestWindow = Window & {

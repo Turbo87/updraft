@@ -12,7 +12,7 @@
   import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
   import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
   import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
-  import type { TrailStore } from '#lib/stores/trail.js';
+  import type { TrailStore } from '#lib/stores/trail.svelte.js';
 
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { GeoJSONSource as MapLibreGeoJSONSource } from 'maplibre-gl';
-  import type { TrailStore } from '#lib/stores/trail.js';
+  import type { TrailStore } from '#lib/stores/trail.svelte.js';
 
   import { onMount } from 'svelte';
   import { GeoJSONSource, LineLayer } from 'svelte-maplibre-gl';

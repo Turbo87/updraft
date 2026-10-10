@@ -14,6 +14,7 @@ export type TrailSubscriber = (diff: GeoJSONSourceDiff) => void;
  */
 export class TrailStore {
   #client: Pick<UpdraftClient, 'getTrail'>;
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Subscriptions do not affect rendering.
   #subscribers = new Set<TrailSubscriber>();
   /** The topic samples that arrive while the resource request is pending. */
   #pending: { recordingStart: number; samples: TrailSample[] } | null = null;

@@ -24,8 +24,5 @@ a later polar, ballast, or bugs change.
 - Recovery does not rebuild the estimator state. It seeds the wind filter from
   the wind of the last sample. The circling wind and the 20-second average vario
   fill again in about 60 s and 20 s.
-- A sample has no source field, so replay does not reset crossing detection
-  where the live core changed its source. A rebuilt crossing can differ only
-  when the source changed during a crossing segment.
 - Task progress, and later takeoff and landing, are derived from the samples and
   the active route. The recording contains no user action.

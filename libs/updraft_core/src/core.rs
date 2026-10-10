@@ -1307,12 +1307,6 @@ impl Core {
         if self.task_fix == Some(fix) {
             return;
         }
-        if self
-            .task_fix
-            .is_some_and(|previous| previous.source != fix.source)
-        {
-            self.task.reset_crossing();
-        }
         self.task_fix = Some(fix);
         let utc = fix
             .value
@@ -1343,16 +1337,16 @@ impl Core {
             ),
             _ => utc,
         };
-        let time_of_day = time_of_day.map(UtcTime::milliseconds_since_midnight);
-        if let Some(utc) = utc
-            && self
-                .recorder
-                .observe(UtcInstant::from_unix_milliseconds(utc), fix.value.position)
-        {
+        let Some(utc) = utc.map(UtcInstant::from_unix_milliseconds) else {
+            return;
+        };
+        let Some(starts_recording) = self.recorder.observe(utc, fix.value.position) else {
+            return;
+        };
+        if starts_recording {
             self.task.reset_progress();
         }
-        self.task
-            .observe(fix.value.position, fix.ingested_at, utc, time_of_day);
+        self.task.observe(fix.value.position, utc);
         if self.task.snapshot().status == crate::TaskStatus::Completed
             && self.navigation_target == Some(crate::NavigationTarget::Task)
         {

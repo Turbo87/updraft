@@ -88,7 +88,7 @@ fn new_recording_resets_task_progress() {
     assert_some_eq!(
         started.start,
         TaskTime {
-            unix_milliseconds: Some(UTC + 450)
+            unix_milliseconds: UTC + 450
         }
     );
 

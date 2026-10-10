@@ -35,18 +35,17 @@ a point when that would leave a running task with fewer than two points.
 
 An exit from the start cylinder records a start and selects the second point.
 Entry into an intermediate cylinder selects the following point. Entry into the
-finish completes the task. The detector checks the geodesic segment between
-successive fresh positions, including a complete cylinder passage between reports.
-It uses WGS84 geometry. A numerical tolerance of one micrometer applies when a
+finish completes the task. The detector uses only the fixes that the flight
+recorder records, in order. A fix without UTC, or a fix that the recorder drops,
+does not count. The detector checks the geodesic segment between two
+consecutive recorded fixes, including a complete cylinder passage between them.
+A segment has no maximum length, and a source change does not interrupt it. It
+uses WGS84 geometry. A numerical tolerance of one micrometer applies when a
 reported position lies on a cylinder boundary.
 
-The maximum report gap is ten seconds. The detector uses UTC report times when
-available, including time-of-day reports across midnight. Otherwise, it uses
-monotonic ingestion times. It processes each position
-report in a transport read, rather than only the final position. The ten-second limit is provisional. Competition rules will define it later. Longer gaps, source changes, task edits, manual point
-selection, and restoration establish a new baseline. Selecting a point while
-inside its cylinder requires leaving and re-entering. Crossings before that
-point became current do not count for it.
+Task edits, manual point selection, and restoration establish a new baseline.
+Selecting a point while inside its cylinder requires leaving and re-entering.
+Crossings before that point became current do not count for it.
 
 The start remains monitored after the first start exit. Another exit replaces
 the start time until the pilot reaches the second point or manually selects a
@@ -54,10 +53,8 @@ point beyond it. Selecting the start in task details reopens this window. A
 standalone goto to the same waypoint does not affect it. Skipping the start does
 not invent a start time.
 
-Crossing times interpolate along the report segment. They use GPS UTC when
-available, otherwise the shell UTC clock. An event without an available UTC clock
-still changes progress, but has no recorded clock time. The details page displays
-available start and finish times in UTC.
+Crossing times interpolate along the segment from the UTC of its fixes. The
+details page displays the start and finish times in UTC.
 
 ## Stopping, completion, and storage
 

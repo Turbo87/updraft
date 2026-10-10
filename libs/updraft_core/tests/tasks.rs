@@ -1,8 +1,8 @@
 use claims::{assert_err, assert_none, assert_ok, assert_some_eq};
 use updraft_core::{
     ChangeTask, Core, GetNavigationTarget, GetRecentTargets, GetTask, NavigationTarget,
-    SetNavigationTarget, SettingsSnapshot, TaskCommand, TaskStatus, Timestamp, TrafficTargetId,
-    TrafficTargetIdType,
+    SetNavigationTarget, SettingsSnapshot, TaskCommand, TaskStatus, TaskTime, Timestamp,
+    TrafficTargetId, TrafficTargetIdType,
 };
 
 fn waypoint(name: &str) -> NavigationTarget {
@@ -99,15 +99,17 @@ fn start_recording(core: &mut Core) {
 }
 
 fn fix(core: &mut Core, longitude: f64, millis: u64) {
+    fix_at(core, longitude, millis as i64, millis);
+}
+
+fn fix_at(core: &mut Core, longitude: f64, utc: i64, millis: u64) {
     core.apply(
         updraft_core::InternalGps::new(updraft_core::Fix {
             position: updraft_geo::LatLon::from_degrees(0., longitude),
             altitude_ellipsoid: None,
             track: None,
             ground_speed: None,
-            fix_time: Some(updraft_core::UtcInstant::from_unix_milliseconds(
-                millis as i64,
-            )),
+            fix_time: Some(updraft_core::UtcInstant::from_unix_milliseconds(utc)),
         }),
         Timestamp::from_millis(millis),
     );
@@ -157,7 +159,7 @@ fn task_advances_through_a_cylinder_between_reports_while_goto_remains_primary()
 }
 
 #[test]
-fn gap_limit_and_manual_selection_require_a_new_entry() {
+fn manual_selection_requires_a_new_entry() {
     let mut core = route();
     assert_ok!(
         core.apply(
@@ -175,19 +177,54 @@ fn gap_limit_and_manual_selection_require_a_new_entry() {
         1
     );
     fix(&mut core, 0.014, 3000);
-    fix(&mut core, 0.026, 13001);
+    fix(&mut core, 0.026, 4000);
     claims::assert_some_eq!(
-        core.apply(GetTask, Timestamp::from_millis(13001))
-            .response
-            .current,
-        1
-    );
-    fix(&mut core, 0.014, 23001);
-    claims::assert_some_eq!(
-        core.apply(GetTask, Timestamp::from_millis(23001))
+        core.apply(GetTask, Timestamp::from_millis(4000))
             .response
             .current,
         2
+    );
+}
+
+#[test]
+fn a_crossing_counts_after_a_gap_longer_than_10_seconds() {
+    let mut core = route();
+    fix(&mut core, 0., 1000);
+    fix(&mut core, 0.006, 61_000);
+    let start = core
+        .apply(GetTask, Timestamp::from_millis(61_000))
+        .response
+        .start;
+    assert_some_eq!(
+        start,
+        TaskTime {
+            unix_milliseconds: 45_916
+        }
+    );
+}
+
+#[test]
+fn fixes_that_the_recorder_does_not_record_do_not_count() {
+    let mut core = route();
+    // The fix time of a source is fresh for 3 s, so the fix at 5 s has no UTC.
+    fix(&mut core, 0., 1000);
+    core.apply(
+        updraft_core::InternalGps::new(updraft_core::Fix {
+            position: updraft_geo::LatLon::from_degrees(0., 0.006),
+            altitude_ellipsoid: None,
+            track: None,
+            ground_speed: None,
+            fix_time: None,
+        }),
+        Timestamp::from_millis(5000),
+    );
+    fix(&mut core, 0., 6000);
+    fix_at(&mut core, 0.006, 1000, 7000);
+    fix(&mut core, 0., 8000);
+    assert_none!(
+        core.apply(GetTask, Timestamp::from_millis(8000))
+            .response
+            .start
     );
 }
 

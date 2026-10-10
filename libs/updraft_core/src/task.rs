@@ -1,4 +1,4 @@
-use crate::{NavigationTarget, Timestamp};
+use crate::{NavigationTarget, UtcInstant};
 use updraft_geo::LatLon;
 mod cylinder;
 use serde::{Deserialize, Serialize};
@@ -38,16 +38,14 @@ pub struct Task {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
 pub struct TaskTime {
-    #[cfg_attr(feature = "ts", ts(type = "number | null"))]
-    pub unix_milliseconds: Option<i64>,
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub unix_milliseconds: i64,
 }
 
 #[derive(Clone, Copy, Debug)]
 struct PositionReport {
     position: LatLon,
-    at: Timestamp,
-    utc: Option<i64>,
-    time_of_day: Option<u32>,
+    utc: UtcInstant,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -212,45 +210,15 @@ impl TaskState {
         self.reset_crossing();
     }
 
-    pub fn observe(
-        &mut self,
-        position: LatLon,
-        at: Timestamp,
-        utc: Option<i64>,
-        time_of_day: Option<u32>,
-    ) {
+    /// Observes a fix that the flight recorder records.
+    pub fn observe(&mut self, position: LatLon, utc: UtcInstant) {
         if self.saved.status != TaskStatus::Running {
             return;
         }
-        let report = PositionReport {
-            position,
-            at,
-            utc,
-            time_of_day,
-        };
-        let Some(previous) = self.previous else {
-            self.previous = Some(report);
+        let Some(previous) = self.previous.replace(PositionReport { position, utc }) else {
             return;
         };
-        if at < previous.at {
-            return;
-        }
-        let gap = match (previous.utc, utc) {
-            (Some(previous), Some(current)) => current.saturating_sub(previous) as f64,
-            _ => match (previous.time_of_day, time_of_day) {
-                (Some(previous), Some(current)) => {
-                    (i64::from(current) - i64::from(previous)).rem_euclid(86_400_000) as f64
-                }
-                _ => at.saturating_since(previous.at).as_millis() as f64,
-            },
-        };
-        if gap <= 0. {
-            return;
-        }
-        self.previous = Some(report);
-        if gap > 10_000. {
-            return;
-        }
+        let gap = (utc.unix_milliseconds() - previous.utc.unix_milliseconds()) as f64;
         let mut cursor = -1.;
         for _ in 0..=self.saved.points.len() {
             let Some(index) = self
@@ -282,8 +250,8 @@ impl TaskState {
             };
             cursor = fraction;
             let time = TaskTime {
-                unix_milliseconds: utc
-                    .map(|utc| utc.saturating_sub(((1. - fraction) * gap).round() as i64)),
+                unix_milliseconds: previous.utc.unix_milliseconds()
+                    + (fraction * gap).round() as i64,
             };
             if reached == 0 {
                 self.saved.start = Some(time);

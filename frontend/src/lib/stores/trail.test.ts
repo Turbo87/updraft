@@ -4,6 +4,7 @@ import type { TrailSubscriber } from './trail.svelte';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { settingsFixture } from '#lib/settings.fixture.js';
 import { TrailStore } from './trail.svelte';
 
 const MINUTE = 60_000;
@@ -43,7 +44,9 @@ function setup() {
   let unsubscribe = store.subscribe(subscriber);
   let ids = () => store.segments.featureCollection().features.map(({ id }) => Number(id) / MINUTE);
   let apply = (value: Trail | null) => store.apply({ topic: 'trail', value });
-  return { store, requests, subscriber, unsubscribe, ids, apply };
+  let setLength = (trailLength: number) =>
+    store.apply({ topic: 'settings', value: settingsFixture({ trailLength }) });
+  return { store, requests, subscriber, unsubscribe, ids, apply, setLength };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -167,5 +170,80 @@ describe('TrailStore', () => {
       'Trail resource request failed. Showing only the live samples.',
       new Error('read failed'),
     );
+  });
+
+  it('trims the trail locally for a shorter length', async () => {
+    let { requests, subscriber, ids, apply, setLength } = setup();
+    apply(trail(70));
+    requests[0].resolve([10, 20, 30].map(sample));
+    await vi.waitFor(() => expect(ids()).toEqual([20, 30, 70]));
+
+    setLength(55);
+
+    expect(ids()).toEqual([30, 70]);
+    expect(subscriber).toHaveBeenLastCalledWith({ remove: [20 * MINUTE] });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('fetches the trail again for a longer length and continues it meanwhile', async () => {
+    let { requests, ids, apply, setLength } = setup();
+    apply(trail(70));
+    requests[0].resolve([10, 20, 30].map(sample));
+    await vi.waitFor(() => expect(ids()).toEqual([20, 30, 70]));
+
+    setLength(65);
+    apply(trail(71));
+
+    expect(requests.map(({ since }) => since)).toEqual([10 * MINUTE, 5 * MINUTE]);
+    expect(ids()).toEqual([20, 30, 70, 71]);
+    requests[1].resolve([5, 8, 10, 20, 30, 70].map(sample));
+    await vi.waitFor(() => expect(ids()).toEqual([10, 20, 30, 70, 71]));
+  });
+
+  it('keeps the trail when the fetch for a longer length fails', async () => {
+    let warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let { requests, ids, apply, setLength } = setup();
+    apply(trail(70));
+    requests[0].resolve([10, 20, 30].map(sample));
+    await vi.waitFor(() => expect(ids()).toEqual([20, 30, 70]));
+    setLength(65);
+    apply(trail(71));
+
+    requests[1].reject();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(ids()).toEqual([20, 30, 70, 71]);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      'Trail resource request failed. Keeping the current trail.',
+      new Error('read failed'),
+    );
+    apply(trail(72));
+    expect(ids()).toEqual([20, 30, 70, 71, 72]);
+  });
+
+  it('fetches again for a longer length during a pending fetch', async () => {
+    let { requests, ids, apply, setLength } = setup();
+    apply(trail(70));
+    apply(trail(71));
+
+    setLength(65);
+
+    expect(requests.map(({ since }) => since)).toEqual([10 * MINUTE, 6 * MINUTE]);
+    requests[0].resolve([10, 20].map(sample));
+    requests[1].resolve([6, 10, 20].map(sample));
+    await vi.waitFor(() => expect(ids()).toEqual([10, 20, 70, 71]));
+  });
+
+  it('shows no trail and fetches nothing for a length of 0', async () => {
+    let { requests, subscriber, ids, apply, setLength } = setup();
+    setLength(0);
+
+    apply(trail(1));
+    apply(trail(2));
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(requests).toEqual([]);
+    expect(ids()).toEqual([]);
+    expect(subscriber).not.toHaveBeenCalled();
   });
 });

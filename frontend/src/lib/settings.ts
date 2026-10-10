@@ -10,6 +10,7 @@ export function defaultSettings(): Settings {
     flarmPositionCorrection: true,
     hillshadeDirection: 'fixed',
     trailColorMode: 'relativeVario',
+    trailLength: 60,
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 }

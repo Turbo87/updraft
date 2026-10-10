@@ -29,6 +29,7 @@ mod signal_state;
 mod time;
 mod topic;
 mod traffic;
+mod trail_length;
 mod waypoints;
 
 pub use airspace::{
@@ -77,6 +78,7 @@ pub use traffic::{
     TrafficDelta, TrafficState, TrafficTarget, TrafficTargetId, TrafficTargetIdType, TrafficType,
     TrafficUpdate, target_from_pflaa,
 };
+pub use trail_length::{InvalidTrailLength, TrailLength};
 pub use waypoints::{
     WaypointCatalog, WaypointDiagnostic, WaypointLoadError, WaypointSnapshot, WaypointSource,
     WaypointSourceStatus, WaypointStatus,

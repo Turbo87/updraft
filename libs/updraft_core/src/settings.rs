@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::external_device::ExternalDeviceConfig;
-use crate::{ArrivalReserve, PolarId, Topic};
+use crate::{ArrivalReserve, PolarId, Topic, TrailLength};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -121,6 +121,8 @@ pub struct Settings {
     pub hillshade_direction: HillshadeDirection,
     #[serde(default)]
     pub trail_color_mode: TrailColorMode,
+    #[serde(default)]
+    pub trail_length: TrailLength,
     pub locale: Option<Locale>,
     #[serde(default)]
     pub polar: PolarId,
@@ -146,6 +148,7 @@ impl Default for Settings {
             climb_average_method: ClimbAverageMethod::default(),
             hillshade_direction: HillshadeDirection::default(),
             trail_color_mode: TrailColorMode::default(),
+            trail_length: TrailLength::default(),
             locale: None,
             polar: PolarId::default(),
             arrival_reserve: ArrivalReserve::default(),

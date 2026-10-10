@@ -104,6 +104,40 @@ describe('TrailSegments', () => {
     expect(segments.apply(trail(123))).toBeNull();
   });
 
+  it('removes the segments outside a shorter length', () => {
+    let segments = new TrailSegments();
+    for (let minutes of [0, 1, 2, 3]) segments.apply(trail(minutes));
+
+    expect(segments.resize(1)).toEqual({
+      remove: [RECORDING_START + MINUTE, RECORDING_START + 2 * MINUTE],
+    });
+    expect(segments.featureCollection().features.map(({ id }) => id)).toEqual([
+      RECORDING_START + 3 * MINUTE,
+    ]);
+  });
+
+  it('keeps the segments that a longer length adds to the window', () => {
+    let segments = new TrailSegments();
+    for (let minutes of [0, 1]) segments.apply(trail(minutes));
+
+    expect(segments.resize(120)).toBeNull();
+    expect(segments.apply(trail(100))?.remove).toBeUndefined();
+    expect(segments.featureCollection().features).toHaveLength(2);
+  });
+
+  it('adds no segment for a length of 0', () => {
+    let segments = new TrailSegments();
+    segments.resize(0);
+
+    for (let minutes of [0, 1]) expect(segments.apply(trail(minutes))).toBeNull();
+    expect(
+      segments.replace(
+        RECORDING_START,
+        [2, 3].map((m) => trail(m).sample),
+      ),
+    ).toBeNull();
+  });
+
   it('clears the trail when a new recording starts', () => {
     let segments = new TrailSegments();
     for (let minutes of [0, 1]) segments.apply(trail(minutes));

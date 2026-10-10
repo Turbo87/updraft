@@ -2,8 +2,10 @@ import type * as GeoJSON from 'geojson';
 import type { ExpressionSpecification, GeoJSONSourceDiff } from 'maplibre-gl';
 import type { Trail } from '#lib/protocol/generated/Trail.js';
 import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
+import type { TrailLength } from '#lib/protocol/generated/TrailLength.js';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 
+import { defaultSettings } from '#lib/settings.js';
 import {
   COLOR_CYAN_600,
   COLOR_FUCHSIA_600,
@@ -16,7 +18,7 @@ import {
   COLOR_YELLOW_400,
 } from './colors.generated';
 
-const TRAIL_LENGTH_MILLISECONDS = 60 * 60 * 1000;
+const MINUTE_MILLISECONDS = 60 * 1000;
 
 /** Keeps the stops of an altitude scale in ascending order. */
 const MIN_ALTITUDE_SCALE_METERS = 1;
@@ -105,11 +107,6 @@ function colorOrNoValue(
   return ['case', ['==', ['get', property], null], COLOR_SLATE_400, color];
 }
 
-/** Returns the UTC of the oldest sample inside the trail length before `newest`. */
-export function trailSince(newest: TrailSample): number {
-  return newest.unixMilliseconds - TRAIL_LENGTH_MILLISECONDS;
-}
-
 /**
  * Keeps the trail segments of the current recording inside the trail length
  * and converts each change into one source diff.
@@ -118,9 +115,33 @@ export class TrailSegments {
   #recordingStart: number | null = null;
   #previous: TrailSample | null = null;
   #segments: WindowedSegment[] = [];
+  #length: TrailLength = defaultSettings().trailLength;
 
   get recordingStart(): number | null {
     return this.#recordingStart;
+  }
+
+  get length(): TrailLength {
+    return this.#length;
+  }
+
+  get newest(): TrailSample | null {
+    return this.#previous;
+  }
+
+  /** Returns the UTC of the oldest sample inside the trail length before `newest`. */
+  since(newest: TrailSample): number {
+    return newest.unixMilliseconds - this.#length * MINUTE_MILLISECONDS;
+  }
+
+  /**
+   * Removes the segments outside a shorter length. A longer length does not
+   * add segments. Returns `null` when the source does not change.
+   */
+  resize(length: TrailLength): GeoJSONSourceDiff | null {
+    this.#length = length;
+    let removed = this.#previous ? this.#trim(this.since(this.#previous)) : [];
+    return removed.length > 0 ? { remove: removed.map(({ feature }) => feature.id) } : null;
   }
 
   /** Returns `null` when the source does not change. */
@@ -173,15 +194,19 @@ export class TrailSegments {
     }
 
     this.#previous = sample;
-    let since = trailSince(sample);
-    let kept = this.#segments.findIndex(({ start }) => start >= since);
-    let removed = this.#segments.splice(0, kept === -1 ? this.#segments.length : kept);
+    let since = this.since(sample);
+    let removed = this.#trim(since);
     let added: TrailSegment | null = null;
     if (previous && previous.unixMilliseconds >= since) {
       added = segment(previous, sample);
       this.#segments.push({ start: previous.unixMilliseconds, feature: added });
     }
     return { removed, added };
+  }
+
+  #trim(since: number): WindowedSegment[] {
+    let kept = this.#segments.findIndex(({ start }) => start >= since);
+    return this.#segments.splice(0, kept === -1 ? this.#segments.length : kept);
   }
 }
 

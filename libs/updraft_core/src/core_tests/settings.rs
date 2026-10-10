@@ -376,6 +376,28 @@ fn trail_color_mode_defaults_and_persists_changes() {
 }
 
 #[test]
+fn trail_length_defaults_and_persists_changes() {
+    use crate::TrailLength;
+    let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
+    assert_eq!(settings.trail_length.minutes(), 60);
+    let mut core = Core::new(SettingsSnapshot::default());
+    for minutes in [0, 15, 1440] {
+        let length = claims::assert_ok!(TrailLength::try_from(minutes));
+        let change = ChangeSetting::TrailLength { length };
+        let expected = Settings {
+            trail_length: length,
+            ..Settings::default()
+        };
+        let effects = core.apply(change, at(0)).effects;
+        assert_eq!(effects, settings_effects(expected));
+        assert!(core.apply(change, at(1)).effects.is_empty());
+        let json = claims::assert_ok!(serde_json::to_string(&core.settings_snapshot()));
+        let restored = Core::new(claims::assert_ok!(serde_json::from_str(&json)));
+        assert_eq!(restored.settings, expected);
+    }
+}
+
+#[test]
 fn energy_compensation_defaults_to_enabled() {
     for settings in [
         Settings::default(),

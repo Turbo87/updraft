@@ -419,6 +419,7 @@ mod tests {
             "climbAverageMethod": "smoothed20s",
             "hillshadeDirection": "fixed",
             "trailColorMode": "relativeVario",
+            "trailLength": 60,
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

@@ -347,6 +347,9 @@ impl private::Sealed for SetTaskSaveFailed {}
 pub struct RestoreRecording {
     /// The samples in recording order.
     pub samples: Vec<crate::Sample>,
+    /// The shell UTC at which the shell stored the last sample, or `None`
+    /// without samples.
+    pub stored_utc: Option<crate::UtcInstant>,
     /// The shell UTC at startup.
     pub utc: crate::UtcInstant,
 }

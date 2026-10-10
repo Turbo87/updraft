@@ -42,10 +42,11 @@ last sample and emits one record effect for each new fix of the selected source.
 After each record effect, the `trail` topic publishes the new sample and the UTC
 of the first sample. The shell
 stores the samples in `state.sqlite` in the app data directory and adds the
-terrain elevation. At startup, the shell reads all samples before any transport
-starts. The driver applies them and the shell UTC as one `RestoreRecording`
-input before `Start`. The core discards a recording that ended more than 3 hours
-before the shell UTC. Otherwise it continues the recording rules from the last
+terrain elevation and the shell UTC of the record effect. At startup, the shell reads all samples before any transport
+starts. The driver applies them, the stored shell UTC of the last sample, and
+the current shell UTC as one `RestoreRecording` input before `Start`. The core
+discards a recording when the shell stored its last sample more than 3 hours
+before the current shell UTC. The fix UTC does not affect this rule. Otherwise it continues the recording rules from the last
 sample and seeds the wind estimate from its wind. Restore emits no per-sample
 effects. See [Flight recording](product/flight-recording.md).
 

@@ -2,7 +2,7 @@
 source: tauri/src/flight_recording.rs
 expression: "schema.join(\"\\n\")"
 ---
-CREATE TABLE samples (
+CREATE TABLE "samples" (
     utc_ms INTEGER NOT NULL,
     latitude_deg REAL NOT NULL,
     longitude_deg REAL NOT NULL,
@@ -12,5 +12,6 @@ CREATE TABLE samples (
     relative_vario_mps REAL,
     terrain_elevation_m REAL,
     wind_east_mps REAL,
-    wind_north_mps REAL
+    wind_north_mps REAL,
+    system_utc_ms INTEGER NOT NULL
 ) STRICT

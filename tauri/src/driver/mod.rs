@@ -1,11 +1,11 @@
-use crate::flight_recording::RecordingWrite;
+use crate::flight_recording::{RecordingWrite, StoredRecording};
 use std::{
     collections::BTreeMap,
     time::{Duration, Instant},
 };
 use tokio::sync::{mpsc, oneshot};
 use updraft_core::{
-    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, RestoreRecording, Sample,
+    AirspaceState, ConnectionSpec, Core, Effect, ExternalDeviceId, Input, RestoreRecording,
     SettingsSnapshot, Timestamp, Topic, Update, UtcInstant, UtcTick,
 };
 
@@ -165,7 +165,7 @@ impl Driver {
     pub fn spawn(
         snapshot: SettingsSnapshot,
         airspace: AirspaceState,
-        recording: Vec<Sample>,
+        recording: StoredRecording,
         open: OpenFn,
         persist: PersistFn,
         record: RecordFn,
@@ -186,7 +186,7 @@ impl Driver {
     fn spawn_task(
         snapshot: SettingsSnapshot,
         airspace: AirspaceState,
-        recording: Vec<Sample>,
+        recording: StoredRecording,
         open: OpenFn,
         persist: PersistFn,
         record: RecordFn,
@@ -214,7 +214,8 @@ impl Driver {
             let utc = UtcInstant::from_offset_date_time(time::OffsetDateTime::now_utc());
             state.apply(UtcTick::new(utc), at);
             let restore = RestoreRecording {
-                samples: recording,
+                samples: recording.samples,
+                stored_utc: recording.stored_utc,
                 utc,
             };
             state.apply(restore, at);

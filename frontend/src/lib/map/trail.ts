@@ -15,6 +15,7 @@ const TRAIL_LENGTH_MILLISECONDS = 60 * 60 * 1000;
 
 type TrailSegmentProperties = { relativeVario: number | null };
 type TrailSegment = GeoJSON.Feature<GeoJSON.LineString, TrailSegmentProperties> & { id: number };
+type WindowedSegment = { start: number; feature: TrailSegment };
 
 /**
  * Sink and lift use different hues. The narrow blend around zero keeps noise
@@ -47,7 +48,7 @@ export const TRAIL_COLOR: ExpressionSpecification = [
 export class TrailSegments {
   #recordingStart: number | null = null;
   #previous: TrailSample | null = null;
-  #segments: { start: number; feature: TrailSegment }[] = [];
+  #segments: WindowedSegment[] = [];
 
   /** Returns `null` when the source does not change. */
   apply(trail: Trail | null): GeoJSONSourceDiff | null {
@@ -59,18 +60,7 @@ export class TrailSegments {
       return cleared ? { removeAll: true } : null;
     }
 
-    let { sample } = trail;
-    let previous = this.#previous;
-    this.#previous = sample;
-    let since = sample.unixMilliseconds - TRAIL_LENGTH_MILLISECONDS;
-    let kept = this.#segments.findIndex(({ start }) => start >= since);
-    let removed = this.#segments.splice(0, kept === -1 ? this.#segments.length : kept);
-    let added: TrailSegment | null = null;
-    if (previous && previous.unixMilliseconds >= since) {
-      added = segment(previous, sample);
-      this.#segments.push({ start: previous.unixMilliseconds, feature: added });
-    }
-
+    let { removed, added } = this.#append(trail.sample);
     if (removed.length === 0 && !added) return null;
 
     return {
@@ -81,6 +71,20 @@ export class TrailSegments {
 
   featureCollection(): GeoJSON.FeatureCollection<GeoJSON.LineString, TrailSegmentProperties> {
     return { type: 'FeatureCollection', features: this.#segments.map(({ feature }) => feature) };
+  }
+
+  #append(sample: TrailSample): { removed: WindowedSegment[]; added: TrailSegment | null } {
+    let previous = this.#previous;
+    this.#previous = sample;
+    let since = sample.unixMilliseconds - TRAIL_LENGTH_MILLISECONDS;
+    let kept = this.#segments.findIndex(({ start }) => start >= since);
+    let removed = this.#segments.splice(0, kept === -1 ? this.#segments.length : kept);
+    let added: TrailSegment | null = null;
+    if (previous && previous.unixMilliseconds >= since) {
+      added = segment(previous, sample);
+      this.#segments.push({ start: previous.unixMilliseconds, feature: added });
+    }
+    return { removed, added };
   }
 }
 

@@ -261,8 +261,8 @@ importers:
         specifier: 2.2.16
         version: 2.2.16
       '@inlang/plugin-message-format':
-        specifier: 4.4.4
-        version: 4.4.4
+        specifier: 4.4.5
+        version: 4.4.5
       '@storybook/addon-a11y':
         specifier: 10.6.1
         version: 10.6.1(storybook@10.6.1(@types/react@19.3.0)(prettier@3.9.9)(react@19.3.0))
@@ -761,14 +761,18 @@ packages:
   '@inlang/plugin-m-function-matcher@2.2.16':
     resolution: {integrity: sha512-OnlpBFcLLapK0DeHOhuP+u0Ut0Ls/wcvcAKEdhtjOk/WrpmAiRvSuvCCctsfW8qR+GI71oqGkt4zZ7uOhcLmvg==}
 
-  '@inlang/plugin-message-format@4.4.4':
-    resolution: {integrity: sha512-50tkyH/qMFudcIOZSCRdi+BeCVuJQo3BWbvfRTVKr8pEslBiRaZDTKBC1NkCI3ivmkyqzK8k+ktBci3NtDu3Lg==}
+  '@inlang/plugin-message-format@4.4.5':
+    resolution: {integrity: sha512-g3WpG00mx3Wq/3zulz4uuT+HhdBRB7UMz2hVbfSm+E4RJHXNYyFyvS0elPETX7gEz8yiTd0KbyukZGJHetmkZA==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
 
   '@inlang/sdk@3.0.6':
     resolution: {integrity: sha512-JyUxQNjKNWglT8qhInmenKK/AnKkbX9AhAM8vFnTT8SyQ0gFA2YGKPntGp+3+UZP9F06Nmawf4sFTn7nGIyTXQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@inlang/sdk@3.1.0':
+    resolution: {integrity: sha512-l8LqeyqLfe00cmDvKY7J6YuCkfWVfgzaNWlB8IAHxWOWqkUAwyG4AhuMYUiBbeA0wM6zdVphPCG2lay/OzTdFg==}
     engines: {node: '>=20.0.0'}
 
   '@internationalized/date@3.12.4':
@@ -821,6 +825,9 @@ packages:
 
   '@lix-js/sdk@0.17.0':
     resolution: {integrity: sha512-xplbKYEokKbm0/soUy9eXlROF55Si1J9HK97iwJrNl/av1VixZ2mvpDTa0QsX96UyxFnzkXru6hngjtIJTl73g==}
+
+  '@lix-js/sdk@0.19.0':
+    resolution: {integrity: sha512-ks7hKZdJGH0APlSLWtFYCXDO3yIoleoPqzLgkZYtMbaiWRN2Ih772tNGGBZFLKbutq6DuNRwcjNkG94KqWRbBA==}
 
   '@mapbox/jsonlint-lines-primitives@2.0.3':
     resolution: {integrity: sha512-0SElaV0uMxEnxzBhhX9WTuPyUeMsAN/SS0i16tjuba4/mio63MG9khjC1a0JAiPGXAwvwm4UfHJURCN7nyudQg==}
@@ -3612,8 +3619,10 @@ snapshots:
     dependencies:
       '@inlang/sdk': 3.0.6
 
-  '@inlang/plugin-message-format@4.4.4':
+  '@inlang/plugin-message-format@4.4.5':
     dependencies:
+      '@inlang/sdk': 3.1.0
+      '@sinclair/typebox': 0.31.30
       flat: 6.0.1
 
   '@inlang/recommend-sherlock@0.2.1':
@@ -3623,6 +3632,13 @@ snapshots:
   '@inlang/sdk@3.0.6':
     dependencies:
       '@lix-js/sdk': 0.17.0
+      '@sinclair/typebox': 0.31.30
+      kysely: 0.28.17
+      uuid: 14.0.2
+
+  '@inlang/sdk@3.1.0':
+    dependencies:
+      '@lix-js/sdk': 0.19.0
       '@sinclair/typebox': 0.31.30
       kysely: 0.28.17
       uuid: 14.0.2
@@ -3680,6 +3696,12 @@ snapshots:
       '@lix-js/sdk-linux-arm64': 0.17.0
       '@lix-js/sdk-linux-x64': 0.17.0
       '@lix-js/sdk-win32-x64': 0.17.0
+
+  '@lix-js/sdk@0.19.0':
+    dependencies:
+      '@bytecodealliance/jco-transpile': 0.13.0
+      binaryen: 130.0.0
+      fflate: 0.8.3
 
   '@mapbox/jsonlint-lines-primitives@2.0.3': {}
 

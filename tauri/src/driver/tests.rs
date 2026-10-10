@@ -418,7 +418,8 @@ async fn relaunch_empties_a_recording_that_ended_more_than_3_hours_ago() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("state.sqlite");
     let mut previous = assert_ok!(FlightRecording::open(&path, Default::default()));
-    assert_ok!(previous.write(&RecordingWrite::StartRecording(stale_sample())));
+    let sample = stale_sample();
+    assert_ok!(previous.write(&RecordingWrite::StartRecording(sample), sample.utc));
     drop(previous);
 
     let (samples, record) = flight_recording::load(path.clone(), Default::default());

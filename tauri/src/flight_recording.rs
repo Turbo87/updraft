@@ -8,7 +8,8 @@ use updraft_units::{Length, MslAltitude, Speed};
 
 /// Each migration upgrades the database to the `user_version` that is its
 /// position plus one.
-const MIGRATIONS: &[&str] = &["CREATE TABLE samples (
+const MIGRATIONS: &[&str] = &[
+    "CREATE TABLE samples (
     utc_ms INTEGER NOT NULL,
     latitude_deg REAL NOT NULL,
     longitude_deg REAL NOT NULL,
@@ -19,7 +20,25 @@ const MIGRATIONS: &[&str] = &["CREATE TABLE samples (
     terrain_elevation_m REAL,
     wind_east_mps REAL,
     wind_north_mps REAL
-) STRICT"];
+) STRICT",
+    // Each existing sample uses its fix UTC as the system UTC.
+    "CREATE TABLE samples_2 (
+    utc_ms INTEGER NOT NULL,
+    latitude_deg REAL NOT NULL,
+    longitude_deg REAL NOT NULL,
+    altitude_msl_m REAL,
+    vario_mps REAL,
+    netto_mps REAL,
+    relative_vario_mps REAL,
+    terrain_elevation_m REAL,
+    wind_east_mps REAL,
+    wind_north_mps REAL,
+    system_utc_ms INTEGER NOT NULL
+) STRICT;
+INSERT INTO samples_2 SELECT *, utc_ms FROM samples ORDER BY rowid;
+DROP TABLE samples;
+ALTER TABLE samples_2 RENAME TO samples;",
+];
 
 #[derive(Debug)]
 pub enum RecordingWrite {
@@ -75,8 +94,13 @@ impl FlightRecording {
         })
     }
 
-    /// Runs one transaction for the write.
-    pub fn write(&mut self, write: &RecordingWrite) -> rusqlite::Result<()> {
+    /// Runs one transaction for the write. `system_utc` is the shell UTC at
+    /// which the core emitted the write.
+    pub fn write(
+        &mut self,
+        write: &RecordingWrite,
+        system_utc: UtcInstant,
+    ) -> rusqlite::Result<()> {
         let (deletes_samples, sample) = match write {
             RecordingWrite::StartRecording(sample) => (true, Some(sample)),
             RecordingWrite::RecordSample(sample) => (false, Some(sample)),
@@ -88,15 +112,15 @@ impl FlightRecording {
             transaction.execute("DELETE FROM samples", [])?;
         }
         if let Some((sample, terrain_elevation)) = row {
-            insert(&transaction, sample, terrain_elevation)?;
+            insert(&transaction, sample, terrain_elevation, system_utc)?;
         }
         transaction.commit()
     }
 
     /// Writes the effect. Logs only the first failure of a series and the
     /// next success, because a source can give several samples each second.
-    pub fn record(&mut self, write: RecordingWrite) {
-        match (self.write(&write), self.write_fails) {
+    pub fn record(&mut self, write: RecordingWrite, system_utc: UtcInstant) {
+        match (self.write(&write, system_utc), self.write_fails) {
             (Err(error), false) => {
                 tracing::warn!(%error, "Could not write the flight recording");
                 self.write_fails = true;
@@ -165,13 +189,14 @@ pub fn load(
         let Some(mut recording) = recording else {
             return;
         };
-        for write in receiver {
-            recording.record(write);
+        for (write, system_utc) in receiver {
+            recording.record(write, system_utc);
         }
     });
 
     let writer = move |write| {
-        let _ = sender.send(write);
+        let system_utc = UtcInstant::from_offset_date_time(time::OffsetDateTime::now_utc());
+        let _ = sender.send((write, system_utc));
     };
     (samples, writer)
 }
@@ -206,10 +231,11 @@ fn insert(
     transaction: &Transaction<'_>,
     sample: &Sample,
     terrain_elevation: Option<f64>,
+    system_utc: UtcInstant,
 ) -> rusqlite::Result<()> {
     let meters_per_second = |speed: Option<Speed>| speed.map(Speed::as_meters_per_second);
     transaction.execute(
-        "INSERT INTO samples VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        "INSERT INTO samples VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         rusqlite::params![
             sample.utc.unix_milliseconds(),
             sample.position.latitude().as_degrees(),
@@ -223,6 +249,7 @@ fn insert(
             terrain_elevation,
             meters_per_second(sample.wind.map(|wind| wind.east)),
             meters_per_second(sample.wind.map(|wind| wind.north)),
+            system_utc.unix_milliseconds(),
         ],
     )?;
     Ok(())
@@ -234,6 +261,8 @@ mod tests {
     use crate::terrain::tests::{elevation_webp, write_terrain};
     use RecordingWrite::{DiscardRecording, RecordSample, StartRecording};
     use claims::{assert_err, assert_ok};
+
+    const SYSTEM_UTC: UtcInstant = UtcInstant::from_unix_milliseconds(9_000);
 
     /// Tile 7/64/45 covers this position.
     const COVERED: (f64, f64) = (46.0, 2.0);
@@ -274,7 +303,7 @@ mod tests {
     }
 
     #[test]
-    fn migrates_a_new_database_in_a_new_directory_to_version_1() {
+    fn migrates_a_new_database_in_a_new_directory_to_version_2() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("data/state.sqlite");
         assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
@@ -282,7 +311,7 @@ mod tests {
         let connection = assert_ok!(Connection::open(&path));
         let version: u32 =
             assert_ok!(connection.pragma_query_value(None, "user_version", |row| row.get(0)));
-        assert_eq!(version, 1);
+        assert_eq!(version, 2);
         let journal_mode: String =
             assert_ok!(connection.pragma_query_value(None, "journal_mode", |row| row.get(0)));
         assert_eq!(journal_mode, "wal");
@@ -295,15 +324,34 @@ mod tests {
     }
 
     #[test]
+    fn migration_2_keeps_the_samples_and_uses_their_utc_as_the_system_utc() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.sqlite");
+        let connection = assert_ok!(Connection::open(&path));
+        assert_ok!(connection.execute_batch(MIGRATIONS[0]));
+        assert_ok!(connection.execute_batch(
+            "INSERT INTO samples VALUES (2000, 46.0, 2.0, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+            INSERT INTO samples VALUES (1000, 50.0, 20.0, 1200.0, 1.5, 2.0, 1.0, 100.0, -3.0, 4.0);
+            PRAGMA user_version = 1;"
+        ));
+        drop(connection);
+
+        assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
+
+        assert_eq!(user_version(&path), 2);
+        insta::assert_debug_snapshot!(rows(&path));
+    }
+
+    #[test]
     fn commits_each_write_with_the_terrain_elevation_of_the_sample() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("state.sqlite");
         let mut recording = assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
 
-        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED))));
+        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED)), SYSTEM_UTC));
         assert_eq!(rows(&path).len(), 1);
         let uncovered = (50.0, 20.0);
-        assert_ok!(recording.write(&RecordSample(sample(2_000, uncovered))));
+        assert_ok!(recording.write(&RecordSample(sample(2_000, uncovered)), SYSTEM_UTC));
         insta::assert_debug_snapshot!(rows(&path));
     }
 
@@ -313,10 +361,10 @@ mod tests {
         let path = directory.path().join("state.sqlite");
         let mut recording = assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
         for utc in [1_000, 2_000] {
-            assert_ok!(recording.write(&RecordSample(sample(utc, COVERED))));
+            assert_ok!(recording.write(&RecordSample(sample(utc, COVERED)), SYSTEM_UTC));
         }
 
-        assert_ok!(recording.write(&StartRecording(sample(3_000, COVERED))));
+        assert_ok!(recording.write(&StartRecording(sample(3_000, COVERED)), SYSTEM_UTC));
 
         let utc: Vec<_> = rows(&path).into_iter().map(|row| row[0].clone()).collect();
         assert_eq!(utc, [rusqlite::types::Value::Integer(3_000)]);
@@ -327,11 +375,11 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("state.sqlite");
         let mut recording = assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
-        assert_ok!(recording.write(&RecordSample(sample(1_000, COVERED))));
+        assert_ok!(recording.write(&RecordSample(sample(1_000, COVERED)), SYSTEM_UTC));
 
         // SQLite stores NaN as NULL, which the `NOT NULL` latitude rejects.
         let invalid = sample(2_000, (f64::NAN, 2.0));
-        let error = assert_err!(recording.write(&StartRecording(invalid)));
+        let error = assert_err!(recording.write(&StartRecording(invalid), SYSTEM_UTC));
         assert_eq!(
             error.to_string(),
             "NOT NULL constraint failed: samples.latitude_deg"
@@ -346,10 +394,10 @@ mod tests {
         let path = directory.path().join("state.sqlite");
         let mut recording = assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
         for utc in [1_000, 2_000] {
-            assert_ok!(recording.write(&RecordSample(sample(utc, COVERED))));
+            assert_ok!(recording.write(&RecordSample(sample(utc, COVERED)), SYSTEM_UTC));
         }
 
-        assert_ok!(recording.write(&DiscardRecording));
+        assert_ok!(recording.write(&DiscardRecording, SYSTEM_UTC));
 
         assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
     }
@@ -364,8 +412,8 @@ mod tests {
         let mut partial = sample(2_000, uncovered);
         partial.altitude_msl = None;
         partial.wind = None;
-        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED))));
-        assert_ok!(recording.write(&RecordSample(partial)));
+        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED)), SYSTEM_UTC));
+        assert_ok!(recording.write(&RecordSample(partial), SYSTEM_UTC));
         drop(recording);
 
         let (samples, _) = load(path, terrain);
@@ -412,7 +460,7 @@ mod tests {
         let path = directory.path().join("state.sqlite");
         let terrain = terrain(directory.path());
         let mut recording = assert_ok!(FlightRecording::open(&path, terrain.clone()));
-        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED))));
+        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED)), SYSTEM_UTC));
         drop(recording);
         // Page 2 is the root page of the `samples` table.
         let mut bytes = std::fs::read(&path).unwrap();
@@ -423,7 +471,7 @@ mod tests {
 
         assert_eq!(samples, []);
         assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
-        assert_eq!(user_version(&path), 1);
+        assert_eq!(user_version(&path), 2);
         logs_assert(|lines| {
             only_logs(lines, &[("WARN", "Deleting the unusable flight recording")])
         });
@@ -436,17 +484,17 @@ mod tests {
         let path = directory.path().join("state.sqlite");
         let terrain = terrain(directory.path());
         let mut recording = assert_ok!(FlightRecording::open(&path, terrain.clone()));
-        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED))));
+        assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED)), SYSTEM_UTC));
         drop(recording);
         let connection = assert_ok!(Connection::open(&path));
-        assert_ok!(connection.pragma_update(None, "user_version", 2));
+        assert_ok!(connection.pragma_update(None, "user_version", 3));
         drop(connection);
 
         let (samples, _) = load(path.clone(), terrain);
 
         assert_eq!(samples, []);
         assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
-        assert_eq!(user_version(&path), 1);
+        assert_eq!(user_version(&path), 2);
         logs_assert(|lines| {
             only_logs(lines, &[("WARN", "Deleting the unusable flight recording")])
         });
@@ -458,13 +506,13 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("state.sqlite");
         let mut recording = assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
-        recording.record(StartRecording(sample(1_000, COVERED)));
+        recording.record(StartRecording(sample(1_000, COVERED)), SYSTEM_UTC);
 
         // SQLite stores NaN as NULL, which the `NOT NULL` latitude rejects.
-        recording.record(RecordSample(sample(2_000, (f64::NAN, 2.0))));
-        recording.record(RecordSample(sample(3_000, (f64::NAN, 2.0))));
-        recording.record(RecordSample(sample(4_000, COVERED)));
-        recording.record(RecordSample(sample(5_000, COVERED)));
+        recording.record(RecordSample(sample(2_000, (f64::NAN, 2.0))), SYSTEM_UTC);
+        recording.record(RecordSample(sample(3_000, (f64::NAN, 2.0))), SYSTEM_UTC);
+        recording.record(RecordSample(sample(4_000, COVERED)), SYSTEM_UTC);
+        recording.record(RecordSample(sample(5_000, COVERED)), SYSTEM_UTC);
 
         let utc: Vec<_> = rows(&path).into_iter().map(|row| row[0].clone()).collect();
         assert_eq!(

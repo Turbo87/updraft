@@ -161,6 +161,59 @@ impl Instruments {
     }
 }
 
+/// The newest sample of the current flight recording.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct Trail {
+    /// The UTC of the first sample in Unix milliseconds. It identifies the
+    /// recording.
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub recording_start: i64,
+    pub sample: TrailSample,
+}
+
+/// One flight recording sample at the frontend boundary.
+///
+/// A value is `None` when it was unavailable or stale.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "camelCase")]
+pub struct TrailSample {
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub unix_milliseconds: i64,
+    pub position: LatLon,
+    pub altitude_msl_meters: Option<f64>,
+    /// The MSL altitude above the terrain elevation, or the MSL altitude
+    /// when the terrain elevation is not available.
+    pub altitude_agl_meters: Option<f64>,
+    pub vario_meters_per_second: Option<f64>,
+    pub netto_meters_per_second: Option<f64>,
+    pub relative_vario_meters_per_second: Option<f64>,
+}
+
+impl TrailSample {
+    pub(crate) fn new(sample: &crate::Sample, terrain_elevation_meters: Option<f64>) -> Self {
+        let altitude_msl_meters = sample
+            .altitude_msl
+            .map(|altitude| altitude.into_inner().as_meters());
+        let speed = |speed: Option<updraft_units::Speed>| speed.map(|s| s.as_meters_per_second());
+        Self {
+            unix_milliseconds: sample.utc.unix_milliseconds(),
+            position: LatLon {
+                latitude_degrees: sample.position.latitude().as_degrees(),
+                longitude_degrees: sample.position.longitude().as_degrees(),
+            },
+            altitude_msl_meters,
+            altitude_agl_meters: altitude_msl_meters
+                .map(|altitude| altitude - terrain_elevation_meters.unwrap_or(0.0)),
+            vario_meters_per_second: speed(sample.vario),
+            netto_meters_per_second: speed(sample.netto),
+            relative_vario_meters_per_second: speed(sample.relative_vario),
+        }
+    }
+}
+
 /// One group of client-visible state.
 ///
 /// Topics are grouped by how often they change, so a fast instrument
@@ -187,6 +240,8 @@ pub enum Topic {
     Waypoints(crate::WaypointStatus),
     Traffic(TrafficUpdate),
     GlidePerformance(crate::GlidePerformance),
+    /// `None` when no flight recording exists.
+    Trail(Option<Trail>),
 }
 
 #[cfg(test)]

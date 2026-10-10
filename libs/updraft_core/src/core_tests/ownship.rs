@@ -516,6 +516,7 @@ fn internal_gps_altitude_is_converted_to_msl() {
         Topic::Airspace(_),
         Topic::Waypoints(_),
         Topic::Traffic(_),
+        Topic::Trail(_),
         Topic::Navigation(_),
         Topic::PinnedTargets(_),
         Topic::RecentTargets(_),

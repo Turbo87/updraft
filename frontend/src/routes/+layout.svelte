@@ -28,6 +28,7 @@
   import { SettingsStore } from '#lib/stores/settings.svelte.js';
   import { TerrainStore } from '#lib/stores/terrain.svelte.js';
   import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+  import { TrailStore } from '#lib/stores/trail.js';
   import { WaypointsStore } from '#lib/stores/waypoints.svelte.js';
 
   type TestWindow = Window & {
@@ -53,6 +54,7 @@
   const settings = new SettingsStore();
   const glidePerformance = new GlidePerformanceStore();
   const traffic = new TrafficStore();
+  const trail = new TrailStore();
   const navigation = new NavigationStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
@@ -97,6 +99,7 @@
       settings.apply(topic);
       glidePerformance.apply(topic);
       traffic.apply(topic);
+      trail.apply(topic);
       navigation.apply(topic);
       if (topic.topic === 'settings') {
         applyLocaleSetting(topic.value.locale);
@@ -194,6 +197,7 @@
     hillshadeDirection={settings.current.hillshadeDirection}
     {mapState}
     {traffic}
+    {trail}
     units={settings.current.units}
     climbAverageMethod={settings.current.climbAverageMethod}
     {testMode}

@@ -37,8 +37,10 @@ close a transport, persist settings, or start, append to, or discard the flight
 recording. The shell matches effects exhaustively. Pure calculations stay in
 the core.
 
-The core owns the flight recording rules. It keeps the UTC of the last sample
-and emits one record effect for each new fix of the selected source. The shell
+The core owns the flight recording rules. It keeps the UTC of the first and the
+last sample and emits one record effect for each new fix of the selected source.
+After each record effect, the `trail` topic publishes the new sample and the UTC
+of the first sample. The shell
 stores the samples in `state.sqlite` in the app data directory and adds the
 terrain elevation. At startup, the shell reads all samples before any transport
 starts. The driver applies them and the shell UTC as one `RestoreRecording`
@@ -106,7 +108,8 @@ Components do not import a client implementation directly.
 
 Commands report completion or return a typed response. Shared state changes
 arrive only through topics. Most topics contain a complete snapshot. The
-traffic topic sends one onboarding snapshot and then sends deltas.
+traffic topic sends one onboarding snapshot and then sends deltas. The trail
+topic sends only the newest sample of the flight recording.
 
 Rust protocol types generate committed TypeScript types. Tests verify their
 serialized forms. A protocol change must update the Rust type, its serialization

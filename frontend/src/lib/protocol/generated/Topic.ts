@@ -9,6 +9,7 @@ import type { PublishedExternalDevice } from "./PublishedExternalDevice";
 import type { Settings } from "./Settings";
 import type { Task } from "./Task";
 import type { TrafficUpdate } from "./TrafficUpdate";
+import type { Trail } from "./Trail";
 import type { WaypointStatus } from "./WaypointStatus";
 
 /**
@@ -23,4 +24,4 @@ import type { WaypointStatus } from "./WaypointStatus";
  * and the generated TypeScript. An internally tagged enum would generate
  * an intersection type, which is awkward to narrow on in the frontend.
  */
-export type Topic = { "topic": "navigation", "value": Navigation | null } | { "topic": "pinnedTargets", "value": Array<PinnedTarget> } | { "topic": "task", "value": Task } | { "topic": "taskSaveFailed", "value": boolean } | { "topic": "recentTargets", "value": Array<NavigationTarget> } | { "topic": "instruments", "value": Instruments } | { "topic": "settings", "value": Settings } | { "topic": "externalDevices", "value": Array<PublishedExternalDevice> } | { "topic": "airspace", "value": AirspaceStatus } | { "topic": "waypoints", "value": WaypointStatus } | { "topic": "traffic", "value": TrafficUpdate } | { "topic": "glidePerformance", "value": GlidePerformance };
+export type Topic = { "topic": "navigation", "value": Navigation | null } | { "topic": "pinnedTargets", "value": Array<PinnedTarget> } | { "topic": "task", "value": Task } | { "topic": "taskSaveFailed", "value": boolean } | { "topic": "recentTargets", "value": Array<NavigationTarget> } | { "topic": "instruments", "value": Instruments } | { "topic": "settings", "value": Settings } | { "topic": "externalDevices", "value": Array<PublishedExternalDevice> } | { "topic": "airspace", "value": AirspaceStatus } | { "topic": "waypoints", "value": WaypointStatus } | { "topic": "traffic", "value": TrafficUpdate } | { "topic": "glidePerformance", "value": GlidePerformance } | { "topic": "trail", "value": Trail | null };

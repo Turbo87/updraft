@@ -4,6 +4,7 @@ import type Map from './Map.svelte';
 
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+import { TrailStore } from '#lib/stores/trail.js';
 
 export function mapProps(mapState: MapState) {
   return {
@@ -11,6 +12,7 @@ export function mapProps(mapState: MapState) {
     instruments: instrumentsFixture(),
     mapState,
     traffic: new TrafficStore(),
+    trail: new TrailStore(),
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     airspace: { generation: 0, sources: [] },
     testMode: true,

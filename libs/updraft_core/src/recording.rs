@@ -29,6 +29,7 @@ pub struct Sample {
 #[derive(Clone, Copy, Debug)]
 pub struct RecordedFix {
     pub starts_recording: bool,
+    pub recording_start: UtcInstant,
     pub utc: UtcInstant,
     pub position: LatLon,
 }
@@ -36,24 +37,32 @@ pub struct RecordedFix {
 /// Applies the recording rules to the fixes of the selected source.
 #[derive(Debug, Default)]
 pub struct FlightRecorder {
-    last_utc: Option<UtcInstant>,
+    /// The UTC of the first and the last sample of the current recording.
+    recording: Option<(UtcInstant, UtcInstant)>,
     pending: Vec<RecordedFix>,
 }
 
 impl FlightRecorder {
     /// Returns whether the fix starts a new recording.
     pub fn observe(&mut self, utc: UtcInstant, position: LatLon) -> bool {
-        let gap = self
-            .last_utc
-            .map(|last| utc.unix_milliseconds() - last.unix_milliseconds());
-        let starts_recording = match gap {
-            Some(gap) if (-MAX_BACKWARD_MILLISECONDS..=0).contains(&gap) => return false,
-            Some(gap) => !(1..=MAX_GAP_MILLISECONDS).contains(&gap),
-            None => true,
+        let recording_start = match self.recording {
+            Some((start, last)) => {
+                let gap = utc.unix_milliseconds() - last.unix_milliseconds();
+                if (-MAX_BACKWARD_MILLISECONDS..=0).contains(&gap) {
+                    return false;
+                }
+                match (1..=MAX_GAP_MILLISECONDS).contains(&gap) {
+                    true => start,
+                    false => utc,
+                }
+            }
+            None => utc,
         };
-        self.last_utc = Some(utc);
+        let starts_recording = recording_start == utc;
+        self.recording = Some((recording_start, utc));
         self.pending.push(RecordedFix {
             starts_recording,
+            recording_start,
             utc,
             position,
         });
@@ -62,11 +71,11 @@ impl FlightRecorder {
 
     /// Continues the recording after its last sample. Returns `false` when
     /// the recording ended more than 3 h before `utc`.
-    pub fn restore(&mut self, last: UtcInstant, utc: UtcInstant) -> bool {
+    pub fn restore(&mut self, start: UtcInstant, last: UtcInstant, utc: UtcInstant) -> bool {
         if utc.unix_milliseconds() - last.unix_milliseconds() > MAX_GAP_MILLISECONDS {
             return false;
         }
-        self.last_utc = Some(last);
+        self.recording = Some((start, last));
         true
     }
 

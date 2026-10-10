@@ -51,6 +51,10 @@ pub fn describe(effect: &Effect) -> String {
         Effect::Emit(Topic::Waypoints(status)) => format!("waypoints {status:?}"),
         Effect::Emit(Topic::Airspace(status)) => format!("airspace {status:?}"),
         Effect::Emit(Topic::Traffic(update)) => format!("traffic {update:?}"),
+        Effect::Emit(Topic::Trail(trail)) => {
+            let utc = trail.map(|trail| trail.sample.unix_milliseconds);
+            format!("trail {utc:?}")
+        }
         Effect::OpenConnection { device_id, spec } => format!("open {device_id:?} {spec:?}"),
         Effect::CloseConnection { device_id } => format!("close {device_id:?}"),
         Effect::PersistSettings(settings) => format!("persist settings {settings:?}"),

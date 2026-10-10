@@ -46,6 +46,7 @@ pub struct Core {
     task_fix: Option<crate::ownship::Selected<GpsSnapshot>>,
     task_save_failed: bool,
     recorder: crate::recording::FlightRecorder,
+    trail: Option<crate::Trail>,
     settings: Settings,
     glide_performance: GlidePerformance,
     external_devices: ExternalDevices,
@@ -85,6 +86,7 @@ impl Core {
             task_fix: None,
             task_save_failed: false,
             recorder: Default::default(),
+            trail: None,
             navigation_target: None,
             navigation_elevation: None,
             navigation_report: None,
@@ -183,24 +185,35 @@ impl Core {
             .sensor_fusion
             .current_wind()
             .map(|wind| Velocity::from_track(wind.direction, -wind.speed));
-        fixes
-            .into_iter()
-            .map(|fix| {
-                let effect = match fix.starts_recording {
-                    true => Effect::StartRecording,
-                    false => Effect::RecordSample,
-                };
-                effect(crate::Sample {
-                    utc: fix.utc,
-                    position: fix.position,
-                    altitude_msl,
-                    vario,
-                    netto,
-                    relative_vario,
-                    wind,
-                })
-            })
-            .collect()
+        let mut effects = Vec::new();
+        for fix in fixes {
+            let sample = crate::Sample {
+                utc: fix.utc,
+                position: fix.position,
+                altitude_msl,
+                vario,
+                netto,
+                relative_vario,
+                wind,
+            };
+            effects.push(match fix.starts_recording {
+                true => Effect::StartRecording(sample),
+                false => Effect::RecordSample(sample),
+            });
+            self.trail = Some(self.trail(fix.recording_start, &sample));
+            effects.push(Effect::emit(Topic::Trail(self.trail)));
+        }
+        effects
+    }
+
+    /// The terrain elevation can belong to an earlier fix, because the
+    /// shell samples it after the core publishes a position.
+    fn trail(&self, recording_start: UtcInstant, sample: &crate::Sample) -> crate::Trail {
+        let terrain_elevation = self.terrain_elevation.map(|(_, meters)| meters);
+        crate::Trail {
+            recording_start: recording_start.unix_milliseconds(),
+            sample: crate::TrailSample::new(sample, terrain_elevation),
+        }
     }
 
     fn pinned_targets(&self) -> Vec<crate::PinnedTarget> {
@@ -229,6 +242,7 @@ impl Core {
             Topic::Airspace(self.airspace.status()),
             Topic::Waypoints(self.waypoints.status(self.waypoint_generation)),
             Topic::Traffic(TrafficUpdate::Snapshot(traffic)),
+            Topic::Trail(self.trail),
             Topic::Navigation(self.navigation()),
             Topic::PinnedTargets(self.pinned_targets()),
             Topic::RecentTargets(self.recent_targets.clone()),
@@ -1363,12 +1377,13 @@ impl Input for crate::RestoreNavigationTarget {
 impl Input for crate::RestoreRecording {
     type Response = ();
     fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
-        let Some(last) = self.samples.last() else {
+        let (Some(first), Some(last)) = (self.samples.first(), self.samples.last()) else {
             return Update::empty();
         };
-        if !core.recorder.restore(last.utc, self.utc) {
+        if !core.recorder.restore(first.utc, last.utc, self.utc) {
             return Update::effects(vec![Effect::DiscardRecording]);
         }
+        core.trail = Some(core.trail(first.utc, last));
         if let Some(wind) = last.wind {
             core.sensor_fusion.restore_wind(wind);
         }

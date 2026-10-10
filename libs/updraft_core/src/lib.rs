@@ -70,7 +70,7 @@ pub use time::Timestamp;
 pub use topic::{
     AltitudeInstrument, DerivedAltitudeInstruments, DerivedBankInstruments,
     DerivedHeadingInstruments, DerivedInstruments, FixTime as PublishedFixTime, GpsInstruments,
-    Instruments, LatLon, SolarPositionInstruments, SpeedInstrument, Topic,
+    Instruments, LatLon, SolarPositionInstruments, SpeedInstrument, Topic, Trail, TrailSample,
 };
 pub use traffic::{
     FlarmBroadcastIdentity, PublishedTrafficTarget, TrafficAlarmLevel, TrafficChanges,

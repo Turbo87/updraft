@@ -254,6 +254,7 @@ mod tests {
                 hillshade_direction: updraft_core::HillshadeDirection::Wind,
                 trail_color_mode: updraft_core::TrailColorMode::Netto,
                 trail_length: assert_ok!(updraft_core::TrailLength::try_from(300)),
+                trail_drift_compensation: true,
                 flarm_position_correction: false,
                 climb_average_method: updraft_core::ClimbAverageMethod::Average30s,
                 energy_compensation: false,

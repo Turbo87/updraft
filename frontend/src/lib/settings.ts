@@ -11,6 +11,7 @@ export function defaultSettings(): Settings {
     hillshadeDirection: 'fixed',
     trailColorMode: 'relativeVario',
     trailLength: 60,
+    trailDriftCompensation: false,
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
   };
 }

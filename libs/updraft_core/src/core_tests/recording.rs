@@ -1,7 +1,8 @@
 use super::super::*;
 use super::support::*;
 use crate::{
-    ChangeTask, NavigationTarget, RestoreRecording, Sample, TaskCommand, TaskTime, Velocity,
+    ChangeTask, NavigationTarget, RestoreRecording, RestoreTask, Sample, Task, TaskCommand,
+    TaskPoint, TaskTime, Velocity,
 };
 use claims::{assert_ok, assert_some, assert_some_eq};
 use updraft_geo::LatLon;
@@ -62,16 +63,20 @@ fn fix_more_than_3_hours_after_the_last_sample_starts_a_recording() {
     insta::assert_debug_snapshot!(effects);
 }
 
+fn waypoint(name: &str, latitude_degrees: f64) -> NavigationTarget {
+    NavigationTarget::Waypoint {
+        name: name.into(),
+        latitude_degrees,
+        longitude_degrees: 6.0,
+        elevation_meters: 0.,
+    }
+}
+
 #[test]
 fn new_recording_resets_task_progress() {
     let mut core = Core::new(SettingsSnapshot::default());
     for (name, latitude_degrees) in [("Start", 50.0), ("Finish", 51.0)] {
-        let target = NavigationTarget::Waypoint {
-            name: name.into(),
-            latitude_degrees,
-            longitude_degrees: 6.0,
-            elevation_meters: 0.,
-        };
+        let target = waypoint(name, latitude_degrees);
         assert_ok!(
             core.apply(ChangeTask(TaskCommand::Add { target }), at(0))
                 .response
@@ -96,10 +101,10 @@ fn new_recording_resets_task_progress() {
     insta::assert_debug_snapshot!(core.task.snapshot());
 }
 
-fn restored_sample(utc: i64) -> Sample {
+fn restored_sample(utc: i64, latitude_degrees: f64) -> Sample {
     Sample {
         utc: UtcInstant::from_unix_milliseconds(utc),
-        position: LatLon::from_degrees(50.0, 6.0),
+        position: LatLon::from_degrees(latitude_degrees, 6.0),
         altitude_msl: None,
         vario: None,
         netto: None,
@@ -117,7 +122,10 @@ fn restore(core: &mut Core, last_utc: i64, utc: i64) -> Vec<Effect> {
 }
 
 fn restore_stored(core: &mut Core, last_utc: i64, stored_utc: i64, utc: i64) -> Vec<Effect> {
-    let samples = vec![restored_sample(last_utc - 1_000), restored_sample(last_utc)];
+    let samples = vec![
+        restored_sample(last_utc - 1_000, 50.0),
+        restored_sample(last_utc, 50.0),
+    ];
     let input = RestoreRecording {
         samples,
         stored_utc: Some(UtcInstant::from_unix_milliseconds(stored_utc)),
@@ -179,4 +187,63 @@ fn live_fix_after_restore_appends_to_the_recording() {
     restore(&mut core, UTC, UTC + HOURS);
     assert_eq!(record(&mut core, UTC, 0), []);
     insta::assert_debug_snapshot!(round_wind(record(&mut core, UTC + 1_000, 1_000)));
+}
+
+/// Restores a recording that exits the start and enters `TP1`.
+fn restore_flight(core: &mut Core) {
+    let samples = [(0, 50.0), (1_000, 50.01), (60_000, 50.095), (61_000, 50.1)]
+        .map(|(offset, latitude_degrees)| restored_sample(UTC + offset, latitude_degrees));
+    let input = RestoreRecording {
+        samples: samples.into(),
+        stored_utc: Some(UtcInstant::from_unix_milliseconds(UTC + 61_000)),
+        utc: UtcInstant::from_unix_milliseconds(UTC + HOURS),
+    };
+    core.apply(input, at(0));
+}
+
+fn restore_route(core: &mut Core, route: &[(&str, f64)]) {
+    let points = route
+        .iter()
+        .zip(0..)
+        .map(|(&(name, latitude_degrees), id)| TaskPoint {
+            id,
+            target: waypoint(name, latitude_degrees),
+        })
+        .collect::<Vec<_>>();
+    let next_id = points.len() as u32;
+    let task = Task { points, next_id };
+    assert_ok!(core.apply(RestoreTask(task), at(0)).response);
+}
+
+#[test]
+fn restore_derives_task_progress_from_the_recording() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    restore_route(
+        &mut core,
+        &[("Start", 50.0), ("TP1", 50.1), ("Finish", 50.2)],
+    );
+    restore_flight(&mut core);
+    let task = core.task.snapshot();
+    insta::assert_debug_snapshot!((task.target, task.progress));
+}
+
+/// Restores the recording before the route, in the order of the shell
+/// startup.
+#[test]
+fn route_change_after_restore_derives_task_progress_from_restored_and_live_samples() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    restore_flight(&mut core);
+    let route = [
+        ("Start", 50.0),
+        ("TP1", 50.1),
+        ("TP2", 50.2),
+        ("Finish", 50.3),
+    ];
+    restore_route(&mut core, &route);
+    core.apply(utc_fix(UTC + 120_000, 50.195), at(1_000));
+    core.apply(utc_fix(UTC + 121_000, 50.2), at(2_000));
+    let remove = ChangeTask(TaskCommand::Remove { id: 1 });
+    assert_ok!(core.apply(remove, at(3_000)).response);
+    let task = core.task.snapshot();
+    insta::assert_debug_snapshot!((task.target, task.progress));
 }

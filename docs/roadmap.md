@@ -163,7 +163,7 @@ documents for current behavior, and the linked spec issue for planned behavior.
   task guidance and pinning. See [Ordered tasks](product/tasks.md). The broader
   competition features below remain backlog.
 
-- [ ] **task-progress-recovery** — derive task progress from the flight recording at restore and after each route change. See [task: Derive task progress from fixes and the route](https://github.com/Turbo87/updraft/issues/564) and [Spec: Flight recording](https://github.com/Turbo87/updraft/issues/571). _(needs: flight-recording, ordered-task-slice)_
+- [x] **task-progress-recovery** — derive task progress from the flight recording at restore and after each route change. See [task: Derive task progress from fixes and the route](https://github.com/Turbo87/updraft/issues/564) and [Spec: Flight recording](https://github.com/Turbo87/updraft/issues/571). _(needs: flight-recording, ordered-task-slice)_
 - [ ] **observation-zones** — OZ types (cylinder, FAI sector, keyhole, line) with entry/exit detection, per-point overrides. _(needs: geo-shapes)_
 - [ ] **task-model** — task data model: task types, start/finish rules, validation, serde. _(needs: observation-zones, waypoint-db)_
 - [ ] **task-engine** — in-flight progress: start detection/arming, automatic + manual turnpoint advance, and finish. Publish the current task point as the default Task target without stealing focus from another active target. Progress is derived from the flight recording. _(needs: task-model, flight-modes, navigation-targets, flight-recording)_

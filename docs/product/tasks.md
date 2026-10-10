@@ -50,8 +50,8 @@ Crossing times interpolate along the segment from the UTC of its fixes. The
 details page displays the start and finish times in UTC.
 
 Each route change derives progress again from all recorded fixes of the current
-recording that the core received since startup. Restarts after the second point
-and competition start gates wait for competition rules.
+recording. These include the samples that the core restored at startup. Restarts
+after the second point and competition start gates wait for competition rules.
 
 ## Navigation target
 
@@ -76,9 +76,9 @@ progress. It clears primary navigation only when that follows the task.
 
 The core owns the route, the progress, and the navigation target. The task file
 stores only the route. Task files with saved progress from earlier versions load
-as their route. After a restart, the task has no progress until the follow-up
-work replays the restored flight recording. A failed save retains live state and
-exposes a retry action that saves the current route without repeating an edit.
+as their route. After a restart, the core derives progress from the restored
+flight recording. A failed save retains live state and exposes a retry action
+that saves the current route without repeating an edit.
 
 Competition rules, additional observation zones, task import, a named task
 library, and record validation require later slices. Physical Android lifecycle

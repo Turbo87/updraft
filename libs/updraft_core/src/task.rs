@@ -1,4 +1,4 @@
-use crate::{NavigationTarget, UtcInstant};
+use crate::{NavigationTarget, Sample, UtcInstant};
 use updraft_geo::LatLon;
 mod cylinder;
 use serde::{Deserialize, Serialize};
@@ -75,7 +75,7 @@ pub enum TaskCommand {
 #[derive(Debug, Default)]
 pub struct TaskState {
     route: Task,
-    /// The recorded fixes of the current recording since startup.
+    /// The recorded fixes of the current recording.
     fixes: Vec<PositionReport>,
     progress: TaskProgress,
     target: Option<u32>,
@@ -183,6 +183,19 @@ impl TaskState {
                 .get(self.progress.reached)
                 .map(|point| point.id),
         };
+    }
+
+    /// Replaces the fixes with the samples of the restored recording and
+    /// derives the progress.
+    pub fn restore_recording(&mut self, samples: &[Sample]) {
+        self.fixes = samples
+            .iter()
+            .map(|sample| PositionReport {
+                position: sample.position,
+                utc: sample.utc,
+            })
+            .collect();
+        self.derive_progress();
     }
 
     /// Starts a new recording without fixes and progress.

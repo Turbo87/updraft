@@ -1372,6 +1372,7 @@ impl Input for crate::RestoreRecording {
         {
             return Update::effects(vec![Effect::DiscardRecording]);
         }
+        core.task.restore_recording(&self.samples);
         core.trail = Some(core.trail(first.utc, last));
         if let Some(wind) = last.wind {
             core.sensor_fusion.restore_wind(wind);

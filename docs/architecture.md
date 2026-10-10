@@ -47,8 +47,9 @@ starts. The driver applies them, the stored shell UTC of the last sample, and
 the current shell UTC as one `RestoreRecording` input before `Start`. The core
 discards a recording when the shell stored its last sample more than 3 hours
 before the current shell UTC. The fix UTC does not affect this rule. Otherwise it continues the recording rules from the last
-sample and seeds the wind estimate from its wind. Restore emits no per-sample
-effects. See [Flight recording](product/flight-recording.md).
+sample and seeds the wind estimate from its wind. It keeps the UTC and the
+position of each sample and derives task progress from them. Restore emits no
+per-sample effects. See [Flight recording](product/flight-recording.md).
 
 The core owns the selected goto target and ordered pinned targets. It emits
 guidance for both. The shell saves target choices and restores them at startup.

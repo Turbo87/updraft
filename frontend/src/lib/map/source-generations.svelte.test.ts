@@ -146,6 +146,7 @@ describe.each(['macos', 'windows'] as const)('%s resource URLs', (os) => {
         mapState,
         traffic: new TrafficStore(),
         trail: new TrailStore(new FakeClient()),
+        trailColorMode: 'relativeVario',
         airspace: { generation: 0, sources: [] },
         hillshadeDirection: 'fixed',
         instruments: instrumentsFixture(),

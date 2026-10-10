@@ -94,6 +94,17 @@ describe('TrailStore', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('keeps the maximum altitudes of the newest trail value', () => {
+    let { store, apply } = setup();
+
+    apply({ ...trail(1), maxAltitudeMslMeters: 1000, maxAltitudeAglMeters: 800 });
+    apply({ ...trail(2), maxAltitudeMslMeters: 1200, maxAltitudeAglMeters: 900 });
+    apply(null);
+
+    expect(store.maxAltitudeMslMeters).toBe(1200);
+    expect(store.maxAltitudeAglMeters).toBe(900);
+  });
+
   it('fetches again when a new recording starts', async () => {
     let { requests, ids, apply } = setup();
     apply(trail(1));

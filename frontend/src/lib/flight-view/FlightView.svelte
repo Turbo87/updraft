@@ -9,6 +9,7 @@
   import type { Navigation as NavigationState } from '#lib/protocol/generated/Navigation.js';
   import type { PinnedTarget } from '#lib/protocol/generated/PinnedTarget.js';
   import type { Task } from '#lib/protocol/generated/Task.js';
+  import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
   import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
   import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
   import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
@@ -41,6 +42,7 @@
     mapState: MapState;
     traffic: TrafficStore;
     trail: TrailStore;
+    trailColorMode: TrailColorMode;
     units: UnitSettings;
     testMode?: boolean;
   };
@@ -61,6 +63,7 @@
     mapState,
     traffic,
     trail,
+    trailColorMode,
     units,
     testMode = false,
   }: Props = $props();
@@ -96,6 +99,7 @@
         {mapState}
         {traffic}
         {trail}
+        {trailColorMode}
         {units}
         {testMode}
         onInspect={openNearbyRoute}

@@ -14,6 +14,7 @@ export function mapProps(mapState: MapState) {
     mapState,
     traffic: new TrafficStore(),
     trail: new TrailStore(new FakeClient()),
+    trailColorMode: 'relativeVario',
     units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },
     airspace: { generation: 0, sources: [] },
     testMode: true,

@@ -3,11 +3,12 @@ import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 
 import { describe, expect, it } from 'vitest';
 
-import { COLOR_SLATE_400 } from './colors.generated';
-import { TRAIL_COLOR, TrailSegments } from './trail';
+import { COLOR_FUCHSIA_600, COLOR_SLATE_400 } from './colors.generated';
+import { trailColor, TrailSegments } from './trail';
 
 const RECORDING_START = 1_767_268_800_000;
 const MINUTE = 60_000;
+const MAXIMA = { maxAltitudeMslMeters: 2000, maxAltitudeAglMeters: 1500 };
 
 function trail(
   minutes: number,
@@ -39,7 +40,7 @@ describe('TrailSegments', () => {
     expect(segments.featureCollection()).toEqual({ type: 'FeatureCollection', features: [] });
   });
 
-  it('adds one segment with a stable id for each new sample', () => {
+  it('adds one segment with a stable id and every colour value for each new sample', () => {
     let segments = new TrailSegments();
     segments.apply(trail(0));
 
@@ -64,7 +65,11 @@ describe('TrailSegments', () => {
             },
             "id": 1767268860000,
             "properties": {
+              "altitudeAgl": 800,
+              "altitudeMsl": 1000,
+              "netto": 2,
               "relativeVario": null,
+              "vario": 1,
             },
             "type": "Feature",
           },
@@ -173,36 +178,64 @@ describe('TrailSegments', () => {
   });
 });
 
-describe('TRAIL_COLOR', () => {
-  it('uses the neutral colour for a missing relative vario', () => {
-    expect(TRAIL_COLOR).toEqual([
-      'case',
-      ['==', ['get', 'relativeVario'], null],
-      COLOR_SLATE_400,
-      expect.anything(),
-    ]);
+function altitudeColor(property: string, top: number) {
+  return [
+    'case',
+    ['==', ['get', property], null],
+    COLOR_SLATE_400,
+    [
+      'interpolate-lab',
+      ['linear'],
+      ['get', property],
+      0,
+      '#5d0ec0',
+      top / 2,
+      '#0092b8',
+      top,
+      '#9ae600',
+    ],
+  ];
+}
+
+describe('trailColor', () => {
+  it('uses one colour in the fixed mode', () => {
+    expect(trailColor('fixed', MAXIMA)).toBe(COLOR_FUCHSIA_600);
   });
 
-  it('interpolates relative vario continuously on a fixed scale from -5 to +5 m/s', () => {
-    expect(TRAIL_COLOR[3]).toMatchInlineSnapshot(`
-      [
-        "interpolate-lab",
+  it.each(['vario', 'netto', 'relativeVario'] as const)(
+    'colours %s on a fixed scale from -5 to +5 m/s',
+    (mode) => {
+      expect(trailColor(mode, MAXIMA)).toEqual([
+        'case',
+        ['==', ['get', mode], null],
+        COLOR_SLATE_400,
         [
-          "linear",
+          'interpolate-lab',
+          ['linear'],
+          ['get', mode],
+          -5,
+          '#432dd7',
+          -0.25,
+          '#00bcff',
+          0.25,
+          '#fdc700',
+          5,
+          '#e7000b',
         ],
-        [
-          "get",
-          "relativeVario",
-        ],
-        -5,
-        "#432dd7",
-        -0.25,
-        "#00bcff",
-        0.25,
-        "#fdc700",
-        5,
-        "#e7000b",
-      ]
-    `);
+      ]);
+    },
+  );
+
+  it.each([
+    ['altitude', 'altitudeMsl', 2000],
+    ['agl', 'altitudeAgl', 1500],
+  ] as const)('colours %s on a scale from 0 m to the maximum', (mode, property, maximum) => {
+    expect(trailColor(mode, MAXIMA)).toEqual(altitudeColor(property, maximum));
+  });
+
+  it.each([null, 0, -10])('keeps the altitude scale ascending for a maximum of %s', (maximum) => {
+    let maxima = { maxAltitudeMslMeters: maximum, maxAltitudeAglMeters: null };
+
+    expect(trailColor('altitude', maxima)).toEqual(altitudeColor('altitudeMsl', 1));
   });
 });

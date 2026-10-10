@@ -1,17 +1,20 @@
 <script lang="ts">
   import type { GeoJSONSource as MapLibreGeoJSONSource } from 'maplibre-gl';
+  import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
   import type { TrailStore } from '#lib/stores/trail.svelte.js';
 
   import { onMount } from 'svelte';
   import { GeoJSONSource, LineLayer } from 'svelte-maplibre-gl';
 
-  import { TRAIL_COLOR } from './trail';
+  import { trailColor } from './trail';
 
   type Props = {
     trail: TrailStore;
+    colorMode: TrailColorMode;
   };
 
-  let { trail }: Props = $props();
+  let { trail, colorMode }: Props = $props();
+  let color = $derived(trailColor(colorMode, trail));
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
@@ -58,6 +61,6 @@
   <LineLayer
     id="trail"
     layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-    paint={{ 'line-color': TRAIL_COLOR, 'line-width': 3 }}
+    paint={{ 'line-color': color, 'line-width': 3 }}
   />
 </GeoJSONSource>

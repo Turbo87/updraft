@@ -198,6 +198,7 @@
     {mapState}
     {traffic}
     {trail}
+    trailColorMode={settings.current.trailColorMode}
     units={settings.current.units}
     climbAverageMethod={settings.current.climbAverageMethod}
     {testMode}

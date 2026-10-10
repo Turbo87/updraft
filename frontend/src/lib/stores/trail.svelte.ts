@@ -20,6 +20,8 @@ export class TrailStore {
   #pending: { recordingStart: number; samples: TrailSample[] } | null = null;
 
   segments = new TrailSegments();
+  maxAltitudeMslMeters = $state<number | null>(null);
+  maxAltitudeAglMeters = $state<number | null>(null);
 
   constructor(client: Pick<UpdraftClient, 'getTrail'>) {
     this.#client = client;
@@ -29,6 +31,11 @@ export class TrailStore {
     if (topic.topic !== 'trail') return;
 
     let trail = topic.value;
+    if (trail) {
+      this.maxAltitudeMslMeters = trail.maxAltitudeMslMeters;
+      this.maxAltitudeAglMeters = trail.maxAltitudeAglMeters;
+    }
+
     if (trail && trail.recordingStart === this.#pending?.recordingStart) {
       this.#pending.samples.push(trail.sample);
     } else if (trail && trail.recordingStart !== this.segments.recordingStart) {

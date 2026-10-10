@@ -13,6 +13,7 @@
   import type { HillshadeDirection } from '#lib/protocol/generated/HillshadeDirection.js';
   import type { Instruments } from '#lib/protocol/generated/Instruments.js';
   import type { LatLon } from '#lib/protocol/generated/LatLon.js';
+  import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
   import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
   import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
   import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
@@ -57,6 +58,7 @@
     mapState: MapState;
     traffic: TrafficStore;
     trail: TrailStore;
+    trailColorMode: TrailColorMode;
     units: UnitSettings;
     testMode?: boolean;
     testAirspaceData?: GeoJSONSourceSpecification['data'];
@@ -76,6 +78,7 @@
     mapState,
     traffic,
     trail,
+    trailColorMode,
     units,
     testMode = false,
     testAirspaceData,
@@ -205,7 +208,7 @@
       {/key}
     {/if}
     {#if spritesLoaded}
-      <Trail {trail} />
+      <Trail {trail} colorMode={trailColorMode} />
       <Traffic
         {climbAverageMethod}
         {traffic}

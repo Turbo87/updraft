@@ -1,6 +1,7 @@
 use crate::airspace_resource::airspace_resource_response;
 use crate::basemap::basemap_resource_response;
 use crate::terrain::terrain_resource_response;
+use crate::trail_resource::trail_resource_response;
 use std::future::Future;
 use tauri::http::{HeaderValue, Request, Response, StatusCode, header};
 use tauri::{UriSchemeContext, UriSchemeResponder};
@@ -33,6 +34,10 @@ pub fn handle_updraft_uri<R: tauri::Runtime>(
             respond,
         ),
         "/airspace.geojson" => spawn_response(airspace_resource_response(app), respond),
+        "/trail.json" => {
+            let query = request.uri().query().map(str::to_owned);
+            spawn_response(trail_resource_response(app, query), respond);
+        }
         path if path.starts_with("/basemap/") => {
             let path = path["/basemap/".len()..].to_owned();
             spawn_response(basemap_resource_response(app, path), respond);

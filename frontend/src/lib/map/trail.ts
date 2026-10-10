@@ -15,6 +15,7 @@ const TRAIL_LENGTH_MILLISECONDS = 60 * 60 * 1000;
 
 type TrailSegmentProperties = { relativeVario: number | null };
 type TrailSegment = GeoJSON.Feature<GeoJSON.LineString, TrailSegmentProperties> & { id: number };
+type WindowedSegment = { start: number; feature: TrailSegment };
 
 /**
  * Sink and lift use different hues. The narrow blend around zero keeps noise
@@ -40,14 +41,23 @@ export const TRAIL_COLOR: ExpressionSpecification = [
   ],
 ];
 
+/** Returns the UTC of the oldest sample inside the trail length before `newest`. */
+export function trailSince(newest: TrailSample): number {
+  return newest.unixMilliseconds - TRAIL_LENGTH_MILLISECONDS;
+}
+
 /**
  * Keeps the trail segments of the current recording inside the trail length
- * and converts each topic value into one source diff.
+ * and converts each change into one source diff.
  */
 export class TrailSegments {
   #recordingStart: number | null = null;
   #previous: TrailSample | null = null;
-  #segments: { start: number; feature: TrailSegment }[] = [];
+  #segments: WindowedSegment[] = [];
+
+  get recordingStart(): number | null {
+    return this.#recordingStart;
+  }
 
   /** Returns `null` when the source does not change. */
   apply(trail: Trail | null): GeoJSONSourceDiff | null {
@@ -59,18 +69,7 @@ export class TrailSegments {
       return cleared ? { removeAll: true } : null;
     }
 
-    let { sample } = trail;
-    let previous = this.#previous;
-    this.#previous = sample;
-    let since = sample.unixMilliseconds - TRAIL_LENGTH_MILLISECONDS;
-    let kept = this.#segments.findIndex(({ start }) => start >= since);
-    let removed = this.#segments.splice(0, kept === -1 ? this.#segments.length : kept);
-    let added: TrailSegment | null = null;
-    if (previous && previous.unixMilliseconds >= since) {
-      added = segment(previous, sample);
-      this.#segments.push({ start: previous.unixMilliseconds, feature: added });
-    }
-
+    let { removed, added } = this.#append(trail.sample);
     if (removed.length === 0 && !added) return null;
 
     return {
@@ -79,8 +78,46 @@ export class TrailSegments {
     };
   }
 
+  /**
+   * Replaces the trail with the samples of one recording. The samples can be
+   * in any order and can contain duplicates. Returns `null` when the source
+   * does not change.
+   */
+  replace(recordingStart: number, samples: TrailSample[]): GeoJSONSourceDiff | null {
+    let cleared = this.#segments.length > 0;
+    this.#recordingStart = recordingStart;
+    this.#previous = null;
+    this.#segments = [];
+    let sorted = samples.toSorted((a, b) => a.unixMilliseconds - b.unixMilliseconds);
+    for (let sample of sorted) this.#append(sample);
+
+    if (!cleared && this.#segments.length === 0) return null;
+
+    let added = this.#segments.map(({ feature }) => feature);
+    return { removeAll: true, ...(added.length > 0 && { add: added }) };
+  }
+
   featureCollection(): GeoJSON.FeatureCollection<GeoJSON.LineString, TrailSegmentProperties> {
     return { type: 'FeatureCollection', features: this.#segments.map(({ feature }) => feature) };
+  }
+
+  /** Ignores a sample that is not newer than the previous sample. */
+  #append(sample: TrailSample): { removed: WindowedSegment[]; added: TrailSegment | null } {
+    let previous = this.#previous;
+    if (previous && sample.unixMilliseconds <= previous.unixMilliseconds) {
+      return { removed: [], added: null };
+    }
+
+    this.#previous = sample;
+    let since = trailSince(sample);
+    let kept = this.#segments.findIndex(({ start }) => start >= since);
+    let removed = this.#segments.splice(0, kept === -1 ? this.#segments.length : kept);
+    let added: TrailSegment | null = null;
+    if (previous && previous.unixMilliseconds >= since) {
+      added = segment(previous, sample);
+      this.#segments.push({ start: previous.unixMilliseconds, feature: added });
+    }
+    return { removed, added };
   }
 }
 

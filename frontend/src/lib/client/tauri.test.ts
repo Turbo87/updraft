@@ -317,3 +317,25 @@ it('reads installed terrain metadata and propagates read failures', async () => 
     ['get_terrain_file_details', { sourceName: 'missing' }],
   ]);
 });
+
+it.each(['macos', 'windows'] as const)(
+  'reads the trail resource on %s and rejects failed responses',
+  async (os) => {
+    mockConvertFileSrc(os);
+    let origin = os === 'windows' ? 'http://updraft.localhost' : 'updraft://localhost';
+    let samples = [{ unixMilliseconds: 1_000 }];
+    let fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(Response.json(samples))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    vi.stubGlobal('fetch', fetch);
+    let client = new TauriClient();
+
+    expect(await client.getTrail(1_000)).toEqual(samples);
+    await expect(client.getTrail(-5)).rejects.toThrow('Trail resource request failed with 503');
+    expect(fetch.mock.calls).toEqual([
+      [`${origin}/trail.json?since=1000`],
+      [`${origin}/trail.json?since=-5`],
+    ]);
+  },
+);

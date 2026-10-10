@@ -24,6 +24,7 @@ mod task;
 mod terrain;
 #[cfg(test)]
 mod test_support;
+mod trail_resource;
 // A session only exists on Android. `test` keeps the adapter, and the tests
 // that pin the wire contract it implements, compiling on the host.
 #[cfg(any(target_os = "android", test))]
@@ -193,10 +194,12 @@ pub fn run() {
                 let runtime = tauri::async_runtime::handle();
                 let _guard = runtime.inner().enter();
                 let persist = Box::new(settings_file.writer());
+                let recording_path = data_directory.join("state.sqlite");
                 let (recording, record) = flight_recording::load(
-                    data_directory.join("state.sqlite"),
+                    recording_path.clone(),
                     app.state::<Arc<Mutex<terrain::Terrain>>>().inner().clone(),
                 );
+                app.manage(flight_recording::FlightRecordingPath(recording_path));
                 driver::Driver::spawn(
                     snapshot,
                     airspace,

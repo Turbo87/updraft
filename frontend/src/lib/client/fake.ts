@@ -5,6 +5,7 @@ import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.
 import type { PolarId } from '#lib/protocol/generated/PolarId.js';
 import type { TaskCommand } from '#lib/protocol/generated/TaskCommand.js';
 import type { Topic } from '#lib/protocol/generated/Topic.js';
+import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
   ArrivalSubscription,
@@ -122,6 +123,7 @@ export class FakeClient implements UpdraftClient {
   #listeners = new Set<TopicListener>();
   #snapshots = new Map<Topic['topic'], Topic>();
   #bondedBluetoothDevices: BondedBluetoothDevices;
+  #flightRecording: TrailSample[] = [];
 
   constructor(options: FakeClientOptions = {}) {
     this.#bondedBluetoothDevices = options.bondedBluetoothDevices ?? { status: 'unsupported' };
@@ -308,6 +310,18 @@ export class FakeClient implements UpdraftClient {
     return () => {
       this.#listeners.delete(onTopic);
     };
+  }
+
+  async getTrail(since: number): Promise<TrailSample[]> {
+    return this.#flightRecording.filter((sample) => sample.unixMilliseconds >= since);
+  }
+
+  /**
+   * Replaces the samples that `getTrail()` serves. The fake client does not
+   * record the samples of emitted `trail` topics.
+   */
+  setFlightRecording(samples: TrailSample[]): void {
+    this.#flightRecording = samples;
   }
 
   /** Replies with the ID that the core assigns to the first device. */

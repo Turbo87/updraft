@@ -43,7 +43,7 @@ documents for current behavior, and the linked spec issue for planned behavior.
 - [x] **offline-basemap-serving** — scan the application data directory's `enroute` folder for MBTiles basemaps and serve the first matching vector tile. The map uses offline tiles only, with fixed Enroute zoom limits. _(needs: basemap-assets, resource-scheme)_
 - [x] **basemap-inventory** — retain basemap files and load errors in the native inventory. Honor per-file disabled markers at startup without opening disabled files. _(needs: offline-basemap-serving)_
 - [x] **basemap-downloads** — manage Enroute basemaps in Settings → Data, with country selection, a download queue, manual updates, cancellation, recovery, and file details. Physical Android background and screen-lock validation remains pending. _(needs: offline-basemap-serving)_
-- [ ] **snail-trail** — the `trail` topic, the `updraft://` trail resource, fetch and merge, and trail rendering with the defaults: Relative vario, 60 min, and no drift. See [Spec: Trail](https://github.com/Turbo87/updraft/issues/572). _(needs: flight-recording, resource-scheme, frontend-map)_
+- [x] **snail-trail** — the `trail` topic, the `updraft://` trail resource, fetch and merge, and trail rendering with the defaults: Relative vario, 60 min, and no drift. See [Spec: Trail](https://github.com/Turbo87/updraft/issues/572). _(needs: flight-recording, resource-scheme, frontend-map)_
 
 ## Scaffolding
 

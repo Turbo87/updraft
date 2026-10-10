@@ -5,6 +5,7 @@ import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.
 import type { PolarId } from '#lib/protocol/generated/PolarId.js';
 import type { TaskCommand } from '#lib/protocol/generated/TaskCommand.js';
 import type { Topic } from '#lib/protocol/generated/Topic.js';
+import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 import type {
   ArrivalSubscription,
@@ -279,6 +280,12 @@ export class TauriClient implements UpdraftClient {
       closed = true;
       channel.onmessage = () => {};
     };
+  }
+
+  async getTrail(since: number): Promise<TrailSample[]> {
+    let response = await fetch(`${convertFileSrc('trail.json', 'updraft')}?since=${since}`);
+    if (!response.ok) throw new Error(`Trail resource request failed with ${response.status}`);
+    return response.json();
   }
 }
 

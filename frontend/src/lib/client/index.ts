@@ -5,6 +5,7 @@ import type { NavigationTarget } from '#lib/protocol/generated/NavigationTarget.
 import type { PolarId } from '#lib/protocol/generated/PolarId.js';
 import type { TaskCommand } from '#lib/protocol/generated/TaskCommand.js';
 import type { Topic } from '#lib/protocol/generated/Topic.js';
+import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 import type { BondedBluetoothDevices } from './bonded-bluetooth-devices';
 
 export type TopicListener = (topic: Topic) => void;
@@ -129,6 +130,8 @@ export interface UpdraftClient {
    * while the layout owns the only subscription and never unmounts.
    */
   subscribe(onTopic: TopicListener): () => void;
+  /** Reads the flight recording samples with a UTC at or after `since` in Unix milliseconds. */
+  getTrail(since: number): Promise<TrailSample[]>;
   changeSetting(change: ChangeSetting): Promise<void>;
   getPolars(): Promise<PolarId[]>;
   setPolar(polar: PolarId): Promise<void>;

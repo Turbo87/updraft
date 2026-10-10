@@ -54,11 +54,11 @@
   const settings = new SettingsStore();
   const glidePerformance = new GlidePerformanceStore();
   const traffic = new TrafficStore();
-  const trail = new TrailStore();
   const navigation = new NavigationStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
+  const trail = new TrailStore(client);
   const dataActivation = new DataActivation(client, airspace, waypoints, basemaps, terrain);
   const appContext = {
     navigation,

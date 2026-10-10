@@ -1,8 +1,8 @@
 use crate::terrain::Terrain;
-use rusqlite::{Connection, Transaction};
+use rusqlite::{Connection, OpenFlags, Transaction};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use updraft_core::{Sample, UtcInstant, Velocity};
+use updraft_core::{Sample, TrailSample, UtcInstant, Velocity};
 use updraft_geo::LatLon;
 use updraft_units::{Length, MslAltitude, Speed};
 
@@ -134,30 +134,13 @@ impl FlightRecording {
     }
 
     fn stored_recording(&self) -> rusqlite::Result<StoredRecording> {
-        let mut statement = self.connection.prepare(
-            "SELECT utc_ms, latitude_deg, longitude_deg, altitude_msl_m, vario_mps, netto_mps,
-                relative_vario_mps, wind_east_mps, wind_north_mps, system_utc_ms
-            FROM samples ORDER BY rowid",
-        )?;
-        let speed = |value: Option<f64>| value.map(Speed::from_meters_per_second);
+        let mut statement = self.connection.prepare(&format!(
+            "SELECT {SAMPLE_COLUMNS}, system_utc_ms FROM samples ORDER BY rowid"
+        ))?;
         let mut recording = StoredRecording::default();
         let mut rows = statement.query([])?;
         while let Some(row) = rows.next()? {
-            let wind_east = speed(row.get(7)?);
-            let wind_north = speed(row.get(8)?);
-            recording.samples.push(Sample {
-                utc: UtcInstant::from_unix_milliseconds(row.get(0)?),
-                position: LatLon::from_degrees(row.get(1)?, row.get(2)?),
-                altitude_msl: row
-                    .get::<_, Option<f64>>(3)?
-                    .map(|meters| MslAltitude::new(Length::from_meters(meters))),
-                vario: speed(row.get(4)?),
-                netto: speed(row.get(5)?),
-                relative_vario: speed(row.get(6)?),
-                wind: wind_east
-                    .zip(wind_north)
-                    .map(|(east, north)| Velocity { east, north }),
-            });
+            recording.samples.push(sample(row)?);
             recording.stored_utc = Some(UtcInstant::from_unix_milliseconds(row.get(9)?));
         }
         Ok(recording)
@@ -171,6 +154,29 @@ pub struct StoredRecording {
     pub samples: Vec<Sample>,
     /// The shell UTC at which the shell stored the last sample.
     pub stored_utc: Option<UtcInstant>,
+}
+
+/// The columns that `sample()` reads, in order.
+const SAMPLE_COLUMNS: &str = "utc_ms, latitude_deg, longitude_deg, altitude_msl_m, vario_mps,
+    netto_mps, relative_vario_mps, wind_east_mps, wind_north_mps";
+
+fn sample(row: &rusqlite::Row<'_>) -> rusqlite::Result<Sample> {
+    let speed = |value: Option<f64>| value.map(Speed::from_meters_per_second);
+    let wind_east = speed(row.get(7)?);
+    let wind_north = speed(row.get(8)?);
+    Ok(Sample {
+        utc: UtcInstant::from_unix_milliseconds(row.get(0)?),
+        position: LatLon::from_degrees(row.get(1)?, row.get(2)?),
+        altitude_msl: row
+            .get::<_, Option<f64>>(3)?
+            .map(|meters| MslAltitude::new(Length::from_meters(meters))),
+        vario: speed(row.get(4)?),
+        netto: speed(row.get(5)?),
+        relative_vario: speed(row.get(6)?),
+        wind: wind_east
+            .zip(wind_north)
+            .map(|(east, north)| Velocity { east, north }),
+    })
 }
 
 /// Opens the flight recording and reads it for the restore.
@@ -211,6 +217,26 @@ pub fn load(
         let _ = sender.send((write, system_utc));
     };
     (stored, writer)
+}
+
+/// The path of `state.sqlite`.
+pub struct FlightRecordingPath(pub PathBuf);
+
+/// Reads the samples with a UTC at or after `since` in Unix milliseconds.
+///
+/// The read uses a separate read-only connection, so it does not wait for
+/// the writer.
+pub fn trail_samples(path: &Path, since: i64) -> rusqlite::Result<Vec<TrailSample>> {
+    let connection = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    let mut statement = connection.prepare(&format!(
+        "SELECT {SAMPLE_COLUMNS}, terrain_elevation_m FROM samples
+        WHERE utc_ms >= ?1 ORDER BY rowid"
+    ))?;
+    statement
+        .query_map([since], |row| {
+            Ok(TrailSample::new(&sample(row)?, row.get(9)?))
+        })?
+        .collect()
 }
 
 /// Opens the database and returns its `user_version`. Fails when the
@@ -268,18 +294,18 @@ fn insert(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::terrain::tests::{elevation_webp, write_terrain};
     use RecordingWrite::{DiscardRecording, RecordSample, StartRecording};
     use claims::{assert_err, assert_ok};
 
-    const SYSTEM_UTC: UtcInstant = UtcInstant::from_unix_milliseconds(9_000);
+    pub const SYSTEM_UTC: UtcInstant = UtcInstant::from_unix_milliseconds(9_000);
 
     /// Tile 7/64/45 covers this position.
-    const COVERED: (f64, f64) = (46.0, 2.0);
+    pub const COVERED: (f64, f64) = (46.0, 2.0);
 
-    fn terrain(directory: &Path) -> Arc<Mutex<Terrain>> {
+    pub fn terrain(directory: &Path) -> Arc<Mutex<Terrain>> {
         std::fs::create_dir_all(directory.join("enroute/Europe")).unwrap();
         write_terrain(
             &directory.join("enroute/Europe/a.terrain"),
@@ -288,7 +314,7 @@ mod tests {
         Arc::new(Mutex::new(assert_ok!(Terrain::load(directory))))
     }
 
-    fn sample(utc: i64, (latitude, longitude): (f64, f64)) -> Sample {
+    pub fn sample(utc: i64, (latitude, longitude): (f64, f64)) -> Sample {
         Sample {
             utc: UtcInstant::from_unix_milliseconds(utc),
             position: LatLon::from_degrees(latitude, longitude),

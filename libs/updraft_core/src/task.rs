@@ -164,7 +164,7 @@ impl TaskState {
                 let id = self.saved.current.ok_or("The task is empty")?;
                 self.start_tracking(id)?;
             }
-            TaskCommand::Stop => self.saved.status = TaskStatus::Stopped,
+            TaskCommand::Stop => self.saved = Task::default(),
         }
         self.reset_crossing();
         Ok(())

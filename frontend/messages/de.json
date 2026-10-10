@@ -462,6 +462,8 @@
   "task_finish": "Ziel",
   "task_turnpoint": "Wendepunkt",
   "task_stop": "Aufgabe stoppen",
+  "task_stop_confirm_title": "Aufgabe stoppen?",
+  "task_stop_hint": "Alle Aufgabenpunkte werden entfernt.",
   "task_failed": "Die Aufgabenänderung ist fehlgeschlagen oder wurde nicht gespeichert.",
   "task_search": "Wegpunkt suchen",
   "task_running": "Aufgabe wird verfolgt",

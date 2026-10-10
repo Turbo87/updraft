@@ -72,8 +72,11 @@ for (let viewport of [
     await page.getByRole('link', { name: 'Task', exact: true }).click();
     await expect(page.getByText('Tracking task', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Stop task' }).click();
-    await app.emit({ topic: 'task', value: task([0, 2, 1]) });
-    await expect(page.getByText('Task stopped', { exact: true })).toBeVisible();
+    let dialog = page.getByRole('alertdialog', { name: 'Stop the task?' });
+    await dialog.getByRole('button', { name: 'Stop task' }).click();
+    await app.emit({ topic: 'task', value: task([]) });
+    await expect(dialog).toBeHidden();
+    await expect(points).toHaveCount(0);
     expect((await app.navigationCommands()).slice(1)).toEqual([
       ['changeTask', { type: 'move', id: 2, index: 1 }],
       ['changeTask', { type: 'select', id: 2 }],

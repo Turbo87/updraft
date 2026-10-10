@@ -167,8 +167,8 @@ mod tests {
             json!(true)
         );
         assert_eq!(
-            assert_ok!(app.state::<Arc<TaskFile>>().load()).status,
-            updraft_core::TaskStatus::Stopped
+            assert_ok!(app.state::<Arc<TaskFile>>().load()),
+            Task::default()
         );
         claims::assert_none!(assert_ok!(
             app.state::<crate::navigation::NavigationFile>().load()
@@ -189,7 +189,7 @@ mod tests {
             assert_ok!(invoke(&app, "save_task", json!({}))),
             json!(true)
         );
-        assert_eq!(assert_ok!(file.load()).points.len(), 3);
+        assert_eq!(assert_ok!(file.load()).points.len(), 1);
         let logs = tracing_test::internal::global_buf().lock().unwrap().clone();
         assert!(String::from_utf8_lossy(&logs).contains("Could not save task"));
     }

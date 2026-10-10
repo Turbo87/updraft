@@ -58,9 +58,8 @@ details page displays the start and finish times in UTC.
 
 ## Stopping, completion, and storage
 
-**Stop task** pauses tracking and retains the route, current point, and recorded
-times. It clears primary navigation only when that follows the task. Selecting a
-task point or using the task navigation arrow resumes tracking.
+**Stop task** asks for a confirmation. It then clears the route and the
+progress. It clears primary navigation only when that follows the task.
 
 Completion clears primary navigation only when it follows the task. A separate
 goto remains unchanged. Selecting a point after completion resumes tracking,

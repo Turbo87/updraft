@@ -8,6 +8,7 @@
 
   import { getAppContext } from '#lib/app-context.js';
   import Button from '#lib/Button.svelte';
+  import ConfirmDialog from '#lib/ConfirmDialog.svelte';
   import NavigateButton from '#lib/NavigateButton.svelte';
   import { waypointTarget } from '#lib/navigation-target.js';
   import { navigationLabel } from '#lib/navigation.js';
@@ -23,6 +24,7 @@
   let busy = $state(false);
   let error = $state(false);
   let notSaved = $state(false);
+  let confirmingStop = $state(false);
   let loadError = $state(false);
   let retryCount = $state(0);
   $effect(() => {
@@ -74,6 +76,10 @@
     } finally {
       busy = false;
     }
+  }
+  async function stop() {
+    await change({ type: 'stop' });
+    if (!error) confirmingStop = false;
   }
   async function save() {
     busy = true;
@@ -164,11 +170,25 @@
   {#snippet actions()}
     {#if task.points.length >= 2}<NavigateButton target={{ type: 'task' }} />{/if}
     {#if task.points.length}<PinTargetButton target={{ type: 'task' }} />{/if}
-    {#if task.status === 'running'}<Button onclick={() => change({ type: 'stop' })} loading={busy}
-        >{m.task_stop()}</Button
+    {#if task.points.length}<Button
+        variant="destructive-outline"
+        onclick={() => (confirmingStop = true)}
+        disabled={busy}>{m.task_stop()}</Button
       >{/if}
   {/snippet}
 </ScreenScaffold>
+
+<ConfirmDialog
+  bind:open={confirmingStop}
+  title={m.task_stop_confirm_title()}
+  description={m.task_stop_hint()}
+  cancelLabel={m.cancel()}
+  confirmLabel={m.task_stop()}
+  pending={busy}
+  error={error ? m.task_failed() : undefined}
+  onCancel={() => (confirmingStop = false)}
+  onConfirm={() => void stop()}
+/>
 
 <style>
   li {

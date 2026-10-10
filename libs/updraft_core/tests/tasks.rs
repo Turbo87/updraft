@@ -1,7 +1,7 @@
 use claims::{assert_err, assert_none, assert_ok, assert_some_eq};
 use updraft_core::{
     ChangeTask, Core, GetNavigationTarget, GetRecentTargets, GetTask, NavigationTarget,
-    SetNavigationTarget, SettingsSnapshot, TaskCommand, TaskStatus, TaskTime, Timestamp,
+    SetNavigationTarget, SettingsSnapshot, Task, TaskCommand, TaskStatus, TaskTime, Timestamp,
     TrafficTargetId, TrafficTargetIdType,
 };
 
@@ -60,7 +60,7 @@ fn a_task_can_be_edited_selected_and_pinned_independently_of_goto() {
     );
     assert_eq!(core.apply(GetTask, at).response, task);
     assert_ok!(core.apply(ChangeTask(TaskCommand::Stop), at).response);
-    assert_eq!(core.apply(GetTask, at).response.status, TaskStatus::Stopped);
+    assert_eq!(core.apply(GetTask, at).response, Task::default());
 }
 
 fn route() -> Core {
@@ -422,10 +422,7 @@ fn stopping_a_task_clears_only_task_navigation() {
     let at = Timestamp::default();
     assert_ok!(core.apply(ChangeTask(TaskCommand::Stop), at).response);
     assert_none!(core.apply(GetNavigationTarget, at).response);
-    let select = ChangeTask(TaskCommand::Select { id: 0 });
-    assert_ok!(core.apply(select, at).response);
-    let navigation = core.apply(GetNavigationTarget, at).response;
-    assert_some_eq!(navigation, NavigationTarget::Task);
+    let mut core = route();
     let traffic = NavigationTarget::Traffic {
         id: TrafficTargetId::new(TrafficTargetIdType::Icao, 0xABC123),
     };

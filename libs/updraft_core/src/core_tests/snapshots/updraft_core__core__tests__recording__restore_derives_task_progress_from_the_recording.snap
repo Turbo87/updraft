@@ -1,0 +1,18 @@
+---
+source: libs/updraft_core/src/core_tests/recording.rs
+expression: "(task.target, task.progress)"
+---
+(
+    Some(
+        2,
+    ),
+    TaskProgress {
+        reached: 2,
+        start: Some(
+            TaskTime {
+                unix_milliseconds: 1767268800450,
+            },
+        ),
+        finish: None,
+    },
+)

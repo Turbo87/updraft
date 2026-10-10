@@ -37,6 +37,10 @@ sample is available directly after the restart. Without a new wind measurement,
 it stays available for 30 minutes. The circling wind and the 20-second average
 vario are not restored. They fill again in about 60 seconds and 20 seconds.
 
+The core derives task progress from the restored recording and the task route. The pilot
+does not have to fly the reached points again or select a point manually. See
+[Ordered tasks](tasks.md).
+
 ## Storage faults
 
 At startup, the database can fail to open, fail its integrity check, or have a

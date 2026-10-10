@@ -8,6 +8,7 @@ import { page, userEvent } from 'vitest/browser';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { MapState } from '#lib/map-state.svelte.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+import { TrailStore } from '#lib/stores/trail.js';
 import { trafficTarget } from '#lib/traffic.fixture.js';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
 import { mapProps } from './map.fixture';
@@ -337,6 +338,59 @@ it('queries traffic within the transparent 24 pixel hit radius', async () => {
   });
   expect(map.getPaintProperty('traffic-hit', 'circle-radius')).toBe(24);
   expect(visible.map(({ id }) => id)).toEqual(inside.map(({ id }) => id));
+});
+
+/** Adds one sample about 33 m north of the previous sample. */
+function applyTrailSample(trail: TrailStore, seconds: number) {
+  trail.apply({
+    topic: 'trail',
+    value: {
+      recordingStart: 0,
+      sample: {
+        unixMilliseconds: seconds * 1_000,
+        position: { latitudeDegrees: 50.82 + seconds * 0.0003, longitudeDegrees: 6.18 },
+        altitudeMslMeters: 1_000,
+        altitudeAglMeters: 800,
+        varioMetersPerSecond: 1,
+        nettoMetersPerSecond: 1,
+        relativeVarioMetersPerSecond: 1,
+      },
+    },
+  });
+}
+
+it('renders the trail segments before and after the source exists', async () => {
+  let trail = new TrailStore();
+  applyTrailSample(trail, 0);
+  applyTrailSample(trail, 1);
+  let mapState = new MapState();
+  await render(MapComponent, { ...mapProps(mapState), trail });
+  await vi.waitFor(() => expect(mapState.map?.getSource('trail')).toBeDefined());
+  let source = mapState.map!.getSource<GeoJSONSource>('trail')!;
+
+  applyTrailSample(trail, 2);
+
+  await vi.waitFor(async () => {
+    let data = await source.getData();
+    expect(data.type === 'FeatureCollection' && data.features.map(({ id }) => id)).toEqual([
+      1_000, 2_000,
+    ]);
+  });
+});
+
+it('renders trail segments that are shorter than a pixel', async () => {
+  let trail = new TrailStore();
+  for (let seconds = 0; seconds <= 10; seconds++) applyTrailSample(trail, seconds);
+  let mapState = new MapState();
+  await render(MapComponent, { ...mapProps(mapState), trail });
+  await vi.waitFor(() => expect(mapState.map?.getLayer('trail')).toBeDefined());
+  let map = mapState.map!;
+
+  map.jumpTo({ center: [6.18, 50.8215], zoom: 8 });
+  await map.once('idle');
+
+  let ids = map.queryRenderedFeatures({ layers: ['trail'] }).map(({ id }) => id);
+  expect(new Set(ids).size).toBe(10);
 });
 
 it('publishes the map and camera values through the shared map state', async () => {

@@ -16,6 +16,7 @@
   import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
   import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
   import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
+  import type { TrailStore } from '#lib/stores/trail.js';
 
   import { untrack } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
@@ -32,6 +33,7 @@
   import TaskRoute from './TaskRoute.svelte';
   import Terrain from './Terrain.svelte';
   import Traffic from './Traffic.svelte';
+  import Trail from './Trail.svelte';
   import Waypoints from './Waypoints.svelte';
 
   type TestWindow = Window & {
@@ -54,6 +56,7 @@
     hillshadeDirection: HillshadeDirection;
     mapState: MapState;
     traffic: TrafficStore;
+    trail: TrailStore;
     units: UnitSettings;
     testMode?: boolean;
     testAirspaceData?: GeoJSONSourceSpecification['data'];
@@ -72,6 +75,7 @@
     hillshadeDirection,
     mapState,
     traffic,
+    trail,
     units,
     testMode = false,
     testAirspaceData,
@@ -201,6 +205,7 @@
       {/key}
     {/if}
     {#if spritesLoaded}
+      <Trail {trail} />
       <Traffic
         {climbAverageMethod}
         {traffic}
@@ -212,7 +217,7 @@
         <Ownship {position} trackDegrees={gps?.trackDegrees ?? null} />
       {/if}
       {#if airspaceData}
-        <Airspace data={airspaceData} beforeId="traffic-fixed" />
+        <Airspace data={airspaceData} beforeId="trail" />
       {/if}
       {#if waypointData}
         <Waypoints data={waypointData} {showHitAreas} showLandables={!arrivalsReady} />

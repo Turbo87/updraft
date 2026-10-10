@@ -8,6 +8,7 @@ import { render } from 'vitest-browser-svelte';
 import { instrumentsFixture } from '#lib/instruments.fixture.js';
 import { MapState } from '#lib/map-state.svelte.js';
 import { TrafficStore } from '#lib/stores/traffic.svelte.js';
+import { TrailStore } from '#lib/stores/trail.js';
 import Map from './Map.svelte';
 
 const transport = vi.hoisted(() => ({ origin: '' }));
@@ -143,6 +144,7 @@ describe.each(['macos', 'windows'] as const)('%s resource URLs', (os) => {
       let component = await render(Map, {
         mapState,
         traffic: new TrafficStore(),
+        trail: new TrailStore(),
         airspace: { generation: 0, sources: [] },
         hillshadeDirection: 'fixed',
         instruments: instrumentsFixture(),

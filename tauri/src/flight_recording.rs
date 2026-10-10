@@ -134,30 +134,13 @@ impl FlightRecording {
     }
 
     fn stored_recording(&self) -> rusqlite::Result<StoredRecording> {
-        let mut statement = self.connection.prepare(
-            "SELECT utc_ms, latitude_deg, longitude_deg, altitude_msl_m, vario_mps, netto_mps,
-                relative_vario_mps, wind_east_mps, wind_north_mps, system_utc_ms
-            FROM samples ORDER BY rowid",
-        )?;
-        let speed = |value: Option<f64>| value.map(Speed::from_meters_per_second);
+        let mut statement = self.connection.prepare(&format!(
+            "SELECT {SAMPLE_COLUMNS}, system_utc_ms FROM samples ORDER BY rowid"
+        ))?;
         let mut recording = StoredRecording::default();
         let mut rows = statement.query([])?;
         while let Some(row) = rows.next()? {
-            let wind_east = speed(row.get(7)?);
-            let wind_north = speed(row.get(8)?);
-            recording.samples.push(Sample {
-                utc: UtcInstant::from_unix_milliseconds(row.get(0)?),
-                position: LatLon::from_degrees(row.get(1)?, row.get(2)?),
-                altitude_msl: row
-                    .get::<_, Option<f64>>(3)?
-                    .map(|meters| MslAltitude::new(Length::from_meters(meters))),
-                vario: speed(row.get(4)?),
-                netto: speed(row.get(5)?),
-                relative_vario: speed(row.get(6)?),
-                wind: wind_east
-                    .zip(wind_north)
-                    .map(|(east, north)| Velocity { east, north }),
-            });
+            recording.samples.push(sample(row)?);
             recording.stored_utc = Some(UtcInstant::from_unix_milliseconds(row.get(9)?));
         }
         Ok(recording)
@@ -171,6 +154,29 @@ pub struct StoredRecording {
     pub samples: Vec<Sample>,
     /// The shell UTC at which the shell stored the last sample.
     pub stored_utc: Option<UtcInstant>,
+}
+
+/// The columns that `sample()` reads, in order.
+const SAMPLE_COLUMNS: &str = "utc_ms, latitude_deg, longitude_deg, altitude_msl_m, vario_mps,
+    netto_mps, relative_vario_mps, wind_east_mps, wind_north_mps";
+
+fn sample(row: &rusqlite::Row<'_>) -> rusqlite::Result<Sample> {
+    let speed = |value: Option<f64>| value.map(Speed::from_meters_per_second);
+    let wind_east = speed(row.get(7)?);
+    let wind_north = speed(row.get(8)?);
+    Ok(Sample {
+        utc: UtcInstant::from_unix_milliseconds(row.get(0)?),
+        position: LatLon::from_degrees(row.get(1)?, row.get(2)?),
+        altitude_msl: row
+            .get::<_, Option<f64>>(3)?
+            .map(|meters| MslAltitude::new(Length::from_meters(meters))),
+        vario: speed(row.get(4)?),
+        netto: speed(row.get(5)?),
+        relative_vario: speed(row.get(6)?),
+        wind: wind_east
+            .zip(wind_north)
+            .map(|(east, north)| Velocity { east, north }),
+    })
 }
 
 /// Opens the flight recording and reads it for the restore.

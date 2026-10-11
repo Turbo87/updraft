@@ -9,6 +9,9 @@ use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
 
 const DOMAIN_FRESHNESS_LIMIT: Duration = Duration::from_secs(3);
 
+/// Longest GPS fix interval between two tracks that gives a turn rate.
+const TURN_RATE_INTERVAL_LIMIT: Duration = Duration::from_secs(3);
+
 /// A source value and the monotonic time when the core ingested it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Timed<T> {
@@ -43,8 +46,57 @@ pub struct GpsCandidate {
     pub position: Option<Timed<GeoLatLon>>,
     pub altitude: Option<Timed<MslAltitude>>,
     pub track: Option<Timed<Angle>>,
+    /// Ground-track turn rate in degrees per second, clockwise positive.
+    pub turn_rate: Option<Timed<f64>>,
     pub ground_speed: Option<Timed<Speed>>,
     pub fix_time: GpsTimeCandidate,
+    /// The latest track at its GPS fix time.
+    track_fix: Option<(FixTime, Angle)>,
+}
+
+impl GpsCandidate {
+    /// Stores a track and the turn rate since the previous track.
+    ///
+    /// The turn rate is the track change over the GPS fix interval. It needs
+    /// a previous track at most [`TURN_RATE_INTERVAL_LIMIT`] earlier. A
+    /// repeated fix time keeps the previous turn rate.
+    pub fn observe_track(&mut self, track: Angle, fix_time: Option<FixTime>, at: Timestamp) {
+        self.track = Some(Timed::new(track, at));
+        let previous = self
+            .track_fix
+            .zip(fix_time)
+            .and_then(|((time, previous), next)| Some((previous, fix_interval(time, next)?)));
+        self.turn_rate = match previous {
+            Some((_, Duration::ZERO)) => self.turn_rate.map(|rate| Timed::new(rate.value, at)),
+            Some((previous, interval)) if interval <= TURN_RATE_INTERVAL_LIMIT => {
+                let change = (track - previous).normalized_signed().as_degrees();
+                Some(Timed::new(change / interval.as_secs_f64(), at))
+            }
+            _ => None,
+        };
+        if previous.is_none_or(|(_, interval)| interval > Duration::ZERO) {
+            self.track_fix = fix_time.map(|time| (time, track));
+        }
+    }
+}
+
+/// The time from `previous` to `time`, if `time` is not earlier.
+///
+/// A time of day after midnight follows a time of day before midnight.
+fn fix_interval(previous: FixTime, time: FixTime) -> Option<Duration> {
+    const DAY: i64 = 86_400_000;
+    let milliseconds = match (previous, time) {
+        (FixTime::UtcInstant(previous), FixTime::UtcInstant(time)) => {
+            time.unix_milliseconds() - previous.unix_milliseconds()
+        }
+        (FixTime::UtcTimeOfDay(previous), FixTime::UtcTimeOfDay(time)) => {
+            let change = i64::from(time.milliseconds_since_midnight())
+                - i64::from(previous.milliseconds_since_midnight());
+            change.rem_euclid(DAY)
+        }
+        _ => return None,
+    };
+    u64::try_from(milliseconds).ok().map(Duration::from_millis)
 }
 
 /// Stores the latest canonical GPS fix times from one source.
@@ -129,6 +181,8 @@ pub struct GpsSnapshot {
     pub position: GeoLatLon,
     pub altitude_msl: Option<Timed<MslAltitude>>,
     pub track: Option<Timed<Angle>>,
+    /// Ground-track turn rate in degrees per second, clockwise positive.
+    pub turn_rate: Option<Timed<f64>>,
     pub ground_speed: Option<Timed<Speed>>,
     pub fix_time: Option<Timed<FixTime>>,
 }
@@ -142,6 +196,7 @@ impl GpsSnapshot {
                 longitude_degrees: self.position.longitude().as_degrees(),
             },
             track_degrees: self.track.map(|track| track.value.as_degrees()),
+            turn_rate_degrees_per_second: self.turn_rate.map(|rate| rate.value),
             ground_speed_meters_per_second: self
                 .ground_speed
                 .map(|speed| speed.value.as_meters_per_second()),
@@ -164,6 +219,7 @@ pub fn select_gps_candidate(
     let position_value = position.fresh_value(at)?;
     let altitude_msl = candidate.altitude.and_then(|altitude| altitude.fresh(at));
     let track = candidate.track.and_then(|track| track.fresh(at));
+    let turn_rate = candidate.turn_rate.and_then(|rate| rate.fresh(at));
     let ground_speed = candidate.ground_speed.and_then(|speed| speed.fresh(at));
     let full = candidate.fix_time.full.and_then(|time| time.fresh(at));
     let time_only = candidate.fix_time.time_only.and_then(|time| time.fresh(at));
@@ -184,6 +240,7 @@ pub fn select_gps_candidate(
             position: position_value,
             altitude_msl,
             track,
+            turn_rate,
             ground_speed,
             fix_time,
         },
@@ -237,6 +294,7 @@ mod tests {
                 Angle::from_degrees(270.0),
                 Timestamp::from_millis(0),
             )),
+            turn_rate: Some(Timed::new(-12.5, Timestamp::from_millis(0))),
             ground_speed: Some(Timed::new(
                 Speed::from_meters_per_second(45.0),
                 Timestamp::from_millis(0),
@@ -248,6 +306,7 @@ mod tests {
 
         assert_some_eq!(published.altitude_meters, 200.0);
         assert_some_eq!(published.track_degrees, 270.0);
+        assert_some_eq!(published.turn_rate_degrees_per_second, -12.5);
         assert_some_eq!(published.ground_speed_meters_per_second, 45.0);
         assert_eq!(
             published.position,

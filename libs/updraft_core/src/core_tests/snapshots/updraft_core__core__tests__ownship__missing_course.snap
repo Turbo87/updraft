@@ -1,0 +1,8 @@
+---
+source: libs/updraft_core/src/core_tests/ownship.rs
+expression: "turn_rates(&[(0, Some(90.)), (1, Some(100.)), (2, None), (3, Some(120.))])"
+---
+120000.00    90   none
+120001.00   100   10.0
+120002.00         10.0
+120003.00   120   10.0

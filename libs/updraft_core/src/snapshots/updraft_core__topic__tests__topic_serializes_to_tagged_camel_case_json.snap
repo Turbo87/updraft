@@ -13,6 +13,7 @@ expression: topic
       "altitudeMeters": null,
       "groundSpeedMetersPerSecond": 45.0,
       "trackDegrees": 270.0,
+      "turnRateDegreesPerSecond": null,
       "fixTime": {
         "type": "utcInstant",
         "unixMilliseconds": 1767268800000

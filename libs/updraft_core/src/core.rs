@@ -2,7 +2,7 @@ use crate::climb::Velocity;
 use crate::connection::ExternalDeviceId;
 use crate::effect::Effect;
 use crate::external_device::{ExternalDevices, InvalidExternalDeviceOrder, UnknownExternalDevice};
-use crate::fix::{Fix, UtcInstant, UtcTime};
+use crate::fix::{Fix, FixTime, UtcInstant, UtcTime};
 use crate::input::{
     AddExternalDevice, Bytes, ChangeSetting, ConnectionChanged, DeleteExternalDevice,
     EditExternalDevice, GetAirspaceSnapshot, Input, InternalGps, ReorderExternalDevices,
@@ -322,7 +322,8 @@ impl Core {
             self.internal_gps.altitude = Some(Timed::new(altitude, at));
         }
         if let Some(track) = fix.track {
-            self.internal_gps.track = Some(Timed::new(track, at));
+            let fix_time = fix.fix_time.map(FixTime::UtcInstant);
+            self.internal_gps.observe_track(track, fix_time, at);
         }
         if let Some(speed) = fix.ground_speed {
             self.internal_gps.ground_speed = Some(Timed::new(speed, at));
@@ -362,15 +363,18 @@ impl Core {
                 let Some(device) = self.external_devices.get_mut(device_id) else {
                     return;
                 };
+                let mut track_time = None;
                 if let Some(time) = rmc.utc_time {
                     if let Some(date) = rmc.date {
                         if let Some(fix_time) = UtcInstant::from_nmea_date_time(date, time) {
                             device.gps.fix_time.full = Some(Timed::new(fix_time, at));
                             device.gps.fix_time.time_only = None;
+                            track_time = Some(FixTime::UtcInstant(fix_time));
                         }
                     } else {
                         let fix_time = UtcTime::from_nmea_time(time);
                         device.gps.fix_time.time_only = Some(Timed::new(fix_time, at));
+                        track_time = Some(FixTime::UtcTimeOfDay(fix_time));
                     }
                 }
                 if let Some(position) = rmc.position {
@@ -378,7 +382,7 @@ impl Core {
                     position_updated = true;
                 }
                 if let Some(course) = rmc.course_over_ground {
-                    device.gps.track = Some(Timed::new(course, at));
+                    device.gps.observe_track(course, track_time, at);
                 }
                 if let Some(speed) = rmc.speed_over_ground {
                     device.gps.ground_speed = Some(Timed::new(speed, at));

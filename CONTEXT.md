@@ -29,6 +29,10 @@ a frontend connected to the core (local Tauri webview, browser, or secondary cli
 **CUP**:
 SeeYou waypoint/task file format.
 
+**Dead reckoning**:
+the short, display-only advance of an aircraft symbol from its latest received position along its ground speed, track, and turn rate.
+_Avoid_: projection, interpolation, animation
+
 **Derived airspeed**:
 true airspeed that Updraft calculates from ground velocity and wind when no airspeed source supplies it.
 _Avoid_: inferred airspeed, estimated airspeed

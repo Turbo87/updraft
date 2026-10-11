@@ -102,6 +102,7 @@ describe('flightInfoboxes', () => {
           altitudeMeters: 999,
           groundSpeedMetersPerSecond: 31,
           trackDegrees: 90,
+          turnRateDegreesPerSecond: null,
           fixTime: null,
           stale: true,
         },

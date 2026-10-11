@@ -6,6 +6,7 @@ export const INFOBOX_INSTRUMENTS: Instruments = {
     altitudeMeters: 1230,
     groundSpeedMetersPerSecond: 31,
     trackDegrees: 24,
+    turnRateDegreesPerSecond: null,
     fixTime: null,
     stale: false,
   },

@@ -5,4 +5,8 @@ import type { LatLon } from "./LatLon";
 /**
  * The selected GPS domain at the frontend boundary.
  */
-export type GpsInstruments = { position: LatLon, altitudeMeters: number | null, groundSpeedMetersPerSecond: number | null, trackDegrees: number | null, fixTime: FixTime | null, stale: boolean, };
+export type GpsInstruments = { position: LatLon, altitudeMeters: number | null, groundSpeedMetersPerSecond: number | null, trackDegrees: number | null, 
+/**
+ * Ground-track turn rate, clockwise positive.
+ */
+turnRateDegreesPerSecond: number | null, fixTime: FixTime | null, stale: boolean, };

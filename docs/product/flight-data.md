@@ -52,6 +52,17 @@ day. The core ignores an invalid GGA fix quality.
 An external source can combine RMC and GGA fields. The position ingestion time
 anchors the selected GPS snapshot.
 
+Each GPS source calculates a ground-track turn rate. The turn rate is the
+signed change from the previous track to the new track, divided by the GPS fix
+interval. A right turn is positive. The core does not smooth the turn rate, and
+it does not limit it. The turn rate needs two tracks with fix times at most
+3 seconds apart. A repeated fix time keeps the previous turn rate. A fix
+without a time, an earlier fix time, or a longer interval clears it. The turn
+rate stays fresh only as long as its track.
+
+This turn rate supplies dead reckoning of the ownship symbol. It is separate
+from the turn rate that the estimator uses for the bank angle.
+
 Android GNSS supplies a complete UTC instant and ellipsoid altitude. The core
 uses EGM96 to convert ellipsoid altitude to mean-sea-level altitude.
 

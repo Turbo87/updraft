@@ -57,6 +57,7 @@ fn gps(second: u64) -> GpsSnapshot {
         position: LatLon::from_degrees(50.8, 6.2),
         altitude_msl: Some(Timed::new(altitude, at)),
         track: Some(Timed::new(Angle::from_degrees(6. * second as f64), at)),
+        turn_rate: None,
         ground_speed: Some(Timed::new(Speed::from_kilometers_per_hour(120.), at)),
         fix_time: None,
     }

@@ -6,7 +6,7 @@
   import { onMount } from 'svelte';
   import { GeoJSONSource, LineLayer } from 'svelte-maplibre-gl';
 
-  import { trailColor } from './trail';
+  import { trailColor, trailTranslate } from './trail';
 
   type Props = {
     trail: TrailStore;
@@ -15,6 +15,7 @@
 
   let { trail, colorMode }: Props = $props();
   let color = $derived(trailColor(colorMode, trail));
+  let translate = $derived(trailTranslate(trail.translation));
 
   let source: MapLibreGeoJSONSource | undefined = $state();
   let updateQueue = Promise.resolve();
@@ -61,6 +62,6 @@
   <LineLayer
     id="trail"
     layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-    paint={{ 'line-color': color, 'line-width': 3 }}
+    paint={{ 'line-color': color, 'line-translate': translate, 'line-width': 3 }}
   />
 </GeoJSONSource>

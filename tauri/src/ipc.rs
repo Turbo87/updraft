@@ -762,6 +762,20 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn trail_drift_compensation_command_accepts_only_booleans() {
+        let app = app();
+        let command = "change_setting";
+        let body =
+            |enabled| json!({ "change": { "type": "trailDriftCompensation", "enabled": enabled } });
+        for enabled in [json!(true), json!(false)] {
+            claims::assert_ok_eq!(invoke(&app, command, body(enabled)), Value::Null);
+        }
+        for enabled in [json!(null), json!(1), json!("true")] {
+            claims::assert_err!(invoke(&app, command, body(enabled)));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn arrival_reserve_command_accepts_nonnegative_meters() {
         let app = app();
         let command = "change_setting";

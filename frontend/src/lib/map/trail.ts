@@ -1,5 +1,6 @@
 import type * as GeoJSON from 'geojson';
 import type { ExpressionSpecification, GeoJSONSourceDiff } from 'maplibre-gl';
+import type { DerivedWindInstruments } from '#lib/protocol/generated/DerivedWindInstruments.js';
 import type { Trail } from '#lib/protocol/generated/Trail.js';
 import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
 import type { TrailLength } from '#lib/protocol/generated/TrailLength.js';
@@ -19,6 +20,20 @@ import {
 } from './colors.generated';
 
 const MINUTE_MILLISECONDS = 60 * 1000;
+const EARTH_RADIUS_METERS = 6_371_008.8;
+/** The width of the world at zoom 0 in MapLibre pixels. */
+const WORLD_PIXELS = 512;
+const MAX_ZOOM = 24;
+
+/** A smaller change of the wind estimate keeps the trail, so that each fix does not rebuild it. */
+const MIN_WIND_CHANGE_METERS_PER_SECOND = 0.5;
+
+/**
+ * `line-translate` moves only the features of the loaded tiles. A rebuild
+ * after this age keeps the translation short, so that the trail does not
+ * leave its tiles.
+ */
+const MAX_DRIFT_REFERENCE_AGE_MILLISECONDS = 30 * 1000;
 
 /** Keeps the stops of an altitude scale in ascending order. */
 const MIN_ALTITUDE_SCALE_METERS = 1;
@@ -31,7 +46,15 @@ type TrailSegmentProperties = {
   relativeVario: number | null;
 };
 type TrailSegment = GeoJSON.Feature<GeoJSON.LineString, TrailSegmentProperties> & { id: number };
-type WindowedSegment = { start: number; feature: TrailSegment };
+type WindowedSegment = { from: TrailSample; to: TrailSample; feature: TrailSegment };
+
+/** The velocity of the air mass. */
+type Velocity = { eastMetersPerSecond: number; northMetersPerSecond: number };
+/** The segment geometry contains the drift of each point relative to the `reference` UTC. */
+type Drift = { wind: Velocity; reference: number };
+
+/** The drift of the whole trail since the reference UTC. */
+export type TrailTranslation = { eastMeters: number; northMeters: number; latitudeDegrees: number };
 
 export type TrailMaxima = Pick<Trail, 'maxAltitudeMslMeters' | 'maxAltitudeAglMeters'>;
 
@@ -107,6 +130,22 @@ function colorOrNoValue(
   return ['case', ['==', ['get', property], null], COLOR_SLATE_400, color];
 }
 
+/** Returns the `line-translate` of the trail. The pixel distance doubles with each zoom level. */
+export function trailTranslate(
+  translation: TrailTranslation | null,
+): [number, number] | ExpressionSpecification {
+  if (!translation) return [0, 0];
+
+  let { eastMeters, northMeters, latitudeDegrees } = translation;
+  let circumference = 2 * Math.PI * EARTH_RADIUS_METERS * Math.cos(radians(latitudeDegrees));
+  function pixels(zoom: number): ExpressionSpecification {
+    let scale = (WORLD_PIXELS * 2 ** zoom) / circumference;
+    return ['literal', [eastMeters * scale, -northMeters * scale]];
+  }
+
+  return ['interpolate', ['exponential', 2], ['zoom'], 0, pixels(0), MAX_ZOOM, pixels(MAX_ZOOM)];
+}
+
 /**
  * Keeps the trail segments of the current recording inside the trail length
  * and converts each change into one source diff.
@@ -116,6 +155,7 @@ export class TrailSegments {
   #previous: TrailSample | null = null;
   #segments: WindowedSegment[] = [];
   #length: TrailLength = defaultSettings().trailLength;
+  #drift: Drift | null = null;
 
   get recordingStart(): number | null {
     return this.#recordingStart;
@@ -144,6 +184,34 @@ export class TrailSegments {
     return removed.length > 0 ? { remove: removed.map(({ feature }) => feature.id) } : null;
   }
 
+  /**
+   * Moves each point downwind by its age multiplied by `wind`. `null` turns
+   * the drift off. Returns `null` when the source does not change.
+   */
+  drift(wind: DerivedWindInstruments | null): GeoJSONSourceDiff | null {
+    let velocity = wind && airMassVelocity(wind);
+    let current = this.#drift?.wind ?? null;
+    let unchanged = velocity && current ? !changed(current, velocity) : velocity === current;
+    if (unchanged) return null;
+
+    this.#drift = velocity && { wind: velocity, reference: 0 };
+    let features = this.#rebuild();
+    return features.length > 0 ? { removeAll: true, add: features } : null;
+  }
+
+  /** Returns `null` without drift. */
+  translation(): TrailTranslation | null {
+    let newest = this.#previous;
+    if (!this.#drift || !newest) return null;
+
+    let seconds = (newest.unixMilliseconds - this.#drift.reference) / 1000;
+    return {
+      eastMeters: seconds * this.#drift.wind.eastMetersPerSecond,
+      northMeters: seconds * this.#drift.wind.northMetersPerSecond,
+      latitudeDegrees: newest.position.latitudeDegrees,
+    };
+  }
+
   /** Returns `null` when the source does not change. */
   apply(trail: Trail | null): GeoJSONSourceDiff | null {
     if (trail === null || trail.recordingStart !== this.#recordingStart) {
@@ -151,10 +219,20 @@ export class TrailSegments {
       this.#recordingStart = trail?.recordingStart ?? null;
       this.#previous = trail?.sample ?? null;
       this.#segments = [];
+      this.#rebase();
       return cleared ? { removeAll: true } : null;
     }
 
     let { removed, added } = this.#append(trail.sample);
+    let reference = this.#drift?.reference;
+    if (
+      reference !== undefined &&
+      trail.sample.unixMilliseconds - reference > MAX_DRIFT_REFERENCE_AGE_MILLISECONDS
+    ) {
+      let cleared = removed.length > 0 || this.#segments.length > 0;
+      let features = this.#rebuild();
+      return cleared ? { removeAll: true, ...(features.length > 0 && { add: features }) } : null;
+    }
     if (removed.length === 0 && !added) return null;
 
     return {
@@ -171,9 +249,10 @@ export class TrailSegments {
   replace(recordingStart: number, samples: TrailSample[]): GeoJSONSourceDiff | null {
     let cleared = this.#segments.length > 0;
     this.#recordingStart = recordingStart;
+    let sorted = samples.toSorted((a, b) => a.unixMilliseconds - b.unixMilliseconds);
+    this.#rebase(sorted.at(-1) ?? null);
     this.#previous = null;
     this.#segments = [];
-    let sorted = samples.toSorted((a, b) => a.unixMilliseconds - b.unixMilliseconds);
     for (let sample of sorted) this.#append(sample);
 
     if (!cleared && this.#segments.length === 0) return null;
@@ -198,25 +277,56 @@ export class TrailSegments {
     let removed = this.#trim(since);
     let added: TrailSegment | null = null;
     if (previous && previous.unixMilliseconds >= since) {
-      added = segment(previous, sample);
-      this.#segments.push({ start: previous.unixMilliseconds, feature: added });
+      added = segment(previous, sample, this.#drift);
+      this.#segments.push({ from: previous, to: sample, feature: added });
     }
     return { removed, added };
   }
 
   #trim(since: number): WindowedSegment[] {
-    let kept = this.#segments.findIndex(({ start }) => start >= since);
+    let kept = this.#segments.findIndex(({ from }) => from.unixMilliseconds >= since);
     return this.#segments.splice(0, kept === -1 ? this.#segments.length : kept);
+  }
+
+  /** Moves the drift reference to the newest sample, so that the translation is zero. */
+  #rebase(newest = this.#previous): void {
+    if (this.#drift && newest) this.#drift.reference = newest.unixMilliseconds;
+  }
+
+  #rebuild(): TrailSegment[] {
+    this.#rebase();
+    for (let windowed of this.#segments) {
+      windowed.feature = segment(windowed.from, windowed.to, this.#drift);
+    }
+    return this.#segments.map(({ feature }) => feature);
   }
 }
 
-function segment(from: TrailSample, to: TrailSample): TrailSegment {
+/** The wind direction is the direction that the wind comes from. */
+function airMassVelocity({
+  directionDegrees,
+  speedMetersPerSecond,
+}: DerivedWindInstruments): Velocity {
+  let direction = radians(directionDegrees);
+  return {
+    eastMetersPerSecond: -speedMetersPerSecond * Math.sin(direction),
+    northMetersPerSecond: -speedMetersPerSecond * Math.cos(direction),
+  };
+}
+
+function changed(a: Velocity, b: Velocity): boolean {
+  let east = a.eastMetersPerSecond - b.eastMetersPerSecond;
+  let north = a.northMetersPerSecond - b.northMetersPerSecond;
+  return Math.hypot(east, north) > MIN_WIND_CHANGE_METERS_PER_SECOND;
+}
+
+function segment(from: TrailSample, to: TrailSample, drift: Drift | null): TrailSegment {
   return {
     type: 'Feature',
     id: to.unixMilliseconds,
     geometry: {
       type: 'LineString',
-      coordinates: [coordinates(from), coordinates(to)],
+      coordinates: [coordinates(from, drift), coordinates(to, drift)],
     },
     properties: {
       altitudeMsl: to.altitudeMslMeters,
@@ -228,6 +338,24 @@ function segment(from: TrailSample, to: TrailSample): TrailSegment {
   };
 }
 
-function coordinates(sample: TrailSample): GeoJSON.Position {
-  return [sample.position.longitudeDegrees, sample.position.latitudeDegrees];
+/** A point older than the drift reference moves downwind, and a newer point moves upwind. */
+function coordinates(sample: TrailSample, drift: Drift | null): GeoJSON.Position {
+  let { longitudeDegrees, latitudeDegrees } = sample.position;
+  if (!drift) return [longitudeDegrees, latitudeDegrees];
+
+  let seconds = (drift.reference - sample.unixMilliseconds) / 1000;
+  let east = seconds * drift.wind.eastMetersPerSecond;
+  let north = seconds * drift.wind.northMetersPerSecond;
+  return [
+    longitudeDegrees + degrees(east / (EARTH_RADIUS_METERS * Math.cos(radians(latitudeDegrees)))),
+    latitudeDegrees + degrees(north / EARTH_RADIUS_METERS),
+  ];
+}
+
+function radians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+function degrees(radians: number): number {
+  return (radians * 180) / Math.PI;
 }

@@ -760,6 +760,9 @@ impl Input for ChangeSetting {
             Self::HillshadeDirection { direction } => core.settings.hillshade_direction = direction,
             Self::TrailColorMode { mode } => core.settings.trail_color_mode = mode,
             Self::TrailLength { length } => core.settings.trail_length = length,
+            Self::TrailDriftCompensation { enabled } => {
+                core.settings.trail_drift_compensation = enabled;
+            }
         }
         if core.settings == previous {
             return Update::empty();

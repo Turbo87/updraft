@@ -51,10 +51,11 @@ new waypoint arrival calculations.
 ## Ownership and updates
 
 The core owns the active locale, display units, hillshade direction, trail
-colour mode, trail length, glide polar, arrival reserve, and external-device
-configuration. The `Settings` topic contains the active locale, units,
-hillshade direction, trail colour mode, trail length, polar, and arrival
-reserve. The `ExternalDevices` topic publishes the separate device projection.
+colour mode, trail length, trail drift compensation, glide polar, arrival
+reserve, and external-device configuration. The `Settings` topic contains the
+active locale, units, hillshade direction, trail colour mode, trail length,
+trail drift compensation, polar, and arrival reserve. The `ExternalDevices`
+topic publishes the separate device projection.
 
 The frontend can show an optimistic control value while a command is pending.
 The next topic remains authoritative. A rejected command clears the optimistic
@@ -67,8 +68,8 @@ topic and requests persistence of the complete snapshot.
 
 The Tauri shell stores `settings.json` in the application configuration
 directory. The file contains the locale, unit selections, hillshade direction,
-trail colour mode, trail length, glide polar, arrival reserve, and
-external-device configuration.
+trail colour mode, trail length, trail drift compensation, glide polar, arrival
+reserve, and external-device configuration.
 
 A missing file loads defaults and remains absent until a setting changes. A
 malformed or unreadable file produces a warning and loads defaults. Updraft
@@ -135,6 +136,16 @@ reads the trail again from the flight recording. The control rejects other
 values. A pending command disables the control. Failure restores the published
 value and shows an error. The length is saved across restarts, and a settings
 file without this field uses the default.
+
+Trail drift compensation moves each trail point downwind by its age multiplied
+by the current wind estimate. A thermal then shows as a column relative to the
+air mass. The age counts back from the UTC of the newest sample. A stale wind
+estimate is used. Without a wind estimate, the trail has no drift. The trail
+keeps its wind until the estimate changes by more than 0.5 m/s. The Map page
+turns drift compensation on or off. It is off by default. A pending command
+disables the control. Failure restores the published value and shows an error.
+The selection is saved across restarts, and a settings file without this field
+uses the default.
 
 ## Glide settings
 

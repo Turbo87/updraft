@@ -128,6 +128,9 @@ pub enum ChangeSetting {
     TrailLength {
         length: crate::TrailLength,
     },
+    TrailDriftCompensation {
+        enabled: bool,
+    },
 }
 
 /// Selects the persisted glide polar.

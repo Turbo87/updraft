@@ -14,6 +14,8 @@ function props(overrides: Partial<ComponentProps<typeof MapSettings>> = {}) {
     setTrailColorMode: vi.fn(),
     trailLength: 60,
     setTrailLength: vi.fn(),
+    trailDriftCompensation: false,
+    setTrailDriftCompensation: vi.fn(),
     ...overrides,
   } satisfies ComponentProps<typeof MapSettings>;
 }
@@ -118,4 +120,28 @@ it('rejects a trail length outside the range and restores the value after failur
     .toHaveTextContent('Could not change the trail length.');
   await expect.element(input).toHaveValue(60);
   await expect.element(input).toBeEnabled();
+});
+
+it('turns trail drift compensation on and restores the published value after failure', async () => {
+  let setTrailDriftCompensation = vi.fn().mockRejectedValueOnce(new Error('driver stopped'));
+  let screen = await render(MapSettings, props({ setTrailDriftCompensation }));
+  let group = page.getByRole('group', { name: 'Trail drift compensation' });
+  let enabled = group.getByRole('radio', { name: 'Enabled' });
+  let disabled = group.getByRole('radio', { name: 'Disabled' });
+  await expect.element(disabled).toBeChecked();
+
+  await enabled.click();
+
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not change trail drift compensation.');
+  await expect.element(disabled).toBeChecked();
+  expect(setTrailDriftCompensation).toHaveBeenCalledExactlyOnceWith(true);
+
+  setTrailDriftCompensation.mockResolvedValue(undefined);
+  await enabled.click();
+  await screen.rerender({ trailDriftCompensation: true });
+  await expect.element(enabled).toBeChecked();
+  await disabled.click();
+  expect(setTrailDriftCompensation).toHaveBeenLastCalledWith(false);
 });

@@ -123,6 +123,8 @@ pub struct Settings {
     pub trail_color_mode: TrailColorMode,
     #[serde(default)]
     pub trail_length: TrailLength,
+    #[serde(default)]
+    pub trail_drift_compensation: bool,
     pub locale: Option<Locale>,
     #[serde(default)]
     pub polar: PolarId,
@@ -149,6 +151,7 @@ impl Default for Settings {
             hillshade_direction: HillshadeDirection::default(),
             trail_color_mode: TrailColorMode::default(),
             trail_length: TrailLength::default(),
+            trail_drift_compensation: false,
             locale: None,
             polar: PolarId::default(),
             arrival_reserve: ArrivalReserve::default(),

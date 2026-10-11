@@ -21,5 +21,8 @@
     setTrailColorMode={(mode) => client.changeSetting({ type: 'trailColorMode', mode })}
     trailLength={settings.current.trailLength}
     setTrailLength={(length) => client.changeSetting({ type: 'trailLength', length })}
+    trailDriftCompensation={settings.current.trailDriftCompensation}
+    setTrailDriftCompensation={(enabled) =>
+      client.changeSetting({ type: 'trailDriftCompensation', enabled })}
   />
 </ScreenScaffold>

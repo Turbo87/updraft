@@ -420,6 +420,7 @@ mod tests {
             "hillshadeDirection": "fixed",
             "trailColorMode": "relativeVario",
             "trailLength": 60,
+            "trailDriftCompensation": false,
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

@@ -1304,11 +1304,9 @@ impl Core {
         self.observe_task_fix(fix);
     }
 
-    fn observe_task_fix(&mut self, fix: crate::ownship::Selected<GpsSnapshot>) {
-        if self.task_fix == Some(fix) {
-            return;
-        }
-        self.task_fix = Some(fix);
+    /// The fix UTC, or the device UTC without a fix time. A fix time of day
+    /// takes its date from the device UTC.
+    fn fix_utc(&self, fix: crate::ownship::Selected<GpsSnapshot>) -> Option<UtcInstant> {
         let utc = fix
             .value
             .fix_time
@@ -1338,7 +1336,15 @@ impl Core {
             ),
             _ => utc,
         };
-        let Some(utc) = utc.map(UtcInstant::from_unix_milliseconds) else {
+        utc.map(UtcInstant::from_unix_milliseconds)
+    }
+
+    fn observe_task_fix(&mut self, fix: crate::ownship::Selected<GpsSnapshot>) {
+        if self.task_fix == Some(fix) {
+            return;
+        }
+        self.task_fix = Some(fix);
+        let Some(utc) = self.fix_utc(fix) else {
             return;
         };
         let Some(starts_recording) = self.recorder.observe(utc, fix.value.position) else {

@@ -11,7 +11,7 @@
       docs: {
         description: {
           component:
-            'Use the Settings index as the direct entry from the Flight View. Three cards group flight settings, data and devices, and application preferences. Each 56-pixel row opens one destination. Show the current language and build date. Keep either value visible as an em dash when its data is unavailable.',
+            'Use the Settings index for saved settings. The Main Menu opens it. Three cards group flight settings, data and devices, and application preferences. Each 56-pixel row opens one destination. Show the current language. Keep it visible as an em dash when its data is unavailable.',
         },
       },
     },
@@ -20,7 +20,7 @@
 
 <Story name="Current values" asChild>
   <div class="settings-index-story">
-    <SettingsIndexScreen buildDate="15 Aug 2026" language="English" />
+    <SettingsIndexScreen language="English" />
   </div>
 </Story>
 <Story name="Unknown values" asChild>
@@ -30,7 +30,7 @@
 </Story>
 <Story name="Updates available" asChild>
   <div class="settings-index-story">
-    <SettingsIndexScreen buildDate="15 Aug 2026" language="English" updateCount={2} />
+    <SettingsIndexScreen language="English" updateCount={2} />
   </div>
 </Story>
 

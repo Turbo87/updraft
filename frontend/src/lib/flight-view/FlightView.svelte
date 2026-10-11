@@ -106,9 +106,9 @@
       />
       <div class="overlay">
         <MapOverlayControl
-          href={resolve('/settings')}
+          href={resolve('/menu')}
           icon="i-mdi-menu"
-          label={m.settings_heading()}
+          label={m.main_menu_heading()}
         />
       </div>
     </div>

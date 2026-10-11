@@ -26,6 +26,7 @@ test('activation and removal publish basemap generations without moving the map'
   async function status() {
     return page.evaluate(() => window.__updraftApp!.basemaps.current);
   }
+  await page.getByRole('link', { name: 'Main menu' }).click();
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
   await page.getByRole('link', { name: 'Data', exact: true }).click();
   await page.getByRole('button', { name: /^local / }).click();

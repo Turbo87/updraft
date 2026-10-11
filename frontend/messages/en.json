@@ -243,6 +243,8 @@
   "quit_app_confirm_title": "Quit Updraft?",
   "quit_app_hint": "Stops background navigation and closes the app.",
   "back_to_settings": "Back to settings",
+  "main_menu_heading": "Main menu",
+  "back_to_main_menu": "Back to main menu",
   "about_heading": "About",
   "about_source_heading": "Source",
   "about_build_heading": "Build",

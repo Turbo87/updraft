@@ -21,6 +21,7 @@ test.describe('with an unsupported browser language', () => {
 
   test('falls back to English and sends language and unit changes', async ({ page, app }) => {
     await app.open('/');
+    await page.getByRole('link', { name: 'Main menu' }).click();
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('link', { name: 'Language' }).click();
 
@@ -53,15 +54,15 @@ test.describe('with an unsupported browser language', () => {
     await expect(altitude.getByRole('radio', { name: 'ft', exact: true })).toBeChecked();
 
     await page.getByRole('link', { name: 'Zurück zu den Einstellungen' }).click();
+    await page.getByRole('link', { name: 'Zurück zum Hauptmenü' }).click();
     await page.getByRole('link', { name: 'Zurück zur Flugansicht' }).click();
     await expect(page).toHaveURL('/');
   });
 });
 
-test('shows a menu with dedicated settings routes and top back links', async ({ page, app }) => {
-  await app.open('/settings');
+test('shows a main menu with dedicated routes and top back links', async ({ page, app }) => {
+  await app.open('/menu');
 
-  await expect(page.getByRole('link', { name: 'Language English' })).toBeVisible();
   await expect(
     page.getByRole('link', { name: /^About [A-Z][a-z]{2} \d{1,2}, \d{4}$/ }),
   ).toBeVisible();
@@ -70,11 +71,33 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
   ).toBeVisible();
 
   let routes = [
+    ['Flight controls', '/flight-controls'],
+    ['Settings', '/settings'],
+    ['About', '/about'],
+  ] as const;
+
+  for (let [name, route] of routes) {
+    await page.getByRole('link', { name }).click();
+    await expect(page).toHaveURL(route);
+    let back = page.getByRole('link', { name: 'Back to main menu' });
+    await expect(back).toHaveAttribute('href', '/menu');
+    await back.click();
+  }
+});
+
+test('shows a settings menu with dedicated settings routes and top back links', async ({
+  page,
+  app,
+}) => {
+  await app.open('/settings');
+
+  await expect(page.getByRole('link', { name: 'Language English' })).toBeVisible();
+
+  let routes = [
     ['Language', '/settings/language'],
     ['Units', '/settings/units'],
     ['Data', '/settings/data'],
     ['External devices', '/settings/devices'],
-    ['About', '/about'],
   ] as const;
 
   await expect(page.getByRole('link', { name: 'Airspace', exact: true })).toHaveCount(0);
@@ -119,11 +142,8 @@ test('uses the screen scaffold when an external device is not found', async ({ p
   await expect(page.getByRole('main')).not.toContainText('Back to external devices');
 });
 
-test('confirms before quitting through the client from the settings menu', async ({
-  page,
-  app,
-}) => {
-  await app.open('/settings');
+test('confirms before quitting through the client from the main menu', async ({ page, app }) => {
+  await app.open('/menu');
   await page.evaluate(() => {
     let testWindow = window as SettingsWindow;
     let client = testWindow.__updraftFake;
@@ -170,7 +190,7 @@ test('shows source and build information on the About page', async ({ page, app 
 });
 
 test('shows a snapshot of the current map source credits', async ({ page, app }) => {
-  await app.open('/settings');
+  await app.open('/menu');
   await page.waitForFunction(() => window.__updraftApp?.mapState.map?.isStyleLoaded());
   await page.evaluate(() => {
     let map = window.__updraftApp?.mapState.map;
@@ -296,7 +316,7 @@ test('keeps the sun hillshade direction when revisiting map settings', async ({ 
 });
 
 test('keeps MC during navigation', async ({ page, app }) => {
-  await app.open('/settings');
+  await app.open('/menu');
   await expect(page.getByRole('spinbutton')).toHaveCount(0);
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   let mc = page.getByRole('spinbutton', { name: 'MC (m/s)' });
@@ -305,7 +325,7 @@ test('keeps MC during navigation', async ({ page, app }) => {
   await page.getByRole('heading', { name: 'Flight controls', exact: true }).click();
   expect(await app.settingsCommands()).toEqual([['setMacCready', 1.5]]);
   await app.emit({ topic: 'glidePerformance', value: { macCready: 1.5, bugs: 0, ballast: 0 } });
-  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Back to main menu' }).click();
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(mc).toHaveValue('1.5');
 });
@@ -328,7 +348,7 @@ test('keeps bugs and ballast during navigation', async ({ page, app }) => {
     topic: 'glidePerformance',
     value: { macCready: 0, bugs: 10.5, ballast: 100.5 },
   });
-  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await page.getByRole('link', { name: 'Back to main menu' }).click();
   await page.getByRole('link', { name: 'Flight controls', exact: true }).click();
   await expect(bugs).toHaveValue('10.5');
   await expect(ballast).toHaveValue('100.5');
@@ -453,6 +473,7 @@ for (let [width, height, theme] of [
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ colorScheme: theme });
     await app.open('/');
+    await page.getByRole('link', { name: 'Main menu' }).click();
     await page.getByRole('link', { name: 'Settings' }).click();
     await app.emitBasemaps({
       generation: 0,
@@ -504,6 +525,7 @@ for (let [width, height, theme] of [
       generation: 0,
       sources: [{ sourceName: 'local.terrain', type: 'active' }],
     });
+    await page.getByRole('link', { name: 'Main menu' }).click();
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await page.getByRole('button', { name: /^local / }).click();

@@ -14,15 +14,21 @@ The main results are:
 - Smoothing of the ownship turn rate makes the result worse.
 - A turn rate limit of 20 °/s or more has no measurable effect on ownship. A
   limit of 30 °/s is above all observed turn rates.
-- For traffic, a straight line with the reported FLARM speed and track is the
-  best model overall. Turn rates from accepted positions, from reported
-  tracks, or from both do not improve it.
+- For traffic, a straight line with the reported FLARM speed and track is
+  nearly as good as the best model. Turn rates from all accepted positions,
+  from reported tracks, or from both make it worse.
 - The circle fit of the spec helps only a little in steady turns. It is much
   worse in straight flight.
+- A gated circle uses the fitted circle only when the positions show a
+  steady turn. With the FLARM position correction, it keeps the straight
+  result in straight flight and reduces the turning error by 0.5 to 1.2 m at
+  1.0 s.
+- Without the FLARM position correction, the accepted positions do not show
+  the turns reliably. Every model that uses the positions is then worse than
+  a straight line.
 
 The traffic result does not agree with the traffic motion of the spec. The
-spec fits a circle to the accepted positions to get the track and the turn
-rate.
+spec fits a circle to the accepted positions at all times.
 
 ## Data and method
 
@@ -39,10 +45,13 @@ directory of NMEA and IGC files:
 cargo run -p updraft_core --example dead_reckoning_bench -- <directory>
 ```
 
-Ownship uses the RMC fixes. Traffic uses the positions that the core accepts
-with the FLARM position correction. Each accepted position has the GPS time of
-its reference fix. The reported speed and track come from the PFLAA report
-that supplied the position.
+Ownship uses the RMC fixes. Traffic uses the positions that the core accepts.
+The bench replays each recording twice, with and without the FLARM position
+correction. Each accepted position has the time of the latest GPS fix. With
+the correction, this is the time of the reference fix, and a target keeps
+the first position at each GPS time. Without the correction, the latest
+report at each GPS time replaces the position. The reported speed and track
+come from the PFLAA report that supplied the position.
 
 Each model sees the positions of the last 5 seconds, at most 5 positions. It
 predicts the position at 0.5, 1.0, and 1.5 seconds after the fix time. The
@@ -60,8 +69,9 @@ has an RMS offset of 34.69 m from the IGC position. This offset does not
 depend on the motion model, so the comparison removes it.
 
 The bench matches a target to an IGC file when the median distance between
-the positions is less than 50 m over at least 120 shared fixes. A target
-matches at most one IGC file. Only IGC files with one-second fixes can match.
+the corrected positions is less than 50 m over at least 120 shared fixes. A
+target matches at most one IGC file. The comparison without the correction
+uses the same targets. Only IGC files with one-second fixes can match.
 Nine targets matched.
 
 The bench scores only fixes with a ground speed of at least 15 m/s. It labels
@@ -83,6 +93,8 @@ labels a turn entry or exit.
 | 3-point circle | Circle tangent | Circle through the latest 3 positions |
 | Fitted circle | Circle tangent | Least-squares circle through the window |
 | Circle turn rate | Reported | Least-squares circle through the window |
+| Gated circle turn rate | Reported | Circle turn rate with turn evidence, otherwise zero |
+| Gated circle | Circle tangent with turn evidence, otherwise reported | Circle with turn evidence, otherwise zero |
 | Quadratic | None | Quadratic least-squares fit of the positions over time |
 
 All models except Quadratic move along a circular arc with the reported
@@ -90,6 +102,11 @@ speed. The published traffic track is the bearing between the latest two
 accepted positions. For ownship, the reported and published tracks are the
 same RMC track. Quadratic replaces the spline extrapolation baseline of the
 spec. A spline also extrapolates with the polynomial of its last segment.
+
+The gated models need turn evidence. The window must have at least 4
+positions. The fitted turn rate must be at least 8 °/s. Every step must turn
+in the direction of the circle. The reported track must be within 30° of the
+circle tangent.
 
 Step turn rate uses only the latest 2 positions and the reported track. On a
 circle, the bearing of a step lags the track at its end by half the turn of
@@ -135,7 +152,8 @@ the turning error from 1.59 m to 2.25 m.
 
 ## Traffic
 
-RMS error in meters against later accepted positions:
+The tables in this section use the FLARM position correction. RMS error in
+meters against later accepted positions:
 
 | Model | All, 1.0 s | All, 1.5 s | Straight, 1.0 s | Turning, 1.0 s | Turning, 1.5 s |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -147,6 +165,8 @@ RMS error in meters against later accepted positions:
 | 3-point circle | 10.95 | 16.15 | 4.96 | 13.17 | 19.53 |
 | Fitted circle | 14.00 | 21.01 | 11.30 | 13.15 | 18.92 |
 | Circle turn rate | 11.68 | 16.45 | 4.70 | 18.33 | 26.46 |
+| Gated circle turn rate | 10.86 | 14.26 | 3.90 | 16.92 | 23.28 |
+| Gated circle | 9.90 | 12.65 | 3.86 | 14.47 | 19.10 |
 | Quadratic | 15.38 | 23.64 | 11.30 | 19.02 | 29.78 |
 
 RMS error in meters of the movement against IGC files:
@@ -161,6 +181,8 @@ RMS error in meters of the movement against IGC files:
 | 3-point circle | 10.07 | 15.93 | 6.24 | 14.36 | 23.25 |
 | Fitted circle | 11.75 | 18.49 | 10.94 | 12.92 | 20.52 |
 | Circle turn rate | 9.95 | 15.09 | 4.81 | 15.46 | 23.45 |
+| Gated circle turn rate | 9.36 | 13.69 | 4.15 | 14.73 | 22.04 |
+| Gated circle | 8.83 | 12.92 | 4.29 | 13.51 | 20.27 |
 | Quadratic | 17.76 | 28.99 | 8.77 | 29.95 | 49.43 |
 
 The IGC comparison has 6,107 straight fixes and 2,381 turning fixes at 1.0 s.
@@ -187,6 +209,59 @@ turn rate is 57.2 °/s against later accepted positions. A real turn rate is
 less than half of this value. The reported track is therefore ahead of the
 step bearing by more than half the turn of a step. 2 positions and the
 reported track do not supply a turn rate.
+
+### Gated circle
+
+A circle through 5 accepted positions follows a steady turn well. It also
+finds curvature in the position noise of straight flight. The gate removes
+most of these false turns. Against IGC, the gated circle has a straight-flight
+error of 4.29 m at 1.0 s. The straight model has 4.10 m, and the fitted
+circle has 10.94 m.
+
+In turns, the gated circle reduces the 1.0 s error from 14.00 m to 13.51 m
+against IGC, and from 15.64 m to 14.47 m against later accepted positions. At
+1.5 s, the reduction is 0.32 m and 1.18 m. Over all phases, the gated circle
+and the straight model are within 0.32 m of each other.
+
+The gated circle turn rate keeps the reported track. In turns, it is worse
+than the straight model. The reported track already leads into the turn, as
+the step turn rate shows. A turn rate on top of the reported track turns too
+far. The gated circle uses the circle tangent instead.
+
+The gain is small, because the turn is not the main error. On a 16 °/s turn
+at 30 m/s, a straight line leaves the circle by about 4 m in 1 second. The
+straight model has a turning error of 14.00 m against IGC. Position noise,
+speed bias, and track timing cause most of this error. A better turn model
+cannot remove them.
+
+### Without FLARM position correction
+
+Without the correction, the received position has an RMS offset of 84.90 m
+from the IGC position. With the correction, the offset is 34.69 m.
+
+RMS error in meters of the movement against IGC files without the correction:
+
+| Model | All, 1.0 s | All, 1.5 s | Straight, 1.0 s | Turning, 1.0 s | Turning, 1.5 s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Straight | 8.95 | 12.48 | 4.00 | 14.14 | 20.05 |
+| 3-point circle | 19.24 | 30.07 | 16.01 | 24.48 | 37.86 |
+| Fitted circle | 21.85 | 34.32 | 19.96 | 25.82 | 39.89 |
+| Gated circle turn rate | 9.87 | 14.54 | 4.18 | 15.94 | 23.92 |
+| Gated circle | 10.56 | 15.71 | 5.28 | 16.59 | 24.96 |
+
+The straight model does not use the positions. Its movement error is the same
+with and without the correction. The models that use the positions become
+much worse. The [traffic documentation](../../product/traffic.md) describes
+the FLARM timing that the correction models. Without the correction, the time
+of the decoded position changes by one second between reports before and
+after a GPS fix. The steps between accepted positions then do not show the
+real path.
+
+Against later accepted positions, the position models look better without the
+correction. The gated circle has a turning error of 13.33 m, and the straight
+model has 15.66 m. These positions have the same errors as the positions that
+the models use, so this comparison does not show the real path. The IGC
+comparison is the reference here.
 
 ## Slow aircraft
 
@@ -232,8 +307,14 @@ to the ownship errors at 0.5 s and 1.5 s.
   rate from the latest track change over the GPS fix interval, without
   smoothing. The window is the latest 2 fixes. Use a limit of 30 °/s, which
   is above the observed maximum of 28.7 °/s.
-- For traffic motion, use the reported FLARM ground speed and track, without
-  a turn rate. Traffic motion then needs no position window and no circle
-  fit. This changes the traffic motion of the spec.
+- For traffic motion, use the reported FLARM ground speed and track. This is
+  the simplest model, and it does not need the position correction.
+- A gated circle can follow traffic turns better, but only with the FLARM
+  position correction. It gains about 1 m at 1.0 s in turns. It needs a
+  position window of 5 positions, a circle fit, the turn evidence, and a
+  fallback to a straight line without the correction. Decide whether this
+  gain justifies the added parts.
+- A circle fit at all times, as the spec describes, is worse than both
+  alternatives.
 - These results do not select the minimum speed of about 2 m/s. The spec of
   the ownship-motion slice must set it.

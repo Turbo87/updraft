@@ -32,7 +32,7 @@
           size="large"
         />
         <ListRow
-          href={resolve('/settings/flight-controls')}
+          href={resolve('/flight-controls')}
           icon="i-mdi-tune"
           label={m.flight_controls_heading()}
           size="large"
@@ -101,7 +101,7 @@
           size="large"
         />
         <ListRow
-          href={resolve('/settings/about')}
+          href={resolve('/about')}
           icon="i-mdi-information-outline"
           label={m.about_heading()}
           size="large"

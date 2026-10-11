@@ -16,10 +16,10 @@ current settings topic and sends typed commands for changes.
 - `/settings/glide`
 - `/settings/vario`
 - `/settings/traffic`
-- `/settings/flight-controls`
+- `/flight-controls`
 - `/settings/data`
 - `/settings/devices`
-- `/settings/about`
+- `/about`
 
 Each category page links back to `/settings`. Device creation and editing use
 routes below `/settings/devices`.

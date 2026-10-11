@@ -74,7 +74,7 @@ test('shows a menu with dedicated settings routes and top back links', async ({ 
     ['Units', '/settings/units'],
     ['Data', '/settings/data'],
     ['External devices', '/settings/devices'],
-    ['About', '/settings/about'],
+    ['About', '/about'],
   ] as const;
 
   await expect(page.getByRole('link', { name: 'Airspace', exact: true })).toHaveCount(0);
@@ -149,7 +149,7 @@ test('confirms before quitting through the client from the settings menu', async
 });
 
 test('shows source and build information on the About page', async ({ page, app }) => {
-  await app.open('/settings/about');
+  await app.open('/about');
 
   await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'GitHub repository' })).toHaveAttribute(
@@ -311,7 +311,7 @@ test('keeps MC during navigation', async ({ page, app }) => {
 });
 
 test('keeps bugs and ballast during navigation', async ({ page, app }) => {
-  await app.open('/settings/flight-controls');
+  await app.open('/flight-controls');
   let bugs = page.getByRole('spinbutton', { name: 'Bugs (%)', exact: true });
   await expect(bugs).toHaveValue('0');
   await bugs.fill('10.5');

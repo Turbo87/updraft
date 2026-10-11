@@ -55,7 +55,7 @@ describe('SettingsIndexScreen.svelte', () => {
       .toHaveAttribute('href', '/settings/map');
     await expect
       .element(page.getByRole('link', { name: 'Flight controls' }))
-      .toHaveAttribute('href', '/settings/flight-controls');
+      .toHaveAttribute('href', '/flight-controls');
     await expect
       .element(page.getByRole('link', { name: 'Data', exact: true }))
       .toHaveAttribute('href', '/settings/data');
@@ -75,7 +75,7 @@ describe('SettingsIndexScreen.svelte', () => {
       .toHaveAttribute('href', '/settings/devices');
     await expect
       .element(page.getByRole('link', { name: 'About 15 Aug 2026' }))
-      .toHaveAttribute('href', '/settings/about');
+      .toHaveAttribute('href', '/about');
   });
 
   it('keeps unavailable language and build date visible as unknown values', () => {

@@ -102,6 +102,29 @@ describe('FakeClient', () => {
     ]);
   });
 
+  it('records each flight boundary answer and closes the question', async () => {
+    let client = new FakeClient();
+    let received = collectTopics(client);
+    let question: Topic = {
+      topic: 'flightBoundaryQuestion',
+      value: { cause: 'positionJump', meters: 120_400 },
+    };
+
+    for (let answer of [() => client.startNewFlight(), () => client.continueFlight()]) {
+      client.emit(question);
+      await answer();
+    }
+
+    expect(client.flightCommands).toEqual(['startNewFlight', 'continueFlight']);
+    expect(received.filter((topic) => topic.topic === 'flightBoundaryQuestion')).toEqual([
+      { topic: 'flightBoundaryQuestion', value: null },
+      question,
+      { topic: 'flightBoundaryQuestion', value: null },
+      question,
+      { topic: 'flightBoundaryQuestion', value: null },
+    ]);
+  });
+
   it('returns its configured bonded Bluetooth state', async () => {
     let bondedBluetoothDevices: BondedBluetoothDevices = {
       status: 'available',

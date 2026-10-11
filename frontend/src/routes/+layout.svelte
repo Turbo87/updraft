@@ -12,6 +12,7 @@
   import favicon from '#lib/assets/favicon.svg';
   import { FakeClient } from '#lib/client/fake.js';
   import { TauriClient } from '#lib/client/tauri.js';
+  import FlightBoundaryDialog from '#lib/flight-view/FlightBoundaryDialog.svelte';
   import FlightView from '#lib/flight-view/FlightView.svelte';
   import { applyLocaleSetting } from '#lib/i18n.svelte.js';
   import { MapState } from '#lib/map-state.svelte.js';
@@ -22,6 +23,7 @@
   import { EnrouteCatalogStore } from '#lib/stores/enroute-catalog.svelte.js';
   import { EnrouteDownloadsStore } from '#lib/stores/enroute-downloads.svelte.js';
   import { ExternalDevicesStore } from '#lib/stores/external-devices.svelte.js';
+  import { FlightBoundaryQuestionStore } from '#lib/stores/flight-boundary-question.svelte.js';
   import { GlidePerformanceStore } from '#lib/stores/glide-performance.svelte.js';
   import { InstrumentsStore } from '#lib/stores/instruments.svelte.js';
   import { NavigationStore } from '#lib/stores/navigation.svelte.js';
@@ -55,6 +57,7 @@
   const glidePerformance = new GlidePerformanceStore();
   const traffic = new TrafficStore();
   const navigation = new NavigationStore();
+  const flightBoundaryQuestion = new FlightBoundaryQuestionStore();
   const testMode = new URLSearchParams(window.location.search).get('testMode') === '1';
   const inTauri = '__TAURI_INTERNALS__' in window;
   const client = inTauri ? new TauriClient() : new FakeClient();
@@ -101,6 +104,7 @@
       traffic.apply(topic);
       trail.apply(topic);
       navigation.apply(topic);
+      flightBoundaryQuestion.apply(topic);
       if (topic.topic === 'settings') {
         applyLocaleSetting(topic.value.locale);
       }
@@ -202,6 +206,11 @@
     units={settings.current.units}
     climbAverageMethod={settings.current.climbAverageMethod}
     {testMode}
+  />
+  <FlightBoundaryDialog
+    question={flightBoundaryQuestion.current}
+    distanceUnit={settings.current.units.distance}
+    {client}
   />
   {#if page.url.pathname !== '/'}
     <div class="route-content">

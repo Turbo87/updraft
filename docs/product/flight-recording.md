@@ -27,9 +27,17 @@ question. When a question is open already, the core keeps it. The
 current recording continues until the pilot answers. Updraft records no fix
 with a UTC before the last sample.
 
+Every connected client shows the question as a modal dialog. The dialog blocks
+the Flight View until the pilot answers. It has no timeout. It states the cause,
+for example "Position jumped 120 km" or "GPS time jumped back 3 days". An answer
+from one client closes the dialog on all clients. The core does not store the
+open question. After a restart, the position jump check opens it again when
+the position is still far from the last restored sample.
+
 The answer **New flight** starts a new recording at the next fix and resets the
 wind and the other fused values. The task route stays. The answer **Continue
-flight** keeps the current recording.
+flight** keeps the current recording. See
+[The wall clock starts a new recording, and data jumps ask the pilot](../adr/0005-the-wall-clock-starts-a-new-recording-and-data-jumps-ask-the-pilot.md).
 
 Updraft keeps only the current recording. It commits each sample in a separate
 transaction. A committed sample survives an app crash and an Android process

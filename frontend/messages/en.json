@@ -486,5 +486,13 @@
   "task_stop_confirm_title": "Stop the task?",
   "task_stop_hint": "This removes all task points.",
   "task_failed": "The task change failed or was not saved.",
-  "task_search": "Find a waypoint"
+  "task_search": "Find a waypoint",
+  "flight_boundary_title": "New flight?",
+  "flight_boundary_position_jump": "Position jumped {distance}.",
+  "flight_boundary_time_jump_forward": "GPS time jumped forward {duration}.",
+  "flight_boundary_time_jump_back": "GPS time jumped back {duration}.",
+  "flight_boundary_hint": "New flight deletes the current flight recording.",
+  "flight_boundary_answer_failed": "Could not save the answer.",
+  "new_flight": "New flight",
+  "continue_flight": "Continue flight"
 }

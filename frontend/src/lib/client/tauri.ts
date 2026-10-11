@@ -261,6 +261,14 @@ export class TauriClient implements UpdraftClient {
     return invoke('set_bugs', { bugs });
   }
 
+  startNewFlight(): Promise<void> {
+    return invoke('start_new_flight');
+  }
+
+  continueFlight(): Promise<void> {
+    return invoke('continue_flight');
+  }
+
   setBallast(ballast: number): Promise<void> {
     return invoke('set_ballast', { ballast });
   }

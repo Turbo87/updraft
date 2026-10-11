@@ -39,6 +39,10 @@ the core.
 
 The core owns the flight recording rules. It keeps the UTC of the first and the
 last sample and emits one record effect for each new fix of the selected source.
+It also keeps the shell UTC of the last sample, which it derives from the
+`UtcTick` input. The core owns the open flight boundary question. The
+`flightBoundaryQuestion` topic publishes it, and the `start_new_flight` and
+`continue_flight` commands answer it. The core does not persist the question.
 After each record effect, the `trail` topic publishes the new sample, the UTC
 of the first sample, and the maximum MSL and AGL altitudes of the recording. The shell
 stores the samples in `state.sqlite` in the app data directory and adds the

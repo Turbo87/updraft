@@ -138,6 +138,10 @@ export interface UpdraftClient {
   setEnergyCompensation(enabled: boolean): Promise<void>;
   setFlarmPositionCorrection(enabled: boolean): Promise<void>;
   setMacCready(macCready: number): Promise<void>;
+  /** Answers the flight boundary question with New flight. */
+  startNewFlight(): Promise<void>;
+  /** Answers the flight boundary question with Continue flight. */
+  continueFlight(): Promise<void>;
   setBugs(bugs: number): Promise<void>;
   setBallast(ballast: number): Promise<void>;
   selectDataFile(): Promise<SelectedDataFile | null>;

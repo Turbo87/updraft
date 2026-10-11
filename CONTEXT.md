@@ -16,6 +16,10 @@ a read-only, built-in catalogue entry for an aircraft type (polar, masses, wings
 **Aircraft profile**:
 a specific user aircraft (registration, callsign) created from a preset or from scratch, with per-field overrides. Only one active at a time.
 
+**Airspeed source**:
+a device that supplies measured true or indicated airspeed.
+_Avoid_: TAS input, TAS source
+
 **BLE**:
 Bluetooth Low Energy.
 
@@ -24,6 +28,10 @@ a frontend connected to the core (local Tauri webview, browser, or secondary cli
 
 **CUP**:
 SeeYou waypoint/task file format.
+
+**Derived airspeed**:
+true airspeed that Updraft calculates from ground velocity and wind when no airspeed source supplies it.
+_Avoid_: inferred airspeed, estimated airspeed
 
 **Device**:
 a connected instrument (GPS, vario, FLARM). Never a phone/tablet running the app, which is a client.
@@ -54,6 +62,9 @@ the primary in-flight UI containing the map, Situation Bar, infoboxes, and fligh
 
 **Focused target**:
 the one active navigation target that currently drives guidance, calculations, and target-dependent infoboxes.
+
+**GPS-only**:
+a setup whose only flight-data input is GPS. It has no pressure altitude, no airspeed source, and no other sensor input.
 
 **IGC file**:
 FAI-standardized flight log format.
@@ -108,3 +119,10 @@ the reached task points and the start and finish times, derived from the flight 
 
 **Trail**:
 the map rendering of the current flight recording. Also called snail trail.
+
+**Vario**:
+the total-energy vertical speed. It excludes altitude changes that come from airspeed changes. Also called compensated vario.
+_Avoid_: TE vario
+
+**Vertical speed**:
+the rate of altitude change without energy compensation. Also called uncompensated vario.

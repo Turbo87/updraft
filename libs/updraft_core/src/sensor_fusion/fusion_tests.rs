@@ -1,4 +1,4 @@
-use claims::assert_some;
+use claims::{assert_none, assert_some};
 use updraft_geo::LatLon;
 use updraft_units::{Angle, Length, MslAltitude, PressureAltitude, Speed};
 
@@ -259,7 +259,7 @@ fn inferred_airspeed_stays_current_between_gps_samples() {
     fusion.update(inputs);
     let stale = assert_some!(fusion.instruments());
     assert!(assert_some!(stale.airspeed).stale);
-    assert!(assert_some!(stale.vario).stale);
+    assert_none!(stale.vario);
     assert!(assert_some!(stale.netto).stale);
 }
 
@@ -277,10 +277,22 @@ fn gnss_fix_uses_its_inferred_airspeed_for_vario() {
 
     let vario = assert_some!(assert_some!(fusion.instruments()).vario);
     assert!(!vario.stale);
+
+    fusion.update(FusionInputs {
+        gps: DomainState::LastKnown(selected(20_000, circling_gps(20))),
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::Unavailable,
+    });
+
+    let instruments = assert_some!(fusion.instruments());
+    let stale = assert_some!(instruments.vario);
+    assert_eq!(stale.meters_per_second, vario.meters_per_second);
+    assert!(stale.stale);
+    assert!(assert_some!(instruments.vertical_speed).stale);
 }
 
 #[test]
-fn stale_gps_stales_inferred_vario() {
+fn stale_gps_removes_inferred_vario_while_pressure_altitude_is_current() {
     let mut fusion = SensorFusion::default();
     fly_circling_climb(&mut fusion, 0..=70);
 
@@ -296,8 +308,9 @@ fn stale_gps_stales_inferred_vario() {
         )),
     });
 
-    let stale = assert_some!(assert_some!(fusion.instruments()).vario);
-    assert!(stale.stale);
+    let instruments = assert_some!(fusion.instruments());
+    assert_none!(instruments.vario);
+    assert!(!assert_some!(instruments.vertical_speed).stale);
 }
 
 #[test]
@@ -387,6 +400,28 @@ fn stale_airspeed_stales_netto_independently() {
     let retained = assert_some!(assert_some!(fusion.instruments()).relative_vario);
     assert_eq!(retained.meters_per_second, relative.meters_per_second);
     assert!(retained.stale);
+}
+
+#[test]
+fn returning_altitude_without_airspeed_removes_the_stale_vario() {
+    let (mut fusion, air_speed, pressure_altitude) = fusion_with_current_netto();
+    fusion.update(FusionInputs {
+        gps: DomainState::Unavailable,
+        true_airspeed: DomainState::Current(air_speed),
+        pressure_altitude: DomainState::LastKnown(pressure_altitude),
+    });
+    assert!(assert_some!(assert_some!(fusion.instruments()).vario).stale);
+
+    let altitude = PressureAltitude::new(Length::from_meters(1_000.));
+    fusion.update(FusionInputs {
+        gps: DomainState::Unavailable,
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::Current(selected(63_000, altitude)),
+    });
+
+    let instruments = assert_some!(fusion.instruments());
+    assert_none!(instruments.vario);
+    assert!(!assert_some!(instruments.vertical_speed).stale);
 }
 
 #[test]

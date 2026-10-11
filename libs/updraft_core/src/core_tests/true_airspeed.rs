@@ -1,7 +1,7 @@
 use super::super::*;
 use super::support::*;
 use approx::assert_abs_diff_eq;
-use claims::{assert_ok, assert_some};
+use claims::{assert_none, assert_ok, assert_some};
 use std::assert_matches;
 use updraft_nmea::{Lxwp0, Pgrmz, PgrmzFixDimension};
 use updraft_units::{Length, Speed};
@@ -106,7 +106,7 @@ fn same_batch_airspeed_compensates_the_current_pressure_altitude() {
 }
 
 #[test]
-fn pressure_input_at_the_airspeed_freshness_boundary_keeps_the_vario_stale() {
+fn pressure_input_at_the_airspeed_freshness_boundary_removes_the_vario() {
     let (mut core, device_id) = core_with_external_device();
     let altitude = Length::from_meters(1_000.);
     let air_speed = Speed::from_meters_per_second(50.);
@@ -123,8 +123,8 @@ fn pressure_input_at_the_airspeed_freshness_boundary_keeps_the_vario_stale() {
 
     assert_matches!(core.true_airspeed, DomainState::LastKnown(_));
     let derived = assert_some!(instruments(&core).derived);
-    let stale = assert_some!(derived.vario);
-    assert!(stale.stale);
+    assert_none!(derived.vario);
+    assert!(!assert_some!(derived.vertical_speed).stale);
 }
 
 #[test]

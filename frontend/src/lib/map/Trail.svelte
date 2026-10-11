@@ -60,6 +60,11 @@
   bind:source
 >
   <LineLayer
+    id="trail-halo"
+    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+    paint={{ 'line-color': '#ffffff', 'line-translate': translate, 'line-width': 5 }}
+  />
+  <LineLayer
     id="trail"
     layout={{ 'line-cap': 'round', 'line-join': 'round' }}
     paint={{ 'line-color': color, 'line-translate': translate, 'line-width': 3 }}

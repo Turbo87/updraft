@@ -23,6 +23,7 @@
 use igc::records::{Extendable, Extension, Record};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::ops::Range;
 use std::path::Path;
 use std::time::Duration;
 use updraft_core::{
@@ -43,6 +44,18 @@ const ENGINE_SETTLING: Duration = Duration::from_secs(60);
 const AIRBORNE_ALTITUDE_GAIN: Length = Length::from_meters(100.);
 
 const DAY: Duration = Duration::from_secs(24 * 60 * 60);
+
+/// Track rate below which a sample does not continue a turn, in degrees
+/// per second.
+const MIN_TURN_RATE: f64 = 3.;
+
+/// How far a turn in one direction has to go to count as circling, in
+/// degrees.
+const CIRCLING_TURN: f64 = 360.;
+
+/// How long before and after a circling run the samples count as a
+/// transition.
+const TRANSITION_MARGIN: Duration = Duration::from_secs(20);
 
 fn main() {
     let directory = std::env::args_os()
@@ -135,6 +148,20 @@ struct Sample {
     recorded_wind: Option<Wind>,
     /// Whether the sample is in soaring flight, which the bench scores.
     scored: bool,
+    phase: Phase,
+}
+
+/// The flight phase of a sample, labelled from the recorded track.
+///
+/// The labels can use later samples, so they are not available to the
+/// fusion at the time of the sample.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Phase {
+    Cruise,
+    Circling,
+    /// Close to a circling run. These samples count only in the cells for
+    /// all phases.
+    Transition,
 }
 
 /// Why the bench does not replay a file.
@@ -241,6 +268,7 @@ fn parse(recording: &str) -> Result<Vec<Sample>, Exclusion> {
                         .map(|vario| vario / 100.),
                     recorded_wind: None,
                     scored: soaring.observe(time, pressure_altitude, engine_noise),
+                    phase: Phase::Cruise,
                 });
             }
             Ok(Record::K(record)) => {
@@ -261,7 +289,65 @@ fn parse(recording: &str) -> Result<Vec<Sample>, Exclusion> {
             _ => {}
         }
     }
+    label_phases(&mut samples);
     Ok(samples)
+}
+
+/// Labels each sample inside a turn in one direction that reaches
+/// [`CIRCLING_TURN`] as circling, and the samples within
+/// [`TRANSITION_MARGIN`] of such a turn as a transition.
+fn label_phases(samples: &mut [Sample]) {
+    let runs = circling_runs(samples);
+    for run in &runs {
+        let start = samples[run.start]
+            .time
+            .since_start()
+            .saturating_sub(TRANSITION_MARGIN);
+        let end = samples[run.end - 1].time.since_start() + TRANSITION_MARGIN;
+        for sample in samples.iter_mut() {
+            if (start..=end).contains(&sample.time.since_start()) {
+                sample.phase = Phase::Transition;
+            }
+        }
+    }
+    for run in runs {
+        for sample in &mut samples[run] {
+            sample.phase = Phase::Circling;
+        }
+    }
+}
+
+/// Finds the sample ranges that turn in one direction by at least
+/// [`CIRCLING_TURN`].
+fn circling_runs(samples: &[Sample]) -> Vec<Range<usize>> {
+    let mut runs = Vec::new();
+    let mut start = 0;
+    let mut direction = 0.;
+    let mut turned = 0.;
+    for (index, pair) in samples.windows(2).enumerate() {
+        let interval = pair[1].time.saturating_since(pair[0].time).as_secs_f64();
+        if interval == 0. {
+            continue;
+        }
+        let change = (pair[1].track - pair[0].track)
+            .normalized_signed()
+            .as_degrees();
+        let turning = (change / interval).abs() >= MIN_TURN_RATE;
+        if turning && change.signum() == direction {
+            turned += change.abs();
+            continue;
+        }
+        if turned >= CIRCLING_TURN {
+            runs.push(start..index + 1);
+        }
+        start = index;
+        direction = if turning { change.signum() } else { 0. };
+        turned = if turning { change.abs() } else { 0. };
+    }
+    if turned >= CIRCLING_TURN {
+        runs.push(start..samples.len());
+    }
+    runs
 }
 
 /// Finds the soaring flight: the engine is quiet for the settling time,
@@ -421,16 +507,18 @@ impl Cell {
     }
 }
 
-/// The cells of one scenario.
+/// The cells of one scenario and phase.
 #[derive(Clone, Copy, Default)]
-struct ScenarioCells {
+struct ValueCells {
     vario: Cell,
     vertical_speed: Cell,
     derived_airspeed: Cell,
     wind: Cell,
 }
 
-impl ScenarioCells {
+impl ValueCells {
+    const COUNT: usize = 4;
+
     fn add(&mut self, estimate: &Outputs, reference: &Outputs, sample: &Sample) {
         let true_airspeed = sample.true_airspeed.as_meters_per_second();
         self.vario.add_scalar(estimate.vario, reference.vario);
@@ -441,12 +529,39 @@ impl ScenarioCells {
         self.wind.add_wind(estimate.wind, reference.wind);
     }
 
-    fn rows(&self) -> [(&'static str, &Cell); 4] {
+    fn rows(&self) -> [(&'static str, &Cell); Self::COUNT] {
         [
             ("vario", &self.vario),
             ("vertical speed", &self.vertical_speed),
             ("derived airspeed", &self.derived_airspeed),
             ("wind", &self.wind),
+        ]
+    }
+}
+
+/// The cells of one scenario.
+#[derive(Clone, Copy, Default)]
+struct ScenarioCells {
+    cruise: ValueCells,
+    circling: ValueCells,
+    all: ValueCells,
+}
+
+impl ScenarioCells {
+    fn add(&mut self, estimate: &Outputs, reference: &Outputs, sample: &Sample) {
+        self.all.add(estimate, reference, sample);
+        match sample.phase {
+            Phase::Cruise => self.cruise.add(estimate, reference, sample),
+            Phase::Circling => self.circling.add(estimate, reference, sample),
+            Phase::Transition => {}
+        }
+    }
+
+    fn phases(&self) -> [(&'static str, &ValueCells); 3] {
+        [
+            ("cruise", &self.cruise),
+            ("circling", &self.circling),
+            ("all", &self.all),
         ]
     }
 }
@@ -510,17 +625,20 @@ impl fmt::Display for Bench {
         writeln!(f)?;
         writeln!(
             f,
-            "scenario            value              avail       n   bias    rms"
+            "scenario            value              phase      avail       n   bias    rms"
         )?;
         for (scenario, cells) in SCENARIOS.iter().zip(&self.scenarios) {
-            for (value, cell) in cells.rows() {
-                writeln!(
-                    f,
-                    "{:19} {value:18} {:>6} {}",
-                    scenario.name(),
-                    cell.availability(),
-                    cell.errors(),
-                )?;
+            for index in 0..ValueCells::COUNT {
+                for (phase, cells) in cells.phases() {
+                    let (value, cell) = cells.rows()[index];
+                    writeln!(
+                        f,
+                        "{:19} {value:18} {phase:8} {:>7} {}",
+                        scenario.name(),
+                        cell.availability(),
+                        cell.errors(),
+                    )?;
+                }
             }
         }
         writeln!(f)?;

@@ -3,6 +3,7 @@ mod external_devices;
 mod flarm_reference;
 mod navigation;
 mod ownship;
+mod position_jump;
 mod pressure_altitude;
 mod recording;
 mod settings;

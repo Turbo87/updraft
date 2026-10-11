@@ -478,15 +478,12 @@ impl Estimator {
         self.isa_altitude_sample = None;
     }
 
-    pub fn reset_wind(&mut self) {
-        self.wind = WindFilter::default();
-        self.wind_air_speed_time = None;
-        self.wind_measurement_time = None;
-        self.circling = CirclingWind::default();
-        self.inferred_air_speed = InferredAirspeed::default();
-        self.ground = None;
-        self.previous_heading = None;
-        self.turn_rate = None;
+    /// Clears all state except the polar.
+    pub fn reset(&mut self) {
+        *self = Self {
+            polar: self.polar,
+            ..Self::new()
+        };
     }
 
     pub fn restore_wind(&mut self, wind: Velocity) {
@@ -1266,7 +1263,7 @@ mod tests {
             epsilon = 1e-12
         );
 
-        estimator.reset_wind();
+        estimator.reset();
         assert_none!(estimator.wind_estimate());
         assert_none!(estimator.wind_age());
     }
@@ -1446,12 +1443,12 @@ mod tests {
     }
 
     #[test]
-    fn reset_wind_restarts_the_turn_rate() {
+    fn reset_restarts_the_turn_rate() {
         let mut estimator = circling(20., Speed::from_meters_per_second(30.));
         let bank = assert_some!(estimator.estimate().bank_angle);
         assert_gt!(bank.as_degrees().abs(), 1.);
 
-        estimator.reset_wind();
+        estimator.reset();
         assert_eq!(
             estimator.fix(Duration::from_secs(121), &fix(0., 35.)),
             FixPredicted

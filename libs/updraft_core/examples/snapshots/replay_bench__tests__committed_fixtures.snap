@@ -3,6 +3,7 @@ source: libs/updraft_core/examples/replay_bench.rs
 expression: bench.to_string()
 ---
 files: 2 included (0 without a polar, 1 not 1 Hz), 0 excluded
+position jumps: 0
 
 scenario            value                    phase      avail       n   bias    rms    min    max
 reference           vario                    cruise    100.0%    9631  +0.00   0.00   0.00   0.00

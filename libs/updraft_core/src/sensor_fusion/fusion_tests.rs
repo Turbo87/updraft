@@ -127,10 +127,8 @@ fn stale_airspeed_does_not_stale_wind() {
 }
 
 #[test]
-fn airspeed_source_change_after_outage_resets_wind() {
+fn airspeed_source_change_after_outage_keeps_the_wind() {
     let mut fusion = fusion_with_converged_wind();
-    let mut expected = assert_some!(assert_some!(fusion.instruments()).wind);
-    expected.stale = true;
     fusion.update(FusionInputs {
         gps: DomainState::Current(selected(59_000, gps(59))),
         true_airspeed: DomainState::Unavailable,
@@ -145,27 +143,48 @@ fn airspeed_source_change_after_outage_resets_wind() {
         pressure_altitude: DomainState::Unavailable,
     });
 
-    let wind = assert_some!(assert_some!(fusion.instruments()).wind);
-    assert_eq!(wind, expected);
+    let instruments = assert_some!(fusion.instruments());
+    // The new airspeed sample is a wind measurement, so the wind changes.
+    assert!(!assert_some!(instruments.wind).stale);
+    assert!(!assert_some!(instruments.heading).stale);
 }
 
 #[test]
-fn gps_discontinuities_retain_the_last_wind() {
+fn gps_source_change_keeps_the_wind() {
+    let mut fusion = fusion_with_converged_wind();
+    let expected = assert_some!(assert_some!(fusion.instruments()).wind);
     let source = SourceId::External(ExternalDeviceId(1));
-    let replacement = selected_from(source, 60_000, gps(60));
-    for gps in [DomainState::Unavailable, DomainState::Current(replacement)] {
-        let mut fusion = fusion_with_converged_wind();
-        let mut expected = assert_some!(assert_some!(fusion.instruments()).wind);
-        expected.stale = true;
-        fusion.update(FusionInputs {
-            gps,
-            true_airspeed: DomainState::Unavailable,
-            pressure_altitude: DomainState::Unavailable,
-        });
+    fusion.update(FusionInputs {
+        gps: DomainState::Current(selected_from(source, 60_000, gps(60))),
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::Unavailable,
+    });
 
-        let wind = assert_some!(assert_some!(fusion.instruments()).wind);
-        assert_eq!(wind, expected);
-    }
+    let instruments = assert_some!(fusion.instruments());
+    assert_eq!(assert_some!(instruments.wind), expected);
+    assert!(!assert_some!(instruments.airspeed).stale);
+}
+
+#[test]
+fn unavailable_gps_keeps_the_wind_for_the_next_fix() {
+    let mut fusion = fusion_with_converged_wind();
+    let expected = assert_some!(assert_some!(fusion.instruments()).wind);
+    fusion.update(FusionInputs {
+        gps: DomainState::Unavailable,
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::Unavailable,
+    });
+    assert!(assert_some!(assert_some!(fusion.instruments()).wind).stale);
+
+    fusion.update(FusionInputs {
+        gps: DomainState::Current(selected(61_000, gps(61))),
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::Unavailable,
+    });
+
+    let instruments = assert_some!(fusion.instruments());
+    assert_eq!(assert_some!(instruments.wind), expected);
+    assert!(!assert_some!(instruments.airspeed).stale);
 }
 
 #[test]
@@ -548,4 +567,23 @@ fn fly_circling_climb(fusion: &mut SensorFusion, seconds: std::ops::RangeInclusi
             pressure_altitude: DomainState::Current(selected(millis, altitude)),
         });
     }
+}
+
+#[test]
+fn reset_removes_the_flight_data_but_keeps_the_polar() {
+    let (mut fusion, _, _) = fusion_with_current_netto();
+    fusion.reset();
+    assert_none!(fusion.instruments());
+
+    for second in 60..62 {
+        let altitude = PressureAltitude::new(Length::from_meters(1_000.));
+        fusion.update(FusionInputs {
+            gps: DomainState::Unavailable,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Current(selected(second * 1_000, altitude)),
+        });
+    }
+
+    let instruments = assert_some!(fusion.instruments());
+    assert!(!assert_some!(instruments.estimated_netto).stale);
 }

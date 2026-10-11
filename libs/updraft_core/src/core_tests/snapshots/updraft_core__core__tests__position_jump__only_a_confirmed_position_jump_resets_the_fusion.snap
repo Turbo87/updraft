@@ -1,0 +1,13 @@
+---
+source: libs/updraft_core/src/core_tests/position_jump.rs
+expression: "log.join(\"\\n\")"
+---
+1: 50 current
+2: 50 current
+3: 51 current
+4: 50 current
+5: 50 current
+6: 51 current
+7: 51 current
+8: 51 current
+9: 51 unavailable

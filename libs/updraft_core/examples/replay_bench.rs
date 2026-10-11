@@ -19,6 +19,8 @@
 //! estimate, also after the fusion stops reporting the wind. The GPS-only
 //! scenario has the same wind.
 //!
+//! The bench also counts the position jumps in the fixes of each flight.
+//!
 //! The estimated rows show Estimated netto and Estimated relative vario,
 //! which the core publishes for setups without an airspeed.
 //!
@@ -41,8 +43,8 @@ use std::ops::Range;
 use std::path::Path;
 use std::time::Duration;
 use updraft_core::{
-    DomainState, FusionInputs, GpsSnapshot, Selected, SensorFusion, SourceId, SpeedInstrument,
-    Timed, Timestamp,
+    DomainState, FusionInputs, GpsSnapshot, PositionJumpCheck, Selected, SensorFusion, SourceId,
+    SpeedInstrument, Timed, Timestamp, UtcInstant,
 };
 use updraft_geo::LatLon;
 use updraft_polar::{GlidePolar, POLAR_STORE, PolarStoreEntry};
@@ -842,6 +844,7 @@ struct Bench {
     without_polar: usize,
     not_one_hertz: usize,
     excluded: BTreeMap<Exclusion, usize>,
+    position_jumps: usize,
     results: Results,
 }
 
@@ -853,6 +856,14 @@ impl Bench {
                 self.included += 1;
                 self.without_polar += usize::from(flight.polar.is_none());
                 self.not_one_hertz += usize::from(!flight.one_hertz);
+                // The IGC fix time takes the place of the fix UTC, because
+                // only the differences between fixes matter.
+                let mut check = PositionJumpCheck::default();
+                for sample in &flight.samples {
+                    let milliseconds = sample.time.since_start().as_millis();
+                    let utc = UtcInstant::from_unix_milliseconds(milliseconds.try_into().unwrap());
+                    self.position_jumps += usize::from(check.observe(utc, sample.position));
+                }
                 self.results.merge(&Results::replay(&flight));
             }
             Err(exclusion) => *self.excluded.entry(exclusion).or_default() += 1,
@@ -872,6 +883,7 @@ impl fmt::Display for Bench {
             write!(f, ", {count} {exclusion}")?;
         }
         writeln!(f)?;
+        writeln!(f, "position jumps: {}", self.position_jumps)?;
         writeln!(f)?;
         writeln!(
             f,

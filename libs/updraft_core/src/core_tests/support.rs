@@ -90,6 +90,16 @@ pub fn instruments(core: &Core) -> Instruments {
     instruments.clone()
 }
 
+pub fn question(core: &Core) -> Option<crate::FlightBoundaryQuestion> {
+    core.topics()
+        .into_iter()
+        .find_map(|topic| match topic {
+            Topic::FlightBoundaryQuestion(question) => Some(question),
+            _ => None,
+        })
+        .expect("the flight boundary question topic should be published")
+}
+
 pub fn gps_instruments(core: &Core) -> GpsInstruments {
     assert_some!(instruments(core).gps)
 }

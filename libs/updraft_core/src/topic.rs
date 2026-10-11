@@ -267,6 +267,8 @@ pub enum Topic {
     PinnedTargets(Vec<crate::PinnedTarget>),
     Task(crate::PublishedTask),
     TaskSaveFailed(bool),
+    /// `None` when no question is open.
+    FlightBoundaryQuestion(Option<crate::FlightBoundaryQuestion>),
     RecentTargets(Vec<crate::NavigationTarget>),
     Instruments(Instruments),
     Settings(Settings),

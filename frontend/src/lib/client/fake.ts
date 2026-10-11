@@ -76,8 +76,15 @@ export type DataFileCommand =
   | ['setWaypointsEnabled', string, boolean]
   | ['removeWaypoints', string];
 
+/**
+ * An answer to the flight boundary question that the fake client records.
+ * The fake client closes the question for each answer.
+ */
+export type FlightCommand = 'startNewFlight' | 'continueFlight';
+
 /** Drives the frontend without a Rust process behind it. */
 export class FakeClient implements UpdraftClient {
+  readonly flightCommands: FlightCommand[] = [];
   readonly settingsCommands: SettingsCommand[] = [];
   readonly externalDeviceCommands: ExternalDeviceCommand[] = [];
   readonly dataFileCommands: DataFileCommand[] = [];
@@ -140,6 +147,7 @@ export class FakeClient implements UpdraftClient {
         },
       },
       { topic: 'taskSaveFailed', value: false },
+      { topic: 'flightBoundaryQuestion', value: null },
       { topic: 'pinnedTargets', value: [] },
       { topic: 'settings', value: defaultSettings() },
       { topic: 'glidePerformance', value: { macCready: 0, bugs: 0, ballast: 0 } },
@@ -376,6 +384,16 @@ export class FakeClient implements UpdraftClient {
 
   async setBallast(ballast: number): Promise<void> {
     this.settingsCommands.push(['setBallast', ballast]);
+  }
+
+  async startNewFlight(): Promise<void> {
+    this.flightCommands.push('startNewFlight');
+    this.emit({ topic: 'flightBoundaryQuestion', value: null });
+  }
+
+  async continueFlight(): Promise<void> {
+    this.flightCommands.push('continueFlight');
+    this.emit({ topic: 'flightBoundaryQuestion', value: null });
   }
 
   /**

@@ -862,7 +862,8 @@ impl Bench {
                 for sample in &flight.samples {
                     let milliseconds = sample.time.since_start().as_millis();
                     let utc = UtcInstant::from_unix_milliseconds(milliseconds.try_into().unwrap());
-                    self.position_jumps += usize::from(check.observe(utc, sample.position));
+                    self.position_jumps +=
+                        usize::from(check.observe(utc, sample.position).is_some());
                 }
                 self.results.merge(&Results::replay(&flight));
             }

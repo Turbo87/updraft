@@ -6,6 +6,7 @@ import type {
   DataFileCommand,
   ExternalDeviceCommand,
   FakeClient,
+  FlightCommand,
   NavigationCommand,
   SettingsCommand,
 } from '#lib/client/fake';
@@ -100,6 +101,9 @@ function createApp(page: Page) {
     },
     dataFileCommands(): Promise<DataFileCommand[]> {
       return page.evaluate(() => window.__updraftFake!.dataFileCommands);
+    },
+    flightCommands(): Promise<FlightCommand[]> {
+      return page.evaluate(() => window.__updraftFake!.flightCommands);
     },
     navigationCommands(): Promise<NavigationCommand[]> {
       return page.evaluate(() => window.__updraftFake!.navigationCommands);

@@ -46,6 +46,7 @@ pub struct Core {
     task_fix: Option<crate::ownship::Selected<GpsSnapshot>>,
     task_save_failed: bool,
     recorder: crate::recording::FlightRecorder,
+    flight_boundary_question: Option<crate::FlightBoundaryQuestion>,
     position_jump_check: crate::position_jump::PositionJumpCheck,
     trail: Option<crate::Trail>,
     settings: Settings,
@@ -87,6 +88,7 @@ impl Core {
             task_fix: None,
             task_save_failed: false,
             recorder: Default::default(),
+            flight_boundary_question: None,
             position_jump_check: Default::default(),
             trail: None,
             navigation_target: None,
@@ -121,6 +123,7 @@ impl Core {
         let before_recents = self.recent_targets.clone();
         let before_pins = self.pinned_targets();
         let before = self.navigation();
+        let before_question = self.flight_boundary_question;
         let mut update = input.apply_to(self, at);
         self.navigation_at = self.navigation_at.max(at);
         self.update_task();
@@ -158,6 +161,10 @@ impl Core {
             update
                 .effects
                 .push(Effect::Emit(Topic::PinnedTargets(after_pins)));
+        }
+        if before_question != self.flight_boundary_question {
+            let topic = Topic::FlightBoundaryQuestion(self.flight_boundary_question);
+            update.effects.push(Effect::Emit(topic));
         }
         update.effects.extend(self.recording_effects());
         update
@@ -251,6 +258,7 @@ impl Core {
             Topic::RecentTargets(self.recent_targets.clone()),
             Topic::Task(self.task.snapshot()),
             Topic::TaskSaveFailed(self.task_save_failed),
+            Topic::FlightBoundaryQuestion(self.flight_boundary_question),
             Topic::GlidePerformance(self.glide_performance),
         ]
     }
@@ -324,6 +332,9 @@ impl Core {
         }
 
         self.reevaluate_flight_data(at);
+        // The recorder can reset the fusion, so it sees the fix before the
+        // instruments are compared.
+        self.update_task();
         let after = self.instruments();
         if after == before {
             return Vec::new();
@@ -546,9 +557,11 @@ impl Core {
     fn update_sensor_fusion(&mut self) {
         if let DomainState::Current(fix) = self.gps
             && let Some(utc) = self.fix_utc(fix)
-            && self.position_jump_check.observe(utc, fix.value.position)
+            && let Some(distance) = self.position_jump_check.observe(utc, fix.value.position)
         {
             self.sensor_fusion.reset();
+            let meters = distance.as_meters();
+            self.ask(crate::FlightBoundaryQuestion::PositionJump { meters });
         }
         self.sensor_fusion.update(FusionInputs {
             gps: self.gps,
@@ -1347,6 +1360,11 @@ impl Core {
         utc.map(UtcInstant::from_unix_milliseconds)
     }
 
+    /// Opens the question unless a question is open already.
+    fn ask(&mut self, question: crate::FlightBoundaryQuestion) {
+        self.flight_boundary_question.get_or_insert(question);
+    }
+
     fn observe_task_fix(&mut self, fix: crate::ownship::Selected<GpsSnapshot>) {
         if self.task_fix == Some(fix) {
             return;
@@ -1355,10 +1373,23 @@ impl Core {
         let Some(utc) = self.fix_utc(fix) else {
             return;
         };
-        let Some(starts_recording) = self.recorder.observe(utc, fix.value.position) else {
+        let shell_utc = self.device_utc.map(|shell_utc| {
+            shell_utc
+                .value
+                .saturating_add(fix.ingested_at.saturating_since(shell_utc.ingested_at))
+        });
+        let observation = self.recorder.observe(utc, fix.value.position, shell_utc);
+        if observation.shell_gap_exceeded {
+            self.sensor_fusion.reset();
+        }
+        if let Some(milliseconds) = observation.fix_utc_jump {
+            self.ask(crate::FlightBoundaryQuestion::FixUtcJump { milliseconds });
+        }
+        let Some(starts_recording) = observation.starts_recording else {
             return;
         };
         if starts_recording {
+            self.flight_boundary_question = None;
             self.task.start_recording();
         }
         if self.task.observe(fix.value.position, utc)
@@ -1402,6 +1433,29 @@ impl Input for crate::RestoreRecording {
         if let Some(wind) = last.sample.wind {
             core.sensor_fusion.restore_wind(wind);
         }
+        core.position_jump_check
+            .observe(last.sample.utc, last.sample.position);
+        Update::empty()
+    }
+}
+impl Input for crate::StartNewFlight {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        let before = core.instruments();
+        core.flight_boundary_question = None;
+        core.recorder.start_new_flight();
+        core.sensor_fusion.reset();
+        let after = core.instruments();
+        if after == before {
+            return Update::empty();
+        }
+        Update::effects(vec![Effect::emit(after.as_topic())])
+    }
+}
+impl Input for crate::ContinueFlight {
+    type Response = ();
+    fn apply_to(self, core: &mut Core, _: Timestamp) -> Update<()> {
+        core.flight_boundary_question = None;
         Update::empty()
     }
 }

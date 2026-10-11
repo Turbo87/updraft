@@ -486,5 +486,13 @@
   "task_stop_confirm_title": "Aufgabe stoppen?",
   "task_stop_hint": "Alle Aufgabenpunkte werden entfernt.",
   "task_failed": "Die Aufgabenänderung ist fehlgeschlagen oder wurde nicht gespeichert.",
-  "task_search": "Wegpunkt suchen"
+  "task_search": "Wegpunkt suchen",
+  "flight_boundary_title": "Neuer Flug?",
+  "flight_boundary_position_jump": "Die Position ist um {distance} gesprungen.",
+  "flight_boundary_time_jump_forward": "Die GPS-Zeit ist um {duration} vorgesprungen.",
+  "flight_boundary_time_jump_back": "Die GPS-Zeit ist um {duration} zurückgesprungen.",
+  "flight_boundary_hint": "Ein neuer Flug löscht die aktuelle Flugaufzeichnung.",
+  "flight_boundary_answer_failed": "Die Antwort konnte nicht gespeichert werden.",
+  "new_flight": "Neuer Flug",
+  "continue_flight": "Flug fortsetzen"
 }

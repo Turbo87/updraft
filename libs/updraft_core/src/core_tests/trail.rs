@@ -84,7 +84,10 @@ fn trail_keeps_the_running_maxima_of_the_recording() {
         },
         at(1),
     );
-    for (offset, ellipsoid_meters) in [(1_000, 1_548.0), (2_000, 1_248.0), (4 * HOURS, 548.0)] {
+    for (offset, ellipsoid_meters) in [(1_000, 1_548.0), (2_000, 1_248.0), (3_000, 548.0)] {
+        if offset == 3_000 {
+            core.apply(crate::StartNewFlight, at(offset as u64));
+        }
         let input = altitude_fix(UTC + offset, ellipsoid_meters);
         topics.extend(trail_topics(core.apply(input, at(offset as u64)).effects));
     }

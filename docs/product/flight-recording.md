@@ -14,10 +14,31 @@ relative vario, Estimated netto, Estimated relative vario, terrain elevation,
 and wind. A stale or unavailable value is empty.
 
 A fix starts a new recording when no recording exists. A fix also starts a new
-recording when its UTC is more than 3 hours after the last sample, or more than
-30 seconds before it. A new recording replaces the previous recording and resets
-task progress. A fix with the same UTC as the last sample, or up to 30 seconds
-before it, is not recorded.
+recording when the system time is more than 3 hours after the system time of
+the last sample. This covers a restart, a crash, and an app that was suspended
+overnight. While the app runs, this rule also resets the wind and the other
+fused values. A new recording replaces the previous recording and resets task
+progress.
+
+A fix with the same UTC as the last sample, or up to 30 seconds before it, is
+not recorded. When the fix UTC jumps more than 3 hours forward or more than 30
+seconds back, the core opens a question whether a new flight starts. A
+confirmed [position jump](flight-data.md#position-jumps) also opens the
+question. When a question is open already, the core keeps it. The
+current recording continues until the pilot answers. Updraft records no fix
+with a UTC before the last sample.
+
+Every connected client shows the question as a modal dialog. The dialog blocks
+the Flight View until the pilot answers. It has no timeout. It states the cause,
+for example "Position jumped 120 km" or "GPS time jumped back 3 days". An answer
+from one client closes the dialog on all clients. The core does not store the
+open question. After a restart, the position jump check opens it again when
+the position is still far from the last restored sample.
+
+The answer **New flight** starts a new recording at the next fix and resets the
+wind and the other fused values. The task route stays. The answer **Continue
+flight** keeps the current recording. See
+[The wall clock starts a new recording, and data jumps ask the pilot](../adr/0005-the-wall-clock-starts-a-new-recording-and-data-jumps-ask-the-pilot.md).
 
 Updraft keeps only the current recording. It commits each sample in a separate
 transaction. A committed sample survives an app crash and an Android process

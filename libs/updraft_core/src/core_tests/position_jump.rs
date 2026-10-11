@@ -1,8 +1,8 @@
 use super::super::*;
 use super::support::*;
 use crate::connection::ConnectionSpec;
-use crate::{RestoreRecording, Sample, StoredSample, Velocity};
-use claims::assert_some;
+use crate::{FlightBoundaryQuestion, RestoreRecording, Sample, StoredSample, Velocity};
+use claims::{assert_none, assert_some, assert_some_eq};
 use updraft_geo::LatLon;
 use updraft_units::Speed;
 
@@ -81,6 +81,46 @@ fn only_a_confirmed_position_jump_resets_the_fusion() {
         .collect::<Vec<_>>();
 
     insta::assert_snapshot!(log.join("\n"));
+}
+
+fn position_jump(from_latitude_degrees: f64, to_latitude_degrees: f64) -> FlightBoundaryQuestion {
+    let from = LatLon::from_degrees(from_latitude_degrees, 6.0);
+    let to = LatLon::from_degrees(to_latitude_degrees, 6.0);
+    FlightBoundaryQuestion::PositionJump {
+        meters: from.distance(to).as_meters(),
+    }
+}
+
+#[test]
+fn confirmed_position_jump_asks_the_pilot() {
+    let mut core = core_with_wind();
+    fly(&mut core, 1..3, 50.0);
+    fly(&mut core, 3..6, 51.0);
+    assert_none!(question(&core));
+
+    fly(&mut core, 6..7, 51.0);
+
+    assert_some_eq!(question(&core), position_jump(50.0, 51.0));
+}
+
+#[test]
+fn second_position_jump_keeps_the_open_question() {
+    let mut core = core_with_wind();
+    fly(&mut core, 1..3, 50.0);
+    fly(&mut core, 3..7, 51.0);
+    fly(&mut core, 7..11, 52.0);
+
+    assert_some_eq!(question(&core), position_jump(50.0, 51.0));
+    assert_none!(wind(&core));
+}
+
+#[test]
+fn position_jump_check_starts_at_the_restored_sample() {
+    let mut core = core_with_wind();
+
+    fly(&mut core, 1..5, 51.0);
+
+    assert_some_eq!(question(&core), position_jump(50.0, 51.0));
 }
 
 #[test]

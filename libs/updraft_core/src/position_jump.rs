@@ -40,38 +40,39 @@ pub struct PositionJumpCheck {
 }
 
 impl PositionJumpCheck {
-    /// Returns whether the fix confirms a position jump.
-    pub fn observe(&mut self, utc: UtcInstant, position: LatLon) -> bool {
+    /// Returns the distance from the last accepted fix when the fix
+    /// confirms a position jump.
+    pub fn observe(&mut self, utc: UtcInstant, position: LatLon) -> Option<Length> {
         let fix = TimedPosition { utc, position };
         let Some(accepted) = self.accepted else {
             self.accept(fix);
-            return false;
+            return None;
         };
         let last = self.candidate.map_or(accepted, |candidate| candidate.last);
         if utc == last.utc {
-            return false;
+            return None;
         }
         let confirmations = match (self.candidate, Step::between(last, fix)) {
             (_, Step::Unchecked) | (None, Step::Plausible) => {
                 self.accept(fix);
-                return false;
+                return None;
             }
             (Some(candidate), Step::Plausible) => candidate.confirmations + 1,
             (Some(_), Step::Implausible) if Step::between(accepted, fix) == Step::Plausible => {
                 self.accept(fix);
-                return false;
+                return None;
             }
             (_, Step::Implausible) => 0,
         };
         if confirmations == CONFIRMATIONS {
             self.accept(fix);
-            return true;
+            return Some(accepted.position.distance(position));
         }
         self.candidate = Some(Candidate {
             last: fix,
             confirmations,
         });
-        false
+        None
     }
 
     fn accept(&mut self, fix: TimedPosition) {
@@ -113,7 +114,9 @@ mod tests {
 
     fn observe(check: &mut PositionJumpCheck, utc: i64, latitude_degrees: f64) -> bool {
         let utc = UtcInstant::from_unix_milliseconds(UTC + utc);
-        check.observe(utc, LatLon::from_degrees(latitude_degrees, 6.0))
+        check
+            .observe(utc, LatLon::from_degrees(latitude_degrees, 6.0))
+            .is_some()
     }
 
     /// Observes one fix per second and returns the fixes that confirm a
@@ -227,7 +230,9 @@ mod tests {
         // The antipode is about 20,000 km away, which needs about 1.9 km/s.
         let far = |check: &mut PositionJumpCheck, utc: i64| {
             let utc = UtcInstant::from_unix_milliseconds(UTC + utc);
-            check.observe(utc, LatLon::from_degrees(-50.0, -174.0))
+            check
+                .observe(utc, LatLon::from_degrees(-50.0, -174.0))
+                .is_some()
         };
         assert!(!far(&mut check, 3 * HOURS));
         assert!(!far(&mut check, 3 * HOURS + 1_000));

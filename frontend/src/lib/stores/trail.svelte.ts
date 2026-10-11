@@ -24,6 +24,7 @@ export class TrailStore {
   #wind: DerivedWindInstruments | null = null;
 
   segments = new TrailSegments();
+  hasRecording = $state(false);
   maxAltitudeMslMeters = $state<number | null>(null);
   maxAltitudeAglMeters = $state<number | null>(null);
   translation = $state.raw<TrailTranslation | null>(null);
@@ -45,6 +46,7 @@ export class TrailStore {
     if (topic.topic !== 'trail') return;
 
     let trail = topic.value;
+    this.hasRecording = trail !== null;
     if (trail) {
       this.maxAltitudeMslMeters = trail.maxAltitudeMslMeters;
       this.maxAltitudeAglMeters = trail.maxAltitudeAglMeters;

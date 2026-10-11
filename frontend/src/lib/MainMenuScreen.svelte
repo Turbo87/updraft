@@ -9,10 +9,11 @@
 
   type Props = {
     buildDate?: string;
+    onNewFlight?: () => void;
     onQuit?: () => void;
   };
 
-  let { buildDate, onQuit }: Props = $props();
+  let { buildDate, onNewFlight, onQuit }: Props = $props();
 </script>
 
 <ScreenScaffold
@@ -55,8 +56,17 @@
       </div>
     </Card>
   </nav>
+  {#if onNewFlight}
+    <section class="action">
+      <p>{m.new_flight_hint()}</p>
+      <Button size="large" style="width: 100%" variant="destructive-outline" onclick={onNewFlight}>
+        <span aria-hidden="true" class="i-mdi-restart action-icon"></span>
+        {m.new_flight()}
+      </Button>
+    </section>
+  {/if}
   {#if onQuit}
-    <section class="quit-action">
+    <section class="action">
       <p>{m.quit_app_hint()}</p>
       <Button size="large" style="width: 100%" variant="destructive-outline" onclick={onQuit}>
         <span aria-hidden="true" class="i-mdi-power action-icon"></span>
@@ -80,11 +90,11 @@
     border-block-start: 1px solid var(--color-separator);
   }
 
-  .quit-action {
+  .action {
     margin-block-start: var(--space-8);
   }
 
-  .quit-action p {
+  .action p {
     margin: 0 0 var(--space-3);
     color: var(--color-text-muted);
     font: var(--text-body);

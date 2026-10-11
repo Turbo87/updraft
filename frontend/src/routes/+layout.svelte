@@ -79,6 +79,7 @@
     settings,
     glidePerformance,
     traffic,
+    trail,
   } satisfies AppContext;
 
   setAppContext(appContext);

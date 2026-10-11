@@ -12,6 +12,7 @@ import type { NavigationStore } from '#lib/stores/navigation.svelte.js';
 import type { SettingsStore } from '#lib/stores/settings.svelte.js';
 import type { TerrainStore } from '#lib/stores/terrain.svelte.js';
 import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
+import type { TrailStore } from '#lib/stores/trail.svelte.js';
 import type { WaypointsStore } from '#lib/stores/waypoints.svelte.js';
 
 import { createContext } from 'svelte';
@@ -32,6 +33,7 @@ export type AppContext = {
   settings: SettingsStore;
   glidePerformance: GlidePerformanceStore;
   traffic: TrafficStore;
+  trail: TrailStore;
 };
 
 export const [getAppContext, setAppContext] = createContext<AppContext>();

@@ -40,6 +40,10 @@ wind and the other fused values. The task route stays. The answer **Continue
 flight** keeps the current recording. See
 [The wall clock starts a new recording, and data jumps ask the pilot](../adr/0005-the-wall-clock-starts-a-new-recording-and-data-jumps-ask-the-pilot.md).
 
+While a recording exists, the Main Menu has a **New flight** action. The
+action asks for a confirmation, because it deletes the current recording.
+After the confirmation, it has the same effect as the answer **New flight**.
+
 Updraft keeps only the current recording. It commits each sample in a separate
 transaction. A committed sample survives an app crash and an Android process
 kill. A power loss can remove the newest committed samples. A crash loses only

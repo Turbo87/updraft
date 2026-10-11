@@ -11,7 +11,7 @@
       docs: {
         description: {
           component:
-            'Use the Main Menu as the direct entry from the Flight View. One card groups the flight pages. One card opens Settings and About. Show the build date. Keep it visible as an em dash when its data is unavailable.',
+            'Use the Main Menu as the direct entry from the Flight View. One card groups the flight pages. One card opens Settings and About. Show the build date. Keep it visible as an em dash when its data is unavailable. Show the New flight action only while a recording exists.',
         },
       },
     },
@@ -20,7 +20,7 @@
 
 <Story name="Current values" asChild>
   <div class="main-menu-story">
-    <MainMenuScreen buildDate="15 Aug 2026" onQuit={() => {}} />
+    <MainMenuScreen buildDate="15 Aug 2026" onNewFlight={() => {}} onQuit={() => {}} />
   </div>
 </Story>
 <Story name="Unknown values" asChild>

@@ -75,6 +75,17 @@ describe('TrailStore', () => {
     ]);
   });
 
+  it('reports a recording while the trail topic has one', () => {
+    let { store, apply } = setup();
+    expect(store.hasRecording).toBe(false);
+
+    apply(trail(1));
+    expect(store.hasRecording).toBe(true);
+
+    apply(null);
+    expect(store.hasRecording).toBe(false);
+  });
+
   it('fetches the trail length before the first sample of a new subscription', async () => {
     let { requests, ids, apply } = setup();
 

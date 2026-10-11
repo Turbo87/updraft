@@ -133,6 +133,8 @@ pub fn run() {
             pinned_targets::pin_target,
             pinned_targets::unpin_target,
             ipc::set_mac_cready,
+            ipc::start_new_flight,
+            ipc::continue_flight,
             ipc::set_bugs,
             ipc::set_ballast,
             ipc::set_energy_compensation,

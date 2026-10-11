@@ -284,6 +284,28 @@ pub async fn set_mac_cready(
         .map_err(|_| DriverCommandError::DriverStopped)
 }
 
+/// Answers the flight boundary question with New flight.
+#[tauri::command]
+pub async fn start_new_flight(
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::StartNewFlight)
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
+/// Answers the flight boundary question with Continue flight.
+#[tauri::command]
+pub async fn continue_flight(
+    handle: tauri::State<'_, DriverHandle>,
+) -> Result<(), DriverCommandError> {
+    handle
+        .send(updraft_core::ContinueFlight)
+        .await
+        .map_err(|_| DriverCommandError::DriverStopped)
+}
+
 #[tauri::command]
 pub async fn set_energy_compensation(
     enabled: bool,
@@ -673,6 +695,56 @@ mod tests {
             .expect("the bonded-device query should succeed");
 
         assert_eq!(response, json!({ "status": "unsupported" }));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn flight_boundary_question_and_answers_use_ipc() {
+        let (sender, messages) = std::sync::mpsc::channel::<Value>();
+        let handle = spawn_driver(
+            SettingsSnapshot::default(),
+            AirspaceState::none_at_startup(),
+        );
+        let app = crate::test_support::capture_channels(move |body| sender.send(body).unwrap())
+            .manage(handle.clone())
+            .invoke_handler(tauri::generate_handler![
+                subscribe,
+                start_new_flight,
+                continue_flight
+            ])
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("the IPC test app should build");
+        claims::assert_ok!(invoke(
+            &app,
+            "subscribe",
+            json!({"channel": "__CHANNEL__:1"})
+        ));
+        // 2026-01-01T12:00:00Z
+        let utc = 1_767_268_800_000;
+        // Each fix has a different position, because the driver can ingest
+        // two fixes in the same millisecond.
+        let send_fix = async |utc: i64, latitude_degrees: f64| {
+            let fix = updraft_core::Fix {
+                position: updraft_geo::LatLon::from_degrees(latitude_degrees, 6.),
+                altitude_ellipsoid: None,
+                track: None,
+                ground_speed: None,
+                fix_time: Some(updraft_core::UtcInstant::from_unix_milliseconds(utc)),
+            };
+            let input = updraft_core::InternalGps::new(fix);
+            claims::assert_ok!(handle.send(input).await);
+        };
+        for (offset, answer) in [(0, "continue_flight"), (2_000, "start_new_flight")] {
+            send_fix(utc + offset, 50.).await;
+            send_fix(utc + offset - 60_000, 50.0001).await;
+            claims::assert_ok!(invoke(&app, answer, json!({})));
+        }
+
+        let questions: Vec<_> = messages
+            .try_iter()
+            .filter(|message| message["topic"] == "flightBoundaryQuestion")
+            .map(|message| message["value"].clone())
+            .collect();
+        insta::assert_json_snapshot!(questions);
     }
 
     #[tokio::test(flavor = "multi_thread")]

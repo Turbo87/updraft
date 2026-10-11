@@ -1,0 +1,17 @@
+---
+source: tauri/src/ipc.rs
+expression: questions
+---
+[
+  null,
+  {
+    "cause": "fixUtcJump",
+    "milliseconds": -60000
+  },
+  null,
+  {
+    "cause": "fixUtcJump",
+    "milliseconds": -60000
+  },
+  null
+]

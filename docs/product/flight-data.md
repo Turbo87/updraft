@@ -75,9 +75,10 @@ before it within the same limits. Otherwise, a fix that follows from the last
 accepted fix cancels the candidate. Until confirmation, the core processes the
 fixes normally.
 
-A confirmed position jump resets all derived flight data. This includes the
-wind, the circling buffer, derived airspeed, heading, turn rate, and the
-vertical-speed and average-vario series. See
+A confirmed position jump and a new flight reset all derived flight data. This
+includes the wind, the circling buffer, derived airspeed, heading, turn rate,
+and the vertical-speed and average-vario series. A new recording after more
+than 3 hours of system time counts as a new flight. See
 [Only a confirmed position jump or a new flight resets the wind](../adr/0004-only-a-confirmed-position-jump-or-a-new-flight-resets-the-wind.md).
 
 ## Pressure altitude

@@ -332,6 +332,9 @@ impl Core {
         }
 
         self.reevaluate_flight_data(at);
+        // The recorder can reset the fusion, so it sees the fix before the
+        // instruments are compared.
+        self.update_task();
         let after = self.instruments();
         if after == before {
             return Vec::new();
@@ -1376,6 +1379,9 @@ impl Core {
                 .saturating_add(fix.ingested_at.saturating_since(shell_utc.ingested_at))
         });
         let observation = self.recorder.observe(utc, fix.value.position, shell_utc);
+        if observation.shell_gap_exceeded {
+            self.sensor_fusion.reset();
+        }
         if let Some(milliseconds) = observation.fix_utc_jump {
             self.ask(crate::FlightBoundaryQuestion::FixUtcJump { milliseconds });
         }

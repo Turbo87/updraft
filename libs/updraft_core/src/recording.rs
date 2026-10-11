@@ -77,6 +77,9 @@ pub struct Observation {
     /// The fix-UTC step from the last sample when the pilot must decide
     /// whether a new flight starts.
     pub fix_utc_jump: Option<i64>,
+    /// The shell time since the last sample exceeds the limit, so a new
+    /// flight starts.
+    pub shell_gap_exceeded: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -108,9 +111,12 @@ impl FlightRecorder {
         position: LatLon,
         shell_utc: Option<UtcInstant>,
     ) -> Observation {
+        let shell_gap_exceeded = self
+            .recording
+            .is_some_and(|recording| recording.shell_gap_exceeded(shell_utc));
         let continued = self
             .recording
-            .filter(|recording| !self.new_flight && !recording.shell_gap_exceeded(shell_utc));
+            .filter(|_| !self.new_flight && !shell_gap_exceeded);
         let Some(recording) = continued else {
             self.new_flight = false;
             self.backward_jump = false;
@@ -118,6 +124,7 @@ impl FlightRecorder {
             return Observation {
                 starts_recording: Some(true),
                 fix_utc_jump: None,
+                shell_gap_exceeded,
             };
         };
         let step = utc.unix_milliseconds() - recording.last.unix_milliseconds();
@@ -127,6 +134,7 @@ impl FlightRecorder {
             return Observation {
                 starts_recording: None,
                 fix_utc_jump: jump.then_some(step),
+                shell_gap_exceeded: false,
             };
         }
         self.backward_jump = false;
@@ -134,6 +142,7 @@ impl FlightRecorder {
         Observation {
             starts_recording: Some(false),
             fix_utc_jump: (step > MAX_GAP_MILLISECONDS).then_some(step),
+            shell_gap_exceeded: false,
         }
     }
 

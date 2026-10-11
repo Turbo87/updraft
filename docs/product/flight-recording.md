@@ -16,7 +16,8 @@ and wind. A stale or unavailable value is empty.
 A fix starts a new recording when no recording exists. A fix also starts a new
 recording when the system time is more than 3 hours after the system time of
 the last sample. This covers a restart, a crash, and an app that was suspended
-overnight. A new recording replaces the previous recording and resets task
+overnight. While the app runs, this rule also resets the wind and the other
+fused values. A new recording replaces the previous recording and resets task
 progress.
 
 A fix with the same UTC as the last sample, or up to 30 seconds before it, is

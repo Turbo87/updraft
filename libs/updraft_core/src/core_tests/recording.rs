@@ -171,6 +171,24 @@ fn fix_more_than_3_hours_of_shell_time_after_the_last_sample_starts_a_recording(
 }
 
 #[test]
+fn new_recording_after_more_than_3_hours_of_shell_time_resets_the_wind() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    restore(&mut core, UTC, UTC + HOURS);
+    shell_utc(&mut core, UTC + 3 * HOURS + 1, 0);
+
+    let effects = core.apply(utc_fix(UTC + 1_000, 50.0), at(0)).effects;
+
+    let instruments = single_instruments_emission(&effects);
+    assert_none!(
+        instruments
+            .derived
+            .as_ref()
+            .and_then(|derived| derived.wind)
+    );
+    assert_eq!(starts(effects), [true]);
+}
+
+#[test]
 fn new_recording_after_more_than_3_hours_of_shell_time_closes_the_question() {
     let mut core = Core::new(SettingsSnapshot::default());
     shell_utc(&mut core, UTC, 0);

@@ -351,6 +351,17 @@ impl private::Sealed for RestoreNavigationTarget {}
 pub struct SetTaskSaveFailed(pub bool);
 impl private::Sealed for SetTaskSaveFailed {}
 
+/// Answers the flight boundary question with New flight. The next fix
+/// starts a new recording.
+#[derive(Debug)]
+pub struct StartNewFlight;
+impl private::Sealed for StartNewFlight {}
+
+/// Answers the flight boundary question with Continue flight.
+#[derive(Debug)]
+pub struct ContinueFlight;
+impl private::Sealed for ContinueFlight {}
+
 /// Continues the flight recording that the shell read at startup.
 #[derive(Debug)]
 pub struct RestoreRecording {

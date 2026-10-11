@@ -1,16 +1,18 @@
 use super::super::*;
 use super::support::*;
 use crate::{
-    ChangeTask, NavigationTarget, RestoreRecording, RestoreTask, Sample, StoredSample, Task,
-    TaskCommand, TaskPoint, TaskTime, Velocity,
+    ChangeTask, ContinueFlight, FlightBoundaryQuestion, NavigationTarget, RestoreRecording,
+    RestoreTask, Sample, StartNewFlight, StoredSample, Task, TaskCommand, TaskPoint, TaskTime,
+    Velocity,
 };
-use claims::{assert_ok, assert_some, assert_some_eq};
+use claims::{assert_none, assert_ok, assert_some, assert_some_eq};
 use updraft_geo::LatLon;
 use updraft_units::Speed;
 
 /// 2026-01-01T12:00:00Z
 const UTC: i64 = 1_767_268_800_000;
 const HOURS: i64 = 60 * 60 * 1000;
+const DAYS: i64 = 24 * HOURS;
 
 fn utc_fix(utc: i64, latitude_degrees: f64) -> InternalGps {
     InternalGps::new(Fix {
@@ -51,16 +53,97 @@ fn fix_at_or_up_to_30_seconds_before_the_last_sample_is_dropped() {
     record(&mut core, UTC, 0);
     assert_eq!(record(&mut core, UTC, 1_000), []);
     assert_eq!(record(&mut core, UTC - 30_000, 2_000), []);
-    insta::assert_debug_snapshot!(record(&mut core, UTC - 30_001, 3_000));
+    assert_none!(question(&core));
+}
+
+fn question_emissions(effects: &[Effect]) -> Vec<Option<FlightBoundaryQuestion>> {
+    effects
+        .iter()
+        .filter_map(|effect| match effect {
+            Effect::Emit(Topic::FlightBoundaryQuestion(question)) => Some(*question),
+            _ => None,
+        })
+        .collect()
 }
 
 #[test]
-fn fix_more_than_3_hours_after_the_last_sample_starts_a_recording() {
+fn fix_more_than_3_hours_after_the_last_sample_asks_the_pilot_and_continues_the_recording() {
     let mut core = Core::new(SettingsSnapshot::default());
     record(&mut core, UTC, 0);
-    let mut effects = record(&mut core, UTC + 3 * HOURS, 1_000);
-    effects.extend(record(&mut core, UTC + 6 * HOURS + 1, 2_000));
-    insta::assert_debug_snapshot!(effects);
+    assert_eq!(starts(record(&mut core, UTC + 3 * HOURS, 1_000)), [false]);
+    assert_none!(question(&core));
+
+    let effects = core
+        .apply(utc_fix(UTC + 6 * HOURS + 1, 50.0), at(2_000))
+        .effects;
+
+    let question = FlightBoundaryQuestion::FixUtcJump {
+        milliseconds: 3 * HOURS + 1,
+    };
+    assert_eq!(question_emissions(&effects), [Some(question)]);
+    assert_eq!(starts(effects), [false]);
+}
+
+#[test]
+fn fix_more_than_30_seconds_before_the_last_sample_asks_the_pilot_and_is_dropped() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    record(&mut core, UTC, 0);
+
+    let effects = core.apply(utc_fix(UTC - 30_001, 50.0), at(1_000)).effects;
+
+    let question = FlightBoundaryQuestion::FixUtcJump {
+        milliseconds: -30_001,
+    };
+    assert_eq!(question_emissions(&effects), [Some(question)]);
+    assert_eq!(starts(effects), [false; 0]);
+}
+
+#[test]
+fn continue_flight_after_a_backward_jump_records_no_fix_before_the_last_sample() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    record(&mut core, UTC, 0);
+    record(&mut core, UTC - 3 * DAYS, 1_000);
+
+    let effects = core.apply(ContinueFlight, at(2_000)).effects;
+
+    assert_eq!(question_emissions(&effects), [None]);
+    assert_eq!(record(&mut core, UTC - 3 * DAYS + 1_000, 3_000), []);
+    assert_none!(question(&core));
+    assert_eq!(starts(record(&mut core, UTC + 1_000, 4_000)), [false]);
+}
+
+#[test]
+fn new_flight_starts_a_recording_at_the_next_fix() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    record(&mut core, UTC, 0);
+    record(&mut core, UTC - 3 * DAYS, 1_000);
+
+    let effects = core.apply(StartNewFlight, at(2_000)).effects;
+
+    assert_eq!(question_emissions(&effects), [None]);
+    assert_eq!(starts(effects), [false; 0]);
+    assert_eq!(
+        starts(record(&mut core, UTC - 3 * DAYS + 1_000, 3_000)),
+        [true]
+    );
+    assert_eq!(
+        starts(record(&mut core, UTC - 3 * DAYS + 2_000, 4_000)),
+        [false]
+    );
+}
+
+#[test]
+fn new_flight_resets_the_wind() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    restore(&mut core, UTC, UTC + HOURS);
+    assert_some!(assert_some!(instruments(&core).derived).wind);
+
+    core.apply(StartNewFlight, at(0));
+
+    assert_eq!(
+        instruments(&core).derived.and_then(|derived| derived.wind),
+        None
+    );
 }
 
 /// Returns `true` for each recorded fix that starts a recording.
@@ -87,6 +170,21 @@ fn fix_more_than_3_hours_of_shell_time_after_the_last_sample_starts_a_recording(
     assert_eq!(starts(record(&mut core, UTC + 2_000, 2_000)), [true]);
 }
 
+#[test]
+fn new_recording_after_more_than_3_hours_of_shell_time_closes_the_question() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    shell_utc(&mut core, UTC, 0);
+    record(&mut core, UTC, 0);
+    record(&mut core, UTC - 3 * DAYS, 1_000);
+    assert_some!(question(&core));
+    shell_utc(&mut core, UTC + 3 * HOURS + 2_001, 2_000);
+
+    let effects = core.apply(utc_fix(UTC + 2_000, 50.0), at(2_000)).effects;
+
+    assert_eq!(question_emissions(&effects), [None]);
+    assert_eq!(starts(effects), [true]);
+}
+
 fn waypoint(name: &str, latitude_degrees: f64) -> NavigationTarget {
     NavigationTarget::Waypoint {
         name: name.into(),
@@ -97,7 +195,7 @@ fn waypoint(name: &str, latitude_degrees: f64) -> NavigationTarget {
 }
 
 #[test]
-fn new_recording_resets_task_progress() {
+fn new_flight_resets_task_progress() {
     let mut core = Core::new(SettingsSnapshot::default());
     for (name, latitude_degrees) in [("Start", 50.0), ("Finish", 51.0)] {
         let target = waypoint(name, latitude_degrees);
@@ -121,7 +219,8 @@ fn new_recording_resets_task_progress() {
         }
     );
 
-    core.apply(utc_fix(UTC + 4 * HOURS, 50.0), at(2_000));
+    core.apply(StartNewFlight, at(2_000));
+    core.apply(utc_fix(UTC + 2_000, 50.0), at(2_000));
     insta::assert_debug_snapshot!(core.task.snapshot());
 }
 

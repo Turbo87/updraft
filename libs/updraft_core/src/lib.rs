@@ -65,7 +65,7 @@ pub use input::{
 pub use ownship::{DomainState, GpsSnapshot, Selected, SourceId, Timed};
 pub use polar::{PolarId, UnknownPolar};
 pub use position_jump::PositionJumpCheck;
-pub use recording::{Sample, StoredSample};
+pub use recording::{FlightBoundaryQuestion, Sample, StoredSample};
 pub use sensor_fusion::{FusionInputs, SensorFusion};
 pub use settings::{
     AltitudeUnit, ClimbAverageMethod, DistanceUnit, HillshadeDirection, Locale, Settings,
@@ -105,4 +105,6 @@ pub use task::{PublishedTask, Task, TaskCommand, TaskPoint, TaskProgress, TaskTi
 
 pub use input::GetNavigationTarget;
 
-pub use input::{RestoreNavigationTarget, RestoreRecording, SetTaskSaveFailed};
+pub use input::{
+    ContinueFlight, RestoreNavigationTarget, RestoreRecording, SetTaskSaveFailed, StartNewFlight,
+};

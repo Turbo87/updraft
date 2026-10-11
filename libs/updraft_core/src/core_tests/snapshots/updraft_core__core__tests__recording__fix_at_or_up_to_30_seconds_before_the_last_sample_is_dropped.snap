@@ -18,6 +18,9 @@ expression: "record(&mut core, UTC - 30_001, 3_000)"
                 ),
             ),
             vario: None,
+            vertical_speed: Some(
+                0 m/s,
+            ),
             netto: None,
             relative_vario: None,
             wind: None,

@@ -19,6 +19,7 @@ expression: effects
                 ),
             ),
             vario: None,
+            vertical_speed: None,
             netto: None,
             relative_vario: None,
             wind: None,

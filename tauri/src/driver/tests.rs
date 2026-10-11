@@ -382,6 +382,7 @@ fn stale_sample() -> Sample {
         position: updraft_geo::LatLon::from_degrees(50.0, 6.0),
         altitude_msl: None,
         vario: None,
+        vertical_speed: None,
         netto: None,
         relative_vario: None,
         wind: None,

@@ -26,6 +26,7 @@ function trail(
       altitudeMslMeters: 1000,
       altitudeAglMeters: 800,
       varioMetersPerSecond: 1,
+      verticalSpeedMetersPerSecond: 0.5,
       nettoMetersPerSecond: 2,
       relativeVarioMetersPerSecond: 3,
       ...overrides,

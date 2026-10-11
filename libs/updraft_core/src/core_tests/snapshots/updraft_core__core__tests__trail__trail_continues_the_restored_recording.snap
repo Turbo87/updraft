@@ -20,6 +20,9 @@ Some(
             vario_meters_per_second: Some(
                 1.5,
             ),
+            vertical_speed_meters_per_second: Some(
+                1.25,
+            ),
             netto_meters_per_second: Some(
                 2.5,
             ),

@@ -11,4 +11,4 @@ export type TrailSample = { unixMilliseconds: number, position: LatLon, altitude
  * The MSL altitude above the terrain elevation, or the MSL altitude
  * when the terrain elevation is not available.
  */
-altitudeAglMeters: number | null, varioMetersPerSecond: number | null, nettoMetersPerSecond: number | null, relativeVarioMetersPerSecond: number | null, };
+altitudeAglMeters: number | null, varioMetersPerSecond: number | null, verticalSpeedMetersPerSecond: number | null, nettoMetersPerSecond: number | null, relativeVarioMetersPerSecond: number | null, };

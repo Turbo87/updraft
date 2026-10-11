@@ -37,6 +37,9 @@ expression: rows(&path)
         Integer(
             9000,
         ),
+        Real(
+            1.25,
+        ),
     ],
     [
         Integer(
@@ -69,6 +72,9 @@ expression: rows(&path)
         ),
         Integer(
             9000,
+        ),
+        Real(
+            1.25,
         ),
     ],
 ]

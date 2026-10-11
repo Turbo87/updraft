@@ -107,6 +107,7 @@ fn restored_sample(utc: i64, latitude_degrees: f64) -> StoredSample {
         position: LatLon::from_degrees(latitude_degrees, 6.0),
         altitude_msl: None,
         vario: None,
+        vertical_speed: None,
         netto: None,
         relative_vario: None,
         wind: Some(Velocity {

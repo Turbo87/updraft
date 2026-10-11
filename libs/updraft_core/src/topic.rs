@@ -215,6 +215,7 @@ pub struct TrailSample {
     /// when the terrain elevation is not available.
     pub altitude_agl_meters: Option<f64>,
     pub vario_meters_per_second: Option<f64>,
+    pub vertical_speed_meters_per_second: Option<f64>,
     pub netto_meters_per_second: Option<f64>,
     pub relative_vario_meters_per_second: Option<f64>,
 }
@@ -235,6 +236,7 @@ impl TrailSample {
             altitude_agl_meters: altitude_msl_meters
                 .map(|altitude| altitude - terrain_elevation_meters.unwrap_or(0.0)),
             vario_meters_per_second: speed(sample.vario),
+            vertical_speed_meters_per_second: speed(sample.vertical_speed),
             netto_meters_per_second: speed(sample.netto),
             relative_vario_meters_per_second: speed(sample.relative_vario),
         }

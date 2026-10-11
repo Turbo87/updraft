@@ -94,7 +94,8 @@ mod tests {
             },
             "relativeVarioMetersPerSecond": 1.0,
             "unixMilliseconds": 2000,
-            "varioMetersPerSecond": 1.5
+            "varioMetersPerSecond": 1.5,
+            "verticalSpeedMetersPerSecond": 1.25
           },
           {
             "altitudeAglMeters": 1200.0,
@@ -106,7 +107,8 @@ mod tests {
             },
             "relativeVarioMetersPerSecond": 1.0,
             "unixMilliseconds": 3000,
-            "varioMetersPerSecond": 1.5
+            "varioMetersPerSecond": 1.5,
+            "verticalSpeedMetersPerSecond": 1.25
           },
           {
             "altitudeAglMeters": null,
@@ -118,7 +120,8 @@ mod tests {
             },
             "relativeVarioMetersPerSecond": null,
             "unixMilliseconds": 4000,
-            "varioMetersPerSecond": 1.5
+            "varioMetersPerSecond": 1.5,
+            "verticalSpeedMetersPerSecond": 1.25
           }
         ]
         "#);

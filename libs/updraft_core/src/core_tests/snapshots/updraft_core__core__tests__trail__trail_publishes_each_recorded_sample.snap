@@ -19,6 +19,7 @@ expression: topics
                     199.0,
                 ),
                 vario_meters_per_second: None,
+                vertical_speed_meters_per_second: None,
                 netto_meters_per_second: None,
                 relative_vario_meters_per_second: None,
             },
@@ -46,6 +47,9 @@ expression: topics
                     99.0002,
                 ),
                 vario_meters_per_second: None,
+                vertical_speed_meters_per_second: Some(
+                    0.0,
+                ),
                 netto_meters_per_second: None,
                 relative_vario_meters_per_second: None,
             },

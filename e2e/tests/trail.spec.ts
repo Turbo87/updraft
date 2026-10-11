@@ -16,6 +16,7 @@ function sample(seconds: number): TrailSample {
     altitudeMslMeters: 1_000,
     altitudeAglMeters: 800,
     varioMetersPerSecond: 1,
+    verticalSpeedMetersPerSecond: 0.5,
     nettoMetersPerSecond: 1,
     relativeVarioMetersPerSecond: 1,
   };

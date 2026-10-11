@@ -182,6 +182,14 @@ impl WindFilter {
         SampleAcceptance::Accepted
     }
 
+    /// The wind vector, also while the estimate is too uncertain to report.
+    pub fn estimate(&self) -> Velocity {
+        Velocity {
+            east: self.east,
+            north: self.north,
+        }
+    }
+
     /// The wind vector in m/s towards east and north, or `None` while the
     /// estimate is still too uncertain to report.
     ///

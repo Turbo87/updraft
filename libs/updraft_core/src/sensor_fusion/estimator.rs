@@ -117,6 +117,8 @@ pub struct Estimator {
     referenced_altitude: Option<EllipsoidAltitude>,
     wind: WindFilter,
     wind_air_speed_time: Option<Duration>,
+    /// Time of the fix with the last accepted wind measurement.
+    wind_measurement_time: Option<Duration>,
     circling: CirclingWind,
     ground: Option<GroundVelocity>,
     previous_heading: Option<Angle>,
@@ -155,6 +157,7 @@ impl Estimator {
             referenced_altitude: None,
             wind: WindFilter::default(),
             wind_air_speed_time: None,
+            wind_measurement_time: None,
             circling: CirclingWind::default(),
             ground: None,
             previous_heading: None,
@@ -306,6 +309,7 @@ impl Estimator {
             })
         };
         let acceptance = if wind_measurement == SampleAcceptance::Accepted {
+            self.wind_measurement_time = Some(time);
             FixAcceptance::AcceptedWithWindMeasurement
         } else if air_speed_sample.is_some() || fit.is_some() {
             FixAcceptance::RejectedWindMeasurement
@@ -462,6 +466,7 @@ impl Estimator {
     pub fn reset_wind(&mut self) {
         self.wind = WindFilter::default();
         self.wind_air_speed_time = None;
+        self.wind_measurement_time = None;
         self.circling = CirclingWind::default();
         self.inferred_air_speed = InferredAirspeed::default();
         self.ground = None;
@@ -471,6 +476,19 @@ impl Estimator {
 
     pub fn restore_wind(&mut self, wind: Velocity) {
         self.wind = WindFilter::restored(wind);
+    }
+
+    /// Time from the last accepted wind measurement to the latest fix.
+    pub fn wind_age(&self) -> Option<Duration> {
+        let measured = self.wind_measurement_time?;
+        Some(self.ground?.time.saturating_sub(measured))
+    }
+
+    /// The wind filter state after the first accepted measurement, also
+    /// while it is too uncertain to report.
+    pub fn wind_estimate(&self) -> Option<Velocity> {
+        self.wind_measurement_time?;
+        Some(self.wind.estimate())
     }
 
     pub fn estimate(&self) -> Estimate {
@@ -529,7 +547,7 @@ mod tests {
     use super::*;
     use crate::sensor_fusion::circling::FULL_CIRCLE_VARIANCE;
     use approx::assert_abs_diff_eq;
-    use claims::{assert_gt, assert_lt, assert_none, assert_some};
+    use claims::{assert_gt, assert_lt, assert_none, assert_some, assert_some_eq};
     use updraft_polar::isa_density_ratio;
     use updraft_units::{Length, Mass};
 
@@ -1175,6 +1193,46 @@ mod tests {
         }
 
         assert_none!(estimator.estimate().wind);
+    }
+
+    #[test]
+    fn wind_age_counts_from_the_last_accepted_measurement() {
+        let mut estimator = Estimator::new();
+        assert_eq!(estimator.fix(Duration::ZERO, &fix(0., 35.)), FixPredicted);
+        assert_none!(estimator.wind_age());
+
+        let time = Duration::from_secs(1);
+        add_air_speed(&mut estimator, time, Speed::from_meters_per_second(30.));
+        assert_eq!(estimator.fix(time, &fix(0., 35.)), FixWithWind);
+        let time = Duration::from_secs(11);
+        assert_eq!(estimator.fix(time, &fix(0., 35.)), FixPredicted);
+
+        assert_some_eq!(estimator.wind_age(), Duration::from_secs(10));
+    }
+
+    #[test]
+    fn wind_estimate_is_available_before_the_wind_is_reported() {
+        let mut estimator = Estimator::new();
+        assert_none!(estimator.wind_estimate());
+        add_air_speed(
+            &mut estimator,
+            Duration::ZERO,
+            Speed::from_meters_per_second(30.),
+        );
+        assert_eq!(estimator.fix(Duration::ZERO, &fix(0., 35.)), FixWithWind);
+
+        assert_none!(estimator.estimate().wind);
+        let wind = assert_some!(estimator.wind_estimate());
+        assert_eq!(wind.east, Speed::ZERO);
+        assert_abs_diff_eq!(
+            wind.north,
+            Speed::from_meters_per_second(5. * 100. / 100.5),
+            epsilon = 1e-12
+        );
+
+        estimator.reset_wind();
+        assert_none!(estimator.wind_estimate());
+        assert_none!(estimator.wind_age());
     }
 
     #[test]

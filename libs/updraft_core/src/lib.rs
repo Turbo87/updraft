@@ -61,12 +61,15 @@ pub use input::{
     SetExternalDeviceEnabled, SetFlarmPositionCorrection, SetMacCready, SetPolar, Start,
     TerrainElevation, Tick, Update, UtcTick,
 };
+pub use ownship::{DomainState, GpsSnapshot, Selected, SourceId, Timed};
 pub use polar::{PolarId, UnknownPolar};
 pub use recording::{Sample, StoredSample};
+pub use sensor_fusion::{FusionInputs, SensorFusion};
 pub use settings::{
     AltitudeUnit, ClimbAverageMethod, DistanceUnit, HillshadeDirection, Locale, Settings,
     SettingsSnapshot, SpeedUnit, TrailColorMode, UnitSettings, VerticalSpeedUnit,
 };
+pub use signal_state::SignalState;
 pub use time::Timestamp;
 pub use topic::{
     AltitudeInstrument, DerivedAltitudeInstruments, DerivedBankInstruments,

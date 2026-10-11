@@ -63,6 +63,30 @@ fn fix_more_than_3_hours_after_the_last_sample_starts_a_recording() {
     insta::assert_debug_snapshot!(effects);
 }
 
+/// Returns `true` for each recorded fix that starts a recording.
+fn starts(effects: Vec<Effect>) -> Vec<bool> {
+    recording_effects(effects)
+        .iter()
+        .map(|effect| matches!(effect, Effect::StartRecording(_)))
+        .collect()
+}
+
+fn shell_utc(core: &mut Core, utc: i64, at_millis: u64) {
+    let utc = UtcInstant::from_unix_milliseconds(utc);
+    core.apply(UtcTick::new(utc), at(at_millis));
+}
+
+#[test]
+fn fix_more_than_3_hours_of_shell_time_after_the_last_sample_starts_a_recording() {
+    let mut core = Core::new(SettingsSnapshot::default());
+    shell_utc(&mut core, UTC, 0);
+    record(&mut core, UTC, 0);
+    shell_utc(&mut core, UTC + 3 * HOURS, 1_000);
+    assert_eq!(starts(record(&mut core, UTC + 1_000, 1_000)), [false]);
+    shell_utc(&mut core, UTC + 6 * HOURS + 1, 2_000);
+    assert_eq!(starts(record(&mut core, UTC + 2_000, 2_000)), [true]);
+}
+
 fn waypoint(name: &str, latitude_degrees: f64) -> NavigationTarget {
     NavigationTarget::Waypoint {
         name: name.into(),

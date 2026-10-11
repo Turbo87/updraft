@@ -1355,7 +1355,13 @@ impl Core {
         let Some(utc) = self.fix_utc(fix) else {
             return;
         };
-        let Some(starts_recording) = self.recorder.observe(utc, fix.value.position) else {
+        let shell_utc = self.device_utc.map(|shell_utc| {
+            shell_utc
+                .value
+                .saturating_add(fix.ingested_at.saturating_since(shell_utc.ingested_at))
+        });
+        let Some(starts_recording) = self.recorder.observe(utc, fix.value.position, shell_utc)
+        else {
             return;
         };
         if starts_recording {

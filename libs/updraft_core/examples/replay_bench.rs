@@ -9,7 +9,12 @@
 //! wrote, as a sanity check.
 //!
 //! All values are in m/s. Wind takes its bias from the wind speed and its
-//! RMS from the vector difference.
+//! RMS from the vector difference. Each cell pools the samples of all
+//! flights. The `min` and `max` columns are the lowest and highest RMS of a
+//! single flight.
+//!
+//! The vertical-speed smoothing is tuned for 1 Hz fixes. Files with a
+//! longer fix interval count only for derived airspeed and wind.
 //!
 //! Run the bench on a directory of IGC files:
 //!
@@ -302,8 +307,15 @@ fn parse(recording: &str) -> Result<Flight, Exclusion> {
         }
     }
     label_phases(&mut samples);
+    let mut intervals = samples
+        .windows(2)
+        .map(|pair| pair[1].time.saturating_since(pair[0].time))
+        .collect::<Vec<_>>();
+    intervals.sort();
+    let median_interval = intervals.get(intervals.len() / 2).copied();
     Ok(Flight {
         polar: glider_type.as_deref().and_then(find_polar),
+        one_hertz: median_interval == Some(Duration::from_secs(1)),
         samples,
     })
 }
@@ -312,7 +324,27 @@ struct Flight {
     /// The polar of the recorded glider type at reference mass, without
     /// ballast and bugs.
     polar: Option<GlidePolar>,
+    /// Whether the median fix interval is one second.
+    one_hertz: bool,
     samples: Vec<Sample>,
+}
+
+impl Flight {
+    fn scope(&self) -> Scope {
+        Scope {
+            vertical_speed: self.one_hertz,
+            netto: self.one_hertz && self.polar.is_some(),
+        }
+    }
+}
+
+/// The values that a flight scores besides derived airspeed and wind.
+#[derive(Clone, Copy)]
+struct Scope {
+    /// Vario and vertical speed.
+    vertical_speed: bool,
+    /// Netto and Relative vario.
+    netto: bool,
 }
 
 /// Finds the polar after it normalizes case, spaces, and hyphens.
@@ -493,6 +525,8 @@ struct Cell {
     compared: usize,
     error_sum: f64,
     square_sum: f64,
+    /// The lowest and highest RMS of a single flight.
+    flight_rms: Option<(f64, f64)>,
 }
 
 impl Cell {
@@ -531,6 +565,23 @@ impl Cell {
         }
     }
 
+    /// Pools the samples of one flight.
+    fn merge(&mut self, flight: &Self) {
+        self.samples += flight.samples;
+        self.available += flight.available;
+        self.compared += flight.compared;
+        self.error_sum += flight.error_sum;
+        self.square_sum += flight.square_sum;
+        if let Some(rms) = flight.rms() {
+            let (min, max) = self.flight_rms.unwrap_or((rms, rms));
+            self.flight_rms = Some((min.min(rms), max.max(rms)));
+        }
+    }
+
+    fn rms(&self) -> Option<f64> {
+        (self.compared > 0).then(|| (self.square_sum / self.compared as f64).sqrt())
+    }
+
     fn availability(&self) -> String {
         match self.samples {
             0 => "-".to_owned(),
@@ -539,15 +590,13 @@ impl Cell {
     }
 
     fn errors(&self) -> String {
-        if self.compared == 0 {
-            return format!("{:7} {:>6} {:>6}", 0, "-", "-");
-        }
-        let count = self.compared as f64;
+        let (Some(rms), Some((min, max))) = (self.rms(), self.flight_rms) else {
+            return format!("{:7} {:>6} {:>6} {:>6} {:>6}", 0, "-", "-", "-", "-");
+        };
+        let bias = self.error_sum / self.compared as f64;
         format!(
-            "{:7} {:+6.2} {:6.2}",
-            self.compared,
-            self.error_sum / count,
-            (self.square_sum / count).sqrt(),
+            "{:7} {bias:+6.2} {rms:6.2} {min:6.2} {max:6.2}",
+            self.compared
         )
     }
 }
@@ -566,13 +615,14 @@ struct ValueCells {
 impl ValueCells {
     const COUNT: usize = 6;
 
-    /// Netto and Relative vario count only for a flight with a polar.
-    fn add(&mut self, estimate: &Outputs, reference: &Outputs, sample: &Sample, has_polar: bool) {
+    fn add(&mut self, estimate: &Outputs, reference: &Outputs, sample: &Sample, scope: Scope) {
         let true_airspeed = sample.true_airspeed.as_meters_per_second();
-        self.vario.add_scalar(estimate.vario, reference.vario);
-        self.vertical_speed
-            .add_scalar(estimate.vertical_speed, reference.vario);
-        if has_polar {
+        if scope.vertical_speed {
+            self.vario.add_scalar(estimate.vario, reference.vario);
+            self.vertical_speed
+                .add_scalar(estimate.vertical_speed, reference.vario);
+        }
+        if scope.netto {
             self.netto.add_scalar(estimate.netto, reference.netto);
             self.relative_vario
                 .add_scalar(estimate.relative_vario, reference.relative_vario);
@@ -580,6 +630,15 @@ impl ValueCells {
         self.derived_airspeed
             .add_scalar(estimate.derived_airspeed, Some(true_airspeed));
         self.wind.add_wind(estimate.wind, reference.wind);
+    }
+
+    fn merge(&mut self, flight: &Self) {
+        self.vario.merge(&flight.vario);
+        self.vertical_speed.merge(&flight.vertical_speed);
+        self.netto.merge(&flight.netto);
+        self.relative_vario.merge(&flight.relative_vario);
+        self.derived_airspeed.merge(&flight.derived_airspeed);
+        self.wind.merge(&flight.wind);
     }
 
     fn rows(&self) -> [(&'static str, &Cell); Self::COUNT] {
@@ -603,13 +662,19 @@ struct ScenarioCells {
 }
 
 impl ScenarioCells {
-    fn add(&mut self, estimate: &Outputs, reference: &Outputs, sample: &Sample, has_polar: bool) {
-        self.all.add(estimate, reference, sample, has_polar);
+    fn add(&mut self, estimate: &Outputs, reference: &Outputs, sample: &Sample, scope: Scope) {
+        self.all.add(estimate, reference, sample, scope);
         match sample.phase {
-            Phase::Cruise => self.cruise.add(estimate, reference, sample, has_polar),
-            Phase::Circling => self.circling.add(estimate, reference, sample, has_polar),
+            Phase::Cruise => self.cruise.add(estimate, reference, sample, scope),
+            Phase::Circling => self.circling.add(estimate, reference, sample, scope),
             Phase::Transition => {}
         }
+    }
+
+    fn merge(&mut self, flight: &Self) {
+        self.cruise.merge(&flight.cruise);
+        self.circling.merge(&flight.circling);
+        self.all.merge(&flight.all);
     }
 
     fn phases(&self) -> [(&'static str, &ValueCells); 3] {
@@ -621,33 +686,20 @@ impl ScenarioCells {
     }
 }
 
-/// Aggregate results over all replayed files.
+/// The cells of one flight, or of all flights.
 #[derive(Default)]
-struct Bench {
-    included: usize,
-    without_polar: usize,
-    excluded: BTreeMap<Exclusion, usize>,
+struct Results {
     scenarios: [ScenarioCells; SCENARIOS.len()],
     recorded_vario: Cell,
     recorded_wind: Cell,
 }
 
-impl Bench {
-    fn add_file(&mut self, path: &Path) {
-        let recording = std::fs::read(path).expect("the recording is readable");
-        match parse(&String::from_utf8_lossy(&recording)) {
-            Ok(flight) => {
-                self.included += 1;
-                self.without_polar += usize::from(flight.polar.is_none());
-                self.replay(&flight);
-            }
-            Err(exclusion) => *self.excluded.entry(exclusion).or_default() += 1,
-        }
-    }
-
+impl Results {
     /// Feeds every sample to every scenario, so that the fusion state
     /// matches a full flight, and scores the samples in soaring flight.
-    fn replay(&mut self, flight: &Flight) {
+    fn replay(flight: &Flight) -> Self {
+        let mut results = Self::default();
+        let scope = flight.scope();
         let mut fusions = SCENARIOS.map(|_| SensorFusion::default());
         if let Some(polar) = flight.polar {
             for fusion in &mut fusions {
@@ -663,15 +715,53 @@ impl Bench {
                 continue;
             }
             let reference = &outputs[0];
-            for (cells, estimate) in self.scenarios.iter_mut().zip(&outputs) {
-                cells.add(estimate, reference, sample, flight.polar.is_some());
+            for (cells, estimate) in results.scenarios.iter_mut().zip(&outputs) {
+                cells.add(estimate, reference, sample, scope);
             }
-            self.recorded_vario
-                .add_scalar(reference.vario, sample.recorded_vario);
+            if scope.vertical_speed {
+                results
+                    .recorded_vario
+                    .add_scalar(reference.vario, sample.recorded_vario);
+            }
             if sample.recorded_wind.is_some() {
-                self.recorded_wind
+                results
+                    .recorded_wind
                     .add_wind(reference.wind, sample.recorded_wind);
             }
+        }
+        results
+    }
+
+    fn merge(&mut self, flight: &Self) {
+        for (cells, flight) in self.scenarios.iter_mut().zip(&flight.scenarios) {
+            cells.merge(flight);
+        }
+        self.recorded_vario.merge(&flight.recorded_vario);
+        self.recorded_wind.merge(&flight.recorded_wind);
+    }
+}
+
+/// Aggregate results over all replayed files.
+#[derive(Default)]
+struct Bench {
+    included: usize,
+    without_polar: usize,
+    not_one_hertz: usize,
+    excluded: BTreeMap<Exclusion, usize>,
+    results: Results,
+}
+
+impl Bench {
+    fn add_file(&mut self, path: &Path) {
+        let recording = std::fs::read(path).expect("the recording is readable");
+        match parse(&String::from_utf8_lossy(&recording)) {
+            Ok(flight) => {
+                self.included += 1;
+                self.without_polar += usize::from(flight.polar.is_none());
+                self.not_one_hertz += usize::from(!flight.one_hertz);
+                self.results.merge(&Results::replay(&flight));
+            }
+            Err(exclusion) => *self.excluded.entry(exclusion).or_default() += 1,
         }
     }
 }
@@ -681,8 +771,8 @@ impl fmt::Display for Bench {
         let excluded = self.excluded.values().sum::<usize>();
         write!(
             f,
-            "files: {} included ({} without a polar), {excluded} excluded",
-            self.included, self.without_polar,
+            "files: {} included ({} without a polar, {} not 1 Hz), {excluded} excluded",
+            self.included, self.without_polar, self.not_one_hertz,
         )?;
         for (exclusion, count) in &self.excluded {
             write!(f, ", {count} {exclusion}")?;
@@ -691,9 +781,9 @@ impl fmt::Display for Bench {
         writeln!(f)?;
         writeln!(
             f,
-            "scenario            value              phase      avail       n   bias    rms"
+            "scenario            value              phase      avail       n   bias    rms    min    max"
         )?;
-        for (scenario, cells) in SCENARIOS.iter().zip(&self.scenarios) {
+        for (scenario, cells) in SCENARIOS.iter().zip(&self.results.scenarios) {
             for index in 0..ValueCells::COUNT {
                 for (phase, cells) in cells.phases() {
                     let (value, cell) = cells.rows()[index];
@@ -710,11 +800,11 @@ impl fmt::Display for Bench {
         writeln!(f)?;
         writeln!(
             f,
-            "reference against the recorder           n   bias    rms"
+            "reference against the recorder           n   bias    rms    min    max"
         )?;
         for (value, cell) in [
-            ("vario", &self.recorded_vario),
-            ("wind", &self.recorded_wind),
+            ("vario", &self.results.recorded_vario),
+            ("wind", &self.results.recorded_wind),
         ] {
             writeln!(f, "{value:34} {}", cell.errors())?;
         }

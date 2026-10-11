@@ -8,6 +8,7 @@ use crate::topic::{
     DerivedAltitudeInstruments, DerivedBankInstruments, DerivedHeadingInstruments,
     DerivedInstruments, DerivedWindInstruments, SpeedInstrument,
 };
+use std::time::Duration;
 use updraft_polar::GlidePolar;
 use updraft_units::{Angle, MslAltitude, PressureAltitude, Speed};
 
@@ -365,6 +366,17 @@ impl SensorFusion {
             SignalState::Current(wind) => Some(wind),
             _ => None,
         }
+    }
+
+    /// Time from the last accepted wind measurement to the latest fix.
+    pub fn wind_age(&self) -> Option<Duration> {
+        self.estimator.wind_age()
+    }
+
+    /// The wind estimate after the first accepted measurement, also while
+    /// it is too uncertain to report.
+    pub fn wind_estimate(&self) -> Option<Velocity> {
+        self.estimator.wind_estimate()
     }
 
     pub fn instruments(&self) -> Option<DerivedInstruments> {

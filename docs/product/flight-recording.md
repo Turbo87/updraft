@@ -9,8 +9,9 @@ recording.
 ## Recording
 
 Each new fix of the selected source with a UTC value adds one sample. A sample
-contains the UTC, the position, the MSL altitude, vario, netto, relative vario,
-terrain elevation, and wind. A stale or unavailable value is empty.
+contains the UTC, the position, the MSL altitude, vario, vertical speed, netto,
+relative vario, terrain elevation, and wind. A stale or unavailable value is
+empty.
 
 A fix starts a new recording when no recording exists. A fix also starts a new
 recording when its UTC is more than 3 hours after the last sample, or more than

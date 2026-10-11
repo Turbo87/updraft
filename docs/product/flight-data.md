@@ -90,13 +90,19 @@ When a current airspeed is available, the core also derives an
 energy-compensated vario from the same altitude plus the airspeed energy term
 `v²/2g`. It uses the selected TAS. Without a current TAS, it uses derived
 airspeed. The compensated series resets when a TAS appears or its source
-changes. While no current airspeed exists, the vario is stale.
+changes. While no current airspeed exists, the vario is unavailable.
 
 The instruments topic retains each previous vertical-speed value with
 `stale: true` while its input is stale or a new series waits for its second
-sample. The debug overlay displays all three values with the configured
-vertical-speed unit. The Flight View displays the energy-compensated value as
-Vario.
+sample. The vario becomes stale only with its altitude input. A stale vario
+and a stale vertical speed then have the same age. The debug overlay displays
+all three values with the configured vertical-speed unit.
+
+The Flight View Vario infobox prefers the fresh vario, then the fresh smoothed
+vertical speed. If both are unavailable or stale, it uses the stale vario, then
+the stale smoothed vertical speed. The switch is instant. The label is "Vario"
+for the vario and "Vario (unc.)" for the vertical speed, also when the value is
+stale. The German label for the vertical speed is "Vario (unk.)".
 
 ## Average vario
 

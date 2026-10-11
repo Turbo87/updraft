@@ -3,6 +3,7 @@ import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 import type { InfoboxValue } from './value';
 
 import { m } from '#lib/paraglide/messages.js';
+import { preferredValue } from '#lib/preferred-value.js';
 
 export type InfoboxField = {
   id: string;
@@ -13,7 +14,8 @@ export type InfoboxField = {
 
 export function flightInfoboxes(instruments: Instruments, units: UnitSettings): InfoboxField[] {
   let { gps, altitudeAgl, derived } = instruments;
-  let { altitude, bank, vario, averageVario, netto, wind } = derived ?? {};
+  let { altitude, bank, averageVario, netto, wind } = derived ?? {};
+  let vario = preferredValue(derived?.vario ?? null, derived?.verticalSpeed ?? null);
   let direct = instruments.trueAirspeed;
   let estimated = derived?.airspeed;
   let tas =
@@ -63,11 +65,11 @@ export function flightInfoboxes(instruments: Instruments, units: UnitSettings): 
     },
     {
       id: 'vario',
-      label: m.infobox_vario(),
-      stale: vario?.stale ?? false,
+      label: vario?.fallback ? m.infobox_vario_uncompensated() : m.infobox_vario(),
+      stale: vario?.value.stale ?? false,
       value: {
         kind: 'vertical-speed',
-        metersPerSecond: vario?.metersPerSecond ?? null,
+        metersPerSecond: vario?.value.metersPerSecond ?? null,
         unit: units.verticalSpeed,
       },
     },

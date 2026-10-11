@@ -83,6 +83,15 @@ describe('TrailSegments', () => {
     expect(segments.featureCollection().features).toEqual(diff?.add);
   });
 
+  it('uses the vertical speed as the vario of a sample without a vario', () => {
+    let segments = new TrailSegments();
+    segments.apply(trail(0));
+
+    let diff = segments.apply(trail(1, { varioMetersPerSecond: null }));
+
+    expect(diff?.add).toMatchObject([{ properties: { vario: 0.5 } }]);
+  });
+
   it('removes the segments that leave 60 min before the newest sample', () => {
     let segments = new TrailSegments();
     for (let minutes of [0, 1, 2]) segments.apply(trail(minutes));

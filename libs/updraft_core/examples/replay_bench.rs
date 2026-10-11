@@ -13,6 +13,12 @@
 //! flights. The `min` and `max` columns are the lowest and highest RMS of a
 //! single flight.
 //!
+//! A section splits derived airspeed and wind of the no-airspeed-source
+//! scenario by the wind age: the time since the wind filter last accepted a
+//! measurement. This section derives airspeed from the internal wind
+//! estimate, also after the fusion stops reporting the wind. The GPS-only
+//! scenario has the same wind.
+//!
 //! The vertical-speed smoothing is tuned for 1 Hz fixes. Files with a
 //! longer fix interval count only for derived airspeed and wind.
 //!
@@ -56,6 +62,16 @@ const GLIDER_TYPE_ALIASES: [(&str, &str); 3] = [
     ("ASH 25m", "ASH 25E"),
     ("DG-800B", "DG800/18m"),
     ("Duo Discus XLT", "Duo Discus"),
+];
+
+/// The wind age buckets by their upper limit.
+const WIND_AGE_BUCKETS: [(&str, Duration); 6] = [
+    ("0-2 min", Duration::from_secs(2 * 60)),
+    ("2-5 min", Duration::from_secs(5 * 60)),
+    ("5-10 min", Duration::from_secs(10 * 60)),
+    ("10-20 min", Duration::from_secs(20 * 60)),
+    ("20-40 min", Duration::from_secs(40 * 60)),
+    ("over 40 min", Duration::MAX),
 ];
 
 /// Track rate below which a sample does not continue a turn, in degrees
@@ -485,12 +501,23 @@ struct Outputs {
     relative_vario: Option<f64>,
     derived_airspeed: Option<f64>,
     wind: Option<Wind>,
+    wind_age: Option<Duration>,
+    wind_estimate: Option<Wind>,
 }
 
 impl Outputs {
     fn read(fusion: &SensorFusion) -> Self {
+        let wind_age = fusion.wind_age();
+        let wind_estimate = fusion.wind_estimate().map(|wind| Wind {
+            east: wind.east.as_meters_per_second(),
+            north: wind.north.as_meters_per_second(),
+        });
         let Some(instruments) = fusion.instruments() else {
-            return Self::default();
+            return Self {
+                wind_age,
+                wind_estimate,
+                ..Self::default()
+            };
         };
         let current = |instrument: Option<SpeedInstrument>| {
             instrument
@@ -510,6 +537,8 @@ impl Outputs {
                     Speed::from_meters_per_second(wind.speed_meters_per_second),
                 )
             }),
+            wind_age,
+            wind_estimate,
         }
     }
 }
@@ -686,10 +715,46 @@ impl ScenarioCells {
     }
 }
 
+/// Derived airspeed and wind cells of one wind age bucket.
+#[derive(Clone, Copy, Default)]
+struct WindAgeCells {
+    derived_airspeed: Cell,
+    wind: Cell,
+}
+
+impl WindAgeCells {
+    /// Derives airspeed from the ground velocity and the internal wind
+    /// estimate.
+    fn add(&mut self, estimate: &Outputs, reference: &Outputs, sample: &Sample) {
+        let (sin, cos) = sample.track.sin_cos();
+        let ground_speed = sample.ground_speed.as_meters_per_second();
+        let air_speed = estimate
+            .wind_estimate
+            .map(|wind| (ground_speed * sin - wind.east).hypot(ground_speed * cos - wind.north));
+        let true_airspeed = sample.true_airspeed.as_meters_per_second();
+        self.derived_airspeed
+            .add_scalar(air_speed, Some(true_airspeed));
+        self.wind.add_wind(estimate.wind_estimate, reference.wind);
+    }
+
+    fn merge(&mut self, flight: &Self) {
+        self.derived_airspeed.merge(&flight.derived_airspeed);
+        self.wind.merge(&flight.wind);
+    }
+
+    fn rows(&self) -> [(&'static str, &Cell); 2] {
+        [
+            ("derived airspeed", &self.derived_airspeed),
+            ("wind", &self.wind),
+        ]
+    }
+}
+
 /// The cells of one flight, or of all flights.
 #[derive(Default)]
 struct Results {
     scenarios: [ScenarioCells; SCENARIOS.len()],
+    wind_ages: [WindAgeCells; WIND_AGE_BUCKETS.len()],
     recorded_vario: Cell,
     recorded_wind: Cell,
 }
@@ -718,6 +783,14 @@ impl Results {
             for (cells, estimate) in results.scenarios.iter_mut().zip(&outputs) {
                 cells.add(estimate, reference, sample, scope);
             }
+            let estimate = &outputs[1];
+            if let Some(age) = estimate.wind_age {
+                let bucket = WIND_AGE_BUCKETS
+                    .iter()
+                    .position(|(_, limit)| age < *limit)
+                    .expect("the last bucket has no limit");
+                results.wind_ages[bucket].add(estimate, reference, sample);
+            }
             if scope.vertical_speed {
                 results
                     .recorded_vario
@@ -734,6 +807,9 @@ impl Results {
 
     fn merge(&mut self, flight: &Self) {
         for (cells, flight) in self.scenarios.iter_mut().zip(&flight.scenarios) {
+            cells.merge(flight);
+        }
+        for (cells, flight) in self.wind_ages.iter_mut().zip(&flight.wind_ages) {
             cells.merge(flight);
         }
         self.recorded_vario.merge(&flight.recorded_vario);
@@ -795,6 +871,17 @@ impl fmt::Display for Bench {
                         cell.errors(),
                     )?;
                 }
+            }
+        }
+        writeln!(f)?;
+        writeln!(
+            f,
+            "no airspeed source by wind age            n   bias    rms    min    max"
+        )?;
+        for index in 0..2 {
+            for ((bucket, _), cells) in WIND_AGE_BUCKETS.iter().zip(&self.results.wind_ages) {
+                let (value, cell) = cells.rows()[index];
+                writeln!(f, "{value:18} {bucket:15} {}", cell.errors())?;
             }
         }
         writeln!(f)?;

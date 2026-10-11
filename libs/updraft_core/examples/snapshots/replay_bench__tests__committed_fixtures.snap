@@ -60,6 +60,20 @@ gps only            wind               cruise     69.9%   10630  -0.71   2.27   
 gps only            wind               circling   99.9%    6506  -0.25   1.25   1.24   1.93
 gps only            wind               all        80.2%   18642  -0.52   1.91   1.51   5.02
 
+no airspeed source by wind age            n   bias    rms    min    max
+derived airspeed   0-2 min            9669  -0.18   1.89   1.67   3.66
+derived airspeed   2-5 min            4440  -0.29   2.26   2.01   3.34
+derived airspeed   5-10 min           4317  -0.01   2.26   2.07   2.91
+derived airspeed   10-20 min          2706  -1.26   3.25   1.67   4.32
+derived airspeed   20-40 min          1299  -1.97   5.25   5.25   5.25
+derived airspeed   over 40 min         820  -1.99   5.64   5.64   5.64
+wind               0-2 min            9669  -0.40   1.83   1.23   5.23
+wind               2-5 min            4440  -0.69   2.64   1.58   5.66
+wind               5-10 min           4317  -0.71   3.18   2.03   5.80
+wind               10-20 min          2706  -0.83   4.45   1.68   6.13
+wind               20-40 min          1299  +1.30   7.34   7.34   7.34
+wind               over 40 min         820  -5.38   7.45   7.45   7.45
+
 reference against the recorder           n   bias    rms    min    max
 vario                                17581  -0.01   0.47   0.47   0.47
 wind                                 16170  -0.02   3.09   2.79   3.99

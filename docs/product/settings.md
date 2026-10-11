@@ -8,7 +8,19 @@ current settings topic and sends typed commands for changes.
 
 ## Navigation
 
-`/settings` is a category menu. It links to these focused pages:
+The Flight View Menu control opens the Main Menu at `/menu`. It links to these
+pages:
+
+- `/navigation`
+- `/flight-controls`
+- `/settings`
+- `/about`
+
+The Main Menu also contains a quit action. It asks for confirmation, stops the
+platform session, and closes the application.
+
+`/settings` is a category menu for saved settings. It links to these focused
+pages:
 
 - `/settings/language`
 - `/settings/units`
@@ -16,19 +28,16 @@ current settings topic and sends typed commands for changes.
 - `/settings/glide`
 - `/settings/vario`
 - `/settings/traffic`
-- `/settings/flight-controls`
 - `/settings/data`
 - `/settings/devices`
-- `/settings/about`
 
-Each category page links back to `/settings`. Device creation and editing use
-routes below `/settings/devices`.
+Each category page links back to `/settings`. The Flight controls and About
+pages and `/settings` link back to `/menu`. Navigation links back to the
+screen that opened it, the Main Menu or the Flight View. Its detail pages keep
+this origin. Device creation and editing use routes below `/settings/devices`.
 
-`/settings` also contains a quit action. It asks for confirmation, stops the
-platform session, and closes the application.
-
-The root layout keeps the Flight View and map mounted while a Settings route is
-open. A return to the Flight View therefore keeps temporary map state.
+The root layout keeps the Flight View and map mounted while the Main Menu or a
+Settings route is open. A return to the Flight View therefore keeps temporary map state.
 
 The Flight controls page contains the session controls. Its MacCready control
 uses the selected vertical-speed unit. MC defaults to 0.0 m/s and accepts finite,

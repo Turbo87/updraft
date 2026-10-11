@@ -15,7 +15,7 @@ describe('SettingsIndexScreen.svelte', () => {
       let nav = page.getByRole('navigation', { name: 'Settings' }).element();
       let navBounds = nav.getBoundingClientRect();
       let links = [...nav.querySelectorAll('a')];
-      expect(links).toHaveLength(11);
+      expect(links).toHaveLength(8);
       expect(navBounds.left).toBe((width - Math.min(width, 544)) / 2 + 20);
       expect(navBounds.right).toBe(width - navBounds.left);
       for (let [index, link] of links.entries()) {
@@ -28,22 +28,19 @@ describe('SettingsIndexScreen.svelte', () => {
         expect(getComputedStyle(link).borderRadius).toBe('0px');
         if (index > 0) {
           expect(bounds.top - links[index - 1].getBoundingClientRect().bottom).toBe(
-            [6, 8].includes(index) ? 24 : 0,
+            [4, 6].includes(index) ? 24 : 0,
           );
         }
       }
     });
   });
 
-  it('links to every settings section and back to the Flight View', async () => {
-    render(SettingsIndexScreen, {
-      buildDate: '15 Aug 2026',
-      language: 'English',
-    });
+  it('links to every settings section and back to the Main Menu', async () => {
+    render(SettingsIndexScreen, { language: 'English' });
 
     await expect
-      .element(page.getByRole('link', { name: 'Back to flight view' }))
-      .toHaveAttribute('href', '/');
+      .element(page.getByRole('link', { name: 'Back to main menu' }))
+      .toHaveAttribute('href', '/menu');
     await expect
       .element(page.getByRole('link', { name: 'Language English' }))
       .toHaveAttribute('href', '/settings/language');
@@ -53,9 +50,6 @@ describe('SettingsIndexScreen.svelte', () => {
     await expect
       .element(page.getByRole('link', { name: 'Map', exact: true }))
       .toHaveAttribute('href', '/settings/map');
-    await expect
-      .element(page.getByRole('link', { name: 'Flight controls' }))
-      .toHaveAttribute('href', '/settings/flight-controls');
     await expect
       .element(page.getByRole('link', { name: 'Data', exact: true }))
       .toHaveAttribute('href', '/settings/data');
@@ -73,19 +67,12 @@ describe('SettingsIndexScreen.svelte', () => {
     await expect
       .element(page.getByRole('link', { name: 'External devices' }))
       .toHaveAttribute('href', '/settings/devices');
-    await expect
-      .element(page.getByRole('link', { name: 'About 15 Aug 2026' }))
-      .toHaveAttribute('href', '/settings/about');
   });
 
-  it('keeps unavailable language and build date visible as unknown values', () => {
+  it('keeps an unavailable language visible as an unknown value', async () => {
     render(SettingsIndexScreen, {});
 
-    expect(document.querySelectorAll('.value')).toHaveLength(2);
-    expect([...document.querySelectorAll('.value')].map((value) => value.textContent)).toEqual([
-      '—',
-      '—',
-    ]);
+    await expect.element(page.getByRole('link', { name: 'Language —' })).toBeVisible();
   });
 });
 

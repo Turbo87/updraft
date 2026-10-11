@@ -16,8 +16,8 @@ The current base map uses the OpenFreeMap Positron style. Updraft adds local
 airspace data and live ownship and traffic layers after the MapLibre style and
 Updraft sprite set are ready.
 
-Opening settings, nearby results, or detail routes keeps the map and camera
-state alive. A new application session creates a new map state.
+Opening the Main Menu, settings, nearby results, or detail routes keeps the map
+and camera state alive. A new application session creates a new map state.
 
 ## Position follow mode
 

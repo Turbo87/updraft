@@ -1,4 +1,10 @@
+<script module lang="ts">
+  // Detail pages below Navigation link back here, so the origin outlives this component.
+  let openedFromMainMenu = $state(false);
+</script>
+
 <script lang="ts">
+  import { afterNavigate } from '$app/navigation';
   import { resolve } from '$app/paths';
 
   import { getAppContext } from '#lib/app-context.js';
@@ -11,6 +17,14 @@
   import StopNavigationButton from '#lib/StopNavigationButton.svelte';
 
   const { navigation } = getAppContext();
+
+  afterNavigate(({ from, type }) => {
+    // SvelteKit passes a `from` target with a null URL on the first page load.
+    if (type === 'enter') openedFromMainMenu = false;
+    else if (from?.url.pathname === resolve('/menu')) openedFromMainMenu = true;
+    else if (from?.url.pathname === resolve('/')) openedFromMainMenu = false;
+  });
+
   let retryPin = $state.raw<(() => Promise<boolean>) | null>(null);
   let busy = $state(false);
   function pinFailed(retry: () => Promise<boolean>) {
@@ -28,7 +42,11 @@
   }
 </script>
 
-<ScreenScaffold title={m.navigation_heading()} backHref={resolve('/')} backLabel={m.flight_view()}>
+<ScreenScaffold
+  title={m.navigation_heading()}
+  backHref={openedFromMainMenu ? resolve('/menu') : resolve('/')}
+  backLabel={openedFromMainMenu ? m.back_to_main_menu() : m.flight_view()}
+>
   {#if navigation.current}
     <h2>{m.navigation_current()}</h2>
     <NavigationSelectionRow

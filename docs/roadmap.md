@@ -67,7 +67,8 @@ documents for current behavior, and the linked spec issue for planned behavior.
 - [x] **frontend-map** — MapLibre map with the interim OpenFreeMap basemap and manual pan and zoom. _(needs: frontend-scaffold)_
 - [x] **map-position** — core state drives the ownship symbol. Map sources read large data through URLs instead of the topic channel. _(needs: frontend-map, frontend-protocol)_
 - [x] **route-shell** — the root layout keeps the Flight View and map state alive below route content. Settings use dedicated routes with explicit return navigation. _(needs: map-position, frontend-protocol)_
-- [ ] **app-shell** — add the Main Menu, common screen headers, and responsive phone and wide-screen navigation. _(needs: route-shell)_
+- [x] **app-shell** — the Flight View Menu control opens the Main Menu at `/menu`. It links to the flight pages, Settings, and About, and it contains the quit action. Screens share a common header. _(needs: route-shell)_
+- [ ] **wide-screen-navigation** — responsive navigation for phone and wide screens. _(needs: app-shell)_
 - [x] **resource-scheme** — the Tauri shell serves role-based resources through `updraft://localhost/`. Airspace GeoJSON is the first resource. _(needs: tauri-scaffold, tauri-driver)_
 - [x] **e2e-scaffold** — Playwright uses the browser fake and a minimal inline map style. Tests can send topics, inspect shared map state, and wait for deterministic MapLibre results. _(needs: map-position, frontend-protocol)_
 - [x] **map-inspector** — every normal map tap opens a coordinate route with

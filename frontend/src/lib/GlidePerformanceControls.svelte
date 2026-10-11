@@ -88,8 +88,8 @@
 </script>
 
 <ScreenScaffold
-  backHref={resolve('/settings')}
-  backLabel={m.back_to_settings()}
+  backHref={resolve('/menu')}
+  backLabel={m.back_to_main_menu()}
   title={m.flight_controls_heading()}
 >
   <p>{m.flight_controls_reset_hint()}</p>

@@ -45,8 +45,8 @@
 </script>
 
 <ScreenScaffold
-  backHref={resolve('/settings')}
-  backLabel={m.back_to_settings()}
+  backHref={resolve('/menu')}
+  backLabel={m.back_to_main_menu()}
   title={m.about_heading()}
 >
   <div class="identity">

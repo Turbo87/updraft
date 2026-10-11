@@ -19,6 +19,7 @@ test('terrain activation and removal retain the other installed source', async (
   async function status() {
     return page.evaluate(() => window.__updraftApp!.terrain.current);
   }
+  await page.getByRole('link', { name: 'Main menu' }).click();
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
   await page.getByRole('link', { name: 'Data', exact: true }).click();
   await page.getByRole('button', { name: /^local / }).click();

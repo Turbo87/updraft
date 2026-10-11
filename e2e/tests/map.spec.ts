@@ -101,7 +101,7 @@ test('follows live positions until the user pans and returns', async ({ page, ap
   await expectMapPosition(page, POSITION_C);
 });
 
-test('keeps the Settings button inside the safe area', async ({ page, app }) => {
+test('keeps the Main menu button inside the safe area', async ({ page, app }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await app.open('/');
   await page.locator('html').evaluate((element) => {
@@ -114,11 +114,11 @@ test('keeps the Settings button inside the safe area', async ({ page, app }) => 
     'width=device-width, initial-scale=1, viewport-fit=cover',
   );
 
-  let settingsButton = page.getByRole('link', { name: 'Settings' });
-  await expect(settingsButton).toHaveCSS('width', '56px');
-  await expect(settingsButton).toHaveCSS('height', '56px');
-  await expect(settingsButton.locator('..')).toHaveCSS('top', '48px');
-  await expect(settingsButton.locator('..')).toHaveCSS('right', '40px');
+  let menuButton = page.getByRole('link', { name: 'Main menu' });
+  await expect(menuButton).toHaveCSS('width', '56px');
+  await expect(menuButton).toHaveCSS('height', '56px');
+  await expect(menuButton.locator('..')).toHaveCSS('top', '48px');
+  await expect(menuButton.locator('..')).toHaveCSS('right', '40px');
 });
 
 test('keeps the return-to-position button inside the safe area', async ({ page, app }) => {

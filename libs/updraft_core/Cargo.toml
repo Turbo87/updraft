@@ -45,3 +45,7 @@ harness = false
 [[example]]
 name = "generate_protocol_bindings"
 required-features = ["ts"]
+
+[[example]]
+name = "replay_bench"
+test = true

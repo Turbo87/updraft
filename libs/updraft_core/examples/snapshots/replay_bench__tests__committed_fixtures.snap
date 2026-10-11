@@ -1,0 +1,23 @@
+---
+source: libs/updraft_core/examples/replay_bench.rs
+expression: bench.to_string()
+---
+files: 2 included, 0 excluded
+
+scenario            value              avail       n   bias    rms
+reference           vario              100.0%   23251  +0.00   0.00
+reference           vertical speed     100.0%   23251  -0.00   1.42
+reference           derived airspeed   100.0%   23251  +0.00   0.00
+reference           wind               100.0%   23251  +0.00   0.00
+no airspeed source  vario               80.2%   18642  -0.00   0.76
+no airspeed source  vertical speed     100.0%   23251  -0.00   1.42
+no airspeed source  derived airspeed    80.2%   18642  -0.20   1.90
+no airspeed source  wind                80.2%   18642  -0.52   1.91
+gps only            vario               80.2%   18642  -0.00   0.79
+gps only            vertical speed     100.0%   23251  -0.00   1.45
+gps only            derived airspeed    80.2%   18642  -0.20   1.90
+gps only            wind                80.2%   18642  -0.52   1.91
+
+reference against the recorder           n   bias    rms
+vario                                23251  -0.01   0.45
+wind                                 16170  -0.02   3.09

@@ -136,6 +136,24 @@ test('selection rows open details and send pin and navigation commands', async (
   );
 });
 
+test('returns from Navigation to the screen that opened it', async ({ page, app }) => {
+  await app.open('/');
+  await app.emit({ topic: 'recentTargets', value: [home] });
+  await page.getByRole('link', { name: 'Main menu' }).click();
+  await page.getByRole('link', { name: 'Navigation', exact: true }).click();
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await page.getByRole('link', { name: 'Navigation', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to main menu' }).click();
+  await expect(page).toHaveURL('/menu');
+
+  await page.getByRole('link', { name: 'Back to flight view' }).click();
+  await app.emitNavigation(home);
+  await page.getByRole('link', { name: 'Target details' }).click();
+  await expect(page).toHaveURL('/navigation');
+  await page.getByRole('link', { name: 'Flight view', exact: true }).click();
+  await expect(page).toHaveURL('/');
+});
+
 test('recent details wait for restored history and keep the selected snapshot', async ({
   page,
   app,

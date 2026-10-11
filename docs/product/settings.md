@@ -32,8 +32,9 @@ pages:
 - `/settings/devices`
 
 Each category page links back to `/settings`. The Flight controls and About
-pages and `/settings` link back to `/menu`. Device creation and editing use
-routes below `/settings/devices`.
+pages and `/settings` link back to `/menu`. Navigation links back to the
+screen that opened it, the Main Menu or the Flight View. Its detail pages keep
+this origin. Device creation and editing use routes below `/settings/devices`.
 
 The root layout keeps the Flight View and map mounted while the Main Menu or a
 Settings route is open. A return to the Flight View therefore keeps temporary map state.

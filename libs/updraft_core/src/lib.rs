@@ -64,6 +64,7 @@ pub use input::{
 };
 pub use ownship::{DomainState, GpsSnapshot, Selected, SourceId, Timed};
 pub use polar::{PolarId, UnknownPolar};
+pub use position_jump::PositionJumpCheck;
 pub use recording::{Sample, StoredSample};
 pub use sensor_fusion::{FusionInputs, SensorFusion};
 pub use settings::{

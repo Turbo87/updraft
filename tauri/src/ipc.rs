@@ -284,7 +284,7 @@ pub async fn set_mac_cready(
         .map_err(|_| DriverCommandError::DriverStopped)
 }
 
-/// Answers the flight boundary question with New flight.
+/// Starts a new flight. It also answers an open flight boundary question.
 #[tauri::command]
 pub async fn start_new_flight(
     handle: tauri::State<'_, DriverHandle>,

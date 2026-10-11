@@ -47,4 +47,20 @@ describe('MainMenuScreen.svelte', () => {
 
     expect(onQuit).toHaveBeenCalledOnce();
   });
+
+  it('calls the new flight handler from the new flight action', async () => {
+    let onNewFlight = vi.fn();
+    render(MainMenuScreen, { onNewFlight });
+
+    await page.getByRole('button', { name: 'New flight' }).click();
+
+    expect(onNewFlight).toHaveBeenCalledOnce();
+  });
+
+  it('hides the new flight action without a handler', async () => {
+    render(MainMenuScreen, {});
+
+    await expect.element(page.getByRole('heading', { name: 'Main menu' })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'New flight' })).not.toBeInTheDocument();
+  });
 });

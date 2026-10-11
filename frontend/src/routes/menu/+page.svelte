@@ -5,8 +5,11 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
-  const { client, settings } = getAppContext();
+  const { client, settings, trail } = getAppContext();
 
+  let newFlightDialogOpen = $state(false);
+  let newFlightPending = $state(false);
+  let newFlightFailed = $state(false);
   let quitDialogOpen = $state(false);
 
   const buildDate = $derived(
@@ -15,6 +18,24 @@
     ),
   );
 
+  function openNewFlightDialog(): void {
+    newFlightFailed = false;
+    newFlightDialogOpen = true;
+  }
+
+  async function startNewFlight(): Promise<void> {
+    newFlightPending = true;
+    newFlightFailed = false;
+    try {
+      await client.startNewFlight();
+      newFlightDialogOpen = false;
+    } catch {
+      newFlightFailed = true;
+    } finally {
+      newFlightPending = false;
+    }
+  }
+
   function quit(): void {
     void client.quit().catch((error: unknown) => {
       console.error('Failed to quit', error);
@@ -22,7 +43,23 @@
   }
 </script>
 
-<MainMenuScreen {buildDate} onQuit={() => (quitDialogOpen = true)} />
+<MainMenuScreen
+  {buildDate}
+  onNewFlight={trail.hasRecording ? openNewFlightDialog : undefined}
+  onQuit={() => (quitDialogOpen = true)}
+/>
+
+<ConfirmDialog
+  bind:open={newFlightDialogOpen}
+  title={m.new_flight_confirm_title()}
+  description={m.new_flight_confirm_hint()}
+  cancelLabel={m.cancel()}
+  confirmLabel={m.new_flight()}
+  pending={newFlightPending}
+  error={newFlightFailed ? m.new_flight_failed() : undefined}
+  onCancel={() => (newFlightDialogOpen = false)}
+  onConfirm={() => void startNewFlight()}
+/>
 
 <ConfirmDialog
   bind:open={quitDialogOpen}

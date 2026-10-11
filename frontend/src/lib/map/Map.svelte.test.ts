@@ -1,3 +1,4 @@
+import type * as GeoJSON from 'geojson';
 import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapLibreMap } from 'maplibre-gl';
 import type { AirspaceStatus } from '#lib/protocol/generated/AirspaceStatus.js';
 import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
@@ -16,6 +17,7 @@ import { TrafficStore } from '#lib/stores/traffic.svelte.js';
 import { TrailStore } from '#lib/stores/trail.svelte.js';
 import { trafficTarget } from '#lib/traffic.fixture.js';
 import { AIRSPACE_BROWSER_FIXTURE } from './airspace.fixture';
+import { deadReckon, groundMotion } from './dead-reckoning';
 import { mapProps } from './map.fixture';
 import MapComponent from './Map.svelte';
 import { trailColor, trailTranslate } from './trail';
@@ -35,6 +37,17 @@ const positionInstruments = {
   },
 };
 
+const movingInstruments = {
+  ...positionInstruments,
+  gps: {
+    ...positionInstruments.gps,
+    groundSpeedMetersPerSecond: 30,
+    trackDegrees: 90,
+    turnRateDegreesPerSecond: 20,
+    stale: false,
+  },
+};
+
 const units = {
   altitude: 'm' as const,
   distance: 'km' as const,
@@ -43,8 +56,44 @@ const units = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
+
+/**
+ * Advances animation frames and `performance.now()` only through the test.
+ *
+ * Two real frames first run a frame that the map requested before.
+ */
+async function useFakeFrames() {
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
+}
+
+/** The center of the dead-reckoned ownship after `seconds`, as longitude and latitude. */
+function reckonedCenter(seconds: number): [number, number] {
+  let { gps } = movingInstruments;
+  let motion = groundMotion(gps);
+  if (!motion) throw new Error('The moving fixture has no ground motion');
+  let { position } = deadReckon(gps.position, motion, seconds);
+  return [position.longitudeDegrees, position.latitudeDegrees];
+}
+
+function expectCenter(map: MapLibreMap, center: [number, number]) {
+  let [longitude, latitude] = map.getCenter().toArray();
+  expect(longitude).toBeCloseTo(center[0], 9);
+  expect(latitude).toBeCloseTo(center[1], 9);
+}
+
+async function renderLoadedMap(instruments = instrumentsFixture()) {
+  let mapState = new MapState();
+  let view = await render(MapComponent, { ...mapProps(mapState), instruments, units });
+  await vi.waitFor(() => {
+    expect(mapState.map?.loaded()).toBe(true);
+    expect(mapState.map?.hasImage('updraft-sdf:glider')).toBe(true);
+  });
+  return { map: mapState.map!, mapState, view };
+}
 
 async function renderMap(
   airspace: AirspaceStatus,
@@ -534,7 +583,7 @@ it('returns to follow mode without a position and follows the next position', as
   });
   let initialCenter = map.getCenter().toArray();
 
-  map.fire('movestart', { originalEvent: new MouseEvent('mousedown') });
+  map.fire('dragstart', { originalEvent: new MouseEvent('mousedown') });
   expect(mapState.followMode).toBe(false);
   let returnButton = page.getByRole('button', { name: 'Return to position' });
   await expect.element(returnButton).toBeVisible();
@@ -580,30 +629,24 @@ it('returns to follow mode without a position and follows the next position', as
 });
 
 it('updates the camera and ownship only when their values change', async () => {
-  let mapState = new MapState();
-  let view = await render(MapComponent, {
-    ...mapProps(mapState),
-    instruments: positionInstruments,
-    units,
-  });
-  await vi.waitFor(() => {
-    expect(mapState.map?.getSource('ownship')).toBeDefined();
-  });
-  let map = mapState.map!;
+  let { map, mapState, view } = await renderLoadedMap(positionInstruments);
+  await vi.waitFor(() => expect(map.getSource('ownship')).toBeDefined());
   let source = map.getSource('ownship') as GeoJSONSource;
-  await vi.waitFor(() => expect(map.loaded()).toBe(true));
-  let camera = vi.spyOn(map, 'easeTo');
+  await useFakeFrames();
+  let camera = vi.spyOn(map, 'jumpTo');
   let ownship = vi.spyOn(source, 'setData');
 
   let updated = structuredClone(positionInstruments);
   updated.gps.altitudeMeters += 10;
   await view.rerender({ instruments: updated });
+  await vi.advanceTimersByTimeAsync(100);
   expect(camera).not.toHaveBeenCalled();
   expect(ownship).not.toHaveBeenCalled();
 
   updated = structuredClone(updated);
   updated.gps.trackDegrees = 180;
   await view.rerender({ instruments: updated });
+  await vi.advanceTimersByTimeAsync(100);
   expect(camera).not.toHaveBeenCalled();
   expect(ownship).toHaveBeenCalledTimes(1);
   expect(ownship.mock.lastCall?.[0]).toMatchObject({ properties: { track: 180 } });
@@ -614,46 +657,196 @@ it('updates the camera and ownship only when their values change', async () => {
     updated = structuredClone(updated);
     updated.gps.position[coordinate] += 0.01;
     await view.rerender({ instruments: updated });
+    await vi.advanceTimersByTimeAsync(100);
     let center = [updated.gps.position.longitudeDegrees, updated.gps.position.latitudeDegrees];
-    expect(camera).toHaveBeenCalledExactlyOnceWith({ center, duration: 0 });
+    expect(camera).toHaveBeenCalledExactlyOnceWith({ center });
     expect(ownship).toHaveBeenCalledTimes(1);
     expect(ownship.mock.lastCall?.[0]).toMatchObject({ geometry: { coordinates: center } });
   }
 
   camera.mockClear();
   ownship.mockClear();
-  map.fire('movestart', { originalEvent: new MouseEvent('mousedown') });
+  map.fire('dragstart', { originalEvent: new MouseEvent('mousedown') });
   map.jumpTo({ center: [7, 51] });
+  camera.mockClear();
   await view.rerender({ instruments: structuredClone(updated) });
+  await vi.advanceTimersByTimeAsync(100);
+  expect(mapState.followMode).toBe(false);
   expect(camera).not.toHaveBeenCalled();
   expect(ownship).not.toHaveBeenCalled();
-  await page.getByRole('button', { name: 'Return to position' }).click();
-  expect(camera).toHaveBeenCalledTimes(1);
 });
 
-it('stops following before a user changes the map camera', async () => {
-  let mapState = new MapState();
-  let view = await render(MapComponent, {
-    ...mapProps(mapState),
-    instruments: positionInstruments,
-    units,
-  });
-  await vi.waitFor(() => expect(mapState.map?.loaded()).toBe(true));
-  let map = mapState.map!;
-  let camera = vi.spyOn(map, 'easeTo');
+it('follows the dead-reckoned ownship position for 1.5 seconds', async () => {
+  let { map, view } = await renderLoadedMap();
+  await useFakeFrames();
+  await view.rerender({ instruments: movingInstruments });
+  await vi.advanceTimersByTimeAsync(20);
+  let source = map.getSource('ownship') as GeoJSONSource;
+  let ownship = vi.spyOn(source, 'setData');
 
-  map.fire('movestart');
+  // Fake frames run every 16 milliseconds after the receive time.
+  await vi.advanceTimersByTimeAsync(476);
+  expectCenter(map, reckonedCenter(0.496));
+
+  await vi.advanceTimersByTimeAsync(1500);
+  expectCenter(map, reckonedCenter(1.5));
+  let [longitude, latitude] = reckonedCenter(1.5);
+  let { geometry, properties } = ownship.mock.lastCall?.[0] as GeoJSON.Feature<GeoJSON.Point>;
+  expect(geometry.coordinates[0]).toBeCloseTo(longitude, 9);
+  expect(geometry.coordinates[1]).toBeCloseTo(latitude, 9);
+  expect(properties?.track).toBeCloseTo(120, 9);
+
+  let camera = vi.spyOn(map, 'jumpTo');
+  ownship.mockClear();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(camera).not.toHaveBeenCalled();
+  expect(ownship).not.toHaveBeenCalled();
+});
+
+it('eases to the ownship over 300 milliseconds when it returns to position', async () => {
+  let { map, mapState } = await renderLoadedMap(positionInstruments);
+  let position = positionInstruments.gps.position;
+  let target: [number, number] = [position.longitudeDegrees, position.latitudeDegrees];
+  await vi.waitFor(() => expectCenter(map, target));
+  map.fire('dragstart', { originalEvent: new MouseEvent('mousedown') });
+  map.jumpTo({ center: [7, 51] });
+  let returnButton = page.getByRole('button', { name: 'Return to position' });
+  await expect.element(returnButton).toBeVisible();
+  await useFakeFrames();
+
+  returnButton.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(mapState.followMode).toBe(true);
 
-  for (let originalEvent of [new MouseEvent('mousedown'), new TouchEvent('touchstart')]) {
-    mapState.followMode = true;
+  // The ease moves a cubic ease-out fraction of the way at the frame after 144 milliseconds.
+  await vi.advanceTimersByTimeAsync(144);
+  let eased = 1 - (1 - 144 / 300) ** 3;
+  expectCenter(map, [7 + (target[0] - 7) * eased, 51 + (target[1] - 51) * eased]);
+
+  await vi.advanceTimersByTimeAsync(200);
+  expectCenter(map, target);
+});
+
+it('keeps following during zoom and rotation and stops for a drag', async () => {
+  let { map, mapState } = await renderLoadedMap(positionInstruments);
+  let touch = (identifier: number) => new Touch({ identifier, target: map.getCanvas() });
+
+  for (let originalEvent of [new WheelEvent('wheel'), new MouseEvent('mousedown', { button: 2 })]) {
     map.fire('movestart', { originalEvent });
+    expect(mapState.followMode).toBe(true);
+  }
+  // A pinch zoom also pans with the center of its two touches.
+  let pinch = new TouchEvent('touchstart', { touches: [touch(1), touch(2)] });
+  map.fire('dragstart', { originalEvent: pinch });
+  expect(mapState.followMode).toBe(true);
+
+  for (let originalEvent of [
+    new MouseEvent('mousedown'),
+    new TouchEvent('touchstart', { touches: [touch(1)] }),
+  ]) {
+    mapState.followMode = true;
+    map.fire('dragstart', { originalEvent });
     expect(mapState.followMode).toBe(false);
   }
+});
 
-  camera.mockClear();
-  let updated = structuredClone(positionInstruments);
-  updated.gps.position.latitudeDegrees += 0.01;
-  await view.rerender({ instruments: updated });
+it('stops following for a drag in a browser without touch events', async () => {
+  let { map, mapState } = await renderLoadedMap(positionInstruments);
+  vi.stubGlobal('TouchEvent', undefined);
+  try {
+    map.fire('dragstart', { originalEvent: new MouseEvent('mousedown') });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+
+  expect(mapState.followMode).toBe(false);
+});
+
+it('does not cancel a zoom animation while it follows the ownship', async () => {
+  let { map, view } = await renderLoadedMap();
+  await useFakeFrames();
+  await view.rerender({ instruments: movingInstruments });
+  await vi.advanceTimersByTimeAsync(20);
+  let camera = vi.spyOn(map, 'jumpTo');
+
+  map.zoomTo(13, { duration: 300 });
+  await vi.advanceTimersByTimeAsync(100);
+  expect(map.isZooming()).toBe(true);
   expect(camera).not.toHaveBeenCalled();
+
+  await vi.advanceTimersByTimeAsync(400);
+  expect(map.getZoom()).toBe(13);
+  expect(camera).toHaveBeenCalled();
+});
+
+it('zooms around the center while it follows the ownship', async () => {
+  let { map, mapState } = await renderLoadedMap(positionInstruments);
+  let position = positionInstruments.gps.position;
+  let target: [number, number] = [position.longitudeDegrees, position.latitudeDegrees];
+  await vi.waitFor(() => expectCenter(map, target));
+  let touchZoom = vi.spyOn(map.touchZoomRotate, 'enable');
+  await useFakeFrames();
+
+  let canvas = map.getCanvas();
+  let { left, top } = canvas.getBoundingClientRect();
+  canvas.dispatchEvent(
+    new WheelEvent('wheel', { deltaY: -200, clientX: left + 10, clientY: top + 10, bubbles: true }),
+  );
+  await vi.advanceTimersByTimeAsync(48);
+  expect(map.isZooming()).toBe(true);
+  expect(map.getZoom()).not.toBe(11);
+  expectCenter(map, target);
+
+  mapState.followMode = false;
+  await vi.advanceTimersByTimeAsync(16);
+  expect(touchZoom).toHaveBeenLastCalledWith(undefined);
+  mapState.followMode = true;
+  await vi.advanceTimersByTimeAsync(16);
+  expect(touchZoom).toHaveBeenLastCalledWith({ around: 'center' });
+});
+
+it('does not reset a gesture before it starts', async () => {
+  let { map, view } = await renderLoadedMap();
+  await useFakeFrames();
+  await view.rerender({ instruments: movingInstruments });
+  await vi.advanceTimersByTimeAsync(16);
+  let camera = vi.spyOn(map, 'jumpTo');
+
+  map
+    .getCanvasContainer()
+    .dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, bubbles: true }));
+  await vi.advanceTimersByTimeAsync(200);
+  expect(camera).not.toHaveBeenCalled();
+
+  window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1 }));
+  await vi.advanceTimersByTimeAsync(16);
+  expect(camera).toHaveBeenCalled();
+});
+
+it('keeps the dead-reckoned ownship when the position becomes stale', async () => {
+  let { map, view } = await renderLoadedMap();
+  await useFakeFrames();
+  await view.rerender({ instruments: movingInstruments });
+  await vi.advanceTimersByTimeAsync(2000);
+  expectCenter(map, reckonedCenter(1.5));
+  let ownship = vi.spyOn(map.getSource('ownship') as GeoJSONSource, 'setData');
+
+  let stale = structuredClone(movingInstruments);
+  stale.gps.stale = true;
+  await view.rerender({ instruments: stale });
+  await vi.advanceTimersByTimeAsync(100);
+  expectCenter(map, reckonedCenter(1.5));
+  expect(ownship).not.toHaveBeenCalled();
+});
+
+it('centers the ownship again after a camera movement ends', async () => {
+  let { map } = await renderLoadedMap(positionInstruments);
+  let position = positionInstruments.gps.position;
+  let target: [number, number] = [position.longitudeDegrees, position.latitudeDegrees];
+  await vi.waitFor(() => expectCenter(map, target));
+  await useFakeFrames();
+
+  map.zoomTo(12, { duration: 200, around: [7, 51] });
+  await vi.advanceTimersByTimeAsync(400);
+  expect(map.getZoom()).toBe(12);
+  expectCenter(map, target);
 });

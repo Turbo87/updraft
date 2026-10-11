@@ -18,6 +18,7 @@
   import type { WaypointStatus } from '#lib/protocol/generated/WaypointStatus.js';
   import type { TrafficStore } from '#lib/stores/traffic.svelte.js';
   import type { TrailStore } from '#lib/stores/trail.svelte.js';
+  import type { GroundMotion } from './dead-reckoning';
 
   import { untrack } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
@@ -26,6 +27,7 @@
   import Airspace from './Airspace.svelte';
   import Arrivals from './Arrivals.svelte';
   import { BASEMAP_MIN_ZOOM, getBasemapStyle } from './basemap-style';
+  import { DEAD_RECKONING_LIMIT_SECONDS, deadReckon, groundMotion } from './dead-reckoning';
   import MapDebugOverlay from './MapDebugOverlay.svelte';
   import Navigation from './Navigation.svelte';
   import { positionCoordinates } from './ownship';
@@ -42,7 +44,7 @@
     __updraftTestAirspaceData?: GeoJSONSourceSpecification['data'];
   };
 
-  const FOLLOW_DURATION_MS = 300;
+  const RETURN_DURATION_MS = 300;
   type Props = {
     task?: Task;
     navigation?: NavigationState | null;
@@ -91,8 +93,6 @@
   let showHitAreas = $state(false);
   let arrivalsReady = $state(false);
   const map = $derived(mapState.map);
-  const followMode = $derived(mapState.followMode);
-  const followDuration = $derived(testMode ? 0 : FOLLOW_DURATION_MS);
   const gps = $derived(instruments.gps);
   const latitudeDegrees = $derived(gps?.position.latitudeDegrees);
   const longitudeDegrees = $derived(gps?.position.longitudeDegrees);
@@ -101,6 +101,25 @@
       ? null
       : { latitudeDegrees, longitudeDegrees },
   );
+  const trackDegrees = $derived(gps?.trackDegrees ?? null);
+  const groundSpeedMetersPerSecond = $derived(gps?.groundSpeedMetersPerSecond ?? null);
+  const turnRateDegreesPerSecond = $derived(gps?.turnRateDegreesPerSecond ?? null);
+  const stale = $derived(gps?.stale ?? true);
+  const motion = $derived(
+    groundMotion({ groundSpeedMetersPerSecond, trackDegrees, turnRateDegreesPerSecond, stale }),
+  );
+
+  type OwnshipSymbol = { position: LatLon; trackDegrees: number | null };
+  type ReceivedOwnship = OwnshipSymbol & { motion: GroundMotion | null; receivedAt: number };
+  /** The latest received ownship position and its frontend receive time. */
+  let received: ReceivedOwnship | null = null;
+  /** The dead-reckoned ownship that the map shows. */
+  let displayed = $state.raw<OwnshipSymbol | null>(null);
+  /** The start of the Return to position ease. */
+  let returning: { center: LatLon; startedAt: number } | null = null;
+  let frame: number | undefined;
+  /** Pointers that are down on the map and can start a gesture. */
+  let pressedPointers: number[] = [];
   const mapStyle = $derived(getBasemapStyle(testMode, window.location.origin, basemapGeneration));
   const inlineAirspaceData = $derived(
     testMode ? (testAirspaceData ?? (window as TestWindow).__updraftTestAirspaceData) : undefined,
@@ -146,25 +165,153 @@
     }
   }
 
+  // Dead reckoning starts at the receive time, because the frontend clock
+  // and the GPS clock are not synchronized.
   $effect(() => {
-    if (!map || !followMode || !position) return;
-
-    let center = positionCoordinates(position);
-    let duration = followDuration;
-    untrack(() => map.easeTo({ center, duration }));
+    let update = position && { position, trackDegrees, motion };
+    untrack(() => receive(update));
   });
+
+  $effect(() => {
+    if (!map) return;
+    // Zoom keeps the ownship at the center while the map follows it.
+    let options = mapState.followMode ? { around: 'center' as const } : undefined;
+    // `enable()` keeps the options of an enabled scroll zoom.
+    map.scrollZoom.disable();
+    map.scrollZoom.enable(options);
+    map.touchZoomRotate.enable(options);
+    untrack(requestFrame);
+  });
+
+  $effect(() => {
+    if (!map) return;
+    let container = map.getCanvasContainer();
+    function press(event: PointerEvent) {
+      pressedPointers.push(event.pointerId);
+    }
+    function release(event: PointerEvent) {
+      pressedPointers = pressedPointers.filter((pointer) => pointer !== event.pointerId);
+      requestFrame();
+    }
+    container.addEventListener('pointerdown', press);
+    window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
+    return () => {
+      container.removeEventListener('pointerdown', press);
+      window.removeEventListener('pointerup', release);
+      window.removeEventListener('pointercancel', release);
+      pressedPointers = [];
+    };
+  });
+
+  $effect(() => () => {
+    if (frame !== undefined) cancelAnimationFrame(frame);
+  });
+
+  /**
+   * Starts dead reckoning from a new position.
+   *
+   * Other changes only update a symbol that does not move, so that the
+   * symbol keeps its dead-reckoned position until the next position.
+   */
+  function receive(update: Omit<ReceivedOwnship, 'receivedAt'> | null) {
+    if (!update) {
+      received = displayed = null;
+      return;
+    }
+    let { latitudeDegrees, longitudeDegrees } = update.position;
+    let moved =
+      received?.position.latitudeDegrees !== latitudeDegrees ||
+      received.position.longitudeDegrees !== longitudeDegrees;
+    if (!moved && received?.motion) return;
+
+    received = { ...update, receivedAt: performance.now() };
+    displayed = { position: update.position, trackDegrees: update.trackDegrees };
+    requestFrame();
+  }
+
+  function requestFrame() {
+    frame ??= requestAnimationFrame(renderFrame);
+  }
+
+  /** Advances the ownship and the following camera, and requests the next frame while either moves. */
+  function renderFrame() {
+    frame = undefined;
+    if (!received) return;
+
+    let now = performance.now();
+    let elapsedSeconds = (now - received.receivedAt) / 1000;
+    let next = received.motion
+      ? deadReckon(received.position, received.motion, elapsedSeconds)
+      : { position: received.position, trackDegrees: received.trackDegrees };
+    if (
+      next.position.latitudeDegrees !== displayed?.position.latitudeDegrees ||
+      next.position.longitudeDegrees !== displayed.position.longitudeDegrees ||
+      next.trackDegrees !== displayed.trackDegrees
+    ) {
+      displayed = { position: next.position, trackDegrees: next.trackDegrees };
+    }
+
+    let reckoning = received.motion !== null && elapsedSeconds < DEAD_RECKONING_LIMIT_SECONDS;
+    if (follow(next.position, now) || reckoning) requestFrame();
+  }
+
+  /**
+   * Centers the map on the ownship and returns whether the camera needs more frames.
+   *
+   * `jumpTo()` stops gestures, inertia, and zoom animations, and it resets a
+   * gesture that has not started yet. The camera waits while the map moves or
+   * a pointer is down.
+   */
+  function follow(ownship: LatLon, now: number): boolean {
+    if (!map || !mapState.followMode) return false;
+    if (map.isMoving() || pressedPointers.length > 0) return true;
+
+    let center = ownship;
+    let progress = returning ? (now - returning.startedAt) / RETURN_DURATION_MS : 1;
+    if (returning && progress < 1) {
+      let eased = 1 - (1 - progress) ** 3;
+      let { latitudeDegrees, longitudeDegrees } = returning.center;
+      center = {
+        latitudeDegrees: latitudeDegrees + (ownship.latitudeDegrees - latitudeDegrees) * eased,
+        longitudeDegrees: longitudeDegrees + (ownship.longitudeDegrees - longitudeDegrees) * eased,
+      };
+    } else {
+      returning = null;
+    }
+
+    let current = map.getCenter();
+    if (current.lat !== center.latitudeDegrees || current.lng !== center.longitudeDegrees) {
+      map.jumpTo({ center: positionCoordinates(center) });
+    }
+    return returning !== null;
+  }
 
   function enterManualMode() {
     mapState.followMode = false;
   }
 
-  function handleMoveStart(event: MapEventType['movestart']) {
-    if (event.originalEvent) enterManualMode();
+  function handleDragStart(event: MapEventType['dragstart']) {
+    let { originalEvent } = event;
+    if (!originalEvent) return;
+    // A pinch zoom also pans with the center of its two touches. Desktop
+    // WebKit and Firefox have no `TouchEvent` global to check for it.
+    let pinch = 'touches' in originalEvent && originalEvent.touches.length > 1;
+    if (!pinch) enterManualMode();
   }
 
   function resumeFollowing() {
     map?.stop();
+    let center = map?.getCenter();
+    returning =
+      center && received
+        ? {
+            center: { latitudeDegrees: center.lat, longitudeDegrees: center.lng },
+            startedAt: performance.now(),
+          }
+        : null;
     mapState.followMode = true;
+    requestFrame();
   }
 
   function inspectMapPosition(event: MapMouseEvent) {
@@ -191,7 +338,8 @@
     onsourcedata={handleSourceData}
     onerror={handleSourceError}
     onclick={inspectMapPosition}
-    onmovestart={handleMoveStart}
+    ondragstart={handleDragStart}
+    onmoveend={requestFrame}
     onload={() => {
       spritesLoaded = true;
     }}
@@ -216,8 +364,8 @@
         verticalSpeedUnit={units.verticalSpeed}
         {showHitAreas}
       />
-      {#if position}
-        <Ownship {position} trackDegrees={gps?.trackDegrees ?? null} />
+      {#if displayed}
+        <Ownship position={displayed.position} trackDegrees={displayed.trackDegrees} />
       {/if}
       {#if airspaceData}
         <Airspace data={airspaceData} beforeId="trail-halo" />

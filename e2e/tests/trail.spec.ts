@@ -19,6 +19,8 @@ function sample(seconds: number): TrailSample {
     verticalSpeedMetersPerSecond: 0.5,
     nettoMetersPerSecond: 1,
     relativeVarioMetersPerSecond: 1,
+    estimatedNettoMetersPerSecond: 1,
+    estimatedRelativeVarioMetersPerSecond: 1,
   };
 }
 

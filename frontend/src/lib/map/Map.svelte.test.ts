@@ -361,6 +361,8 @@ function applyTrailSample(trail: TrailStore, seconds: number, maxAltitudeMslMete
         verticalSpeedMetersPerSecond: 0.5,
         nettoMetersPerSecond: 1,
         relativeVarioMetersPerSecond: 1,
+        estimatedNettoMetersPerSecond: 1,
+        estimatedRelativeVarioMetersPerSecond: 1,
       },
       maxAltitudeMslMeters,
       maxAltitudeAglMeters: 800,

@@ -178,6 +178,8 @@ impl Core {
         let vertical_speed = speed(|derived| derived.vertical_speed);
         let netto = speed(|derived| derived.netto);
         let relative_vario = speed(|derived| derived.relative_vario);
+        let estimated_netto = speed(|derived| derived.estimated_netto);
+        let estimated_relative_vario = speed(|derived| derived.estimated_relative_vario);
         let altitude_msl = derived
             .and_then(|derived| derived.altitude)
             .filter(|altitude| !altitude.stale)
@@ -196,6 +198,8 @@ impl Core {
                 vertical_speed,
                 netto,
                 relative_vario,
+                estimated_netto,
+                estimated_relative_vario,
                 wind,
             };
             effects.push(match fix.starts_recording {

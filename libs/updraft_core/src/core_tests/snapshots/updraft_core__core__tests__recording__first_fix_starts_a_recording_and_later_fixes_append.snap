@@ -21,6 +21,8 @@ expression: effects
             vertical_speed: None,
             netto: None,
             relative_vario: None,
+            estimated_netto: None,
+            estimated_relative_vario: None,
             wind: None,
         },
     ),
@@ -44,6 +46,12 @@ expression: effects
             ),
             netto: None,
             relative_vario: None,
+            estimated_netto: Some(
+                0.6954602907022154 m/s,
+            ),
+            estimated_relative_vario: Some(
+                0.057558714587614856 m/s,
+            ),
             wind: None,
         },
     ),

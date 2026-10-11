@@ -109,6 +109,8 @@ fn restored_sample(utc: i64) -> Sample {
         vertical_speed: Some(Speed::from_meters_per_second(1.25)),
         netto: Some(Speed::from_meters_per_second(2.5)),
         relative_vario: Some(Speed::from_meters_per_second(3.5)),
+        estimated_netto: Some(Speed::from_meters_per_second(2.25)),
+        estimated_relative_vario: Some(Speed::from_meters_per_second(3.25)),
         wind: None,
     }
 }

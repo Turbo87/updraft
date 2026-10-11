@@ -29,6 +29,12 @@ Some(
             relative_vario_meters_per_second: Some(
                 3.5,
             ),
+            estimated_netto_meters_per_second: Some(
+                2.25,
+            ),
+            estimated_relative_vario_meters_per_second: Some(
+                3.25,
+            ),
         },
         max_altitude_msl_meters: Some(
             1000.0,

@@ -87,6 +87,8 @@ mod tests {
           {
             "altitudeAglMeters": 1100.0,
             "altitudeMslMeters": 1200.0,
+            "estimatedNettoMetersPerSecond": 1.75,
+            "estimatedRelativeVarioMetersPerSecond": 0.75,
             "nettoMetersPerSecond": 2.0,
             "position": {
               "latitudeDegrees": 46.0,
@@ -100,6 +102,8 @@ mod tests {
           {
             "altitudeAglMeters": 1200.0,
             "altitudeMslMeters": 1200.0,
+            "estimatedNettoMetersPerSecond": 1.75,
+            "estimatedRelativeVarioMetersPerSecond": 0.75,
             "nettoMetersPerSecond": 2.0,
             "position": {
               "latitudeDegrees": 50.0,
@@ -113,6 +117,8 @@ mod tests {
           {
             "altitudeAglMeters": null,
             "altitudeMslMeters": null,
+            "estimatedNettoMetersPerSecond": 1.75,
+            "estimatedRelativeVarioMetersPerSecond": 0.75,
             "nettoMetersPerSecond": 2.0,
             "position": {
               "latitudeDegrees": 46.0,

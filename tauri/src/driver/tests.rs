@@ -385,6 +385,8 @@ fn stale_sample() -> Sample {
         vertical_speed: None,
         netto: None,
         relative_vario: None,
+        estimated_netto: None,
+        estimated_relative_vario: None,
         wind: None,
     }
 }

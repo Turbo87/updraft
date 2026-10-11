@@ -220,6 +220,8 @@ pub struct TrailSample {
     pub vertical_speed_meters_per_second: Option<f64>,
     pub netto_meters_per_second: Option<f64>,
     pub relative_vario_meters_per_second: Option<f64>,
+    pub estimated_netto_meters_per_second: Option<f64>,
+    pub estimated_relative_vario_meters_per_second: Option<f64>,
 }
 
 impl TrailSample {
@@ -241,6 +243,8 @@ impl TrailSample {
             vertical_speed_meters_per_second: speed(sample.vertical_speed),
             netto_meters_per_second: speed(sample.netto),
             relative_vario_meters_per_second: speed(sample.relative_vario),
+            estimated_netto_meters_per_second: speed(sample.estimated_netto),
+            estimated_relative_vario_meters_per_second: speed(sample.estimated_relative_vario),
         }
     }
 }

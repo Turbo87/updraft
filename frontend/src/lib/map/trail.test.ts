@@ -29,6 +29,8 @@ function trail(
       verticalSpeedMetersPerSecond: 0.5,
       nettoMetersPerSecond: 2,
       relativeVarioMetersPerSecond: 3,
+      estimatedNettoMetersPerSecond: 1.5,
+      estimatedRelativeVarioMetersPerSecond: 2.5,
       ...overrides,
     },
     maxAltitudeMslMeters: 1000,

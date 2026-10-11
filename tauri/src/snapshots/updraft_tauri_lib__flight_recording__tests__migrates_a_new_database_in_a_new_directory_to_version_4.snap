@@ -14,4 +14,4 @@ CREATE TABLE "samples" (
     wind_east_mps REAL,
     wind_north_mps REAL,
     system_utc_ms INTEGER NOT NULL
-, vertical_speed_mps REAL) STRICT
+, vertical_speed_mps REAL, estimated_netto_mps REAL, estimated_relative_vario_mps REAL) STRICT

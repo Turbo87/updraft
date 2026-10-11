@@ -320,7 +320,7 @@ impl Estimator {
         } else {
             FixAcceptance::Predicted
         };
-        if let Some((wind_east, wind_north)) = self.wind.vector() {
+        if let Some((wind_east, wind_north)) = self.reported_wind() {
             let east = (east - wind_east).as_meters_per_second();
             let north = (north - wind_north).as_meters_per_second();
             let speed = Speed::from_meters_per_second(east.hypot(north));
@@ -355,8 +355,19 @@ impl Estimator {
             .or_else(|| self.inferred_air_speed.fresh_at(now))
     }
 
+    /// With an airspeed source, the wind needs a converged variance.
+    /// Without one, the wind stays while the filter was converged after its
+    /// last accepted measurement, because an old wind gives a better
+    /// derived airspeed than none.
+    fn reported_wind(&self) -> Option<(Speed, Speed)> {
+        match self.measured_air_speed {
+            Some(_) => self.wind.vector(),
+            None => self.wind.converged_vector(),
+        }
+    }
+
     fn update_turn_rate(&mut self, time: Duration, ground_east: Speed, ground_north: Speed) {
-        let Some((wind_east, wind_north)) = self.wind.vector() else {
+        let Some((wind_east, wind_north)) = self.reported_wind() else {
             self.previous_heading = None;
             self.turn_rate = None;
             return;
@@ -398,7 +409,7 @@ impl Estimator {
 
     fn heading(&self) -> Option<Angle> {
         let ground = self.ground?;
-        let (wind_east, wind_north) = self.wind.vector()?;
+        let (wind_east, wind_north) = self.reported_wind()?;
         let east = (ground.east - wind_east).as_meters_per_second();
         let north = (ground.north - wind_north).as_meters_per_second();
         let speed = Speed::from_meters_per_second(east.hypot(north));
@@ -504,7 +515,7 @@ impl Estimator {
             None
         };
         let average_vario = self.average_vario.value();
-        let wind = self.wind.vector().map(|(east, north)| {
+        let wind = self.reported_wind().map(|(east, north)| {
             let east = east.as_meters_per_second();
             let north = north.as_meters_per_second();
             Wind {
@@ -1369,7 +1380,7 @@ mod tests {
                 FixPredicted
             );
         }
-        assert_none!(estimator.estimate().wind);
+        assert_none!(estimator.wind.vector());
     }
 
     #[test]
@@ -1720,6 +1731,43 @@ mod tests {
         let expected_speed = Speed::from_meters_per_second(10.);
         assert_abs_diff_eq!(wind.speed, expected_speed, epsilon = 0.3);
         assert_abs_diff_eq!(wind.direction, Angle::from_degrees(36.87), epsilon = 0.5);
+    }
+
+    /// Flies north for three hours after one circle. An airspeed below the
+    /// wind measurement limit gives no measurement.
+    fn glide_after_circling(air_speed: Option<Speed>) -> Estimate {
+        let mut estimator = circle_without_air_speed(60);
+        let expected = match air_speed {
+            Some(_) => FixRejectedWind,
+            None => FixPredicted,
+        };
+        for second in 60..3 * 3600 {
+            let time = Duration::from_secs(second);
+            if let Some(speed) = air_speed {
+                add_air_speed(&mut estimator, time, speed);
+            }
+            assert_eq!(estimator.fix(time, &velocity_fix(-6., 22.)), expected);
+        }
+        estimator.estimate()
+    }
+
+    #[test]
+    fn wind_and_derived_airspeed_have_no_age_limit_without_an_airspeed_source() {
+        let estimate = glide_after_circling(None);
+
+        assert_some!(estimate.wind);
+        assert_abs_diff_eq!(
+            assert_some!(estimate.air_speed),
+            Speed::from_meters_per_second(30.),
+            epsilon = 0.5
+        );
+    }
+
+    #[test]
+    fn airspeed_source_keeps_the_variance_gate_for_the_wind() {
+        let estimate = glide_after_circling(Some(Speed::from_meters_per_second(10.)));
+
+        assert_none!(estimate.wind);
     }
 
     #[test]

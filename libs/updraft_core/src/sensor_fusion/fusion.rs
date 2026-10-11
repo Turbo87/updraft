@@ -233,8 +233,11 @@ impl SensorFusion {
                 ground_speed: ground_speed.value,
             },
         );
+        // With an airspeed source, a stale wind waits for the next accepted
+        // measurement. Without one, a fix refreshes the derived airspeed.
         let refresh_motion_estimate = acceptance != FixAcceptance::Ignored
             && (acceptance != FixAcceptance::Predicted
+                || !self.air_speed_current
                 || !matches!(self.wind, SignalState::LastKnown(_)));
         if refresh_motion_estimate {
             self.update_motion_estimate();

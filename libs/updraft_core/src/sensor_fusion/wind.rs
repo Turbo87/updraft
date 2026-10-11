@@ -67,6 +67,7 @@ pub struct WindFilter {
     variance_east: f64,
     covariance: f64,
     variance_north: f64,
+    converged_at_measurement: bool,
 }
 
 impl Default for WindFilter {
@@ -77,12 +78,14 @@ impl Default for WindFilter {
             variance_east: INITIAL_VARIANCE,
             covariance: 0.,
             variance_north: INITIAL_VARIANCE,
+            converged_at_measurement: false,
         }
     }
 }
 
 impl WindFilter {
-    /// Continues from a wind vector of an earlier estimate.
+    /// Continues from a wind vector of an earlier estimate. The restored
+    /// vector counts as a converged measurement.
     pub fn restored(wind: Velocity) -> Self {
         Self {
             east: wind.east,
@@ -90,6 +93,7 @@ impl WindFilter {
             variance_east: RESTORED_VARIANCE,
             covariance: 0.,
             variance_north: RESTORED_VARIANCE,
+            converged_at_measurement: true,
         }
     }
 
@@ -142,12 +146,12 @@ impl WindFilter {
 
         self.east += gain_east * bounded_innovation;
         self.north += gain_north * bounded_innovation;
-        if innovation.abs() > limit {
-            return SampleAcceptance::Accepted;
+        if innovation.abs() <= limit {
+            self.variance_east -= gain_east * projected_east;
+            self.covariance -= gain_east * projected_north;
+            self.variance_north -= gain_north * projected_north;
         }
-        self.variance_east -= gain_east * projected_east;
-        self.covariance -= gain_east * projected_north;
-        self.variance_north -= gain_north * projected_north;
+        self.converged_at_measurement = self.converged();
         SampleAcceptance::Accepted
     }
 
@@ -179,6 +183,7 @@ impl WindFilter {
         self.variance_east -= gain_ee * pe + gain_en * c;
         self.covariance -= gain_ee * c + gain_en * pn;
         self.variance_north -= gain_en * c + gain_nn * pn;
+        self.converged_at_measurement = self.converged();
         SampleAcceptance::Accepted
     }
 
@@ -191,13 +196,24 @@ impl WindFilter {
     }
 
     /// The wind vector in m/s towards east and north, or `None` while the
-    /// estimate is still too uncertain to report.
+    /// variance is not converged.
     ///
     /// Before the filter converges, a consumer that drew its initial zero
     /// state as a calm day would be wrong rather than uncertain.
     pub fn vector(&self) -> Option<(Speed, Speed)> {
-        let converged = self.variance_east + self.variance_north <= CONVERGED_VARIANCE;
-        converged.then_some((self.east, self.north))
+        self.converged().then_some((self.east, self.north))
+    }
+
+    /// The wind vector in m/s towards east and north while the estimate
+    /// was converged after its last accepted measurement. The age of that
+    /// measurement has no limit.
+    pub fn converged_vector(&self) -> Option<(Speed, Speed)> {
+        self.converged_at_measurement
+            .then_some((self.east, self.north))
+    }
+
+    fn converged(&self) -> bool {
+        self.variance_east + self.variance_north <= CONVERGED_VARIANCE
     }
 }
 
@@ -276,8 +292,49 @@ mod tests {
     }
 
     #[test]
+    fn converged_estimate_has_no_age_limit() {
+        let mut filter = circle(20, -6., -8.);
+        let expected = assert_some!(filter.vector());
+
+        for _ in 0..3 * 3600 {
+            filter.predict(Duration::from_secs(1));
+        }
+
+        assert_none!(filter.vector());
+        assert_some_eq!(filter.converged_vector(), expected);
+    }
+
+    #[test]
+    fn unconverged_new_estimate_ends_the_converged_vector() {
+        let mut filter = circle(20, -6., -8.);
+        for _ in 0..3600 {
+            filter.predict(Duration::from_secs(1));
+        }
+
+        assert_eq!(filter.update_vector(speed(-5.), speed(-8.), 10.), Accepted);
+
+        assert_none!(filter.converged_vector());
+    }
+
+    #[test]
+    fn restored_estimate_has_no_age_limit() {
+        let mut filter = WindFilter::restored(Velocity {
+            east: speed(-6.),
+            north: speed(-8.),
+        });
+
+        for _ in 0..3 * 3600 {
+            filter.predict(Duration::from_secs(1));
+        }
+
+        assert_some_eq!(filter.converged_vector(), (speed(-6.), speed(-8.)));
+    }
+
+    #[test]
     fn unconverged_estimate_is_not_reported() {
-        assert_none!(circle(3, -6., -8.).vector());
+        let filter = circle(3, -6., -8.);
+        assert_none!(filter.vector());
+        assert_none!(filter.converged_vector());
     }
 
     #[test]

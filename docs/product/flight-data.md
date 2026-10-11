@@ -156,6 +156,17 @@ Estimated netto. The switch is instant. The label is "Netto" for netto and
 "Netto (est.)" for Estimated netto. The German label for Estimated netto is
 "Netto (gesch.)".
 
+## Wind and derived airspeed
+
+Without an airspeed source, the core derives airspeed from the ground velocity
+and the wind. The wind and the derived airspeed stay available while the wind
+filter was converged after its last accepted measurement. A full circle, a
+partial arc, and a TAS sample are measurements. The wind age has no limit. A new
+estimate that is not converged yet, or a reset of the wind, removes both
+values. With an airspeed source, the wind is available only while the variance
+of the wind filter is converged. See
+[Derived airspeed and wind have no age limit](../adr/0006-derived-airspeed-and-wind-have-no-age-limit.md).
+
 ## True airspeed
 
 The current core accepts true airspeed from `$LXWP0`. It does not calculate TAS

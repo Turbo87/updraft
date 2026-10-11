@@ -4,6 +4,7 @@ use updraft_units::{Angle, Length, MslAltitude, PressureAltitude, Speed};
 
 use super::{FusionInputs, SensorFusion};
 use crate::ExternalDeviceId;
+use crate::climb::Velocity;
 use crate::ownship::{DomainState, GpsSnapshot, Selected, SourceId, Timed};
 use crate::time::Timestamp;
 
@@ -313,10 +314,8 @@ fn stale_gps_removes_inferred_vario_while_pressure_altitude_is_current() {
     assert!(!assert_some!(instruments.vertical_speed).stale);
 }
 
-#[test]
-fn unconverged_wind_stales_inferred_airspeed() {
-    let mut fusion = fusion_with_converged_wind();
-    for second in 60..=3_600 {
+fn glide(fusion: &mut SensorFusion, seconds: std::ops::RangeInclusive<u64>) {
+    for second in seconds {
         let millis = second * 1_000;
         let mut gps = gps(second);
         gps.track = Some(Timed::new(Angle::ZERO, Timestamp::from_millis(millis)));
@@ -326,10 +325,51 @@ fn unconverged_wind_stales_inferred_airspeed() {
             pressure_altitude: DomainState::Unavailable,
         });
     }
+}
+
+#[test]
+fn converged_wind_keeps_inferred_airspeed_without_measurements() {
+    let mut fusion = fusion_with_converged_wind();
+    glide(&mut fusion, 60..=3 * 3_600);
 
     let instruments = assert_some!(fusion.instruments());
-    assert!(assert_some!(instruments.wind).stale);
-    assert!(assert_some!(instruments.airspeed).stale);
+    assert!(!assert_some!(instruments.wind).stale);
+    assert!(!assert_some!(instruments.airspeed).stale);
+}
+
+#[test]
+fn inferred_airspeed_returns_after_a_gps_outage() {
+    let mut fusion = fusion_with_converged_wind();
+    glide(&mut fusion, 60..=70);
+    fusion.update(FusionInputs {
+        gps: DomainState::LastKnown(selected(70_000, gps(70))),
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::Unavailable,
+    });
+    let outage = assert_some!(fusion.instruments());
+    assert!(assert_some!(outage.wind).stale);
+    assert!(assert_some!(outage.airspeed).stale);
+
+    glide(&mut fusion, 75..=76);
+
+    let instruments = assert_some!(fusion.instruments());
+    assert!(!assert_some!(instruments.wind).stale);
+    assert!(!assert_some!(instruments.airspeed).stale);
+}
+
+#[test]
+fn restored_wind_stays_reported_without_measurements() {
+    let mut fusion = SensorFusion::default();
+    fusion.restore_wind(Velocity {
+        east: Speed::from_meters_per_second(-3.),
+        north: Speed::from_meters_per_second(4.),
+    });
+
+    glide(&mut fusion, 0..=2 * 3_600);
+
+    let instruments = assert_some!(fusion.instruments());
+    assert!(!assert_some!(instruments.wind).stale);
+    assert!(!assert_some!(instruments.airspeed).stale);
 }
 
 #[test]

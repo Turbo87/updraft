@@ -22,6 +22,7 @@ mod navigation;
 mod ownship;
 mod pinned_targets;
 mod polar;
+mod position_jump;
 mod recording;
 mod sensor_fusion;
 mod settings;

@@ -478,6 +478,14 @@ impl Estimator {
         self.isa_altitude_sample = None;
     }
 
+    /// Clears all state except the polar.
+    pub fn reset(&mut self) {
+        *self = Self {
+            polar: self.polar,
+            ..Self::new()
+        };
+    }
+
     pub fn reset_wind(&mut self) {
         self.wind = WindFilter::default();
         self.wind_air_speed_time = None;

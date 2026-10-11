@@ -549,3 +549,22 @@ fn fly_circling_climb(fusion: &mut SensorFusion, seconds: std::ops::RangeInclusi
         });
     }
 }
+
+#[test]
+fn reset_removes_the_flight_data_but_keeps_the_polar() {
+    let (mut fusion, _, _) = fusion_with_current_netto();
+    fusion.reset();
+    assert_none!(fusion.instruments());
+
+    for second in 60..62 {
+        let altitude = PressureAltitude::new(Length::from_meters(1_000.));
+        fusion.update(FusionInputs {
+            gps: DomainState::Unavailable,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Current(selected(second * 1_000, altitude)),
+        });
+    }
+
+    let instruments = assert_some!(fusion.instruments());
+    assert!(!assert_some!(instruments.estimated_netto).stale);
+}

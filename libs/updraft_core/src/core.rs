@@ -46,6 +46,7 @@ pub struct Core {
     task_fix: Option<crate::ownship::Selected<GpsSnapshot>>,
     task_save_failed: bool,
     recorder: crate::recording::FlightRecorder,
+    position_jump_check: crate::position_jump::PositionJumpCheck,
     trail: Option<crate::Trail>,
     settings: Settings,
     glide_performance: GlidePerformance,
@@ -86,6 +87,7 @@ impl Core {
             task_fix: None,
             task_save_failed: false,
             recorder: Default::default(),
+            position_jump_check: Default::default(),
             trail: None,
             navigation_target: None,
             navigation_elevation: None,
@@ -542,6 +544,12 @@ impl Core {
     }
 
     fn update_sensor_fusion(&mut self) {
+        if let DomainState::Current(fix) = self.gps
+            && let Some(utc) = self.fix_utc(fix)
+            && self.position_jump_check.observe(utc, fix.value.position)
+        {
+            self.sensor_fusion.reset();
+        }
         self.sensor_fusion.update(FusionInputs {
             gps: self.gps,
             true_airspeed: self.true_airspeed,

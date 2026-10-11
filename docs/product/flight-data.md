@@ -60,6 +60,25 @@ prefers a complete UTC instant from the selected GPS source. It uses the device
 UTC instant when the GPS source has no date. Monotonic elapsed time advances
 both UTC sources between reports.
 
+## Position jumps
+
+A position jump is a change of position of the selected GPS that no glider can
+fly. A fix is a candidate when it is more than 2 km from the last accepted fix
+and the implied ground speed is more than 150 m/s. The implied speed uses the
+UTC that the flight recording uses, so a replay with speed-up gives no jumps.
+The core ignores a fix with the same UTC. A fix with an earlier UTC, or a UTC
+more than 3 hours later, restarts the check from that fix.
+
+The next 3 fixes confirm the candidate when each fix follows from the fix
+before it within the same limits. Otherwise, a fix that follows from the last
+accepted fix cancels the candidate. Until confirmation, the core processes the
+fixes normally.
+
+A confirmed position jump resets all derived flight data. This includes the
+wind, the circling buffer, derived airspeed, heading, turn rate, and the
+vertical-speed and average-vario series. See
+[Only a confirmed position jump or a new flight resets the wind](../adr/0004-only-a-confirmed-position-jump-or-a-new-flight-resets-the-wind.md).
+
 ## Pressure altitude
 
 The current core accepts pressure altitude from a valid `$PGRMZ` value. Each

@@ -396,6 +396,16 @@ impl SensorFusion {
         }
     }
 
+    /// Clears all flight data state except the polar.
+    pub fn reset(&mut self) {
+        let mut estimator = std::mem::take(&mut self.estimator);
+        estimator.reset();
+        *self = Self {
+            estimator,
+            ..Self::default()
+        };
+    }
+
     /// Continues from the air mass velocity of a restored recording.
     pub fn restore_wind(&mut self, wind: Velocity) {
         self.estimator.restore_wind(wind);

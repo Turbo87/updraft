@@ -45,6 +45,13 @@ a 0 to 999 measure of engine noise, as defined by the IGC specification, from a 
 **Engine running**:
 the state that Updraft derives from the engine noise level.
 
+**Estimated netto**:
+netto from vertical speed and the polar sink at ground speed, used when no measured or derived airspeed exists.
+_Avoid_: netto fallback, uncompensated netto
+
+**Estimated relative vario**:
+estimated netto minus the minimum sink of the polar.
+
 **FLARM**:
 collision-warning system ubiquitous in European gliding.
 
@@ -95,6 +102,9 @@ single-file, HTTP-range-readable tile archive format.
 
 **Pinned target**:
 a navigation target kept visible in a compact readout below the Situation Bar whenever it is not focused.
+
+**Position jump**:
+a confirmed change of position of the selected GPS that no glider can fly.
 
 **QNE**:
 standard pressure reference (1013.25 hPa). basis for flight levels.

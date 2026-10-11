@@ -455,15 +455,19 @@ it('moves the whole trail by the drift translation', async () => {
   for (let seconds of [0, 1, 2]) applyTrailSample(trail, seconds);
   let { map } = await renderTrail(trail, new SettingsStore());
   let before = trail.translation!;
-  expect(map.getPaintProperty('trail', 'line-translate')).toEqual(trailTranslate(before));
+  for (let layer of ['trail-halo', 'trail']) {
+    expect(map.getPaintProperty(layer, 'line-translate')).toEqual(trailTranslate(before));
+  }
 
   applyTrailSample(trail, 3);
 
   expect(trail.translation!.eastMeters - before.eastMeters).toBeCloseTo(10);
   await vi.waitFor(() => {
-    expect(map.getPaintProperty('trail', 'line-translate')).toEqual(
-      trailTranslate(trail.translation),
-    );
+    for (let layer of ['trail-halo', 'trail']) {
+      expect(map.getPaintProperty(layer, 'line-translate')).toEqual(
+        trailTranslate(trail.translation),
+      );
+    }
   });
 });
 

@@ -220,7 +220,7 @@
         <Ownship {position} trackDegrees={gps?.trackDegrees ?? null} />
       {/if}
       {#if airspaceData}
-        <Airspace data={airspaceData} beforeId="trail" />
+        <Airspace data={airspaceData} beforeId="trail-halo" />
       {/if}
       {#if waypointData}
         <Waypoints data={waypointData} {showHitAreas} showLandables={!arrivalsReady} />

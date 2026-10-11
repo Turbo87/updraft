@@ -4,4 +4,4 @@
  * The open question to the pilot whether a new flight starts, with its
  * cause.
  */
-export type FlightBoundaryQuestion = { "cause": "fixUtcJump", milliseconds: number, };
+export type FlightBoundaryQuestion = { "cause": "fixUtcJump", milliseconds: number, } | { "cause": "positionJump", meters: number, };

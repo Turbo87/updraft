@@ -64,6 +64,8 @@ pub enum FlightBoundaryQuestion {
         #[cfg_attr(feature = "ts", ts(type = "number"))]
         milliseconds: i64,
     },
+    /// A confirmed position jump moved the position by this distance.
+    PositionJump { meters: f64 },
 }
 
 /// What the recorder does with a fix.

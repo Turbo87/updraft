@@ -554,9 +554,11 @@ impl Core {
     fn update_sensor_fusion(&mut self) {
         if let DomainState::Current(fix) = self.gps
             && let Some(utc) = self.fix_utc(fix)
-            && self.position_jump_check.observe(utc, fix.value.position)
+            && let Some(distance) = self.position_jump_check.observe(utc, fix.value.position)
         {
             self.sensor_fusion.reset();
+            let meters = distance.as_meters();
+            self.ask(crate::FlightBoundaryQuestion::PositionJump { meters });
         }
         self.sensor_fusion.update(FusionInputs {
             gps: self.gps,
@@ -1425,6 +1427,8 @@ impl Input for crate::RestoreRecording {
         if let Some(wind) = last.sample.wind {
             core.sensor_fusion.restore_wind(wind);
         }
+        core.position_jump_check
+            .observe(last.sample.utc, last.sample.position);
         Update::empty()
     }
 }

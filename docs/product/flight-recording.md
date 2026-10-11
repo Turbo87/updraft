@@ -21,7 +21,9 @@ progress.
 
 A fix with the same UTC as the last sample, or up to 30 seconds before it, is
 not recorded. When the fix UTC jumps more than 3 hours forward or more than 30
-seconds back, the core opens a question whether a new flight starts. The
+seconds back, the core opens a question whether a new flight starts. A
+confirmed [position jump](flight-data.md#position-jumps) also opens the
+question. When a question is open already, the core keeps it. The
 current recording continues until the pilot answers. Updraft records no fix
 with a UTC before the last sample.
 

@@ -67,7 +67,8 @@ fly. A fix is a candidate when it is more than 2 km from the last accepted fix
 and the implied ground speed is more than 150 m/s. The implied speed uses the
 UTC that the flight recording uses, so a replay with speed-up gives no jumps.
 The core ignores a fix with the same UTC. A fix with an earlier UTC, or a UTC
-more than 3 hours later, restarts the check from that fix.
+more than 3 hours later, restarts the check from that fix. After a restart,
+the check starts from the last sample of the restored flight recording.
 
 The next 3 fixes confirm the candidate when each fix follows from the fix
 before it within the same limits. Otherwise, a fix that follows from the last

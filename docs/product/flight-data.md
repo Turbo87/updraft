@@ -186,6 +186,11 @@ values. With an airspeed source, the wind is available only while the variance
 of the wind filter is converged. See
 [Derived airspeed and wind have no age limit](../adr/0006-derived-airspeed-and-wind-have-no-age-limit.md).
 
+The wind stays when the GPS source changes, when the selected GPS becomes
+unavailable, and when the airspeed source changes. This includes a change after
+the pilot disables, edits, or deletes the selected device. Only a confirmed
+position jump resets the wind.
+
 ## True airspeed
 
 The current core accepts true airspeed from `$LXWP0`. It does not calculate TAS

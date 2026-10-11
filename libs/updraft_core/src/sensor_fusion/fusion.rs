@@ -66,13 +66,6 @@ impl SensorFusion {
     pub fn update(&mut self, inputs: FusionInputs) {
         let gps_current = matches!(inputs.gps, DomainState::Current(_));
         let pressure_current = matches!(inputs.pressure_altitude, DomainState::Current(_));
-        let gps_discontinuity = match inputs.gps {
-            DomainState::Unavailable => self.gps.is_some(),
-            DomainState::Current(selected) => self
-                .gps
-                .is_some_and(|previous| previous.source != selected.source),
-            DomainState::LastKnown(_) => false,
-        };
         let gps_altitude_discontinuity = match (self.gps_altitude_source, inputs.gps) {
             (Some(_), DomainState::Unavailable) => true,
             (Some(source), DomainState::Current(selected)) => source != selected.source,
@@ -97,15 +90,6 @@ impl SensorFusion {
             self.gps = None;
             self.gps_altitude_source = None;
             self.altitude.mark_stale();
-        }
-        if gps_discontinuity {
-            self.estimator.reset_wind();
-            self.wind.mark_stale();
-            self.heading.mark_stale();
-            self.bank.mark_stale();
-            if !air_speed_current {
-                self.derived_air_speed.mark_stale();
-            }
         }
 
         let gps_altitude_current = match inputs.gps {
@@ -154,10 +138,6 @@ impl SensorFusion {
         {
             self.estimator.reset_air_speed();
             self.remove_total_energy_values();
-            self.estimator.reset_wind();
-            self.wind.mark_stale();
-            self.heading.mark_stale();
-            self.bank.mark_stale();
         }
         let SampleAcceptance::Accepted = self
             .estimator

@@ -10,11 +10,12 @@
 //! removes the offset between the FLARM and IGC positions at the fix time.
 //!
 //! The ownship uses the RMC fixes. Traffic uses the positions that
-//! [`Core`] accepts with the FLARM position correction, at the GPS time of
-//! the reference fix. The reported FLARM ground speed and track come from
-//! the PFLAA report that supplied the accepted position.
+//! [`Core`] accepts, at the time of the latest GPS fix. The bench scores
+//! traffic with and without the FLARM position correction. The reported
+//! FLARM ground speed and track come from the PFLAA report that supplied the
+//! accepted position.
 //!
-//! The bench matches a target to an IGC file when the accepted positions
+//! The bench matches a target to an IGC file when the corrected positions
 //! are close to the IGC positions at the same time. It ignores the dates,
 //! so a directory must not hold recordings of different days with the same
 //! aircraft.
@@ -128,9 +129,16 @@ fn has_extension(path: &Path, expected: &str) -> bool {
 }
 
 /// Reads the RMC fixes and the accepted traffic positions of a recording.
-fn replay(recording: &[u8]) -> (Vec<Fix>, BTreeMap<String, Vec<Fix>>) {
+///
+/// With `correction`, a target keeps the first position at each GPS time,
+/// as the core does. Without it, the latest report at each GPS time
+/// replaces the position.
+fn replay(recording: &[u8], correction: bool) -> (Vec<Fix>, BTreeMap<String, Vec<Fix>>) {
     let mut core = Core::new(SettingsSnapshot {
-        settings: Settings::default(),
+        settings: Settings {
+            flarm_position_correction: correction,
+            ..Settings::default()
+        },
         external_devices: vec![ExternalDeviceConfig {
             enabled: true,
             spec: ConnectionSpec::tcp("127.0.0.1", 4353),
@@ -214,13 +222,18 @@ fn replay(recording: &[u8]) -> (Vec<Fix>, BTreeMap<String, Vec<Fix>>) {
                     target.position.longitude_degrees,
                 );
                 let fixes = traffic.entry(id.clone()).or_default();
-                // Repeated reports at one GPS time keep the accepted position.
-                if fixes.last().is_some_and(|last| time <= last.time) || target.stale {
-                    continue;
-                }
                 let Some(published_track) = target.track_degrees else {
                     continue;
                 };
+                if target.stale || fixes.last().is_some_and(|last| time < last.time) {
+                    continue;
+                }
+                if fixes.last().is_some_and(|last| time == last.time) {
+                    if correction {
+                        continue;
+                    }
+                    fixes.pop();
+                }
                 fixes.push(Fix {
                     time,
                     position,
@@ -392,12 +405,18 @@ enum Model {
     /// The reported speed and track with the turn rate of the fitted
     /// circle.
     CircleRate,
+    /// The reported speed and track with the turn rate of the fitted
+    /// circle, only when the window shows a turn. See [`turn_evidence()`].
+    GatedCircleRate,
+    /// The fitted circle when the window shows a turn, otherwise the
+    /// reported speed and track. See [`turn_evidence()`].
+    GatedCircle,
     /// A quadratic least-squares polynomial in time through all positions
     /// of the window, as a spline extrapolation baseline.
     Quadratic,
 }
 
-const MODELS: [Model; 11] = [
+const MODELS: [Model; 13] = [
     Model::Hold,
     Model::Straight,
     Model::PublishedStraight,
@@ -408,15 +427,19 @@ const MODELS: [Model; 11] = [
     Model::ThreePointCircle,
     Model::FittedCircle,
     Model::CircleRate,
+    Model::GatedCircleRate,
+    Model::GatedCircle,
     Model::Quadratic,
 ];
 
 /// The models of the turn rate limit comparison.
-const LIMITED_MODELS: [Model; 4] = [
+const LIMITED_MODELS: [Model; 6] = [
     Model::TrackRate(0),
     Model::TrackRate(1),
     Model::FittedCircle,
     Model::CircleRate,
+    Model::GatedCircleRate,
+    Model::GatedCircle,
 ];
 
 impl fmt::Display for Model {
@@ -430,6 +453,8 @@ impl fmt::Display for Model {
             Self::ThreePointCircle => write!(formatter, "3-point circle"),
             Self::FittedCircle => write!(formatter, "fitted circle"),
             Self::CircleRate => write!(formatter, "circle turn rate"),
+            Self::GatedCircleRate => write!(formatter, "gated circle turn rate"),
+            Self::GatedCircle => write!(formatter, "gated circle"),
             Self::StepRate => write!(formatter, "step turn rate"),
             Self::Quadratic => write!(formatter, "quadratic"),
         }
@@ -487,6 +512,11 @@ impl Model {
                 turn_rate: circle_motion(window).map_or(0., |circle| circle.turn_rate),
                 ..straight
             }),
+            Self::GatedCircleRate => Some(Motion {
+                turn_rate: turn_evidence(window).map_or(0., |circle| circle.turn_rate),
+                ..straight
+            }),
+            Self::GatedCircle => Some(turn_evidence(window).unwrap_or(straight)),
         }
     }
 
@@ -552,6 +582,40 @@ fn circle_motion(window: &[Fix]) -> Option<Motion> {
         track: tangent.0.atan2(tangent.1),
         turn_rate: clockwise * latest.speed / radius,
     })
+}
+
+/// Minimum number of positions for the turn evidence.
+const TURN_EVIDENCE_POSITIONS: usize = 4;
+
+/// Minimum fitted turn rate for the turn evidence, in degrees per second.
+const TURN_EVIDENCE_RATE: f64 = 8.;
+
+/// Maximum difference between the reported track and the circle tangent for
+/// the turn evidence, in degrees.
+const TURN_EVIDENCE_TRACK: f64 = 30.;
+
+/// The fitted circle motion, if the window shows a turn.
+///
+/// A turn needs at least [`TURN_EVIDENCE_POSITIONS`] positions and a fitted
+/// turn rate of at least [`TURN_EVIDENCE_RATE`]. Every step must turn in the
+/// direction of the circle. The reported track must be within
+/// [`TURN_EVIDENCE_TRACK`] of the circle tangent.
+fn turn_evidence(window: &[Fix]) -> Option<Motion> {
+    let latest = window.last()?;
+    if window.len() < TURN_EVIDENCE_POSITIONS {
+        return None;
+    }
+    let circle = circle_motion(window)?;
+    let bearings = window
+        .windows(2)
+        .map(|pair| pair[0].position.bearing(pair[1].position).as_radians())
+        .collect::<Vec<_>>();
+    let consistent = bearings
+        .windows(2)
+        .all(|pair| wrap(pair[1] - pair[0]) * circle.turn_rate > 0.);
+    let fast = circle.turn_rate.abs().to_degrees() >= TURN_EVIDENCE_RATE;
+    let aligned = wrap(latest.track - circle.track).abs().to_degrees() <= TURN_EVIDENCE_TRACK;
+    (consistent && fast && aligned).then_some(circle)
 }
 
 /// East and north offset after `seconds` from a quadratic least-squares
@@ -727,48 +791,49 @@ fn distance(predicted: (f64, f64), truth: (f64, f64)) -> f64 {
     (predicted.0 - truth.0).hypot(predicted.1 - truth.1)
 }
 
+fn timed_positions(fixes: &[Fix]) -> Vec<(f64, LatLon)> {
+    fixes.iter().map(|fix| (fix.time, fix.position)).collect()
+}
+
+/// A traffic target of one recording.
+type TargetKey = (usize, String);
+
 #[derive(Default)]
 struct Bench {
     ownship: Scores,
-    traffic: Scores,
-    traffic_igc: Scores,
-    /// Accepted traffic positions of all recordings by target.
-    targets: Vec<Vec<Fix>>,
-    /// Indices of the targets that match an IGC file.
-    matched_targets: BTreeSet<usize>,
     ownship_fixes: usize,
-    traffic_fixes: usize,
+    recordings: usize,
+    corrected: TrafficBench,
+    uncorrected: TrafficBench,
+    /// The targets that match an IGC file.
+    matched_targets: BTreeSet<TargetKey>,
 }
 
 impl Bench {
     fn add_nmea(&mut self, recording: &[u8]) {
-        let (ownship, traffic) = replay(recording);
-        let path = |fixes: &[Fix]| {
-            fixes
-                .iter()
-                .map(|fix| (fix.time, fix.position))
-                .collect::<Vec<_>>()
-        };
-        self.ownship.add(&ownship, &path(&ownship), false);
+        let (ownship, corrected) = replay(recording, true);
+        self.ownship
+            .add(&ownship, &timed_positions(&ownship), false);
         self.ownship_fixes += ownship.len();
-        for fixes in traffic.into_values() {
-            self.traffic.add(&fixes, &path(&fixes), false);
-            self.traffic_fixes += fixes.len();
-            self.targets.push(fixes);
-        }
+        self.corrected.add_targets(self.recordings, corrected);
+        let (_, uncorrected) = replay(recording, false);
+        self.uncorrected.add_targets(self.recordings, uncorrected);
+        self.recordings += 1;
     }
 
-    /// Scores the traffic target that matches the IGC file best.
+    /// Scores the traffic target that matches the IGC file best, with and
+    /// without the FLARM position correction.
     ///
-    /// A target matches at most one IGC file.
+    /// The match uses the corrected positions. A target matches at most one
+    /// IGC file.
     fn add_igc(&mut self, recording: &str) {
         let path = igc_path(recording);
         let matched = self
+            .corrected
             .targets
             .iter()
-            .enumerate()
-            .filter(|(index, _)| !self.matched_targets.contains(index))
-            .filter_map(|(index, fixes)| {
+            .filter(|(key, _)| !self.matched_targets.contains(*key))
+            .filter_map(|(key, fixes)| {
                 let offsets = Cell(
                     fixes
                         .iter()
@@ -781,12 +846,44 @@ impl Bench {
                     return None;
                 }
                 let median = offsets.percentile(0.5);
-                (median < MATCH_DISTANCE).then_some((median, index))
+                (median < MATCH_DISTANCE).then_some((median, key))
             })
             .min_by(|first, second| first.0.total_cmp(&second.0));
-        if let Some((_, index)) = matched {
-            self.traffic_igc.add(&self.targets[index], &path, true);
-            self.matched_targets.insert(index);
+        let Some((_, key)) = matched else { return };
+        let key = key.clone();
+        self.corrected.add_igc(&key, &path);
+        self.uncorrected.add_igc(&key, &path);
+        self.matched_targets.insert(key);
+    }
+}
+
+/// The traffic scores of one FLARM position correction setting.
+#[derive(Default)]
+struct TrafficBench {
+    /// Scores against later accepted positions.
+    later: Scores,
+    /// Scores of the movement against IGC files.
+    igc: Scores,
+    /// Accepted traffic positions of all recordings by target.
+    targets: BTreeMap<TargetKey, Vec<Fix>>,
+    /// Number of targets that match an IGC file.
+    matched_targets: usize,
+    fixes: usize,
+}
+
+impl TrafficBench {
+    fn add_targets(&mut self, recording: usize, traffic: BTreeMap<String, Vec<Fix>>) {
+        for (id, fixes) in traffic {
+            self.later.add(&fixes, &timed_positions(&fixes), false);
+            self.fixes += fixes.len();
+            self.targets.insert((recording, id), fixes);
+        }
+    }
+
+    fn add_igc(&mut self, key: &TargetKey, path: &TimedPositions) {
+        if let Some(fixes) = self.targets.get(key) {
+            self.igc.add(fixes, path, true);
+            self.matched_targets += 1;
         }
     }
 }
@@ -906,25 +1003,40 @@ impl fmt::Display for Bench {
         writeln!(formatter, "## ownship against later fixes")?;
         writeln!(formatter, "\n{} fixes", self.ownship_fixes)?;
         write!(formatter, "{}", self.ownship)?;
-        writeln!(formatter, "\n## traffic against later accepted positions")?;
+        self.corrected
+            .write(formatter, "with FLARM position correction")?;
+        self.uncorrected
+            .write(formatter, "without FLARM position correction")
+    }
+}
+
+impl TrafficBench {
+    fn write(&self, formatter: &mut fmt::Formatter<'_>, setting: &str) -> fmt::Result {
+        writeln!(
+            formatter,
+            "\n## traffic against later accepted positions, {setting}"
+        )?;
         writeln!(
             formatter,
             "\n{} accepted positions of {} targets",
-            self.traffic_fixes,
+            self.fixes,
             self.targets.len()
         )?;
-        write!(formatter, "{}", self.traffic)?;
-        if !self.matched_targets.is_empty() {
-            writeln!(formatter, "\n## traffic movement against IGC files")?;
+        write!(formatter, "{}", self.later)?;
+        if self.matched_targets > 0 {
+            writeln!(
+                formatter,
+                "\n## traffic movement against IGC files, {setting}"
+            )?;
             writeln!(
                 formatter,
                 "\n{} matched targets, received position rms {:.2}, p50 {:.2}, p95 {:.2}",
-                self.matched_targets.len(),
-                self.traffic_igc.received.rms(),
-                self.traffic_igc.received.percentile(0.5),
-                self.traffic_igc.received.percentile(0.95),
+                self.matched_targets,
+                self.igc.received.rms(),
+                self.igc.received.percentile(0.5),
+                self.igc.received.percentile(0.95),
             )?;
-            write!(formatter, "{}", self.traffic_igc)?;
+            write!(formatter, "{}", self.igc)?;
         }
         Ok(())
     }
@@ -961,33 +1073,64 @@ mod tests {
         assert_abs_diff_eq!(north, 20., epsilon = 1e-9);
     }
 
-    #[test]
-    fn circle_models_recover_a_steady_turn() {
+    /// Five fixes of a right turn at 30 m/s on an 80 m radius.
+    fn steady_turn() -> Vec<Fix> {
         let center = LatLon::from_degrees(50., 6.);
         let (speed, radius) = (30., 80.);
-        let turn_rate = speed / radius;
-        let fixes = (0..5)
+        (0..5)
             .map(|second| {
                 let time = f64::from(second);
-                // A right turn around `center`, starting due west of it.
-                let bearing = updraft_units::Angle::from_radians(-TAU / 4. + turn_rate * time);
+                let track = speed / radius * time;
+                // The turn starts due west of `center`.
+                let bearing = updraft_units::Angle::from_radians(track - TAU / 4.);
                 let position =
                     center.destination(bearing, updraft_units::Length::from_meters(radius));
                 Fix {
                     time,
                     position,
                     speed,
-                    track: 0.,
-                    published_track: 0.,
+                    track,
+                    published_track: track,
                 }
             })
-            .collect::<Vec<_>>();
+            .collect()
+    }
+
+    #[test]
+    fn circle_models_recover_a_steady_turn() {
+        let fixes = steady_turn();
+        let turn_rate = 30. / 80.;
         for model in [Model::ThreePointCircle, Model::FittedCircle] {
             let motion = model.motion(&fixes).expect("a circle has motion");
-            let track = wrap(turn_rate * 4.);
             assert_abs_diff_eq!(motion.turn_rate, turn_rate, epsilon = 1e-3);
-            assert_abs_diff_eq!(motion.track, track, epsilon = 1e-3);
+            assert_abs_diff_eq!(motion.track, wrap(turn_rate * 4.), epsilon = 1e-3);
         }
+    }
+
+    #[test]
+    fn turn_evidence_needs_a_consistent_turn_and_track() {
+        let mut fixes = steady_turn();
+        let circle = turn_evidence(&fixes).expect("a steady turn is evidence");
+        assert_abs_diff_eq!(circle.turn_rate, 30. / 80., epsilon = 1e-3);
+        assert_none!(turn_evidence(&fixes[1..4]));
+
+        fixes[4].track += TAU / 8.;
+        assert_none!(turn_evidence(&fixes));
+
+        let start = fixes[0].position;
+        let straight = (0..5)
+            .map(|second| Fix {
+                time: f64::from(second),
+                position: start.destination(
+                    updraft_units::Angle::ZERO,
+                    updraft_units::Length::from_meters(30. * f64::from(second)),
+                ),
+                speed: 30.,
+                track: 0.,
+                published_track: 0.,
+            })
+            .collect::<Vec<_>>();
+        assert_none!(turn_evidence(&straight));
     }
 
     #[test]

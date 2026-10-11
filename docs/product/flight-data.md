@@ -134,7 +134,8 @@ bank angle. The value estimates potential climb at minimum sink, not actual
 climb while circling. Positive values mean climbing.
 
 Both values require valid netto inputs. Before the inputs produce a value,
-the fields remain absent. Stale inputs retain the previous values with
+the fields remain absent. While no current airspeed exists, both values are
+unavailable. A stale altitude input retains the previous values with
 `stale: true`. A polar change updates both current values immediately.
 
 Estimated netto does not need an airspeed. It adds the active polar's sink rate

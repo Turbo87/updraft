@@ -260,7 +260,7 @@ fn inferred_airspeed_stays_current_between_gps_samples() {
     let stale = assert_some!(fusion.instruments());
     assert!(assert_some!(stale.airspeed).stale);
     assert_none!(stale.vario);
-    assert!(assert_some!(stale.netto).stale);
+    assert_none!(stale.netto);
 }
 
 #[test]
@@ -380,13 +380,12 @@ fn stale_inputs_do_not_make_cached_motion_estimates_current() {
 }
 
 #[test]
-fn stale_airspeed_stales_netto_independently() {
+fn stale_airspeed_removes_netto() {
     let (mut fusion, air_speed, pressure_altitude) = fusion_with_current_netto();
 
-    let current = assert_some!(assert_some!(fusion.instruments()).netto);
-    assert!(!current.stale);
-    let relative = assert_some!(assert_some!(fusion.instruments()).relative_vario);
-    assert!(!relative.stale);
+    let current = assert_some!(fusion.instruments());
+    assert!(!assert_some!(current.netto).stale);
+    assert!(!assert_some!(current.relative_vario).stale);
 
     fusion.update(FusionInputs {
         gps: DomainState::Unavailable,
@@ -394,16 +393,14 @@ fn stale_airspeed_stales_netto_independently() {
         pressure_altitude: DomainState::Current(pressure_altitude),
     });
 
-    let retained = assert_some!(assert_some!(fusion.instruments()).netto);
-    assert_eq!(retained.meters_per_second, current.meters_per_second);
-    assert!(retained.stale);
-    let retained = assert_some!(assert_some!(fusion.instruments()).relative_vario);
-    assert_eq!(retained.meters_per_second, relative.meters_per_second);
-    assert!(retained.stale);
+    let instruments = assert_some!(fusion.instruments());
+    assert_none!(instruments.netto);
+    assert_none!(instruments.relative_vario);
+    assert!(!assert_some!(instruments.estimated_netto).stale);
 }
 
 #[test]
-fn returning_altitude_without_airspeed_removes_the_stale_vario() {
+fn returning_altitude_without_airspeed_removes_the_stale_vario_and_netto() {
     let (mut fusion, air_speed, pressure_altitude) = fusion_with_current_netto();
     fusion.update(FusionInputs {
         gps: DomainState::Unavailable,
@@ -421,6 +418,8 @@ fn returning_altitude_without_airspeed_removes_the_stale_vario() {
 
     let instruments = assert_some!(fusion.instruments());
     assert_none!(instruments.vario);
+    assert_none!(instruments.netto);
+    assert_none!(instruments.relative_vario);
     assert!(!assert_some!(instruments.vertical_speed).stale);
 }
 

@@ -17,8 +17,9 @@ means that its value was unavailable or stale.
 - One field with a method flag needs a new protocol concept. The field name
   already identifies the method.
 - A stale total-energy `vario` while a current `verticalSpeed` exists lets the
-  frontend show a value from before the fallback period. So `vario` is
-  unavailable, not stale, when no current airspeed exists.
+  frontend show a value from before the fallback period. So `vario`, `netto`,
+  and `relativeVario` are unavailable, not stale, when no current airspeed
+  exists.
 - A recording that stores only the shown value without its method was the
   earlier decision. It loses the method, and a later analysis cannot compare
   the two values.

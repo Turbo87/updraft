@@ -129,9 +129,7 @@ impl SensorFusion {
             self.update_pressure_altitude(inputs.pressure_altitude);
         }
         if !matches!(self.derived_air_speed, SignalState::Current(_)) {
-            self.remove_current_vario();
-            self.netto.mark_stale();
-            self.relative_vario.mark_stale();
+            self.remove_total_energy_values();
         }
     }
 
@@ -141,9 +139,7 @@ impl SensorFusion {
                 return;
             }
             self.estimator.clear_air_speed();
-            self.remove_current_vario();
-            self.netto.mark_stale();
-            self.relative_vario.mark_stale();
+            self.remove_total_energy_values();
             self.air_speed_current = false;
             self.derived_air_speed.mark_stale();
             self.air_speed = None;
@@ -157,7 +153,7 @@ impl SensorFusion {
             .is_some_and(|source| source != selected.source)
         {
             self.estimator.reset_air_speed();
-            self.remove_current_vario();
+            self.remove_total_energy_values();
             self.estimator.reset_wind();
             self.wind.mark_stale();
             self.heading.mark_stale();
@@ -287,12 +283,15 @@ impl SensorFusion {
         self.altitude.mark_stale();
     }
 
-    /// Without a current airspeed, the vertical speed replaces the vario.
-    /// A vario from before stays only while it is stale with its altitude
-    /// input, so that it has the same age as the vertical speed.
-    fn remove_current_vario(&mut self) {
-        if matches!(self.vario, SignalState::Current(_)) {
-            self.vario = SignalState::Unavailable;
+    /// Without a current airspeed, the vertical speed and Estimated netto
+    /// replace the vario and netto. A value from before stays only while it
+    /// is stale with its altitude input, so that it has the same age as its
+    /// replacement.
+    fn remove_total_energy_values(&mut self) {
+        for state in [&mut self.vario, &mut self.netto, &mut self.relative_vario] {
+            if matches!(state, SignalState::Current(_)) {
+                *state = SignalState::Unavailable;
+            }
         }
     }
 
@@ -361,12 +360,24 @@ impl SensorFusion {
     }
 
     fn update_netto(&mut self) {
-        if !matches!(self.vario, SignalState::Current(_))
-            || !matches!(self.derived_air_speed, SignalState::Current(_))
-        {
-            self.netto.mark_stale();
-            self.relative_vario.mark_stale();
-            return;
+        match self.vario {
+            SignalState::Unavailable => {
+                self.netto = SignalState::Unavailable;
+                self.relative_vario = SignalState::Unavailable;
+                return;
+            }
+            SignalState::LastKnown(_) => {
+                self.netto.mark_stale();
+                self.relative_vario.mark_stale();
+                return;
+            }
+            SignalState::Current(_)
+                if !matches!(self.derived_air_speed, SignalState::Current(_)) =>
+            {
+                self.remove_total_energy_values();
+                return;
+            }
+            SignalState::Current(_) => {}
         }
         let estimate = self.estimator.estimate();
         if let Some(netto) = estimate.netto {

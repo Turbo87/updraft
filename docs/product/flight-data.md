@@ -71,9 +71,10 @@ from different devices.
 
 ## Vertical speed
 
-The core derives raw vertical speed from consecutive selected pressure-altitude
-samples. A positive value means that pressure altitude is increasing. The value
-is not smoothed or energy compensated.
+The core derives raw vertical speed from consecutive altitude samples. It uses
+the selected pressure altitude. When no pressure altitude is current, it uses
+the altitude of the selected GPS. A positive value means that the altitude is
+increasing. The value is not smoothed or energy compensated.
 
 The estimator ignores samples whose ingestion times do not advance. It starts a
 new series after a pressure-source reset, a source change, or a gap longer than
@@ -85,12 +86,11 @@ values at 1 Hz. This tuning is only validated for 1 Hz pressure-altitude updates
 The second stage uses the updated first stage, so other update rates produce a
 different amount of smoothing and delay.
 
-When current TAS is available, the core also derives an energy-compensated
-vario from pressure altitude plus the airspeed energy term `v²/2g`. The
-compensated series resets when TAS becomes unavailable or its source changes.
-Pressure-altitude samples do not advance this series while TAS is unavailable.
-Two pressure-altitude samples with current TAS are necessary before the vario
-becomes current again.
+When a current airspeed is available, the core also derives an
+energy-compensated vario from the same altitude plus the airspeed energy term
+`v²/2g`. It uses the selected TAS. Without a current TAS, it uses derived
+airspeed. The compensated series resets when a TAS appears or its source
+changes. While no current airspeed exists, the vario is stale.
 
 The instruments topic retains each previous vertical-speed value with
 `stale: true` while its input is stale or a new series waits for its second
@@ -105,10 +105,11 @@ the height change during the previous 20 seconds. It interpolates the height at
 the start of the window. During startup, it uses all available history after
 the first two samples.
 
-When current TAS is available at both ends of an altitude interval, the height
-change includes the airspeed energy term `v²/2g`. Otherwise, the interval uses
-only the altitude change. The average keeps its history when TAS becomes
-available or unavailable. The transition does not add an energy-height offset.
+When a current airspeed is available at both ends of an altitude interval, the
+height change includes the airspeed energy term `v²/2g`. Otherwise, the
+interval uses only the altitude change. The average keeps its history when the
+airspeed becomes available or unavailable. The transition does not add an
+energy-height offset.
 
 An altitude source change, reset, or gap longer than 30 seconds starts a new
 average series. The instruments topic retains the previous value with

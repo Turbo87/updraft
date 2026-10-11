@@ -54,6 +54,10 @@ pub struct Estimate {
     pub netto: Option<Speed>,
     /// Netto minus density-corrected straight-flight minimum sink. Positive means climbing.
     pub relative_vario: Option<Speed>,
+    /// Vertical speed plus the polar sink at the ground speed, but at least
+    /// at the minimum-sink airspeed.
+    pub estimated_netto: Option<Speed>,
+    pub estimated_relative_vario: Option<Speed>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -316,7 +320,7 @@ impl Estimator {
         } else {
             FixAcceptance::Predicted
         };
-        if let Some((wind_east, wind_north)) = self.wind.vector() {
+        if let Some((wind_east, wind_north)) = self.reported_wind() {
             let east = (east - wind_east).as_meters_per_second();
             let north = (north - wind_north).as_meters_per_second();
             let speed = Speed::from_meters_per_second(east.hypot(north));
@@ -351,8 +355,19 @@ impl Estimator {
             .or_else(|| self.inferred_air_speed.fresh_at(now))
     }
 
+    /// With an airspeed source, the wind needs a converged variance.
+    /// Without one, the wind stays while the filter was converged after its
+    /// last accepted measurement, because an old wind gives a better
+    /// derived airspeed than none.
+    fn reported_wind(&self) -> Option<(Speed, Speed)> {
+        match self.measured_air_speed {
+            Some(_) => self.wind.vector(),
+            None => self.wind.converged_vector(),
+        }
+    }
+
     fn update_turn_rate(&mut self, time: Duration, ground_east: Speed, ground_north: Speed) {
-        let Some((wind_east, wind_north)) = self.wind.vector() else {
+        let Some((wind_east, wind_north)) = self.reported_wind() else {
             self.previous_heading = None;
             self.turn_rate = None;
             return;
@@ -394,7 +409,7 @@ impl Estimator {
 
     fn heading(&self) -> Option<Angle> {
         let ground = self.ground?;
-        let (wind_east, wind_north) = self.wind.vector()?;
+        let (wind_east, wind_north) = self.reported_wind()?;
         let east = (ground.east - wind_east).as_meters_per_second();
         let north = (ground.north - wind_north).as_meters_per_second();
         let speed = Speed::from_meters_per_second(east.hypot(north));
@@ -500,7 +515,7 @@ impl Estimator {
             None
         };
         let average_vario = self.average_vario.value();
-        let wind = self.wind.vector().map(|(east, north)| {
+        let wind = self.reported_wind().map(|(east, north)| {
             let east = east.as_meters_per_second();
             let north = north.as_meters_per_second();
             Wind {
@@ -516,10 +531,23 @@ impl Estimator {
             let air_speed = self.air_speed_at(time)?;
             Some(vario? + self.sink_rate(altitude, air_speed)?)
         });
-        let relative_vario = netto.and_then(|netto| {
-            let (_, altitude) = self.isa_altitude_sample?;
-            let minimum_sink = self.polar?.min_sink_rate() / isa_density_ratio(altitude).sqrt();
-            Some(netto - minimum_sink)
+        let estimated_netto = self.isa_altitude_sample.and_then(|(_, altitude)| {
+            let minimum_sink_speed =
+                self.polar?.min_sink_speed() / isa_density_ratio(altitude).sqrt();
+            let air_speed = match self.ground {
+                Some(ground) => {
+                    let east = ground.east.as_meters_per_second();
+                    let north = ground.north.as_meters_per_second();
+                    let ground_speed = Speed::from_meters_per_second(east.hypot(north));
+                    if ground_speed < minimum_sink_speed {
+                        minimum_sink_speed
+                    } else {
+                        ground_speed
+                    }
+                }
+                None => minimum_sink_speed,
+            };
+            Some(vertical_speed? + self.sink_rate(altitude, air_speed)?)
         });
         Estimate {
             raw_vertical_speed,
@@ -532,8 +560,16 @@ impl Estimator {
             altitude: self.altitude_msl(),
             bank_angle: air_speed.and_then(|speed| self.bank_angle(speed)),
             netto,
-            relative_vario,
+            relative_vario: netto.and_then(|netto| self.relative_vario(netto)),
+            estimated_netto,
+            estimated_relative_vario: estimated_netto.and_then(|netto| self.relative_vario(netto)),
         }
+    }
+
+    fn relative_vario(&self, netto: Speed) -> Option<Speed> {
+        let (_, altitude) = self.isa_altitude_sample?;
+        let minimum_sink = self.polar?.min_sink_rate() / isa_density_ratio(altitude).sqrt();
+        Some(netto - minimum_sink)
     }
 }
 
@@ -1344,7 +1380,7 @@ mod tests {
                 FixPredicted
             );
         }
-        assert_none!(estimator.estimate().wind);
+        assert_none!(estimator.wind.vector());
     }
 
     #[test]
@@ -1560,6 +1596,68 @@ mod tests {
         assert_none!(estimator.estimate().relative_vario);
     }
 
+    fn fly_level_without_air_speed(estimator: &mut Estimator, ground_speed: Option<f64>) {
+        for second in 0..60u64 {
+            let time = Duration::from_secs(second);
+            if let Some(ground_speed) = ground_speed {
+                let _ = estimator.fix(time, &fix_kph(90., ground_speed));
+            }
+            assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
+        }
+    }
+
+    #[test]
+    fn estimated_netto_assumes_the_ground_speed_as_airspeed() {
+        let mut estimator = estimator_with_polar(polar());
+        fly_level_without_air_speed(&mut estimator, Some(108.));
+
+        let state = estimator.estimate();
+        let expected = Speed::from_meters_per_second(0.571);
+        assert_none!(state.netto);
+        assert_abs_diff_eq!(
+            assert_some!(state.vertical_speed),
+            Speed::ZERO,
+            epsilon = 0.01
+        );
+        assert_abs_diff_eq!(
+            assert_some!(state.estimated_netto),
+            expected,
+            epsilon = 0.01
+        );
+    }
+
+    #[test]
+    fn estimated_netto_assumes_at_least_the_minimum_sink_airspeed() {
+        for ground_speed in [Some(30.), None] {
+            let mut estimator = estimator_with_polar(polar());
+            fly_level_without_air_speed(&mut estimator, ground_speed);
+
+            let state = estimator.estimate();
+            let minimum_sink =
+                polar().min_sink_rate() / isa_density_ratio(Length::from_meters(1000.)).sqrt();
+            assert_abs_diff_eq!(
+                assert_some!(state.estimated_netto),
+                assert_some!(state.vertical_speed) + minimum_sink,
+                epsilon = 1e-9
+            );
+            assert_abs_diff_eq!(
+                assert_some!(state.estimated_relative_vario),
+                assert_some!(state.vertical_speed),
+                epsilon = 1e-9
+            );
+        }
+    }
+
+    #[test]
+    fn estimated_netto_requires_a_polar() {
+        let mut estimator = Estimator::new();
+        fly_level_without_air_speed(&mut estimator, Some(108.));
+
+        let state = estimator.estimate();
+        assert_none!(state.estimated_netto);
+        assert_none!(state.estimated_relative_vario);
+    }
+
     #[test]
     fn netto_requires_a_polar_and_airspeed() {
         let mut without_polar = Estimator::new();
@@ -1633,6 +1731,43 @@ mod tests {
         let expected_speed = Speed::from_meters_per_second(10.);
         assert_abs_diff_eq!(wind.speed, expected_speed, epsilon = 0.3);
         assert_abs_diff_eq!(wind.direction, Angle::from_degrees(36.87), epsilon = 0.5);
+    }
+
+    /// Flies north for three hours after one circle. An airspeed below the
+    /// wind measurement limit gives no measurement.
+    fn glide_after_circling(air_speed: Option<Speed>) -> Estimate {
+        let mut estimator = circle_without_air_speed(60);
+        let expected = match air_speed {
+            Some(_) => FixRejectedWind,
+            None => FixPredicted,
+        };
+        for second in 60..3 * 3600 {
+            let time = Duration::from_secs(second);
+            if let Some(speed) = air_speed {
+                add_air_speed(&mut estimator, time, speed);
+            }
+            assert_eq!(estimator.fix(time, &velocity_fix(-6., 22.)), expected);
+        }
+        estimator.estimate()
+    }
+
+    #[test]
+    fn wind_and_derived_airspeed_have_no_age_limit_without_an_airspeed_source() {
+        let estimate = glide_after_circling(None);
+
+        assert_some!(estimate.wind);
+        assert_abs_diff_eq!(
+            assert_some!(estimate.air_speed),
+            Speed::from_meters_per_second(30.),
+            epsilon = 0.5
+        );
+    }
+
+    #[test]
+    fn airspeed_source_keeps_the_variance_gate_for_the_wind() {
+        let estimate = glide_after_circling(Some(Speed::from_meters_per_second(10.)));
+
+        assert_none!(estimate.wind);
     }
 
     #[test]

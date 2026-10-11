@@ -124,7 +124,9 @@ centre. Values outside the scale use the end colours. Altitude uses the MSL
 altitude that the altitude infobox shows, on a scale from 0 m to the maximum
 altitude of the flight recording. AGL uses a scale from 0 m to the maximum AGL
 altitude of the recording. A new maximum changes the colours of the older
-segments. A segment without a value for the selected mode is grey. A change
+segments. Vario uses the vertical speed of a sample without a vario, as the
+Vario infobox does. Netto and relative vario use Estimated netto and Estimated
+relative vario in the same way. A segment without a value for the selected mode is grey. A change
 recolours the whole trail. The selection is saved across restarts, and a
 settings file without this field uses the default.
 

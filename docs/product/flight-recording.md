@@ -9,8 +9,9 @@ recording.
 ## Recording
 
 Each new fix of the selected source with a UTC value adds one sample. A sample
-contains the UTC, the position, the MSL altitude, vario, netto, relative vario,
-terrain elevation, and wind. A stale or unavailable value is empty.
+contains the UTC, the position, the MSL altitude, vario, vertical speed, netto,
+relative vario, Estimated netto, Estimated relative vario, terrain elevation,
+and wind. A stale or unavailable value is empty.
 
 A fix starts a new recording when no recording exists. A fix also starts a new
 recording when its UTC is more than 3 hours after the last sample, or more than
@@ -33,8 +34,10 @@ affect this rule, so a replayed flight with an old date also continues after
 a restart.
 
 Otherwise, the next fix continues the restored recording. The wind of the last
-sample is available directly after the restart. Without a new wind measurement,
-it stays available for 30 minutes. The circling wind and the 20-second average
+sample is available directly after the restart. It counts as a wind
+measurement at the restart time. Without an airspeed source, it stays
+available until a new wind estimate replaces it. With an airspeed source, it
+stays available for 30 minutes without a new wind measurement. The circling wind and the 20-second average
 vario are not restored. They fill again in about 60 seconds and 20 seconds.
 
 The core derives task progress from the restored recording and the task route. The pilot

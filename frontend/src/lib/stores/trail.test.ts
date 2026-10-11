@@ -19,8 +19,11 @@ function sample(minutes: number): TrailSample {
     altitudeMslMeters: null,
     altitudeAglMeters: null,
     varioMetersPerSecond: null,
+    verticalSpeedMetersPerSecond: null,
     nettoMetersPerSecond: null,
     relativeVarioMetersPerSecond: null,
+    estimatedNettoMetersPerSecond: null,
+    estimatedRelativeVarioMetersPerSecond: null,
   };
 }
 

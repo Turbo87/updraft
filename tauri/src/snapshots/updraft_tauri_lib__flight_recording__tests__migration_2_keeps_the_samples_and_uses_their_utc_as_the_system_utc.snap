@@ -23,6 +23,9 @@ expression: rows(&path)
         Integer(
             2000,
         ),
+        Null,
+        Null,
+        Null,
     ],
     [
         Integer(
@@ -58,5 +61,8 @@ expression: rows(&path)
         Integer(
             1000,
         ),
+        Null,
+        Null,
+        Null,
     ],
 ]

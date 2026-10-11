@@ -20,8 +20,11 @@ pub struct Sample {
     /// The altitude that the altitude infobox shows.
     pub altitude_msl: Option<MslAltitude>,
     pub vario: Option<Speed>,
+    pub vertical_speed: Option<Speed>,
     pub netto: Option<Speed>,
     pub relative_vario: Option<Speed>,
+    pub estimated_netto: Option<Speed>,
+    pub estimated_relative_vario: Option<Speed>,
     /// The velocity of the air mass.
     pub wind: Option<Velocity>,
 }

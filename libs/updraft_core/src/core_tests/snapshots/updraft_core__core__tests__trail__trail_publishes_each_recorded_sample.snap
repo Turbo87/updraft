@@ -19,8 +19,11 @@ expression: topics
                     199.0,
                 ),
                 vario_meters_per_second: None,
+                vertical_speed_meters_per_second: None,
                 netto_meters_per_second: None,
                 relative_vario_meters_per_second: None,
+                estimated_netto_meters_per_second: None,
+                estimated_relative_vario_meters_per_second: None,
             },
             max_altitude_msl_meters: Some(
                 199.0,
@@ -46,8 +49,17 @@ expression: topics
                     99.0002,
                 ),
                 vario_meters_per_second: None,
+                vertical_speed_meters_per_second: Some(
+                    0.0,
+                ),
                 netto_meters_per_second: None,
                 relative_vario_meters_per_second: None,
+                estimated_netto_meters_per_second: Some(
+                    0.6954602907022154,
+                ),
+                estimated_relative_vario_meters_per_second: Some(
+                    0.057558714587614856,
+                ),
             },
             max_altitude_msl_meters: Some(
                 199.0002,

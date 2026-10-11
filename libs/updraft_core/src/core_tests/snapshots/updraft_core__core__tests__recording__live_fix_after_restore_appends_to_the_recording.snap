@@ -20,11 +20,20 @@ expression: "round_wind(record(&mut core, UTC + 1_000, 1_000))"
             vario: Some(
                 0 m/s,
             ),
+            vertical_speed: Some(
+                0 m/s,
+            ),
             netto: Some(
                 0.8056842848980033 m/s,
             ),
             relative_vario: Some(
                 0.16778270878340273 m/s,
+            ),
+            estimated_netto: Some(
+                0.6954602907022154 m/s,
+            ),
+            estimated_relative_vario: Some(
+                0.057558714587614856 m/s,
             ),
             wind: Some(
                 Velocity {

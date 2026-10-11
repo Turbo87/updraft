@@ -49,12 +49,17 @@ pub struct SensorFusion {
     bank: SignalState<Angle>,
     netto: SignalState<Speed>,
     relative_vario: SignalState<Speed>,
+    estimated_netto: SignalState<Speed>,
+    estimated_relative_vario: SignalState<Speed>,
 }
 
 impl SensorFusion {
     pub fn set_polar(&mut self, polar: GlidePolar) {
         self.estimator.set_polar(polar);
         self.update_netto();
+        if matches!(self.vertical_speed, SignalState::Current(_)) {
+            self.update_estimated_netto();
+        }
     }
 
     /// Applies one coherent set of selected sensor states.
@@ -124,9 +129,7 @@ impl SensorFusion {
             self.update_pressure_altitude(inputs.pressure_altitude);
         }
         if !matches!(self.derived_air_speed, SignalState::Current(_)) {
-            self.vario.mark_stale();
-            self.netto.mark_stale();
-            self.relative_vario.mark_stale();
+            self.remove_total_energy_values();
         }
     }
 
@@ -136,9 +139,7 @@ impl SensorFusion {
                 return;
             }
             self.estimator.clear_air_speed();
-            self.vario.mark_stale();
-            self.netto.mark_stale();
-            self.relative_vario.mark_stale();
+            self.remove_total_energy_values();
             self.air_speed_current = false;
             self.derived_air_speed.mark_stale();
             self.air_speed = None;
@@ -152,7 +153,7 @@ impl SensorFusion {
             .is_some_and(|source| source != selected.source)
         {
             self.estimator.reset_air_speed();
-            self.vario.mark_stale();
+            self.remove_total_energy_values();
             self.estimator.reset_wind();
             self.wind.mark_stale();
             self.heading.mark_stale();
@@ -232,8 +233,11 @@ impl SensorFusion {
                 ground_speed: ground_speed.value,
             },
         );
+        // With an airspeed source, a stale wind waits for the next accepted
+        // measurement. Without one, a fix refreshes the derived airspeed.
         let refresh_motion_estimate = acceptance != FixAcceptance::Ignored
             && (acceptance != FixAcceptance::Predicted
+                || !self.air_speed_current
                 || !matches!(self.wind, SignalState::LastKnown(_)));
         if refresh_motion_estimate {
             self.update_motion_estimate();
@@ -277,7 +281,21 @@ impl SensorFusion {
         self.average_vario.mark_stale();
         self.netto.mark_stale();
         self.relative_vario.mark_stale();
+        self.estimated_netto.mark_stale();
+        self.estimated_relative_vario.mark_stale();
         self.altitude.mark_stale();
+    }
+
+    /// Without a current airspeed, the vertical speed and Estimated netto
+    /// replace the vario and netto. A value from before stays only while it
+    /// is stale with its altitude input, so that it has the same age as its
+    /// replacement.
+    fn remove_total_energy_values(&mut self) {
+        for state in [&mut self.vario, &mut self.netto, &mut self.relative_vario] {
+            if matches!(state, SignalState::Current(_)) {
+                *state = SignalState::Unavailable;
+            }
+        }
     }
 
     fn update_altitude_estimate(&mut self) {
@@ -290,10 +308,10 @@ impl SensorFusion {
             Some(vertical_speed) => self.vertical_speed.update(vertical_speed),
             None => self.vertical_speed.mark_stale(),
         }
-        if let Some(vario) = estimate.vario {
-            self.vario.update(vario);
-        } else {
-            self.vario.mark_stale();
+        match (estimate.vario, estimate.vertical_speed) {
+            (Some(vario), _) => self.vario.update(vario),
+            (None, Some(_)) => self.vario = SignalState::Unavailable,
+            (None, None) => self.vario.mark_stale(),
         }
         if let Some(average_vario) = estimate.average_vario {
             self.average_vario.update(average_vario);
@@ -304,6 +322,19 @@ impl SensorFusion {
             self.altitude.update(altitude);
         }
         self.update_netto();
+        self.update_estimated_netto();
+    }
+
+    fn update_estimated_netto(&mut self) {
+        let estimate = self.estimator.estimate();
+        match estimate.estimated_netto {
+            Some(netto) => self.estimated_netto.update(netto),
+            None => self.estimated_netto.mark_stale(),
+        }
+        match estimate.estimated_relative_vario {
+            Some(relative_vario) => self.estimated_relative_vario.update(relative_vario),
+            None => self.estimated_relative_vario.mark_stale(),
+        }
     }
 
     fn update_motion_estimate(&mut self) {
@@ -332,12 +363,24 @@ impl SensorFusion {
     }
 
     fn update_netto(&mut self) {
-        if !matches!(self.vario, SignalState::Current(_))
-            || !matches!(self.derived_air_speed, SignalState::Current(_))
-        {
-            self.netto.mark_stale();
-            self.relative_vario.mark_stale();
-            return;
+        match self.vario {
+            SignalState::Unavailable => {
+                self.netto = SignalState::Unavailable;
+                self.relative_vario = SignalState::Unavailable;
+                return;
+            }
+            SignalState::LastKnown(_) => {
+                self.netto.mark_stale();
+                self.relative_vario.mark_stale();
+                return;
+            }
+            SignalState::Current(_)
+                if !matches!(self.derived_air_speed, SignalState::Current(_)) =>
+            {
+                self.remove_total_energy_values();
+                return;
+            }
+            SignalState::Current(_) => {}
         }
         let estimate = self.estimator.estimate();
         if let Some(netto) = estimate.netto {
@@ -459,6 +502,20 @@ impl SensorFusion {
                 meters_per_second: speed.as_meters_per_second(),
                 stale,
             });
+        let estimated_netto = self
+            .estimated_netto
+            .value_with_stale()
+            .map(|(speed, stale)| SpeedInstrument {
+                meters_per_second: speed.as_meters_per_second(),
+                stale,
+            });
+        let estimated_relative_vario =
+            self.estimated_relative_vario
+                .value_with_stale()
+                .map(|(speed, stale)| SpeedInstrument {
+                    meters_per_second: speed.as_meters_per_second(),
+                    stale,
+                });
 
         let available = raw_vertical_speed.is_some()
             || vertical_speed.is_some()
@@ -470,7 +527,9 @@ impl SensorFusion {
             || altitude.is_some()
             || bank.is_some()
             || netto.is_some()
-            || relative_vario.is_some();
+            || relative_vario.is_some()
+            || estimated_netto.is_some()
+            || estimated_relative_vario.is_some();
         available.then_some(DerivedInstruments {
             raw_vertical_speed,
             vertical_speed,
@@ -483,6 +542,8 @@ impl SensorFusion {
             bank,
             netto,
             relative_vario,
+            estimated_netto,
+            estimated_relative_vario,
         })
     }
 }
@@ -521,7 +582,7 @@ mod tests {
     }
 
     #[test]
-    fn stale_airspeed_does_not_stale_the_vertical_speeds() {
+    fn stale_airspeed_removes_the_vario_but_not_the_vertical_speeds() {
         let mut fusion = SensorFusion::default();
         let altitude = PressureAltitude::new(Length::from_meters(1_000.));
         let speed = selected(Speed::from_kilometers_per_hour(120.), 0);
@@ -543,7 +604,7 @@ mod tests {
         let stale = assert_some!(fusion.instruments());
         assert!(!assert_some!(stale.raw_vertical_speed).stale);
         assert!(!assert_some!(stale.vertical_speed).stale);
-        assert!(assert_some!(stale.vario).stale);
+        assert_none!(stale.vario);
         assert!(!assert_some!(stale.average_vario).stale);
     }
 
@@ -565,9 +626,7 @@ mod tests {
         let third_altitude = DomainState::Current(selected(altitude, 2_000));
         fusion.update(inputs(second_speed, third_altitude));
 
-        let stale = assert_some!(assert_some!(fusion.instruments()).vario);
-        assert_eq!(stale.meters_per_second, 0.);
-        assert!(stale.stale);
+        assert_none!(assert_some!(fusion.instruments()).vario);
         let average = assert_some!(assert_some!(fusion.instruments()).average_vario);
         assert_eq!(average.meters_per_second, 0.);
         assert!(!average.stale);

@@ -3,6 +3,7 @@ import type { UnitSettings } from '#lib/protocol/generated/UnitSettings.js';
 
 import { describe, expect, it } from 'vitest';
 
+import { m } from '#lib/paraglide/messages.js';
 import { EMPTY_DERIVED_INSTRUMENTS, EMPTY_INSTRUMENTS } from '#lib/stores/instruments.svelte.js';
 import { flightInfoboxes } from './fields';
 
@@ -39,6 +40,59 @@ describe('flightInfoboxes', () => {
       value: { kind: 'speed', metersPerSecond: expected?.metersPerSecond ?? null, unit: 'km/h' },
     });
   });
+
+  it.each<[SpeedInstrument | null, SpeedInstrument | null, string, SpeedInstrument | null]>([
+    [direct, derived, 'Vario', direct],
+    [staleDirect, derived, 'Vario (unc.)', derived],
+    [null, staleDerived, 'Vario (unc.)', staleDerived],
+    [null, null, 'Vario', null],
+  ])('shows vario %j or vertical speed %j as %s', (vario, verticalSpeed, label, expected) => {
+    let fields = flightInfoboxes(
+      { ...EMPTY_INSTRUMENTS, derived: { ...EMPTY_DERIVED_INSTRUMENTS, vario, verticalSpeed } },
+      units,
+    );
+    expect(fields.find((field) => field.id === 'vario')).toEqual({
+      id: 'vario',
+      label,
+      stale: expected?.stale ?? false,
+      value: {
+        kind: 'vertical-speed',
+        metersPerSecond: expected?.metersPerSecond ?? null,
+        unit: 'm/s',
+      },
+    });
+  });
+
+  it('labels the vertical speed as an uncompensated vario in German', () => {
+    expect(m.infobox_vario_uncompensated({}, { locale: 'de' })).toBe('Vario (unk.)');
+  });
+
+  it.each<[SpeedInstrument | null, SpeedInstrument | null, string, SpeedInstrument | null]>([
+    [direct, derived, 'Netto', direct],
+    [staleDirect, derived, 'Netto (est.)', derived],
+    [null, staleDerived, 'Netto (est.)', staleDerived],
+    [null, null, 'Netto', null],
+  ])('shows netto %j or estimated netto %j as %s', (netto, estimatedNetto, label, expected) => {
+    let fields = flightInfoboxes(
+      { ...EMPTY_INSTRUMENTS, derived: { ...EMPTY_DERIVED_INSTRUMENTS, netto, estimatedNetto } },
+      units,
+    );
+    expect(fields.find((field) => field.id === 'netto')).toEqual({
+      id: 'netto',
+      label,
+      stale: expected?.stale ?? false,
+      value: {
+        kind: 'vertical-speed',
+        metersPerSecond: expected?.metersPerSecond ?? null,
+        unit: 'm/s',
+      },
+    });
+  });
+
+  it('labels the estimated netto in German', () => {
+    expect(m.infobox_netto_estimated({}, { locale: 'de' })).toBe('Netto (gesch.)');
+  });
+
   it('maps the requested quantities, freshness and units in dock order', () => {
     let fields = flightInfoboxes(
       {

@@ -15,6 +15,8 @@ export const EMPTY_DERIVED_INSTRUMENTS: DerivedInstruments = {
   bank: null,
   netto: null,
   relativeVario: null,
+  estimatedNetto: null,
+  estimatedRelativeVario: null,
 };
 
 /**

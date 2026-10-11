@@ -26,8 +26,11 @@ function trail(
       altitudeMslMeters: 1000,
       altitudeAglMeters: 800,
       varioMetersPerSecond: 1,
+      verticalSpeedMetersPerSecond: 0.5,
       nettoMetersPerSecond: 2,
       relativeVarioMetersPerSecond: 3,
+      estimatedNettoMetersPerSecond: 1.5,
+      estimatedRelativeVarioMetersPerSecond: 2.5,
       ...overrides,
     },
     maxAltitudeMslMeters: 1000,
@@ -47,7 +50,9 @@ describe('TrailSegments', () => {
     let segments = new TrailSegments();
     segments.apply(trail(0));
 
-    let diff = segments.apply(trail(1, { relativeVarioMetersPerSecond: null }));
+    let diff = segments.apply(
+      trail(1, { relativeVarioMetersPerSecond: null, estimatedRelativeVarioMetersPerSecond: null }),
+    );
 
     expect(diff).toMatchInlineSnapshot(`
       {
@@ -80,6 +85,26 @@ describe('TrailSegments', () => {
       }
     `);
     expect(segments.featureCollection().features).toEqual(diff?.add);
+  });
+
+  it('uses the vertical speed as the vario of a sample without a vario', () => {
+    let segments = new TrailSegments();
+    segments.apply(trail(0));
+
+    let diff = segments.apply(trail(1, { varioMetersPerSecond: null }));
+
+    expect(diff?.add).toMatchObject([{ properties: { vario: 0.5 } }]);
+  });
+
+  it('uses the estimated values of a sample without netto and relative vario', () => {
+    let segments = new TrailSegments();
+    segments.apply(trail(0));
+
+    let diff = segments.apply(
+      trail(1, { nettoMetersPerSecond: null, relativeVarioMetersPerSecond: null }),
+    );
+
+    expect(diff?.add).toMatchObject([{ properties: { netto: 1.5, relativeVario: 2.5 } }]);
   });
 
   it('removes the segments that leave 60 min before the newest sample', () => {

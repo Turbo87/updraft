@@ -38,6 +38,9 @@ const MIGRATIONS: &[&str] = &[
 INSERT INTO samples_2 SELECT *, utc_ms FROM samples ORDER BY rowid;
 DROP TABLE samples;
 ALTER TABLE samples_2 RENAME TO samples;",
+    "ALTER TABLE samples ADD COLUMN vertical_speed_mps REAL",
+    "ALTER TABLE samples ADD COLUMN estimated_netto_mps REAL;
+ALTER TABLE samples ADD COLUMN estimated_relative_vario_mps REAL;",
 ];
 
 #[derive(Debug)]
@@ -142,9 +145,9 @@ impl FlightRecording {
         while let Some(row) = rows.next()? {
             recording.samples.push(StoredSample {
                 sample: sample(row)?,
-                terrain_elevation_meters: row.get(9)?,
+                terrain_elevation_meters: row.get(12)?,
             });
-            recording.stored_utc = Some(UtcInstant::from_unix_milliseconds(row.get(10)?));
+            recording.stored_utc = Some(UtcInstant::from_unix_milliseconds(row.get(13)?));
         }
         Ok(recording)
     }
@@ -161,7 +164,8 @@ pub struct StoredRecording {
 
 /// The columns that `sample()` reads, in order.
 const SAMPLE_COLUMNS: &str = "utc_ms, latitude_deg, longitude_deg, altitude_msl_m, vario_mps,
-    netto_mps, relative_vario_mps, wind_east_mps, wind_north_mps";
+    netto_mps, relative_vario_mps, wind_east_mps, wind_north_mps, vertical_speed_mps,
+    estimated_netto_mps, estimated_relative_vario_mps";
 
 fn sample(row: &rusqlite::Row<'_>) -> rusqlite::Result<Sample> {
     let speed = |value: Option<f64>| value.map(Speed::from_meters_per_second);
@@ -174,8 +178,11 @@ fn sample(row: &rusqlite::Row<'_>) -> rusqlite::Result<Sample> {
             .get::<_, Option<f64>>(3)?
             .map(|meters| MslAltitude::new(Length::from_meters(meters))),
         vario: speed(row.get(4)?),
+        vertical_speed: speed(row.get(9)?),
         netto: speed(row.get(5)?),
         relative_vario: speed(row.get(6)?),
+        estimated_netto: speed(row.get(10)?),
+        estimated_relative_vario: speed(row.get(11)?),
         wind: wind_east
             .zip(wind_north)
             .map(|(east, north)| Velocity { east, north }),
@@ -237,7 +244,7 @@ pub fn trail_samples(path: &Path, since: i64) -> rusqlite::Result<Vec<TrailSampl
     ))?;
     statement
         .query_map([since], |row| {
-            Ok(TrailSample::new(&sample(row)?, row.get(9)?))
+            Ok(TrailSample::new(&sample(row)?, row.get(12)?))
         })?
         .collect()
 }
@@ -276,7 +283,7 @@ fn insert(
 ) -> rusqlite::Result<()> {
     let meters_per_second = |speed: Option<Speed>| speed.map(Speed::as_meters_per_second);
     transaction.execute(
-        "INSERT INTO samples VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        "INSERT INTO samples VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
         rusqlite::params![
             sample.utc.unix_milliseconds(),
             sample.position.latitude().as_degrees(),
@@ -291,6 +298,9 @@ fn insert(
             meters_per_second(sample.wind.map(|wind| wind.east)),
             meters_per_second(sample.wind.map(|wind| wind.north)),
             system_utc.unix_milliseconds(),
+            meters_per_second(sample.vertical_speed),
+            meters_per_second(sample.estimated_netto),
+            meters_per_second(sample.estimated_relative_vario),
         ],
     )?;
     Ok(())
@@ -323,8 +333,11 @@ pub mod tests {
             position: LatLon::from_degrees(latitude, longitude),
             altitude_msl: Some(MslAltitude::new(Length::from_meters(1200.0))),
             vario: Some(Speed::from_meters_per_second(1.5)),
+            vertical_speed: Some(Speed::from_meters_per_second(1.25)),
             netto: Some(Speed::from_meters_per_second(2.0)),
             relative_vario: Some(Speed::from_meters_per_second(1.0)),
+            estimated_netto: Some(Speed::from_meters_per_second(1.75)),
+            estimated_relative_vario: Some(Speed::from_meters_per_second(0.75)),
             wind: Some(Velocity {
                 east: Speed::from_meters_per_second(-3.0),
                 north: Speed::from_meters_per_second(4.0),
@@ -344,7 +357,7 @@ pub mod tests {
     }
 
     #[test]
-    fn migrates_a_new_database_in_a_new_directory_to_version_2() {
+    fn migrates_a_new_database_in_a_new_directory_to_version_4() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("data/state.sqlite");
         assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
@@ -352,7 +365,7 @@ pub mod tests {
         let connection = assert_ok!(Connection::open(&path));
         let version: u32 =
             assert_ok!(connection.pragma_query_value(None, "user_version", |row| row.get(0)));
-        assert_eq!(version, 2);
+        assert_eq!(version, 4);
         let journal_mode: String =
             assert_ok!(connection.pragma_query_value(None, "journal_mode", |row| row.get(0)));
         assert_eq!(journal_mode, "wal");
@@ -379,8 +392,38 @@ pub mod tests {
 
         assert_ok!(FlightRecording::open(&path, terrain(directory.path())));
 
-        assert_eq!(user_version(&path), 2);
+        assert_eq!(user_version(&path), 4);
         insta::assert_debug_snapshot!(rows(&path));
+    }
+
+    #[test]
+    fn migrations_read_the_new_values_of_older_samples_as_null() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.sqlite");
+        let connection = assert_ok!(Connection::open(&path));
+        assert_ok!(connection.execute_batch(MIGRATIONS[0]));
+        assert_ok!(connection.execute_batch(MIGRATIONS[1]));
+        assert_ok!(connection.execute_batch(
+            "INSERT INTO samples VALUES (1000, 46.0, 2.0, 1200.0, 1.5, 2.0, 1.0, 100.0, -3.0, 4.0, 9000);
+            PRAGMA user_version = 2;"
+        ));
+        drop(connection);
+        let terrain = terrain(directory.path());
+
+        let (stored, _) = load(path.clone(), terrain);
+
+        assert_eq!(user_version(&path), 4);
+        let mut expected = sample(1_000, COVERED);
+        expected.vertical_speed = None;
+        expected.estimated_netto = None;
+        expected.estimated_relative_vario = None;
+        assert_eq!(
+            stored.samples,
+            [StoredSample {
+                sample: expected,
+                terrain_elevation_meters: Some(100.0),
+            }]
+        );
     }
 
     #[test]
@@ -528,7 +571,7 @@ pub mod tests {
 
         assert_eq!(stored, StoredRecording::default());
         assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
-        assert_eq!(user_version(&path), 2);
+        assert_eq!(user_version(&path), 4);
         logs_assert(|lines| {
             only_logs(lines, &[("WARN", "Deleting the unusable flight recording")])
         });
@@ -544,14 +587,14 @@ pub mod tests {
         assert_ok!(recording.write(&StartRecording(sample(1_000, COVERED)), SYSTEM_UTC));
         drop(recording);
         let connection = assert_ok!(Connection::open(&path));
-        assert_ok!(connection.pragma_update(None, "user_version", 3));
+        assert_ok!(connection.pragma_update(None, "user_version", 5));
         drop(connection);
 
         let (stored, _) = load(path.clone(), terrain);
 
         assert_eq!(stored, StoredRecording::default());
         assert_eq!(rows(&path), Vec::<Vec<rusqlite::types::Value>>::new());
-        assert_eq!(user_version(&path), 2);
+        assert_eq!(user_version(&path), 4);
         logs_assert(|lines| {
             only_logs(lines, &[("WARN", "Deleting the unusable flight recording")])
         });

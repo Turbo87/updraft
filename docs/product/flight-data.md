@@ -90,13 +90,19 @@ When a current airspeed is available, the core also derives an
 energy-compensated vario from the same altitude plus the airspeed energy term
 `v²/2g`. It uses the selected TAS. Without a current TAS, it uses derived
 airspeed. The compensated series resets when a TAS appears or its source
-changes. While no current airspeed exists, the vario is stale.
+changes. While no current airspeed exists, the vario is unavailable.
 
 The instruments topic retains each previous vertical-speed value with
 `stale: true` while its input is stale or a new series waits for its second
-sample. The debug overlay displays all three values with the configured
-vertical-speed unit. The Flight View displays the energy-compensated value as
-Vario.
+sample. The vario becomes stale only with its altitude input. A stale vario
+and a stale vertical speed then have the same age. The debug overlay displays
+all three values with the configured vertical-speed unit.
+
+The Flight View Vario infobox prefers the fresh vario, then the fresh smoothed
+vertical speed. If both are unavailable or stale, it uses the stale vario, then
+the stale smoothed vertical speed. The switch is instant. The label is "Vario"
+for the vario and "Vario (unc.)" for the vertical speed, also when the value is
+stale. The German label for the vertical speed is "Vario (unk.)".
 
 ## Average vario
 
@@ -128,11 +134,38 @@ bank angle. The value estimates potential climb at minimum sink, not actual
 climb while circling. Positive values mean climbing.
 
 Both values require valid netto inputs. Before the inputs produce a value,
-the fields remain absent. Stale inputs retain the previous values with
+the fields remain absent. While no current airspeed exists, both values are
+unavailable. A stale altitude input retains the previous values with
 `stale: true`. A polar change updates both current values immediately.
 
-The instruments topic publishes both values. The debug overlay displays them
-with the configured vertical-speed unit. There is no pilot-facing display yet.
+Estimated netto does not need an airspeed. It adds the active polar's sink rate
+at an assumed airspeed to the smoothed vertical speed. The assumed airspeed is
+the ground speed in every flight phase. Its lower limit is the minimum-sink
+airspeed, with the same ISA density correction. Without a ground speed, the
+core uses the minimum-sink airspeed. The sink rate includes ballast, bugs, ISA
+density, and turn load, as for netto. Estimated relative vario subtracts the
+same minimum sink rate as relative vario. Both values require the vertical
+speed and a polar. They become stale with the vertical speed.
+
+The instruments topic publishes all four values. The debug overlay displays
+netto and relative vario with the configured vertical-speed unit.
+
+The Flight View Netto infobox prefers the fresh netto, then the fresh Estimated
+netto. If both are unavailable or stale, it uses the stale netto, then the stale
+Estimated netto. The switch is instant. The label is "Netto" for netto and
+"Netto (est.)" for Estimated netto. The German label for Estimated netto is
+"Netto (gesch.)".
+
+## Wind and derived airspeed
+
+Without an airspeed source, the core derives airspeed from the ground velocity
+and the wind. The wind and the derived airspeed stay available while the wind
+filter was converged after its last accepted measurement. A full circle, a
+partial arc, and a TAS sample are measurements. The wind age has no limit. A new
+estimate that is not converged yet, or a reset of the wind, removes both
+values. With an airspeed source, the wind is available only while the variance
+of the wind filter is converged. See
+[Derived airspeed and wind have no age limit](../adr/0006-derived-airspeed-and-wind-have-no-age-limit.md).
 
 ## True airspeed
 

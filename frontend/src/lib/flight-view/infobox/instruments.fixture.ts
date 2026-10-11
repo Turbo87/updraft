@@ -26,5 +26,7 @@ export const INFOBOX_INSTRUMENTS: Instruments = {
     airspeed: null,
     heading: null,
     relativeVario: null,
+    estimatedNetto: null,
+    estimatedRelativeVario: null,
   },
 };

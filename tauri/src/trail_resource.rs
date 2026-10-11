@@ -87,6 +87,8 @@ mod tests {
           {
             "altitudeAglMeters": 1100.0,
             "altitudeMslMeters": 1200.0,
+            "estimatedNettoMetersPerSecond": 1.75,
+            "estimatedRelativeVarioMetersPerSecond": 0.75,
             "nettoMetersPerSecond": 2.0,
             "position": {
               "latitudeDegrees": 46.0,
@@ -94,11 +96,14 @@ mod tests {
             },
             "relativeVarioMetersPerSecond": 1.0,
             "unixMilliseconds": 2000,
-            "varioMetersPerSecond": 1.5
+            "varioMetersPerSecond": 1.5,
+            "verticalSpeedMetersPerSecond": 1.25
           },
           {
             "altitudeAglMeters": 1200.0,
             "altitudeMslMeters": 1200.0,
+            "estimatedNettoMetersPerSecond": 1.75,
+            "estimatedRelativeVarioMetersPerSecond": 0.75,
             "nettoMetersPerSecond": 2.0,
             "position": {
               "latitudeDegrees": 50.0,
@@ -106,11 +111,14 @@ mod tests {
             },
             "relativeVarioMetersPerSecond": 1.0,
             "unixMilliseconds": 3000,
-            "varioMetersPerSecond": 1.5
+            "varioMetersPerSecond": 1.5,
+            "verticalSpeedMetersPerSecond": 1.25
           },
           {
             "altitudeAglMeters": null,
             "altitudeMslMeters": null,
+            "estimatedNettoMetersPerSecond": 1.75,
+            "estimatedRelativeVarioMetersPerSecond": 0.75,
             "nettoMetersPerSecond": 2.0,
             "position": {
               "latitudeDegrees": 46.0,
@@ -118,7 +126,8 @@ mod tests {
             },
             "relativeVarioMetersPerSecond": null,
             "unixMilliseconds": 4000,
-            "varioMetersPerSecond": 1.5
+            "varioMetersPerSecond": 1.5,
+            "verticalSpeedMetersPerSecond": 1.25
           }
         ]
         "#);

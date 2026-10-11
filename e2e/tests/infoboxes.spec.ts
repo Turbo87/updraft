@@ -24,6 +24,8 @@ test('updates infoboxes from instruments and units', async ({ page, app }) => {
           bank: null,
           netto: null,
           relativeVario: null,
+          estimatedNetto: null,
+          estimatedRelativeVario: null,
           altitude: { altitudeMslMeters: 3048, stale: false },
         },
       },

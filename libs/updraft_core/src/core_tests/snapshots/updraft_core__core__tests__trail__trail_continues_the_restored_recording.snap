@@ -20,11 +20,20 @@ Some(
             vario_meters_per_second: Some(
                 1.5,
             ),
+            vertical_speed_meters_per_second: Some(
+                1.25,
+            ),
             netto_meters_per_second: Some(
                 2.5,
             ),
             relative_vario_meters_per_second: Some(
                 3.5,
+            ),
+            estimated_netto_meters_per_second: Some(
+                2.25,
+            ),
+            estimated_relative_vario_meters_per_second: Some(
+                3.25,
             ),
         },
         max_altitude_msl_meters: Some(

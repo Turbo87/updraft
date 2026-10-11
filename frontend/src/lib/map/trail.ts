@@ -6,6 +6,7 @@ import type { TrailColorMode } from '#lib/protocol/generated/TrailColorMode.js';
 import type { TrailLength } from '#lib/protocol/generated/TrailLength.js';
 import type { TrailSample } from '#lib/protocol/generated/TrailSample.js';
 
+import { preferredValue } from '#lib/preferred-value.js';
 import { defaultSettings } from '#lib/settings.js';
 import {
   COLOR_CYAN_600,
@@ -331,11 +332,23 @@ function segment(from: TrailSample, to: TrailSample, drift: Drift | null): Trail
     properties: {
       altitudeMsl: to.altitudeMslMeters,
       altitudeAgl: to.altitudeAglMeters,
-      vario: to.varioMetersPerSecond,
-      netto: to.nettoMetersPerSecond,
-      relativeVario: to.relativeVarioMetersPerSecond,
+      vario: preferredMetersPerSecond(to.varioMetersPerSecond, to.verticalSpeedMetersPerSecond),
+      netto: preferredMetersPerSecond(to.nettoMetersPerSecond, to.estimatedNettoMetersPerSecond),
+      relativeVario: preferredMetersPerSecond(
+        to.relativeVarioMetersPerSecond,
+        to.estimatedRelativeVarioMetersPerSecond,
+      ),
     },
   };
+}
+
+/** A recorded value is null when it was unavailable or stale, so each value is fresh. */
+function preferredMetersPerSecond(best: number | null, fallback: number | null): number | null {
+  return preferredValue(fresh(best), fresh(fallback))?.value.metersPerSecond ?? null;
+}
+
+function fresh(metersPerSecond: number | null): { metersPerSecond: number; stale: false } | null {
+  return metersPerSecond === null ? null : { metersPerSecond, stale: false };
 }
 
 /** A point older than the drift reference moves downwind, and a newer point moves upwind. */

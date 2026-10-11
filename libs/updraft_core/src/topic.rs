@@ -101,6 +101,8 @@ pub struct DerivedInstruments {
     pub bank: Option<DerivedBankInstruments>,
     pub netto: Option<SpeedInstrument>,
     pub relative_vario: Option<SpeedInstrument>,
+    pub estimated_netto: Option<SpeedInstrument>,
+    pub estimated_relative_vario: Option<SpeedInstrument>,
 }
 
 /// Derived wind values with their shared freshness state.
@@ -215,8 +217,11 @@ pub struct TrailSample {
     /// when the terrain elevation is not available.
     pub altitude_agl_meters: Option<f64>,
     pub vario_meters_per_second: Option<f64>,
+    pub vertical_speed_meters_per_second: Option<f64>,
     pub netto_meters_per_second: Option<f64>,
     pub relative_vario_meters_per_second: Option<f64>,
+    pub estimated_netto_meters_per_second: Option<f64>,
+    pub estimated_relative_vario_meters_per_second: Option<f64>,
 }
 
 impl TrailSample {
@@ -235,8 +240,11 @@ impl TrailSample {
             altitude_agl_meters: altitude_msl_meters
                 .map(|altitude| altitude - terrain_elevation_meters.unwrap_or(0.0)),
             vario_meters_per_second: speed(sample.vario),
+            vertical_speed_meters_per_second: speed(sample.vertical_speed),
             netto_meters_per_second: speed(sample.netto),
             relative_vario_meters_per_second: speed(sample.relative_vario),
+            estimated_netto_meters_per_second: speed(sample.estimated_netto),
+            estimated_relative_vario_meters_per_second: speed(sample.estimated_relative_vario),
         }
     }
 }
@@ -382,6 +390,14 @@ mod tests {
                 relative_vario: Some(SpeedInstrument {
                     meters_per_second: 1.4,
                     stale: false,
+                }),
+                estimated_netto: Some(SpeedInstrument {
+                    meters_per_second: 1.9,
+                    stale: true,
+                }),
+                estimated_relative_vario: Some(SpeedInstrument {
+                    meters_per_second: 1.2,
+                    stale: true,
                 }),
             })),
         }

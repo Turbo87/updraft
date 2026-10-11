@@ -67,6 +67,32 @@ describe('flightInfoboxes', () => {
     expect(m.infobox_vario_uncompensated({}, { locale: 'de' })).toBe('Vario (unk.)');
   });
 
+  it.each<[SpeedInstrument | null, SpeedInstrument | null, string, SpeedInstrument | null]>([
+    [direct, derived, 'Netto', direct],
+    [staleDirect, derived, 'Netto (est.)', derived],
+    [null, staleDerived, 'Netto (est.)', staleDerived],
+    [null, null, 'Netto', null],
+  ])('shows netto %j or estimated netto %j as %s', (netto, estimatedNetto, label, expected) => {
+    let fields = flightInfoboxes(
+      { ...EMPTY_INSTRUMENTS, derived: { ...EMPTY_DERIVED_INSTRUMENTS, netto, estimatedNetto } },
+      units,
+    );
+    expect(fields.find((field) => field.id === 'netto')).toEqual({
+      id: 'netto',
+      label,
+      stale: expected?.stale ?? false,
+      value: {
+        kind: 'vertical-speed',
+        metersPerSecond: expected?.metersPerSecond ?? null,
+        unit: 'm/s',
+      },
+    });
+  });
+
+  it('labels the estimated netto in German', () => {
+    expect(m.infobox_netto_estimated({}, { locale: 'de' })).toBe('Netto (gesch.)');
+  });
+
   it('maps the requested quantities, freshness and units in dock order', () => {
     let fields = flightInfoboxes(
       {

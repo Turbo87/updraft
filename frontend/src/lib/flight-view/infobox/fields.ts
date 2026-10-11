@@ -14,8 +14,9 @@ export type InfoboxField = {
 
 export function flightInfoboxes(instruments: Instruments, units: UnitSettings): InfoboxField[] {
   let { gps, altitudeAgl, derived } = instruments;
-  let { altitude, bank, averageVario, netto, wind } = derived ?? {};
+  let { altitude, bank, averageVario, wind } = derived ?? {};
   let vario = preferredValue(derived?.vario ?? null, derived?.verticalSpeed ?? null);
+  let netto = preferredValue(derived?.netto ?? null, derived?.estimatedNetto ?? null);
   let direct = instruments.trueAirspeed;
   let estimated = derived?.airspeed;
   let tas =
@@ -75,11 +76,11 @@ export function flightInfoboxes(instruments: Instruments, units: UnitSettings): 
     },
     {
       id: 'netto',
-      label: m.infobox_netto(),
-      stale: netto?.stale ?? false,
+      label: netto?.fallback ? m.infobox_netto_estimated() : m.infobox_netto(),
+      stale: netto?.value.stale ?? false,
       value: {
         kind: 'vertical-speed',
-        metersPerSecond: netto?.metersPerSecond ?? null,
+        metersPerSecond: netto?.value.metersPerSecond ?? null,
         unit: units.verticalSpeed,
       },
     },

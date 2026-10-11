@@ -137,8 +137,23 @@ Both values require valid netto inputs. Before the inputs produce a value,
 the fields remain absent. Stale inputs retain the previous values with
 `stale: true`. A polar change updates both current values immediately.
 
-The instruments topic publishes both values. The debug overlay displays them
-with the configured vertical-speed unit. There is no pilot-facing display yet.
+Estimated netto does not need an airspeed. It adds the active polar's sink rate
+at an assumed airspeed to the smoothed vertical speed. The assumed airspeed is
+the ground speed in every flight phase. Its lower limit is the minimum-sink
+airspeed, with the same ISA density correction. Without a ground speed, the
+core uses the minimum-sink airspeed. The sink rate includes ballast, bugs, ISA
+density, and turn load, as for netto. Estimated relative vario subtracts the
+same minimum sink rate as relative vario. Both values require the vertical
+speed and a polar. They become stale with the vertical speed.
+
+The instruments topic publishes all four values. The debug overlay displays
+netto and relative vario with the configured vertical-speed unit.
+
+The Flight View Netto infobox prefers the fresh netto, then the fresh Estimated
+netto. If both are unavailable or stale, it uses the stale netto, then the stale
+Estimated netto. The switch is instant. The label is "Netto" for netto and
+"Netto (est.)" for Estimated netto. The German label for Estimated netto is
+"Netto (gesch.)".
 
 ## True airspeed
 

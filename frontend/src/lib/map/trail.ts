@@ -333,8 +333,11 @@ function segment(from: TrailSample, to: TrailSample, drift: Drift | null): Trail
       altitudeMsl: to.altitudeMslMeters,
       altitudeAgl: to.altitudeAglMeters,
       vario: preferredMetersPerSecond(to.varioMetersPerSecond, to.verticalSpeedMetersPerSecond),
-      netto: to.nettoMetersPerSecond,
-      relativeVario: to.relativeVarioMetersPerSecond,
+      netto: preferredMetersPerSecond(to.nettoMetersPerSecond, to.estimatedNettoMetersPerSecond),
+      relativeVario: preferredMetersPerSecond(
+        to.relativeVarioMetersPerSecond,
+        to.estimatedRelativeVarioMetersPerSecond,
+      ),
     },
   };
 }

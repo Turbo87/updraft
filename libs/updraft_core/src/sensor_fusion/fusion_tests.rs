@@ -452,6 +452,53 @@ fn stale_pressure_altitude_stales_netto_independently() {
     assert!(retained.stale);
 }
 
+#[test]
+fn estimated_netto_follows_the_vertical_speed() {
+    let mut fusion = SensorFusion::default();
+    let altitude = |second: u64| {
+        let altitude = PressureAltitude::new(Length::from_meters(1_000.));
+        selected(second * 1_000, altitude)
+    };
+    for second in 0..60 {
+        fusion.update(FusionInputs {
+            gps: DomainState::Unavailable,
+            true_airspeed: DomainState::Unavailable,
+            pressure_altitude: DomainState::Current(altitude(second)),
+        });
+    }
+    assert_none!(assert_some!(fusion.instruments()).estimated_netto);
+
+    let polar = updraft_polar::POLAR_STORE
+        .iter()
+        .find(|entry| entry.name == "JS-3-18m")
+        .expect("the built-in store has this glider type")
+        .glide_polar();
+    fusion.set_polar(polar);
+
+    let current = assert_some!(fusion.instruments());
+    assert_none!(current.netto);
+    assert_none!(current.relative_vario);
+    let netto = assert_some!(current.estimated_netto);
+    assert!(!netto.stale);
+    let relative = assert_some!(current.estimated_relative_vario);
+    assert!(!relative.stale);
+
+    fusion.update(FusionInputs {
+        gps: DomainState::Unavailable,
+        true_airspeed: DomainState::Unavailable,
+        pressure_altitude: DomainState::LastKnown(altitude(59)),
+    });
+
+    let stale = assert_some!(fusion.instruments());
+    assert!(assert_some!(stale.vertical_speed).stale);
+    let retained = assert_some!(stale.estimated_netto);
+    assert_eq!(retained.meters_per_second, netto.meters_per_second);
+    assert!(retained.stale);
+    let retained = assert_some!(stale.estimated_relative_vario);
+    assert_eq!(retained.meters_per_second, relative.meters_per_second);
+    assert!(retained.stale);
+}
+
 fn fly_circling_climb(fusion: &mut SensorFusion, seconds: std::ops::RangeInclusive<u64>) {
     for second in seconds {
         let millis = second * 1_000;

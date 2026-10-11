@@ -72,6 +72,14 @@ expression: topic
       "relativeVario": {
         "metersPerSecond": 1.4,
         "stale": false
+      },
+      "estimatedNetto": {
+        "metersPerSecond": 1.9,
+        "stale": true
+      },
+      "estimatedRelativeVario": {
+        "metersPerSecond": 1.2,
+        "stale": true
       }
     },
     "terrainElevation": {

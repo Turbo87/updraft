@@ -54,6 +54,10 @@ pub struct Estimate {
     pub netto: Option<Speed>,
     /// Netto minus density-corrected straight-flight minimum sink. Positive means climbing.
     pub relative_vario: Option<Speed>,
+    /// Vertical speed plus the polar sink at the ground speed, but at least
+    /// at the minimum-sink airspeed.
+    pub estimated_netto: Option<Speed>,
+    pub estimated_relative_vario: Option<Speed>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -516,10 +520,23 @@ impl Estimator {
             let air_speed = self.air_speed_at(time)?;
             Some(vario? + self.sink_rate(altitude, air_speed)?)
         });
-        let relative_vario = netto.and_then(|netto| {
-            let (_, altitude) = self.isa_altitude_sample?;
-            let minimum_sink = self.polar?.min_sink_rate() / isa_density_ratio(altitude).sqrt();
-            Some(netto - minimum_sink)
+        let estimated_netto = self.isa_altitude_sample.and_then(|(_, altitude)| {
+            let minimum_sink_speed =
+                self.polar?.min_sink_speed() / isa_density_ratio(altitude).sqrt();
+            let air_speed = match self.ground {
+                Some(ground) => {
+                    let east = ground.east.as_meters_per_second();
+                    let north = ground.north.as_meters_per_second();
+                    let ground_speed = Speed::from_meters_per_second(east.hypot(north));
+                    if ground_speed < minimum_sink_speed {
+                        minimum_sink_speed
+                    } else {
+                        ground_speed
+                    }
+                }
+                None => minimum_sink_speed,
+            };
+            Some(vertical_speed? + self.sink_rate(altitude, air_speed)?)
         });
         Estimate {
             raw_vertical_speed,
@@ -532,8 +549,16 @@ impl Estimator {
             altitude: self.altitude_msl(),
             bank_angle: air_speed.and_then(|speed| self.bank_angle(speed)),
             netto,
-            relative_vario,
+            relative_vario: netto.and_then(|netto| self.relative_vario(netto)),
+            estimated_netto,
+            estimated_relative_vario: estimated_netto.and_then(|netto| self.relative_vario(netto)),
         }
+    }
+
+    fn relative_vario(&self, netto: Speed) -> Option<Speed> {
+        let (_, altitude) = self.isa_altitude_sample?;
+        let minimum_sink = self.polar?.min_sink_rate() / isa_density_ratio(altitude).sqrt();
+        Some(netto - minimum_sink)
     }
 }
 
@@ -1558,6 +1583,68 @@ mod tests {
         let mut estimator = Estimator::new();
         fly_level(&mut estimator, Some(LEVEL_SPEED));
         assert_none!(estimator.estimate().relative_vario);
+    }
+
+    fn fly_level_without_air_speed(estimator: &mut Estimator, ground_speed: Option<f64>) {
+        for second in 0..60u64 {
+            let time = Duration::from_secs(second);
+            if let Some(ground_speed) = ground_speed {
+                let _ = estimator.fix(time, &fix_kph(90., ground_speed));
+            }
+            assert_eq!(estimator.pressure_altitude(time, meters(1000.)), Accepted);
+        }
+    }
+
+    #[test]
+    fn estimated_netto_assumes_the_ground_speed_as_airspeed() {
+        let mut estimator = estimator_with_polar(polar());
+        fly_level_without_air_speed(&mut estimator, Some(108.));
+
+        let state = estimator.estimate();
+        let expected = Speed::from_meters_per_second(0.571);
+        assert_none!(state.netto);
+        assert_abs_diff_eq!(
+            assert_some!(state.vertical_speed),
+            Speed::ZERO,
+            epsilon = 0.01
+        );
+        assert_abs_diff_eq!(
+            assert_some!(state.estimated_netto),
+            expected,
+            epsilon = 0.01
+        );
+    }
+
+    #[test]
+    fn estimated_netto_assumes_at_least_the_minimum_sink_airspeed() {
+        for ground_speed in [Some(30.), None] {
+            let mut estimator = estimator_with_polar(polar());
+            fly_level_without_air_speed(&mut estimator, ground_speed);
+
+            let state = estimator.estimate();
+            let minimum_sink =
+                polar().min_sink_rate() / isa_density_ratio(Length::from_meters(1000.)).sqrt();
+            assert_abs_diff_eq!(
+                assert_some!(state.estimated_netto),
+                assert_some!(state.vertical_speed) + minimum_sink,
+                epsilon = 1e-9
+            );
+            assert_abs_diff_eq!(
+                assert_some!(state.estimated_relative_vario),
+                assert_some!(state.vertical_speed),
+                epsilon = 1e-9
+            );
+        }
+    }
+
+    #[test]
+    fn estimated_netto_requires_a_polar() {
+        let mut estimator = Estimator::new();
+        fly_level_without_air_speed(&mut estimator, Some(108.));
+
+        let state = estimator.estimate();
+        assert_none!(state.estimated_netto);
+        assert_none!(state.estimated_relative_vario);
     }
 
     #[test]

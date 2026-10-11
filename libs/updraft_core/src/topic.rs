@@ -101,6 +101,8 @@ pub struct DerivedInstruments {
     pub bank: Option<DerivedBankInstruments>,
     pub netto: Option<SpeedInstrument>,
     pub relative_vario: Option<SpeedInstrument>,
+    pub estimated_netto: Option<SpeedInstrument>,
+    pub estimated_relative_vario: Option<SpeedInstrument>,
 }
 
 /// Derived wind values with their shared freshness state.
@@ -384,6 +386,14 @@ mod tests {
                 relative_vario: Some(SpeedInstrument {
                     meters_per_second: 1.4,
                     stale: false,
+                }),
+                estimated_netto: Some(SpeedInstrument {
+                    meters_per_second: 1.9,
+                    stale: true,
+                }),
+                estimated_relative_vario: Some(SpeedInstrument {
+                    meters_per_second: 1.2,
+                    stale: true,
                 }),
             })),
         }

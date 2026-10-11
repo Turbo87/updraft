@@ -19,12 +19,8 @@
 //! estimate, also after the fusion stops reporting the wind. The GPS-only
 //! scenario has the same wind.
 //!
-//! The fallback rows show a bench-only Netto for setups without derived
-//! airspeed. It adds the polar sink at an assumed airspeed to the displayed
-//! vertical speed. The assumed airspeed is the ground speed, and the
-//! minimum-sink airspeed while circling. It is never below the
-//! minimum-sink airspeed. The circling labels can use later samples, so
-//! these values are optimistic. Relative vario follows this Netto.
+//! The estimated rows show Estimated netto and Estimated relative vario,
+//! which the core publishes for setups without an airspeed.
 //!
 //! The vertical-speed smoothing is tuned for 1 Hz fixes. Files with a
 //! longer fix interval count only for derived airspeed and wind.
@@ -49,7 +45,7 @@ use updraft_core::{
     Timed, Timestamp,
 };
 use updraft_geo::LatLon;
-use updraft_polar::{GlidePolar, POLAR_STORE, PolarStoreEntry, isa_density_ratio};
+use updraft_polar::{GlidePolar, POLAR_STORE, PolarStoreEntry};
 use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude, PressureAltitude, Speed};
 
 /// Engine noise level above which the engine counts as running.
@@ -506,8 +502,8 @@ struct Outputs {
     vertical_speed: Option<f64>,
     netto: Option<f64>,
     relative_vario: Option<f64>,
-    netto_fallback: Option<f64>,
-    relative_vario_fallback: Option<f64>,
+    estimated_netto: Option<f64>,
+    estimated_relative_vario: Option<f64>,
     derived_airspeed: Option<f64>,
     wind: Option<Wind>,
     wind_age: Option<Duration>,
@@ -538,6 +534,8 @@ impl Outputs {
             vertical_speed: current(instruments.vertical_speed),
             netto: current(instruments.netto),
             relative_vario: current(instruments.relative_vario),
+            estimated_netto: current(instruments.estimated_netto),
+            estimated_relative_vario: current(instruments.estimated_relative_vario),
             derived_airspeed: current(instruments.airspeed),
             wind: instruments.wind.filter(|wind| !wind.stale).map(|wind| {
                 let direction = Angle::from_degrees(wind.direction_degrees);
@@ -548,34 +546,7 @@ impl Outputs {
             }),
             wind_age,
             wind_estimate,
-            ..Self::default()
         }
-    }
-
-    fn add_netto_fallback(&mut self, polar: &GlidePolar, scenario: Scenario, sample: &Sample) {
-        let altitude = match scenario {
-            Scenario::Reference | Scenario::NoAirspeedSource => {
-                Some(sample.pressure_altitude.into_inner())
-            }
-            Scenario::GpsOnly => sample.gnss_altitude.map(MslAltitude::into_inner),
-        };
-        let (Some(vertical_speed), Some(altitude)) = (self.vertical_speed, altitude) else {
-            return;
-        };
-        let root_density = isa_density_ratio(altitude).sqrt();
-        let min_sink_speed = polar.min_sink_speed() / root_density;
-        let air_speed = match sample.phase {
-            Phase::Circling => min_sink_speed,
-            Phase::Cruise | Phase::Transition if sample.ground_speed < min_sink_speed => {
-                min_sink_speed
-            }
-            Phase::Cruise | Phase::Transition => sample.ground_speed,
-        };
-        let sink = polar.sink_rate_at_altitude(altitude, air_speed, 1.);
-        let netto = vertical_speed + sink.as_meters_per_second();
-        let min_sink = polar.min_sink_rate() / root_density;
-        self.netto_fallback = Some(netto);
-        self.relative_vario_fallback = Some(netto - min_sink.as_meters_per_second());
     }
 }
 
@@ -673,8 +644,8 @@ struct ValueCells {
     vertical_speed: Cell,
     netto: Cell,
     relative_vario: Cell,
-    netto_fallback: Cell,
-    relative_vario_fallback: Cell,
+    estimated_netto: Cell,
+    estimated_relative_vario: Cell,
     derived_airspeed: Cell,
     wind: Cell,
 }
@@ -693,10 +664,10 @@ impl ValueCells {
             self.netto.add_scalar(estimate.netto, reference.netto);
             self.relative_vario
                 .add_scalar(estimate.relative_vario, reference.relative_vario);
-            self.netto_fallback
-                .add_scalar(estimate.netto_fallback, reference.netto);
-            self.relative_vario_fallback
-                .add_scalar(estimate.relative_vario_fallback, reference.relative_vario);
+            self.estimated_netto
+                .add_scalar(estimate.estimated_netto, reference.netto);
+            self.estimated_relative_vario
+                .add_scalar(estimate.estimated_relative_vario, reference.relative_vario);
         }
         self.derived_airspeed
             .add_scalar(estimate.derived_airspeed, Some(true_airspeed));
@@ -708,9 +679,9 @@ impl ValueCells {
         self.vertical_speed.merge(&flight.vertical_speed);
         self.netto.merge(&flight.netto);
         self.relative_vario.merge(&flight.relative_vario);
-        self.netto_fallback.merge(&flight.netto_fallback);
-        self.relative_vario_fallback
-            .merge(&flight.relative_vario_fallback);
+        self.estimated_netto.merge(&flight.estimated_netto);
+        self.estimated_relative_vario
+            .merge(&flight.estimated_relative_vario);
         self.derived_airspeed.merge(&flight.derived_airspeed);
         self.wind.merge(&flight.wind);
     }
@@ -721,8 +692,8 @@ impl ValueCells {
             ("vertical speed", &self.vertical_speed),
             ("netto", &self.netto),
             ("relative vario", &self.relative_vario),
-            ("netto fallback", &self.netto_fallback),
-            ("relative vario fallback", &self.relative_vario_fallback),
+            ("estimated netto", &self.estimated_netto),
+            ("estimated relative vario", &self.estimated_relative_vario),
             ("derived airspeed", &self.derived_airspeed),
             ("wind", &self.wind),
         ]
@@ -821,11 +792,7 @@ impl Results {
         for sample in &flight.samples {
             let outputs: [Outputs; SCENARIOS.len()] = std::array::from_fn(|index| {
                 fusions[index].update(SCENARIOS[index].inputs(sample));
-                let mut outputs = Outputs::read(&fusions[index]);
-                if let Some(polar) = &flight.polar {
-                    outputs.add_netto_fallback(polar, SCENARIOS[index], sample);
-                }
-                outputs
+                Outputs::read(&fusions[index])
             });
             if !sample.scored {
                 continue;
@@ -908,7 +875,7 @@ impl fmt::Display for Bench {
         writeln!(f)?;
         writeln!(
             f,
-            "scenario            value                   phase      avail       n   bias    rms    min    max"
+            "scenario            value                    phase      avail       n   bias    rms    min    max"
         )?;
         for (scenario, cells) in SCENARIOS.iter().zip(&self.results.scenarios) {
             for index in 0..ValueCells::COUNT {
@@ -916,7 +883,7 @@ impl fmt::Display for Bench {
                     let (value, cell) = cells.rows()[index];
                     writeln!(
                         f,
-                        "{:19} {value:23} {phase:8} {:>7} {}",
+                        "{:19} {value:24} {phase:8} {:>7} {}",
                         scenario.name(),
                         cell.availability(),
                         cell.errors(),

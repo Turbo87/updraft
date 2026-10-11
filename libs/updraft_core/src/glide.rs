@@ -173,6 +173,8 @@ mod tests {
             bank: None,
             netto: None,
             relative_vario: None,
+            estimated_netto: None,
+            estimated_relative_vario: None,
         }));
         snapshot
     }

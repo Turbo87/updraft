@@ -7,20 +7,20 @@ four roles. Do not combine the roles when you interpret a requirement.
 
 - [Application architecture](architecture.md) defines the current ownership and
   integration boundaries.
-- [Implementation roadmap](roadmap.md) records delivered and planned work.
 - [Product scope](product-scope.md) classifies target, partial, excluded, and
   undecided capabilities without implying delivery status.
 - [CSS](css.md) defines current frontend styling rules.
 - [Glossary](../CONTEXT.md) defines project terms.
 
-Code and tests define implemented behavior. Spec issues on GitHub define
-accepted behavior that is not implemented yet. A roadmap entry links the spec
-issue that it implements.
+Code and tests define implemented behavior. Spec issues on
+[GitHub](https://github.com/Turbo87/updraft/issues) define accepted behavior
+that is not implemented yet. Other open issues are backlog. They are not
+accepted designs or delivery commitments.
 
 ## Product design
 
 Product documents define current user-visible behavior. The pull request that
-delivers a roadmap slice updates them. A spec issue closes when its last slice
+delivers a slice of a spec updates them. A spec issue closes when its last slice
 is delivered.
 
 - [Settings](product/settings.md) defines current navigation, ownership,

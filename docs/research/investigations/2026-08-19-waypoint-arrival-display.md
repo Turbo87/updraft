@@ -5,7 +5,7 @@ Status: Technical investigation
 This investigation examined how Updraft can render waypoints on the MapLibre
 map and update arrival-altitude labels about once per second. It compared
 update strategies with prototypes on 2026-08-19. It informs the
-`waypoints-on-map` and `arrival-heights` roadmap items. It does not define
+waypoint map display and the arrival heights. It does not define
 symbology, declutter rules, or the final-glide model.
 
 ## Environment

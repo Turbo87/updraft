@@ -13,9 +13,9 @@ Each capability has one scope marker:
 - ❌ excluded
 - ⬜ undecided
 
-Use the [roadmap](roadmap.md) for delivery status. Use the current product
-documents for accepted behavior. Research sources are under
-`research/ecosystem/`.
+Use [GitHub issues](https://github.com/Turbo87/updraft/issues) for planned
+work. Use the current product documents for accepted behavior. Research sources
+are under `research/ecosystem/`.
 
 ## Map display & interaction
 

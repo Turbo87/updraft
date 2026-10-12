@@ -24,5 +24,8 @@
     trailDriftCompensation={settings.current.trailDriftCompensation}
     setTrailDriftCompensation={(enabled) =>
       client.changeSetting({ type: 'trailDriftCompensation', enabled })}
+    ownshipDeadReckoning={settings.current.ownshipDeadReckoning}
+    setOwnshipDeadReckoning={(enabled) =>
+      client.changeSetting({ type: 'ownshipDeadReckoning', enabled })}
   />
 </ScreenScaffold>

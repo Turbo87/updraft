@@ -703,6 +703,17 @@ it('follows the dead-reckoned ownship position for 1.5 seconds', async () => {
   expect(ownship).not.toHaveBeenCalled();
 });
 
+it('keeps the received ownship position without dead reckoning', async () => {
+  let { map, view } = await renderLoadedMap();
+  await view.rerender({ ownshipDeadReckoning: false });
+  await useFakeFrames();
+  await view.rerender({ instruments: movingInstruments });
+  await vi.advanceTimersByTimeAsync(2000);
+
+  let { position } = movingInstruments.gps;
+  expectCenter(map, [position.longitudeDegrees, position.latitudeDegrees]);
+});
+
 it('eases to the ownship over 300 milliseconds when it returns to position', async () => {
   let { map, mapState } = await renderLoadedMap(positionInstruments);
   let position = positionInstruments.gps.position;

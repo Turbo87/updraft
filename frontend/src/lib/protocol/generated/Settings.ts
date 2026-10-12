@@ -8,4 +8,8 @@ import type { TrailColorMode } from "./TrailColorMode";
 import type { TrailLength } from "./TrailLength";
 import type { UnitSettings } from "./UnitSettings";
 
-export type Settings = { flarmPositionCorrection: boolean, energyCompensation: boolean, climbAverageMethod: ClimbAverageMethod, hillshadeDirection: HillshadeDirection, trailColorMode: TrailColorMode, trailLength: TrailLength, trailDriftCompensation: boolean, locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };
+export type Settings = { flarmPositionCorrection: boolean, energyCompensation: boolean, climbAverageMethod: ClimbAverageMethod, hillshadeDirection: HillshadeDirection, trailColorMode: TrailColorMode, trailLength: TrailLength, trailDriftCompensation: boolean, 
+/**
+ * Whether the map advances the ownship symbol between GPS fixes.
+ */
+ownshipDeadReckoning: boolean, locale: Locale | null, polar: PolarId, arrivalReserve: ArrivalReserve, units: UnitSettings, };

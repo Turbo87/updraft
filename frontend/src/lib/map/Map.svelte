@@ -61,6 +61,8 @@
     traffic: TrafficStore;
     trail: TrailStore;
     trailColorMode: TrailColorMode;
+    /** Whether the ownship symbol moves between GPS fixes. */
+    ownshipDeadReckoning?: boolean;
     units: UnitSettings;
     testMode?: boolean;
     testAirspaceData?: GeoJSONSourceSpecification['data'];
@@ -81,6 +83,7 @@
     traffic,
     trail,
     trailColorMode,
+    ownshipDeadReckoning = true,
     units,
     testMode = false,
     testAirspaceData,
@@ -106,7 +109,9 @@
   const turnRateDegreesPerSecond = $derived(gps?.turnRateDegreesPerSecond ?? null);
   const stale = $derived(gps?.stale ?? true);
   const motion = $derived(
-    groundMotion({ groundSpeedMetersPerSecond, trackDegrees, turnRateDegreesPerSecond, stale }),
+    ownshipDeadReckoning
+      ? groundMotion({ groundSpeedMetersPerSecond, trackDegrees, turnRateDegreesPerSecond, stale })
+      : null,
   );
 
   type OwnshipSymbol = { position: LatLon; trackDegrees: number | null };

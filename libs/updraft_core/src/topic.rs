@@ -442,6 +442,7 @@ mod tests {
             "trailColorMode": "relativeVario",
             "trailLength": 60,
             "trailDriftCompensation": false,
+            "ownshipDeadReckoning": true,
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

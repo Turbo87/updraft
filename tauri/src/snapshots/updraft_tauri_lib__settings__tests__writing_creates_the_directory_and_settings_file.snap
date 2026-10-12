@@ -10,6 +10,7 @@ expression: contents
   "trailColorMode": "netto",
   "trailLength": 300,
   "trailDriftCompensation": true,
+  "ownshipDeadReckoning": false,
   "locale": "de",
   "polar": "LS 8-18",
   "arrivalReserve": 304.8,

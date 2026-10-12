@@ -25,6 +25,7 @@ describe('SettingsStore', () => {
       trailColorMode: 'altitude',
       trailLength: 300,
       trailDriftCompensation: true,
+      ownshipDeadReckoning: false,
       units: { altitude: 'ft', distance: 'nm', speed: 'kt', verticalSpeed: 'ft/min' },
     });
     store.apply({ topic: 'settings', value: structuredClone(value) });
@@ -49,6 +50,7 @@ describe('SettingsStore', () => {
       trailColorMode: 'relativeVario',
       trailLength: 60,
       trailDriftCompensation: false,
+      ownshipDeadReckoning: true,
       energyCompensation: true,
       flarmPositionCorrection: true,
       units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

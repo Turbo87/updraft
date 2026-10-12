@@ -794,6 +794,9 @@ impl Input for ChangeSetting {
             Self::TrailDriftCompensation { enabled } => {
                 core.settings.trail_drift_compensation = enabled;
             }
+            Self::OwnshipDeadReckoning { enabled } => {
+                core.settings.ownship_dead_reckoning = enabled;
+            }
         }
         if core.settings == previous {
             return Update::empty();

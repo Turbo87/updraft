@@ -204,6 +204,7 @@
     {traffic}
     {trail}
     trailColorMode={settings.current.trailColorMode}
+    ownshipDeadReckoning={settings.current.ownshipDeadReckoning}
     units={settings.current.units}
     climbAverageMethod={settings.current.climbAverageMethod}
     {testMode}

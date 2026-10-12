@@ -131,6 +131,9 @@ pub enum ChangeSetting {
     TrailDriftCompensation {
         enabled: bool,
     },
+    OwnshipDeadReckoning {
+        enabled: bool,
+    },
 }
 
 /// Selects the persisted glide polar.

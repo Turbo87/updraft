@@ -16,6 +16,8 @@ function props(overrides: Partial<ComponentProps<typeof MapSettings>> = {}) {
     setTrailLength: vi.fn(),
     trailDriftCompensation: false,
     setTrailDriftCompensation: vi.fn(),
+    ownshipDeadReckoning: true,
+    setOwnshipDeadReckoning: vi.fn(),
     ...overrides,
   } satisfies ComponentProps<typeof MapSettings>;
 }
@@ -144,4 +146,28 @@ it('turns trail drift compensation on and restores the published value after fai
   await expect.element(enabled).toBeChecked();
   await disabled.click();
   expect(setTrailDriftCompensation).toHaveBeenLastCalledWith(false);
+});
+
+it('turns ownship dead reckoning off and restores the published value after failure', async () => {
+  let setOwnshipDeadReckoning = vi.fn().mockRejectedValueOnce(new Error('driver stopped'));
+  let screen = await render(MapSettings, props({ setOwnshipDeadReckoning }));
+  let group = page.getByRole('group', { name: 'Ownship dead reckoning' });
+  let enabled = group.getByRole('radio', { name: 'Enabled' });
+  let disabled = group.getByRole('radio', { name: 'Disabled' });
+  await expect.element(enabled).toBeChecked();
+
+  await disabled.click();
+
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('Could not change ownship dead reckoning.');
+  await expect.element(enabled).toBeChecked();
+  expect(setOwnshipDeadReckoning).toHaveBeenCalledExactlyOnceWith(false);
+
+  setOwnshipDeadReckoning.mockResolvedValue(undefined);
+  await disabled.click();
+  await screen.rerender({ ownshipDeadReckoning: false });
+  await expect.element(disabled).toBeChecked();
+  await enabled.click();
+  expect(setOwnshipDeadReckoning).toHaveBeenLastCalledWith(true);
 });

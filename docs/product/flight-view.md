@@ -21,7 +21,8 @@ and camera state alive. A new application session creates a new map state.
 
 ## Ownship dead reckoning
 
-The ownship symbol moves between received GPS positions. On each animation
+The ownship symbol moves between received GPS positions while the ownship dead
+reckoning setting is on. On each animation
 frame, the frontend advances the symbol from the latest received position along
 a circular arc. The arc uses the ground speed, track, and turn rate of that
 position. It limits the turn rate to 30 °/s.

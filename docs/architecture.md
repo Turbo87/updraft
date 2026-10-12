@@ -4,8 +4,8 @@ Updraft is a native Tauri application. A deterministic Rust core owns shared
 flight state and decisions. The Tauri shell owns I/O and platform integration.
 The Svelte frontend owns presentation.
 
-This document describes the current architecture. The
-[roadmap](roadmap.md) describes planned changes.
+This document describes the current architecture. [GitHub
+issues](https://github.com/Turbo87/updraft/issues) describe planned changes.
 
 ## System boundary
 

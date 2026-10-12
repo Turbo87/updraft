@@ -15,13 +15,13 @@ This file contains project rules that agents often miss. Keep changes small, spe
 
 ## Sources of truth
 
-Use `docs/README.md` as the documentation entry point. Use `docs/architecture.md` for current system boundaries and `docs/roadmap.md` for delivery status.
+Use `docs/README.md` as the documentation entry point. Use `docs/architecture.md` for current system boundaries. Use GitHub issues for planned work.
 
 Git history contains earlier designs and dated implementation specifications.
 Do not recover them as current requirements. Report a missing or unclear
 current requirement instead of combining historical designs.
 
-Product documents define current behavior. Spec issues that the roadmap links define accepted planned behavior. Code and tests define implemented behavior. Treat prototypes and simulators as evidence, not as architecture or hardware-compatibility guarantees.
+Product documents define current behavior. Open spec issues define accepted planned behavior. Other open issues are backlog. They are not accepted designs or delivery commitments. Code and tests define implemented behavior. Treat prototypes and simulators as evidence, not as architecture or hardware-compatibility guarantees.
 
 ## Scope and design
 
@@ -36,6 +36,8 @@ Declare component props in an explicit named type or interface. Do not use inlin
 ## Tests
 
 Test behavior at the layer that owns it. Do not repeat lower-layer parser or protocol tests in higher layers. Add integration tests only for behavior that crosses a boundary. Do not add another test when an existing end-to-end test proves the same behavior.
+
+Give each parser no-panic tests and snapshots for the applicable recorded data in `testdata/`.
 
 Prefer exact equality when the result is deterministic. Range assertions should be rare.
 

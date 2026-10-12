@@ -14,8 +14,8 @@ a later polar, ballast, or bugs change.
   exactly. Exact replay needs every input with its shell timestamp, which
   includes the 10 Hz UTC ticks, the transport read boundaries, and every
   command. That is about 1.3 MB/h for own-ship data and 2.4 MB/h with FLARM
-  traffic. The developer capture of the `input-recording` roadmap item keeps
-  this shape.
+  traffic. The developer capture in
+  [Sensors: Core input recording](https://github.com/Turbo87/updraft/issues/652) keeps this shape.
 - Snapshots are not necessary. A replay of a 5-hour flight with a task takes
   70 ms on an Apple M2 Pro. No phone measurement exists.
 

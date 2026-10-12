@@ -10,8 +10,7 @@
 //! (`Length::from_feet(…)`) and accessors (`length.as_kilometers()`). The
 //! `Debug` implementations render the value with its SI unit (degrees for
 //! angles) for readable logs and test output; user-facing formatting with
-//! configurable display units is a UI concern and comes later with the
-//! `units-settings` roadmap step.
+//! configurable display units is a UI concern.
 //!
 //! With the `approx` feature, the quantity types implement the `approx`
 //! crate's `AbsDiffEq` and `RelativeEq` traits, comparing the underlying

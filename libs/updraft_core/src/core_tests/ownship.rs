@@ -5,7 +5,7 @@ use crate::{FixTime, UtcInstant, UtcTime};
 use approx::assert_abs_diff_eq;
 use claims::{assert_none, assert_some, assert_some_eq};
 use std::assert_matches;
-use updraft_units::{EllipsoidAltitude, Length, MslAltitude};
+use updraft_units::{Angle, EllipsoidAltitude, Length, MslAltitude};
 
 fn selected_fix_time(sentence: &[u8]) -> FixTime {
     let (mut core, device_id) = core_with_external_device();
@@ -575,4 +575,98 @@ fn repeated_identical_fixes_emit_only_once() {
         assert_some!(core.internal_gps.position).ingested_at,
         at(104)
     );
+}
+
+/// Publishes the turn rate after each RMC fix of `(seconds, track)` pairs.
+///
+/// A missing track sends an RMC fix without a course.
+fn turn_rates(fixes: &[(u32, Option<f64>)]) -> String {
+    let (mut core, device_id) = core_with_external_device();
+    fixes
+        .iter()
+        .enumerate()
+        .map(|(index, &(seconds, track))| {
+            let time = format!("12{:02}{:02}.00", seconds / 60, seconds % 60);
+            let course = track.map_or(String::new(), |track| track.to_string());
+            let rmc = format!("$GPRMC,{time},A,5049.38,N,00611.16,E,58.3,{course},010126,,,A\r\n");
+            let millis = u64::try_from(index).unwrap() * 1_000;
+            core.apply(Bytes::new(device_id, rmc), at(millis));
+            let rate = gps_instruments(&core)
+                .turn_rate_degrees_per_second
+                .map_or("none".to_owned(), |rate| format!("{rate:.1}"));
+            format!("{time} {course:>5} {rate:>6}\n")
+        })
+        .collect()
+}
+
+#[test]
+fn turn_rate_follows_the_latest_track_change() {
+    insta::assert_snapshot!(
+        "straight",
+        turn_rates(&[(0, Some(90.)), (1, Some(90.)), (2, Some(90.))])
+    );
+    insta::assert_snapshot!(
+        "steady_turn_through_north",
+        turn_rates(&[
+            (0, Some(320.)),
+            (1, Some(340.)),
+            (2, Some(0.)),
+            (3, Some(20.))
+        ])
+    );
+    insta::assert_snapshot!(
+        "turn_entry",
+        turn_rates(&[
+            (0, Some(90.)),
+            (1, Some(90.)),
+            (2, Some(85.)),
+            (3, Some(70.))
+        ])
+    );
+    insta::assert_snapshot!(
+        "two_second_interval",
+        turn_rates(&[(0, Some(90.)), (2, Some(130.))])
+    );
+}
+
+#[test]
+fn turn_rate_needs_consecutive_tracks_at_advancing_fix_times() {
+    insta::assert_snapshot!(
+        "gap",
+        turn_rates(&[
+            (0, Some(90.)),
+            (1, Some(100.)),
+            (5, Some(140.)),
+            (6, Some(150.))
+        ])
+    );
+    insta::assert_snapshot!(
+        "backward_time",
+        turn_rates(&[
+            (10, Some(90.)),
+            (11, Some(100.)),
+            (9, Some(80.)),
+            (10, Some(90.))
+        ])
+    );
+    insta::assert_snapshot!(
+        "missing_course",
+        turn_rates(&[(0, Some(90.)), (1, Some(100.)), (2, None), (3, Some(120.))])
+    );
+}
+
+#[test]
+fn internal_gps_turn_rate_uses_the_fix_times() {
+    let mut core = Core::new(config());
+    for (millis, track) in [(0, 90.), (500, 105.)] {
+        let mut reported = fix(50.823, 6.186);
+        reported.track = Some(Angle::from_degrees(track));
+        reported.fix_time = Some(UtcInstant::from_unix_milliseconds(
+            1_767_268_800_000 + millis,
+        ));
+        core.apply(InternalGps::new(reported), at(millis.unsigned_abs()));
+    }
+
+    let rate = assert_some!(gps_instruments(&core).turn_rate_degrees_per_second);
+    assert_abs_diff_eq!(rate, 30.0, epsilon = 1e-9);
 }

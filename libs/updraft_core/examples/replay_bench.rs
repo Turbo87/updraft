@@ -142,6 +142,7 @@ impl Scenario {
                 .gnss_altitude
                 .map(|altitude| Timed::new(altitude, at)),
             track: Some(Timed::new(sample.track, at)),
+            turn_rate: None,
             ground_speed: Some(Timed::new(sample.ground_speed, at)),
             fix_time: None,
         };

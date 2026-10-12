@@ -60,10 +60,11 @@ new waypoint arrival calculations.
 ## Ownership and updates
 
 The core owns the active locale, display units, hillshade direction, trail
-colour mode, trail length, trail drift compensation, glide polar, arrival
-reserve, and external-device configuration. The `Settings` topic contains the
-active locale, units, hillshade direction, trail colour mode, trail length,
-trail drift compensation, polar, and arrival reserve. The `ExternalDevices`
+colour mode, trail length, trail drift compensation, ownship dead reckoning,
+glide polar, arrival reserve, and external-device configuration. The `Settings`
+topic contains the active locale, units, hillshade direction, trail colour mode,
+trail length, trail drift compensation, ownship dead reckoning, polar, and
+arrival reserve. The `ExternalDevices`
 topic publishes the separate device projection.
 
 The frontend can show an optimistic control value while a command is pending.
@@ -77,8 +78,8 @@ topic and requests persistence of the complete snapshot.
 
 The Tauri shell stores `settings.json` in the application configuration
 directory. The file contains the locale, unit selections, hillshade direction,
-trail colour mode, trail length, trail drift compensation, glide polar, arrival
-reserve, and external-device configuration.
+trail colour mode, trail length, trail drift compensation, ownship dead
+reckoning, glide polar, arrival reserve, and external-device configuration.
 
 A missing file loads defaults and remains absent until a setting changes. A
 malformed or unreadable file produces a warning and loads defaults. Updraft
@@ -157,6 +158,12 @@ turns drift compensation on or off. It is off by default. A pending command
 disables the control. Failure restores the published value and shows an error.
 The selection is saved across restarts, and a settings file without this field
 uses the default.
+
+Ownship dead reckoning moves the ownship symbol between GPS fixes. See
+[Flight View](flight-view.md#ownship-dead-reckoning). The Map page turns it on
+or off. It is on by default. A pending command disables the control. Failure
+restores the published value and shows an error. The selection is saved across
+restarts, and a settings file without this field uses the default.
 
 ## Glide settings
 

@@ -125,6 +125,9 @@ pub struct Settings {
     pub trail_length: TrailLength,
     #[serde(default)]
     pub trail_drift_compensation: bool,
+    /// Whether the map advances the ownship symbol between GPS fixes.
+    #[serde(default = "ownship_dead_reckoning_default")]
+    pub ownship_dead_reckoning: bool,
     pub locale: Option<Locale>,
     #[serde(default)]
     pub polar: PolarId,
@@ -142,6 +145,10 @@ fn energy_compensation_default() -> bool {
     true
 }
 
+fn ownship_dead_reckoning_default() -> bool {
+    true
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -152,6 +159,7 @@ impl Default for Settings {
             trail_color_mode: TrailColorMode::default(),
             trail_length: TrailLength::default(),
             trail_drift_compensation: false,
+            ownship_dead_reckoning: ownship_dead_reckoning_default(),
             locale: None,
             polar: PolarId::default(),
             arrival_reserve: ArrivalReserve::default(),

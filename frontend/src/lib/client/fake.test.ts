@@ -41,6 +41,7 @@ function instruments(trackDegrees: number): Topic {
         altitudeMeters: null,
         groundSpeedMetersPerSecond: null,
         trackDegrees,
+        turnRateDegreesPerSecond: null,
         fixTime: null,
         stale: false,
       },

@@ -43,6 +43,7 @@
     traffic: TrafficStore;
     trail: TrailStore;
     trailColorMode: TrailColorMode;
+    ownshipDeadReckoning?: boolean;
     units: UnitSettings;
     testMode?: boolean;
   };
@@ -64,6 +65,7 @@
     traffic,
     trail,
     trailColorMode,
+    ownshipDeadReckoning,
     units,
     testMode = false,
   }: Props = $props();
@@ -100,6 +102,7 @@
         {traffic}
         {trail}
         {trailColorMode}
+        {ownshipDeadReckoning}
         {units}
         {testMode}
         onInspect={openNearbyRoute}

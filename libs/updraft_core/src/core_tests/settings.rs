@@ -420,6 +420,26 @@ fn trail_drift_compensation_defaults_to_off_and_persists_changes() {
 }
 
 #[test]
+fn ownship_dead_reckoning_defaults_to_on_and_persists_changes() {
+    let settings: Settings = claims::assert_ok!(serde_json::from_str(r#"{"locale":null}"#));
+    assert!(settings.ownship_dead_reckoning);
+    let mut core = Core::new(SettingsSnapshot::default());
+    for enabled in [false, true] {
+        let change = ChangeSetting::OwnshipDeadReckoning { enabled };
+        let expected = Settings {
+            ownship_dead_reckoning: enabled,
+            ..Settings::default()
+        };
+        let effects = core.apply(change, at(0)).effects;
+        assert_eq!(effects, settings_effects(expected));
+        assert!(core.apply(change, at(1)).effects.is_empty());
+        let json = claims::assert_ok!(serde_json::to_string(&core.settings_snapshot()));
+        let restored = Core::new(claims::assert_ok!(serde_json::from_str(&json)));
+        assert_eq!(restored.settings, expected);
+    }
+}
+
+#[test]
 fn energy_compensation_defaults_to_enabled() {
     for settings in [
         Settings::default(),

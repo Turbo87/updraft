@@ -53,6 +53,8 @@ pub struct GpsInstruments {
     pub altitude_meters: Option<f64>,
     pub ground_speed_meters_per_second: Option<f64>,
     pub track_degrees: Option<f64>,
+    /// Ground-track turn rate, clockwise positive.
+    pub turn_rate_degrees_per_second: Option<f64>,
     pub fix_time: Option<FixTime>,
     pub stale: bool,
 }
@@ -334,6 +336,7 @@ mod tests {
                 altitude_meters: None,
                 ground_speed_meters_per_second: Some(45.0),
                 track_degrees: Some(270.0),
+                turn_rate_degrees_per_second: None,
                 fix_time: Some(FixTime::UtcInstant {
                     unix_milliseconds: 1_767_268_800_000,
                 }),
@@ -439,6 +442,7 @@ mod tests {
             "trailColorMode": "relativeVario",
             "trailLength": 60,
             "trailDriftCompensation": false,
+            "ownshipDeadReckoning": true,
             "locale": "de",
             "polar": "LS 8",
             "arrivalReserve": 200.0,

@@ -19,19 +19,42 @@ Updraft sprite set are ready.
 Opening the Main Menu, settings, nearby results, or detail routes keeps the map
 and camera state alive. A new application session creates a new map state.
 
+## Ownship dead reckoning
+
+The ownship symbol moves between received GPS positions while the ownship dead
+reckoning setting is on. On each animation
+frame, the frontend advances the symbol from the latest received position along
+a circular arc. The arc uses the ground speed, track, and turn rate of that
+position. It limits the turn rate to 30 °/s.
+
+Dead reckoning starts when the frontend receives the position, because the
+frontend clock and the GPS clock are not synchronized. It stops 1.5 seconds
+later. The symbol then stays at its last position until the next position
+arrives. A new position replaces the symbol position immediately.
+
+The symbol does not move without a ground speed or track, below 2 m/s, or while
+the GPS state is stale. Dead reckoning changes only the symbol and the follow
+camera. The trail, infoboxes, navigation, and flight recording use the received
+positions.
+
 ## Position follow mode
 
-The map starts in follow mode. Each valid displayed GPS position starts a
-300-millisecond center-only camera transition. The transition keeps the current
-zoom, bearing, and pitch.
+The map starts in follow mode. On each animation frame, follow mode centers the
+map on the ownship symbol. The camera keeps the current zoom, bearing, and
+pitch. While a gesture, its inertia, or a zoom animation moves the map, the
+camera does not change. It also does not change while a pointer is down on the
+map, because a camera change resets a gesture that has not started yet. The
+camera centers the map again when the movement ends. Scroll zoom and touch zoom
+keep the map center while follow mode is on.
 
-Dragging the map stops follow mode. The flight view then shows the Return to
-position control. This control stops the active camera transition and enables
-follow mode. If no position is available, the map waits for the next valid
+Dragging the map stops follow mode. The two-finger pan of a pinch zoom does not
+stop it. The flight view then shows the Return to position control. This
+control stops the active camera movement and enables follow mode. The camera
+then moves from its current center to the moving ownship symbol in 300
+milliseconds. If no position is available, the map waits for the next valid
 position.
 
-Zoom, bearing, and pitch changes do not stop follow mode. A later position
-update keeps those camera values and changes only the center.
+Zoom, bearing, and pitch changes do not stop follow mode.
 
 ## Flight infoboxes
 

@@ -98,6 +98,7 @@ describe('TrafficStore', () => {
         trailColorMode: 'relativeVario',
         trailLength: 60,
         trailDriftCompensation: false,
+        ownshipDeadReckoning: true,
         energyCompensation: true,
         flarmPositionCorrection: true,
         units: { altitude: 'm', distance: 'km', speed: 'km/h', verticalSpeed: 'm/s' },

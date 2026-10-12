@@ -39,6 +39,7 @@
     altitudeMeters: 1115,
     groundSpeedMetersPerSecond: 31,
     trackDegrees: 225,
+    turnRateDegreesPerSecond: null,
     fixTime: null,
     stale: false,
   } satisfies GpsInstruments;

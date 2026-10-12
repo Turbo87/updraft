@@ -1,0 +1,284 @@
+---
+source: libs/updraft_core/examples/dead_reckoning_bench.rs
+expression: bench.to_string()
+---
+## ownship against later fixes
+
+466 fixes
+
+### all (278 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                             8.31     16.62     16.39     18.52     24.92     27.81
+straight                         0.10      0.24      0.18      0.40      0.38      0.77
+straight, published track        0.10      0.24      0.18      0.40      0.38      0.77
+track rate                       0.09      0.19      0.15      0.33      0.23      0.41
+track rate, 1 s average          0.09      0.20      0.15      0.35      0.24      0.46
+track rate, 2 s average          0.09      0.20      0.15      0.34      0.25      0.49
+step turn rate                   0.09      0.19      0.16      0.34      0.27      0.49
+3-point circle                   0.15      0.34      0.25      0.57      0.53      0.95
+fitted circle                    0.22      0.49      0.25      0.76      0.78      1.23
+circle turn rate                 0.10      0.22      0.16      0.37      0.34      0.61
+gated circle turn rate           0.10      0.24      0.18      0.40      0.38      0.77
+gated circle                     0.10      0.24      0.18      0.40      0.38      0.77
+quadratic                        0.18      0.38      0.32      0.71      0.57      1.06
+
+### straight (272 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                             8.28     16.57     16.38     18.43     24.84     27.60
+straight                         0.10      0.22      0.17      0.38      0.34      0.61
+straight, published track        0.10      0.22      0.17      0.38      0.34      0.61
+track rate                       0.09      0.19      0.14      0.33      0.23      0.41
+track rate, 1 s average          0.09      0.19      0.15      0.34      0.24      0.43
+track rate, 2 s average          0.09      0.20      0.15      0.34      0.24      0.45
+step turn rate                   0.09      0.19      0.16      0.33      0.27      0.45
+3-point circle                   0.15      0.34      0.25      0.56      0.52      0.93
+fitted circle                    0.22      0.49      0.25      0.76      0.78      1.21
+circle turn rate                 0.10      0.22      0.17      0.37      0.33      0.61
+gated circle turn rate           0.10      0.22      0.17      0.38      0.34      0.61
+gated circle                     0.10      0.22      0.17      0.38      0.34      0.61
+quadratic                        0.17      0.37      0.31      0.69      0.55      1.05
+
+### turning (0 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+
+### turn entry or exit (0 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+
+### turn rate while turning, in °/s
+
+model                             p50       p95       p99       max
+
+### 1.5 s rms by turn rate limit in °/s
+
+model                                    15     20     25     30     40   none
+track rate, all                        0.23   0.23   0.23   0.23   0.23   0.23
+track rate, 1 s average, all           0.24   0.24   0.24   0.24   0.24   0.24
+fitted circle, all                     0.78   0.78   0.78   0.78   0.78   0.78
+circle turn rate, all                  0.34   0.34   0.34   0.34   0.34   0.34
+gated circle turn rate, all            0.38   0.38   0.38   0.38   0.38   0.38
+gated circle, all                      0.38   0.38   0.38   0.38   0.38   0.38
+track rate, turning                     NaN    NaN    NaN    NaN    NaN    NaN
+track rate, 1 s average, turning        NaN    NaN    NaN    NaN    NaN    NaN
+fitted circle, turning                  NaN    NaN    NaN    NaN    NaN    NaN
+circle turn rate, turning               NaN    NaN    NaN    NaN    NaN    NaN
+gated circle turn rate, turning         NaN    NaN    NaN    NaN    NaN    NaN
+gated circle, turning                   NaN    NaN    NaN    NaN    NaN    NaN
+
+### 1.0 s rms below flight speed
+
+speed            fixes      hold  straight
+5-15 m/s           124     14.47      0.26
+
+## traffic against later accepted positions, with FLARM position correction
+
+1827 accepted positions of 11 targets
+
+### all (1305 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                           105.37    209.39    115.33    466.92    281.71    541.75
+straight                        66.83    131.25     15.75    280.06    139.56    370.71
+straight, published track       69.06    137.04     18.01    291.75    153.54    387.18
+track rate                      66.84    131.26     15.79    280.06    139.58    370.71
+track rate, 1 s average         66.84    131.26     15.75    280.06    139.57    370.71
+track rate, 2 s average         66.84    131.25     15.75    280.06    139.56    370.71
+step turn rate                  75.24    165.99     17.46    399.66    210.23    489.00
+3-point circle                  93.94    192.10     36.49    480.44    257.76    607.72
+fitted circle                   87.82    178.76     29.23    373.51    225.08    468.72
+circle turn rate                68.66    137.09     18.08    286.28    153.82    387.91
+gated circle turn rate          66.84    131.29     15.79    280.06    139.75    370.71
+gated circle                    66.93    131.54     16.06    280.06    140.28    370.71
+quadratic                      118.76    246.26     64.38    588.24    355.87    851.83
+
+### straight (517 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                            92.24    179.41    171.13    249.22    267.22    372.87
+straight                        15.14     25.58      1.46     34.46     23.03     52.78
+straight, published track       15.14     25.60      1.28     34.52     23.10     53.74
+track rate                      15.14     25.59      1.48     34.46     23.06     52.78
+track rate, 1 s average         15.14     25.59      1.48     34.45     23.06     52.78
+track rate, 2 s average         15.14     25.59      1.50     34.45     23.06     52.78
+step turn rate                  15.16     25.69      2.14     34.41     23.54     53.04
+3-point circle                  35.95     69.65      1.77    189.21    106.47    296.04
+fitted circle                   20.32     38.05      1.93     84.64     51.33     83.60
+circle turn rate                15.23     26.27      1.64     50.76     26.62     57.96
+gated circle turn rate          15.14     25.58      1.46     34.46     23.03     52.78
+gated circle                    15.14     25.58      1.46     34.46     23.03     52.78
+quadratic                       71.15    141.75      3.07    353.67    225.71    562.38
+
+### turning (17 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                           102.92    216.49      2.82    838.16    286.51   1092.69
+straight                        88.74    187.52    101.23    589.16    232.21    719.19
+straight, published track       93.74    197.11    145.33    589.16    243.44    719.19
+track rate                      88.74    187.53    101.38    589.16    232.23    719.19
+track rate, 1 s average         88.74    187.53    101.35    589.16    232.23    719.19
+track rate, 2 s average         88.74    187.53    101.34    589.16    232.22    719.19
+step turn rate                  96.91    229.93    156.90    753.04    319.30   1112.96
+3-point circle                 122.87    255.68    170.26    839.63    326.17   1095.21
+fitted circle                   93.86    197.79    145.33    589.16    244.83    719.19
+circle turn rate                88.75    187.66    102.40    589.16    232.53    719.19
+gated circle turn rate          88.74    187.52    101.23    589.16    232.21    719.19
+gated circle                    88.74    187.52    101.23    589.16    232.21    719.19
+quadratic                      136.59    289.59    147.09    985.03    398.22   1347.00
+
+### turn entry or exit (721 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                           116.03    232.70     70.67    533.27    297.20    634.60
+straight                        87.48    172.21     71.37    364.87    182.67    418.23
+straight, published track       90.43    179.94     77.53    384.96    201.63    424.90
+track rate                      87.48    172.21     71.37    364.87    182.69    418.23
+track rate, 1 s average         87.48    172.21     71.40    364.87    182.67    418.23
+track rate, 2 s average         87.48    172.21     71.42    364.87    182.67    418.23
+step turn rate                  98.97    219.05     74.27    523.78    277.03    595.74
+3-point circle                 120.76    247.64    112.75    552.98    328.90    699.42
+fitted circle                  115.70    235.82     99.46    565.50    295.65    706.61
+circle turn rate                90.00    180.20     72.33    385.01    201.52    424.90
+gated circle turn rate          87.49    172.26     71.37    364.87    182.93    418.23
+gated circle                    87.61    172.60     71.65    364.87    183.64    418.23
+quadratic                      145.81    304.20    112.72    736.24    432.43   1006.12
+
+### turn rate while turning, in °/s
+
+model                             p50       p95       p99       max
+track rate                        0.0       3.0       3.0       3.0
+track rate, 1 s average           0.0       2.5       2.5       2.5
+track rate, 2 s average           0.0       2.3       2.3       2.3
+step turn rate                    7.6     339.8     339.8     339.8
+3-point circle                    3.3    4281.6    4281.6    4281.6
+fitted circle                     1.3      28.5      28.5      28.5
+circle turn rate                  1.3      28.5      28.5      28.5
+gated circle turn rate            0.0       0.0       0.0       0.0
+gated circle                      0.0       0.0       0.0       0.0
+
+### 1.5 s rms by turn rate limit in °/s
+
+model                                    15     20     25     30     40   none
+track rate, all                      139.57 139.57 139.57 139.58 139.58 139.58
+track rate, 1 s average, all         139.57 139.57 139.57 139.57 139.57 139.57
+fitted circle, all                   218.90 220.22 221.43 222.45 223.89 225.08
+circle turn rate, all                140.95 141.78 142.76 143.76 145.66 153.82
+gated circle turn rate, all          139.62 139.66 139.71 139.73 139.75 139.75
+gated circle, all                    140.03 140.13 140.22 140.26 140.28 140.28
+track rate, turning                  232.23 232.23 232.23 232.23 232.23 232.23
+track rate, 1 s average, turning     232.23 232.23 232.23 232.23 232.23 232.23
+fitted circle, turning               244.12 244.38 244.65 244.83 244.83 244.83
+circle turn rate, turning            232.32 232.38 232.46 232.53 232.53 232.53
+gated circle turn rate, turning      232.21 232.21 232.21 232.21 232.21 232.21
+gated circle, turning                232.21 232.21 232.21 232.21 232.21 232.21
+
+### 1.0 s rms below flight speed
+
+speed            fixes      hold  straight
+
+## traffic against later accepted positions, without FLARM position correction
+
+1827 accepted positions of 11 targets
+
+### all (1305 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                           105.49    209.62    116.99    466.71    282.37    542.71
+straight                        66.54    130.75     14.70    280.33    139.16    370.36
+straight, published track       66.54    130.75     14.70    280.33    139.16    370.36
+track rate                      66.54    130.75     14.89    280.33    139.16    370.36
+track rate, 1 s average         66.53    130.75     14.70    280.33    139.15    370.36
+track rate, 2 s average         66.53    130.75     14.70    280.33    139.14    370.36
+step turn rate                  74.04    165.70     14.62    403.64    214.56    497.31
+3-point circle                  94.44    194.25     32.97    481.31    262.88    616.49
+fitted circle                   85.94    175.10     21.71    332.55    219.39    434.17
+circle turn rate                68.45    136.42     15.70    286.80    152.63    387.22
+gated circle turn rate          66.54    130.75     14.70    280.33    139.15    370.36
+gated circle                    66.54    130.76     14.89    280.33    139.15    370.36
+quadratic                      117.03    242.27     59.63    583.80    348.25    825.11
+
+### straight (541 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                            92.34    179.80    171.03    249.38    267.22    373.07
+straight                        18.34     32.05      1.32     36.09     30.92     55.85
+straight, published track       18.34     32.05      1.32     36.09     30.92     55.85
+track rate                      18.34     32.07      1.34     36.09     30.97     55.85
+track rate, 1 s average         18.34     32.06      1.34     36.09     30.94     55.85
+track rate, 2 s average         18.34     32.06      1.34     36.09     30.94     55.85
+step turn rate                  18.15     31.48      1.75     36.10     37.45     56.51
+3-point circle                  39.90     78.10      1.60    184.08    118.81    296.80
+fitted circle                   23.08     43.68      1.64     77.73     55.33     66.12
+circle turn rate                18.44     32.86      1.43     44.82     34.39     56.60
+gated circle turn rate          18.34     32.06      1.32     36.09     30.93     55.85
+gated circle                    18.34     32.06      1.32     36.09     30.93     55.85
+quadratic                       70.59    140.19      2.19    352.31    222.65    563.22
+
+### turning (14 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                           114.35    232.69     77.19    568.00    265.88    692.27
+straight                        89.41    181.38     64.86    414.39    180.05    437.27
+straight, published track       89.41    181.38     64.86    414.39    180.05    437.27
+track rate                      89.41    181.39     64.86    414.39    180.08    437.27
+track rate, 1 s average         89.41    181.38     64.86    414.39    180.07    437.27
+track rate, 2 s average         89.41    181.38     64.87    414.39    180.06    437.27
+step turn rate                 120.65    249.74    108.44    577.61    268.34    688.29
+3-point circle                 129.07    261.38    124.01    567.72    298.69    691.80
+fitted circle                  152.77    309.48    116.11    737.99    371.83    947.25
+circle turn rate                89.53    182.29     77.38    417.68    183.19    437.40
+gated circle turn rate          89.42    181.41     64.86    414.39    180.14    437.27
+gated circle                    89.44    181.47     64.86    414.39    180.28    437.27
+quadratic                      130.44    264.73    125.52    621.54    322.58    794.22
+
+### turn entry or exit (695 fixes at 1.0 s)
+
+model                       0.5 s rms 1.0 s rms 1.0 s p50 1.0 s p95 1.5 s rms 1.5 s p95
+hold                           117.57    235.81     68.69    533.21    301.94    645.35
+straight                        88.50    174.48     73.37    364.87    186.74    419.55
+straight, published track       88.50    174.48     73.37    364.87    186.74    419.55
+track rate                      88.50    174.48     73.37    364.87    186.75    419.55
+track rate, 1 s average         88.50    174.48     73.36    364.87    186.74    419.55
+track rate, 2 s average         88.50    174.48     73.36    364.87    186.73    419.55
+step turn rate                  98.43    222.13     81.79    532.95    289.34    617.07
+3-point circle                 122.92    253.99    118.53    600.90    341.31    743.27
+fitted circle                  113.64    232.17     94.78    548.59    291.52    662.26
+circle turn rate                91.18    182.32     73.63    382.92    205.05    431.25
+gated circle turn rate          88.50    174.48     73.37    364.87    186.73    419.55
+gated circle                    88.50    174.49     73.37    364.87    186.73    419.55
+quadratic                      146.00    304.60    114.22    733.98    430.58   1007.31
+
+### turn rate while turning, in °/s
+
+model                             p50       p95       p99       max
+track rate                        0.0       5.0       5.0       5.0
+track rate, 1 s average           0.2       3.5       3.5       3.5
+track rate, 2 s average           0.3       3.0       3.0       3.0
+step turn rate                   13.1     351.3     351.3     351.3
+3-point circle                    8.8   38992.2   38992.2   38992.2
+fitted circle                     2.2      29.8      29.8      29.8
+circle turn rate                  2.2      29.8      29.8      29.8
+gated circle turn rate            0.0      10.6      10.6      10.6
+gated circle                      0.0      10.6      10.6      10.6
+
+### 1.5 s rms by turn rate limit in °/s
+
+model                                    15     20     25     30     40   none
+track rate, all                      139.16 139.16 139.16 139.16 139.16 139.16
+track rate, 1 s average, all         139.15 139.15 139.15 139.15 139.15 139.15
+fitted circle, all                   213.09 214.48 215.79 216.96 218.63 219.39
+circle turn rate, all                140.27 141.02 141.94 142.99 144.99 152.63
+gated circle turn rate, all          139.15 139.15 139.15 139.15 139.15 139.15
+gated circle, all                    139.15 139.15 139.15 139.15 139.15 139.15
+track rate, turning                  180.08 180.08 180.08 180.08 180.08 180.08
+track rate, 1 s average, turning     180.07 180.07 180.07 180.07 180.07 180.07
+fitted circle, turning               371.07 371.34 371.70 371.83 371.83 371.83
+circle turn rate, turning            181.82 182.67 183.03 183.19 183.19 183.19
+gated circle turn rate, turning      180.14 180.14 180.14 180.14 180.14 180.14
+gated circle, turning                180.28 180.28 180.28 180.28 180.28 180.28
+
+### 1.0 s rms below flight speed
+
+speed            fixes      hold  straight

@@ -28,10 +28,12 @@ type AirspaceMapState = {
   renderedLayerIds: string[];
 };
 
+// Without a ground speed, the map shows the received position.
 const POSITION_A: GpsInstruments = {
   position: { latitudeDegrees: 50.823, longitudeDegrees: 6.186 },
   trackDegrees: 45,
-  groundSpeedMetersPerSecond: 30,
+  groundSpeedMetersPerSecond: null,
+  turnRateDegreesPerSecond: null,
   altitudeMeters: 400,
   fixTime: null,
   stale: false,
@@ -40,7 +42,8 @@ const POSITION_A: GpsInstruments = {
 const POSITION_B: GpsInstruments = {
   position: { latitudeDegrees: 50.824, longitudeDegrees: 6.187 },
   trackDegrees: 90,
-  groundSpeedMetersPerSecond: 31,
+  groundSpeedMetersPerSecond: null,
+  turnRateDegreesPerSecond: null,
   altitudeMeters: 410,
   fixTime: null,
   stale: false,
@@ -49,7 +52,8 @@ const POSITION_B: GpsInstruments = {
 const POSITION_C: GpsInstruments = {
   position: { latitudeDegrees: 50.825, longitudeDegrees: 6.188 },
   trackDegrees: 135,
-  groundSpeedMetersPerSecond: 32,
+  groundSpeedMetersPerSecond: null,
+  turnRateDegreesPerSecond: null,
   altitudeMeters: 420,
   fixTime: null,
   stale: false,
@@ -99,6 +103,17 @@ test('follows live positions until the user pans and returns', async ({ page, ap
 
   await app.emitInstruments(POSITION_C);
   await expectMapPosition(page, POSITION_C);
+});
+
+test('pans the map while the ownship moves', async ({ page, app }) => {
+  await app.open('/');
+  await app.emitInstruments(POSITION_A);
+  await expectMapPosition(page, POSITION_A);
+
+  await app.emitInstruments({ ...POSITION_B, groundSpeedMetersPerSecond: 30 });
+  await panMap(page);
+  await expect(page.getByRole('button', { name: 'Return to position' })).toBeVisible();
+  await expect(page).not.toHaveURL(/nearby/);
 });
 
 test('keeps the Main menu button inside the safe area', async ({ page, app }) => {

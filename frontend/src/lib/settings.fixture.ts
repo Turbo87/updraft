@@ -10,6 +10,7 @@ export function settingsFixture(overrides: Partial<Settings> = {}): Settings {
     trailColorMode: 'relativeVario',
     trailLength: 60,
     trailDriftCompensation: false,
+    ownshipDeadReckoning: true,
     energyCompensation: true,
     flarmPositionCorrection: true,
     ...overrides,

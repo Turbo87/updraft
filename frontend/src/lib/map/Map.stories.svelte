@@ -27,6 +27,7 @@
       altitudeMeters: 190,
       groundSpeedMetersPerSecond: 30,
       trackDegrees: 45,
+      turnRateDegreesPerSecond: null,
       fixTime: null,
       stale: false,
     },

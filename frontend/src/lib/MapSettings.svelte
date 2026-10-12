@@ -18,6 +18,8 @@
     setTrailLength: (length: TrailLength) => Promise<void>;
     trailDriftCompensation: boolean;
     setTrailDriftCompensation: (enabled: boolean) => Promise<void>;
+    ownshipDeadReckoning: boolean;
+    setOwnshipDeadReckoning: (enabled: boolean) => Promise<void>;
   };
 
   let {
@@ -29,6 +31,8 @@
     setTrailLength,
     trailDriftCompensation,
     setTrailDriftCompensation,
+    ownshipDeadReckoning,
+    setOwnshipDeadReckoning,
   }: Props = $props();
   let options = $derived([
     { value: 'fixed', label: m.hillshade_direction_fixed() },
@@ -128,6 +132,21 @@
     value={trailDriftCompensation ? 'enabled' : 'disabled'}
     onChange={(value) => setTrailDriftCompensation(value === 'enabled')}
     errorMessage={m.trail_drift_compensation_change_failed}
+  />
+  <AsyncRadioList
+    name="ownship-dead-reckoning"
+    legend={m.ownship_dead_reckoning_label()}
+    options={[
+      {
+        value: 'enabled',
+        label: m.ownship_dead_reckoning_enabled(),
+        description: m.ownship_dead_reckoning_description(),
+      },
+      { value: 'disabled', label: m.ownship_dead_reckoning_disabled() },
+    ]}
+    value={ownshipDeadReckoning ? 'enabled' : 'disabled'}
+    onChange={(value) => setOwnshipDeadReckoning(value === 'enabled')}
+    errorMessage={m.ownship_dead_reckoning_change_failed}
   />
 </div>
 

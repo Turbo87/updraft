@@ -49,3 +49,7 @@ required-features = ["ts"]
 [[example]]
 name = "replay_bench"
 test = true
+
+[[example]]
+name = "dead_reckoning_bench"
+test = true

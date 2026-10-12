@@ -15,6 +15,7 @@ describe('InstrumentsStore', () => {
           altitudeMeters: 200,
           groundSpeedMetersPerSecond: 45,
           trackDegrees: 270,
+          turnRateDegreesPerSecond: null,
           fixTime: null,
           stale: false,
         },

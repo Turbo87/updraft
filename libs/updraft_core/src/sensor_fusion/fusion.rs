@@ -640,6 +640,7 @@ mod tests {
                     Timestamp::from_millis(milliseconds),
                 )),
                 track: None,
+                turn_rate: None,
                 ground_speed: None,
                 fix_time: None,
             };
@@ -675,6 +676,7 @@ mod tests {
                     )
                 }),
                 track: None,
+                turn_rate: None,
                 ground_speed: None,
                 fix_time: None,
             };
@@ -734,6 +736,7 @@ mod tests {
                         Timestamp::from_millis(milliseconds),
                     )),
                     track: None,
+                    turn_rate: None,
                     ground_speed: None,
                     fix_time: None,
                 },
@@ -787,6 +790,7 @@ mod tests {
                         Timestamp::from_millis(0),
                     )),
                     track: None,
+                    turn_rate: None,
                     ground_speed: None,
                     fix_time: None,
                 },

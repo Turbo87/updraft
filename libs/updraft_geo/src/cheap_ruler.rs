@@ -111,9 +111,12 @@ impl CheapRuler {
 
     /// The total length of `line`. An empty line has zero length.
     pub fn line_distance(&self, line: &[LatLon]) -> Length {
-        line.windows(2).fold(Length::ZERO, |sum, pair| {
-            sum + self.distance(pair[0], pair[1])
-        })
+        // The algebraic addition lets the compiler reorder the sum and keep
+        // it in vector registers.
+        let meters = line.windows(2).fold(0., |sum: f64, pair| {
+            sum.algebraic_add(self.distance(pair[0], pair[1]).as_meters())
+        });
+        Length::from_meters(meters)
     }
 
     /// The point at `distance` along `line`, or `None` for an empty line.

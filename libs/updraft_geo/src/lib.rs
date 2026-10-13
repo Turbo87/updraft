@@ -7,7 +7,8 @@
 //! solved on the WGS84 ellipsoid via [`geographiclib_rs`] (Karney's
 //! algorithm, the same earth model FAI, OLC, and `WeGlide` score on),
 //! with a spherical haversine fast path for uses that tolerate up to
-//! ~0.5% error.
+//! ~0.5% error. [`CheapRuler`] gives faster flat-earth approximations
+//! for measurements near one latitude.
 //!
 //! Parsing and formatting of coordinate strings is deliberately out of
 //! scope: every data format (NMEA, IGC, CUP, `OpenAir`, …) owns the
@@ -25,11 +26,13 @@
 //! `geo_types` points and coords.
 
 mod bounding_box;
+mod cheap_ruler;
 #[cfg(feature = "geo-types")]
 mod convert;
 mod lat_lon;
 mod polygon;
 
 pub use bounding_box::BoundingBox;
+pub use cheap_ruler::{CheapRuler, PointOnLine};
 pub use lat_lon::LatLon;
 pub use polygon::Polygon;

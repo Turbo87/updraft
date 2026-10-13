@@ -24,6 +24,9 @@ internal fun foregroundServiceTypes(location: Boolean, spp: Boolean): Int =
         (if (spp) ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0)
 
 internal const val ACTION_SPP_ATTEMPT = "aero.updraft.mobile.SPP_ATTEMPT"
+internal const val ACTION_QUIT = "aero.updraft.mobile.QUIT"
+
+internal fun isQuitRequest(action: String?): Boolean = action == ACTION_QUIT
 
 internal fun sppAttemptConnectionId(
     action: String?,
@@ -84,6 +87,10 @@ class SessionService : Service() {
             Logger.info(TAG, "Restarted without a session to resume, stopping")
             stopSelf()
             return START_NOT_STICKY
+        }
+
+        if (isQuitRequest(intent.action)) {
+            quit(this)
         }
 
         val connectionId = sppAttemptConnectionId(
@@ -255,6 +262,22 @@ class SessionService : Service() {
             )
         }
 
+        val quitIntent = PendingIntent.getService(
+            this,
+            0,
+            Intent(this, SessionService::class.java).setAction(ACTION_QUIT),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        // The action does not ask for confirmation, so a locked phone in a
+        // pocket or cockpit must not be able to quit.
+        val quitAction = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_close_clear_cancel,
+            NOTIFICATION_QUIT_LABEL,
+            quitIntent
+        )
+            .setAuthenticationRequired(true)
+            .build()
+
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(NOTIFICATION_TITLE)
             .setContentText(NOTIFICATION_TEXT)
@@ -262,6 +285,7 @@ class SessionService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setContentIntent(contentIntent)
+            .addAction(quitAction)
             .build()
     }
 
@@ -309,6 +333,7 @@ class SessionService : Service() {
         private const val NOTIFICATION_CHANNEL_NAME = "Flight session"
         private const val NOTIFICATION_TITLE = "Updraft"
         private const val NOTIFICATION_TEXT = "Navigating in the background"
+        private const val NOTIFICATION_QUIT_LABEL = "Quit"
         private const val WAKE_LOCK_TAG = "updraft:session"
 
         /**

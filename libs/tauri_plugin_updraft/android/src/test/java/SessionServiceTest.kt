@@ -37,6 +37,13 @@ class SessionServiceTest {
     }
 
     @Test
+    fun `only the quit action requests a quit`() {
+        assertTrue(isQuitRequest(ACTION_QUIT))
+        assertFalse(isQuitRequest(ACTION_SPP_ATTEMPT))
+        assertFalse(isQuitRequest(null))
+    }
+
+    @Test
     fun `uses location foreground type for a location source`() {
         assertEquals(
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,

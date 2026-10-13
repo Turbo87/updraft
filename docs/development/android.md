@@ -39,6 +39,10 @@ A quit stops `SessionService`, removes the application task from Recents, and
 ends the process. Android owns the exit because Rust cannot wake its event loop
 after Android removes the window.
 
+The Rust `quit` command and the Quit action of the session notification use
+the same exit. The notification action sends its quit request to
+`SessionService` and does not pass through Rust.
+
 ## Permissions
 
 Internal GNSS requires fine and coarse location permission. Android 12 and

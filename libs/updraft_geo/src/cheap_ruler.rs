@@ -25,7 +25,7 @@
 //! [cheap-ruler]: https://github.com/mapbox/cheap-ruler
 
 use crate::{BoundingBox, LatLon};
-use std::f64::consts::TAU;
+use std::f64::consts::{PI, TAU};
 use updraft_units::{Angle, Length};
 
 // Values that define the WGS84 ellipsoid.
@@ -354,8 +354,13 @@ fn interpolate(a: LatLon, b: LatLon, t: f64) -> LatLon {
 
 /// Normalizes a longitude difference in radians into `[-π, π]`.
 fn wrap(radians: f64) -> f64 {
+    // Most differences are already in range. The early return makes them
+    // faster in scalar code.
+    if radians.abs() < PI {
+        return radians;
+    }
     // `floor(x + 0.5)` matches the rounding of JavaScript `Math.round`.
-    radians - (radians / TAU + 0.5).floor() * TAU
+    radians - (radians * (1. / TAU) + 0.5).floor() * TAU
 }
 
 #[cfg(test)]

@@ -77,9 +77,9 @@ impl CheapRuler {
     }
 
     /// The distance from `a` to `b`.
+    #[inline]
     pub fn distance(&self, a: LatLon, b: LatLon) -> Length {
-        let (dx, dy) = self.delta(a, b);
-        Length::from_meters((dx * dx + dy * dy).sqrt())
+        Length::from_meters(self.squared_distance(a, b).sqrt())
     }
 
     /// The bearing from `a` to `b`, in the compass range `[0°, 360°)`.
@@ -152,27 +152,25 @@ impl CheapRuler {
     /// empty line.
     pub fn point_on_line(&self, line: &[LatLon], point: LatLon) -> Option<PointOnLine> {
         let first = *line.first()?;
-        let mut closest = PointOnLine {
-            point: first,
-            index: 0,
-            t: 0.,
-            distance: self.distance(point, first),
-        };
+        // Squared distances have the same order and skip a square root for
+        // each segment.
+        let mut closest = (first, 0, 0., self.squared_distance(point, first));
 
         for (index, pair) in line.windows(2).enumerate() {
             let (candidate, t) = self.closest_point_on_segment(point, pair[0], pair[1]);
-            let distance = self.distance(point, candidate);
-            if index == 0 || distance < closest.distance {
-                closest = PointOnLine {
-                    point: candidate,
-                    index,
-                    t: t.clamp(0., 1.),
-                    distance,
-                };
+            let squared_distance = self.squared_distance(point, candidate);
+            if index == 0 || squared_distance < closest.3 {
+                closest = (candidate, index, t, squared_distance);
             }
         }
 
-        Some(closest)
+        let (point, index, t, squared_distance) = closest;
+        Some(PointOnLine {
+            point,
+            index,
+            t: t.clamp(0., 1.),
+            distance: Length::from_meters(squared_distance.sqrt()),
+        })
     }
 
     /// The part of `line` between the points on the line that are closest
@@ -321,6 +319,12 @@ impl CheapRuler {
             a
         };
         (closest, t)
+    }
+
+    /// The squared distance in square meters from `a` to `b`.
+    fn squared_distance(&self, a: LatLon, b: LatLon) -> f64 {
+        let (dx, dy) = self.delta(a, b);
+        dx * dx + dy * dy
     }
 
     /// The east and north offsets in meters from `a` to `b`.

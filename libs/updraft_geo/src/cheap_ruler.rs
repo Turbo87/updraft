@@ -10,6 +10,12 @@
 //!   no units parameter.
 //! - [`CheapRuler::bearing`] returns the compass range `[0°, 360°)`, the
 //!   same as [`LatLon::bearing`].
+//! - The line methods take the line as the first argument.
+//! - For an empty line, [`CheapRuler::along`] and
+//!   [`CheapRuler::point_on_line`] return `None`, and the slice methods
+//!   return an empty `Vec`.
+//! - For a line with one point, [`CheapRuler::point_on_line`] returns the
+//!   distance to that point. Upstream returns infinity.
 //!
 //! [cheap-ruler]: https://github.com/mapbox/cheap-ruler
 
@@ -98,12 +104,200 @@ impl CheapRuler {
         )
     }
 
+    /// The total length of `line`. An empty line has zero length.
+    pub fn line_distance(&self, line: &[LatLon]) -> Length {
+        line.windows(2).fold(Length::ZERO, |sum, pair| {
+            sum + self.distance(pair[0], pair[1])
+        })
+    }
+
+    /// The point at `distance` along `line`, or `None` for an empty line.
+    ///
+    /// A negative distance gives the first point. A distance beyond the
+    /// end of the line gives the last point.
+    pub fn along(&self, line: &[LatLon], distance: Length) -> Option<LatLon> {
+        let first = *line.first()?;
+        if distance <= Length::ZERO {
+            return Some(first);
+        }
+
+        let mut sum = Length::ZERO;
+        for pair in line.windows(2) {
+            let segment = self.distance(pair[0], pair[1]);
+            sum += segment;
+            if sum > distance {
+                let t = (distance - (sum - segment)) / segment;
+                return Some(interpolate(pair[0], pair[1], t));
+            }
+        }
+
+        line.last().copied()
+    }
+
+    /// The distance from `point` to the line segment from `a` to `b`.
+    pub fn point_to_segment_distance(&self, point: LatLon, a: LatLon, b: LatLon) -> Length {
+        let (closest, _) = self.closest_point_on_segment(point, a, b);
+        self.distance(point, closest)
+    }
+
+    /// The point on `line` that is closest to `point`, or `None` for an
+    /// empty line.
+    pub fn point_on_line(&self, line: &[LatLon], point: LatLon) -> Option<PointOnLine> {
+        let first = *line.first()?;
+        let mut closest = PointOnLine {
+            point: first,
+            index: 0,
+            t: 0.,
+            distance: self.distance(point, first),
+        };
+
+        for (index, pair) in line.windows(2).enumerate() {
+            let (candidate, t) = self.closest_point_on_segment(point, pair[0], pair[1]);
+            let distance = self.distance(point, candidate);
+            if index == 0 || distance < closest.distance {
+                closest = PointOnLine {
+                    point: candidate,
+                    index,
+                    t: t.clamp(0., 1.),
+                    distance,
+                };
+            }
+        }
+
+        Some(closest)
+    }
+
+    /// The part of `line` between the points on the line that are closest
+    /// to `start` and `stop`.
+    ///
+    /// The slice follows the direction of `line`, also if `stop` comes
+    /// before `start`. An empty line gives an empty slice.
+    pub fn line_slice(&self, line: &[LatLon], start: LatLon, stop: LatLon) -> Vec<LatLon> {
+        let (Some(mut start), Some(mut stop)) = (
+            self.point_on_line(line, start),
+            self.point_on_line(line, stop),
+        ) else {
+            return Vec::new();
+        };
+
+        if start.index > stop.index || (start.index == stop.index && start.t > stop.t) {
+            std::mem::swap(&mut start, &mut stop);
+        }
+
+        let mut slice = vec![start.point];
+
+        let left = start.index + 1;
+        let right = stop.index;
+        if left <= right && line[left] != start.point {
+            slice.push(line[left]);
+        }
+        if left < right {
+            slice.extend_from_slice(&line[left + 1..=right]);
+        }
+        if line[right] != stop.point {
+            slice.push(stop.point);
+        }
+
+        slice
+    }
+
+    /// The part of `line` between the distances `start` and `stop` along
+    /// the line.
+    ///
+    /// The order of `start` and `stop` does not matter. A negative distance
+    /// is the start of the line. The slice is empty if `start` is beyond the
+    /// end of the line.
+    pub fn line_slice_along(&self, line: &[LatLon], start: Length, stop: Length) -> Vec<LatLon> {
+        let (start, stop) = if start > stop {
+            (stop, start)
+        } else {
+            (start, stop)
+        };
+        let start = if start < Length::ZERO {
+            Length::ZERO
+        } else {
+            start
+        };
+
+        let mut slice = Vec::new();
+        let mut sum = Length::ZERO;
+        for pair in line.windows(2) {
+            let segment = self.distance(pair[0], pair[1]);
+            sum += segment;
+
+            if sum > start && slice.is_empty() {
+                let t = (start - (sum - segment)) / segment;
+                slice.push(interpolate(pair[0], pair[1], t));
+            }
+
+            if sum >= stop {
+                let t = if segment > Length::ZERO {
+                    (stop - (sum - segment)) / segment
+                } else {
+                    0.
+                };
+                slice.push(interpolate(pair[0], pair[1], t));
+                return slice;
+            }
+
+            if sum > start {
+                slice.push(pair[1]);
+            }
+        }
+
+        slice
+    }
+
+    /// The point on the segment from `a` to `b` that is closest to `point`,
+    /// and the unclamped position of the projection on the segment.
+    fn closest_point_on_segment(&self, point: LatLon, a: LatLon, b: LatLon) -> (LatLon, f64) {
+        let (dx, dy) = self.delta(a, b);
+        if dx == 0. && dy == 0. {
+            return (a, 0.);
+        }
+
+        let (px, py) = self.delta(a, point);
+        let t = (px * dx + py * dy) / (dx * dx + dy * dy);
+        let closest = if t > 1. {
+            b
+        } else if t > 0. {
+            interpolate(a, b, t)
+        } else {
+            a
+        };
+        (closest, t)
+    }
+
     /// The east and north offsets in meters from `a` to `b`.
     fn delta(&self, a: LatLon, b: LatLon) -> (f64, f64) {
         let dx = wrap((b.longitude() - a.longitude()).as_radians()) * self.kx;
         let dy = (b.latitude() - a.latitude()).as_radians() * self.ky;
         (dx, dy)
     }
+}
+
+/// The point closest to a given point on a line. See
+/// [`CheapRuler::point_on_line`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PointOnLine {
+    /// The closest point on the line.
+    pub point: LatLon,
+    /// The index of the first point of the segment that contains `point`.
+    pub index: usize,
+    /// The position of `point` on its segment, from 0 at the first point to
+    /// 1 at the second point.
+    pub t: f64,
+    /// The distance from the given point to `point`.
+    pub distance: Length,
+}
+
+/// The point at the fraction `t` of the way from `a` to `b`.
+fn interpolate(a: LatLon, b: LatLon, t: f64) -> LatLon {
+    let longitude = Angle::from_radians(wrap((b.longitude() - a.longitude()).as_radians()));
+    LatLon::new(
+        a.latitude() + (b.latitude() - a.latitude()) * t,
+        a.longitude() + longitude * t,
+    )
 }
 
 /// Normalizes a longitude difference in radians into `[-π, π]`.

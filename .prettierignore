@@ -22,3 +22,6 @@ pnpm-lock.yaml
 
 # Plugin permission schema, rewritten by the tauri-plugin build script
 /libs/tauri_plugin_updraft/permissions/schemas/
+
+# Upstream cheap-ruler test fixture, kept byte-exact
+/libs/updraft_geo/tests/fixtures/cheap_ruler/

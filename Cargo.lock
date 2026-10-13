@@ -5722,8 +5722,10 @@ dependencies = [
  "criterion",
  "geo-types",
  "geographiclib-rs",
+ "insta",
  "serde",
  "serde_json",
+ "updraft_geo",
  "updraft_units",
 ]
 

@@ -33,6 +33,6 @@ mod lat_lon;
 mod polygon;
 
 pub use bounding_box::BoundingBox;
-pub use cheap_ruler::CheapRuler;
+pub use cheap_ruler::{CheapRuler, PointOnLine};
 pub use lat_lon::LatLon;
 pub use polygon::Polygon;

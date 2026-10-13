@@ -1,7 +1,7 @@
 //! Compares the cheap ruler with the geodesic and haversine methods of
 //! `LatLon`.
 
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use updraft_geo::{CheapRuler, LatLon};
 use updraft_units::{Angle, Length};
@@ -77,5 +77,29 @@ fn bench_destination(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_distance, bench_destination);
+fn bench_line(c: &mut Criterion) {
+    // A circle with a radius of 10 km, similar to an `OpenAir` circle.
+    const VERTICES: u32 = 100;
+    let center = origin();
+    let ring: Vec<_> = (0..=VERTICES)
+        .map(|i| {
+            let bearing = Angle::from_degrees(f64::from(i) * 360. / f64::from(VERTICES));
+            center.destination(bearing, Length::from_kilometers(10.))
+        })
+        .collect();
+    let ruler = CheapRuler::new(center.latitude());
+    let point = center.destination(Angle::from_degrees(30.), Length::from_kilometers(12.));
+
+    let mut group = c.benchmark_group("line");
+    group.throughput(Throughput::Elements(ring.len() as u64));
+    group.bench_function("line_distance", |b| {
+        b.iter(|| ruler.line_distance(black_box(&ring)));
+    });
+    group.bench_function("point_on_line", |b| {
+        b.iter(|| ruler.point_on_line(black_box(&ring), black_box(point)));
+    });
+    group.finish();
+}
+
+criterion_group!(benches, bench_distance, bench_destination, bench_line);
 criterion_main!(benches);

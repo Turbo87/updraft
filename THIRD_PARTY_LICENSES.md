@@ -102,7 +102,8 @@ SOFTWARE.
 ## cheap-ruler
 
 `libs/updraft_geo/src/cheap_ruler.rs` is a Rust port of the cheap-ruler
-JavaScript library v4.1.1:
+JavaScript library v4.1.1. `libs/updraft_geo/tests/fixtures/cheap_ruler/`
+contains a copy of its test fixtures:
 
 https://github.com/mapbox/cheap-ruler/tree/v4.1.1
 

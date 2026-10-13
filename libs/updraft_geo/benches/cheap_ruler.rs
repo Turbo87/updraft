@@ -1,0 +1,81 @@
+//! Compares the cheap ruler with the geodesic and haversine methods of
+//! `LatLon`.
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
+use updraft_geo::{CheapRuler, LatLon};
+use updraft_units::{Angle, Length};
+
+const DISTANCES_KILOMETERS: [f64; 4] = [1., 10., 100., 500.];
+
+fn origin() -> LatLon {
+    LatLon::from_degrees(50., 10.)
+}
+
+fn bench_distance(c: &mut Criterion) {
+    let mut group = c.benchmark_group("distance");
+    let origin = origin();
+    let ruler = CheapRuler::new(origin.latitude());
+
+    for kilometers in DISTANCES_KILOMETERS {
+        let target = origin.destination(
+            Angle::from_degrees(45.),
+            Length::from_kilometers(kilometers),
+        );
+        let id = format!("{kilometers} km");
+
+        group.bench_with_input(BenchmarkId::new("ruler", &id), &target, |b, &target| {
+            b.iter(|| ruler.distance(black_box(origin), black_box(target)));
+        });
+        // A ruler at the mean latitude of each pair, the setup with the
+        // documented accuracy.
+        group.bench_with_input(
+            BenchmarkId::new("ruler_per_pair", &id),
+            &target,
+            |b, &target| {
+                b.iter(|| {
+                    let (a, b) = (black_box(origin), black_box(target));
+                    CheapRuler::new((a.latitude() + b.latitude()) / 2.).distance(a, b)
+                });
+            },
+        );
+        group.bench_with_input(BenchmarkId::new("geodesic", &id), &target, |b, &target| {
+            b.iter(|| black_box(origin).distance(black_box(target)));
+        });
+        group.bench_with_input(BenchmarkId::new("haversine", &id), &target, |b, &target| {
+            b.iter(|| black_box(origin).haversine_distance(black_box(target)));
+        });
+    }
+
+    group.finish();
+}
+
+fn bench_destination(c: &mut Criterion) {
+    let mut group = c.benchmark_group("destination");
+    let origin = origin();
+    let ruler = CheapRuler::new(origin.latitude());
+    let bearing = Angle::from_degrees(45.);
+
+    for kilometers in DISTANCES_KILOMETERS {
+        let distance = Length::from_kilometers(kilometers);
+        let id = format!("{kilometers} km");
+
+        group.bench_with_input(BenchmarkId::new("ruler", &id), &distance, |b, &distance| {
+            b.iter(|| {
+                ruler.destination(black_box(origin), black_box(bearing), black_box(distance))
+            });
+        });
+        group.bench_with_input(
+            BenchmarkId::new("geodesic", &id),
+            &distance,
+            |b, &distance| {
+                b.iter(|| black_box(origin).destination(black_box(bearing), black_box(distance)));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_distance, bench_destination);
+criterion_main!(benches);

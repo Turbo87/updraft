@@ -4,7 +4,7 @@
 use approx::assert_relative_eq;
 use claims::{assert_le, assert_none, assert_some, assert_some_eq};
 use serde_json::json;
-use updraft_geo::{CheapRuler, LatLon, PointOnLine};
+use updraft_geo::{BoundingBox, CheapRuler, LatLon, PointOnLine};
 use updraft_units::{Angle, Length};
 
 const LINES: &str = include_str!("fixtures/cheap_ruler/lines.json");
@@ -25,6 +25,16 @@ fn point([longitude, latitude]: [f64; 2]) -> LatLon {
 /// The ruler of the upstream tests.
 fn ruler() -> CheapRuler {
     CheapRuler::new(Angle::from_degrees(32.8351))
+}
+
+/// A box from upstream `[west, south, east, north]` degrees.
+fn bbox([west, south, east, north]: [f64; 4]) -> BoundingBox {
+    BoundingBox::new(
+        Angle::from_degrees(south),
+        Angle::from_degrees(north),
+        Angle::from_degrees(west),
+        Angle::from_degrees(east),
+    )
 }
 
 fn round(value: f64, decimals: i32) -> f64 {
@@ -238,4 +248,88 @@ fn empty_line() {
         ruler.line_slice_along(&[], Length::ZERO, Length::from_meters(1.)),
         []
     );
+}
+
+#[test]
+fn buffer_point_matches_geodesic() {
+    let ruler = ruler();
+    let buffer = Length::from_statute_miles(0.1);
+    let diagonal = buffer * 2_f64.sqrt();
+    for p in lines().into_iter().flatten() {
+        let actual = ruler.buffer_point(p, buffer);
+        let south_west = p.destination(Angle::from_degrees(225.), diagonal);
+        let north_east = p.destination(Angle::from_degrees(45.), diagonal);
+        let actual_south_west = LatLon::new(actual.south(), actual.west());
+        let actual_north_east = LatLon::new(actual.north(), actual.east());
+        assert_le!(
+            south_west.distance(actual_south_west),
+            Length::from_meters(0.05)
+        );
+        assert_le!(
+            north_east.distance(actual_north_east),
+            Length::from_meters(0.05)
+        );
+    }
+}
+
+#[test]
+fn buffer_bbox() {
+    let ruler = ruler();
+    let actual = ruler.buffer_bbox(bbox([30., 38., 40., 39.]), Length::from_kilometers(1.));
+    let expected = bbox([
+        29.989319282570946,
+        37.99098299160844,
+        40.010680717429054,
+        39.00901700839156,
+    ]);
+    assert_relative_eq!(actual, expected, max_relative = 1e-12);
+}
+
+#[test]
+fn buffer_across_antimeridian() {
+    let ruler = CheapRuler::new(Angle::from_degrees(50.));
+    let buffered = ruler.buffer_point(point([179.99, 50.]), Length::from_kilometers(10.));
+    assert!(buffered.crosses_antimeridian());
+    assert!(buffered.contains(point([-179.99, 50.])));
+    assert!(!buffered.contains(point([0., 50.])));
+}
+
+#[test]
+fn buffer_clamps_latitudes() {
+    let ruler = CheapRuler::new(Angle::from_degrees(89.));
+    let buffered = ruler.buffer_bbox(
+        bbox([10., -89.99, 20., 89.99]),
+        Length::from_kilometers(10.),
+    );
+    assert_eq!(buffered.south(), Angle::from_degrees(-90.));
+    assert_eq!(buffered.north(), Angle::from_degrees(90.));
+}
+
+#[test]
+fn buffer_covers_all_longitudes() {
+    let ruler = ruler();
+    let buffered = ruler.buffer_bbox(
+        bbox([-179.99, 0., 179.99, 1.]),
+        Length::from_kilometers(10.),
+    );
+    assert_eq!(buffered.west(), Angle::from_degrees(-180.));
+    assert_eq!(buffered.east(), Angle::from_degrees(180.));
+}
+
+#[test]
+fn bounding_box_contains_upstream_inside_bbox_cases() {
+    let bounds = bbox([30., 38., 40., 39.]);
+    assert!(bounds.contains(point([35., 38.5])));
+    assert!(!bounds.contains(point([45., 45.])));
+
+    let across_antimeridian = bbox([179.9, 32.7, -179.9, 32.9]);
+    assert!(across_antimeridian.contains(point([180., 32.8])));
+    assert!(across_antimeridian.contains(point([-180., 32.8])));
+    assert!(!across_antimeridian.contains(point([0., 32.8])));
+
+    let wide = bbox([-120., -10., 120., 10.]);
+    assert!(wide.contains(point([100., 0.])));
+    assert!(wide.contains(point([-100., 0.])));
+    assert!(!wide.contains(point([150., 0.])));
+    assert!(bbox([-180., -90., 180., 90.]).contains(point([170., 0.])));
 }

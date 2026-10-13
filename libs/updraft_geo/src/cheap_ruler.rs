@@ -16,10 +16,15 @@
 //!   return an empty `Vec`.
 //! - For a line with one point, [`CheapRuler::point_on_line`] returns the
 //!   distance to that point. Upstream returns infinity.
+//! - The buffer methods return a [`BoundingBox`]. The box crosses the
+//!   antimeridian instead of having longitudes outside ±180°. Latitudes
+//!   are clamped to ±90°.
+//! - `area`, `fromTile`, `insideBBox`, and `units` are not ported. Use
+//!   [`BoundingBox::contains`] instead of `insideBBox`.
 //!
 //! [cheap-ruler]: https://github.com/mapbox/cheap-ruler
 
-use crate::LatLon;
+use crate::{BoundingBox, LatLon};
 use std::f64::consts::TAU;
 use updraft_units::{Angle, Length};
 
@@ -246,6 +251,53 @@ impl CheapRuler {
         }
 
         slice
+    }
+
+    /// The box that contains all points within `buffer` of `point`.
+    ///
+    /// `buffer` must not be negative.
+    pub fn buffer_point(&self, point: LatLon, buffer: Length) -> BoundingBox {
+        let (latitude, longitude) = (point.latitude(), point.longitude());
+        self.buffer(latitude, latitude, longitude, Angle::ZERO, buffer)
+    }
+
+    /// The box that contains all points within `buffer` of `bbox`.
+    ///
+    /// `buffer` must not be negative.
+    pub fn buffer_bbox(&self, bbox: BoundingBox, buffer: Length) -> BoundingBox {
+        let (south, north) = (bbox.south(), bbox.north());
+        self.buffer(south, north, bbox.west(), bbox.longitude_span(), buffer)
+    }
+
+    /// Extends the box with the eastward longitude span `span` from `west`
+    /// by `buffer` on all sides.
+    fn buffer(
+        &self,
+        south: Angle,
+        north: Angle,
+        west: Angle,
+        span: Angle,
+        buffer: Length,
+    ) -> BoundingBox {
+        const QUARTER: Angle = Angle::from_degrees(90.);
+        const HALF: Angle = Angle::from_degrees(180.);
+
+        let vertical = Angle::from_radians(buffer.as_meters() / self.ky);
+        let horizontal = Angle::from_radians(buffer.as_meters() / self.kx);
+
+        let south = south - vertical;
+        let south = if south < -QUARTER { -QUARTER } else { south };
+        let north = north + vertical;
+        let north = if north > QUARTER { QUARTER } else { north };
+        let span = span + horizontal * 2.;
+        let (west, east) = if span >= HALF * 2. {
+            (-HALF, HALF)
+        } else {
+            let west = west - horizontal;
+            (west.normalized_signed(), (west + span).normalized_signed())
+        };
+
+        BoundingBox::new(south, north, west, east)
     }
 
     /// The point on the segment from `a` to `b` that is closest to `point`,

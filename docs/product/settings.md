@@ -19,6 +19,11 @@ pages:
 The Main Menu also contains a quit action. It asks for confirmation, stops the
 platform session, and closes the application.
 
+On Android, the session notification also contains a quit action. It quits
+without confirmation because Android usually shows notification actions only
+after the pilot expands the notification. On Android 12 and later, the action
+requires an unlocked device.
+
 `/settings` is a category menu for saved settings. It links to these focused
 pages:
 

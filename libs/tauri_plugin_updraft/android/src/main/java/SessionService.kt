@@ -1,6 +1,7 @@
 package aero.updraft.mobile
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,12 +17,16 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import app.tauri.Logger
 import app.tauri.plugin.Channel
+import kotlin.system.exitProcess
 
 internal fun foregroundServiceTypes(location: Boolean, spp: Boolean): Int =
     (if (location) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0) or
         (if (spp) ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0)
 
 internal const val ACTION_SPP_ATTEMPT = "aero.updraft.mobile.SPP_ATTEMPT"
+internal const val ACTION_QUIT = "aero.updraft.mobile.QUIT"
+
+internal fun isQuitRequest(action: String?): Boolean = action == ACTION_QUIT
 
 internal fun sppAttemptConnectionId(
     action: String?,
@@ -82,6 +87,10 @@ class SessionService : Service() {
             Logger.info(TAG, "Restarted without a session to resume, stopping")
             stopSelf()
             return START_NOT_STICKY
+        }
+
+        if (isQuitRequest(intent.action)) {
+            quit(this)
         }
 
         val connectionId = sppAttemptConnectionId(
@@ -253,6 +262,22 @@ class SessionService : Service() {
             )
         }
 
+        val quitIntent = PendingIntent.getService(
+            this,
+            0,
+            Intent(this, SessionService::class.java).setAction(ACTION_QUIT),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        // The action does not ask for confirmation, so a locked phone in a
+        // pocket or cockpit must not be able to quit.
+        val quitAction = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_close_clear_cancel,
+            NOTIFICATION_QUIT_LABEL,
+            quitIntent
+        )
+            .setAuthenticationRequired(true)
+            .build()
+
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(NOTIFICATION_TITLE)
             .setContentText(NOTIFICATION_TEXT)
@@ -260,6 +285,7 @@ class SessionService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setContentIntent(contentIntent)
+            .addAction(quitAction)
             .build()
     }
 
@@ -307,6 +333,7 @@ class SessionService : Service() {
         private const val NOTIFICATION_CHANNEL_NAME = "Flight session"
         private const val NOTIFICATION_TITLE = "Updraft"
         private const val NOTIFICATION_TEXT = "Navigating in the background"
+        private const val NOTIFICATION_QUIT_LABEL = "Quit"
         private const val WAKE_LOCK_TAG = "updraft:session"
 
         /**
@@ -361,6 +388,27 @@ class SessionService : Service() {
 
         fun stop(context: Context) {
             context.stopService(Intent(context, SessionService::class.java))
+        }
+
+        /**
+         * Stops the session and ends the process that carries it.
+         *
+         * The platform performs the exit because Rust cannot wake its event loop
+         * after Android removes the window. The service must stop first so
+         * Android records the stop before the process exits and does not
+         * restart the sticky service.
+         */
+        fun quit(context: Context): Nothing {
+            Logger.info(TAG, "Stopping the session and ending the process")
+            stop(context)
+            finishAppTasks(context)
+            exitProcess(0)
+        }
+
+        /** Removes the app through `ActivityManager` because the plugin activity can be stale. */
+        private fun finishAppTasks(context: Context) {
+            val manager = context.getSystemService(ActivityManager::class.java)
+            manager.appTasks.forEach { it.finishAndRemoveTask() }
         }
 
         internal fun startSppAttempt(context: Context, request: SppRequest) {

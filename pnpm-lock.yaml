@@ -258,8 +258,8 @@ importers:
         specifier: 2.27.0
         version: 2.27.0(typescript@6.0.3)(vite@8.3.4(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0))
       '@inlang/plugin-m-function-matcher':
-        specifier: 2.2.17
-        version: 2.2.17
+        specifier: 2.3.0
+        version: 2.3.0(@typescript-eslint/types@8.71.1)
       '@inlang/plugin-message-format':
         specifier: 4.4.5
         version: 4.4.5
@@ -758,8 +758,8 @@ packages:
       vite:
         optional: true
 
-  '@inlang/plugin-m-function-matcher@2.2.17':
-    resolution: {integrity: sha512-KzJuRQiXVRJR48HCqIjx83cOwuvnyvugSl2VrBtPmyW7w5p+ulEGdNCZu2+KvIiOI/Q1HAEWwM/XSpLY9vunMA==}
+  '@inlang/plugin-m-function-matcher@2.3.0':
+    resolution: {integrity: sha512-C1wBvCl+xwrfBS18OO6+JEYZDeI2pnLg/yed6C/TSGOU+K4chsV8kEkUuy42L335yX8Oe/yK7SMyVwJRYBWbWQ==}
 
   '@inlang/plugin-message-format@4.4.5':
     resolution: {integrity: sha512-g3WpG00mx3Wq/3zulz4uuT+HhdBRB7UMz2hVbfSm+E4RJHXNYyFyvS0elPETX7gEz8yiTd0KbyukZGJHetmkZA==}
@@ -769,6 +769,10 @@ packages:
 
   '@inlang/sdk@3.1.0':
     resolution: {integrity: sha512-l8LqeyqLfe00cmDvKY7J6YuCkfWVfgzaNWlB8IAHxWOWqkUAwyG4AhuMYUiBbeA0wM6zdVphPCG2lay/OzTdFg==}
+    engines: {node: '>=20.0.0'}
+
+  '@inlang/sdk@4.0.0':
+    resolution: {integrity: sha512-AwGasJATSKq9J3EVBdmIbpU++2DTI8z0J5WbejT6lqymLaoDB4cf95Zp0ijmJp7XUNP/z10qQfA2lz0TAojRYA==}
     engines: {node: '>=20.0.0'}
 
   '@inlang/sdk@4.0.2':
@@ -3592,9 +3596,13 @@ snapshots:
       typescript: 6.0.3
       vite: 8.3.4(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)
 
-  '@inlang/plugin-m-function-matcher@2.2.17':
+  '@inlang/plugin-m-function-matcher@2.3.0(@typescript-eslint/types@8.71.1)':
     dependencies:
-      '@inlang/sdk': 3.1.0
+      '@babel/parser': 7.29.9
+      '@inlang/sdk': 4.0.0
+      svelte: 5.57.2(@typescript-eslint/types@8.71.1)
+    transitivePeerDependencies:
+      - '@typescript-eslint/types'
 
   '@inlang/plugin-message-format@4.4.5':
     dependencies:
@@ -3607,6 +3615,13 @@ snapshots:
       comment-json: 4.6.2
 
   '@inlang/sdk@3.1.0':
+    dependencies:
+      '@lix-js/sdk': 0.19.0
+      '@sinclair/typebox': 0.31.30
+      kysely: 0.28.17
+      uuid: 14.0.3
+
+  '@inlang/sdk@4.0.0':
     dependencies:
       '@lix-js/sdk': 0.19.0
       '@sinclair/typebox': 0.31.30

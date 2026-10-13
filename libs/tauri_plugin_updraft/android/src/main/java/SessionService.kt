@@ -1,6 +1,7 @@
 package aero.updraft.mobile
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,6 +17,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import app.tauri.Logger
 import app.tauri.plugin.Channel
+import kotlin.system.exitProcess
 
 internal fun foregroundServiceTypes(location: Boolean, spp: Boolean): Int =
     (if (location) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0) or
@@ -361,6 +363,27 @@ class SessionService : Service() {
 
         fun stop(context: Context) {
             context.stopService(Intent(context, SessionService::class.java))
+        }
+
+        /**
+         * Stops the session and ends the process that carries it.
+         *
+         * The platform performs the exit because Rust cannot wake its event loop
+         * after Android removes the window. The service must stop first so
+         * Android records the stop before the process exits and does not
+         * restart the sticky service.
+         */
+        fun quit(context: Context): Nothing {
+            Logger.info(TAG, "Stopping the session and ending the process")
+            stop(context)
+            finishAppTasks(context)
+            exitProcess(0)
+        }
+
+        /** Removes the app through `ActivityManager` because the plugin activity can be stale. */
+        private fun finishAppTasks(context: Context) {
+            val manager = context.getSystemService(ActivityManager::class.java)
+            manager.appTasks.forEach { it.finishAndRemoveTask() }
         }
 
         internal fun startSppAttempt(context: Context, request: SppRequest) {

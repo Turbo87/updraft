@@ -22,7 +22,7 @@ flate2 = "=1.1.10"
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls-no-provider"] }
 rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 rusqlite = { version = "=0.40.2", features = ["bundled"] }
-serde_json = "=1.0.152"
+serde_json = "=1.0.154"
 serde = { version = "=1.0.229", features = ["derive", "rc"] }
 tauri = { version = "=2.12.3", features = [] }
 tauri-plugin-dialog = "=2.8.2"

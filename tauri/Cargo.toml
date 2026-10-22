@@ -44,7 +44,7 @@ updraft_terrain = { path = "../libs/updraft_terrain" }
 updraft_units = { path = "../libs/updraft_units" }
 tokio = { version = "=1.53.3", features = ["macros", "net", "rt-multi-thread", "sync", "time", "io-util"] }
 uuid = "=1.28.0"
-webpki-roots = "=1.0.9"
+webpki-roots = "=1.0.10"
 
 [dev-dependencies]
 approx = "=0.6.0-rc2"

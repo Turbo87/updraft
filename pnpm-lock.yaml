@@ -218,8 +218,8 @@ importers:
         specifier: 24.19.2
         version: 24.19.2
       maplibre-gl:
-        specifier: 6.14.0
-        version: 6.14.0
+        specifier: 6.15.0
+        version: 6.15.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -300,8 +300,8 @@ importers:
         specifier: 1.33.0
         version: 1.33.0
       maplibre-gl:
-        specifier: 6.14.0
-        version: 6.14.0
+        specifier: 6.15.0
+        version: 6.15.0
       normalize.css:
         specifier: 8.0.1
         version: 8.0.1
@@ -319,7 +319,7 @@ importers:
         version: 4.7.7(picomatch@4.0.7)(svelte@5.57.2(@typescript-eslint/types@8.72.0))(typescript@6.0.3)
       svelte-maplibre-gl:
         specifier: 2.2.1
-        version: 2.2.1(maplibre-gl@6.14.0)(svelte@5.57.2(@typescript-eslint/types@8.72.0))
+        version: 2.2.1(maplibre-gl@6.15.0)(svelte@5.57.2(@typescript-eslint/types@8.72.0))
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -2555,8 +2555,8 @@ packages:
   magic-string@1.4.3:
     resolution: {integrity: sha512-z12OxmaPGE0F4xlpGdjuAUckipLpQlTAuAmyGhNoD7ODpYUzvDfvtxUbjM/jwznyP178oju/KDdyi220wNJ0RQ==}
 
-  maplibre-gl@6.14.0:
-    resolution: {integrity: sha512-L7U9y9TyPJ3P/JJbW+eH+A3FzdPq+3fnZFqqeCwf/S6cRGganHwVI5b/C8/zOYzreUzsloDPZVVaMQA94wOt4A==}
+  maplibre-gl@6.15.0:
+    resolution: {integrity: sha512-kxFetbvUHDOVaAP1CYb226Mdk2QhzIPddqM0xJTFD35wu78Mpd6NM7+H68ALjc6Oa0kAOX5EAdMKyvD2u3qfcg==}
     engines: {node: '>=16.14.0', npm: '>=8.1.0'}
 
   mdn-data@2.27.1:
@@ -5231,7 +5231,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  maplibre-gl@6.14.0:
+  maplibre-gl@6.15.0:
     dependencies:
       '@mapbox/point-geometry': 1.1.0
       '@mapbox/tiny-sdf': 2.3.0
@@ -5663,9 +5663,9 @@ snapshots:
     optionalDependencies:
       svelte: 5.57.2(@typescript-eslint/types@8.72.0)
 
-  svelte-maplibre-gl@2.2.1(maplibre-gl@6.14.0)(svelte@5.57.2(@typescript-eslint/types@8.72.0)):
+  svelte-maplibre-gl@2.2.1(maplibre-gl@6.15.0)(svelte@5.57.2(@typescript-eslint/types@8.72.0)):
     dependencies:
-      maplibre-gl: 6.14.0
+      maplibre-gl: 6.15.0
       svelte: 5.57.2(@typescript-eslint/types@8.72.0)
 
   svelte-toolbelt@0.10.6(@sveltejs/kit@3.1.0(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.2(@typescript-eslint/types@8.72.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)))(svelte@5.57.2(@typescript-eslint/types@8.72.0))(typescript@6.0.3)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)))(svelte@5.57.2(@typescript-eslint/types@8.72.0)):

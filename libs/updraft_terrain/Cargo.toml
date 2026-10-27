@@ -12,7 +12,7 @@ anyhow = "=1.0.104"
 image-webp = "=0.2.4"
 imagesize = "=0.15.0"
 moka = { version = "=0.12.16", features = ["sync"] }
-rusqlite = { version = "=0.40.2", features = ["bundled"] }
+rusqlite = { version = "=0.41.0", features = ["bundled"] }
 updraft_geo = { path = "../updraft_geo" }
 
 [dev-dependencies]

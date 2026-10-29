@@ -38,7 +38,7 @@
     "@sveltejs/kit": "3.1.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@types/geojson": "7946.0.16",
-    "@types/node": "24.19.2",
+    "@types/node": "26.6.5",
     "@vitest/browser-playwright": "4.1.12",
     "colorjs.io": "0.7.1",
     "lightningcss": "1.33.0",

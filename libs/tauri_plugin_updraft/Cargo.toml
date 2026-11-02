@@ -15,7 +15,7 @@ tauri-plugin = { version = "=2.7.2", features = ["build"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 tauri = { version = "=2.12.4", features = [] }
 thiserror = "=2.0.21"
-uuid = { version = "=1.28.0", features = ["serde"] }
+uuid = { version = "=1.29.0", features = ["serde"] }
 
 [dev-dependencies]
 claims = "=0.8.0"

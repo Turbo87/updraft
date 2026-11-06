@@ -68,6 +68,17 @@ The sheets use the [Maki](https://github.com/mapbox/maki) POI icon set under the
 [CC0 1.0 license](https://creativecommons.org/publicdomain/zero/1.0/). The
 right-arrow icon is in the public domain.
 
+## Outfit typeface
+
+The Updraft wordmark in `docs/brand` and `frontend/src/lib/Wordmark.svelte`
+contains glyph outlines from the Outfit variable font in
+[Google Fonts](https://github.com/google/fonts/tree/main/ofl/outfit). The
+outlines use weight 720 and are converted to paths.
+
+[Outfit](https://github.com/Outfitio/Outfit-Fonts) is copyright 2021 The
+Outfit Project Authors. It uses the
+[SIL Open Font License, Version 1.1](https://openfontlicense.org/).
+
 ## Tailwind CSS
 
 `frontend/src/styles/colors.ts` contains the default color palette from

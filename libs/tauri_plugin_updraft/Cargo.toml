@@ -13,7 +13,7 @@ tauri-plugin = { version = "=2.7.2", features = ["build"] }
 
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
-tauri = { version = "=2.12.4", features = [] }
+tauri = { version = "=2.12.5", features = [] }
 thiserror = "=2.0.21"
 uuid = { version = "=1.28.0", features = ["serde"] }
 

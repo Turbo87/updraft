@@ -8,6 +8,7 @@
   import { parseMapAttributions } from './map-attribution';
   import ResponsiveCard from './ResponsiveCard.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
+  import Wordmark from './Wordmark.svelte';
 
   type AttributionLink = AttributionPart & { href: string };
 
@@ -50,11 +51,8 @@
   title={m.about_heading()}
 >
   <div class="identity">
-    <span aria-hidden="true" class="i-mdi-weather-windy"></span>
-    <span>
-      <strong>Updraft</strong>
-      <span>{m.about_description()}</span>
-    </span>
+    <div class="wordmark"><Wordmark /></div>
+    <p>{m.about_description()}</p>
   </div>
 
   <section>
@@ -116,27 +114,17 @@
 <style>
   .identity {
     display: flex;
-    align-items: center;
-    gap: var(--space-3);
+    flex-direction: column;
+    gap: var(--space-2);
     margin: 0 var(--space-1) var(--space-5);
   }
 
-  .identity > :first-child {
-    flex: 0 0 auto;
-    color: var(--color-value-accent);
-    font-size: 2rem;
+  .wordmark {
+    height: 2.5rem;
   }
 
-  .identity strong,
-  .identity strong + span {
-    display: block;
-  }
-
-  .identity strong {
-    font: 700 1.375rem / 1.15 var(--font-ui);
-  }
-
-  .identity strong + span {
+  .identity p {
+    margin: 0;
     color: var(--color-text-muted);
     font: 400 1rem / 1.3 var(--font-ui);
   }

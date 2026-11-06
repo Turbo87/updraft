@@ -21,6 +21,7 @@ it('shows build details, source links, credits, and licence information', async 
   });
 
   await expect.element(page.getByRole('heading', { name: 'About' })).toBeInTheDocument();
+  await expect.element(page.getByRole('img', { name: 'Updraft' })).toBeInTheDocument();
   await expect
     .element(page.getByRole('link', { name: 'a1c93f4' }))
     .toHaveAttribute('href', `https://github.com/Turbo87/updraft/commit/${FULL_COMMIT_SHA}`);

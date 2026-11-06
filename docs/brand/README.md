@@ -16,20 +16,28 @@ right. They centre the full shape, including the arrowhead, vertically.
 The icon shows the mark in front of a sky. Two ridge silhouettes fill the
 bottom of the sky. Thin streamlines rise from the back ridge.
 
-| File                  | Use                                               |
-| --------------------- | ------------------------------------------------- |
-| `icon-foreground.svg` | Android adaptive icon foreground, 108 x 108 units |
-| `icon-background.svg` | Android adaptive icon background, 108 x 108 units |
-| `icon-monochrome.svg` | Android themed icon layer, 108 x 108 units        |
-| `icon-square.svg`     | Rounded-square icon, source for desktop icons     |
-| `icon-round.svg`      | Round icon for launchers without adaptive icons   |
-| `icon-full-bleed.svg` | Full-bleed square, for example for store listings |
-| `notification.svg`    | Android status bar icon, 24 x 24 units            |
+| File                            | Use                                                 |
+| ------------------------------- | --------------------------------------------------- |
+| `icon-foreground.svg`           | Android adaptive icon foreground, 108 x 108 units   |
+| `icon-background.svg`           | Android adaptive icon background, 108 x 108 units   |
+| `icon-monochrome.svg`           | Android themed icon layer, 108 x 108 units          |
+| `icon-android-legacy.svg`       | Android 7 launcher icon, 38 dp square keyline       |
+| `icon-android-legacy-round.svg` | Android 7 round launcher icon, 44 dp circle keyline |
+| `icon-macos.svg`                | macOS icon on Apple's app icon grid                 |
+| `icon-square.svg`               | Rounded-square icon, source for Windows and Linux   |
+| `icon-full-bleed.svg`           | Full-bleed square, for example for store listings   |
+| `notification.svg`              | Android status bar icon, 24 x 24 units              |
 
 The Android resources in `tauri/gen/android/app/src/main/res` and
 `libs/tauri_plugin_updraft/android/src/main/res` are vector drawables of the
-same geometry. `tauri icon` generates the files in `tauri/icons` from a
-1024 px render of `icon-square.svg`.
+same geometry and PNG renders of the Android 7 files. `tauri icon` generates
+the files in `tauri/icons` from a 1024 px render of `icon-square.svg`, except
+`icon.icns`, which it generates from a 1024 px render of `icon-macos.svg`.
+
+The platform files follow each platform's icon grid. The macOS icon is an
+824 px continuous-corner tile on a 1024 px canvas with a soft drop shadow.
+The Android 7 icons follow the Material product icon keylines on the 48 dp
+grid. The adaptive icon keeps the mark inside the 66 dp safe zone.
 
 ## Wordmark
 

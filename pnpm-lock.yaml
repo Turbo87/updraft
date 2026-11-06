@@ -261,8 +261,8 @@ importers:
         specifier: 2.4.2
         version: 2.4.2(@typescript-eslint/types@8.72.1)
       '@inlang/plugin-message-format':
-        specifier: 4.5.4
-        version: 4.5.4
+        specifier: 4.5.8
+        version: 4.5.8
       '@storybook/addon-a11y':
         specifier: 10.6.2
         version: 10.6.2(storybook@10.6.2(@types/react@19.3.0)(prettier@3.9.10)(react@19.3.1))
@@ -764,15 +764,11 @@ packages:
   '@inlang/plugin-m-function-matcher@2.4.2':
     resolution: {integrity: sha512-B3NYqzyX8FvngXticcDllMV7XC6eQ/4UtUJ4GZjsZ1OkuYBm7zMDtNPMfa1Xi+X6M+aUy+5/7sE+YyWrp2f0mQ==}
 
-  '@inlang/plugin-message-format@4.5.4':
-    resolution: {integrity: sha512-rpNQgDvL723tvUM9VWu6uwXnRzIGSTBN7M7QJbQmpPk0SROMXjXPEafVteEZ1RAeeETcYsUG8OJes6nCcnYu6A==}
+  '@inlang/plugin-message-format@4.5.8':
+    resolution: {integrity: sha512-MA0H/AkhHNbgYAfBulfTBoc5itxD8SYS7xhonpwZs/WoWo5L9P2VpoeUdQBjXE7Um7HTax5PpQm0jdwbUpPDDA==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
-
-  '@inlang/sdk@4.0.4':
-    resolution: {integrity: sha512-OJhVSGJa/Ak52WncgqIPHr9TyVJ1DuoublcmtNo9H8apoVn4Dr1DJNxUxawCCc01QmMSg8qoY8GrTV8SVIu1lg==}
-    engines: {node: '>=20.0.0'}
 
   '@inlang/sdk@4.1.2':
     resolution: {integrity: sha512-Cy1z1JdlJibu0UDW3jBfc3YzJnFuEHkhouyNaAAi0VCM9xreQ5vgBZP2/JkuNpN2mN2taLN035TAgRl3xwROwA==}
@@ -3628,21 +3624,14 @@ snapshots:
     transitivePeerDependencies:
       - '@typescript-eslint/types'
 
-  '@inlang/plugin-message-format@4.5.4':
+  '@inlang/plugin-message-format@4.5.8':
     dependencies:
-      '@inlang/sdk': 4.0.4
+      '@inlang/sdk': 4.1.2
       '@sinclair/typebox': 0.31.30
 
   '@inlang/recommend-sherlock@0.2.1':
     dependencies:
       comment-json: 4.6.2
-
-  '@inlang/sdk@4.0.4':
-    dependencies:
-      '@lix-js/sdk': 0.20.1
-      '@sinclair/typebox': 0.31.30
-      kysely: 0.28.19
-      uuid: 14.0.3
 
   '@inlang/sdk@4.1.2':
     dependencies:

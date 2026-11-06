@@ -14,7 +14,9 @@ right. They centre the full shape, including the arrowhead, vertically.
 ## Icon
 
 The icon shows the mark in front of a sky. Two ridge silhouettes fill the
-bottom of the sky. Thin streamlines rise from the back ridge.
+bottom of the sky. Thin streamlines rise from the back ridge. A soft drop
+shadow and a bevel, light on the top edges and dark on the bottom edges, lift
+the mark above the sky. The monochrome and notification icons are flat.
 
 | File                            | Use                                                 |
 | ------------------------------- | --------------------------------------------------- |
@@ -28,9 +30,12 @@ bottom of the sky. Thin streamlines rise from the back ridge.
 | `icon-full-bleed.svg`           | Full-bleed square, for example for store listings   |
 | `notification.svg`              | Android status bar icon, 24 x 24 units              |
 
-The Android resources in `tauri/gen/android/app/src/main/res` and
-`libs/tauri_plugin_updraft/android/src/main/res` are vector drawables of the
-same geometry and PNG renders of the Android 7 files. `tauri icon` generates
+The adaptive icon foreground and the Android 7 icons in
+`tauri/gen/android/app/src/main/res` are PNG renders at each density, because
+vector drawables cannot blur the drop shadow. The other Android resources,
+including the notification icon in
+`libs/tauri_plugin_updraft/android/src/main/res`, are vector drawables of the
+same geometry. `tauri icon` generates
 the files in `tauri/icons` from a 1024 px render of `icon-square.svg`, except
 `icon.icns`, which it generates from a 1024 px render of `icon-macos.svg`.
 

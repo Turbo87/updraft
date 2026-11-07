@@ -6,7 +6,7 @@ application icons and the logo are derived from these files.
 ## Mark
 
 The mark is a capital U. Its right stem rises above the left stem and ends in
-an arrowhead. `mark.svg` contains the mark alone in `#0A72D9`.
+an arrowhead.
 
 The icons centre the U body horizontally, so the arrowhead extends to the
 right. They centre the full shape, including the arrowhead, vertically.

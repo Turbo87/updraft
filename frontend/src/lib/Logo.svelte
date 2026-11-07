@@ -18,6 +18,6 @@
   }
 
   .name {
-    fill: var(--color-brand-ink);
+    fill: var(--color-text);
   }
 </style>

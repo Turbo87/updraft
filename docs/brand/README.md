@@ -65,9 +65,12 @@ a copy of `icon-circle.svg`. The repository README shows the stacked logo.
 
 ## Colours
 
-| Role | Light     | Dark      |
-| ---- | --------- | --------- |
-| Name | `#17202B` | `#F2F5F8` |
+| Role | Light                   | Dark                    |
+| ---- | ----------------------- | ----------------------- |
+| Name | `#020618` (`slate-950`) | `#F1F5F9` (`slate-100`) |
+
+The name uses the Tailwind CSS colours of the application text, so the About
+screen fills it with `--color-text`.
 
 The icon does not change with the theme. Its sky is a vertical gradient from
 `#0F3A6E` at the bottom through `#12519A` to `#2A86E0` at the top. The mark is

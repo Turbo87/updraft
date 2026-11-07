@@ -1,12 +1,12 @@
 # Brand assets
 
 This directory contains the source artwork for the Updraft logo. The
-application icons and the in-app wordmark are derived from these files.
+application icons and the logo are derived from these files.
 
 ## Mark
 
 The mark is a capital U. Its right stem rises above the left stem and ends in
-an arrowhead. `mark.svg` contains the mark alone in the wordmark mark colour.
+an arrowhead.
 
 The icons centre the U body horizontally, so the arrowhead extends to the
 right. They centre the full shape, including the arrowhead, vertically.
@@ -28,6 +28,7 @@ the mark above the sky. The monochrome and notification icons are flat.
 | `icon-macos.svg`                | macOS icon on Apple's app icon grid                 |
 | `icon-square.svg`               | Rounded-square icon, source for Windows and Linux   |
 | `icon-full-bleed.svg`           | Full-bleed square, for example for store listings   |
+| `icon-circle.svg`               | Full-bleed artwork in a circle, used in the logo    |
 | `notification.svg`              | Android status bar icon, 24 x 24 units              |
 
 The adaptive icon foreground and the Android 7 icons in
@@ -44,19 +45,32 @@ The platform files follow each platform's icon grid. The macOS icon is an
 The Android 7 icons follow the Material product icon keylines on the 48 dp
 grid. The adaptive icon keeps the mark inside the 66 dp safe zone.
 
-## Wordmark
+## Logo
 
-The wordmark is the mark followed by "pdraft" in outlines of the Outfit
-typeface. `wordmark.svg` is for light backgrounds, `wordmark-dark.svg` is for
-dark backgrounds, and `wordmark-single.svg` uses the ink colour only.
-`frontend/src/lib/Wordmark.svelte` contains the same paths.
+The logo is the circle icon followed by the name "Updraft" in outlines of the
+Outfit typeface. The horizontal logo centres the icon on the cap height of the
+name. The stacked logo puts the icon above the name. Only the colour of the
+name changes between themes.
+
+| File                         | Use                                        |
+| ---------------------------- | ------------------------------------------ |
+| `logo-horizontal.svg`        | Horizontal logo for light backgrounds      |
+| `logo-horizontal-dark.svg`   | Horizontal logo for dark backgrounds       |
+| `logo-stacked.svg`           | Stacked logo for light backgrounds         |
+| `logo-stacked-dark.svg`      | Stacked logo for dark backgrounds          |
+
+The About screen shows the horizontal logo. `frontend/src/lib/Logo.svelte`
+contains the same name path, and `frontend/src/lib/assets/icon-circle.svg` is
+a copy of `icon-circle.svg`. The repository README shows the stacked logo.
 
 ## Colours
 
-| Role                  | Light     | Dark      |
-| --------------------- | --------- | --------- |
-| Wordmark mark         | `#0A72D9` | `#2B8FF5` |
-| Wordmark text and ink | `#17202B` | `#F2F5F8` |
+| Role | Light                   | Dark                    |
+| ---- | ----------------------- | ----------------------- |
+| Name | `#020618` (`slate-950`) | `#F1F5F9` (`slate-100`) |
+
+The name uses the Tailwind CSS colours of the application text, so the About
+screen fills it with `--color-text`.
 
 The icon does not change with the theme. Its sky is a vertical gradient from
 `#0F3A6E` at the bottom through `#12519A` to `#2A86E0` at the top. The mark is

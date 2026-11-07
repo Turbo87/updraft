@@ -1,9 +1,9 @@
-<div align="center">
+<p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./docs/brand/logo-stacked-dark.svg">
   <img alt="Updraft" src="./docs/brand/logo-stacked.svg" width="200">
 </picture>
-</div>
+</p>
 
 Updraft is a cross-platform soaring flight computer. The current MVP focuses on
 reliable situational awareness on Android and desktop systems.

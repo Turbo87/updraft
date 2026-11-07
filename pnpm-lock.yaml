@@ -258,8 +258,8 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(eslint@10.14.0(jiti@2.7.0))(typescript@6.0.3)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
       '@inlang/plugin-m-function-matcher':
-        specifier: 2.4.2
-        version: 2.4.2(@typescript-eslint/types@8.72.1)
+        specifier: 2.4.3
+        version: 2.4.3(@typescript-eslint/types@8.72.1)
       '@inlang/plugin-message-format':
         specifier: 4.5.8
         version: 4.5.8
@@ -761,8 +761,8 @@ packages:
       vite:
         optional: true
 
-  '@inlang/plugin-m-function-matcher@2.4.2':
-    resolution: {integrity: sha512-B3NYqzyX8FvngXticcDllMV7XC6eQ/4UtUJ4GZjsZ1OkuYBm7zMDtNPMfa1Xi+X6M+aUy+5/7sE+YyWrp2f0mQ==}
+  '@inlang/plugin-m-function-matcher@2.4.3':
+    resolution: {integrity: sha512-0jlW4nZ1RDCFqLRZ1FO/dwvV7uhyuHLEzr7vudmCHqt3Qil5/mfCO5i5cvvls120lpoybmdbpwWy/Dvu5SMMGQ==}
 
   '@inlang/plugin-message-format@4.5.8':
     resolution: {integrity: sha512-MA0H/AkhHNbgYAfBulfTBoc5itxD8SYS7xhonpwZs/WoWo5L9P2VpoeUdQBjXE7Um7HTax5PpQm0jdwbUpPDDA==}
@@ -3616,10 +3616,10 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@inlang/plugin-m-function-matcher@2.4.2(@typescript-eslint/types@8.72.1)':
+  '@inlang/plugin-m-function-matcher@2.4.3(@typescript-eslint/types@8.72.1)':
     dependencies:
       '@babel/parser': 7.29.13
-      '@inlang/sdk': 4.1.2
+      '@inlang/sdk': 4.2.0
       svelte: 5.57.2(@typescript-eslint/types@8.72.1)
     transitivePeerDependencies:
       - '@typescript-eslint/types'

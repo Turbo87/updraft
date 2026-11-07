@@ -5,10 +5,10 @@
 
   import { m } from '#lib/paraglide/messages.js';
   import ExternalLink from './ExternalLink.svelte';
+  import Logo from './Logo.svelte';
   import { parseMapAttributions } from './map-attribution';
   import ResponsiveCard from './ResponsiveCard.svelte';
   import ScreenScaffold from './ScreenScaffold.svelte';
-  import Wordmark from './Wordmark.svelte';
 
   type AttributionLink = AttributionPart & { href: string };
 
@@ -51,7 +51,7 @@
   title={m.about_heading()}
 >
   <div class="identity">
-    <div class="wordmark"><Wordmark /></div>
+    <div class="logo"><Logo /></div>
     <p>{m.about_description()}</p>
   </div>
 
@@ -119,7 +119,7 @@
     margin: 0 var(--space-1) var(--space-5);
   }
 
-  .wordmark {
+  .logo {
     height: 2.5rem;
   }
 

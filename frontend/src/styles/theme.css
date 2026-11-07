@@ -22,7 +22,6 @@
   --color-text-faint: light-dark(var(--color-slate-400), var(--color-slate-500));
   --color-link: light-dark(var(--color-blue-700), var(--color-blue-300));
   --color-focus-ring: light-dark(var(--color-blue-600), var(--color-blue-400));
-  --color-brand-mark: light-dark(#0a72d9, #2b8ff5);
   --color-brand-ink: light-dark(#17202b, #f2f5f8);
 
   --color-border: light-dark(var(--color-slate-300), var(--color-slate-800));

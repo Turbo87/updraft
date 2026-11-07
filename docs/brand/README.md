@@ -1,12 +1,12 @@
 # Brand assets
 
 This directory contains the source artwork for the Updraft logo. The
-application icons and the in-app wordmark are derived from these files.
+application icons and the logo are derived from these files.
 
 ## Mark
 
 The mark is a capital U. Its right stem rises above the left stem and ends in
-an arrowhead. `mark.svg` contains the mark alone in the wordmark mark colour.
+an arrowhead. `mark.svg` contains the mark alone in `#0A72D9`.
 
 The icons centre the U body horizontally, so the arrowhead extends to the
 right. They centre the full shape, including the arrowhead, vertically.
@@ -59,21 +59,15 @@ name changes between themes.
 | `logo-stacked.svg`           | Stacked logo for light backgrounds         |
 | `logo-stacked-dark.svg`      | Stacked logo for dark backgrounds          |
 
-The repository README shows the stacked logo.
-
-## Wordmark
-
-The wordmark is the mark followed by "pdraft" in outlines of the Outfit
-typeface. `wordmark.svg` is for light backgrounds, `wordmark-dark.svg` is for
-dark backgrounds, and `wordmark-single.svg` uses the ink colour only.
-`frontend/src/lib/Wordmark.svelte` contains the same paths.
+The About screen shows the horizontal logo. `frontend/src/lib/Logo.svelte`
+contains the same name path, and `frontend/src/lib/assets/icon-circle.svg` is
+a copy of `icon-circle.svg`. The repository README shows the stacked logo.
 
 ## Colours
 
-| Role                  | Light     | Dark      |
-| --------------------- | --------- | --------- |
-| Wordmark mark         | `#0A72D9` | `#2B8FF5` |
-| Wordmark text and ink | `#17202B` | `#F2F5F8` |
+| Role | Light     | Dark      |
+| ---- | --------- | --------- |
+| Name | `#17202B` | `#F2F5F8` |
 
 The icon does not change with the theme. Its sky is a vertical gradient from
 `#0F3A6E` at the bottom through `#12519A` to `#2A86E0` at the top. The mark is

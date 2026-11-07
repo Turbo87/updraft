@@ -10,8 +10,7 @@ four roles. Do not combine the roles when you interpret a requirement.
 - [Product scope](product-scope.md) classifies target, partial, excluded, and
   undecided capabilities without implying delivery status.
 - [CSS](css.md) defines current frontend styling rules.
-- [Brand assets](brand/README.md) define the logo, icon, wordmark, and brand
-  colours.
+- [Brand assets](brand/README.md) define the logo, icon, and brand colours.
 - [Glossary](../CONTEXT.md) defines project terms.
 
 Code and tests define implemented behavior. Spec issues on

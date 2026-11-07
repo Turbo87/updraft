@@ -27,7 +27,7 @@
   "devDependencies": {
     "@iconify-json/circle-flags": "1.2.14",
     "@iconify-json/mdi": "1.2.3",
-    "@inlang/paraglide-js": "3.0.0",
+    "@inlang/paraglide-js": "3.1.0",
     "@inlang/plugin-m-function-matcher": "2.4.3",
     "@inlang/plugin-message-format": "4.5.8",
     "@storybook/addon-a11y": "10.6.5",

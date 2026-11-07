@@ -70,8 +70,9 @@ right-arrow icon is in the public domain.
 
 ## Outfit typeface
 
-The Updraft wordmark in `docs/brand` and `frontend/src/lib/Wordmark.svelte`
-contains glyph outlines from the Outfit variable font in
+The Updraft logo and wordmark in `docs/brand` and
+`frontend/src/lib/Wordmark.svelte` contain glyph outlines from the Outfit
+variable font in
 [Google Fonts](https://github.com/google/fonts/tree/main/ofl/outfit). The
 outlines use weight 720 and are converted to paths.
 

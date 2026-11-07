@@ -28,6 +28,7 @@ the mark above the sky. The monochrome and notification icons are flat.
 | `icon-macos.svg`                | macOS icon on Apple's app icon grid                 |
 | `icon-square.svg`               | Rounded-square icon, source for Windows and Linux   |
 | `icon-full-bleed.svg`           | Full-bleed square, for example for store listings   |
+| `icon-circle.svg`               | Full-bleed artwork in a circle, used in the logo    |
 | `notification.svg`              | Android status bar icon, 24 x 24 units              |
 
 The adaptive icon foreground and the Android 7 icons in
@@ -43,6 +44,22 @@ The platform files follow each platform's icon grid. The macOS icon is an
 824 px continuous-corner tile on a 1024 px canvas with a soft drop shadow.
 The Android 7 icons follow the Material product icon keylines on the 48 dp
 grid. The adaptive icon keeps the mark inside the 66 dp safe zone.
+
+## Logo
+
+The logo is the circle icon followed by the name "Updraft" in outlines of the
+Outfit typeface. The horizontal logo centres the icon on the cap height of the
+name. The stacked logo puts the icon above the name. Only the colour of the
+name changes between themes.
+
+| File                         | Use                                        |
+| ---------------------------- | ------------------------------------------ |
+| `logo-horizontal.svg`        | Horizontal logo for light backgrounds      |
+| `logo-horizontal-dark.svg`   | Horizontal logo for dark backgrounds       |
+| `logo-stacked.svg`           | Stacked logo for light backgrounds         |
+| `logo-stacked-dark.svg`      | Stacked logo for dark backgrounds          |
+
+The repository README shows the stacked logo.
 
 ## Wordmark
 
